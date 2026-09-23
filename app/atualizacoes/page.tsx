@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bc",
+    data: "23/09/2026",
+    titulo: "NF-e de Transferência saía com CST 51 (diferido) — correto é CST 41 (não tributado)",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Achado real do dono: CST 51 (ICMS diferido, Decreto MT nº 4.540/2004) é o tratamento correto de VENDA interna em MT — transferência entre estabelecimentos do mesmo titular não é venda, não tem base de cálculo nem imposto a diferir. Toda NF-e de transferência (CFOP 5151/6151, 5152/6152, 5409/6409, 5410/6410, 5949/6949) saía com CST 51 (base de cálculo + vICMSOp + vICMSDif) porque caía na mesma regra genérica usada pra venda interna. Corrigido: transferência agora sai com CST 41 (não tributado, sem base de cálculo nem valor de ICMS). Venda continua CST 51, sem mudança." },
+    ],
+    onde: "Fiscal / NF-e · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-bb",
     data: "23/09/2026",
     titulo: "Buscar NF-e por chave: \"senha do certificado incorreta\" mesmo com a senha certa",

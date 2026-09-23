@@ -240,7 +240,11 @@ export async function POST(request: NextRequest) {
       const naturezaTransf = ehProducaoPropria
         ? "Transferência de mercadoria de produção própria"
         : "Transferência de mercadoria adquirida de terceiros";
-      const textoLegalDiferido = "ICMS diferido nos termos do Decreto MT n. 4.540/2004 — transferência entre estabelecimentos do mesmo titular, operação não configura venda. Não incide PIS/COFINS nem Funrural.";
+      // Correção 23/09/2026, achado real do dono (especialista fiscal): CST 51/ICMS diferido é
+      // tratamento de VENDA interna em MT (Decreto 4.540/2004) — transferência não é venda, não
+      // tem base de cálculo nem imposto a diferir. Transferência é CST 41 (não tributado); ver
+      // icmsRule() em lib/nfe/builder.ts, corrigido junto.
+      const textoLegalDiferido = "ICMS não tributado (CST 41) — transferência entre estabelecimentos do mesmo titular, operação não configura venda, sem base de cálculo nem imposto a diferir. Não incide PIS/COFINS nem Funrural.";
       // NCM ausente no cadastro do insumo NÃO pode virar "1201.90.00" (soja) — achado real
       // 23/09/2026: uma transferência de "SAPEK MAX" (defensivo) saiu com NCM de soja na NF-e de
       // verdade, transmitida e autorizada pela SEFAZ. Auditoria no banco mostrou 1.929 de 1.959

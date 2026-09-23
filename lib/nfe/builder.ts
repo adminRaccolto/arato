@@ -274,6 +274,18 @@ function icmsRule(cfop: string, isNaoContribuinte = false): ICMSRule {
     return { cst: "40", xml: () => `<ICMS40><orig>0</orig><CST>40</CST></ICMS40>` };
   }
 
+  // Transferência entre estabelecimentos do mesmo titular (mesmo produtor/conta) — CST 41 (não
+  // tributado), NÃO 51 (diferido). Correção 23/09/2026, achado real do dono (especialista fiscal):
+  // CST 51/ICMS diferido é o tratamento de VENDA interna em MT (Decreto 4.540/2004); transferência
+  // não é venda, não tem base de cálculo nem imposto a diferir — é simplesmente não tributada.
+  // Antes disso, TODA operação com CFOP interno (prefixo 5) caía no bloco de diferido genérico
+  // abaixo, inclusive as transferências (5151/6151, 5152/6152, 5409/6409, 5410/6410, 5949/6949) —
+  // saíam com CST 51 e base de cálculo/vICMSOp/vICMSDif que não deveriam existir nessa operação.
+  const CFOPS_TRANSFERENCIA = new Set(["5151", "6151", "5152", "6152", "5409", "6409", "5410", "6410", "5949", "6949"]);
+  if (CFOPS_TRANSFERENCIA.has(cod)) {
+    return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
+  }
+
   if (cod.startsWith("5") || cod.startsWith("1")) {
     if (isNaoContribuinte) {
       // Venda a não contribuinte: diferimento não se aplica — isento (CST 40)

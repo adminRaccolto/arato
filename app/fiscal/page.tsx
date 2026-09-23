@@ -76,9 +76,14 @@ const NATUREZAS_TRANSFERENCIA = [
   // de mercadoria ADQUIRIDA OU RECEBIDA DE TERCEIROS" (insumo comprado, não
   // produzido pela fazenda) — eram trocados aqui, fazendo NF-e de transferência
   // de produção própria sair com CFOP 5.152 (errado) em vez de 5.151.
-  { codigo: "5.151", descricao: "Transferência de Produção do Estabelecimento — Intraestadual (CFOP 5.151)", obs: "Transferência entre estabelecimentos do mesmo produtor rural — mercadoria de produção própria. Operação não configura venda. ICMS diferido nos termos do Decreto MT n. 4.540/2004. Não incide PIS/COFINS nem Funrural." },
+  //
+  // Corrigido 23/09/2026 (2), achado real do dono (especialista fiscal): CST 51 (ICMS
+  // diferido) é o tratamento de VENDA interna em MT (Decreto 4.540/2004) — transferência
+  // não é venda, não tem base de cálculo nem imposto a diferir. Transferência é CST 41
+  // (não tributado). Textos abaixo e lib/nfe/builder.ts (icmsRule) corrigidos juntos.
+  { codigo: "5.151", descricao: "Transferência de Produção do Estabelecimento — Intraestadual (CFOP 5.151)", obs: "Transferência entre estabelecimentos do mesmo produtor rural — mercadoria de produção própria. Operação não configura venda. ICMS não tributado (CST 41) — não é venda, não há base de cálculo nem imposto a diferir. Não incide PIS/COFINS nem Funrural." },
   { codigo: "6.151", descricao: "Transferência de Produção do Estabelecimento — Interestadual (CFOP 6.151)", obs: "Transferência interestadual entre estabelecimentos do mesmo produtor rural — mercadoria de produção própria. Operação não configura venda. Verificar legislação do estado destinatário para ICMS." },
-  { codigo: "5.152", descricao: "Transferência de Mercadoria Adquirida de Terceiros — Intraestadual (CFOP 5.152)", obs: "Transferência entre estabelecimentos do mesmo produtor rural — mercadoria/insumo adquirido de terceiros, não produzido pela fazenda de origem. Operação não configura venda. ICMS diferido nos termos do Decreto MT n. 4.540/2004. Não incide PIS/COFINS nem Funrural." },
+  { codigo: "5.152", descricao: "Transferência de Mercadoria Adquirida de Terceiros — Intraestadual (CFOP 5.152)", obs: "Transferência entre estabelecimentos do mesmo produtor rural — mercadoria/insumo adquirido de terceiros, não produzido pela fazenda de origem. Operação não configura venda. ICMS não tributado (CST 41) — não é venda, não há base de cálculo nem imposto a diferir. Não incide PIS/COFINS nem Funrural." },
   { codigo: "6.152", descricao: "Transferência de Mercadoria Adquirida de Terceiros — Interestadual (CFOP 6.152)", obs: "Transferência interestadual entre estabelecimentos do mesmo produtor rural — mercadoria/insumo adquirido de terceiros. Operação não configura venda. Verificar legislação do estado destinatário para ICMS." },
   { codigo: "5.906", descricao: "Remessa para Armazém Geral Próprio — Intraestadual (CFOP 5.906)", obs: "Remessa de mercadoria para depósito em armazém geral de propriedade do emitente ou vinculado. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural." },
   { codigo: "6.906", descricao: "Remessa para Armazém Geral Próprio — Interestadual (CFOP 6.906)", obs: "Remessa interestadual de mercadoria para depósito em armazém geral de propriedade do emitente ou vinculado." },

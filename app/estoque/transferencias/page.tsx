@@ -1338,7 +1338,9 @@ export default function TransferenciasEstoquePage() {
         if (c.inf_cpl_transferencia) infCplPartes.push(c.inf_cpl_transferencia.trim());
         if (c.inf_cpl_padrao) infCplPartes.push(c.inf_cpl_padrao.trim());
         if (c.inf_cpl_cnd) infCplPartes.push(c.inf_cpl_cnd.trim());
-        if (c.icms_diferido_ativo === "true") infCplPartes.push(c.inf_cpl_icms_diferido || "ICMS diferido conforme art. 572 do RICMS/MT.");
+        // "icms_diferido_ativo" removido do preview de transferência 23/09/2026 — esse flag é o
+        // tratamento de VENDA (CST 51, Decreto MT 4.540/2004); transferência usa CST 41 (não
+        // tributado), sem diferimento nenhum a declarar. Ver lib/nfe/builder.ts (icmsRule).
         if (c.inf_cpl_base_reduzida) infCplPartes.push(c.inf_cpl_base_reduzida.trim());
         if (c.funrural_retido === "true") infCplPartes.push(c.inf_cpl_funrural || "Funrural retido pelo adquirente.");
         if (detalhe.observacao) infCplPartes.push(detalhe.observacao);
