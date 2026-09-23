@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bm",
+    data: "23/09/2026",
+    titulo: "MDF-e: validação local pra Carga Própria + CT-e vinculado (combinação sempre inválida)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "\"Carga Própria\" e CT-e vinculado são incompatíveis por definição — um CT-e já é um contrato de transporte remunerado, o que deixa de caracterizar carga própria (SEFAZ rejeita com \"Não deve ser informado Conhecimento de Transporte para tipo de emitente Transporte de Carga Própria\"). A emissão agora barra essa combinação localmente, explicando o porquê, em vez de deixar tentar na SEFAZ pra descobrir depois." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e)",
+  },
+  {
     versao: "2026.09.23-bl",
     data: "23/09/2026",
     titulo: "MDF-e: emissão podia ler a config de outra empresa quando a conta tem mais de uma",

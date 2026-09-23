@@ -238,6 +238,19 @@ export async function emitirMDFe(
     averbacao_numero: confg.averbacao_numero,
   };
 
+  // Carga Própria (tpEmit=2) e CT-e vinculado são mutuamente excludentes por definição — um
+  // CT-e É um contrato de transporte remunerado, o que já deixa de ser "carga própria". SEFAZ
+  // rejeita com "Não deve ser informado Conhecimento de Transporte para tipo de emitente
+  // Transporte de Carga Própria" (achado real 23/09/2026). Bloqueia aqui, localmente, com a
+  // explicação de fundo — sem isso o usuário fica preso num loop (marca carga própria pra
+  // fugir do seguro, mas o MDF-e tem CT-e vinculado, que exige exatamente o oposto).
+  if (emitente.tpEmit === "2" && documentos.some(d => d.tipo === "cte")) {
+    return {
+      sucesso: false, cStat: "VALIDACAO_LOCAL",
+      xMotivo: "Este MDF-e tem CT-e vinculado, mas o emitente está configurado como \"Carga Própria\" em Parâmetros → MDF-e — as duas coisas são incompatíveis (um CT-e já é, por definição, um contrato de transporte remunerado). Se este transporte cobra frete de verdade, volte a marcar \"Prestação de serviço\" e preencha o Seguro da Carga (RCTR-C). Se é realmente carga própria, o transporte não deveria ter CT-e nenhum vinculado.",
+    };
+  }
+
   // SEFAZ rejeita o MDF-e rodoviário sem os dados de Seguro da Carga completos — mas só quando
   // o emitente presta serviço remunerado (tpEmit=1). Carga própria (tpEmit=2) não tem essa
   // exigência. Bloqueia aqui com um aviso claro em vez de gastar uma tentativa real na SEFAZ.
