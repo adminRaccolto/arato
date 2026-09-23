@@ -292,14 +292,30 @@ async function proximoNumero(
   const proximo = String(atual + 1);
   // Incrementa no banco antes de emitir. Grava SÓ o contador, em cada linha que o guarda (base e, se
   // existir, a config por-IE que sobrepõe a base na leitura) — sem regravar a config mesclada inteira.
+  //
+  // Correção 23/09/2026 (achado real — rejeição SEFAZ 539 "Duplicidade de NF-e, com diferença na
+  // Chave de Acesso"): a linha de configuração é lida (em buscarConfEmitente) de QUALQUER fazenda
+  // da conta, não só da fazenda ativa — mas aqui o incremento sempre gravava com
+  // `.eq("fazenda_id", fazendaId)` usando a fazenda ativa. Quando a config vive em outra fazenda da
+  // mesma conta, a query não achava a linha (`if (!linha) continue`) e o contador NUNCA avançava —
+  // o sistema oferecia sempre o mesmo "próximo número" (ex.: número 1), que a SEFAZ já tinha
+  // autorizado de verdade numa tentativa anterior, e toda emissão seguinte era rejeitada por
+  // duplicidade. Corrigido: busca/grava em qualquer fazenda da conta, igual buscarConfEmitente.
   const modulos = [moduloKey, ...(confg.__ie_modulo ? [confg.__ie_modulo] : [])];
+  let fazendaIdsConta = [fazendaId];
+  const { data: fzAtual } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if (fzAtual?.conta_id) {
+    const { data: fzsConta } = await sb().from("fazendas").select("id").eq("conta_id", fzAtual.conta_id);
+    if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
+  }
   for (const m of modulos) {
-    const { data: linha } = await sb().from("configuracoes_modulo").select("config")
-      .eq("fazenda_id", fazendaId).eq("modulo", m).maybeSingle();
-    if (!linha) continue;
-    await sb().from("configuracoes_modulo")
-      .update({ config: { ...(linha.config as Record<string, string>), numero_inicial: proximo } })
-      .eq("fazenda_id", fazendaId).eq("modulo", m);
+    const { data: linhas } = await sb().from("configuracoes_modulo").select("fazenda_id, config")
+      .in("fazenda_id", fazendaIdsConta).eq("modulo", m);
+    for (const linha of linhas ?? []) {
+      await sb().from("configuracoes_modulo")
+        .update({ config: { ...(linha.config as Record<string, string>), numero_inicial: proximo } })
+        .eq("fazenda_id", linha.fazenda_id).eq("modulo", m);
+    }
   }
   return atual;
 }

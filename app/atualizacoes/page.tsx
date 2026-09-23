@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-aw",
+    data: "23/09/2026",
+    titulo: "NF-e: rejeição SEFAZ 539 (duplicidade) — Próx. Número travado quando a config vive em outra fazenda da conta",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "\"Próx. Número NF-e\" podia ficar travado no mesmo número pra sempre quando a configuração fiscal daquele emitente vive numa fazenda diferente da fazenda ativa no momento da emissão (comum em conta com múltiplas fazendas) — a leitura da configuração já busca em toda a conta, mas o incremento do contador só tentava gravar na fazenda ativa; não achando a linha lá, o contador nunca avançava. Sintoma real: SEFAZ rejeita com \"539: Duplicidade de NF-e, com diferença na Chave de Acesso\" — o sistema insiste em oferecer um número que a SEFAZ já autorizou de verdade numa tentativa anterior. Corrigido: o contador agora é lido/gravado em qualquer fazenda da conta, igual à leitura da configuração. **Se você já tomou essa rejeição, aumente manualmente o \"Próx. Número NF-e\" em Parâmetros → Fiscal → NF-e daquele emitente pra um valor acima do que a SEFAZ já tem autorizado, antes de tentar emitir de novo.**" },
+    ],
+    onde: "Fiscal / NF-e · Configurações → Parâmetros do Sistema → Fiscal — NF-e",
+  },
+  {
     versao: "2026.09.23-av",
     data: "23/09/2026",
     titulo: "Cadastro de Empresa: removidos campos de Ambiente/Série que não configuravam nada",
