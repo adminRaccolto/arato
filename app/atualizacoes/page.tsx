@@ -6,12 +6,24 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-z",
+    data: "23/09/2026",
+    titulo: "Catálogo de insumos passa a ser por cliente (conta), não por fazenda",
+    modulos: ["Estoque", "Cadastros", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigido na raiz o problema de estoque \"sumido\" em transferências entre fazendas do mesmo cliente: o cadastro de insumo (nome, categoria, unidade, NCM etc.) era lido por fazenda — um insumo cadastrado a partir de uma fazenda ficava invisível pras outras fazendas do mesmo cliente, e uma transferência entre elas não achava o insumo do lado de lá. Agora o CADASTRO do insumo é por cliente (todas as fazendas da mesma conta compartilham o mesmo catálogo), e o ESTOQUE continua sendo calculado por fazenda normalmente — cada fazenda só vê o saldo físico que realmente tem. Vale pra todo cliente com mais de uma fazenda." },
+      { tipo: "correcao", texto: "Cadastrar um novo insumo agora avisa de duplicado comparando com o catálogo inteiro do cliente, não só com a fazenda que está cadastrando — reduz o risco de recriar \"SEM SOJA CG 7681\" e \"SEM: SOJA 7681\" como dois produtos diferentes." },
+      { tipo: "correcao", texto: "Transferência de Estoque entre fazendas diferentes com \"Entrada automática no destino\" marcada: a entrada agora usa o mesmo cadastro de insumo da saída (já que o catálogo é do cliente) — antes, ficava gravada no banco mas invisível no Estoque/Kardex do destino." },
+    ],
+    onde: "Estoque (Posição, Kardex, NF Entrada) · Cadastros → Insumos · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-y",
     data: "23/09/2026",
     titulo: "Transferência entre fazendas: entrada automática agora movimenta o estoque certo no destino",
     modulos: ["Estoque", "Fiscal"],
     itens: [
-      { tipo: "correcao", texto: "Corrigido: quando \"Entrada automática no destino\" estava marcada numa Transferência de Estoque entre fazendas diferentes, a entrada era gravada usando o cadastro de insumo da fazenda de ORIGEM — que não existe no catálogo da fazenda de destino, então a movimentação nunca aparecia no Estoque/Kardex de lá, mesmo com o saldo tendo sido lançado no banco. Agora o sistema resolve (ou cria, clonando os dados) o insumo correspondente já cadastrado na fazenda de destino antes de lançar a entrada — vale para toda transferência nova, em qualquer conta." },
+      { tipo: "correcao", texto: "Corrigido: quando \"Entrada automática no destino\" estava marcada numa Transferência de Estoque entre fazendas diferentes, a entrada era gravada usando o cadastro de insumo da fazenda de ORIGEM sem checar se ele era visível pra fazenda de destino, então a movimentação podia não aparecer no Estoque/Kardex de lá mesmo com o saldo tendo sido lançado no banco. Superado pela correção -z acima, que resolve isso na raiz (catálogo por cliente)." },
     ],
     onde: "Estoque → Transferências (entre fazendas, com \"Entrada automática no destino\" marcada)",
   },

@@ -470,16 +470,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ── Helper: resolve o insumo correto na fazenda DESTINO ─────────────────────
-// O catálogo de insumos é por fazenda (insumos.fazenda_id) — toda tela de
-// Estoque/Kardex lista só os insumos cadastrados na fazenda ativa. Se a
-// entrada automática no destino gravar movimentacoes_estoque usando o mesmo
-// insumo_id da origem (que pertence ao cadastro da fazenda origem), a
-// movimentação fica órfã: existe no banco, mas nunca aparece na tela do
-// destino porque o insumo dela não está no catálogo daquela fazenda. Este
-// helper garante que a entrada sempre use (ou crie) o insumo cadastrado na
-// própria fazenda destino, casando por nome — clonando os dados do insumo de
-// origem na primeira transferência e reaproveitando o cadastro depois.
+// ── Helper: resolve o insumo correto pra lançar a entrada no DESTINO ────────
+// O cadastro de insumo é por conta (o mesmo produto vale pra qualquer fazenda
+// do cliente — lib/db.ts listarInsumos já busca o catálogo inteiro da conta,
+// não só da fazenda ativa); só o ESTOQUE (via movimentacoes_estoque.fazenda_id)
+// é por fazenda. Então quando origem e destino são fazendas do MESMO cliente
+// (o caso normal), a entrada usa o mesmo insumo_id da saída — ele já aparece
+// no Estoque/Kardex do destino porque a listagem é conta-wide, e criar um
+// cadastro novo só duplicaria o catálogo (o problema que já existia antes
+// desta correção: "SEM SOJA CG 7681" / "SEMENTE SOJA CG 7681" / "SEM: SOJA
+// 7681" como 3 registros separados pro mesmo produto). Só clona o cadastro no
+// caso raríssimo de transferência pra uma fazenda de OUTRA conta (comodato
+// pra terceiro que também é cliente Arato, por exemplo).
 const _insumoDestinoCache = new Map<string, string>();
 async function _resolverInsumoDestino(
   insumoOrigemId: string,
@@ -500,19 +502,35 @@ async function _resolverInsumoDestino(
 
   if (origem.fazenda_id === fazendaDestinoId) {
     _insumoDestinoCache.set(cacheKey, insumoOrigemId);
-    return insumoOrigemId; // origem e destino já são a mesma fazenda
+    return insumoOrigemId;
   }
 
-  // Já existe um insumo com o mesmo nome cadastrado no destino?
-  const { data: existente } = await adm
-    .from("insumos")
-    .select("id")
-    .eq("fazenda_id", fazendaDestinoId)
-    .ilike("nome", origem.nome)
-    .maybeSingle();
-  if (existente) {
-    _insumoDestinoCache.set(cacheKey, existente.id);
-    return existente.id;
+  const [{ data: fazOrigem }, { data: fazDestino }] = await Promise.all([
+    adm.from("fazendas").select("conta_id").eq("id", origem.fazenda_id).maybeSingle(),
+    adm.from("fazendas").select("conta_id").eq("id", fazendaDestinoId).maybeSingle(),
+  ]);
+
+  if (fazOrigem?.conta_id && fazOrigem.conta_id === fazDestino?.conta_id) {
+    // Mesma conta — catálogo já é compartilhado, reaproveita o cadastro.
+    _insumoDestinoCache.set(cacheKey, insumoOrigemId);
+    return insumoOrigemId;
+  }
+
+  // Contas diferentes — já existe um insumo com o mesmo nome cadastrado
+  // numa fazenda da conta destino?
+  const { data: fzsContaDestino } = await adm.from("fazendas").select("id").eq("conta_id", fazDestino?.conta_id ?? "");
+  const idsContaDestino = (fzsContaDestino ?? []).map((f: { id: string }) => f.id);
+  if (idsContaDestino.length > 0) {
+    const { data: existente } = await adm
+      .from("insumos")
+      .select("id")
+      .in("fazenda_id", idsContaDestino)
+      .ilike("nome", origem.nome)
+      .maybeSingle();
+    if (existente) {
+      _insumoDestinoCache.set(cacheKey, existente.id);
+      return existente.id;
+    }
   }
 
   // Não existe — clona o cadastro (mesmo nome/categoria/unidade/NCM/etc.)

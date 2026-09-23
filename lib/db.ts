@@ -344,7 +344,30 @@ export async function atualizarOperacao(id: string, o: Partial<Operacao>): Promi
 const filtroFazenda = (q: any, f: string | string[]) =>
   Array.isArray(f) ? q.in("fazenda_id", f) : q.eq("fazenda_id", f);
 
+// O CADASTRO de insumo é por conta_id (o mesmo produto usado por qualquer
+// fazenda do cliente); só o ESTOQUE (via movimentacoes_estoque.fazenda_id) é
+// por fazenda. listarInsumos recebe fazenda(s) por conveniência (é o que as
+// telas têm em mãos), mas resolve pra conta e devolve o catálogo inteiro do
+// cliente — sem isso, um insumo cadastrado a partir de uma fazenda nunca
+// aparece pra seleção nas outras fazendas do mesmo cliente, e uma
+// transferência entre fazendas do cliente gera cadastro duplicado. Corrigido
+// 23/09/2026 — ver Seção "conta_id NUNCA fazenda_id" no histórico do projeto.
 export async function listarInsumos(fazenda_id: string | string[]): Promise<Insumo[]> {
+  const fazendaIds = Array.isArray(fazenda_id) ? fazenda_id : [fazenda_id];
+  const { data: fzs } = await supabase.from("fazendas").select("id, conta_id").in("id", fazendaIds);
+  const contaIds = Array.from(new Set((fzs ?? []).map(f => f.conta_id).filter(Boolean))) as string[];
+
+  if (contaIds.length > 0) {
+    const { data: fzsConta } = await supabase.from("fazendas").select("id").in("conta_id", contaIds);
+    const idsConta = (fzsConta ?? []).map((f: { id: string }) => f.id);
+    const { data, error } = await supabase.from("insumos").select("*")
+      .in("fazenda_id", idsConta.length > 0 ? idsConta : fazendaIds)
+      .order("nome");
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  // Legado: fazenda sem conta_id (não deveria acontecer hoje) — mantém filtro antigo
   const { data, error } = await filtroFazenda(supabase.from("insumos").select("*"), fazenda_id).order("nome");
   if (error) throw error;
   return data ?? [];
@@ -395,11 +418,19 @@ function normalizarNomeInsumo(nome: string): string {
 }
 
 export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise<Insumo> {
+  // Checagem de duplicado é por conta (mesmo catálogo compartilhado entre as
+  // fazendas do cliente) — não só na fazenda que está cadastrando agora.
+  let fazendaIdsConta: string[] = [i.fazenda_id];
+  const { data: fazAtualRow } = await supabase.from("fazendas").select("conta_id").eq("id", i.fazenda_id).maybeSingle();
+  if (fazAtualRow?.conta_id) {
+    const { data: fzsConta } = await supabase.from("fazendas").select("id").eq("conta_id", fazAtualRow.conta_id);
+    if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
+  }
   const { data: existentes } = await supabase.from("insumos")
-    .select("id, nome").eq("fazenda_id", i.fazenda_id);
+    .select("id, nome").in("fazenda_id", fazendaIdsConta);
   const alvoNorm = normalizarNomeInsumo(i.nome);
   const parecido = (existentes ?? []).find(e => normalizarNomeInsumo(e.nome) === alvoNorm);
-  if (parecido && !confirm(`Já existe um insumo parecido: "${parecido.nome}". Cadastrar "${i.nome}" mesmo assim vai criar um duplicado no catálogo — considere usar o já existente. Cadastrar mesmo assim?`)) {
+  if (parecido && !confirm(`Já existe um insumo parecido no catálogo do cliente: "${parecido.nome}". Cadastrar "${i.nome}" mesmo assim vai criar um duplicado — considere usar o já existente. Cadastrar mesmo assim?`)) {
     throw new Error("Cadastro cancelado.");
   }
   const { data, error } = await supabase.from("insumos").insert(i).select().single();
