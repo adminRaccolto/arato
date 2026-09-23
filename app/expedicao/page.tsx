@@ -54,6 +54,8 @@ interface Carga {
   transportadora_id?: string;
   veiculo_id?: string;
   motorista_id?: string;
+  motorista_nome?: string;
+  motorista_cpf?: string;
   nfe_numero?: string;
   nfe_serie?: string;
   nfe_chave?: string;
@@ -697,11 +699,24 @@ export default function Expedicao() {
                 onChange: e => setNova(p => ({ ...p, veiculo_id: e.target.value || undefined })),
                 children: [<option key="" value="">— Selecione —</option>, ...veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo}</option>)] as React.ReactNode,
               }))}
-              {campo("Motorista", sel({
-                value: nova.motorista_id ?? "",
-                onChange: e => setNova(p => ({ ...p, motorista_id: e.target.value || undefined })),
-                children: [<option key="" value="">— Selecione —</option>, ...motori.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)] as React.ReactNode,
-              }))}
+              {campo("Motorista", <>
+                {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro — ao
+                    escolher uma sugestão, resolve o motorista_id pra manter o vínculo estruturado;
+                    digitando um nome que não está na lista, salva só como texto. */}
+                {inp({
+                  list: "expedicao-motoristas",
+                  value: nova.motorista_nome ?? "",
+                  onChange: e => {
+                    const nome = e.target.value;
+                    const achado = motori.find(m => m.nome === nome);
+                    setNova(p => ({ ...p, motorista_nome: nome, motorista_id: achado?.id }));
+                  },
+                  placeholder: "Nome do motorista",
+                })}
+                <datalist id="expedicao-motoristas">
+                  {motori.map(m => <option key={m.id} value={m.nome} />)}
+                </datalist>
+              </>)}
               {campo("Peso Bruto Origem (kg)", inp({ type: "number", value: nova.peso_bruto_origem_kg ?? "", onChange: e => {
                 const b = Number(e.target.value);
                 const t = nova.tara_origem_kg ?? 0;

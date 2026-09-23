@@ -50,6 +50,7 @@ export default function TransferenciaMaquinasPage() {
   const [itens,     setItens]     = useState<TransferenciaMaquina[]>([]);
   const [maquinas,  setMaquinas]  = useState<Maquina[]>([]);
   const [pessoas,   setPessoas]   = useState<Pessoa[]>([]);
+  const [motoristas, setMotoristas] = useState<{ id: string; nome: string; cpf?: string }[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [busca,     setBusca]     = useState("");
   const [filtroSt,  setFiltroSt]  = useState("");
@@ -62,6 +63,7 @@ export default function TransferenciaMaquinasPage() {
     maquina_id: "", motivo: "conserto" as MotivoTransferenciaMaquina,
     destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000",
     data_retorno_prevista: "", observacao: "",
+    motorista_id: "", motorista_nome: "", motorista_cpf: "",
   });
 
   // Modal Retorno
@@ -73,20 +75,22 @@ export default function TransferenciaMaquinasPage() {
     if (!contaId || !fazendaId) return;
     (async () => {
       setLoading(true);
-      const [t, m, p] = await Promise.all([
+      const [t, m, p, { data: mot }] = await Promise.all([
         listarTransferenciasMaquinas(contaId),
         listarMaquinas(fazendaId),
         listarPessoasDaConta(fazendaId),
+        supabase.from("motoristas").select("id, nome, cpf").eq("ativo", true),
       ]);
       setItens(t);
       setMaquinas(m);
       setPessoas(p);
+      setMotoristas(mot ?? []);
       setLoading(false);
     })();
   }, [contaId, fazendaId]);
 
   function abrirNova() {
-    setF({ maquina_id: "", motivo: "conserto", destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000", data_retorno_prevista: "", observacao: "" });
+    setF({ maquina_id: "", motivo: "conserto", destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000", data_retorno_prevista: "", observacao: "", motorista_id: "", motorista_nome: "", motorista_cpf: "" });
     setErro("");
     setModalNova(true);
   }
@@ -160,6 +164,9 @@ export default function TransferenciaMaquinasPage() {
         destinatario_uf: dest.estado ?? undefined,
         ncm: f.ncm,
         valor_bem: valor,
+        motorista_id: f.motorista_id || undefined,
+        motorista_nome: f.motorista_nome || undefined,
+        motorista_cpf: f.motorista_cpf || undefined,
         data_retorno_prevista: f.data_retorno_prevista || undefined,
         observacao: f.observacao || undefined,
         status: "emitida",
@@ -364,6 +371,21 @@ export default function TransferenciaMaquinasPage() {
               <div>
                 <label style={lbl}>NCM</label>
                 <input value={f.ncm} onChange={e => setF(p => ({ ...p, ncm: e.target.value.replace(/\D/g, "") }))} style={inp} maxLength={8} />
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Motorista (opcional)</label>
+                {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
+                <input list="transf-maq-motoristas" value={f.motorista_nome}
+                  onChange={e => {
+                    const nome = e.target.value;
+                    const achado = motoristas.find(m => m.nome === nome);
+                    setF(p => ({ ...p, motorista_nome: nome, motorista_id: achado?.id ?? "", motorista_cpf: achado?.cpf ?? p.motorista_cpf }));
+                  }}
+                  style={inp} placeholder="Nome do motorista que vai transportar" />
+                <datalist id="transf-maq-motoristas">
+                  {motoristas.map(m => <option key={m.id} value={m.nome} />)}
+                </datalist>
               </div>
 
               {MOTIVOS[f.motivo].cfopRetorno && (

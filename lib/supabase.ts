@@ -1331,6 +1331,9 @@ export type TransferenciaMaquina = {
   destinatario_municipio?: string;
   destinatario_uf?: string;
   fazenda_destino_id?: string;
+  motorista_id?: string;
+  motorista_nome?: string;
+  motorista_cpf?: string;
   ncm: string;
   valor_bem: number;
   data_retorno_prevista?: string;

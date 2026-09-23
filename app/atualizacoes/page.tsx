@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-x",
+    data: "23/09/2026",
+    titulo: "Motorista: pode digitar livre, sem precisar cadastrar",
+    modulos: ["Transporte", "Comercial", "Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "O campo \"Motorista\" (CT-e, MDF-e, Expedição de Grãos e Transferência de Máquinas) deixou de exigir seleção de um cadastro fechado — agora aceita texto livre com sugestões de quem já está cadastrado. Escolhendo uma sugestão, mantém o vínculo estruturado (CPF, CLT/TAC); digitando um nome novo, salva só como texto, sem precisar cadastrar antes." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e/MDF-e) · Expedição de Grãos · Fiscal → Transferência de Máquinas",
+  },
+  {
     versao: "2026.09.23-w",
     data: "23/09/2026",
     titulo: "Novo módulo: Transferência de Máquinas e Equipamentos",

@@ -13412,3 +13412,20 @@ DROP POLICY IF EXISTS "emergencial_autenticado" ON transferencias_maquinas;
 CREATE POLICY "emergencial_autenticado" ON transferencias_maquinas FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 283 — Motorista livre (texto) em telas de emissão de NF (venda/transferência)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Pedido do dono 23/09/2026: nome do motorista poder ser digitado livre (sem precisar cadastrar
+-- em Transportadoras/Veículos) OU escolhido do cadastro como já era — mesmo padrão já usado em
+-- "Linha de Crédito" (input+datalist, aceita texto livre com sugestões do cadastro).
+ALTER TABLE cargas_expedicao
+  ADD COLUMN IF NOT EXISTS motorista_nome TEXT,
+  ADD COLUMN IF NOT EXISTS motorista_cpf  TEXT;
+
+ALTER TABLE transferencias_maquinas
+  ADD COLUMN IF NOT EXISTS motorista_id   UUID REFERENCES motoristas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS motorista_nome TEXT,
+  ADD COLUMN IF NOT EXISTS motorista_cpf  TEXT;
+
+NOTIFY pgrst, 'reload schema';

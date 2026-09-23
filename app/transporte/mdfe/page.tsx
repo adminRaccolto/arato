@@ -341,7 +341,7 @@ export default function MdfePage() {
     uf_inicio: mdfeConfig.uf_ini || "MT", municipio_inicio: "", ibge_inicio: "",
     uf_fim: mdfeConfig.uf_fim || "MT",
     percurso_ufs: [] as string[],
-    veiculo_id: "", motorista_id: "",
+    veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
     peso_total_kg: 0, valor_total_carga: 0,
     observacao: "",
     // Documentos vinculados
@@ -441,6 +441,7 @@ export default function MdfePage() {
       uf_fim: m.uf_fim,
       percurso_ufs: m.percurso_ufs ?? [],
       veiculo_id: m.veiculo_id ?? "", motorista_id: m.motorista_id ?? "",
+      motorista_nome: m.motorista_nome ?? "", motorista_cpf: m.motorista_cpf ?? "",
       peso_total_kg: m.peso_total_kg ?? 0,
       valor_total_carga: m.valor_total_carga ?? 0,
       observacao: m.observacao ?? "",
@@ -531,9 +532,14 @@ export default function MdfePage() {
       const cteIds = marcando ? [...f.cte_ids, id] : f.cte_ids.filter(c => c !== id);
       const c = ctes.find(x => x.id === id);
       let extra: Partial<typeof f> = {};
-      if (marcando && !f.veiculo_id && !f.motorista_id) {
+      if (marcando && !f.veiculo_id && !f.motorista_id && !f.motorista_nome) {
         if (c?.veiculo_id && veiculos.some(v => v.id === c.veiculo_id)) extra = { ...extra, veiculo_id: c.veiculo_id };
-        if (c?.motorista_id && motoristas.some(m => m.id === c.motorista_id)) extra = { ...extra, motorista_id: c.motorista_id };
+        // Herda o motorista do CT-e mesmo quando ele foi digitado livre lá (sem cadastro) —
+        // motorista_nome/cpf do CT-e sempre existem, motorista_id só quando bate com o cadastro.
+        if (c?.motorista_nome) {
+          extra = { ...extra, motorista_nome: c.motorista_nome, motorista_cpf: c.motorista_cpf ?? "" };
+          if (c.motorista_id && motoristas.some(m => m.id === c.motorista_id)) extra = { ...extra, motorista_id: c.motorista_id };
+        }
       }
       // Peso e Valor da Carga também já estão no CT-e — soma ao marcar, subtrai ao desmarcar,
       // pra somar mais de um CT-e no mesmo MDF-e sem precisar digitar de novo.
@@ -582,9 +588,11 @@ export default function MdfePage() {
         veiculo_id: form.veiculo_id || null,
         veiculo_placa: veiculo?.placa ?? "",
         veiculo_tipo: veiculo?.tipo ?? null,
+        // Motorista: cadastro (motorista_id, ao escolher sugestão) ou texto livre digitado —
+        // form.motorista_nome/cpf são o que está no campo, prevalecem sobre o cadastro.
         motorista_id: form.motorista_id || null,
-        motorista_nome: motorista?.nome ?? "",
-        motorista_cpf: motorista?.cpf ?? null,
+        motorista_nome: form.motorista_nome || motorista?.nome || "",
+        motorista_cpf: form.motorista_cpf || motorista?.cpf || null,
         documentos,
         peso_total_kg: form.peso_total_kg || null,
         valor_total_carga: form.valor_total_carga || null,
@@ -906,10 +914,17 @@ export default function MdfePage() {
               </div>
               <div>
                 <label style={lbl}>Motorista</label>
-                <select value={form.motorista_id} onChange={e => setForm(f => ({ ...f, motorista_id: e.target.value }))} style={inp}>
-                  <option value="">— Selecionar —</option>
-                  {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
+                {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
+                <input list="mdfe-motoristas" value={form.motorista_nome}
+                  onChange={e => {
+                    const nome = e.target.value;
+                    const achado = motoristas.find(m => m.nome === nome);
+                    setForm(f => ({ ...f, motorista_nome: nome, motorista_id: achado?.id ?? "", motorista_cpf: achado?.cpf ?? f.motorista_cpf }));
+                  }}
+                  style={inp} placeholder="Nome do motorista" />
+                <datalist id="mdfe-motoristas">
+                  {motoristas.map(m => <option key={m.id} value={m.nome} />)}
+                </datalist>
               </div>
               <div />
 

@@ -483,7 +483,7 @@ function CtePageInner() {
     peso_bruto_kg: 0, peso_liquido_kg: 0,
     valor_mercadoria: 0, valor_frete: 0,
     aliquota_icms: "12",
-    veiculo_id: "", motorista_id: "",
+    veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
     nfe_chave: "", observacao: "",
   });
   const [form, setForm] = useState(FORM_VAZIO());
@@ -593,6 +593,7 @@ function CtePageInner() {
       valor_mercadoria: c.valor_mercadoria ?? 0, valor_frete: c.valor_frete ?? 0,
       aliquota_icms: String(c.aliquota_icms),
       veiculo_id: c.veiculo_id ?? "", motorista_id: c.motorista_id ?? "",
+      motorista_nome: c.motorista_nome ?? "", motorista_cpf: c.motorista_cpf ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
     });
     setRemetenteSelUI("");
@@ -732,7 +733,7 @@ function CtePageInner() {
       }).select().single();
       if (error) { alert("Erro ao salvar motorista: " + error.message); return; }
       setMotoristas(prev => [...prev, { id: data.id, nome: data.nome, cpf: data.cpf }]);
-      setForm(f => ({ ...f, motorista_id: data.id }));
+      setForm(f => ({ ...f, motorista_id: data.id, motorista_nome: data.nome, motorista_cpf: data.cpf ?? "" }));
       setModalNovoMotorista(false);
       setNovoMot({ nome: "", cpf: "", transportadora_id: "" });
     } finally {
@@ -790,9 +791,12 @@ function CtePageInner() {
         veiculo_id: form.veiculo_id || null,
         veiculo_placa: veiculo?.placa ?? "",
         veiculo_tipo: veiculo?.tipo ?? null,
+        // Motorista: pode vir do cadastro (motorista_id setado ao escolher uma sugestão do
+        // datalist) OU só texto livre digitado, sem precisar cadastrar — form.motorista_nome/cpf
+        // são sempre o que está no campo, prevalecem sobre o cadastro.
         motorista_id: form.motorista_id || null,
-        motorista_nome: motorista?.nome ?? "",
-        motorista_cpf: motorista?.cpf ?? null,
+        motorista_nome: form.motorista_nome || motorista?.nome || "",
+        motorista_cpf: form.motorista_cpf || motorista?.cpf || null,
         nfe_chave: form.nfe_chave || null,
         status: cteEdit ? cteEdit.status : "rascunho" as StatusCte,
         observacao: form.observacao || null,
@@ -1636,11 +1640,20 @@ function CtePageInner() {
               </div>
               <div style={{ gridColumn: "3 / 5" }}>
                 <label style={lbl}>Motorista</label>
+                {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro — ao
+                    bater com um nome cadastrado, resolve o motorista_id (mantém CPF e vínculo
+                    estruturado); digitando um nome fora da lista, salva só como texto mesmo. */}
                 <div style={{ display: "flex", gap: 4 }}>
-                  <select value={form.motorista_id} onChange={e => setForm(f => ({ ...f, motorista_id: e.target.value }))} style={inp}>
-                    <option value="">— Selecionar —</option>
-                    {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome} {m.cpf ? `· ${m.cpf}` : ""}</option>)}
-                  </select>
+                  <input list="cte-motoristas" value={form.motorista_nome}
+                    onChange={e => {
+                      const nome = e.target.value;
+                      const achado = motoristas.find(m => m.nome === nome);
+                      setForm(f => ({ ...f, motorista_nome: nome, motorista_id: achado?.id ?? "", motorista_cpf: achado?.cpf ?? f.motorista_cpf }));
+                    }}
+                    style={inp} placeholder="Nome do motorista" />
+                  <datalist id="cte-motoristas">
+                    {motoristas.map(m => <option key={m.id} value={m.nome} />)}
+                  </datalist>
                   <button type="button" title="Cadastrar novo motorista sem sair daqui" onClick={() => setModalNovoMotorista(true)}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
                     + Novo
