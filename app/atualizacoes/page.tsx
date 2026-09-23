@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-o",
+    data: "23/09/2026",
+    titulo: "NF de Produtos: CFOP de ativo imobilizado classifica sozinho (CAPEX)",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Quando o CFOP da NF (ou de um item, ao importar XML) é de ativo imobilizado (1551, 1556, 2551, 2556, e os novos 5554/6554), o item vai automaticamente como \"Direto\" (sem entrar em estoque) e a Operação Gerencial da NF vai pra \"AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM.\" — já excluída do DRE (CAPEX). Não precisa classificar na mão." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.23-n",
     data: "23/09/2026",
     titulo: "NF de Produtos: novo CFOP 5554 (Remessa de ativo imobilizado)",

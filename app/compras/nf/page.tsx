@@ -83,6 +83,16 @@ const CFOP_NATUREZA: Record<string, string> = {
   "6554": "Remessa de bem do ativo imobilizado para uso fora do estabelecimento",
 };
 
+// CFOPs de compra/remessa de bem do ativo imobilizado — não é insumo de estoque nem despesa
+// operacional, é investimento (CAPEX). Item nesse CFOP entra como "Direto" (sem mexer em estoque)
+// e a Operação Gerencial vai pra "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM." (2.03.01.003), que já é
+// excluída do DRE — decisão do dono, 23/09/2026, pra não precisar classificar isso na mão toda vez.
+const CFOPS_ATIVO_IMOBILIZADO = new Set(["1551", "1556", "2551", "2556", "5554", "6554"]);
+function tipoApropDeCfop(cfop: string | undefined, fallback: NfEntradaItem["tipo_apropiacao"]): NfEntradaItem["tipo_apropiacao"] {
+  return CFOPS_ATIVO_IMOBILIZADO.has((cfop ?? "").trim()) ? "direto" : fallback;
+}
+const OG_ATIVO_IMOBILIZADO_CODIGO = "2.03.01.003";
+
 function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
 }
@@ -1345,7 +1355,7 @@ export default function NfCompraPage() {
             fator_conversao: fatorDeriv,
             insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", pedido_item_id: "",
             lotes_semente: [],
-            tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
+            tipo_apropiacao: tipoApropDeCfop(CFOP, "estoque"),
             deposito_id: "", bomba_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
             maquinas_rateio: [], horimetro: 0,
@@ -1931,7 +1941,7 @@ export default function NfCompraPage() {
             qtd_nf:           qCom,
             valor_unitario:   vUnCom,
             valor_total:      vProd,
-            tipo_apropiacao:  "estoque",
+            tipo_apropiacao:  tipoApropDeCfop(CFOP, "estoque"),
             alerta_preco:     false,
           });
         }
@@ -2024,7 +2034,7 @@ export default function NfCompraPage() {
               qtd_nf:            qCom,
               valor_unitario:    vUnCom,
               valor_total:       vProd,
-              tipo_apropiacao:   "estoque",
+              tipo_apropiacao:   tipoApropDeCfop(getTag(prod, "CFOP"), "estoque"),
               alerta_preco:      false,
             });
           }
@@ -2474,11 +2484,13 @@ export default function NfCompraPage() {
 
   // ── Auto-fill tipo_apropiacao por tipo de entrada ─────────
   const tipoAprpDefault = (t: TipoEntrada): NfEntradaItem["tipo_apropiacao"] =>
-    t === "vef"          ? "vef"        :
-    t === "remessa"      ? "remessa"    :
-    t === "custo_direto" ? "direto"     :
-    t === "pecas"        ? "maquinario" :
-    "estoque";
+    tipoApropDeCfop(cab.cfop,
+      t === "vef"          ? "vef"        :
+      t === "remessa"      ? "remessa"    :
+      t === "custo_direto" ? "direto"     :
+      t === "pecas"        ? "maquinario" :
+      "estoque"
+    );
 
   // ── Totais ─────────────────────────────────────────────────
   const totalItens = itens.reduce((s, i) => s + i.valor_total, 0);
@@ -3350,6 +3362,13 @@ export default function NfCompraPage() {
                           const cfop = e.target.value.trim();
                           const nat = CFOP_NATUREZA[cfop];
                           if (nat && !cab.natureza) setCab(p => ({ ...p, natureza: nat }));
+                          // CFOP de ativo imobilizado — classifica sozinho pra CAPEX (fora do DRE),
+                          // sem precisar escolher na mão toda vez.
+                          if (CFOPS_ATIVO_IMOBILIZADO.has(cfop)) {
+                            const ogCapex = reclassOps.find(o => o.classificacao === OG_ATIVO_IMOBILIZADO_CODIGO);
+                            if (ogCapex && !cab.operacao_gerencial_id) setCab(p => ({ ...p, operacao_gerencial_id: ogCapex.id }));
+                            setItens(prev => prev.map(it => ({ ...it, tipo_apropiacao: "direto" })));
+                          }
                         }}
                         placeholder="1101, 2101…"
                         style={inp}
