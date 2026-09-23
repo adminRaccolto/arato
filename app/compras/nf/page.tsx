@@ -4028,7 +4028,29 @@ export default function NfCompraPage() {
                                           ? [{ numero: "", quantidade_kg: undefined }]
                                           : it.lotes_semente;
                                         const linhas = linhasPedidoDoProduto(nid);
-                                        setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "" });
+                                        // Reavalia a conversão ao (re)escolher o insumo — uma conversão auto-detectada
+                                        // na importação (baseada só na unidade da NF, sem saber ainda qual catálogo
+                                        // seria escolhido) pode não fazer sentido pro insumo selecionado agora. Ex:
+                                        // NF em "L" bate com a regra "L→mL" e multiplica ×1000 mesmo quando o insumo
+                                        // do catálogo também é "L" — sem conversão nenhuma sendo necessária de verdade.
+                                        let patchConv: Partial<typeof it> = {};
+                                        if (ins) {
+                                          if (canonUnidade(it.unidade_nf) === canonUnidade(ins.unidade)) {
+                                            // Mesma unidade dos dois lados — nunca deveria converter.
+                                            patchConv = { conversao_key: "", quantidade: it.qtd_nf, fator_conversao: 1 };
+                                          } else {
+                                            // Unidades diferentes de verdade — só aplica automática se existir o
+                                            // par exato (NF → catálogo); senão deixa sem conversão e o alerta
+                                            // de unidade divergente orienta o usuário a escolher manualmente.
+                                            const parExato = TABELA_CONVERSAO.find(
+                                              c => c.tipo === "auto" && c.de === canonUnidade(it.unidade_nf) && c.para === canonUnidade(ins.unidade)
+                                            );
+                                            patchConv = parExato && parExato.fator
+                                              ? { conversao_key: parExato.key, quantidade: it.qtd_nf * parExato.fator, fator_conversao: parExato.fator }
+                                              : { conversao_key: "", quantidade: it.qtd_nf, fator_conversao: 1 };
+                                          }
+                                        }
+                                        setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "", ...patchConv });
                                       }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
                                       <option value="">— catálogo —</option>
                                       {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}

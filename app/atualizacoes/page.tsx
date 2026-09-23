@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ae",
+    data: "23/09/2026",
+    titulo: "NF de Compras: conversão de unidade errada ao escolher o insumo (ex: L virando ×1000)",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Ao importar uma NF via XML, o sistema tentava adivinhar uma conversão de unidade (ex: L→mL, Kg→g) olhando só a unidade declarada na própria NF — antes mesmo do usuário escolher o insumo do catálogo. Se a unidade da NF batesse com uma dessas regras (ex: \"L\"), a quantidade já saía multiplicada por 1000, mesmo quando o insumo escolhido depois também era \"L\" (mesma unidade, sem conversão nenhuma necessária). Corrigido: agora, ao escolher (ou trocar) o insumo no seletor de item, o sistema reavalia — se a unidade da NF já bate com a do catálogo, remove a conversão e volta a quantidade original; se são unidades diferentes de verdade, só aplica automática quando existe o par exato (NF → catálogo) daquela conversão. NF que já ficou salva errada antes desta correção: reabra e re-selecione o insumo no item pra corrigir." },
+    ],
+    onde: "Compras & Estoque → NF de Produtos → Passo 2 (Itens & Processamento)",
+  },
+  {
     versao: "2026.09.23-ad",
     data: "23/09/2026",
     titulo: "Transferência de Máquinas: um único botão, escolha Própria/De terceiro dentro do modal",
