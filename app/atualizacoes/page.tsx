@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-p",
+    data: "23/09/2026",
+    titulo: "NF de Produtos: busca por texto de volta no seletor de Pedido de Compra",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Os seletores \"Vincular a um Pedido de Compra\" (cabeçalho da NF e painel de ações em lote) estavam sem a busca por texto — voltaram a ser select comum. Corrigido." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.23-o",
     data: "23/09/2026",
     titulo: "NF de Produtos: CFOP de ativo imobilizado classifica sozinho (CAPEX)",

@@ -3314,21 +3314,20 @@ export default function NfCompraPage() {
                       <span style={{ fontSize: 11, color: "var(--text-3)" }}>{cab.pedido_compra_id ? "" : "— opcional. Ao selecionar, os campos serão preenchidos automaticamente."}</span>
                     </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <select
+                      <SelectBusca
                         value={cab.pedido_compra_id}
-                        onChange={e => onPedidoChange(e.target.value)}
+                        onChange={v => onPedidoChange(v)}
+                        placeholder="— Sem pedido vinculado —"
                         style={{ ...inp, flex: 1, background: cab.pedido_compra_id ? "#F0FDF4" : "var(--bg-input)", fontWeight: cab.pedido_compra_id ? 600 : 400, color: cab.pedido_compra_id ? "#166534" : "var(--text-1)" }}
-                      >
-                        <option value="">— Sem pedido vinculado —</option>
-                        {wPedidos.map(p => {
+                        options={wPedidos.map(p => {
                           const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
                           const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
                           const cnpjNf = cab.emitente_cnpj?.replace(/\D/g, "") ?? "";
                           const fornCnpj = pessoas.find(x => x.id === p.fornecedor_id)?.cpf_cnpj?.replace(/\D/g, "") ?? "";
                           const match = cnpjNf && fornCnpj && fornCnpj === cnpjNf;
-                          return <option key={p.id} value={p.id}>{match ? "★ " : ""}{forn} — PC {nr} ({p.status})</option>;
+                          return { value: p.id, label: `${match ? "★ " : ""}${forn} — PC ${nr} (${p.status})` };
                         })}
-                      </select>
+                      />
                       {cab.pedido_compra_id && (
                         <button onClick={() => onPedidoChange("")} style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #86EFAC", background: "transparent", color: "#166534", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" as const }}>
                           ✕ Desvincular
@@ -5228,14 +5227,14 @@ export default function NfCompraPage() {
               {/* ── Pedido de Compra (sempre visível) ── */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Vincular a Pedido de Compra</label>
-                <select value={batchSettings.pedido_compra_id} onChange={e => setBatchSettings(p => ({ ...p, pedido_compra_id: e.target.value }))} style={inp}>
-                  <option value="">— sem pedido —</option>
-                  {wPedidos.map(p => {
+                <SelectBusca value={batchSettings.pedido_compra_id} onChange={v => setBatchSettings(p => ({ ...p, pedido_compra_id: v }))}
+                  placeholder="— sem pedido —" style={inp}
+                  options={wPedidos.map(p => {
                     const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
                     const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
-                    return <option key={p.id} value={p.id}>{forn} — PC {nr} ({p.status})</option>;
+                    return { value: p.id, label: `${forn} — PC ${nr} (${p.status})` };
                   })}
-                </select>
+                />
               </div>
             </div>
 
