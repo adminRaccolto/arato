@@ -421,6 +421,8 @@ Registra abastecimentos de combustível por máquina, com baixa automática no e
 
 **Seleção de Máquina com busca:** o campo "Máquina" no formulário permite digitar para filtrar a lista (mesmo componente usado em Financeiro e NF de Produtos) — antes era um select comum sem busca.
 
+**Cadastros → Combustíveis & Bombas → aba "Combustíveis" aparecendo vazia — corrigido 23/09/2026:** essa sub-aba lista o catálogo de insumos categoria combustível, mas esse catálogo só era carregado quando o usuário passava pelas abas Insumos/Produtos/Itens antes — abrir Combustíveis & Bombas direto (o caminho normal de acesso) sempre mostrava a lista vazia, mesmo com combustível cadastrado de verdade (o cadastro nunca sumia de fato, só não aparecia). Corrigido — a aba carrega o catálogo sozinha agora.
+
 **Erro "row-level security policy" ao salvar — corrigido 23/09/2026:** o lançamento (registrar ou editar) gravava direto pelo navegador e podia falhar com esse erro mesmo com o cadastro certo — sintoma de token de sessão expirado, não de permissão. Passou a usar a rota "/api/campo/abastecimento-acao" (servidor, imune a token expirado) pra toda a escrita: o abastecimento em si, a baixa de estoque na bomba, a baixa no insumo de combustível correspondente e a Conta a Pagar opcional.
 
 ### 9.5 Romaneios de Terceiros
@@ -1031,6 +1033,8 @@ Demonstração de Resultado do Exercício por safra/ciclo.
 **KPIs:** Receita Total, Custo Total, Resultado Líquido, Margem, Produtividade (sc/ha), EBITDA.
 
 **Ponto de equilíbrio:** custo total / preço médio por saca. Folga em sc/ha exibida graficamente.
+
+**Ciclo sumindo do seletor — corrigido 23/09/2026:** o seletor de Ano Safra (e os Ciclos dele) comparava por "fazenda_id" — mas Ano Safra é do CLIENTE inteiro, não de uma fazenda específica; se a linha foi criada originalmente a partir de outra fazenda do mesmo cliente (comum quando o cliente tem várias fazendas), o Ciclo dela nunca aparecia na fazenda que realmente usa aquela safra. Corrigido pra resolver por conta (cliente), não mais por fazenda — mesma classe de bug já visto em Transportadoras e Parâmetros Fiscais por IE.
 
 ### 22.2 Margens por Safra
 **Caminho:** Resultados → Resultado Econômico → Margens por Safra

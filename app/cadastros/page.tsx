@@ -707,7 +707,17 @@ function CadastrosInner() {
       listarBens(contaId).then(setBens).catch(e => setErro(e.message));
       listarConsorciosContemplados(contaId).then(setConsorciosContemplados).catch(() => {});
     }
-    if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
+    if (aba === "combustivel") {
+      listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
+      // A sub-aba "Combustíveis" (dentro de Combustíveis & Bombas) lista o
+      // catálogo de insumos categoria=combustivel, mas o estado `insumos` só
+      // era carregado nas abas Insumos/Produtos/Itens — abrir esta aba direto
+      // (sem ter passado por uma daquelas antes na mesma sessão) mostrava a
+      // lista de combustíveis sempre vazia, mesmo com cadastro existente.
+      // Achado real 23/09/2026 — varredura de estabilidade (cliente Habio
+      // Pereira Marciano / Fazenda J7).
+      listarInsumosParaConta(contaId, fazendaId ?? undefined).then(setInsumos).catch(() => {});
+    }
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
       listarInsumosParaConta(contaId, fazendaId ?? undefined).then(async lista => {
         setInsumos(lista);

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ao",
+    data: "23/09/2026",
+    titulo: "Varredura de estabilidade — combustível sumindo do cadastro e ciclos sumindo do DRE",
+    modulos: ["Cadastros", "Resultados"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastros → Combustíveis & Bombas → sub-aba \"Combustíveis\": a lista dependia do catálogo de insumos, mas esse catálogo só era carregado ao visitar as abas Insumos/Produtos/Itens — abrir Combustíveis & Bombas direto (sem ter passado por uma delas antes na mesma sessão) sempre mostrava a lista vazia, mesmo com combustível cadastrado de verdade. Corrigido — a aba agora carrega o catálogo sozinha." },
+      { tipo: "correcao", texto: "Resultados → DRE Agrícola: o seletor de Ano Safra (e, por tabela, os Ciclos dele) comparava a Safra com a fazenda ativa — mas o Ano Safra é do cliente inteiro, não de uma fazenda específica; se a linha tivesse sido criada originalmente a partir de outra fazenda do mesmo cliente, o Ciclo dela nunca aparecia pra seleção na fazenda que realmente usa. Corrigido pra resolver por cliente (conta), não mais por fazenda." },
+    ],
+    onde: "Cadastros → Combustíveis & Bombas · Resultados → DRE Agrícola",
+  },
+  {
     versao: "2026.09.23-an",
     data: "23/09/2026",
     titulo: "Transferência de Estoque: todos os depósitos disponíveis, com sinalizador de fazenda",

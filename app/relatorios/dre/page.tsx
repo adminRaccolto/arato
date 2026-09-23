@@ -89,7 +89,7 @@ const CULT_LABELS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª",
 
 // ─── Página ───────────────────────────────────────────────────
 export default function DrePage() {
-  const { fazendaId, fazendaIds: authFazendaIds } = useAuth();
+  const { fazendaId, fazendaIds: authFazendaIds, contaId } = useAuth();
 
   // Suporte multi-fazenda
   const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
@@ -121,42 +121,47 @@ export default function DrePage() {
   }, [authFazendaIds.join(",")]);
 
   // ── Carregar anos safra (por labels únicos) ──
+  // Ano Safra é do CLIENTE (conta), não da fazenda — a linha física pode ter
+  // sido criada com uma fazenda diferente da que hoje usa esse Ano Safra num
+  // ciclo (ex: safra criada a partir da Fazenda A, usada em ciclos da Fazenda
+  // B do mesmo cliente). Filtrar por fazenda_id de cada fid, como era antes,
+  // fazia o Ano Safra (e os ciclos dele) sumirem do seletor pra qualquer
+  // fazenda que não fosse a "dona" original da linha — achado real 23/09/2026
+  // (varredura de estabilidade, cliente Habio Pereira Marciano/Fazenda J7).
   useEffect(() => {
     if (fids.length === 0) return;
-    Promise.all(
-      fids.map(fid =>
-        supabase.from("anos_safra").select("id, descricao, fazenda_id").eq("fazenda_id", fid)
-          .order("descricao", { ascending: false })
-          .then(r => (r.data ?? []) as AnoSafra[])
-      )
-    ).then(results => {
+    const q = contaId
+      ? supabase.from("anos_safra").select("id, descricao, fazenda_id").eq("conta_id", contaId)
+      : supabase.from("anos_safra").select("id, descricao, fazenda_id").in("fazenda_id", fids);
+    q.order("descricao", { ascending: false }).then(({ data }) => {
       const seen = new Set<string>();
       const unique: AnoSafra[] = [];
-      for (const rows of results) {
-        for (const a of rows) {
-          if (!seen.has(a.descricao)) { seen.add(a.descricao); unique.push(a); }
-        }
+      for (const a of ((data ?? []) as AnoSafra[])) {
+        if (!seen.has(a.descricao)) { seen.add(a.descricao); unique.push(a); }
       }
       setAnosArr(unique);
       if (unique.length > 0 && !anoLabel) setAnoLabel(unique[0].descricao);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fids.join(",")]);
+  }, [fids.join(","), contaId]);
 
   // ── Carregar ciclos (por label do ano safra) — exclui auxiliares do seletor ──
   useEffect(() => {
     if (fids.length === 0 || !anoLabel) return;
+    // anoIds também precisa ser resolvido por conta, não por fazenda (mesmo motivo
+    // acima) — senão os ciclos da fazenda "não dona" da linha de Ano Safra nunca
+    // encontram o anoId certo e o seletor de Ciclo fica vazio mesmo com o Ano
+    // Safra escolhido.
+    const anoIdsQ = contaId
+      ? supabase.from("anos_safra").select("id").eq("conta_id", contaId).eq("descricao", anoLabel)
+      : supabase.from("anos_safra").select("id").in("fazenda_id", fids).eq("descricao", anoLabel);
+    anoIdsQ.then(r => (r.data ?? []).map(a => a.id as string)).then(anoIds => {
+    if (anoIds.length === 0) { setCiclosArr([]); setCiclosSel([]); return; }
     Promise.all(
       fids.map(fid =>
-        supabase.from("anos_safra").select("id").eq("fazenda_id", fid).eq("descricao", anoLabel)
-          .then(r => (r.data ?? []).map(a => a.id as string))
-          .then(anoIds =>
-            anoIds.length > 0
-              ? supabase.from("ciclos").select("id, cultura, ano_safra_id, fazenda_id, descricao, is_auxiliar, ciclo_pai_id, absorcao_pct")
-                  .eq("fazenda_id", fid).in("ano_safra_id", anoIds).order("cultura")
-                  .then(r => (r.data ?? []) as Ciclo[])
-              : Promise.resolve([] as Ciclo[])
-          )
+        supabase.from("ciclos").select("id, cultura, ano_safra_id, fazenda_id, descricao, is_auxiliar, ciclo_pai_id, absorcao_pct")
+          .eq("fazenda_id", fid).in("ano_safra_id", anoIds).order("cultura")
+          .then(r => (r.data ?? []) as Ciclo[])
       )
     ).then(async results => {
       const all = results.flat();
@@ -187,8 +192,9 @@ export default function DrePage() {
       setCiclosArr(filtrados);
       setCiclosSel(filtrados.filter(c => !c.is_auxiliar).map(c => c.id));
     });
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fids.join(","), anoLabel]);
+  }, [fids.join(","), anoLabel, contaId]);
 
   // ── Calcular DRE ──
   async function calcularDre() {
