@@ -401,9 +401,14 @@ export async function POST(request: NextRequest) {
             auto:            true,
           });
           if (transferencia.entrada_automatica) {
+            const insumoDestinoId = await _resolverInsumoDestino(
+              it.insumo_id as string,
+              transferencia.fazenda_destino_id as string,
+              adm,
+            );
             await adm.from("movimentacoes_estoque").insert({
               fazenda_id:      transferencia.fazenda_destino_id,
-              insumo_id:       it.insumo_id,
+              insumo_id:       insumoDestinoId,
               tipo:            "entrada",
               motivo:          `Transferência ${transf.numero}`,
               quantidade:      Number(it.quantidade),
@@ -465,6 +470,66 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ── Helper: resolve o insumo correto na fazenda DESTINO ─────────────────────
+// O catálogo de insumos é por fazenda (insumos.fazenda_id) — toda tela de
+// Estoque/Kardex lista só os insumos cadastrados na fazenda ativa. Se a
+// entrada automática no destino gravar movimentacoes_estoque usando o mesmo
+// insumo_id da origem (que pertence ao cadastro da fazenda origem), a
+// movimentação fica órfã: existe no banco, mas nunca aparece na tela do
+// destino porque o insumo dela não está no catálogo daquela fazenda. Este
+// helper garante que a entrada sempre use (ou crie) o insumo cadastrado na
+// própria fazenda destino, casando por nome — clonando os dados do insumo de
+// origem na primeira transferência e reaproveitando o cadastro depois.
+const _insumoDestinoCache = new Map<string, string>();
+async function _resolverInsumoDestino(
+  insumoOrigemId: string,
+  fazendaDestinoId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adm: any,
+): Promise<string> {
+  const cacheKey = `${insumoOrigemId}::${fazendaDestinoId}`;
+  const cacheado = _insumoDestinoCache.get(cacheKey);
+  if (cacheado) return cacheado;
+
+  const { data: origem } = await adm
+    .from("insumos")
+    .select("*")
+    .eq("id", insumoOrigemId)
+    .single();
+  if (!origem) return insumoOrigemId; // não deveria acontecer — fallback
+
+  if (origem.fazenda_id === fazendaDestinoId) {
+    _insumoDestinoCache.set(cacheKey, insumoOrigemId);
+    return insumoOrigemId; // origem e destino já são a mesma fazenda
+  }
+
+  // Já existe um insumo com o mesmo nome cadastrado no destino?
+  const { data: existente } = await adm
+    .from("insumos")
+    .select("id")
+    .eq("fazenda_id", fazendaDestinoId)
+    .ilike("nome", origem.nome)
+    .maybeSingle();
+  if (existente) {
+    _insumoDestinoCache.set(cacheKey, existente.id);
+    return existente.id;
+  }
+
+  // Não existe — clona o cadastro (mesmo nome/categoria/unidade/NCM/etc.)
+  // para a fazenda destino, com estoque zerado (quem move o saldo dali em
+  // diante são as movimentacoes_estoque, não o campo fixo).
+  const { id: _id, estoque: _estoque, deposito_id: _dep, created_at: _ca, ...resto } = origem;
+  const { data: novo, error } = await adm
+    .from("insumos")
+    .insert({ ...resto, fazenda_id: fazendaDestinoId, estoque: 0, deposito_id: null })
+    .select("id")
+    .single();
+  if (error || !novo) return insumoOrigemId; // fallback extremo — nunca deve cair aqui
+
+  _insumoDestinoCache.set(cacheKey, novo.id);
+  return novo.id;
+}
+
 // ── Helper: movimentações de estoque ─────────────────────────────────────────
 async function _criarMovimentacoes(
   t: Record<string, unknown>,
@@ -487,9 +552,14 @@ async function _criarMovimentacoes(
       auto:            true,
     });
     if (t.entrada_automatica) {
+      const insumoDestinoId = await _resolverInsumoDestino(
+        it.insumo_id as string,
+        t.fazenda_destino_id as string,
+        adm,
+      );
       await adm.from("movimentacoes_estoque").insert({
         fazenda_id:      t.fazenda_destino_id,
-        insumo_id:       it.insumo_id,
+        insumo_id:       insumoDestinoId,
         tipo:            "entrada",
         motivo:          `Transferência ${t.numero} ← origem`,
         quantidade:      it.quantidade,

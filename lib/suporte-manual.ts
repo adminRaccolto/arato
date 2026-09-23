@@ -396,6 +396,8 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 
 **NF já emitida no sistema anterior (implantação, 17/09/2026):** no modal de Nova Transferência, checkbox "📋 Esta NF de remessa já foi emitida no sistema anterior" — libera campos pra informar nº da NF, série, chave de acesso (opcional) e data de emissão reais. Ao salvar, cria só a movimentação de estoque (saída origem + entrada destino) com esses dados históricos — nunca chama a SEFAZ, nunca passa pelo fluxo normal Rascunho → Emitir NF. Uso: cliente que migrou pro Arato e já tinha remessas emitidas no ERP antigo antes da implantação.
 
+**Entrada automática no destino, entre fazendas diferentes (corrigido 23/09/2026):** o catálogo de insumos é por fazenda — cada fazenda tem seu próprio cadastro do "mesmo" produto. Quando a transferência é entre fazendas diferentes e "Entrada automática no destino" está marcada, o sistema não usa mais o "insumo_id" da fazenda de origem pra lançar a entrada (isso deixava a movimentação "órfã": gravada no banco, mas invisível no Estoque/Kardex do destino, porque aquele insumo não existe no catálogo de lá). Agora ele procura um insumo com o mesmo nome já cadastrado na fazenda destino e usa esse; se não existir nenhum, clona o cadastro do insumo de origem (nome, categoria, unidade, NCM etc., com estoque inicial zerado) pra fazenda destino automaticamente, e usa o novo cadastro. Isso vale pra qualquer transferência nova no sistema, em qualquer conta — não é um ajuste específico de um cliente.
+
 ### 9.4 Abastecimento de Máquinas
 **Caminho:** Produção → Máquinas (submenu) → Abastecimento de Máquinas
 

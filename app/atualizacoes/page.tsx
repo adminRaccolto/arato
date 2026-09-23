@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-y",
+    data: "23/09/2026",
+    titulo: "Transferência entre fazendas: entrada automática agora movimenta o estoque certo no destino",
+    modulos: ["Estoque", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigido: quando \"Entrada automática no destino\" estava marcada numa Transferência de Estoque entre fazendas diferentes, a entrada era gravada usando o cadastro de insumo da fazenda de ORIGEM — que não existe no catálogo da fazenda de destino, então a movimentação nunca aparecia no Estoque/Kardex de lá, mesmo com o saldo tendo sido lançado no banco. Agora o sistema resolve (ou cria, clonando os dados) o insumo correspondente já cadastrado na fazenda de destino antes de lançar a entrada — vale para toda transferência nova, em qualquer conta." },
+    ],
+    onde: "Estoque → Transferências (entre fazendas, com \"Entrada automática no destino\" marcada)",
+  },
+  {
     versao: "2026.09.23-x",
     data: "23/09/2026",
     titulo: "Motorista: pode digitar livre, sem precisar cadastrar",
