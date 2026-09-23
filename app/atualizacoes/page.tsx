@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-w",
+    data: "23/09/2026",
+    titulo: "Novo módulo: Transferência de Máquinas e Equipamentos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Emite NF-e de remessa (e retorno, quando aplicável) pra mover máquina/equipamento pra fora da fazenda sem ser venda — 3 motivos com CFOP já pré-selecionado: Conserto/Manutenção externa (5915 / retorno 1915), Transferência entre fazendas da mesma conta (5552, definitivo, sem retorno), Comodato/Empréstimo a terceiro (5554 / retorno 1555)." },
+    ],
+    onde: "Fiscal → Emissão e Controle → Transferência de Máquinas/Equip.",
+  },
+  {
     versao: "2026.09.23-v",
     data: "23/09/2026",
     titulo: "CT-e: cadastro rápido de Veículo/Motorista sem sair da tela",

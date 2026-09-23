@@ -906,6 +906,17 @@ Guia Nacional de Recolhimento de Tributos Estaduais para operações interestadu
 
 NF-e de remessa para armazéns e depósitos (CFOP 5905/6905).
 
+### 20.4.1 Transferência de Máquinas e Equipamentos (novo — 23/09/2026)
+**Caminho:** Fiscal → Emissão e Controle → Transferência de Máquinas/Equip.
+
+Emite NF-e de remessa (e, quando aplicável, o retorno) pra mover uma máquina/equipamento pra fora da fazenda sem ser venda. Três motivos, cada um com o CFOP certo já pré-selecionado:
+
+- **Conserto / Manutenção externa** — a máquina sai pra uma oficina/terceiro consertar. Remessa CFOP **5915**, retorno **1915** (nota de entrada, emitida pela própria fazenda ao receber de volta).
+- **Transferência entre fazendas (mesma conta)** — a máquina muda de propriedade fisicamente dentro do mesmo grupo/cliente. CFOP **5552**, sem retorno — é um movimento definitivo.
+- **Comodato / Empréstimo a terceiro** — máquina emprestada pra outro produtor/empresa usar, com devolução prevista. Remessa CFOP **5554**, retorno **1555**.
+
+**Fluxo:** "+ Nova Transferência" → escolhe motivo, máquina (cadastro de Máquinas), destinatário (Pessoas/Produtores) e valor do bem → "Emitir NF de Remessa" transmite a NF-e de verdade na SEFAZ. Quando a máquina volta (motivos com retorno), o botão "Registrar Retorno" na lista emite a segunda NF-e (nota de entrada) referenciando a remessa original. Transferência entre fazendas fica "Emitida" e não pede retorno.
+
 ### 20.5 Certificado Digital
 **Caminho:** Fiscal → Emissão e Controle → Certificado Digital
 

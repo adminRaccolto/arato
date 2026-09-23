@@ -7062,6 +7062,40 @@ export async function atualizarNfRemessaLogistica(
 }
 
 // ════════════════════════════════════════════════════════════
+// TRANSFERÊNCIA DE MÁQUINAS E EQUIPAMENTOS (Remessa/Retorno)
+// ════════════════════════════════════════════════════════════
+import type { TransferenciaMaquina } from "./supabase";
+
+export async function listarTransferenciasMaquinas(contaId: string): Promise<TransferenciaMaquina[]> {
+  const { data: fazIds } = await supabase.from("fazendas").select("id").eq("conta_id", contaId);
+  const ids = (fazIds ?? []).map((f: { id: string }) => f.id);
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from("transferencias_maquinas")
+    .select("*")
+    .in("fazenda_id", ids)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as TransferenciaMaquina[];
+}
+
+export async function criarTransferenciaMaquina(
+  dados: Omit<TransferenciaMaquina, "id" | "created_at">,
+): Promise<TransferenciaMaquina> {
+  const { data, error } = await supabase.from("transferencias_maquinas").insert(dados).select("*").single();
+  if (error) throw error;
+  return data as TransferenciaMaquina;
+}
+
+export async function atualizarTransferenciaMaquina(
+  id: string,
+  dados: Partial<Omit<TransferenciaMaquina, "id" | "created_at">>,
+): Promise<void> {
+  const { error } = await supabase.from("transferencias_maquinas").update(dados).eq("id", id);
+  if (error) throw error;
+}
+
+// ════════════════════════════════════════════════════════════
 // CARTÕES DE CRÉDITO
 // ════════════════════════════════════════════════════════════
 

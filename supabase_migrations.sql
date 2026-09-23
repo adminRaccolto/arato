@@ -13360,3 +13360,55 @@ ALTER TABLE mdfes
   ADD COLUMN IF NOT EXISTS xml_url TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 282 — NF de Transferência de Máquinas e Equipamentos (Remessa/Retorno)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Pedido do dono 23/09/2026 — não existia nenhum fluxo fiscal pra mover uma máquina/equipamento
+-- pra fora da fazenda sem ser venda: conserto/manutenção externa, transferência definitiva pra
+-- outra fazenda do mesmo cliente, ou comodato/empréstimo a terceiro. Cada motivo tem seu próprio
+-- CFOP de saída e, quando aplicável, de retorno (transferência entre fazendas é definitiva, sem
+-- retorno esperado).
+CREATE TABLE IF NOT EXISTS transferencias_maquinas (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  numero                TEXT,
+  maquina_id            UUID REFERENCES maquinas(id) ON DELETE SET NULL,
+  maquina_nome          TEXT NOT NULL,
+  motivo                TEXT NOT NULL CHECK (motivo IN ('conserto','transferencia_fazenda','comodato')),
+  cfop_saida            TEXT NOT NULL,
+  cfop_retorno          TEXT,                 -- null quando motivo = transferencia_fazenda
+  destinatario_pessoa_id UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  destinatario_nome     TEXT NOT NULL,
+  destinatario_cnpj     TEXT,
+  destinatario_ie       TEXT,
+  destinatario_municipio TEXT,
+  destinatario_uf       TEXT,
+  fazenda_destino_id    UUID REFERENCES fazendas(id) ON DELETE SET NULL,  -- só motivo=transferencia_fazenda
+  ncm                   TEXT NOT NULL DEFAULT '84329000',
+  valor_bem             NUMERIC(14,2) NOT NULL DEFAULT 0,
+  data_retorno_prevista DATE,
+  observacao            TEXT,
+  status                TEXT NOT NULL DEFAULT 'rascunho'
+                          CHECK (status IN ('rascunho','emitida','retornada','cancelada')),
+  produtor_id           UUID REFERENCES produtores(id) ON DELETE SET NULL,
+  emitente_cpf_cnpj     TEXT,
+  nf_saida_chave        TEXT,
+  nf_saida_numero       TEXT,
+  nf_saida_protocolo    TEXT,
+  nf_saida_data         DATE,
+  nf_retorno_chave      TEXT,
+  nf_retorno_numero     TEXT,
+  nf_retorno_protocolo  TEXT,
+  nf_retorno_data       DATE,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_transf_maq_fazenda ON transferencias_maquinas(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_transf_maq_status  ON transferencias_maquinas(status);
+
+ALTER TABLE transferencias_maquinas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "emergencial_autenticado" ON transferencias_maquinas;
+CREATE POLICY "emergencial_autenticado" ON transferencias_maquinas FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';

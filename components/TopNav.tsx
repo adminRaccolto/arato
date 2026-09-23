@@ -199,6 +199,7 @@ const NAV: NavItem[] = [
       { id: "fiscal-pendencias",    label: "Pendências Fiscais",       path: "/fiscal/pendencias",                  moduleId: "fiscal_nfe"  },
       { id: "fiscal-gnre",          label: "GNRE",                     path: "/fiscal/gnre",                        moduleId: "fiscal_nfe"  },
       { id: "fiscal-remessas",      label: "Remessas Logísticas",      path: "/fiscal/remessas",                    moduleId: "fiscal_nfe"  },
+      { id: "fiscal-transf-maquinas", label: "Transferência de Máquinas/Equip.", path: "/fiscal/transferencia-maquinas", moduleId: "fiscal_nfe"  },
       { id: "fiscal-triangulacao",  label: "Triangulação de NF",       path: "/fiscal/triangulacao",               moduleId: "fiscal_nfe", disabled: true },
       { id: "fiscal-certificado",   label: "Certificado Digital",      path: "/fiscal?aba=certificado",             moduleId: "fiscal_nfe"  },
       { type: "divider", label: "Obrigações" },

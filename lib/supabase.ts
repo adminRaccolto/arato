@@ -1313,6 +1313,42 @@ export type NfRemessaLogistica = {
   created_at?: string;
 };
 
+// ── Transferência de Máquinas e Equipamentos (Remessa/Retorno) ────────────────
+export type MotivoTransferenciaMaquina = "conserto" | "transferencia_fazenda" | "comodato";
+export type TransferenciaMaquina = {
+  id: string;
+  fazenda_id: string;
+  numero?: string;
+  maquina_id?: string;
+  maquina_nome: string;
+  motivo: MotivoTransferenciaMaquina;
+  cfop_saida: string;
+  cfop_retorno?: string;
+  destinatario_pessoa_id?: string;
+  destinatario_nome: string;
+  destinatario_cnpj?: string;
+  destinatario_ie?: string;
+  destinatario_municipio?: string;
+  destinatario_uf?: string;
+  fazenda_destino_id?: string;
+  ncm: string;
+  valor_bem: number;
+  data_retorno_prevista?: string;
+  observacao?: string;
+  status: "rascunho" | "emitida" | "retornada" | "cancelada";
+  produtor_id?: string;
+  emitente_cpf_cnpj?: string;
+  nf_saida_chave?: string;
+  nf_saida_numero?: string;
+  nf_saida_protocolo?: string;
+  nf_saida_data?: string;
+  nf_retorno_chave?: string;
+  nf_retorno_numero?: string;
+  nf_retorno_protocolo?: string;
+  nf_retorno_data?: string;
+  created_at?: string;
+};
+
 // ── Configuração Contábil (SPED ECD) ─────────────────────────
 // Uma configuração por entidade (PF/PJ) dentro da fazenda
 export type ConfigContabilidade = {
