@@ -192,17 +192,40 @@ export async function POST(request: NextRequest) {
       // CNPJ/CPF e IE gravados na transferência (editáveis, podem ser diferentes do
       // titular cadastrado — ex: IE própria do imóvel/depósito) sempre têm prioridade
       // sobre a config fiscal padrão da fazenda de destino.
+      const cpfCnpjDestFinal = (t.cpf_cnpj_destino as string | null) || confDest?.cpf_cnpj_emitente;
+      const ieDestFinal      = (t.ie_destino as string | null)       || confDest?.ie_emitente;
+
+      // Endereço da IE EXATA escolhida pro destino — não do "confDest" genérico, que resolve
+      // pela IE PADRÃO da fazenda de destino (heurística própria em buscarConfEmitente) e pode
+      // ser uma IE diferente da que foi escolhida/gravada nesta transferência específica. Mesma
+      // classe de bug já corrigida pro CT-e/NF-e manual (produtor com mais de uma IE, cada uma
+      // com endereço próprio) — achado real 23/09/2026, num DANFE de transferência.
+      let enderecoIeDest: { cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; municipio?: string; municipio_ibge?: string } | null = null;
+      if (ieDestFinal && cpfCnpjDestFinal) {
+        const digitsDest = cpfCnpjDestFinal.replace(/\D/g, "");
+        const { data: prodDestRows } = await adm.from("produtores").select("id")
+          .or(`cpf_cnpj.eq.${digitsDest},cpf_cnpj.eq.${cpfCnpjDestFinal}`);
+        const prodDestIds = (prodDestRows ?? []).map((p: { id: string }) => p.id);
+        if (prodDestIds.length > 0) {
+          const ieDestDigits = ieDestFinal.replace(/\D/g, "");
+          const { data: iesDestRows } = await adm.from("produtor_inscricoes_estaduais")
+            .select("cep, logradouro, numero, complemento, bairro, municipio, municipio_ibge, inscricao_estadual")
+            .in("produtor_id", prodDestIds).eq("ativa", true);
+          enderecoIeDest = (iesDestRows ?? []).find((i: { inscricao_estadual: string }) => i.inscricao_estadual.replace(/\D/g, "") === ieDestDigits) ?? null;
+        }
+      }
+
       const destinatarioDados = {
         nome:           confDest?.razao_social ?? fazDestRow?.nome ?? "—",
-        cpf_cnpj:       (t.cpf_cnpj_destino as string | null) || confDest?.cpf_cnpj_emitente,
-        ie:             (t.ie_destino as string | null)       || confDest?.ie_emitente,
-        logradouro:     confDest?.logradouro,
-        numero:         confDest?.numero,
-        bairro:         confDest?.bairro,
-        municipio_ibge: confDest?.municipio_ibge,
-        municipio_nome: confDest?.municipio_nome,
+        cpf_cnpj:       cpfCnpjDestFinal,
+        ie:             ieDestFinal,
+        logradouro:     enderecoIeDest?.logradouro     ?? confDest?.logradouro,
+        numero:         enderecoIeDest?.numero         ?? confDest?.numero,
+        bairro:         enderecoIeDest?.bairro         ?? confDest?.bairro,
+        municipio_ibge: enderecoIeDest?.municipio_ibge ?? confDest?.municipio_ibge,
+        municipio_nome: enderecoIeDest?.municipio      ?? confDest?.municipio_nome,
         uf:             confDest?.uf_emitente ?? "MT",
-        cep:            confDest?.cep,
+        cep:            enderecoIeDest?.cep            ?? confDest?.cep,
       };
 
       // 5. Monta input da NF-e

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ax",
+    data: "23/09/2026",
+    titulo: "Transferência de Estoque: NF-e de destinatário com mais de uma IE saía com endereço errado",
+    modulos: ["Estoque", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "NF-e de Transferência de Estoque pra um destinatário (produtor) com mais de uma Inscrição Estadual saía com a IE certa impressa, mas o endereço de OUTRA propriedade dele — o endereço vinha sempre da configuração padrão/heurística da fazenda de destino, não da IE específica escolhida/gravada nessa transferência. Mesma classe de bug já corrigida pro CT-e e pra emissão manual de NF-e, faltava nessa rota. Corrigido: o endereço agora vem da IE exata do destinatário (Cadastros → Produtores → Inscrições Estaduais)." },
+    ],
+    onde: "Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-aw",
     data: "23/09/2026",
     titulo: "NF-e: rejeição SEFAZ 539 (duplicidade) — Próx. Número travado quando a config vive em outra fazenda da conta",
