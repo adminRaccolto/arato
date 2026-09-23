@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bf",
+    data: "23/09/2026",
+    titulo: "DACTE (CT-e): impressão saía achatada, com logo minúscula",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O DACTE tinha margem duplicada — a página (210mm) e a margem de impressão (6mm) juntas passavam do tamanho útil do papel, forçando o motor de impressão/PDF a encolher a página inteira pra caber (texto, campos e logo ficavam achatados e desproporcionais). Corrigido: só a página controla sua própria margem agora, em tamanho físico real. Fonte de labels e valores aumentada, e a logo do cliente ficou bem maior (estava minúscula)." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e) → DACTE",
+  },
+  {
     versao: "2026.09.23-be",
     data: "23/09/2026",
     titulo: "CT-e: CFOP herdado da NF-e ficava preso num código inválido; RNTRC não saía no DACTE",

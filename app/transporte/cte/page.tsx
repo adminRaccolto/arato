@@ -174,18 +174,24 @@ function imprimirDacte(c: Cte, logoUrl?: string | null, rntrcEmpresa?: string | 
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:6.6pt;color:#000;background:#fff}
-.page{width:210mm;margin:0 auto;padding:3mm}
+html,body{width:210mm}
+body{font-family:Arial,Helvetica,sans-serif;font-size:7.4pt;color:#000;background:#fff}
+/* Achado real 23/09/2026: @page já reservava 6mm de margem E .page também tinha 210mm de
+   largura fixa — margem duplicada. O motor de impressão/PDF, sem espaço pra encaixar
+   210mm dentro de uma área útil de 198mm, reduzia a página inteira (texto, campos e logo
+   junto) pra caber — daí o efeito "achatado"/desproporcional. Corrigido: @page sem margem
+   própria, .page é o único responsável pela margem (padding), tamanho physical real. */
+.page{width:210mm;min-height:297mm;margin:0 auto;padding:9mm 8mm}
 .grid{display:flex;flex-wrap:wrap;border-left:0.3mm solid #000;border-top:0.3mm solid #000}
-.grid .cel{border-right:0.3mm solid #000;border-bottom:0.3mm solid #000;padding:0.8mm 1.5mm;min-width:0}
-.lbl{font-size:5.3pt;color:#000;white-space:nowrap}
-.val{font-size:7pt;font-weight:700;word-break:break-word}
-.section-title{flex:1;background:#eaeaea;font-size:6.3pt;font-weight:700;padding:0.6mm 1.5mm;border-right:0.3mm solid #000;border-bottom:0.3mm solid #000}
+.grid .cel{border-right:0.3mm solid #000;border-bottom:0.3mm solid #000;padding:1mm 1.8mm;min-width:0}
+.lbl{font-size:5.8pt;color:#000;white-space:nowrap}
+.val{font-size:7.8pt;font-weight:700;word-break:break-word}
+.section-title{flex:1;background:#eaeaea;font-size:7pt;font-weight:700;padding:0.8mm 1.8mm;border-right:0.3mm solid #000;border-bottom:0.3mm solid #000}
 .center{text-align:center}
-.big{font-size:9pt}
+.big{font-size:11pt}
 table.mini{width:100%;border-collapse:collapse}
 table.mini td{padding:0}
-@page{size:A4;margin:6mm}
+@page{size:A4;margin:0}
 @media print{body{margin:0}}
 </style></head><body>
 <div class="page">
@@ -213,7 +219,7 @@ table.mini td{padding:0}
   <!-- Identificação do emitente / DACTE / modal -->
   <div class="grid" style="margin-top:1.5mm">
     <div class="cel" style="flex:2.3">
-      ${logoUrl ? `<img src="${logoUrl}" style="max-height:12mm;max-width:100%;object-fit:contain;margin-bottom:1mm" />` : ""}
+      ${logoUrl ? `<img src="${logoUrl}" style="max-height:20mm;max-width:100%;object-fit:contain;margin-bottom:1.5mm" />` : ""}
       <div class="val" style="font-size:8.5pt">${emitNome}</div>
       <div class="lbl">CNPJ/CPF: ${emitCnpj}</div>
     </div>
