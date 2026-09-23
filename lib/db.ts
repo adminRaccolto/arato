@@ -438,10 +438,14 @@ export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise
   if (error) throw error;
   // Sem esta movimentação, a aba de movimentações mostra saldo negativo (só saídas,
   // sem a entrada correspondente) e a reconciliação de estoque destrói o saldo real.
-  // Mesma lógica de app/api/insumos POST — mantidas em sincronia.
+  // Mesma lógica de app/api/insumos POST — mantidas em sincronia. O erro dessa
+  // inserção NUNCA era checado antes — se falhasse (RLS, sessão expirada, etc.),
+  // o cadastro ficava com o campo "estoque" preenchido mas ZERO movimentação
+  // batendo com ele — o registro parecia certo na Posição, mas a Auditoria de
+  // Saldo (e o Kardex) nunca bateriam com aquele valor. Achado real 23/09/2026.
   const estoqueInicial = Number(i.estoque ?? 0);
   if (estoqueInicial > 0) {
-    await supabase.from("movimentacoes_estoque").insert({
+    const { error: movErr } = await supabase.from("movimentacoes_estoque").insert({
       insumo_id:  data.id,
       fazenda_id: i.fazenda_id,
       tipo:       "entrada",
@@ -451,6 +455,7 @@ export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise
       observacao: "Saldo inicial cadastrado",
       auto:       true,
     });
+    if (movErr) throw new Error(`Insumo criado, mas a movimentação do saldo inicial falhou: ${movErr.message}. Ajuste o estoque manualmente em Estoque → Auditoria de Saldo.`);
   }
   return data;
 }

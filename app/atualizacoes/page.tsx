@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-aq",
+    data: "23/09/2026",
+    titulo: "Cadastro de insumo com saldo inicial: falha na movimentação deixava de avisar",
+    modulos: ["Estoque", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Ao cadastrar um insumo já com estoque inicial (ou processar uma NF que cria um produto novo), a movimentação de entrada que registra esse saldo era criada sem checar se deu certo — se falhasse (sessão expirada, etc.), o cadastro ficava com o campo de estoque preenchido, mas SEM nenhuma movimentação batendo com ele: parecia certo na Posição, mas a Auditoria de Saldo e o Kardex nunca bateriam. Agora esse erro é reportado na hora, em vez de passar silencioso." },
+    ],
+    onde: "Cadastros → Insumos · qualquer tela que cria insumo com saldo inicial",
+  },
+  {
     versao: "2026.09.23-ap",
     data: "23/09/2026",
     titulo: "\"Certificado A1 não enviado\" mesmo com o certificado configurado — corrigido na raiz",
