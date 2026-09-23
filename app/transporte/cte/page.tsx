@@ -134,7 +134,7 @@ const CST_ICMS_OPCOES: { valor: "00" | "40" | "41" | "51"; label: string }[] = [
 // DACTE — layout no padrão oficial do modelo 57 (o mesmo formato usado pela maioria dos emissores
 // do mercado — ex.: fsist/ACBr), reproduzido a partir de um DACTE de referência trazido pelo dono
 // em 23/09/2026 (o layout anterior era um resumo em caixas, bem diferente do documento oficial).
-function imprimirDacte(c: Cte, logoUrl?: string | null) {
+function imprimirDacte(c: Cte, logoUrl?: string | null, rntrcEmpresa?: string | null) {
   const chave44 = (c.chave_acesso ?? "").replace(/\D/g, "");
   const dataFmt = c.data_emissao ? new Date(c.data_emissao + "T12:00:00") : null;
   const dataHoraFmt = dataFmt ? `${dataFmt.toLocaleDateString("pt-BR")} ${dataFmt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "—";
@@ -364,7 +364,7 @@ table.mini td{padding:0}
     <div class="section-title">DADOS ESPECÍFICOS DO MODAL RODOVIÁRIO - CARGA FRACIONADA</div>
   </div>
   <div class="grid">
-    ${campo("RNTRC DA EMPRESA", "", 1)}
+    ${campo("RNTRC DA EMPRESA", rntrcEmpresa || "ISENTO", 1)}
     ${campo("CIOT", "", 1)}
     ${campo("DATA PREVISTA DE ENTREGA", "", 1)}
     <div class="cel" style="flex:2"><div class="lbl">ESTE CONHECIMENTO DE TRANSPORTE ATENDE<br/>À LEGISLAÇÃO DE TRANSPORTE RODOVIÁRIO EM VIGOR</div></div>
@@ -576,7 +576,14 @@ function CtePageInner() {
         uf_origem:         p.uf_origem         || f.uf_origem,
         municipio_destino: p.municipio_destino || f.municipio_destino,
         uf_destino:        p.uf_destino        || f.uf_destino,
-        cfop:              p.cfop              || f.cfop,
+        // CFOP NÃO vem da NF-e — são tabelas diferentes (NF-e classifica movimentação de
+        // mercadoria; CT-e classifica prestação de serviço de transporte). Copiar o CFOP da
+        // NF-e pro CT-e produzia um código que não existe nem na lista de opções do CT-e (ex:
+        // "5.152", CFOP de NF-e de transferência) — ficava "preso" nesse valor inválido porque
+        // nenhuma opção do <select> batia com ele. Achado real 23/09/2026. Usa um padrão
+        // razoável de CT-e (intra/interestadual) que o usuário pode trocar antes de emitir.
+        cfop: (p.uf_origem || f.uf_origem) === (p.uf_destino || f.uf_destino) ? "5353" : "6353",
+        natureza_operacao: CFOPS_CTE.find(c => c.cfop === ((p.uf_origem || f.uf_origem) === (p.uf_destino || f.uf_destino) ? "5353" : "6353"))?.desc ?? f.natureza_operacao,
         valor_mercadoria:  p.valor_mercadoria  || f.valor_mercadoria,
         nfe_chave:         p.nfe_chave         || f.nfe_chave,
         produto_descricao: p.produto_descricao || f.produto_descricao,
@@ -1434,7 +1441,7 @@ function CtePageInner() {
                               Autorizar SEFAZ
                             </button>
                           )}
-                          <button onClick={() => imprimirDacte(c, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                          <button onClick={() => imprimirDacte(c, logoCliente, empresasTransp.find(e => e.id === c.emitente_id)?.rntrc)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                             DACTE
                           </button>
                           {c.status !== "cancelado" && (

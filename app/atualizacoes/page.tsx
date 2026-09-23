@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-be",
+    data: "23/09/2026",
+    titulo: "CT-e: CFOP herdado da NF-e ficava preso num código inválido; RNTRC não saía no DACTE",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Abrir CT-e a partir de uma NF-e (Fiscal → Monitor → botão \"CT-e / MDF-e\") copiava o CFOP da NF-e direto pro campo CFOP do CT-e — são tabelas diferentes (NF-e classifica movimentação de mercadoria; CT-e classifica prestação de serviço de transporte), então o valor herdado (ex: \"5.152\") não existia nem na lista de opções do CT-e, e trocar pelo seletor não \"colava\" de forma visível. Corrigido: CT-e aberto a partir de NF-e agora recebe um CFOP de transporte válido (intra ou interestadual conforme a rota), que pode ser trocado normalmente." },
+      { tipo: "correcao", texto: "DACTE (impresso) tinha o campo \"RNTRC DA EMPRESA\" sempre em branco — o valor nunca era lido de lugar nenhum, mesmo com o RNTRC configurado certinho em Parâmetros → Fiscal → CT-e. Corrigido: o DACTE agora imprime o RNTRC do emitente selecionado." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.23-bd",
     data: "23/09/2026",
     titulo: "Cadastros → Combustíveis & Bombas: lista seguia a fazenda ativa, sem seletor próprio",
