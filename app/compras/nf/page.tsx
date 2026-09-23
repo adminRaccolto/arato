@@ -77,8 +77,10 @@ const CFOP_NATUREZA: Record<string, string> = {
   "3102": "Compra para comercialização",
   "5101": "Venda de produção do estabelecimento",
   "5102": "Venda de mercadoria adquirida ou recebida de terceiros",
+  "5554": "Remessa de bem do ativo imobilizado para uso fora do estabelecimento",
   "6101": "Venda de produção do estabelecimento",
   "6102": "Venda de mercadoria adquirida ou recebida de terceiros",
+  "6554": "Remessa de bem do ativo imobilizado para uso fora do estabelecimento",
 };
 
 function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {

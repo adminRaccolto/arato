@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-n",
+    data: "23/09/2026",
+    titulo: "NF de Produtos: novo CFOP 5554 (Remessa de ativo imobilizado)",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Adicionado o CFOP 5554 (Remessa de bem do ativo imobilizado para uso fora do estabelecimento) e seu par interestadual 6554 — preenchem a Natureza da Operação automaticamente ao digitar o CFOP." },
+    ],
+    onde: "Compras & Estoque → Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.23-m",
     data: "23/09/2026",
     titulo: "MDF-e: Veículo continuava vazio + Peso/Valor da Carga agora herdam do CT-e",
