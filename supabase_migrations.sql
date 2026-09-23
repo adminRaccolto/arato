@@ -13347,3 +13347,16 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 281 — Emissão real de MDF-e (SEFAZ) — colunas de apoio
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MDF-e até aqui era só simulado (gerava uma chave fake e marcava "autorizado" sem
+-- transmitir nada). Autorização real exige o Código IBGE do Município de Carregamento
+-- (infMunCarrega no XML), que nunca era guardado — só o nome/texto.
+ALTER TABLE mdfes
+  ADD COLUMN IF NOT EXISTS ibge_inicio TEXT,
+  ADD COLUMN IF NOT EXISTS protocolo_autorizacao TEXT,
+  ADD COLUMN IF NOT EXISTS xml_url TEXT;
+
+NOTIFY pgrst, 'reload schema';

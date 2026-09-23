@@ -239,6 +239,7 @@ interface Mdfe {
   data_emissao: string;
   uf_inicio: string;
   municipio_inicio: string;
+  ibge_inicio?: string | null;
   uf_fim: string;
   percurso_ufs?: string[] | null;    // UFs intermediárias
   veiculo_id?: string | null;
@@ -258,6 +259,8 @@ interface Mdfe {
   ciot?: string | null;
   ciot_codigo_verificador?: string | null;
   ciot_protocolo?: string | null;
+  protocolo_autorizacao?: string | null;
+  xml_url?: string | null;
   created_at?: string;
 }
 
@@ -279,6 +282,34 @@ const STATUS_META: Record<StatusMdfe, { label: string; bg: string; cl: string }>
 };
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
+
+// Busca o Código IBGE do Município de Início — necessário pra montar o MDF-e de verdade
+// (infMunCarrega no XML). Mesmo padrão já usado no CT-e: lista estática das cidades mais comuns
+// do MT agro, com fallback pra API oficial do IBGE pra qualquer outra cidade do Brasil.
+async function buscarIbgeMdfe(cidade: string, uf: string): Promise<string> {
+  const IBGE_MT: Record<string, string> = {
+    "nova mutum": "5106224", "lucas do rio verde": "5105259", "sorriso": "5107925",
+    "sinop": "5107909", "cuiabá": "5103403", "campo verde": "5102637",
+    "rondonópolis": "5107602", "primavera do leste": "5106208", "tapurah": "5108006",
+    "ipiranga do norte": "5104526", "campo novo do parecis": "5102637",
+    "diamantino": "5103502", "tangará da serra": "5107958", "alta floresta": "5100250",
+    "colíder": "5103205", "matupá": "5105606", "guarantã do norte": "5104104",
+    "juara": "5105101", "juína": "5105150", "vila rica": "5108600", "nobres": "5105903",
+  };
+  const chave = cidade.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const ibgeMt = Object.entries(IBGE_MT).find(([k]) => k.normalize("NFD").replace(/[̀-ͯ]/g, "") === chave);
+  if (ibgeMt) return ibgeMt[1];
+  try {
+    const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+    if (r.ok) {
+      const lista = await r.json() as { id: number; nome: string }[];
+      const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+      const achado = lista.find(m => norm(m.nome) === chave);
+      if (achado) return String(achado.id);
+    }
+  } catch { /* ignora falha de rede */ }
+  return "";
+}
 
 // ─────────────────────────────────────────────────────────────
 // Componente
@@ -303,10 +334,11 @@ export default function MdfePage() {
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState("");
   const [proximoNr, setProximoNr] = useState("1");
+  const [autorizando, setAutorizando] = useState<string | null>(null);
 
   const FORM_VAZIO = () => ({
     numero_mdfe: proximoNr, serie: mdfeConfig.serie_mdfe || "1", data_emissao: hoje(),
-    uf_inicio: mdfeConfig.uf_ini || "MT", municipio_inicio: "",
+    uf_inicio: mdfeConfig.uf_ini || "MT", municipio_inicio: "", ibge_inicio: "",
     uf_fim: mdfeConfig.uf_fim || "MT",
     percurso_ufs: [] as string[],
     veiculo_id: "", motorista_id: "",
@@ -405,7 +437,7 @@ export default function MdfePage() {
     const nfeChaves = m.documentos.filter(d => d.tipo === "nfe").map(d => d.chave);
     setForm({
       numero_mdfe: m.numero_mdfe, serie: m.serie, data_emissao: m.data_emissao,
-      uf_inicio: m.uf_inicio, municipio_inicio: m.municipio_inicio,
+      uf_inicio: m.uf_inicio, municipio_inicio: m.municipio_inicio, ibge_inicio: m.ibge_inicio ?? "",
       uf_fim: m.uf_fim,
       percurso_ufs: m.percurso_ufs ?? [],
       veiculo_id: m.veiculo_id ?? "", motorista_id: m.motorista_id ?? "",
@@ -538,12 +570,13 @@ export default function MdfePage() {
 
       const payload = {
         fazenda_id: fazendaId,
-        numero_mdfe: form.numero_mdfe,
+        numero_mdfe: form.numero_mdfe.trim(),
         serie: form.serie,
         chave_acesso: mdfeEdit?.chave_acesso ?? null,
         data_emissao: form.data_emissao,
         uf_inicio: form.uf_inicio,
         municipio_inicio: form.municipio_inicio,
+        ibge_inicio: form.ibge_inicio || null,
         uf_fim: form.uf_fim,
         percurso_ufs: form.percurso_ufs.length > 0 ? form.percurso_ufs : null,
         veiculo_id: form.veiculo_id || null,
@@ -575,11 +608,39 @@ export default function MdfePage() {
     }
   }
 
-  // ── Autorizar (simulado) ─────────────────────────────────
+  // ── Autorizar — transmissão real SEFAZ ────────────────────
+  // Substituiu a versão simulada (gerava uma chave fake e marcava "autorizado" sem transmitir
+  // nada) — agora monta o XML de verdade (lib/mdfe/builder.ts), assina e transmite via
+  // MDFeRecepcaoSinc (SVRS, autorizador nacional do MDF-e). O CIOT continua sendo gerado à parte
+  // (botão "Gerar CIOT via ANTT" na aba do modal) — se já tiver sido gerado antes, entra no XML;
+  // se não, a emissão segue normal (CIOT é opcional no schema).
   async function autorizar(m: Mdfe) {
-    const chave = `35${m.data_emissao.replace(/-/g,"").slice(2,6)}00000000000000000000000${m.numero_mdfe.padStart(9,"0")}58`;
-    await supabase.from("mdfes").update({ status: "autorizado", chave_acesso: chave }).eq("id", m.id);
-    await carregar();
+    if (!fazendaId) return;
+    if (!confirm(`Transmitir MDF-e ${m.numero_mdfe} para a SEFAZ?\nAmbiente configurado em Parâmetros → MDF-e.`)) return;
+    setAutorizando(m.id);
+    try {
+      const res = await fetch("/api/fiscal/emitir-mdfe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: m.id }),
+      });
+      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string };
+      if (data.sucesso) {
+        alert(`✓ MDF-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
+      } else {
+        const cStatNum = parseInt(data.cStat ?? "0");
+        const ehFalhaComunicacao = isNaN(cStatNum) || cStatNum >= 500 || cStatNum === 0;
+        if (ehFalhaComunicacao) {
+          alert(`⚠ Falha de comunicação com a SEFAZ\n\nDetalhe: ${data.xMotivo}`);
+        } else {
+          alert(`⚠ MDF-e rejeitado pela SEFAZ\ncStat ${data.cStat}: ${data.xMotivo}`);
+        }
+      }
+    } catch (e) {
+      alert("Erro ao transmitir: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAutorizando(null);
+      await carregar();
+    }
   }
 
   // ── Encerrar ─────────────────────────────────────────────
@@ -712,8 +773,8 @@ export default function MdfePage() {
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                           {m.status === "rascunho" && (
-                            <button onClick={() => autorizar(m)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
-                              Autorizar
+                            <button onClick={() => autorizar(m)} disabled={autorizando === m.id} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: autorizando === m.id ? "default" : "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                              {autorizando === m.id ? "Transmitindo…" : "Autorizar SEFAZ"}
                             </button>
                           )}
                           {m.status === "autorizado" && (
@@ -794,9 +855,23 @@ export default function MdfePage() {
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn: "2 / -1" }}>
+              <div style={{ gridColumn: "2 / 3" }}>
                 <label style={lbl}>Município de Início (carregamento)</label>
-                <input value={form.municipio_inicio} onChange={e => setForm(f => ({ ...f, municipio_inicio: e.target.value }))} style={inp} placeholder="Nova Mutum — MT" />
+                <input value={form.municipio_inicio}
+                  onChange={e => setForm(f => ({ ...f, municipio_inicio: e.target.value }))}
+                  onBlur={async e => { const v = e.target.value.trim(); if (v && !form.ibge_inicio) { const ibge = await buscarIbgeMdfe(v, form.uf_inicio); if (ibge) setForm(f => ({ ...f, ibge_inicio: ibge })); } }}
+                  style={inp} placeholder="Nova Mutum" />
+              </div>
+              <div style={{ gridColumn: "3 / -1" }}>
+                <label style={lbl}>Cód. IBGE Início {form.ibge_inicio ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input value={form.ibge_inicio} onChange={e => setForm(f => ({ ...f, ibge_inicio: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" maxLength={7} />
+                  <button type="button" title="Buscar de novo pelo Município de Início"
+                    onClick={async () => { const ibge = await buscarIbgeMdfe(form.municipio_inicio, form.uf_inicio); if (ibge) setForm(f => ({ ...f, ibge_inicio: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
+                    style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
+                    🔄
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={lbl}>UF de Destino (fim)</label>

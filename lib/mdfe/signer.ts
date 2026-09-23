@@ -1,0 +1,51 @@
+/**
+ * lib/mdfe/signer.ts
+ * Assina o MDF-e com o mesmo padrão xmldsig do CT-e/NF-e.
+ * O Id do MDF-e tem o formato "MDFe{44 dígitos}".
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { SignedXml } = require("xml-crypto");
+import type { PemPair } from "../nfe/signer";
+export type { PemPair };
+
+function pemBody(pem: string): string {
+  return pem.split("\n").filter(l => !l.startsWith("-----")).join("").trim();
+}
+
+export function assinarMDFe(xmlSemAssinatura: string, pem: PemPair): string {
+  const match = xmlSemAssinatura.match(/Id="(MDFe\d{44})"/);
+  if (!match) throw new Error("Id do MDF-e não encontrado no XML");
+  const id = match[1];
+
+  const sig = new SignedXml({
+    privateKey: pem.key,
+    publicCert: pem.cert,
+    signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
+    canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+  });
+
+  sig.addReference({
+    xpath: `//*[@Id='${id}']`,
+    transforms: [
+      "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
+      "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+    ],
+    digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
+  });
+
+  sig.computeSignature(xmlSemAssinatura, {
+    prefix: "",
+    attrs: {},
+    location: { reference: `//*[@Id='${id}']`, action: "after" },
+    existingPrefixes: { ds: "http://www.w3.org/2000/09/xmldsig#" },
+  });
+
+  let signed: string = sig.getSignedXml();
+  const certBody = pemBody(pem.cert);
+  signed = signed.replace(
+    /<X509Certificate>[\s\S]*?<\/X509Certificate>/,
+    `<X509Certificate>${certBody}</X509Certificate>`
+  );
+  return signed;
+}

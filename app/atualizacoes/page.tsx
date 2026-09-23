@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-t",
+    data: "23/09/2026",
+    titulo: "MDF-e: emissão real na SEFAZ (não era mais simulada)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "\"Autorizar SEFAZ\" no MDF-e agora transmite de verdade — antes só gerava uma chave fabricada localmente sem transmitir nada. Monta o XML do MDF-e 3.00, assina com o certificado A1 e transmite pro webservice nacional (SVRS), validado contra o schema oficial da SEFAZ. Novo campo \"Cód. IBGE Início\" (com busca automática, igual ao CT-e) — obrigatório pra montar o Município de Carregamento no XML." },
+      { tipo: "melhoria", texto: "O CIOT continua sendo gerado à parte (botão \"🔗 Gerar CIOT via ANTT\") — se já gerado antes de autorizar, entra no XML automaticamente; não bloqueia a emissão se ainda não foi gerado." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.23-s",
     data: "23/09/2026",
     titulo: "CT-e: DACTE refeito no layout oficial padrão de mercado",

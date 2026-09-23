@@ -539,16 +539,20 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 **Novo 22/09/2026 — "🔍 Buscar dados da NF-e" pela chave de acesso:** ao lado do campo "Chave de Acesso da NF-e Referenciada", um botão busca o XML da nota (no Storage do SIEG ou, se não tiver, direto na SEFAZ) e preenche automaticamente Remetente, Destinatário, Município de Origem/Destino, Produto, NCM e Valor da Mercadoria — sempre revise antes de emitir.
 
-### 13.3 MDF-e — Manifesto de Cargas
-**Caminho:** Comercial & Logística → Fretes e Transporte → MDF-e
-
-Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
-
 **Correção 23/09/2026 — Frete isento de ICMS (alíquota 0%) sempre rejeitava com "cStat 215: Falha no Schema XML":** o XML montava o grupo ICMS40 pra frete sem ICMS — esse grupo não existe no schema do CT-e (diferente da NF-e, que tem CST 40 num grupo próprio). No CT-e, isenção/não-tributado/diferido usa o grupo ICMS45, com o mesmo CST "40" dentro. Validado contra o schema oficial da SEFAZ pra confirmar. Todo frete com alíquota de ICMS 0% falhava por esse motivo — corrigido.
 
 **Correção 23/09/2026 — Cód. IBGE de Destino às vezes vinha com o valor da Origem:** ao usar "🔍 Buscar dados da NF-e", em alguns casos o Código IBGE do Destino saía preenchido com o mesmo código da Origem (XML com namespace padrão podia fazer a busca por seletor CSS casar com o elemento errado, sem erro nenhum). Corrigido: a leitura do XML agora usa só busca por nome de tag, sem seletor CSS. **Novo:** os campos "Cód. IBGE Origem/Destino" ganharam um botão 🔄 ao lado — força buscar de novo pelo nome do Município, mesmo se o campo já tiver um valor (a busca automática só roda sozinha quando o campo está vazio, pra não sobrescrever o que você digitou; o botão é pra quando o valor já preenchido está errado).
 
 **Correção 23/09/2026 — SEFAZ rejeitava com "cStat 215: Falha no Schema XML" sem aviso prévio:** a validação local antes de transmitir só checava o Código IBGE do Remetente — o IBGE do Percurso (Início/Fim, exigido pelo schema do CT-e independente do remetente) e do Destinatário não eram checados. Se a busca automática de IBGE falhasse silenciosamente pra qualquer um desses (rede instável no momento, nome de cidade), o XML saía com o campo vazio e só a SEFAZ barrava, com uma mensagem genérica que não dizia qual campo faltava. Corrigido: agora os 3 grupos (Remetente, Destinatário, Percurso Início/Fim) são checados antes de transmitir, e o aviso mostra exatamente qual está faltando. **Se travou nisso antes da correção, simplesmente clique em "Autorizar SEFAZ" de novo** — a busca de IBGE roda de novo na hora, geralmente resolve sozinha.
+
+### 13.3 MDF-e — Manifesto de Cargas
+**Caminho:** Comercial & Logística → Fretes e Transporte → MDF-e
+
+Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
+
+**Novo 23/09/2026 — Emissão real na SEFAZ (não é mais simulada):** até aqui, "Autorizar SEFAZ" só gerava uma chave fabricada localmente e marcava "autorizado" no banco, sem transmitir nada de verdade. Agora monta o XML do MDF-e 3.00 de verdade, assina com o certificado A1 e transmite pro webservice nacional do MDF-e (SVRS — diferente do CT-e/NF-e, o MDF-e usa um único autorizador pra praticamente todas as UFs, incluindo MT). Estrutura do XML validada campo a campo contra o schema oficial da SEFAZ. O CIOT continua sendo gerado à parte, pelo botão "🔗 Gerar CIOT via ANTT" — se já tiver sido gerado antes de autorizar, entra automaticamente no XML; se não, a emissão segue normal (motorista CLT é isento, TAC sem CIOT ainda autoriza — a Lei exige o CIOT mas o schema não bloqueia por ele faltar).
+
+**Requisitos pra autorizar de verdade:** Veículo selecionado com Tara (kg) cadastrada, Motorista selecionado, Código IBGE do Município de Início preenchido (novo campo — sai da busca automática, igual ao CT-e; se a busca falhar, tem um botão 🔄 pra tentar nomeando manualmente), e pelo menos um CT-e vinculado **autorizado** (não cancelado, não rascunho) com o Código IBGE de Destino preenchido — é dali que o MDF-e descobre o Município de Descarga. Qualquer um desses faltando, a tela avisa exatamente o que preencher antes de gastar uma tentativa com a SEFAZ.
 
 **Correção 23/09/2026 (2) — Veículo continuava vazio mesmo depois da correção anterior:** a consulta de Veículos pedia uma coluna (num_eixos) que nunca existiu na tabela — o SELECT inteiro falhava e a lista vinha sempre vazia, mesmo com veículos cadastrados. Motorista funcionava normal porque a consulta dele não tinha esse erro (por isso um preenchia e o outro não). Corrigido.
 
