@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-s",
+    data: "23/09/2026",
+    titulo: "CT-e: DACTE refeito no layout oficial padrão de mercado",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "O DACTE (botão \"DACTE\" na lista de CT-e) foi refeito do zero no formato oficial padrão do modelo 57 — canhoto de recebimento, código de barras, tomador do serviço, remetente/destinatário completos, expedidor/recebedor, carga, componentes da prestação, impostos, documentos originários e dados do modal rodoviário. Substitui o layout anterior (resumo em caixas), bem diferente do documento oficial." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.09.23-r",
     data: "23/09/2026",
     titulo: "Contas a Pagar: botão \"Aplicar\" do adiantamento não fazia nada",

@@ -116,154 +116,252 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 // ─────────────────────────────────────────────────────────────
 // DACTE — Documento Auxiliar do CT-e Modelo 57
 // ─────────────────────────────────────────────────────────────
+// DACTE — layout no padrão oficial do modelo 57 (o mesmo formato usado pela maioria dos emissores
+// do mercado — ex.: fsist/ACBr), reproduzido a partir de um DACTE de referência trazido pelo dono
+// em 23/09/2026 (o layout anterior era um resumo em caixas, bem diferente do documento oficial).
 function imprimirDacte(c: Cte, logoUrl?: string | null) {
-  const chave44   = (c.chave_acesso ?? "").replace(/\D/g, "");
-  const chaveBlocks = chave44
-    ? chave44.replace(/(.{4})/g, "$1 ").trim()
-    : "— aguardando autorização SEFAZ —";
-  const dataFmt   = c.data_emissao ? new Date(c.data_emissao + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-  const valorFmt  = c.valor_frete.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-  const numFmt    = c.numero_cte.padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
-  const icmsFmt   = c.valor_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-  const emitNome  = c.emitente_razao_social ?? "—";
-  const emitCnpj  = c.emitente_cnpj ?? "—";
+  const chave44 = (c.chave_acesso ?? "").replace(/\D/g, "");
+  const dataFmt = c.data_emissao ? new Date(c.data_emissao + "T12:00:00") : null;
+  const dataHoraFmt = dataFmt ? `${dataFmt.toLocaleDateString("pt-BR")} ${dataFmt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : "—";
+  const numFmt = c.numero_cte;
+  const brl = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const emitNome = c.emitente_razao_social ?? "—";
+  const emitCnpj = c.emitente_cnpj ?? "—";
+
+  // Chave formatada em blocos de 4 — mesmo padrão do DANFE/DACTE oficial
+  const chaveFmt = chave44 ? chave44.replace(/(\d{4})(?=\d)/g, "$1.").trim() : "";
+
+  const TOMADOR_LABEL: Record<TomadorTipo, string> = {
+    remetente: "Remetente", expedidor: "Expedidor", recebedor: "Recebedor", destinatario: "Destinatário",
+  };
+
+  // Situação tributária do ICMS — mesma regra do builder do CT-e (lib/cte/builder.ts):
+  // alíquota > 0 → CST 00 (tributação normal); alíquota = 0 → CST 40 (isenção), grupo ICMS45.
+  const situacaoTrib = c.aliquota_icms > 0 ? "00 - Tributação normal ICMS" : "40 - ICMS isenção";
+
+  const tomadorPessoa =
+    c.tomador_tipo === "destinatario"
+      ? { nome: c.destinatario_nome, cnpj: c.destinatario_cnpj, municipio: c.municipio_destino, uf: c.uf_destino }
+      : { nome: c.remetente_nome, cnpj: c.remetente_cnpj, municipio: c.municipio_origem, uf: c.uf_origem };
+
+  // Célula de "campo": label pequeno em cima, valor em negrito embaixo — a unidade repetida do
+  // documento oficial inteiro. `w` é a largura da coluna dentro da linha (flex-grow).
+  const campo = (label: string, valor: string, w = 1) =>
+    `<div class="cel" style="flex:${w}"><div class="lbl">${label}</div><div class="val">${valor}</div></div>`;
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>DACTE CT-e ${numFmt} — Série ${c.serie}</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:7pt;color:#000;background:#fff}
-.page{width:210mm;margin:0 auto;padding:4mm;border:0.3mm solid #000}
-.box{border:0.3mm solid #000;padding:2mm}
-.row{display:flex;gap:0}
-.row .box{flex:1}
-.lbl{font-size:6pt;color:#333;display:block;margin-bottom:1mm}
-.val{font-size:8pt;font-weight:700}
-.title{font-size:9pt;font-weight:700;text-align:center;border:0.3mm solid #000;padding:1mm;background:#eee}
-.section{border:0.5mm solid #000;margin-bottom:1.5mm}
-.section-header{background:#ddd;font-size:7pt;font-weight:700;padding:1mm 2mm;border-bottom:0.3mm solid #000}
-table{width:100%;border-collapse:collapse;font-size:7pt}
-th{background:#eee;border:0.3mm solid #000;padding:1mm;text-align:left;font-size:6.5pt}
-td{border:0.3mm solid #000;padding:1mm}
-.barcode-area{text-align:center;padding:3mm;border-top:0.3mm solid #000;margin-top:2mm}
-@page{size:A4;margin:5mm}
+body{font-family:Arial,Helvetica,sans-serif;font-size:6.6pt;color:#000;background:#fff}
+.page{width:210mm;margin:0 auto;padding:3mm}
+.grid{display:flex;flex-wrap:wrap;border-left:0.3mm solid #000;border-top:0.3mm solid #000}
+.grid .cel{border-right:0.3mm solid #000;border-bottom:0.3mm solid #000;padding:0.8mm 1.5mm;min-width:0}
+.lbl{font-size:5.3pt;color:#000;white-space:nowrap}
+.val{font-size:7pt;font-weight:700;word-break:break-word}
+.section-title{flex:1;background:#eaeaea;font-size:6.3pt;font-weight:700;padding:0.6mm 1.5mm;border-right:0.3mm solid #000;border-bottom:0.3mm solid #000}
+.center{text-align:center}
+.big{font-size:9pt}
+table.mini{width:100%;border-collapse:collapse}
+table.mini td{padding:0}
+@page{size:A4;margin:6mm}
 @media print{body{margin:0}}
 </style></head><body>
 <div class="page">
 
-  <!-- CABEÇALHO -->
-  <div class="row" style="margin-bottom:1.5mm;align-items:stretch">
-    <div class="box" style="flex:0 0 45mm;display:flex;align-items:center;justify-content:center;padding:2mm">
-      ${logoUrl ? `<img src="${logoUrl}" style="max-width:40mm;max-height:18mm;object-fit:contain" />` : `<span style="font-size:9pt;font-weight:700;color:#111111">DACTE</span>`}
+  <!-- Canhoto de recebimento -->
+  <div class="grid">
+    <div class="cel" style="flex:5">
+      <div class="lbl">DECLARO QUE RECEBI OS VOLUMES DESTE CONHECIMENTO EM PERFEITO ESTADO PELO QUE DOU POR CUMPRIDO O PRESENTE CONTRATO DE TRANSPORTE</div>
+      <table class="mini" style="margin-top:5mm"><tr>
+        <td style="width:50%;border-right:0.3mm solid #000;padding-top:2mm"><div class="lbl">NOME</div><div style="border-top:0.3mm solid #000;margin-top:6mm;padding-top:0.5mm" class="lbl center">ASSINATURA / CARIMBO</div></td>
+        <td style="width:50%;padding-left:1.5mm"><div class="lbl">RG</div></td>
+      </tr></table>
     </div>
-    <div class="box" style="flex:1;text-align:center">
-      <div style="font-size:11pt;font-weight:700">DACTE</div>
-      <div style="font-size:8pt">DOCUMENTO AUXILIAR DO CONHECIMENTO DE TRANSPORTE ELETRÔNICO</div>
-      <div style="margin-top:1mm;font-size:7pt">MODELO <strong>57</strong> · SÉRIE <strong>${c.serie}</strong> · Nº <strong>${numFmt}</strong></div>
-      <div style="font-size:7pt">Emissão: <strong>${dataFmt}</strong> · CFOP: <strong>${c.cfop}</strong></div>
+    <div class="cel" style="flex:1.6">
+      <div class="lbl">TÉRMINO DA PRESTAÇÃO - DATA/HORA</div><br/>
+      <div class="lbl" style="margin-top:4mm">INÍCIO DA PRESTAÇÃO - DATA/HORA</div>
     </div>
-    <div class="box" style="flex:0 0 50mm;font-size:7pt;padding:2mm">
-      <div class="lbl">NATUREZA DA PRESTAÇÃO</div>
-      <div class="val" style="font-size:7pt">${c.natureza_operacao}</div>
-      <div class="lbl" style="margin-top:2mm">TOMADOR DO SERVIÇO</div>
-      <div class="val" style="font-size:7pt">${{ remetente:"Remetente (0)", expedidor:"Expedidor (1)", recebedor:"Recebedor (2)", destinatario:"Destinatário (3)" }[c.tomador_tipo] ?? c.tomador_tipo}</div>
-    </div>
-  </div>
-
-  <!-- EMITENTE -->
-  <div class="section" style="margin-bottom:1.5mm">
-    <div class="section-header">EMITENTE (TRANSPORTADORA)</div>
-    <div class="row">
-      <div class="box" style="flex:3">
-        <span class="lbl">RAZÃO SOCIAL</span>
-        <span class="val">${emitNome}</span>
-      </div>
-      <div class="box" style="flex:1">
-        <span class="lbl">CNPJ</span>
-        <span class="val">${emitCnpj}</span>
-      </div>
+    <div class="cel" style="flex:0.7;text-align:right">
+      <div class="val">CT-E</div>
+      <div class="lbl" style="margin-top:1mm">Nº. DOCUMENTO</div><div class="val">${numFmt}</div>
+      <div class="lbl" style="margin-top:1mm">SÉRIE</div><div class="val">${c.serie}</div>
     </div>
   </div>
 
-  <!-- REMETENTE / DESTINATÁRIO -->
-  <div class="section" style="margin-bottom:1.5mm">
-    <div class="section-header">REMETENTE E DESTINATÁRIO</div>
-    <div class="row">
-      <div class="box" style="flex:2">
-        <span class="lbl">REMETENTE (Quem envia)</span>
-        <span class="val">${c.remetente_nome}</span>
-        ${c.remetente_cnpj ? `<div style="font-size:6pt;color:#555">CNPJ/CPF: ${c.remetente_cnpj}</div>` : ""}
-        <div style="font-size:6.5pt;color:#444">${c.municipio_origem} — ${c.uf_origem}</div>
-      </div>
-      <div class="box" style="flex:2">
-        <span class="lbl">DESTINATÁRIO (Quem recebe)</span>
-        <span class="val">${c.destinatario_nome}</span>
-        ${c.destinatario_cnpj ? `<div style="font-size:6pt;color:#555">CNPJ/CPF: ${c.destinatario_cnpj}</div>` : ""}
-        <div style="font-size:6.5pt;color:#444">${c.municipio_destino} — ${c.uf_destino}</div>
-      </div>
-      <div class="box" style="flex:1">
-        <span class="lbl">PERCURSO</span>
-        <span class="val" style="font-size:7pt">${c.municipio_origem}/${c.uf_origem}</span>
-        <div style="font-size:9pt;text-align:center;color:#555">→</div>
-        <span class="val" style="font-size:7pt">${c.municipio_destino}/${c.uf_destino}</span>
-      </div>
+  <!-- Identificação do emitente / DACTE / modal -->
+  <div class="grid" style="margin-top:1.5mm">
+    <div class="cel" style="flex:2.3">
+      ${logoUrl ? `<img src="${logoUrl}" style="max-height:12mm;max-width:100%;object-fit:contain;margin-bottom:1mm" />` : ""}
+      <div class="val" style="font-size:8.5pt">${emitNome}</div>
+      <div class="lbl">CNPJ/CPF: ${emitCnpj}</div>
+    </div>
+    <div class="cel center" style="flex:2.6">
+      <div class="val big">DACTE</div>
+      <div class="lbl">Documento Auxiliar do Conhecimento<br/>de Transporte Eletrônico</div>
+    </div>
+    <div class="cel center" style="flex:1">
+      <div class="lbl">MODAL</div>
+      <div class="val">Rodoviário</div>
+    </div>
+  </div>
+  <div class="grid">
+    ${campo("MODELO", "57")}
+    ${campo("SÉRIE", c.serie)}
+    ${campo("NÚMERO", numFmt)}
+    ${campo("FL", "1/1")}
+    ${campo("DATA E HORA DE EMISSÃO", dataHoraFmt, 2)}
+    ${campo("INSC. SUFRAMA DO DESTINATÁRIO", "", 2)}
+  </div>
+
+  <!-- Código de barras da chave -->
+  <div class="grid">
+    <div class="cel center" style="flex:1;padding:1.5mm">
+      ${chave44.length === 44 ? `<svg id="barcode"></svg>` : `<div class="lbl" style="color:#B91C1C;font-weight:700">CT-e ainda não autorizado pela SEFAZ</div>`}
     </div>
   </div>
 
-  <!-- VALORES DA PRESTAÇÃO -->
-  <div class="section" style="margin-bottom:1.5mm">
-    <div class="section-header">VALORES DA PRESTAÇÃO DO SERVIÇO</div>
-    <div class="row">
-      <div class="box"><span class="lbl">VALOR TOTAL DA PRESTAÇÃO</span><span class="val">R$ ${valorFmt}</span></div>
-      <div class="box"><span class="lbl">BASE DE CÁLCULO ICMS</span><span class="val">R$ ${valorFmt}</span></div>
-      <div class="box"><span class="lbl">ALÍQUOTA ICMS</span><span class="val">${c.aliquota_icms.toFixed(2)}%</span></div>
-      <div class="box"><span class="lbl">VALOR ICMS</span><span class="val">R$ ${icmsFmt}</span></div>
-      <div class="box"><span class="lbl">VALOR MERCADORIA</span><span class="val">R$ ${c.valor_mercadoria.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>
+  <!-- Tipo CT-e / Tipo serviço / Chave de acesso -->
+  <div class="grid">
+    ${campo("TIPO DO CTE", c.status === "cancelado" ? "Cancelamento" : "Normal", 1)}
+    ${campo("TIPO DO SERVIÇO", "Normal", 1)}
+    <div class="cel" style="flex:3">
+      <div class="lbl">CHAVE DE ACESSO</div>
+      <div class="val center" style="font-family:monospace;letter-spacing:0.3px">${chaveFmt || "—"}</div>
+      <div class="lbl center" style="margin-top:0.8mm">Consulta de autenticidade no portal nacional do CT-e, no site da Sefaz Autorizadora,<br/>ou em http://www.cte.fazenda.gov.br</div>
     </div>
   </div>
 
-  <!-- CARGA -->
-  <div class="section" style="margin-bottom:1.5mm">
-    <div class="section-header">INFORMAÇÕES DA CARGA</div>
-    <div class="row">
-      <div class="box" style="flex:2"><span class="lbl">PRODUTO PREDOMINANTE</span><span class="val">${c.produto_descricao}</span></div>
-      <div class="box"><span class="lbl">QUANTIDADE</span><span class="val">${c.quantidade.toLocaleString("pt-BR")} ${c.unidade}</span></div>
-      <div class="box"><span class="lbl">PESO BRUTO (kg)</span><span class="val">${c.peso_bruto_kg.toLocaleString("pt-BR")}</span></div>
-      <div class="box"><span class="lbl">PESO LÍQUIDO (kg)</span><span class="val">${c.peso_liquido_kg.toLocaleString("pt-BR")}</span></div>
+  <!-- Tomador do serviço -->
+  <div class="grid">
+    ${campo("TOMADOR DO SERVIÇO", TOMADOR_LABEL[c.tomador_tipo], 1)}
+  </div>
+
+  <!-- CFOP / Protocolo -->
+  <div class="grid">
+    ${campo("CFOP - NATUREZA DA PRESTAÇÃO", `${c.cfop} - ${c.natureza_operacao}`, 1)}
+    ${campo("PROTOCOLO DE AUTORIZAÇÃO DE USO", c.protocolo_autorizacao ? `${c.protocolo_autorizacao} - ${dataHoraFmt}` : "—", 1)}
+  </div>
+
+  <!-- Início / Término da prestação -->
+  <div class="grid">
+    ${campo("INÍCIO DA PRESTAÇÃO", `${c.municipio_origem} - ${c.uf_origem}`, 1)}
+    ${campo("TÉRMINO DA PRESTAÇÃO", `${c.municipio_destino} - ${c.uf_destino}`, 1)}
+  </div>
+
+  <!-- Remetente / Destinatário -->
+  <div class="grid">
+    <div class="cel" style="flex:1">
+      <div class="lbl">REMETENTE</div><div class="val">${c.remetente_nome}</div>
+      <div class="lbl" style="margin-top:0.6mm">ENDEREÇO</div>
+      <div class="lbl">MUNICÍPIO <strong>${c.municipio_origem} - ${c.uf_origem}</strong></div>
+      <div class="lbl">CNPJ/CPF <strong>${c.remetente_cnpj ?? "—"}</strong> INSCRIÇÃO ESTADUAL <strong>${(c as Cte & { remetente_ie?: string }).remetente_ie ?? ""}</strong></div>
+      <div class="lbl">PAÍS <strong>BRASIL</strong></div>
+    </div>
+    <div class="cel" style="flex:1">
+      <div class="lbl">DESTINATÁRIO</div><div class="val">${c.destinatario_nome}</div>
+      <div class="lbl" style="margin-top:0.6mm">ENDEREÇO</div>
+      <div class="lbl">MUNICÍPIO <strong>${c.municipio_destino} - ${c.uf_destino}</strong></div>
+      <div class="lbl">CNPJ/CPF <strong>${c.destinatario_cnpj ?? "—"}</strong> INSCRIÇÃO ESTADUAL <strong>${(c as Cte & { destinatario_ie?: string }).destinatario_ie ?? ""}</strong></div>
+      <div class="lbl">PAÍS <strong>BRASIL</strong></div>
     </div>
   </div>
 
-  <!-- MODAL RODOVIÁRIO -->
-  <div class="section" style="margin-bottom:1.5mm">
-    <div class="section-header">MODAL RODOVIÁRIO</div>
-    <div class="row">
-      <div class="box" style="flex:2"><span class="lbl">MOTORISTA</span><span class="val">${c.motorista_nome}</span>${c.motorista_cpf ? `<div style="font-size:6pt">CPF: ${c.motorista_cpf}</div>` : ""}</div>
-      <div class="box"><span class="lbl">PLACA DO VEÍCULO</span><span class="val" style="font-size:10pt;letter-spacing:1px">${c.veiculo_placa}</span></div>
-      <div class="box"><span class="lbl">TIPO DO VEÍCULO</span><span class="val">${c.veiculo_tipo ?? "—"}</span></div>
+  <!-- Expedidor / Recebedor — não modelados neste sistema (frete rodoviário direto rem→dest);
+       ficam em branco no layout oficial, igual ao documento de referência, quando não se aplicam. -->
+  <div class="grid">
+    <div class="cel" style="flex:1"><div class="lbl">EXPEDIDOR</div><div class="lbl">ENDEREÇO</div><div class="lbl">MUNICÍPIO</div><div class="lbl">CNPJ/CPF</div><div class="lbl">PAÍS</div></div>
+    <div class="cel" style="flex:1"><div class="lbl">RECEBEDOR</div><div class="lbl">ENDEREÇO</div><div class="lbl">MUNICÍPIO</div><div class="lbl">CNPJ/CPF</div><div class="lbl">PAÍS</div></div>
+  </div>
+
+  <!-- Tomador do serviço (dados completos) -->
+  <div class="grid">
+    <div class="cel" style="flex:1">
+      <div class="lbl">TOMADOR DO SERVIÇO <strong>${tomadorPessoa.nome}</strong> MUNICÍPIO <strong>${tomadorPessoa.municipio}</strong> UF <strong>${tomadorPessoa.uf}</strong></div>
+      <div class="lbl">CNPJ/CPF <strong>${tomadorPessoa.cnpj ?? "—"}</strong> PAÍS <strong>BRASIL</strong></div>
     </div>
   </div>
 
-  ${c.nfe_chave ? `<!-- NF-e DOCUMENTADA -->
-  <div class="section" style="margin-bottom:1.5mm">
-    <div class="section-header">DOCUMENTOS ORIGINÁRIOS</div>
-    <div class="box"><span class="lbl">CHAVE DA NF-e</span><span style="font-size:7pt;font-family:monospace">${c.nfe_chave}</span></div>
-  </div>` : ""}
-
-  ${c.observacao ? `<div class="section" style="margin-bottom:1.5mm"><div class="section-header">INFORMAÇÕES COMPLEMENTARES</div><div class="box" style="font-size:7.5pt">${c.observacao}</div></div>` : ""}
-
-  <!-- CÓDIGO DE BARRAS -->
-  <div class="barcode-area">
-    <div style="font-size:6pt;color:#555;margin-bottom:2mm">CHAVE DE ACESSO</div>
-    <svg id="barcode"></svg>
-    <div style="font-size:7pt;font-family:monospace;letter-spacing:1px;margin-top:1mm">${chaveBlocks}</div>
-    ${chave44.length === 44 ? "" : `<div style="font-size:7pt;color:#E24B4A;font-weight:700;margin-top:2mm">⚠ CT-e ainda não autorizado pela SEFAZ — aguardando transmissão</div>`}
+  <!-- Carga -->
+  <div class="grid">
+    ${campo("PRODUTO PREDOMINANTE", c.produto_descricao, 2)}
+    ${campo("OUTRAS CARACTERÍSTICAS DA CARGA", c.ncm ?? "", 1)}
+    ${campo("VALOR TOTAL DA MERCADORIA", brl(c.valor_mercadoria), 1)}
   </div>
+  <div class="grid">
+    ${campo("PESO BRUTO (KG)", c.peso_bruto_kg.toLocaleString("pt-BR", { minimumFractionDigits: 3 }), 1)}
+    ${campo("PESO LÍQUIDO (KG)", c.peso_liquido_kg.toLocaleString("pt-BR", { minimumFractionDigits: 3 }), 1)}
+    ${campo("CUBAGEM (M3)", "", 1)}
+    ${campo("QTDE (VOL)", "", 1)}
+    ${campo("NOME DA SEGURADORA / RESPONSÁVEL / Nº APÓLICE / Nº AVERBAÇÃO", "", 2)}
+  </div>
+
+  <!-- Componentes do valor da prestação -->
+  <div class="grid">
+    <div class="section-title">COMPONENTES DO VALOR DA PRESTAÇÃO DO SERVIÇO</div>
+  </div>
+  <div class="grid">
+    <div class="cel" style="flex:2.4">
+      <table class="mini">
+        <tr><td class="lbl">NOME</td><td class="lbl" style="text-align:right">VALOR</td></tr>
+        <tr><td class="val" style="font-size:6.6pt;font-weight:400">Frete Peso</td><td class="val" style="font-size:6.6pt;font-weight:400;text-align:right">${brl(c.valor_frete)}</td></tr>
+      </table>
+    </div>
+    <div class="cel" style="flex:1">
+      <div class="lbl">VALOR TOTAL DO SERVIÇO</div><div class="val">${brl(c.valor_frete)}</div>
+      <div class="lbl" style="margin-top:1mm">VALOR A RECEBER</div><div class="val">${brl(c.valor_frete)}</div>
+    </div>
+  </div>
+
+  <!-- Impostos -->
+  <div class="grid">
+    ${campo("SITUAÇÃO TRIBUTÁRIA", situacaoTrib, 2)}
+    ${campo("BASE DE CALCULO", brl(c.base_calc_icms), 1)}
+    ${campo("ALÍQ ICMS", c.aliquota_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), 1)}
+    ${campo("VALOR ICMS", brl(c.valor_icms), 1)}
+    ${campo("% RED. BC ICMS", "", 1)}
+    ${campo("ICMS ST", "", 1)}
+  </div>
+
+  <!-- Documentos originários -->
+  <div class="grid">
+    <div class="section-title">DOCUMENTOS ORIGINÁRIOS</div>
+  </div>
+  <div class="grid">
+    ${c.nfe_chave
+      ? `${campo("TIPO DOC", "NFE", 0.6)}${campo("CNPJ/CHAVE", c.nfe_chave, 3)}${campo("SÉRIE/NRO. DOCUMENTO", "", 1)}`
+      : campo("", "", 1)}
+  </div>
+
+  <!-- Observações -->
+  <div class="grid">
+    <div class="cel" style="flex:1;min-height:14mm"><div class="lbl">OBSERVAÇÕES</div><div class="val" style="font-size:6.6pt;font-weight:400">${c.observacao ?? ""}</div></div>
+  </div>
+
+  <!-- Dados do modal rodoviário -->
+  <div class="grid">
+    <div class="section-title">DADOS ESPECÍFICOS DO MODAL RODOVIÁRIO - CARGA FRACIONADA</div>
+  </div>
+  <div class="grid">
+    ${campo("RNTRC DA EMPRESA", "", 1)}
+    ${campo("CIOT", "", 1)}
+    ${campo("DATA PREVISTA DE ENTREGA", "", 1)}
+    <div class="cel" style="flex:2"><div class="lbl">ESTE CONHECIMENTO DE TRANSPORTE ATENDE<br/>À LEGISLAÇÃO DE TRANSPORTE RODOVIÁRIO EM VIGOR</div></div>
+  </div>
+
+  <!-- Uso exclusivo / reservado ao fisco -->
+  <div class="grid">
+    <div class="cel" style="flex:1;min-height:8mm"><div class="lbl">USO EXCLUSIVO DO EMISSOR DO CT-E</div></div>
+    <div class="cel" style="flex:1;min-height:8mm"><div class="lbl">RESERVADO AO FISCO</div></div>
+  </div>
+
+  <div style="font-size:5.3pt;color:#555;margin-top:1.5mm">Impresso em ${new Date().toLocaleString("pt-BR")}</div>
 </div>
 
 <script>
 window.onload = function() {
-  ${chave44.length === 44 ? `try { JsBarcode("#barcode","${chave44}",{format:"CODE128",width:1.2,height:35,displayValue:false,margin:0}); } catch(e){}` : ""}
+  ${chave44.length === 44 ? `try { JsBarcode("#barcode","${chave44}",{format:"CODE128",width:1.1,height:28,displayValue:false,margin:0}); } catch(e){}` : ""}
   setTimeout(function(){ window.print(); }, 400);
 };
 <\/script>
