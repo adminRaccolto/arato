@@ -10975,55 +10975,27 @@ function CadastrosInner() {
               </div>
             )}
 
-            {/* Aba Dados Fiscais */}
+            {/* Aba Dados Fiscais — Ambiente/Série/Número/RNTRC/Certificado de cada documento (NF-e,
+                CT-e, MDF-e) NÃO se configuram aqui: até 23/09/2026 esta aba tinha campos de Ambiente/
+                Série NF-e/CT-e/MDF-e/RNTRC que pareciam reais mas nunca eram lidos na emissão — a
+                emissão sempre buscou (e continua buscando) a configuração em Parâmetros do Sistema,
+                por CNPJ/CPF de cada emitente. Preencher esses campos aqui não tinha efeito nenhum,
+                e foi a causa de confusão real relatada pelo dono (duas telas com os mesmos campos,
+                só uma delas funcionando). Removidos — este cadastro agora só guarda identidade,
+                endereço e registros (CAR/NIRF/ITR/RNTRC informativo, aba Registros). */}
             {abaEmp === "fiscal" && (
               <div>
-                <div style={{ background: fEmp.ambiente_fiscal === "producao" ? "#FCEBEB" : "#FBF3E0", border: `0.5px solid ${fEmp.ambiente_fiscal === "producao" ? "#E24B4A50" : "#C9921B50"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: fEmp.ambiente_fiscal === "producao" ? "#791F1F" : "#7A5400", fontWeight: 600 }}>
-                  {fEmp.ambiente_fiscal === "producao" ? "⚠️ Ambiente de Produção — documentos emitidos têm validade fiscal real" : "🧪 Ambiente de Homologação — documentos são apenas para teste"}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
-                  <div style={{ gridColumn: "1/-1" }}>
-                    <label style={lbl}>Ambiente SEFAZ</label>
-                    <div style={{ display: "flex", gap: 12 }}>
-                      {["homologacao", "producao"].map(v => (
-                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", padding: "8px 16px", border: `0.5px solid ${fEmp.ambiente_fiscal === v ? "#111111" : "var(--border-table)"}`, borderRadius: 8, background: fEmp.ambiente_fiscal === v ? "#E8E8E8" : "transparent" }}>
-                          <input type="radio" name="amb" value={v} checked={fEmp.ambiente_fiscal === v} onChange={() => setFEmp(p => ({ ...p, ambiente_fiscal: v as Empresa["ambiente_fiscal"] }))} />
-                          {v === "homologacao" ? "Homologação (Teste)" : "Produção (Real)"}
-                        </label>
-                      ))}
-                    </div>
+                <div style={{ padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 8 }}>
+                    Ambiente, Série, Numeração e Certificado ficam em Parâmetros do Sistema
                   </div>
-                  <div>
-                    <label style={lbl}>Série NF-e</label>
-                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_nfe} onChange={e => setFEmp(p => ({ ...p, serie_nfe: e.target.value.replace(/\D/g,"") }))} />
-                    <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>PF emitente: usar 920–969</div>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
+                    Cada emitente (por CNPJ/CPF) tem sua própria configuração de <strong>Ambiente SEFAZ, Série,
+                    Próx. Número{isTransp ? ", RNTRC" : ""} e Certificado Digital A1</strong> — pra NF-e, CT-e e MDF-e
+                    separadamente, já que cada documento tem numeração própria. Configure uma única vez em{" "}
+                    <strong>Configurações → Parâmetros do Sistema</strong>, nas abas Fiscal — NF-e, CT-e e MDF-e.
                   </div>
-                  <div>
-                    <label style={lbl}>Série CT-e</label>
-                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_cte} onChange={e => setFEmp(p => ({ ...p, serie_cte: e.target.value.replace(/\D/g,"") }))} />
-                  </div>
-                  <div>
-                    <label style={lbl}>Série MDF-e</label>
-                    <input style={{ ...inp, fontFamily: "monospace" }} placeholder="1" value={fEmp.serie_mdfe} onChange={e => setFEmp(p => ({ ...p, serie_mdfe: e.target.value.replace(/\D/g,"") }))} />
-                  </div>
-                  {isTransp && (
-                    <div>
-                      <label style={lbl}>RNTRC (ANTT)</label>
-                      <input style={{ ...inp, fontFamily: "monospace" }} placeholder="00000000" value={fEmp.rntrc} onChange={e => setFEmp(p => ({ ...p, rntrc: e.target.value.replace(/\D/g,"") }))} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Certificado A1 — status (gerenciado em Parâmetros Fiscais) */}
-                <div style={{ marginTop: 20, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#111111" }}>Certificado Digital A1</div>
-                    <a href="/configuracoes/modulos" style={{ fontSize: 11, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Gerenciar em Parâmetros Fiscais ↗</a>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-                    O certificado A1 (.pfx) é configurado uma única vez em <strong>Configurações → Parâmetros do Sistema → Aba Fiscal</strong>.<br/>
-                    Lá você faz o upload, vincula a senha e a validade é monitorada automaticamente com alertas de vencimento.
-                  </div>
+                  <a href="/configuracoes/modulos" style={{ display: "inline-block", marginTop: 10, fontSize: 11, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Abrir Parâmetros do Sistema ↗</a>
                 </div>
               </div>
             )}

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-av",
+    data: "23/09/2026",
+    titulo: "Cadastro de Empresa: removidos campos de Ambiente/Série que não configuravam nada",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Cadastros → Empresas → Editar → aba \"Dados Fiscais\" tinha campos de Ambiente SEFAZ, Série NF-e, Série CT-e, Série MDF-e e RNTRC que pareciam configuração real, mas nunca eram lidos na emissão — a emissão de NF-e/CT-e/MDF-e sempre busca essa configuração em Parâmetros do Sistema, por CNPJ/CPF. Preencher esses campos aqui não tinha nenhum efeito, e criava duas telas com os mesmos campos onde só uma funcionava de verdade. Removidos; a aba agora só aponta pra Parâmetros do Sistema." },
+    ],
+    onde: "Cadastros → Empresas",
+  },
+  {
     versao: "2026.09.23-au",
     data: "23/09/2026",
     titulo: "CT-e: Situação Tributária ICMS configurável (não saía mais tributado sem precisar)",
