@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bk",
+    data: "23/09/2026",
+    titulo: "MDF-e: opção \"Carga Própria\" dispensa o Seguro da Carga",
+    modulos: ["Transporte", "Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Parâmetros → MDF-e ganhou o campo \"Este transporte é\": Prestação de serviço (cobra frete — exige Seguro da Carga, como já era) ou Carga própria (transportadora do mesmo grupo, sem cobrar frete de terceiros — dispensa o seguro, conforme a Lei 11.442/07, que trata de quem presta serviço remunerado, não de quem é dono da empresa). Útil pra transportadoras que pertencem ao mesmo grupo do produtor e não têm apólice RCTR-C própria." },
+      { tipo: "correcao", texto: "Rótulo do campo \"Tipo Emitente\" corrigido pra \"Tipo de Transportador (ANTT)\" — ele sempre guardou o tipo TAC/ETC/CTC, nunca o Tipo Emitente real do MDF-e (Prestador de Serviço × Carga Própria), que é o campo novo acima." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → MDF-e",
+  },
+  {
     versao: "2026.09.23-bj",
     data: "23/09/2026",
     titulo: "MDF-e: dados do Seguro da Carga (RCTR-C) completos — Parâmetros ganhou os campos",

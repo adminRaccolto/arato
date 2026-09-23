@@ -282,13 +282,16 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
     `<infModal versaoModal="3.00">${rodo}</infModal>` +
     `<infDoc>${infDoc}</infDoc>` +
     // Seguro da Carga (<seg>) — obrigatório no MDF-e 3.00 pro modal rodoviário quando o
-    // emitente é Prestador de Serviço de Transporte. Primeira tentativa (só respSeg=1) foi
-    // rejeitada com "Dados do seguro de carga incompletos" — pra rodoviário/prestador de
-    // serviço, CNPJ do responsável + nome/CNPJ da seguradora + nº apólice + nº averbação são
-    // TODOS obrigatórios, não só "quem é responsável". Achado real 23/09/2026 (rejeições 698
-    // depois 699). respSeg=1 = o próprio emitente é o responsável; CNPJ dele mesmo repetido
-    // aqui (schema exige o documento do responsável dentro de infResp).
+    // emitente é Prestador de Serviço de Transporte (tpEmit=1). Primeira tentativa (só
+    // respSeg=1) foi rejeitada com "Dados do seguro de carga incompletos" — pra
+    // rodoviário/prestador de serviço, CNPJ do responsável + nome/CNPJ da seguradora + nº
+    // apólice + nº averbação são TODOS obrigatórios, não só "quem é responsável". Achado real
+    // 23/09/2026 (rejeições 698 depois 699). respSeg=1 = o próprio emitente é o responsável;
+    // CNPJ dele mesmo repetido aqui (schema exige o documento do responsável dentro de
+    // infResp). Carga própria (tpEmit=2, transportadora do mesmo grupo sem cobrar frete de
+    // terceiros) não tem essa exigência — omite o grupo inteiro nesse caso.
     (() => {
+      if (e.tpEmit !== "1") return "";
       const cnpjResp = e.cpf_cnpj.replace(/\D/g, "");
       const cnpjSeg = (e.seguradora_cnpj ?? "").replace(/\D/g, "");
       return `<seg>` +

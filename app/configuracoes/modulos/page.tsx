@@ -2298,15 +2298,32 @@ function ParametrosSistemaContent() {
                           </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Tipo Emitente</label>
+                            {/* Rótulo corrigido 23/09/2026 — esse campo é o Tipo de TRANSPORTADOR (tpTransp:
+                                TAC/ETC/CTC), não o "Tipo Emitente" real do MDF-e (que é Prestador de Serviço ×
+                                Carga Própria, ver campo novo ao lado). Nome do campo no banco não mudou. */}
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Tipo de Transportador (ANTT)</label>
                             <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                               value={String(c.tpEmit ?? "2")}
                               onChange={e => setCfg(mk, "tpEmit", e.target.value)}>
                               <option value="1">1 – Transp. Autônomo (TAC)</option>
                               <option value="2">2 – ETC</option>
                               <option value="3">3 – CTC</option>
+                            </select>
+                          </div>
+                          <div>
+                            {/* Novo 23/09/2026: emitente que transporta a própria carga (sem cobrar frete de
+                                terceiros — comum em transportadora do mesmo grupo do produtor) não é
+                                obrigado a ter Seguro da Carga (RCTR-C), diferente de quem presta serviço
+                                remunerado a terceiros. Achado real: cliente com transportadora própria sem
+                                apólice, MDF-e sempre rejeitado exigindo seguro que não se aplica ao caso. */}
+                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Este transporte é</label>
+                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                              value={String(c.carga_propria ?? "false")}
+                              onChange={e => setCfg(mk, "carga_propria", e.target.value)}>
+                              <option value="false">Prestação de serviço (cobra frete) — exige Seguro da Carga</option>
+                              <option value="true">Carga própria (mesmo grupo, sem cobrar frete) — sem exigência de seguro</option>
                             </select>
                           </div>
                           <div>
@@ -2327,20 +2344,29 @@ function ParametrosSistemaContent() {
                             rodoviário quando o emitente é Prestador de Serviço de Transporte
                             (ETC/TAC/CTC): "Dados do seguro de carga incompletos". Apólice fixa
                             da transportadora (renovada anualmente), não por viagem — configura
-                            aqui uma vez. Achado real 23/09/2026. */}
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingTop: 4, borderTop: "0.5px solid var(--border)" }}>
-                          Seguro da Carga (RCTR-C) — obrigatório pra transmitir de verdade
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
-                          {MDFE_SEGURO_FIELDS.map(f => (
-                            <div key={f.key}>
-                              <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
-                              <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
-                                value={String(c[f.key] ?? "")} placeholder={f.placeholder}
-                                onChange={e => setCfg(mk, f.key, e.target.value)} />
+                            aqui uma vez. Não exigido quando "Este transporte é" = Carga Própria
+                            (ver campo acima). Achado real 23/09/2026. */}
+                        {String(c.carga_propria ?? "false") === "true" ? (
+                          <div style={{ fontSize: 12, color: "var(--text-3)", padding: "8px 0", borderTop: "0.5px solid var(--border)", marginTop: 4 }}>
+                            Marcado como Carga Própria — Seguro da Carga não é exigido pela SEFAZ pra esse emitente.
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingTop: 4, borderTop: "0.5px solid var(--border)" }}>
+                              Seguro da Carga (RCTR-C) — obrigatório pra transmitir de verdade
                             </div>
-                          ))}
-                        </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                              {MDFE_SEGURO_FIELDS.map(f => (
+                                <div key={f.key}>
+                                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
+                                  <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                                    value={String(c[f.key] ?? "")} placeholder={f.placeholder}
+                                    onChange={e => setCfg(mk, f.key, e.target.value)} />
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
 
                         <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>

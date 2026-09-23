@@ -204,12 +204,18 @@ export async function emitirMDFe(
     cep:            fc.cep            ?? confg.cep            ?? "00000000",
     fone:           fc.fone           ?? confg.fone,
     rntrc:          confg.rntrc       ?? "",
-    // tpEmit=1 (Prestador de serviço de transporte, cobra frete) é o correto pra quem emite CT-e
-    // com frete — NUNCA ler de confg.tpEmit: esse campo na tela de Parâmetros guarda na verdade o
-    // Tipo de Transportador (TAC/ETC/CTC — corresponde a tpTransp no schema, não tpEmit). Achado
-    // real 23/09/2026 — os dois conceitos foram confundidos na tela; corrigir o rótulo lá é tarefa
-    // separada, aqui só não usamos o valor errado.
-    tpEmit:         "1",
+    // tpEmit: 1=Prestador de Serviço de Transporte (cobra frete de terceiros) · 2=Transportador
+    // de Carga Própria (não cobra frete — comum em transportadora do mesmo grupo do produtor).
+    // Só o "1" exige Seguro da Carga (RCTR-C) — Lei 11.442/07 é sobre quem presta serviço
+    // remunerado de transporte, não sobre quem é dono da empresa. Configurável em Parâmetros →
+    // MDF-e ("Este transporte é"), campo `carga_propria`. Default "false" (prestador de
+    // serviço) preserva o comportamento anterior pra quem não configurou nada. Achado real
+    // 23/09/2026 — cliente com transportadora própria (mesmo grupo) sem apólice RCTR-C, que não
+    // deveria ser exigida nesse caso.
+    //
+    // NUNCA ler confg.tpEmit pra isso: esse campo na tela guarda o Tipo de Transportador
+    // (TAC/ETC/CTC — tpTransp no schema, conceito diferente).
+    tpEmit:         confg.carga_propria === "true" ? "2" : "1",
     tpTransp:       (confg.tpEmit as "1" | "2" | "3" | undefined) ?? undefined,
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
     serie:          confg.serie_mdfe ?? "1",
@@ -220,14 +226,13 @@ export async function emitirMDFe(
     averbacao_numero: confg.averbacao_numero,
   };
 
-  // SEFAZ rejeita o MDF-e rodoviário sem os dados de Seguro da Carga completos — bloqueia aqui
-  // com um aviso claro em vez de gastar uma tentativa real na SEFAZ pra descobrir. Achado real
-  // 23/09/2026 (rejeições 698 depois 699, a segunda só depois do grupo <seg> existir mas com
-  // dados incompletos).
-  if (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero || !emitente.averbacao_numero) {
+  // SEFAZ rejeita o MDF-e rodoviário sem os dados de Seguro da Carga completos — mas só quando
+  // o emitente presta serviço remunerado (tpEmit=1). Carga própria (tpEmit=2) não tem essa
+  // exigência. Bloqueia aqui com um aviso claro em vez de gastar uma tentativa real na SEFAZ.
+  if (emitente.tpEmit === "1" && (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero || !emitente.averbacao_numero)) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
-      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice e Nº da Averbação em Parâmetros → MDF-e, na empresa emitente.",
+      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice e Nº da Averbação em Parâmetros → MDF-e, na empresa emitente. Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
     };
   }
 
