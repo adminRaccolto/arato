@@ -270,6 +270,8 @@ interface CteMin {
   veiculo_id?: string | null; veiculo_placa?: string | null;
   motorista_id?: string | null; motorista_nome?: string | null; motorista_cpf?: string | null;
   peso_bruto_kg?: number | null; valor_mercadoria?: number | null;
+  municipio_origem?: string | null; uf_origem?: string | null; ibge_origem?: string | null;
+  nfe_chave?: string | null;
 }
 interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
@@ -370,7 +372,7 @@ export default function MdfePage() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
@@ -522,10 +524,12 @@ export default function MdfePage() {
   }
 
   // ── Toggle CT-e vinculado ────────────────────────────────
-  // Ao marcar o primeiro CT-e (veículo/motorista do MDF-e ainda vazios), herda veículo e
-  // motorista de lá — essa informação já foi preenchida na emissão do CT-e, não faz sentido
-  // digitar de novo. Se o veículo/motorista do CT-e não estiver mais cadastrado (só ficou o
-  // texto no CT-e), preenche pelo menos o texto pra referência.
+  // Ao marcar o primeiro CT-e (campos do MDF-e ainda vazios), herda veículo, motorista, origem
+  // (município/UF/IBGE) e a chave de NF-e do CT-e — tudo isso já foi preenchido na emissão do
+  // CT-e, não faz sentido digitar de novo. Só o percurso completo (UF de destino/fim + UFs
+  // intermediárias) continua manual — o CT-e só tem origem/destino do FRETE, não o trajeto
+  // rodoviário inteiro, que pode passar por estados que o CT-e nem menciona. Pedido do dono
+  // 23/09/2026 (fazia isso na mão toda vez, mesma informação já digitada duas vezes).
   function toggleCte(id: string) {
     setForm(f => {
       const marcando = !f.cte_ids.includes(id);
@@ -541,6 +545,16 @@ export default function MdfePage() {
           if (c.motorista_id && motoristas.some(m => m.id === c.motorista_id)) extra = { ...extra, motorista_id: c.motorista_id };
         }
       }
+      // Origem (Município/UF/IBGE de Início) — só preenche se ainda estiver vazio, pra não
+      // sobrescrever o que o usuário já digitou/ajustou na mão.
+      if (marcando && !f.municipio_inicio.trim() && c?.municipio_origem) {
+        extra = {
+          ...extra,
+          municipio_inicio: c.municipio_origem,
+          uf_inicio: c.uf_origem || f.uf_inicio,
+          ibge_inicio: c.ibge_origem || f.ibge_inicio,
+        };
+      }
       // Peso e Valor da Carga também já estão no CT-e — soma ao marcar, subtrai ao desmarcar,
       // pra somar mais de um CT-e no mesmo MDF-e sem precisar digitar de novo.
       const pesoCte  = c?.peso_bruto_kg    ?? 0;
@@ -551,6 +565,24 @@ export default function MdfePage() {
         peso_total_kg:      Math.max(0, f.peso_total_kg      + sinal * pesoCte),
         valor_total_carga:  Math.max(0, f.valor_total_carga  + sinal * valorCte),
       };
+      // Chave de NF-e do CT-e — adiciona à lista de NF-e avulsas ao marcar (evita reaproveitar
+      // um slot em branco no meio da lista; ocupa o primeiro vazio se houver), remove ao
+      // desmarcar. Nunca duplica se a chave já estiver na lista (ex: dois CT-e's da mesma NF).
+      if (c?.nfe_chave) {
+        const chaveDigits = c.nfe_chave.replace(/\D/g, "");
+        if (marcando) {
+          if (!f.nfe_chaves.some(ch => ch.replace(/\D/g, "") === chaveDigits)) {
+            const idxVazio = f.nfe_chaves.findIndex(ch => !ch.trim());
+            const novaLista = idxVazio >= 0
+              ? f.nfe_chaves.map((ch, i) => i === idxVazio ? c.nfe_chave! : ch)
+              : [...f.nfe_chaves, c.nfe_chave!];
+            extra = { ...extra, nfe_chaves: novaLista };
+          }
+        } else {
+          const semEla = f.nfe_chaves.filter(ch => ch.replace(/\D/g, "") !== chaveDigits);
+          extra = { ...extra, nfe_chaves: semEla.length > 0 ? semEla : [""] };
+        }
+      }
       return { ...f, cte_ids: cteIds, ...extra };
     });
   }
@@ -840,6 +872,34 @@ export default function MdfePage() {
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
 
+              {/* ── CT-e vinculados — primeiro campo do formulário: marcar aqui já preenche
+                  veículo, motorista, origem e chave de NF-e (o que o CT-e já sabe). Só o
+                  percurso completo (destino/fim + UFs intermediárias) continua manual, porque o
+                  CT-e não tem o trajeto rodoviário inteiro, só origem/destino do frete. Pedido
+                  do dono 23/09/2026 — antes ficava no fim do formulário e não preenchia nada. ── */}
+              <div style={divider}>CT-e Vinculados</div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                {ctes.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>Nenhum CT-e autorizado disponível. Emita e autorize CT-e antes de emitir o MDF-e.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 10 }}>
+                    {ctes.map(c => {
+                      const sel = form.cte_ids.includes(c.id);
+                      return (
+                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sel ? "#E8E8E8" : "var(--bg-card)", border: `0.5px solid ${sel ? "#11111150" : "transparent"}` }}>
+                          <input type="checkbox" checked={sel} onChange={() => toggleCte(c.id)} style={{ width: 14, height: 14 }} />
+                          <span style={{ fontSize: 12, flex: 1 }}>
+                            <strong>CT-e {c.numero_cte}/{c.serie}</strong> — {c.remetente_nome} → {c.destinatario_nome}
+                            <span style={{ color: "var(--text-3)", marginLeft: 8 }}>{fmtBRL(c.valor_frete)}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>Marcar um CT-e preenche veículo, motorista, origem e chave de NF-e automaticamente (só se os campos ainda estiverem vazios) — revise antes de emitir.</div>
+              </div>
+
               {/* ── Identificação ── */}
               <div style={divider}>Identificação</div>
               <div>
@@ -1019,29 +1079,6 @@ export default function MdfePage() {
                   )}
                 </>;
               })()}
-
-              {/* ── CT-e vinculados ── */}
-              <div style={divider}>CT-e Vinculados</div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                {ctes.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>Nenhum CT-e autorizado disponível. Emita e autorize CT-e antes de emitir o MDF-e.</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 10 }}>
-                    {ctes.map(c => {
-                      const sel = form.cte_ids.includes(c.id);
-                      return (
-                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sel ? "#E8E8E8" : "var(--bg-card)", border: `0.5px solid ${sel ? "#11111150" : "transparent"}` }}>
-                          <input type="checkbox" checked={sel} onChange={() => toggleCte(c.id)} style={{ width: 14, height: 14 }} />
-                          <span style={{ fontSize: 12, flex: 1 }}>
-                            <strong>CT-e {c.numero_cte}/{c.serie}</strong> — {c.remetente_nome} → {c.destinatario_nome}
-                            <span style={{ color: "var(--text-3)", marginLeft: 8 }}>{fmtBRL(c.valor_frete)}</span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
 
               {/* ── NF-e avulsas ── */}
               <div style={divider}>NF-e Avulsas (por chave de acesso)</div>

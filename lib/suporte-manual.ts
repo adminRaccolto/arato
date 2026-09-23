@@ -614,6 +614,8 @@ Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
 
 **Correção 23/09/2026 (2) — Veículo continuava vazio mesmo depois da correção anterior:** a consulta de Veículos pedia uma coluna (num_eixos) que nunca existiu na tabela — o SELECT inteiro falhava e a lista vinha sempre vazia, mesmo com veículos cadastrados. Motorista funcionava normal porque a consulta dele não tinha esse erro (por isso um preenchia e o outro não). Corrigido.
 
+**Novo 23/09/2026 — "CT-e Vinculados" subiu pro topo do formulário e preenche o resto sozinho:** antes era o penúltimo campo, e marcar um CT-e só herdava veículo/motorista. Agora, ao marcar, também preenche Município/UF/Cód. IBGE de Início e a Chave de Acesso da NF-e — tudo o que o CT-e já sabe, sem digitar de novo. Continua manual só o que o CT-e não tem: UF de Destino/fim e as UFs do percurso intermediário (o CT-e só sabe origem/destino do frete, não o trajeto rodoviário completo, que pode passar por estados que o CT-e nem menciona). O preenchimento automático só entra em campos ainda vazios — não sobrescreve o que você já tiver digitado na mão.
+
 **Novo 23/09/2026 — Peso e Valor da Carga também herdam do CT-e vinculado:** ao marcar um CT-e, "Peso Total (kg)" e "Valor Total da Carga (R$)" somam automaticamente o peso bruto e o valor da mercadoria daquele CT-e (soma mais de um se marcar vários; desmarcar subtrai de volta) — não precisa digitar esses totais na mão.
 
 **Correção 23/09/2026 — Veículo e Motorista apareciam vazios no seletor:** a lista de veículos e motoristas carregava com a fazenda ainda não totalmente resolvida (mesmo tipo de atraso já corrigido em outras telas) e nunca recarregava depois — o seletor ficava vazio mesmo com veículo/motorista cadastrados. Corrigido.

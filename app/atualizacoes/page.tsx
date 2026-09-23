@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-bg",
+    data: "23/09/2026",
+    titulo: "MDF-e: marcar o CT-e agora preenche o resto do formulário sozinho",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "\"CT-e Vinculados\" subiu pro topo do formulário de Emitir MDF-e (era o penúltimo campo) — marcar um CT-e agora preenche automaticamente Veículo, Motorista, Município/UF/Cód. IBGE de Início e a Chave de Acesso da NF-e (tudo isso já estava no CT-e), sem digitar de novo. Só continua manual o que o CT-e não tem: UF de Destino/fim e as UFs do percurso intermediário — o CT-e só sabe a origem/destino do frete, não o trajeto rodoviário inteiro." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (MDF-e) → Emitir MDF-e",
+  },
+  {
     versao: "2026.09.23-bf",
     data: "23/09/2026",
     titulo: "DACTE (CT-e): impressão saía achatada, com logo minúscula",
