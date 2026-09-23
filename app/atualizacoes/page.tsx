@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ad",
+    data: "23/09/2026",
+    titulo: "Transferência de Máquinas: um único botão, escolha Própria/De terceiro dentro do modal",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Os dois botões \"+ Nosso bem sai\" / \"+ Bem de terceiro entra\" no topo viraram um único \"+ Nova Movimentação\" — a escolha entre Própria/De terceiro passou pra dentro do modal, como primeiro campo (dois botões lado a lado), que filtra as opções de Motivo logo abaixo." },
+    ],
+    onde: "Fiscal → Transferência de Máquinas/Equip.",
+  },
+  {
     versao: "2026.09.23-ac",
     data: "23/09/2026",
     titulo: "Transferência de Máquinas: agora cobre máquina de terceiro entrando na fazenda",

@@ -917,14 +917,14 @@ NF-e de remessa para armazéns e depósitos (CFOP 5905/6905).
 ### 20.4.1 Transferência de Máquinas e Equipamentos (novo — 23/09/2026)
 **Caminho:** Fiscal → Emissão e Controle → Transferência de Máquinas/Equip.
 
-Emite NF-e de remessa (e, quando aplicável, o retorno) pra mover uma máquina/equipamento sem ser venda. Dois botões no topo, um pra cada direção:
+Emite NF-e de remessa (e, quando aplicável, o retorno) pra mover uma máquina/equipamento sem ser venda. Um único botão "+ Nova Movimentação" — dentro do modal, primeiro escolhe **Própria ou De terceiro** (botões lado a lado), o que filtra as opções de Motivo:
 
-**"+ Nosso bem sai"** — nosso equipamento sai da fazenda:
+**Própria** (nosso equipamento sai da fazenda):
 - **Conserto / Manutenção externa** — a máquina sai pra uma oficina/terceiro consertar. Remessa CFOP **5915**, retorno **1915** (nota de entrada, emitida pela própria fazenda ao receber de volta).
 - **Transferência entre fazendas (mesma conta)** — a máquina muda de propriedade fisicamente dentro do mesmo grupo/cliente. CFOP **5552**, sem retorno — é um movimento definitivo.
 - **Comodato / Empréstimo dado a terceiro** — máquina emprestada pra outro produtor/empresa usar, com devolução prevista. Remessa CFOP **5554**, retorno **1555**.
 
-**"+ Bem de terceiro entra"** (novo — 23/09/2026) — equipamento de outro dono chegando pra uso/serviço na fazenda:
+**De terceiro** (novo — 23/09/2026, equipamento de outro dono chegando pra uso/serviço na fazenda):
 - **Comodato / Empréstimo recebido de terceiro** — máquina de outro produtor/empresa que vem pra cá em uso temporário. A remessa é emitida pelo PROPRIETÁRIO, não por nós — por isso essa etapa é só um registro (sem chamar a SEFAZ); se ele passar número/chave da NF dele, dá pra anotar como referência. CFOP de referência da entrada: **1908**. Na devolução, aí sim **nós emitimos de verdade** a NF de volta pro dono — CFOP **5908**.
 - **Equipamento de prestador de serviço** — máquina do próprio prestador (ex: colhedora de terceirizada) que vem operar na fazenda sob contrato de serviço. Não é comodato nem compra — não gera NF-e em nenhuma ponta, é só controle de acesso/patrimônio (data de chegada e de saída).
 

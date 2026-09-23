@@ -117,9 +117,9 @@ export default function TransferenciaMaquinasPage() {
     })();
   }, [contaId, fazendaId]);
 
-  function abrirNova(motivoInicial: MotivoTransferenciaMaquina = "conserto") {
+  function abrirNova() {
     setF({
-      maquina_id: "", maquina_nome_livre: "", motivo: motivoInicial, destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000",
+      maquina_id: "", maquina_nome_livre: "", motivo: "conserto", destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000",
       data_retorno_prevista: "", observacao: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
       nf_terceiro_numero: "", nf_terceiro_chave: "", nf_terceiro_data: "",
     });
@@ -368,10 +368,7 @@ export default function TransferenciaMaquinasPage() {
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Transferência de Máquinas e Equipamentos</h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>Remessa e retorno de ativo imobilizado — conserto, transferência entre fazendas, comodato dado/recebido, equipamento de prestador de serviço</p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={btnR} onClick={() => abrirNova("comodato_recebido")}>+ Bem de terceiro entra</button>
-            <button style={btnV} onClick={() => abrirNova("conserto")}>+ Nosso bem sai</button>
-          </div>
+          <button style={btnV} onClick={abrirNova}>+ Nova Movimentação</button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
@@ -455,14 +452,27 @@ export default function TransferenciaMaquinasPage() {
               {erro && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{erro}</div>}
 
               <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Máquina própria ou de terceiro?</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([["saida", "Própria (sai da fazenda)"], ["entrada", "De terceiro (entra na fazenda)"]] as const).map(([dir, label]) => (
+                    <button key={dir} type="button"
+                      onClick={() => setF(p => ({ ...p, motivo: (dir === "saida" ? "conserto" : "comodato_recebido") as MotivoTransferenciaMaquina, maquina_id: "", maquina_nome_livre: "" }))}
+                      style={{
+                        flex: 1, padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
+                        border: MOTIVOS[f.motivo].direcao === dir ? "1px solid #1A4870" : "0.5px solid var(--border-table)",
+                        background: MOTIVOS[f.motivo].direcao === dir ? "#D5E8F5" : "transparent",
+                        color: MOTIVOS[f.motivo].direcao === dir ? "#0B2D50" : "var(--text-2)",
+                      }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Motivo</label>
                 <select value={f.motivo} onChange={e => setF(p => ({ ...p, motivo: e.target.value as MotivoTransferenciaMaquina }))} style={inp}>
-                  <optgroup label="Nosso bem sai">
-                    {Object.entries(MOTIVOS).filter(([, v]) => v.direcao === "saida").map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </optgroup>
-                  <optgroup label="Bem de terceiro entra">
-                    {Object.entries(MOTIVOS).filter(([, v]) => v.direcao === "entrada").map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </optgroup>
+                  {Object.entries(MOTIVOS).filter(([, v]) => v.direcao === MOTIVOS[f.motivo].direcao).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                   {MOTIVOS[f.motivo].cfopEtapa1
