@@ -415,6 +415,8 @@ Registra abastecimentos de combustível por máquina, com baixa automática no e
 
 **Seleção de Máquina com busca:** o campo "Máquina" no formulário permite digitar para filtrar a lista (mesmo componente usado em Financeiro e NF de Produtos) — antes era um select comum sem busca.
 
+**Erro "row-level security policy" ao salvar — corrigido 23/09/2026:** o lançamento (registrar ou editar) gravava direto pelo navegador e podia falhar com esse erro mesmo com o cadastro certo — sintoma de token de sessão expirado, não de permissão. Passou a usar a rota "/api/campo/abastecimento-acao" (servidor, imune a token expirado) pra toda a escrita: o abastecimento em si, a baixa de estoque na bomba, a baixa no insumo de combustível correspondente e a Conta a Pagar opcional.
+
 ### 9.5 Romaneios de Terceiros
 **Caminho:** Compras & Estoque → Estoque → Romaneios de Terceiros
 

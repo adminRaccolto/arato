@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ai",
+    data: "23/09/2026",
+    titulo: "Erro ao lançar Abastecimento (\"row-level security policy\") — corrigido",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Registrar ou editar um abastecimento podia falhar com \"new row violates row-level security policy for table 'abastecimentos'\" mesmo com o cadastro certo — sintoma de sessão com token expirado, não de permissão errada de verdade. Corrigido: o lançamento (abastecimento + baixa de estoque na bomba e no insumo de combustível + Conta a Pagar opcional) passou a ser feito por uma rota própria do servidor, imune a token expirado — mesmo padrão já usado em outras telas que tinham esse problema." },
+    ],
+    onde: "Estoque → Abastecimento",
+  },
+  {
     versao: "2026.09.23-ah",
     data: "23/09/2026",
     titulo: "Transferência de Estoque: Placa e Motorista não exigem mais cadastro prévio",

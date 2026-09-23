@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarBombas, listarMaquinas, listarFuncionarios, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
+import { listarBombas, listarMaquinas, listarFuncionarios } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import SelectBusca from "../../../components/SelectBusca";
 import CascadeSelector from "../../../components/CascadeSelector";
@@ -236,120 +236,45 @@ export default function AbastecimentoPage() {
     setSalvando(false);
   }
 
+  // Todas as escritas (abastecimento + baixa de estoque da bomba/insumo + CP
+  // opcional) passam por /api/campo/abastecimento-acao, com service_role_key
+  // — insert direto pelo navegador batia em "new row violates row-level
+  // security policy" mesmo com a policy certa (JWT expirado na sessão,
+  // mesmo padrão já resolvido em outras telas — ver lib/db.ts pattern).
   async function salvarEdicao(ab: Abastecimento, qtdNova: number, vUnit: number, bomba: BombaCombustivel) {
     if (!fazendaId) return;
-    const totalNovo = qtdNova * vUnit;
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
-
-    // 1. UPDATE abastecimento
-    const { error: errUpd } = await supabase.from("abastecimentos").update({
-      maquina_id:      fDestTipo === "maquina"      ? fMaquina      || null : null,
-      funcionario_id:  fDestTipo === "funcionario"  ? fFuncionario  || null : null,
-      destino_livre:   fDestTipo === "livre"        ? fDestLivre    || null : null,
-      quantidade_l:    qtdNova,
-      valor_unitario:  vUnit,
-      valor_total:     totalNovo,
-      data:            fData,
-      horimetro:       horimetroVal,
-      ano_safra_id:    fAnoSafra || null,
-      ciclo_id:        fCiclo || null,
-      observacao:      fObs || null,
-    }).eq("id", ab.id);
-    if (errUpd) throw new Error(errUpd.message);
-
-    // 2. Ajustar estoque da bomba pelo delta
-    const deltaLitros = qtdNova - ab.quantidade_l;
-    if (deltaLitros !== 0) {
-      const novoEstoqueBomba = bomba.estoque_atual_l - deltaLitros;
-      await supabase.from("bombas_combustivel")
-        .update({ estoque_atual_l: novoEstoqueBomba })
-        .eq("id", ab.bomba_id);
-    }
-
-    // 3. Atualizar lançamento vinculado (se existir)
-    if (ab.lancamento_id) {
-      await supabase.from("lancamentos").update({
-        valor:           totalNovo,
-        data_lancamento: fData,
-      }).eq("id", ab.lancamento_id);
-    }
+    const res = await fetch("/api/campo/abastecimento-acao", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        acao: "editar", fazenda_id: fazendaId, abastecimento_id: ab.id,
+        bomba_id: ab.bomba_id,
+        destino_tipo: fDestTipo, maquina_id: fMaquina, funcionario_id: fFuncionario, destino_livre: fDestLivre,
+        quantidade_l: qtdNova, valor_unitario: vUnit, data: fData, horimetro: horimetroVal,
+        ano_safra_id: fAnoSafra, ciclo_id: fCiclo, observacao: fObs,
+      }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.erro ?? "Erro ao editar abastecimento");
   }
 
   async function inserirNovo(qtd: number, vUnit: number, bomba: BombaCombustivel) {
     if (!fazendaId) return;
-    const total = qtd * vUnit;
-    const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
     const fazBomba = bomba.fazenda_id || fazendaId;   // o abastecimento pertence à fazenda da bomba
-    const payload: Record<string, unknown> = {
-      fazenda_id:      fazBomba,
-      bomba_id:        fBomba,
-      maquina_id:      fDestTipo === "maquina"      ? fMaquina      || null : null,
-      funcionario_id:  fDestTipo === "funcionario"  ? fFuncionario  || null : null,
-      destino_livre:   fDestTipo === "livre"        ? fDestLivre    || null : null,
-      quantidade_l:    qtd,
-      valor_unitario:  vUnit,
-      valor_total:     total,
-      data:            fData,
-      horimetro:       horimetroVal,
-      ano_safra_id:    fAnoSafra || null,
-      ciclo_id:        fCiclo || null,
-      observacao:      fObs || null,
-      lancamento_id:   null,
-    };
-
-    const { data: abs, error: errAbs } = await supabase
-      .from("abastecimentos").insert(payload).select("id").single();
-    if (errAbs) throw new Error(errAbs.message);
-
-    // Apenas bombas internas (fazenda) deduzem estoque; posto externo = sem controle de estoque
-    if (bomba.consume_estoque) {
-      await supabase.from("bombas_combustivel")
-        .update({ estoque_atual_l: bomba.estoque_atual_l - qtd })
-        .eq("id", fBomba);
-
-      const insumo = insumoDaBomba(bomba);
-      if (insumo) {
-        const novoEstoque = Math.max(0, insumo.estoque - qtd);
-        await supabase.from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-        await supabase.from("movimentacoes_estoque").insert({
-          fazenda_id:      fazBomba,
-          insumo_id:       insumo.id,
-          tipo:            "saida",
-          motivo:          "abastecimento",
-          quantidade:      qtd,
-          valor_unitario:  vUnit,
-          data:            fData,
-          auto:            false,
-          observacao:      `Abastecimento — ${nomeDestino()} ${fObs ? "· " + fObs : ""}`.trim(),
-        });
-      }
-    }
-
-    // Gerar CP (opcional)
-    let lancId: string | null = null;
-    if (fGerarCP) {
-      const ogCombustivel = await resolverOperacaoGerencialPorClassificacao(fazBomba, "2.01.01.02.099");
-      const { data: lanc, error: errL } = await supabase.from("lancamentos").insert({
-        fazenda_id:       fazBomba,
-        tipo:             "pagar",
-        descricao:        `Abastecimento ${COMB_LABEL[bomba.combustivel] ?? bomba.combustivel} — ${nomeDestino()}`,
-        categoria:        "combustivel",
-        operacao_gerencial_id: ogCombustivel ?? null,
-        origem_lancamento: "manual",
-        data_lancamento:  fData,
-        data_vencimento:  fVencimento,
-        valor:            total,
-        moeda:            "BRL",
-        status:           "em_aberto",
-        auto:             false,
-      }).select("id").single();
-      if (!errL && lanc) lancId = lanc.id;
-    }
-
-    // Vincular lancamento ao abastecimento
-    if (lancId) {
-      await supabase.from("abastecimentos").update({ lancamento_id: lancId }).eq("id", abs!.id);
-    }
+    const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
+    const res = await fetch("/api/campo/abastecimento-acao", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        acao: "criar", fazenda_id: fazBomba, bomba_id: fBomba,
+        destino_tipo: fDestTipo, maquina_id: fMaquina, funcionario_id: fFuncionario, destino_livre: fDestLivre,
+        destino_nome: nomeDestino(),
+        quantidade_l: qtd, valor_unitario: vUnit, data: fData, horimetro: horimetroVal,
+        ano_safra_id: fAnoSafra, ciclo_id: fCiclo, observacao: fObs,
+        gerar_cp: fGerarCP, vencimento: fVencimento, comb_label: COMB_LABEL[bomba.combustivel] ?? bomba.combustivel,
+      }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.erro ?? "Erro ao registrar abastecimento");
   }
 
   function nomeDestino(): string {
