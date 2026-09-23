@@ -118,6 +118,10 @@ export default function TransferenciasEstoquePage() {
 
   // ── Abas ──────────────────────────────────────────────────────────────────
   const [aba, setAba] = useState<"lista" | "solicitacoes">("lista");
+  // Sub-filtro dentro de "Transferências" — a lista misturava rascunho/emitida/cancelada tudo
+  // junto, dificultando achar rapidamente as canceladas (ex: pra conferir se algum cancelamento
+  // precisa de atenção). Pedido do dono 23/09/2026.
+  const [subAbaLista, setSubAbaLista] = useState<"todas" | "emitidas" | "canceladas">("todas");
 
   // ── Modal emissão ─────────────────────────────────────────────────────────
   const [modal, setModal] = useState(false);
@@ -776,8 +780,33 @@ export default function TransferenciasEstoquePage() {
       )}
 
       {/* ── Aba Lista ─────────────────────────────────────────────────────── */}
-      {aba === "lista" && (
+      {aba === "lista" && (() => {
+        const listaFiltrada = historico.filter(t => {
+          if (subAbaLista === "emitidas")   return t.status === "emitida" || t.status === "entrada_confirmada";
+          if (subAbaLista === "canceladas") return t.status === "cancelada";
+          return true;
+        });
+        const qtdEmitidas   = historico.filter(t => t.status === "emitida" || t.status === "entrada_confirmada").length;
+        const qtdCanceladas = historico.filter(t => t.status === "cancelada").length;
+        return (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 6, padding: "12px 16px 0" }}>
+            {([
+              { id: "todas",       label: `Todas (${historico.length})` },
+              { id: "emitidas",    label: `NFs Emitidas (${qtdEmitidas})` },
+              { id: "canceladas",  label: `Canceladas (${qtdCanceladas})` },
+            ] as const).map(s => (
+              <button key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
+                padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
+                borderColor: subAbaLista === s.id ? "#111111" : "#DDE2EE",
+                background: subAbaLista === s.id ? "#111111" : "transparent",
+                color: subAbaLista === s.id ? "#fff" : "#555",
+                fontSize: 12, fontWeight: 600, cursor: "pointer",
+              }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -788,12 +817,12 @@ export default function TransferenciasEstoquePage() {
                 </tr>
               </thead>
               <tbody>
-                {historico.length === 0 && (
+                {listaFiltrada.length === 0 && (
                   <tr><td colSpan={9} style={{ ...td, textAlign: "center", color: "#888", padding: 40 }}>
-                    {carregando ? "Carregando…" : "Nenhuma transferência registrada."}
+                    {carregando ? "Carregando…" : "Nenhuma transferência nesse filtro."}
                   </td></tr>
                 )}
-                {historico.map(t => {
+                {listaFiltrada.map(t => {
                   // "emitida" sem nf_chave = caiu no fallback (sem configuração fiscal
                   // na fazenda de origem) — o estoque já foi movimentado, mas não existe
                   // NF-e real nenhuma. Precisa ficar visualmente diferente de "NF Emitida"
@@ -884,7 +913,8 @@ export default function TransferenciasEstoquePage() {
             </table>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Modal Nova Transferência ─────────────────────────────────────── */}
       {modal && (

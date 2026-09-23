@@ -386,6 +386,8 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 
 **CFOP:** selecionável entre 5 opções; padrão é 5152/6152 (mercadoria adquirida de terceiros, sem ST). O prefixo 5 (mesmo estado) ou 6 (inter-estadual) é calculado automaticamente pelos estados das fazendas.
 
+**Novo 23/09/2026 — filtro rápido na lista:** acima da tabela, 3 botões — Todas, NFs Emitidas, Canceladas — cada um com a contagem ao lado, pra não precisar catar visualmente numa lista com tudo misturado.
+
 **Transportadora e veículo:** os campos de transportadora/placa preenchidos na transferência aparecem de verdade na NF e no DANFE.
 
 **Botões na tabela por status:**

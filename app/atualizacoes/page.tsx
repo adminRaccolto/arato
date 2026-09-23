@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ba",
+    data: "23/09/2026",
+    titulo: "Estoque → Transferências: filtro rápido Todas / NFs Emitidas / Canceladas",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "A aba \"Transferências\" misturava rascunho, emitida e cancelada tudo junto — agora tem 3 filtros rápidos acima da tabela: Todas, NFs Emitidas e Canceladas, cada um com a contagem ao lado." },
+    ],
+    onde: "Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-az",
     data: "23/09/2026",
     titulo: "NCM de insumo nunca era salvo no cadastro — NF-e de transferência saía com NCM de soja pra qualquer produto",
