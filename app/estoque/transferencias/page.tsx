@@ -354,8 +354,15 @@ export default function TransferenciasEstoquePage() {
   // entre fazendas próprias, mesmo que exista cadastrado pra outros fluxos
   // (ex: romaneio de expedição). Filtra pelos dois tipos "terceiro".
   const TIPOS_DEPOSITO_TERCEIRO = new Set(["terceiro", "armazem_terceiro"]);
-  const depositosOrigem = (depositosPorFazenda[form.fazendaOrigemId] ?? []).filter(d => !TIPOS_DEPOSITO_TERCEIRO.has(d.tipo));
-  const depositosDestino = (depositosPorFazenda[form.fazendaDestinoId] ?? []).filter(d => !TIPOS_DEPOSITO_TERCEIRO.has(d.tipo));
+  // Pedido do dono 23/09/2026: mostrar TODOS os depósitos (de qualquer fazenda
+  // da conta) nos dois seletores, em vez de restringir pela fazenda escolhida
+  // — só sinaliza com 🟢/🔴 se o depósito é da fazenda selecionada ou não,
+  // deixando o usuário escolher livremente mesmo assim (ex: depósito
+  // compartilhado, ou a fazenda do depósito ainda não foi corrigida no
+  // cadastro). Ordenado por nome pra facilitar achar.
+  const todosDepositos = Object.values(depositosPorFazenda).flat()
+    .filter(d => !TIPOS_DEPOSITO_TERCEIRO.has(d.tipo))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
   // Todos os insumos da conta (todas as fazendas) para lookup de nome e unidade
   const todosInsumos = Object.values(insumosPorFazenda).flat();
   const insumosOrigem = form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos;
@@ -903,16 +910,22 @@ export default function TransferenciasEstoquePage() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={lbl}>Depósito Origem *</label>
-                  {depositosOrigem.length === 0 ? (
+                  {todosDepositos.length === 0 ? (
                     <p style={{ fontSize: 12, color: "#E24B4A", margin: 0 }}>
-                      ⚠️ Nenhum depósito cadastrado para esta fazenda.
-                      Cadastre em Cadastros → Depósitos antes de continuar.
+                      ⚠️ Nenhum depósito cadastrado. Cadastre em Cadastros → Depósitos antes de continuar.
                     </p>
                   ) : (
-                    <select value={form.depositoOrigemId} onChange={e => setForm(f => ({ ...f, depositoOrigemId: e.target.value }))} style={inp}>
-                      <option value="">— Selecione o depósito —</option>
-                      {depositosOrigem.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                    </select>
+                    <>
+                      <select value={form.depositoOrigemId} onChange={e => setForm(f => ({ ...f, depositoOrigemId: e.target.value }))} style={inp}>
+                        <option value="">— Selecione o depósito —</option>
+                        {todosDepositos.map(d => (
+                          <option key={d.id} value={d.id}>
+                            {(d.fazenda_id === form.fazendaOrigemId ? "🟢 " : "🔴 ") + d.nome}
+                          </option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>🟢 depósito da Fazenda Origem · 🔴 depósito de outra fazenda</p>
+                    </>
                   )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -968,16 +981,22 @@ export default function TransferenciasEstoquePage() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={lbl}>Depósito Destino *</label>
-                  {form.fazendaDestinoId && depositosDestino.length === 0 ? (
+                  {todosDepositos.length === 0 ? (
                     <p style={{ fontSize: 12, color: "#E24B4A", margin: 0 }}>
-                      ⚠️ Nenhum depósito cadastrado para esta fazenda.
-                      Cadastre em Cadastros → Depósitos antes de continuar.
+                      ⚠️ Nenhum depósito cadastrado. Cadastre em Cadastros → Depósitos antes de continuar.
                     </p>
                   ) : (
-                    <select value={form.depositoDestinoId} onChange={e => setForm(f => ({ ...f, depositoDestinoId: e.target.value }))} style={inp} disabled={!form.fazendaDestinoId}>
-                      <option value="">— Selecione o depósito —</option>
-                      {depositosDestino.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                    </select>
+                    <>
+                      <select value={form.depositoDestinoId} onChange={e => setForm(f => ({ ...f, depositoDestinoId: e.target.value }))} style={inp}>
+                        <option value="">— Selecione o depósito —</option>
+                        {todosDepositos.map(d => (
+                          <option key={d.id} value={d.id}>
+                            {(d.fazenda_id === form.fazendaDestinoId ? "🟢 " : "🔴 ") + d.nome}
+                          </option>
+                        ))}
+                      </select>
+                      <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>🟢 depósito da Fazenda Destino · 🔴 depósito de outra fazenda</p>
+                    </>
                   )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>

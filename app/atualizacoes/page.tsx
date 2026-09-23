@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-an",
+    data: "23/09/2026",
+    titulo: "Transferência de Estoque: todos os depósitos disponíveis, com sinalizador de fazenda",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "Estoque → Transferências → Nova Transferência: os seletores de Depósito Origem e Depósito Destino voltaram a mostrar todos os depósitos (de qualquer fazenda da conta), em vez de restringir só aos da fazenda escolhida — agora com um sinalizador 🟢/🔴 na frente do nome indicando se o depósito pertence à fazenda selecionada (🟢) ou não (🔴)." },
+    ],
+    onde: "Estoque → Transferências → Nova Transferência",
+  },
+  {
     versao: "2026.09.23-am",
     data: "23/09/2026",
     titulo: "Parâmetros Fiscais por IE gravavam na fazenda ativa errada",
