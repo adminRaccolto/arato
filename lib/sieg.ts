@@ -255,8 +255,11 @@ export async function baixarXmlsSieg(
   let   skip = 0;
   const take = 50;
 
+  // BaixarEventos/TipoEvento vêm de `params` quando o chamador pede eventos (ex.: cancelamento,
+  // tpEvento 110111) — antes disso, ambos os campos eram sempre ignorados e sobrescritos com
+  // BaixarEventos:false aqui embaixo, então a sincronização nunca via cancelamento nenhum.
   for (let page = 0; page < 100; page++) {   // limite: 5.000 docs
-    const body = { ...params, Take: take, Skip: skip, BaixarEventos: false };
+    const body = { ...params, Take: take, Skip: skip, BaixarEventos: params.BaixarEventos ?? false };
 
     const res = await fetchComRetry(`${SIEG_BASE}/baixar-xmls`, {
       method:  "POST",
@@ -315,6 +318,25 @@ export async function baixarXmlsSieg(
   }
 
   return xmls;
+}
+
+// ─── Eventos de cancelamento ──────────────────────────────────────────────────
+// A sincronização nunca buscava eventos (BaixarEventos ficava sempre false) — uma NF cancelada
+// pelo fornecedor depois de importada nunca era percebida, o painel continuava mostrando ela como
+// se nada tivesse acontecido. Busca só o evento 110111 (Cancelamento) no mesmo período da
+// sincronização normal.
+export function parseEventoCancelamentoXml(xml: string): string | null {
+  const tpEvento = tagVal(xml, "tpEvento");
+  if (tpEvento !== "110111") return null;
+  const chave = tagVal(xml, "chNFe");
+  return /^\d{44}$/.test(chave) ? chave : null;
+}
+
+export async function baixarEventosCancelamentoSieg(
+  creds:  SiegCredentials,
+  params: Omit<SiegBaixarParams, "Take" | "Skip" | "BaixarEventos" | "TipoEvento">
+): Promise<string[]> {
+  return baixarXmlsSieg(creds, { ...params, BaixarEventos: true, TipoEvento: 110111 });
 }
 
 // ─── Manifestar por chave de acesso ──────────────────────────────────────────

@@ -36,6 +36,7 @@ const STATUS_COLOR: Record<string, string> = {
   classificada:"#16A34A",
   ignorada:    "var(--text-3)",
   erro:        "#E24B4A",
+  cancelada:   "#E24B4A",
 };
 
 // ─── Página ──────────────────────────────────────────────────
@@ -329,7 +330,7 @@ export default function PendenciasNfPage() {
 
         {/* Filtros */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          {["pendente", "classificada", "ignorada", "todas"].map(s => (
+          {["pendente", "classificada", "cancelada", "ignorada", "todas"].map(s => (
             <button
               key={s}
               onClick={() => setFiltroStatus(s)}
@@ -395,7 +396,7 @@ export default function PendenciasNfPage() {
                         color: STATUS_COLOR[nf.status],
                         border: `0.5px solid ${STATUS_COLOR[nf.status]}44`,
                       }}>
-                        {nf.status === "pendente" ? "⏳ Pendente" : nf.status === "classificada" ? "✓ Classificada" : nf.status === "ignorada" ? "Ignorada" : nf.status}
+                        {nf.status === "pendente" ? "⏳ Pendente" : nf.status === "classificada" ? "✓ Classificada" : nf.status === "ignorada" ? "Ignorada" : nf.status === "cancelada" ? "⚠ Cancelada pelo emitente" : nf.status}
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px" }}>

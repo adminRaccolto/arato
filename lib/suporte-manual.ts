@@ -419,6 +419,10 @@ Romaneios de entrada de grãos em armazéns de terceiros (depositário externo).
 
 Central de classificação das NF-e capturadas automaticamente pelo SIEG. Permite classificar rapidamente por operação gerencial e categoria antes de processar.
 
+**Correção 23/09/2026 — NF lançada manualmente virava "Pendente" de novo quando chegava pelo SIEG:** a sincronização automática do SIEG checava se uma NF já tinha entrada manual só na MESMA fazenda que estava sincronizando — um cliente com várias fazendas na mesma conta que lançasse a NF manualmente numa fazenda diferente da que o SIEG estava processando não era encontrado, e o SIEG criava um "Pendente" próprio pra uma nota que já tinha entrada, induzindo a dar entrada duas vezes. Corrigido: a checagem agora busca em toda fazenda da conta, igual já funcionava na sincronização manual.
+
+**Novo 23/09/2026 — NF cancelada pelo fornecedor agora reflete no painel:** a sincronização nunca buscava eventos de cancelamento da SEFAZ (só os documentos normais) — uma NF cancelada pelo emitente depois de importada ficava parada como "Pendente" pra sempre, sem ninguém saber. Agora, a cada sincronização, o sistema também busca eventos de cancelamento no mesmo período: **NF ainda pendente** (nada lançado ainda) vira **"Cancelada"** sozinha — sem risco, nada foi processado; **NF já classificada/processada** (já gerou estoque ou Conta a Pagar) **não muda de status sozinha** — só recebe um aviso ("⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar") pra alguém decidir se estorna. Vale tanto pro painel do SIEG quanto pra NF lançada manualmente/importada por XML.
+
 ### 10.2 Ligar / Desligar SIEG
 **Caminho:** Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG
 

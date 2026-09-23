@@ -2239,7 +2239,7 @@ export type NfImportadaSieg = {
   nome_emitente?: string;
   valor_total?: number;
   xml_storage_path?: string;
-  status: "pendente" | "classificada" | "ignorada" | "erro";
+  status: "pendente" | "classificada" | "ignorada" | "erro" | "cancelada";
   pessoa_id?: string;
   cp_id?: string;
   lancamento_id?: string;   // FK lancamentos.id — vínculo com previsão convertida em CP real

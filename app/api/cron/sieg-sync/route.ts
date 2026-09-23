@@ -17,7 +17,7 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse }     from "next/server";
-import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv } from "../../../../lib/sieg";
+import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml } from "../../../../lib/sieg";
 import { classificarItemNF } from "../../../../lib/ai-classificador";
 
 export const runtime = "nodejs";
@@ -60,15 +60,20 @@ async function syncFazenda(
   fazendaId: string,
   _apiKey: string,  // mantido por compatibilidade — credenciais lidas do env
   cnpjs: string[]
-): Promise<{ importadas: number; classificadas: number; pendentes: number; ia_classificadas: number; erros: number }> {
+): Promise<{ importadas: number; classificadas: number; pendentes: number; ia_classificadas: number; erros: number; canceladas: number }> {
   const siegCreds = credenciaisEnv();
 
   // Conta da fazenda (para OGs e para o classificador IA)
   let contaId: string | null = null;
+  let fazendaIdsDaConta: string[] = [fazendaId];
   try {
     const { data: faz } = await db.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
     contaId = faz?.conta_id ?? null;
-  } catch { /* segue sem conta_id */ }
+    if (contaId) {
+      const { data: fzs } = await db.from("fazendas").select("id").eq("conta_id", contaId);
+      if (fzs?.length) fazendaIdsDaConta = fzs.map(f => f.id as string);
+    }
+  } catch { /* segue sem conta_id — fazendaIdsDaConta fica só com a própria fazenda */ }
 
   // Última data importada (ou 30 dias atrás)
   const { data: last } = await db
@@ -123,13 +128,18 @@ async function syncFazenda(
       if (dup) continue;
 
       // Verifica duplicata contra a outra rotina de sincronização SIEG (integracoes/sieg-sync,
-      // disparada manualmente a partir de Compras → NF de Produtos). Ambas gravam CP a partir
-      // da mesma NF em tabelas diferentes (nf_entradas vs nf_importadas_sieg) sem se conhecerem —
-      // sem esta checagem, a mesma nota pode virar dois lançamentos financeiros distintos.
+      // disparada manualmente a partir de Compras → NF de Produtos, ou lançamento 100% manual da
+      // mesma NF). Ambas gravam CP a partir da mesma NF em tabelas diferentes (nf_entradas vs
+      // nf_importadas_sieg) sem se conhecerem — sem esta checagem, a mesma nota pode virar dois
+      // lançamentos financeiros distintos. Achado real 23/09/2026: a checagem só olhava a MESMA
+      // fazenda_id que este cron está processando — uma NF lançada manualmente numa fazenda
+      // diferente da conta (comum: cliente com várias propriedades) não era encontrada, e o cron
+      // criava um "pendente" próprio no painel do Sieg pra uma nota que já tinha entrada. Agora
+      // busca em toda fazenda da mesma conta, igual ao padrão já usado na sincronização manual.
       const { data: dupEntrada } = await db
         .from("nf_entradas")
         .select("id")
-        .eq("fazenda_id", fazendaId)
+        .in("fazenda_id", fazendaIdsDaConta)
         .eq("chave_acesso", nfe.chave)
         .maybeSingle();
       if (dupEntrada) continue;
@@ -304,7 +314,74 @@ async function syncFazenda(
     }
   }
 
-  return { importadas, classificadas, pendentes, ia_classificadas, erros };
+  // ── Eventos de cancelamento ─────────────────────────────────
+  // Achado real 23/09/2026: a sincronização nunca buscava eventos (BaixarEventos sempre false) —
+  // fornecedor cancelava a NF de verdade na SEFAZ e o painel do Sieg continuava mostrando ela
+  // parada em "Pendente" pra sempre, o que levava o usuário a dar entrada nela também pelo
+  // lançamento manual, duplicando a nota. NF ainda pendente (nada lançado) marca "Cancelada"
+  // sozinha; NF já classificada (já gerou CP/estoque) NÃO tem o status mudado automaticamente —
+  // só recebe um aviso, pra alguém decidir se estorna.
+  let canceladas = 0;
+  for (const cnpj of cnpjs) {
+    let eventosXml: string[] = [];
+    try {
+      eventosXml = await baixarEventosCancelamentoSieg(siegCreds, {
+        TipoXml: 1,
+        DataUploadInicio: dtIni,
+        DataUploadFim:    dtFim,
+        CnpjDest:         cnpj,
+      });
+    } catch (e) {
+      console.error(`[sieg] erro ao buscar eventos de cancelamento fazenda ${fazendaId} cnpj ${cnpj}:`, e);
+      continue;
+    }
+
+    const chavesCanceladas = new Set<string>();
+    for (const xmlEvento of eventosXml) {
+      const chave = parseEventoCancelamentoXml(xmlEvento);
+      if (chave) chavesCanceladas.add(chave);
+    }
+    if (chavesCanceladas.size === 0) continue;
+
+    for (const chave of chavesCanceladas) {
+      // Painel do Sieg (nf_importadas_sieg) — pendente/erro vira cancelada; classificada só avisa
+      // (coluna de observação nessa tabela se chama "obs", não "observacao" — cuidado)
+      const { data: nfSieg } = await db.from("nf_importadas_sieg")
+        .select("id, status, obs").eq("fazenda_id", fazendaId).eq("chave_acesso", chave).maybeSingle();
+      if (nfSieg) {
+        if (nfSieg.status === "pendente" || nfSieg.status === "erro") {
+          await db.from("nf_importadas_sieg").update({ status: "cancelada" }).eq("id", nfSieg.id);
+          canceladas++;
+        } else if (nfSieg.status === "classificada") {
+          const aviso = "⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar.";
+          if (!nfSieg.obs?.includes(aviso)) {
+            await db.from("nf_importadas_sieg")
+              .update({ obs: [nfSieg.obs, aviso].filter(Boolean).join(" | ") })
+              .eq("id", nfSieg.id);
+          }
+        }
+      }
+
+      // Lançamento manual/importação direta (nf_entradas) — mesma regra, buscando em toda a conta
+      const { data: nfEntrada } = await db.from("nf_entradas")
+        .select("id, status, observacao").in("fazenda_id", fazendaIdsDaConta).eq("chave_acesso", chave).maybeSingle();
+      if (nfEntrada) {
+        if (nfEntrada.status === "pendente" || nfEntrada.status === "digitando") {
+          await db.from("nf_entradas").update({ status: "cancelada" }).eq("id", nfEntrada.id);
+          canceladas++;
+        } else if (nfEntrada.status === "processada") {
+          const aviso = "⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar.";
+          if (!nfEntrada.observacao?.includes(aviso)) {
+            await db.from("nf_entradas")
+              .update({ observacao: [nfEntrada.observacao, aviso].filter(Boolean).join(" | ") })
+              .eq("id", nfEntrada.id);
+          }
+        }
+      }
+    }
+  }
+
+  return { importadas, classificadas, pendentes, ia_classificadas, erros, canceladas };
 }
 
 // ── Handler HTTP ──────────────────────────────────────────────
@@ -339,7 +416,7 @@ export async function GET(req: NextRequest) {
   // API key global (env) ou por fazenda (config)
   const globalKey = process.env.SIEG_API_KEY ?? "";
 
-  const resumo: Record<string, { importadas: number; classificadas: number; ia_classificadas: number; pendentes: number; erros: number }> = {};
+  const resumo: Record<string, { importadas: number; classificadas: number; ia_classificadas: number; pendentes: number; erros: number; canceladas: number }> = {};
 
   for (const row of cfgList) {
     const fazendaId = row.fazenda_id as string;
@@ -356,16 +433,17 @@ export async function GET(req: NextRequest) {
   const tot = (k: keyof typeof resumo[string]) =>
     Object.values(resumo).reduce((s, r) => s + r[k], 0);
 
-  console.log(`[sieg-sync] ${Object.keys(resumo).length} fazendas — importadas=${tot("importadas")} classificadas=${tot("classificadas")} ia=${tot("ia_classificadas")} pendentes=${tot("pendentes")} erros=${tot("erros")}`);
+  console.log(`[sieg-sync] ${Object.keys(resumo).length} fazendas — importadas=${tot("importadas")} classificadas=${tot("classificadas")} ia=${tot("ia_classificadas")} pendentes=${tot("pendentes")} canceladas=${tot("canceladas")} erros=${tot("erros")}`);
 
   return NextResponse.json({
     ok:              true,
-    msg:             `${tot("importadas")} NF(s) importada(s): ${tot("classificadas")} classificadas (${tot("ia_classificadas")} via IA), ${tot("pendentes")} pendentes, ${tot("erros")} erros`,
+    msg:             `${tot("importadas")} NF(s) importada(s): ${tot("classificadas")} classificadas (${tot("ia_classificadas")} via IA), ${tot("pendentes")} pendentes, ${tot("canceladas")} canceladas pelo emitente, ${tot("erros")} erros`,
     fazendas:        Object.keys(resumo).length,
     importadas:      tot("importadas"),
     classificadas:   tot("classificadas"),
     ia_classificadas: tot("ia_classificadas"),
     pendentes:       tot("pendentes"),
+    canceladas:      tot("canceladas"),
     erros:           tot("erros"),
     detalhe:         resumo,
   });

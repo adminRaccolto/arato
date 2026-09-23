@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-q",
+    data: "23/09/2026",
+    titulo: "SIEG: detecção de NF duplicada em outra fazenda + cancelamento pelo emitente",
+    modulos: ["Compras", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A sincronização automática do SIEG só checava se uma NF já tinha entrada manual na MESMA fazenda sendo sincronizada — cliente com várias fazendas na conta que lançasse a NF numa fazenda diferente não era encontrado, e o SIEG criava um \"Pendente\" duplicado, induzindo a dar entrada duas vezes na mesma nota. Corrigido: a checagem agora busca em toda fazenda da conta." },
+      { tipo: "novo", texto: "NF cancelada pelo fornecedor na SEFAZ agora reflete no painel — antes a sincronização nunca buscava eventos de cancelamento. NF ainda pendente vira \"Cancelada\" automaticamente; NF já processada (já afetou estoque/financeiro) não muda de status sozinha, só recebe um aviso pra decisão manual de estorno." },
+    ],
+    onde: "Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)",
+  },
+  {
     versao: "2026.09.23-p",
     data: "23/09/2026",
     titulo: "NF de Produtos: busca por texto de volta no seletor de Pedido de Compra",
