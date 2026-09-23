@@ -27,7 +27,11 @@ function sb() {
 // ─── Busca configuração do emitente ──────────────────────────────────────────
 export async function buscarConfEmitente(
   fazendaId: string,
-  moduloKey: string   // ex: "fiscal_pf_abc" ou "fiscal_emp_xyz"
+  moduloKey: string,  // ex: "fiscal_pf_abc" ou "fiscal_emp_xyz"
+  ieOverride?: string, // IE específica que VAI ser usada na emissão (emitIeOverride do chamador) —
+                        // sem isso, o endereço mesclado abaixo podia vir de uma IE DIFERENTE da
+                        // impressa na nota (achado real 23/09/2026: NF saiu com a IE certa mas
+                        // endereço de outro estabelecimento do mesmo produtor).
 ): Promise<Record<string, string> | null> {
   // certificado_a1_* precisa ser buscado na conta inteira, não só na fazenda
   // recebida — o upload (Fiscal → Certificado Digital ou o card de emitente
@@ -156,7 +160,12 @@ export async function buscarConfEmitente(
         }
       }
       const temSerie = (ie: typeof iesAtivas[number]) => !!configsPorIe.get(ie.id)?.serie_nfe;
+      // A IE que VAI ser impressa na nota (ieOverride, ou já fixada em cfg.ie_emitente por uma
+      // config anterior) tem prioridade absoluta sobre a heurística de "qualquer IE configurada" —
+      // senão o endereço mesclado abaixo podia vir de uma IE diferente da que sai impressa.
+      const ieAlvo = ieOverride || cfg.ie_emitente || "";
       const ieEscolhida =
+        (ieAlvo && iesAtivas.find(i => i.inscricao_estadual === ieAlvo)) ??
         iesAtivas.find(i => i.fazenda_id === fazendaId && temSerie(i)) ??  // fazenda certa + configurada
         iesAtivas.find(temSerie) ??                                       // qualquer uma configurada
         iesAtivas.find(i => i.fazenda_id === fazendaId) ??                // fazenda certa, sem config ainda
@@ -344,7 +353,7 @@ export async function emitirNFe(
 ): Promise<ResultadoEmissao> {
 
   // 1. Configuração do emitente
-  const confg = await buscarConfEmitente(fazendaId, moduloKey);
+  const confg = await buscarConfEmitente(fazendaId, moduloKey, emitIeOverride);
   if (!confg) return { sucesso: false, cStat: "500", xMotivo: `Configuração fiscal não encontrada para ${moduloKey}` };
 
   // Fallback 1: destinatário é um PRODUTOR (não uma Pessoa/fornecedor) — típico

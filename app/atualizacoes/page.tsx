@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ar",
+    data: "23/09/2026",
+    titulo: "NF-e saía com a IE certa mas endereço de outra IE do mesmo produtor",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Quando um produtor tem mais de uma Inscrição Estadual, a IE impressa na NF-e vinha certa (pela transferência/tela que emitiu), mas o endereço do emitente podia vir de uma IE DIFERENTE do mesmo produtor — os dois eram resolvidos por caminhos separados dentro do sistema. Achado real: NF com IE 138830525 (Tapurah) correta, mas endereço de outra propriedade em Lucas do Rio Verde. Corrigido: a IE que vai ser impressa agora tem prioridade sobre qualquer outra na escolha de qual endereço usar." },
+    ],
+    onde: "Fiscal → qualquer emissão de NF-e, produtor com mais de uma Inscrição Estadual",
+  },
+  {
     versao: "2026.09.23-aq",
     data: "23/09/2026",
     titulo: "Cadastro de insumo com saldo inicial: falha na movimentação deixava de avisar",
