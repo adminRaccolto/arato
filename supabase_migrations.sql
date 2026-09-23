@@ -13460,3 +13460,24 @@ DROP POLICY IF EXISTS "emergencial_autenticado" ON insumos_duplicados_revisados;
 CREATE POLICY "emergencial_autenticado" ON insumos_duplicados_revisados FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 285 — Transferência de Máquinas: bem de TERCEIRO entrando na fazenda
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Pedido do dono 23/09/2026: o módulo (Seção 282) só cobria o bem PRÓPRIO
+-- saindo (conserto, transferência entre fazendas, comodato dado). Faltava o
+-- caminho inverso — máquina de terceiro chegando pra uso (comodato recebido)
+-- ou equipamento de prestador de serviço (sem NF, só controle de acesso).
+ALTER TABLE transferencias_maquinas
+  ADD COLUMN IF NOT EXISTS direcao TEXT NOT NULL DEFAULT 'saida' CHECK (direcao IN ('saida','entrada'));
+
+ALTER TABLE transferencias_maquinas ALTER COLUMN cfop_saida DROP NOT NULL;
+
+ALTER TABLE transferencias_maquinas DROP CONSTRAINT IF EXISTS transferencias_maquinas_motivo_check;
+ALTER TABLE transferencias_maquinas ADD CONSTRAINT transferencias_maquinas_motivo_check
+  CHECK (motivo IN ('conserto','transferencia_fazenda','comodato','comodato_recebido','terceiro_servico'));
+
+COMMENT ON COLUMN transferencias_maquinas.direcao IS
+  'saida = nosso bem sai (conserto/transferência/comodato dado). entrada = bem de terceiro chega (comodato recebido/prestador de serviço).';
+
+NOTIFY pgrst, 'reload schema';

@@ -1314,7 +1314,9 @@ export type NfRemessaLogistica = {
 };
 
 // ── Transferência de Máquinas e Equipamentos (Remessa/Retorno) ────────────────
-export type MotivoTransferenciaMaquina = "conserto" | "transferencia_fazenda" | "comodato";
+// comodato_recebido/terceiro_servico = bem de TERCEIRO chegando pra uso/serviço
+// na nossa fazenda (direção invertida — ver `direcao`). Adicionado 23/09/2026.
+export type MotivoTransferenciaMaquina = "conserto" | "transferencia_fazenda" | "comodato" | "comodato_recebido" | "terceiro_servico";
 export type TransferenciaMaquina = {
   id: string;
   fazenda_id: string;
@@ -1322,6 +1324,9 @@ export type TransferenciaMaquina = {
   maquina_id?: string;
   maquina_nome: string;
   motivo: MotivoTransferenciaMaquina;
+  // "saida" (padrão/legado) = nosso bem sai; "entrada" = bem de terceiro chega
+  // na fazenda (comodato recebido, ou equipamento de prestador de serviço).
+  direcao: "saida" | "entrada";
   cfop_saida: string;
   cfop_retorno?: string;
   destinatario_pessoa_id?: string;

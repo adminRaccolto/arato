@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ac",
+    data: "23/09/2026",
+    titulo: "Transferência de Máquinas: agora cobre máquina de terceiro entrando na fazenda",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Fiscal → Transferência de Máquinas/Equip. cobria só o bem PRÓPRIO saindo (conserto, transferência entre fazendas, comodato dado). Adicionado o caminho inverso — botão \"+ Bem de terceiro entra\": Comodato/Empréstimo recebido de terceiro (entrada registrada por nós, sem NF — quem emite é o proprietário; devolução emitida de verdade por nós, CFOP 5908) e Equipamento de prestador de serviço (máquina do próprio prestador operando na fazenda — sem NF em nenhuma ponta, só controle de chegada/saída)." },
+    ],
+    onde: "Fiscal → Transferência de Máquinas/Equip.",
+  },
+  {
     versao: "2026.09.23-ab",
     data: "23/09/2026",
     titulo: "Estoque: nova aba \"Possíveis Duplicados\" + proteção contra cadastro duplicado ampliada",

@@ -917,13 +917,18 @@ NF-e de remessa para armazéns e depósitos (CFOP 5905/6905).
 ### 20.4.1 Transferência de Máquinas e Equipamentos (novo — 23/09/2026)
 **Caminho:** Fiscal → Emissão e Controle → Transferência de Máquinas/Equip.
 
-Emite NF-e de remessa (e, quando aplicável, o retorno) pra mover uma máquina/equipamento pra fora da fazenda sem ser venda. Três motivos, cada um com o CFOP certo já pré-selecionado:
+Emite NF-e de remessa (e, quando aplicável, o retorno) pra mover uma máquina/equipamento sem ser venda. Dois botões no topo, um pra cada direção:
 
+**"+ Nosso bem sai"** — nosso equipamento sai da fazenda:
 - **Conserto / Manutenção externa** — a máquina sai pra uma oficina/terceiro consertar. Remessa CFOP **5915**, retorno **1915** (nota de entrada, emitida pela própria fazenda ao receber de volta).
 - **Transferência entre fazendas (mesma conta)** — a máquina muda de propriedade fisicamente dentro do mesmo grupo/cliente. CFOP **5552**, sem retorno — é um movimento definitivo.
-- **Comodato / Empréstimo a terceiro** — máquina emprestada pra outro produtor/empresa usar, com devolução prevista. Remessa CFOP **5554**, retorno **1555**.
+- **Comodato / Empréstimo dado a terceiro** — máquina emprestada pra outro produtor/empresa usar, com devolução prevista. Remessa CFOP **5554**, retorno **1555**.
 
-**Fluxo:** "+ Nova Transferência" → escolhe motivo, máquina (cadastro de Máquinas), destinatário (Pessoas/Produtores), valor do bem e, opcionalmente, o Motorista que vai transportar (texto livre com sugestões do cadastro, sem precisar cadastrar) → "Emitir NF de Remessa" transmite a NF-e de verdade na SEFAZ. Quando a máquina volta (motivos com retorno), o botão "Registrar Retorno" na lista emite a segunda NF-e (nota de entrada) referenciando a remessa original. Transferência entre fazendas fica "Emitida" e não pede retorno.
+**"+ Bem de terceiro entra"** (novo — 23/09/2026) — equipamento de outro dono chegando pra uso/serviço na fazenda:
+- **Comodato / Empréstimo recebido de terceiro** — máquina de outro produtor/empresa que vem pra cá em uso temporário. A remessa é emitida pelo PROPRIETÁRIO, não por nós — por isso essa etapa é só um registro (sem chamar a SEFAZ); se ele passar número/chave da NF dele, dá pra anotar como referência. CFOP de referência da entrada: **1908**. Na devolução, aí sim **nós emitimos de verdade** a NF de volta pro dono — CFOP **5908**.
+- **Equipamento de prestador de serviço** — máquina do próprio prestador (ex: colhedora de terceirizada) que vem operar na fazenda sob contrato de serviço. Não é comodato nem compra — não gera NF-e em nenhuma ponta, é só controle de acesso/patrimônio (data de chegada e de saída).
+
+**Fluxo:** escolhe motivo, descreve a máquina (do nosso cadastro quando é bem próprio saindo; texto livre quando é bem de terceiro entrando), a contraparte (destinatário ou proprietário/prestador, conforme a direção), valor do bem e, opcionalmente, o Motorista (texto livre com sugestões do cadastro). O botão muda conforme a etapa emite NF de verdade ou não: "Emitir NF de Remessa" / "Registrar Entrada". Pra fechar o ciclo, a lista mostra "Registrar Retorno" / "Registrar Devolução" / "Registrar Saída" conforme o caso — cada um dispara a ação certa (NF real, ou só fechamento de registro). Transferência entre fazendas e comodato dado ficam "Emitida" sem pedir fechamento — são definitivos.
 
 ### 20.5 Certificado Digital
 **Caminho:** Fiscal → Emissão e Controle → Certificado Digital
