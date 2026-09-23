@@ -33,7 +33,15 @@ export async function POST(req: NextRequest) {
     const supabase = sb();
 
     if (body.nome) {
-      const { data: existentes } = await supabase.from("insumos").select("*").eq("fazenda_id", body.fazenda_id);
+      // Checagem por conta (catálogo compartilhado entre as fazendas do
+      // cliente) — não só na fazenda recebida no body. Ver lib/db.ts criarInsumo.
+      let fazendaIdsConta = [body.fazenda_id];
+      const { data: fazAtualRow } = await supabase.from("fazendas").select("conta_id").eq("id", body.fazenda_id).maybeSingle();
+      if (fazAtualRow?.conta_id) {
+        const { data: fzsConta } = await supabase.from("fazendas").select("id").eq("conta_id", fazAtualRow.conta_id);
+        if (fzsConta && fzsConta.length > 0) fazendaIdsConta = fzsConta.map((f: { id: string }) => f.id);
+      }
+      const { data: existentes } = await supabase.from("insumos").select("*").in("fazenda_id", fazendaIdsConta);
       const alvoNorm = normalizarNomeInsumo(body.nome);
       const parecido = (existentes ?? []).find(e => normalizarNomeInsumo(e.nome) === alvoNorm);
       if (parecido) return NextResponse.json({ ...parecido, _reaproveitado: true });

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ab",
+    data: "23/09/2026",
+    titulo: "Estoque: nova aba \"Possíveis Duplicados\" + proteção contra cadastro duplicado ampliada",
+    modulos: ["Estoque", "Compras", "Cadastros", "WhatsApp"],
+    itens: [
+      { tipo: "melhoria", texto: "Estoque → nova aba \"Possíveis Duplicados\": lista insumos com o mesmo nome (ignorando acento, maiúscula/minúscula, pontuação e artigos) cadastrados mais de uma vez no catálogo do cliente, lado a lado com estoque/custo/valor de cada um. Nomes só parecidos mas com código, modelo ou variedade diferente NÃO aparecem — o critério é o nome ficar idêntico depois de normalizado, de propósito conservador pra não confundir produtos diferentes que só compartilham uma abreviação comum. Cada grupo tem \"Descartar\" (não é duplicado de verdade) ou \"✓ Corrigido\" (já mesclou manualmente) — qualquer uma das duas tira o grupo da lista." },
+      { tipo: "correcao", texto: "Checagem de duplicado ao cadastrar insumo/combustível passou a comparar com o catálogo inteiro do cliente (todas as fazendas), não só a fazenda atual, em mais 3 pontos que ainda comparavam só localmente: API usada pelo app mobile (/api/insumos), e a busca/criação automática de insumo usada no processamento de compras por WhatsApp — reduz cadastro duplicado gerado por esses fluxos automáticos." },
+    ],
+    onde: "Estoque → Possíveis Duplicados",
+  },
+  {
     versao: "2026.09.23-aa",
     data: "23/09/2026",
     titulo: "NF-e de Transferência: CFOP de produção própria estava trocado com o de terceiros",

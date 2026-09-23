@@ -139,9 +139,21 @@ type Resultado = { ok: boolean; mensagem: string };
 type InsumoRow = { id: string; nome: string; unidade: string; custo_medio: number; valor_unitario: number; estoque: number; principio_ativo_id?: string };
 
 // Aceita nomes parciais e nomes comerciais: "Eficaz" → Glifosato; "3770", "tmg 3770" → semente TMG 3770
+// Resolve as fazendas de uma mesma conta — catálogo de insumo é compartilhado
+// entre as fazendas do cliente (ver lib/db.ts listarInsumos). Sem isso, o
+// WhatsApp podia não achar um insumo já cadastrado numa fazenda irmã e
+// recriar duplicado, ou simplesmente não deduzir o estoque certo.
+async function fazendaIdsDaConta(fazendaId: string): Promise<string[]> {
+  const { data: fazAtual } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  if (!fazAtual?.conta_id) return [fazendaId];
+  const { data: fzsConta } = await sb().from("fazendas").select("id").eq("conta_id", fazAtual.conta_id);
+  return fzsConta && fzsConta.length > 0 ? fzsConta.map((f: { id: string }) => f.id) : [fazendaId];
+}
+
 async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<InsumoRow | null> {
   if (!nomeProduto) return null;
   const cols = "id, nome, unidade, custo_medio, valor_unitario, estoque, principio_ativo_id";
+  const fazendaIds = await fazendaIdsDaConta(fazendaId);
 
   // 0. Tenta resolver via nomes_comerciais → principios_ativos → insumos (exceto sementes)
   const termos = [nomeProduto, ...nomeProduto.split(/\s+/).filter(w => w.length > 2)];
@@ -173,7 +185,7 @@ async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<Ins
 
   // 1. Match do termo completo no nome do insumo
   const { data: r1 } = await sb().from("insumos").select(cols)
-    .eq("fazenda_id", fazendaId).ilike("nome", `%${nomeProduto}%`).limit(1);
+    .in("fazenda_id", fazendaIds).ilike("nome", `%${nomeProduto}%`).limit(1);
   if (r1?.[0]) return r1[0] as InsumoRow;
 
   // 2. Busca por palavra individualmente — números/alfanuméricos primeiro (ex: "3770")
@@ -186,7 +198,7 @@ async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<Ins
   });
   for (const palavra of palavras) {
     const { data: r2 } = await sb().from("insumos").select(cols)
-      .eq("fazenda_id", fazendaId).ilike("nome", `%${palavra}%`).limit(1);
+      .in("fazenda_id", fazendaIds).ilike("nome", `%${palavra}%`).limit(1);
     if (r2?.[0]) return r2[0] as InsumoRow;
   }
   return null;
@@ -2463,9 +2475,10 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
       // Última tentativa: busca pela palavra mais longa da descrição (≥4 chars, não numérica)
       const palavras = String(i.descricao).split(/\s+/).filter(w => w.length >= 4 && !/^\d+$/.test(w));
       palavras.sort((a, b) => b.length - a.length);
+      const fazendaIdsBusca = await fazendaIdsDaConta(fazendaId);
       for (const p of palavras.slice(0, 3)) {
         const { data: r } = await sb().from("insumos").select("id, nome, unidade, custo_medio, valor_unitario, estoque")
-          .eq("fazenda_id", fazendaId).ilike("nome", `%${p}%`).limit(1).maybeSingle();
+          .in("fazenda_id", fazendaIdsBusca).ilike("nome", `%${p}%`).limit(1).maybeSingle();
         if (r) { insumo = r as InsumoRow; break; }
       }
     }

@@ -13429,3 +13429,34 @@ ALTER TABLE transferencias_maquinas
   ADD COLUMN IF NOT EXISTS motorista_cpf  TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 284 — Revisão de possíveis duplicados no catálogo de insumos
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Pedido do dono 23/09/2026: aba em Estoque que lista candidatos a insumo
+-- duplicado (mesmo nome normalizado — acento/caixa/pontuação/artigos
+-- ignorados) dentro do catálogo da conta (catálogo já é por conta, não por
+-- fazenda — ver Seção anterior). O critério é EXATO por design: nomes que só
+-- se parecem (ex. "SEM SOJA CG 7681" vs "SEM SOJA CG 8790") NÃO batem, porque
+-- teriam token normalizado diferente — evita falso positivo entre modelos/
+-- variedades diferentes que só compartilham abreviação comum.
+-- Guarda a decisão do usuário (descartar = não é duplicado; corrigido = já
+-- mesclou manualmente) por conta+chave normalizada, pra sumir da lista depois.
+CREATE TABLE IF NOT EXISTS insumos_duplicados_revisados (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id            UUID NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  chave_normalizada   TEXT NOT NULL,
+  nomes               TEXT[] NOT NULL DEFAULT '{}',
+  status              TEXT NOT NULL CHECK (status IN ('descartado','corrigido')),
+  observacao          TEXT,
+  revisado_por        TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dup_revisados_conta_chave ON insumos_duplicados_revisados(conta_id, chave_normalizada);
+
+ALTER TABLE insumos_duplicados_revisados ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "emergencial_autenticado" ON insumos_duplicados_revisados;
+CREATE POLICY "emergencial_autenticado" ON insumos_duplicados_revisados FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';

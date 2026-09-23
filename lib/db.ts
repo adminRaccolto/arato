@@ -407,7 +407,8 @@ export async function listarInsumosParaConta(contaIdDireto?: string | null, faze
 // Normaliza nome de insumo para comparação: remove acento, caixa, pontuação e
 // artigos comuns ("de"/"do"/"da") — pega duplicatas como "SEM. SOJA BRS 8381"
 // vs "SEM. DE SOJA BRS 8381" que uma comparação exata (ilike) não detecta.
-function normalizarNomeInsumo(nome: string): string {
+// Exportada pra tela de revisão de duplicados (app/estoque) usar o mesmo critério.
+export function normalizarNomeInsumo(nome: string): string {
   return nome
     .toLowerCase()
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -452,6 +453,41 @@ export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise
     });
   }
   return data;
+}
+
+// ── Revisão de possíveis duplicados no catálogo de insumos ─────────────────
+export type DuplicadoRevisado = {
+  id: string;
+  conta_id: string;
+  chave_normalizada: string;
+  nomes: string[];
+  status: "descartado" | "corrigido";
+  observacao?: string | null;
+  revisado_por?: string | null;
+  created_at?: string;
+};
+
+export async function listarDuplicadosRevisados(contaId: string): Promise<DuplicadoRevisado[]> {
+  const { data, error } = await supabase.from("insumos_duplicados_revisados").select("*").eq("conta_id", contaId);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function marcarDuplicadoRevisado(
+  contaId: string,
+  chaveNormalizada: string,
+  nomes: string[],
+  status: "descartado" | "corrigido",
+  revisadoPor?: string,
+): Promise<void> {
+  const { error } = await supabase.from("insumos_duplicados_revisados").upsert({
+    conta_id: contaId,
+    chave_normalizada: chaveNormalizada,
+    nomes,
+    status,
+    revisado_por: revisadoPor ?? null,
+  }, { onConflict: "conta_id,chave_normalizada" });
+  if (error) throw error;
 }
 
 export async function atualizarInsumo(id: string, i: Partial<Insumo>): Promise<void> {

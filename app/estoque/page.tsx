@@ -22,7 +22,10 @@ import {
   listarMovimentacoesPA,
   saldoPorLoteDetalhado,
   listarInsumosParaConta,
+  normalizarNomeInsumo,
+  listarDuplicadosRevisados, marcarDuplicadoRevisado,
 } from "../../lib/db";
+import type { DuplicadoRevisado } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type {
   Insumo, MovimentacaoEstoque,
@@ -96,7 +99,7 @@ const CAT_META: Record<Insumo["categoria"], { bg: string; cl: string; label: str
   outros:          { bg: "#F1EFE8", cl: "var(--text-2)",    label: "Outros"  },
 };
 
-type Aba = "posicao" | "nf_entrada" | "terceiros" | "movimentacoes" | "relatorios";
+type Aba = "posicao" | "nf_entrada" | "terceiros" | "movimentacoes" | "relatorios" | "duplicados";
 
 // ────────────────────────────────────────────────────────
 // Tipos locais para o modal de NF Entrada
@@ -283,6 +286,8 @@ export default function Estoque() {
 
   // dados
   const [insumos, setInsumos]       = useState<Insumo[]>([]);
+  const [duplicadosRevisados, setDuplicadosRevisados] = useState<DuplicadoRevisado[]>([]);
+  const [duplicadosProcessando, setDuplicadosProcessando] = useState<string | null>(null);
   const [movs, setMovs]             = useState<MovimentacaoEstoque[]>([]);
   const [depositos, setDepositos]   = useState<Deposito[]>([]);
   const [centros, setCentros]       = useState<CentroCusto[]>([]);
@@ -579,6 +584,7 @@ export default function Estoque() {
     }
     if (aba === "nf_entrada")    listarNfEntradas(fazLeitura).then(setNfEntradas).catch(e => setErro(e.message));
     if (aba === "terceiros")     listarEstoqueTerceiros(fazLeitura).then(setTerceiros).catch(e => setErro(e.message));
+    if (aba === "duplicados" && contaId) listarDuplicadosRevisados(contaId).then(setDuplicadosRevisados).catch(e => setErro(e.message));
     if (aba === "relatorios" && relTipo === "historico" && relInsumoId) {
       listarMovimentacoes(fazLeitura, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
     }
@@ -945,6 +951,40 @@ export default function Estoque() {
   const alertas   = insumos.filter(i => i.estoque <= i.estoque_minimo);
   const negativos = insumos.filter(i => i.estoque < 0);
 
+  // ── Possíveis duplicados no catálogo ──────────────────────────────────────
+  // Agrupa por nome normalizado (acento/caixa/pontuação/artigos ignorados) —
+  // critério EXATO de propósito: "SEM SOJA CG 7681" e "SEM SOJA CG 8790" têm
+  // token normalizado diferente (7681 ≠ 8790), então NÃO caem no mesmo grupo,
+  // mesmo compartilhando a abreviação "SEM SOJA CG". Evita falso positivo
+  // entre modelos/variedades diferentes — o pedido explícito foi cautela aqui.
+  const gruposDuplicados = (() => {
+    const porChave = new Map<string, Insumo[]>();
+    for (const ins of insumos) {
+      const chave = normalizarNomeInsumo(ins.nome);
+      if (!chave) continue;
+      if (!porChave.has(chave)) porChave.set(chave, []);
+      porChave.get(chave)!.push(ins);
+    }
+    const jaRevisadas = new Set(duplicadosRevisados.map(d => d.chave_normalizada));
+    return Array.from(porChave.entries())
+      .filter(([chave, itens]) => itens.length > 1 && !jaRevisadas.has(chave))
+      .map(([chave, itens]) => ({ chave, itens: itens.sort((a, b) => b.estoque - a.estoque) }))
+      .sort((a, b) => a.itens[0].nome.localeCompare(b.itens[0].nome));
+  })();
+
+  async function revisarDuplicado(chave: string, nomes: string[], status: "descartado" | "corrigido") {
+    if (!contaId) return;
+    setDuplicadosProcessando(chave);
+    try {
+      await marcarDuplicadoRevisado(contaId, chave, nomes, status, nomeUsuario ?? undefined);
+      setDuplicadosRevisados(prev => [...prev, { id: chave, conta_id: contaId, chave_normalizada: chave, nomes, status, created_at: new Date().toISOString() }]);
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setDuplicadosProcessando(null);
+    }
+  }
+
   // ────────────────────────────────────────────────────────
   // RENDER
   // ────────────────────────────────────────────────────────
@@ -979,13 +1019,75 @@ export default function Estoque() {
 
         {/* Abas — scroll horizontal no mobile */}
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
-          {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"] ] as const).map(([k,l]) => (
-            <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent", flexShrink: 0 }}>{l}</button>
+          {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"], ["duplicados","Possíveis Duplicados"] ] as const).map(([k,l]) => (
+            <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+              {l}
+              {k === "duplicados" && gruposDuplicados.length > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", borderRadius: 10, padding: "1px 7px" }}>{gruposDuplicados.length}</span>
+              )}
+            </button>
           ))}
         </div>
 
         <div style={{ padding: "20px 22px", flex: 1, overflowY: "auto" }}>
           {erro && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>⚠ {erro}</div>}
+
+          {/* ══ POSSÍVEIS DUPLICADOS ══ */}
+          {aba === "duplicados" && (
+            <div>
+              <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16, maxWidth: 720 }}>
+                Insumos com o mesmo nome (ignorando acento, maiúscula/minúscula, pontuação e artigos) cadastrados mais de uma vez no catálogo do cliente. Nomes parecidos mas com código/modelo/variedade diferente <strong>não aparecem aqui</strong> — o critério é o nome ficar idêntico depois de normalizado. Revise cada caso: <strong>Descartar</strong> se forem produtos diferentes de verdade, ou <strong>Corrigido</strong> depois de mesclar manualmente (Estoque → Posição → editar/excluir).
+              </div>
+
+              {gruposDuplicados.length === 0 ? (
+                <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                  ✓ Nenhum possível duplicado pendente de revisão.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {gruposDuplicados.map(({ chave, itens }) => (
+                    <div key={chave} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ padding: "10px 16px", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#92400E" }}>⚠ {itens.length} cadastros com o mesmo nome normalizado</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            disabled={duplicadosProcessando === chave}
+                            onClick={() => revisarDuplicado(chave, itens.map(i => i.nome), "descartado")}
+                            style={{ ...btnE, background: "var(--bg-card)" }}>
+                            {duplicadosProcessando === chave ? "..." : "Descartar — não é duplicado"}
+                          </button>
+                          <button
+                            disabled={duplicadosProcessando === chave}
+                            onClick={() => revisarDuplicado(chave, itens.map(i => i.nome), "corrigido")}
+                            style={btnV}>
+                            {duplicadosProcessando === chave ? "..." : "✓ Corrigido"}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.8fr 1fr 1fr 1.2fr", gap: 0, fontSize: 12 }}>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Nome</div>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Categoria</div>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Unidade</div>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase", textAlign: "right" }}>Estoque</div>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase", textAlign: "right" }}>Custo médio</div>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase", textAlign: "right" }}>Valor em estoque</div>
+                        {itens.map((i, idx) => (
+                          <React.Fragment key={i.id}>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", fontWeight: 600, color: "var(--text-1)" }}>{i.nome}</div>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)" }}>{badge(i.categoria, "var(--bg-tag)", "var(--text-2)")}</div>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)" }}>{i.unidade}</div>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: idx === 0 ? 700 : 400 }}>{i.estoque.toLocaleString("pt-BR")}</div>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(i.custo_medio ?? i.valor_unitario)}</div>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtBRL(i.estoque * (i.custo_medio ?? i.valor_unitario))}</div>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ══ POSIÇÃO DE ESTOQUE ══ */}
           {aba === "posicao" && (

@@ -263,7 +263,7 @@ type OrigEscolha = "manual" | "xml" | "sieg" | "leitor";
 type TipoEntrada = "insumos" | "pecas" | "vef" | "remessa" | "custo_direto";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
-  insumos:      { label: "Insumos / Estoque",       desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo de insumos.",                                   cor: "#E8E8E8" },
+  insumos:      { label: "Insumos/Combustíveis (Para Estoque)", desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo de insumos ou combustíveis.",          cor: "#E8E8E8" },
   pecas:        { label: "Peças / Manutenção",       desc: "Compra de peças, pneus ou serviços de manutenção. Cada item é vinculado à maquinário do cadastro.",                    cor: "#E0F0FF" },
   custo_direto: { label: "Apropriação Direta",       desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).",       cor: "#E8F5E9" },
   vef:          { label: "Entrega Futura (VEF)",     desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                            cor: "#FAEEDA" },
