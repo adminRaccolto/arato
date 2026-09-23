@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-ak",
+    data: "23/09/2026",
+    titulo: "Transferência de Estoque: depósito de terceiro não aparece mais como origem/destino",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Estoque → Transferências → Nova Transferência listava depósitos de terceiro (armazém externo, ex: BUNGE, G-8) junto com os depósitos próprios nos seletores de Depósito Origem/Destino — não faz sentido numa transferência entre fazendas próprias, já que não é um local físico nosso. Removidos dos dois seletores; o cadastro do depósito de terceiro continua existindo normalmente pra outros fluxos (ex: romaneio de expedição)." },
+    ],
+    onde: "Estoque → Transferências → Nova Transferência",
+  },
+  {
     versao: "2026.09.23-aj",
     data: "23/09/2026",
     titulo: "Busca em Máquinas e Veículos (Cadastros)",

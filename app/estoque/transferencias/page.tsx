@@ -349,8 +349,13 @@ export default function TransferenciasEstoquePage() {
   // ── Computed ──────────────────────────────────────────────────────────────
   const fazendaOrigem = todasFazendas.find(f => f.id === form.fazendaOrigemId);
   const fazendaDestino = todasFazendas.find(f => f.id === form.fazendaDestinoId);
-  const depositosOrigem = depositosPorFazenda[form.fazendaOrigemId] ?? [];
-  const depositosDestino = depositosPorFazenda[form.fazendaDestinoId] ?? [];
+  // Depósito de terceiro (armazém externo, ex: BUNGE/G-8) não é um local físico
+  // nosso — não faz sentido aparecer como origem/destino de uma transferência
+  // entre fazendas próprias, mesmo que exista cadastrado pra outros fluxos
+  // (ex: romaneio de expedição). Filtra pelos dois tipos "terceiro".
+  const TIPOS_DEPOSITO_TERCEIRO = new Set(["terceiro", "armazem_terceiro"]);
+  const depositosOrigem = (depositosPorFazenda[form.fazendaOrigemId] ?? []).filter(d => !TIPOS_DEPOSITO_TERCEIRO.has(d.tipo));
+  const depositosDestino = (depositosPorFazenda[form.fazendaDestinoId] ?? []).filter(d => !TIPOS_DEPOSITO_TERCEIRO.has(d.tipo));
   // Todos os insumos da conta (todas as fazendas) para lookup de nome e unidade
   const todosInsumos = Object.values(insumosPorFazenda).flat();
   const insumosOrigem = form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos;
