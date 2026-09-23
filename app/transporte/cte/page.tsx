@@ -96,6 +96,10 @@ interface PessoaMin {
   telefone?: string;
 }
 interface EmpresaTransp { id: string; razao_social?: string | null; nome?: string | null; cpf_cnpj?: string | null; rntrc?: string | null; }
+interface IeCompleta {
+  inscricao_estadual: string; municipio?: string; estado: string;
+  municipio_ibge?: string; cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string;
+}
 
 const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> = {
   rascunho:   { label: "Rascunho",  bg: "#FBF3E0", cl: "#7B4A00" },
@@ -463,8 +467,8 @@ function CtePageInner() {
   // IEs múltiplas por CPF/CNPJ
   const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
   const [destinatarioSelUI, setDestinatarioSelUI] = useState("");
-  const [iesRemetente,    setIesRemetente]    = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
-  const [iesDestinatario, setIesDestinatario] = useState<{ inscricao_estadual: string; municipio?: string; estado: string }[]>([]);
+  const [iesRemetente,    setIesRemetente]    = useState<IeCompleta[]>([]);
+  const [iesDestinatario, setIesDestinatario] = useState<IeCompleta[]>([]);
 
   // Contadores para nr. automático
   const [proximoNr, setProximoNr] = useState("1");
@@ -611,12 +615,15 @@ function CtePageInner() {
     setModal(true);
   }
 
-  // ── Busca IEs de um produtor pelo id ──────────────────────
+  // ── Busca IEs de um produtor pelo id — endereço completo, não só
+  // município/estado. Sem os campos de endereço aqui, não tinha como aplicar
+  // o endereço da IE ESPECÍFICA escolhida (cada IE de um produtor pode ser
+  // uma propriedade/estabelecimento diferente, em município diferente).
   async function buscarIesPorProdutorId(produtor_id: string) {
     if (!produtor_id) return [];
     const { data: ies } = await supabase
       .from("produtor_inscricoes_estaduais")
-      .select("inscricao_estadual, municipio, estado")
+      .select("inscricao_estadual, municipio, estado, municipio_ibge, cep, logradouro, numero, complemento, bairro")
       .eq("produtor_id", produtor_id)
       .eq("ativa", true)
       .order("estado");
@@ -637,6 +644,26 @@ function CtePageInner() {
     return buscarIesPorProdutorId(prod.id);
   }
 
+  // ── Resolve o endereço da IE ESPECÍFICA (não a "IE padrão" do produtor) —
+  // usado na emissão pra remetente/destinatário escolhidos como Produtor (sem
+  // pessoa_id, ctes.remetente_id/destinatario_id fica vazio nesse caso). Sem
+  // isso, um produtor com mais de uma IE saía com endereço de QUALQUER outra
+  // propriedade dele, ou em branco — achado real 23/09/2026 (mesma raiz do
+  // bug de IE/endereço trocados já corrigido na emissão de NF-e).
+  async function resolverEnderecoPorCnpjIe(cpfCnpj: string | undefined, ie: string | undefined): Promise<IeCompleta | null> {
+    if (!cpfCnpj) return null;
+    const digits = cpfCnpj.replace(/\D/g, "");
+    const { data: prod } = await supabase.from("produtores").select("id").filter("cpf_cnpj", "ilike", `%${digits}%`).limit(1).maybeSingle();
+    if (!prod) return null;
+    const ies = await buscarIesPorProdutorId(prod.id);
+    if (ies.length === 0) return null;
+    if (ie) {
+      const exata = ies.find(i => i.inscricao_estadual.replace(/\D/g, "") === ie.replace(/\D/g, ""));
+      if (exata) return exata;
+    }
+    return ies[0]; // sem IE informada ou sem match — melhor esforço, primeira ativa
+  }
+
   // ── Auto-fill remetente — atalho combinado (Produtores + Pessoas/terceiros) ──
   // ctes.remetente_id só aceita pessoas(id) (FK ctes_remetente_id_fkey). Quando o atalho vem de
   // Produtores, os campos são só preenchidos por conveniência e remetente_id fica vazio (o
@@ -653,15 +680,20 @@ function CtePageInner() {
       const prod = produtores.find(p => p.id === id);
       const ies = await buscarIesPorProdutorId(id);
       setIesRemetente(ies);
+      // Com 1 IE só, usa o endereço DELA (mais confiável que o cadastro geral
+      // do produtor, que pode nem bater com a única IE ativa); com várias,
+      // deixa em branco até o usuário escolher — o <select> de IE logo abaixo
+      // aplica o endereço certo assim que uma é escolhida.
+      const ieUnica = ies.length === 1 ? ies[0] : null;
       setForm(f => ({
         ...f,
         remetente_id: "",
         remetente_nome: prod?.nome ?? "",
         remetente_cnpj: prod?.cpf_cnpj ?? "",
-        remetente_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
-        municipio_origem: prod?.municipio ?? f.municipio_origem,
-        uf_origem: prod?.estado ?? f.uf_origem,
-        ibge_origem: prod?.municipio_ibge ?? f.ibge_origem,
+        remetente_ie: ieUnica ? ieUnica.inscricao_estadual : (prod?.inscricao_est ?? ""),
+        municipio_origem: ieUnica?.municipio ?? prod?.municipio ?? f.municipio_origem,
+        uf_origem: ieUnica?.estado ?? prod?.estado ?? f.uf_origem,
+        ibge_origem: ieUnica?.municipio_ibge ?? prod?.municipio_ibge ?? f.ibge_origem,
       }));
     } else if (tipo === "pessoa") {
       const p = pessoas.find(p => p.id === id);
@@ -696,15 +728,16 @@ function CtePageInner() {
       const prod = produtores.find(p => p.id === id);
       const ies = await buscarIesPorProdutorId(id);
       setIesDestinatario(ies);
+      const ieUnica = ies.length === 1 ? ies[0] : null;
       setForm(f => ({
         ...f,
         destinatario_id: "",
         destinatario_nome: prod?.nome ?? "",
         destinatario_cnpj: prod?.cpf_cnpj ?? "",
-        destinatario_ie: ies.length === 1 ? ies[0].inscricao_estadual : (prod?.inscricao_est ?? ""),
-        municipio_destino: prod?.municipio ?? f.municipio_destino,
-        uf_destino: prod?.estado ?? f.uf_destino,
-        ibge_destino: prod?.municipio_ibge ?? f.ibge_destino,
+        destinatario_ie: ieUnica ? ieUnica.inscricao_estadual : (prod?.inscricao_est ?? ""),
+        municipio_destino: ieUnica?.municipio ?? prod?.municipio ?? f.municipio_destino,
+        uf_destino: ieUnica?.estado ?? prod?.estado ?? f.uf_destino,
+        ibge_destino: ieUnica?.municipio_ibge ?? prod?.municipio_ibge ?? f.ibge_destino,
       }));
     } else if (tipo === "pessoa") {
       const p = pessoas.find(p => p.id === id);
@@ -974,10 +1007,20 @@ function CtePageInner() {
     if (!confirm(`Transmitir CT-e ${c.numero_cte} para a SEFAZ?\nAmbiente configurado em Parâmetros → CT-e.`)) return;
 
     // Usa IBGE salvo no cadastro; fallback por nome de cidade via ViaCEP
-    const cExt = c as Cte & { ibge_origem?: string; ibge_destino?: string };
+    const cExt = c as Cte & { ibge_origem?: string; ibge_destino?: string; remetente_ie?: string; destinatario_ie?: string };
     const [ibgeIni, ibgeFim] = await Promise.all([
       cExt.ibge_origem ? Promise.resolve(cExt.ibge_origem) : buscarIbge(c.municipio_origem, c.uf_origem),
       cExt.ibge_destino ? Promise.resolve(cExt.ibge_destino) : buscarIbge(c.municipio_destino, c.uf_destino),
+    ]);
+
+    // Remetente/Destinatário escolhidos como Produtor (não Pessoa) ficam com
+    // remetente_id/destinatario_id vazios — o endereço deles precisa vir da
+    // IE específica escolhida (produtor_inscricoes_estaduais), não de "pessoas".
+    const rem = pessoas.find(p => p.id === c.remetente_id);
+    const dest = pessoas.find(p => p.id === c.destinatario_id);
+    const [ieRem, ieDest] = await Promise.all([
+      rem ? Promise.resolve(null) : resolverEnderecoPorCnpjIe(c.remetente_cnpj ?? undefined, cExt.remetente_ie),
+      dest ? Promise.resolve(null) : resolverEnderecoPorCnpjIe(c.destinatario_cnpj ?? undefined, cExt.destinatario_ie),
     ]);
 
     const payload = {
@@ -987,37 +1030,35 @@ function CtePageInner() {
       emitente_cnpj:      c.emitente_cnpj ?? undefined,
       emitente_razao_social: c.emitente_razao_social ?? undefined,
       remetente: (() => {
-        const rem = pessoas.find(p => p.id === c.remetente_id);
-        // IBGE: tenta pessoa → CT-e salvo → busca já feita em ibgeIni
-        const ibgeRem = rem?.municipio_ibge || cExt.ibge_origem || ibgeIni;
+        // IBGE: tenta pessoa/IE → CT-e salvo → busca já feita em ibgeIni
+        const ibgeRem = rem?.municipio_ibge || ieRem?.municipio_ibge || cExt.ibge_origem || ibgeIni;
         return {
           nome:           c.remetente_nome,
           cpf_cnpj:       c.remetente_cnpj    ?? undefined,
-          ie:             (c as Cte & { remetente_ie?: string }).remetente_ie || rem?.inscricao_est || undefined,
-          logradouro:     rem?.logradouro      || "ZONA RURAL",
-          numero:         rem?.numero          || "S/N",
-          bairro:         rem?.bairro          || "ZONA RURAL",
+          ie:             cExt.remetente_ie || rem?.inscricao_est || ieRem?.inscricao_estadual || undefined,
+          logradouro:     rem?.logradouro      || ieRem?.logradouro  || "ZONA RURAL",
+          numero:         rem?.numero          || ieRem?.numero      || "S/N",
+          bairro:         rem?.bairro          || ieRem?.bairro      || "ZONA RURAL",
           municipio_ibge: ibgeRem             || undefined,
-          municipio_nome: rem?.municipio       ?? c.municipio_origem,
-          uf:             rem?.estado          ?? c.uf_origem,
-          cep:            rem?.cep             ?? undefined,
+          municipio_nome: rem?.municipio       ?? ieRem?.municipio  ?? c.municipio_origem,
+          uf:             rem?.estado          ?? ieRem?.estado     ?? c.uf_origem,
+          cep:            rem?.cep             ?? ieRem?.cep        ?? undefined,
           fone:           rem?.telefone        ?? undefined,
         };
       })(),
       destinatario: (() => {
-        const dest = pessoas.find(p => p.id === c.destinatario_id);
-        const ibgeDest = dest?.municipio_ibge || cExt.ibge_destino || ibgeFim;
+        const ibgeDest = dest?.municipio_ibge || ieDest?.municipio_ibge || cExt.ibge_destino || ibgeFim;
         return {
           nome:           c.destinatario_nome,
           cpf_cnpj:       c.destinatario_cnpj ?? undefined,
-          ie:             (c as Cte & { destinatario_ie?: string }).destinatario_ie || dest?.inscricao_est || undefined,
-          logradouro:     dest?.logradouro     || "ZONA RURAL",
-          numero:         dest?.numero         || "S/N",
-          bairro:         dest?.bairro         || "ZONA RURAL",
+          ie:             cExt.destinatario_ie || dest?.inscricao_est || ieDest?.inscricao_estadual || undefined,
+          logradouro:     dest?.logradouro     || ieDest?.logradouro  || "ZONA RURAL",
+          numero:         dest?.numero         || ieDest?.numero      || "S/N",
+          bairro:         dest?.bairro         || ieDest?.bairro      || "ZONA RURAL",
           municipio_ibge: ibgeDest            || undefined,
-          municipio_nome: dest?.municipio      ?? c.municipio_destino,
-          uf:             dest?.estado         ?? c.uf_destino,
-          cep:            dest?.cep            ?? undefined,
+          municipio_nome: dest?.municipio      ?? ieDest?.municipio  ?? c.municipio_destino,
+          uf:             dest?.estado         ?? ieDest?.estado     ?? c.uf_destino,
+          cep:            dest?.cep            ?? ieDest?.cep        ?? undefined,
           fone:           dest?.telefone       ?? undefined,
         };
       })(),
@@ -1544,7 +1585,18 @@ function CtePageInner() {
               <div>
                 <label style={lbl}>Inscrição Estadual</label>
                 {iesRemetente.length > 1 ? (
-                  <select value={form.remetente_ie} onChange={e => setForm(f => ({ ...f, remetente_ie: e.target.value }))} style={inp}>
+                  <select value={form.remetente_ie} onChange={e => {
+                      // Trocar a IE troca também o Município/UF/IBGE de Origem — cada IE do
+                      // produtor pode ser uma propriedade em município diferente. Achado real
+                      // 23/09/2026: a NF/CT-e saía com a IE certa mas o endereço de outra.
+                      const ieSel = iesRemetente.find(i => i.inscricao_estadual === e.target.value);
+                      setForm(f => ({
+                        ...f, remetente_ie: e.target.value,
+                        municipio_origem: ieSel?.municipio ?? f.municipio_origem,
+                        uf_origem: ieSel?.estado ?? f.uf_origem,
+                        ibge_origem: ieSel?.municipio_ibge ?? f.ibge_origem,
+                      }));
+                    }} style={inp}>
                     <option value="">— Selecionar IE —</option>
                     {iesRemetente.map(ie => (
                       <option key={ie.inscricao_estadual} value={ie.inscricao_estadual}>
@@ -1583,7 +1635,15 @@ function CtePageInner() {
               <div>
                 <label style={lbl}>Inscrição Estadual</label>
                 {iesDestinatario.length > 1 ? (
-                  <select value={form.destinatario_ie} onChange={e => setForm(f => ({ ...f, destinatario_ie: e.target.value }))} style={inp}>
+                  <select value={form.destinatario_ie} onChange={e => {
+                      const ieSel = iesDestinatario.find(i => i.inscricao_estadual === e.target.value);
+                      setForm(f => ({
+                        ...f, destinatario_ie: e.target.value,
+                        municipio_destino: ieSel?.municipio ?? f.municipio_destino,
+                        uf_destino: ieSel?.estado ?? f.uf_destino,
+                        ibge_destino: ieSel?.municipio_ibge ?? f.ibge_destino,
+                      }));
+                    }} style={inp}>
                     <option value="">— Selecionar IE —</option>
                     {iesDestinatario.map(ie => (
                       <option key={ie.inscricao_estadual} value={ie.inscricao_estadual}>

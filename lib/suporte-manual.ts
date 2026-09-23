@@ -387,9 +387,13 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 **Transportadora e veículo:** os campos de transportadora/placa preenchidos na transferência aparecem de verdade na NF e no DANFE.
 
 **Botões na tabela por status:**
-- Rascunho: Visualizar · **Emitir NF** · Cancelar
-- Emitida: Visualizar NF · DANFE · Confirmar Entrada (se não automático) · Cancelar
-- Entrada Confirmada / Cancelada: Visualizar NF
+- Rascunho: Visualizar · **Emitir NF** · Cancelar · **⧉ Replicar**
+- Emitida: Visualizar NF · DANFE · Confirmar Entrada (se não automático) · Cancelar · **⧉ Replicar**
+- Entrada Confirmada / Cancelada: Visualizar NF · **⧉ Replicar**
+
+**Novo 23/09/2026 — botão "⧉ Replicar":** abre uma cópia nova (Rascunho, mesmos dados de origem/destino/itens/CFOP/transporte) de QUALQUER transferência, inclusive já emitida ou cancelada — pra ajustar o que for preciso (corrigir CFOP, custo, config fiscal etc.) e emitir de novo sem redigitar tudo do zero. Não altera nem referencia a transferência original.
+
+**Correção 23/09/2026 — Custo Unit. do item era ignorado, NF saía com Valor Unit./Total = 0,00:** o valor lançado na NF-e sempre vinha do cadastro do insumo (custo_medio/valor_unitario), nunca do "Custo Unit. (R$)" digitado no item da transferência — se o insumo não tinha custo cadastrado (comum em defensivos não rastreados por custo médio), a NF saía com valor zerado mesmo o usuário tendo digitado um valor real. Corrigido: o valor digitado no item tem prioridade.
 
 **CNPJ/CPF e IE do Destinatário:** vêm pré-preenchidos com o cadastro fiscal da fazenda de destino, mas são editáveis — a entrada pode ser numa IE diferente da do produtor responsável pelo depósito. Os dois campos são de texto livre com sugestão (aceitam digitar qualquer coisa): o CNPJ/CPF sugere os produtores cadastrados na conta; ao digitar/escolher um documento que bate com um produtor, o campo IE passa a sugerir as IEs daquele produtor já mostrando o município de cada uma — útil quando o mesmo produtor tem IEs em municípios diferentes.
 
@@ -548,6 +552,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 **Novo 23/09/2026 — DACTE no layout oficial padrão de mercado:** o DACTE (botão "DACTE") foi refeito do zero seguindo um documento de referência trazido pelo dono — canhoto de recebimento, dados do emitente/modal, código de barras da chave, tipo do CT-e, tomador do serviço, CFOP/protocolo, remetente/destinatário completos (endereço, município, CNPJ/CPF, IE), expedidor/recebedor, carga (produto/NCM/peso bruto/líquido), componentes da prestação, impostos (situação tributária, base de cálculo, alíquota, valor ICMS), documentos originários, dados do modal rodoviário e área reservada ao fisco — o mesmo formato usado pela maioria dos sistemas do mercado. Substitui o layout anterior (resumo em caixas), que era bem diferente do documento oficial.
 
 **Frete para terceiros (a fazenda só transporta, a carga não é dela):** os campos "Selecionar Remetente" e "Selecionar Destinatário" (ambos "Produtores ou Pessoas/terceiros cadastrados") são só um atalho pra preencher rápido quando uma das partes já está no cadastro — não travam a nota no produtor. Logo abaixo de cada um tem Razão Social/Nome, CNPJ/CPF e Inscrição Estadual soltos e editáveis: pra um frete de terceiro para terceiro (nenhum dos dois é o produtor dono da fazenda), digite os dados de quem envia e de quem recebe direto nesses campos, ou use o atalho — os dois campos têm busca por texto e listam tanto Produtores quanto Pessoas cadastradas (dois grupos no mesmo campo). Quem emite o CT-e é sempre a fazenda (a transportadora), isso não muda.
+
+**Correção 23/09/2026 — CT-e/NF saía com a IE certa mas endereço de OUTRA propriedade do mesmo produtor:** escolher remetente/destinatário pelo atalho de Produtor (não Pessoa cadastrada) preenchia o endereço a partir do cadastro geral do produtor — que não necessariamente bate com nenhuma Inscrição Estadual específica dele, já que cada IE pode ser uma propriedade em município diferente. Um produtor com mais de uma IE saía com endereço de qualquer uma delas (ou em branco), mesmo com a IE certa impressa. Corrigido: o sistema busca o endereço da IE EXATA escolhida (Cadastros → Produtores → Inscrições Estaduais) tanto na tela quanto — mais importante — na hora de transmitir de verdade à SEFAZ.
 
 **Correção 23/09/2026 — Destinatário só listava Pessoas, não Produtores:** impedia um caso real — transferência entre duas propriedades/Inscrições Estaduais do MESMO produtor (ele podia ser escolhido como Remetente, mas não aparecia como opção de Destinatário). Corrigido: o seletor de Destinatário passou a combinar Produtores e Pessoas, igual ao de Remetente — inclusive escolhendo o MESMO produtor nos dois lados, com IEs diferentes.
 

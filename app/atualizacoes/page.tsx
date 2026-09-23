@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.23-at",
+    data: "23/09/2026",
+    titulo: "CT-e: endereço de outra IE do produtor · Transferência: valor zerado na NF · Replicar transferência",
+    modulos: ["Transporte", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "CT-e/NF de produtor com mais de uma Inscrição Estadual podia sair com a IE certa mas o endereço de OUTRA propriedade dele — o vínculo entre IE e endereço só existia se o remetente/destinatário fosse escolhido do cadastro de Pessoas; escolhido como Produtor (caso comum: mesmo produtor como remetente E destinatário, IEs diferentes), o endereço vinha do cadastro geral do produtor (não bate necessariamente com nenhuma IE específica) ou ficava em branco. Corrigido: agora busca o endereço da IE EXATA escolhida (produtor_inscricoes_estaduais) tanto na tela quanto na hora de transmitir de verdade — a fonte de erro mais séria (na transmissão) é a que mais importava." },
+      { tipo: "correcao", texto: "Transferência de Estoque: o Custo Unit. digitado no item era ignorado ao montar a NF-e — o valor sempre vinha do cadastro do insumo (custo_medio/valor_unitario), que pode não existir (comum em defensivos não rastreados por custo), saindo Valor Unit./Total = 0,00 na NF mesmo com um valor digitado na transferência. Corrigido: o valor do item tem prioridade." },
+      { tipo: "melhoria", texto: "Estoque → Transferências ganhou o botão \"⧉ Replicar\" em qualquer transferência — abre uma cópia nova (rascunho, mesmos dados) pra ajustar o que for preciso e emitir de novo, sem redigitar tudo. Útil pra corrigir e reemitir depois de um erro de configuração." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e) · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.23-as",
     data: "23/09/2026",
     titulo: "CT-e: Série/Número não vinham de Parâmetros, prefill incompleto, Destinatário não aceitava Produtor",

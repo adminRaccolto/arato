@@ -220,7 +220,15 @@ export async function POST(request: NextRequest) {
       const textoLegalDiferido = "ICMS diferido nos termos do Decreto MT n. 4.540/2004 — transferência entre estabelecimentos do mesmo titular, operação não configura venda. Não incide PIS/COFINS nem Funrural.";
       const itenNfe = itensTransf.map((it, idx) => {
         const ins = insumoMap[it.insumo_id as string] ?? {};
-        const valorUnit = Number(ins.custo_medio ?? ins.valor_unitario ?? 1);
+        // Prioriza o Custo Unit. digitado pelo usuário NA TRANSFERÊNCIA (it.custo_unitario) —
+        // antes o valor da NF sempre vinha do cadastro do insumo (custo_medio/valor_unitario),
+        // ignorando por completo o que foi preenchido no item. Sem isso, um insumo sem custo_medio
+        // cadastrado (comum em defensivos não rastreados por custo) saía com valor_unitario 0 na
+        // NF real, mesmo o usuário tendo digitado um valor — achado real 23/09/2026. `?? 1` sozinho
+        // não pegava esse caso porque valor_unitario=0 é um valor real (não null/undefined), então
+        // o fallback nunca disparava.
+        const custoItem = Number(it.custo_unitario ?? 0);
+        const valorUnit = custoItem > 0 ? custoItem : Number(ins.custo_medio || ins.valor_unitario || 1);
         return {
           codigo:         String(idx + 1).padStart(4, "0"),
           descricao:      String(ins.nome ?? "Produto"),

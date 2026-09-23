@@ -646,6 +646,17 @@ export default function TransferenciasEstoquePage() {
     setModal(true);
   }
 
+  // ── Replicar — pedido do dono 23/09/2026: abre uma transferência JÁ
+  // EMITIDA (ou cancelada) como um RASCUNHO NOVO, com os mesmos dados, pra
+  // editar o que for preciso (CFOP, custo, depósito etc.) e emitir de novo —
+  // sem ter que redigitar tudo do zero a cada tentativa/ajuste. Mesma lógica
+  // de abrirEditar(), só que grava como registro novo (editandoId = null) em
+  // vez de atualizar o original.
+  function abrirReplica(t: TransferenciaComItens) {
+    abrirEditar(t);
+    setEditandoId(null);
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -861,6 +872,9 @@ export default function TransferenciasEstoquePage() {
                               Cancelar
                             </button>
                           )}
+                          <button onClick={() => abrirReplica(t)} style={btn("#F4F6FA", "#555")} title="Abre uma cópia nova (rascunho) com os mesmos dados, pra editar e emitir de novo">
+                            ⧉ Replicar
+                          </button>
                         </div>
                       </td>
                     </tr>
