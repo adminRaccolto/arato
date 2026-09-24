@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-t",
+    data: "24/09/2026",
+    titulo: "DAMDFE: campo CIOT sempre impresso",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A impressão do MDF-e só trazia o bloco CIOT quando um CIOT havia sido gerado; sem CIOT o campo não existia no papel. Agora o bloco (código, verificador e protocolo ANTT) é sempre impresso, com \"Não informado / não exigido\" quando vazio." },
+    ],
+    onde: "Transporte → MDF-e → Imprimir",
+  },
+  {
     versao: "2026.09.24-s",
     data: "24/09/2026",
     titulo: "MDF-e: CT-e povoa mais campos e traz o seguro do cadastro",

@@ -180,15 +180,15 @@ function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string) {
     ${docs.length === 0 ? `<div style="padding:6px;text-align:center;color:#888;font-size:7pt">Nenhum documento vinculado</div>` : ""}
   </div>
 
-  ${m.ciot ? `
+  <!-- CIOT: sempre impresso (no DAMDFE oficial o campo existe mesmo vazio) -->
   <div class="section" style="border-top:none">
     <div class="section-title">CIOT — Código Identificador da Operação de Transporte</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr">
-      <div class="field"><span class="label">CÓDIGO CIOT</span><span class="value" style="font-size:11pt;letter-spacing:0.1em">${m.ciot}</span></div>
+      <div class="field"><span class="label">CÓDIGO CIOT</span><span class="value" style="font-size:${m.ciot ? "11pt" : "9pt"};letter-spacing:${m.ciot ? "0.1em" : "0"}">${m.ciot ?? "Não informado / não exigido"}</span></div>
       <div class="field"><span class="label">CÓDIGO VERIFICADOR</span><span class="value">${m.ciot_codigo_verificador ?? "—"}</span></div>
       <div class="field" style="border-right:none"><span class="label">PROTOCOLO ANTT</span><span class="value">${m.ciot_protocolo ?? "—"}</span></div>
     </div>
-  </div>` : ""}
+  </div>
 
   ${m.observacao ? `
   <div class="section" style="border-top:none">
