@@ -446,9 +446,12 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     // presente, aplica <gRed> igualmente aos 3 componentes (IBS UF/Mun/CBS).
     let ibsCbsXml = "";
     if (item.ibsCbs && item.ibsCbs.cst === "410") {
-      // CST 410 (imunidade/não incidência): só CST + cClassTrib, sem grupo gIBSCBS e sem entrar
-      // nos totais IBSCBSTot (não há valores). Definição do dono/contador 24/09/2026.
+      // CST 410 (imunidade/não incidência): só CST + cClassTrib, sem grupo gIBSCBS com totais IBSCBSTot zerados (não há valores). Definição do dono/contador 24/09/2026.
       ibsCbsXml = `<IBSCBS><CST>410</CST><cClassTrib>${item.ibsCbs.cclasstrib}</cClassTrib></IBSCBS>`;
+      // SEFAZ 1119: "Total de IBS e CBS devem ser informados se existir IBS/CBS declarado nos
+      // itens" — mesmo sem valores, o grupo de totais IBSCBSTot (zerado) é obrigatório
+      // (achado 24/09/2026, transferência de produtos rejeitada).
+      temIBSCBS = true;
     } else if (item.ibsCbs) {
       const ic = item.ibsCbs;
       const vBCIbsCbs = vProdLiq;

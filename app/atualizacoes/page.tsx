@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-z",
+    data: "24/09/2026",
+    titulo: "NF-e: rejeição 1119 (total de IBS e CBS) com CST 410",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitou a NF-e de transferência com 1119 \"Total de IBS e CBS devem ser informados se existir IBS/CBS declarado nos itens\": com CST 410 o sistema declarava IBS/CBS no item mas omitia o grupo de totais. Agora a NF-e com CST 410 sai com o grupo de totais (IBSCBSTot) zerado. Ainda não validado na SEFAZ — tente de novo a transferência e, se rejeitar, envie o código e o texto." },
+    ],
+    onde: "Fiscal → Emissão de NF-e · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.24-y",
     data: "24/09/2026",
     titulo: "NF-e: rejeição 1026 (IBS da UF inválido) — alíquotas de 2026",
