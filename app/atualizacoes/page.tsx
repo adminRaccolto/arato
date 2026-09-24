@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-y",
+    data: "24/09/2026",
+    titulo: "NF-e: rejeição 1026 (IBS da UF inválido) — alíquotas de 2026",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitava a NF-e com 1026 \"IBS da UF inválido\" porque a Tabela NCM guardava alíquotas antigas (IBS UF 9,0%, Município 1,0%, CBS 9,1%). Em 2026, ano de teste da Reforma Tributária, as alíquotas são fixas: IBS UF 0,10%, IBS Município 0,00% e CBS 0,90%. Agora a emissão usa esses valores em 2026 independentemente da tabela (a redução, como os 60%, continua vindo da tabela). Observação: o IBS não é nacional — é compartilhado entre Estados e Municípios (grupos UF e Município no XML); nacional/federal é a CBS." },
+    ],
+    onde: "Fiscal → Emissão de NF-e",
+  },
+  {
     versao: "2026.09.24-x",
     data: "24/09/2026",
     titulo: "Log do Sistema volta a registrar (automático)",

@@ -601,9 +601,13 @@ export async function emitirNFe(
         ibsCbs: {
           cst:              ncmCfg.ibs_cbs_cst || "410",
           cclasstrib:       ncmCfg.ibs_cbs_cclasstrib || "410999",
-          ibsEstadualAliq:  Number(ncmCfg.ibs_estadual_aliq ?? 0),
-          ibsMunicipalAliq: Number(ncmCfg.ibs_municipal_aliq ?? 0),
-          cbsAliq:          Number(ncmCfg.cbs_aliq ?? 0),
+          // 2026 = ano de teste (LC 214/2025 art. 343): a SEFAZ valida alíquotas FIXAS — IBS UF 0,10%,
+          // IBS Município 0,00%, CBS 0,90% — e rejeita qualquer outro valor (rejeição 1026 "IBS da
+          // UF inválido" com as alíquotas antigas de 9,0%/1,0%/9,1% gravadas na Tabela NCM).
+          // Em 2026 ignora as alíquotas da tabela; a redução (ex.: 60%) continua vindo dela.
+          ibsEstadualAliq:  new Date().getFullYear() === 2026 ? 0.10 : Number(ncmCfg.ibs_estadual_aliq ?? 0),
+          ibsMunicipalAliq: new Date().getFullYear() === 2026 ? 0    : Number(ncmCfg.ibs_municipal_aliq ?? 0),
+          cbsAliq:          new Date().getFullYear() === 2026 ? 0.90 : Number(ncmCfg.cbs_aliq ?? 0),
           reducaoPct:       Number(ncmCfg.ibs_cbs_reducao_pct ?? 0),
         },
       };
