@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-o",
+    data: "24/09/2026",
+    titulo: "Transferência: IE/CPF do remetente e destinatário não ficam mais trocados ao mudar de fazenda",
+    modulos: ["Estoque", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Ao trocar a fazenda de origem ou destino na transferência, o CPF/CNPJ e a IE preenchidos automaticamente da fazenda anterior permaneciam no formulário, gerando NF-e com remetente e destinatário embaralhados (IE de uma fazenda com o endereço de outra). Agora, ao escolher a fazenda, CPF/CNPJ e IE são recarregados do cadastro fiscal daquela fazenda. Confira sempre os campos IE Emitente/Destinatário antes de emitir." },
+    ],
+    onde: "Estoque → Transferências",
+  },
+  {
     versao: "2026.09.24-n",
     data: "24/09/2026",
     titulo: "CT-e: CFOPs restritos a 5352, 5353 e 6932",

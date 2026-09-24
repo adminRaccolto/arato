@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 import { emitirNFe, buscarConfEmitente, cancelarNFeEmitida } from "../../../../lib/nfe/index";
 import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../../lib/nfe/resolver-emitente";
 
+import { montarDestinatarioTransferencia, type ProdutorDestino, type IeDestino } from "../../../../lib/nfe/destinatario-transferencia";
+
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
 export const dynamic = "force-dynamic";
 
@@ -150,15 +152,10 @@ export async function POST(request: NextRequest) {
       if (!moduloKey && t.cpf_cnpj_origem) {
         moduloKey = (await resolverModuloKeyPorCpfCnpj(fazId, t.cpf_cnpj_origem as string, adm)) ?? "";
       }
-      if (!moduloKey) moduloKey = await resolverModuloKeyFiscal(fazId, adm);
+      if (!moduloKey && !t.cpf_cnpj_origem) moduloKey = await resolverModuloKeyFiscal(fazId, adm);
 
       if (!moduloKey) {
-        // Sem config fiscal → só atualiza status (sem NF-e real)
-        await adm.from("transferencias_estoque")
-          .update({ status: "emitida", data_emissao: new Date().toISOString() })
-          .eq("id", tid);
-        if (!jaProcessado) await _criarMovimentacoes(t, itensTransf, adm);
-        return NextResponse.json({ ok: true, aviso: "Configuração fiscal não encontrada — NF-e não emitida. Acesse Parâmetros → Fiscal e tente novamente." });
+        return NextResponse.json({ ok: false, error: "Configuração fiscal do remetente selecionado não encontrada. Confira o CPF/CNPJ de origem e Parâmetros → Fiscal." }, { status: 422 });
       }
 
       // 3. Busca dados dos insumos para montar os itens da NF-e
@@ -170,9 +167,13 @@ export async function POST(request: NextRequest) {
       for (const ins of (insumos ?? [])) insumoMap[ins.id] = ins;
 
       // 4. Configuração fiscal do emitente (origem)
-      const confEmit = await buscarConfEmitente(fazId, moduloKey);
+      const confEmit = await buscarConfEmitente(fazId, moduloKey, (t.ie_origem as string | null) || undefined);
       if (!confEmit) {
         return NextResponse.json({ ok: false, error: `Configuração fiscal '${moduloKey}' não encontrada` }, { status: 422 });
+      }
+
+      if (t.cpf_cnpj_origem && String(t.cpf_cnpj_origem).replace(/\D/g, "") !== (confEmit.cpf_cnpj_emitente ?? "").replace(/\D/g, "")) {
+        return NextResponse.json({ ok: false, error: "O CPF/CNPJ do remetente não corresponde à configuração fiscal selecionada." }, { status: 422 });
       }
 
       // 4b. Configuração fiscal do DESTINATÁRIO — a fazenda de destino pode ter
@@ -180,9 +181,11 @@ export async function POST(request: NextRequest) {
       // em vez de reaproveitar a do emitente. moduloKey pode ser diferente
       // (ex: origem é fiscal_pf_X, destino é fiscal_emp_Y).
       const fazDestId = t.fazenda_destino_id as string;
-      const moduloKeyDest = await resolverModuloKeyFiscal(fazDestId, adm);
-      const confDest = moduloKeyDest ? await buscarConfEmitente(fazDestId, moduloKeyDest) : null;
-      const { data: fazDestRow } = await adm.from("fazendas").select("nome").eq("id", fazDestId).single();
+      const moduloKeyDest = t.cpf_cnpj_destino
+        ? await resolverModuloKeyPorCpfCnpj(fazDestId, String(t.cpf_cnpj_destino), adm)
+        : await resolverModuloKeyFiscal(fazDestId, adm);
+      const confDest = moduloKeyDest ? await buscarConfEmitente(fazDestId, moduloKeyDest, (t.ie_destino as string | null) || undefined) : null;
+      const { data: fazDestRow } = await adm.from("fazendas").select("conta_id").eq("id", fazDestId).single();
       if (!confDest && !(t.cpf_cnpj_destino || t.ie_destino)) {
         return NextResponse.json({
           ok: false,
@@ -195,38 +198,37 @@ export async function POST(request: NextRequest) {
       const cpfCnpjDestFinal = (t.cpf_cnpj_destino as string | null) || confDest?.cpf_cnpj_emitente;
       const ieDestFinal      = (t.ie_destino as string | null)       || confDest?.ie_emitente;
 
-      // Endereço da IE EXATA escolhida pro destino — não do "confDest" genérico, que resolve
-      // pela IE PADRÃO da fazenda de destino (heurística própria em buscarConfEmitente) e pode
-      // ser uma IE diferente da que foi escolhida/gravada nesta transferência específica. Mesma
-      // classe de bug já corrigida pro CT-e/NF-e manual (produtor com mais de uma IE, cada uma
-      // com endereço próprio) — achado real 23/09/2026, num DANFE de transferência.
-      let enderecoIeDest: { cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string; municipio?: string; municipio_ibge?: string } | null = null;
-      if (ieDestFinal && cpfCnpjDestFinal) {
+      // Resolve nome e endereço pelo mesmo CPF/CNPJ + IE da operação.
+      let produtoresDest: ProdutorDestino[] = [];
+      let inscricoesDest: IeDestino[] = [];
+      if (cpfCnpjDestFinal) {
         const digitsDest = cpfCnpjDestFinal.replace(/\D/g, "");
-        const { data: prodDestRows } = await adm.from("produtores").select("id")
-          .or(`cpf_cnpj.eq.${digitsDest},cpf_cnpj.eq.${cpfCnpjDestFinal}`);
-        const prodDestIds = (prodDestRows ?? []).map((p: { id: string }) => p.id);
-        if (prodDestIds.length > 0) {
-          const ieDestDigits = ieDestFinal.replace(/\D/g, "");
-          const { data: iesDestRows } = await adm.from("produtor_inscricoes_estaduais")
-            .select("cep, logradouro, numero, complemento, bairro, municipio, municipio_ibge, inscricao_estadual")
-            .in("produtor_id", prodDestIds).eq("ativa", true);
-          enderecoIeDest = (iesDestRows ?? []).find((i: { inscricao_estadual: string }) => i.inscricao_estadual.replace(/\D/g, "") === ieDestDigits) ?? null;
+        if (![11, 14].includes(digitsDest.length)) return NextResponse.json({ ok: false, error: "CPF/CNPJ de destino inválido." }, { status: 422 });
+        const formatado = digitsDest.length === 11
+          ? digitsDest.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+          : digitsDest.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+        let consulta = adm.from("produtores").select("id, nome, cpf_cnpj")
+          .or(`cpf_cnpj.eq.${digitsDest},cpf_cnpj.eq.${formatado}`);
+        consulta = fazDestRow?.conta_id
+          ? consulta.eq("conta_id", fazDestRow.conta_id)
+          : consulta.eq("fazenda_id", fazDestId);
+        const { data: produtores, error: erroProdutores } = await consulta;
+        if (erroProdutores) throw erroProdutores;
+        produtoresDest = produtores ?? [];
+        if (produtoresDest.length) {
+          const { data: inscricoes, error: erroInscricoes } = await adm.from("produtor_inscricoes_estaduais")
+            .select("produtor_id, inscricao_estadual, estado, cep, logradouro, numero, bairro, municipio, municipio_ibge")
+            .in("produtor_id", produtoresDest.map(p => p.id)).eq("ativa", true);
+          if (erroInscricoes) throw erroInscricoes;
+          inscricoesDest = inscricoes ?? [];
         }
       }
-
-      const destinatarioDados = {
-        nome:           confDest?.razao_social ?? fazDestRow?.nome ?? "—",
-        cpf_cnpj:       cpfCnpjDestFinal,
-        ie:             ieDestFinal,
-        logradouro:     enderecoIeDest?.logradouro     ?? confDest?.logradouro,
-        numero:         enderecoIeDest?.numero         ?? confDest?.numero,
-        bairro:         enderecoIeDest?.bairro         ?? confDest?.bairro,
-        municipio_ibge: enderecoIeDest?.municipio_ibge ?? confDest?.municipio_ibge,
-        municipio_nome: enderecoIeDest?.municipio      ?? confDest?.municipio_nome,
-        uf:             confDest?.uf_emitente ?? "MT",
-        cep:            enderecoIeDest?.cep            ?? confDest?.cep,
-      };
+      let destinatarioDados;
+      try {
+        destinatarioDados = montarDestinatarioTransferencia(cpfCnpjDestFinal, ieDestFinal, confDest, produtoresDest, inscricoesDest);
+      } catch (erro) {
+        return NextResponse.json({ ok: false, error: erro instanceof Error ? erro.message : String(erro) }, { status: 422 });
+      }
 
       // 5. Monta input da NF-e
       const cfop = String(t.cfop ?? "5151").replace(/\D/g, "");

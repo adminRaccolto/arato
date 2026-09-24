@@ -13,6 +13,7 @@ import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";
 import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
+import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal } from "./identidade-fiscal";
 
 export type { NFeInput, EmitenteCfg };
 
@@ -74,28 +75,13 @@ export async function buscarConfEmitente(
     if (cfgConta && cfgConta.length > 0) emitData = { config: cfgConta[0].config };
   }
 
-  // Fallback final: se o modulo_key exato não existe em lugar nenhum, busca qualquer módulo
-  // fiscal válido (com CPF) da mesma conta — nunca uma chave por-IE (__ie_), que é um detalhe
-  // interno mesclado mais abaixo, não uma config completa por si só.
-  if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente) {
-    const { data: allMods } = await sb()
-      .from("configuracoes_modulo").select("modulo, config, fazenda_id")
-      .in("fazenda_id", fazendaIdsConta)
-      .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%")
-      .not("modulo", "like", "%__ie_%");
-    // Prefere módulo da própria fazenda com cert_a1_path; senão qualquer um da conta com CPF.
-    const comCert = (allMods ?? []).find(r => {
-      const c = r.config as Record<string,string>;
-      return c?.cpf_cnpj_emitente && c?.cert_a1_path;
-    });
-    const semCert = (allMods ?? []).find(r => (r.config as Record<string,string>)?.cpf_cnpj_emitente);
-    const melhor = comCert ?? semCert;
-    if (melhor) emitData = { config: melhor.config };
-  }
-
+  // Um módulo explícito nunca pode ser substituído pelo de outro titular.
   if (!emitData?.config) return null;
-
   const cfg = { ...emitData.config } as Record<string, string>;
+  const documentoModulo = moduloKey.match(/^fiscal_(?:pf|emp)_(\d{11}|\d{14})$/)?.[1];
+  if (documentoModulo && somenteDigitos(cfg.cpf_cnpj_emitente) !== documentoModulo) {
+    throw new Error("O CPF/CNPJ da configuração fiscal não corresponde ao titular selecionado. Confira Parâmetros → Fiscal.");
+  }
 
   // Resolve cert_a1_path: corrige URL inválida ou tenta achar em certificado_a1_*
   const certPath = cfg.cert_a1_path ?? "";
@@ -106,7 +92,7 @@ export async function buscarConfEmitente(
     const found = certRows.find(r => {
       const c = r.config as Record<string, string>;
       return (c.cpf_cnpj ?? "").replace(/\D/g, "") === cpfDigits && c.storage_path;
-    }) ?? certRows[0]; // último recurso: primeiro cert encontrado
+    });
     if (found) {
       const c = found.config as Record<string, string>;
       cfg.cert_a1_path = c.storage_path;
@@ -121,24 +107,25 @@ export async function buscarConfEmitente(
   // mostrando os cards de IE certinhos — a config nunca chegava a consultá-los.
   // Também traz a config granular por-IE (série/número/CRT/IBS-CBS), se
   // existir, sobrepondo os valores da config base.
-  if (moduloKey.startsWith("fiscal_pf_") && cfg.cpf_cnpj_emitente) {
+  if ((moduloKey.startsWith("fiscal_pf_") || moduloKey.startsWith("fiscal_emp_")) && cfg.cpf_cnpj_emitente) {
     const digits = cfg.cpf_cnpj_emitente.replace(/\D/g, "");
     const digitsFmt = digits.length === 11
       ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
-      : digits;
+      : digits.length === 14 ? digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : digits;
     // TODOS os cadastros de produtor com esse CPF — não só o primeiro. O mesmo CPF pode ter mais
     // de um registro em "produtores" (ex.: "FULANO" e "FULANO E OUTROS — CONDOMÍNIO X", mesma
     // pessoa em arranjos de propriedade diferentes), cada um com suas próprias IEs — pegar só o
     // primeiro cadastro escondia as IEs (e a série/número configurados) do(s) outro(s).
     const { data: prodRows } = await sb()
       .from("produtores")
-      .select("id")
+      .select("id, nome, cpf_cnpj")
+      .in("fazenda_id", fazendaIdsConta)
       .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`);
     const produtorIds = (prodRows ?? []).map(p => p.id as string);
     if (produtorIds.length > 0) {
       const { data: ies } = await sb()
         .from("produtor_inscricoes_estaduais")
-        .select("id, inscricao_estadual, fazenda_id, ativa, cep, logradouro, numero, complemento, bairro, municipio, municipio_ibge")
+        .select("id, produtor_id, inscricao_estadual, fazenda_id, ativa, estado, cep, logradouro, numero, complemento, bairro, municipio, municipio_ibge")
         .in("produtor_id", produtorIds)
         .eq("ativa", true);
       const iesAtivas = ies ?? [];
@@ -159,39 +146,20 @@ export async function buscarConfEmitente(
           if (ieId) configsPorIe.set(ieId, row.config as Record<string, string>);
         }
       }
-      const temSerie = (ie: typeof iesAtivas[number]) => !!configsPorIe.get(ie.id)?.serie_nfe;
-      // A IE que VAI ser impressa na nota (ieOverride, ou já fixada em cfg.ie_emitente por uma
-      // config anterior) tem prioridade absoluta sobre a heurística de "qualquer IE configurada" —
-      // senão o endereço mesclado abaixo podia vir de uma IE diferente da que sai impressa.
       const ieAlvo = ieOverride || cfg.ie_emitente || "";
-      const ieEscolhida =
-        (ieAlvo && iesAtivas.find(i => i.inscricao_estadual === ieAlvo)) ??
-        iesAtivas.find(i => i.fazenda_id === fazendaId && temSerie(i)) ??  // fazenda certa + configurada
-        iesAtivas.find(temSerie) ??                                       // qualquer uma configurada
-        iesAtivas.find(i => i.fazenda_id === fazendaId) ??                // fazenda certa, sem config ainda
-        iesAtivas[0];
+      const ieEscolhida = selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
       if (ieEscolhida) {
-        if (!cfg.ie_emitente) cfg.ie_emitente = ieEscolhida.inscricao_estadual;
-        // Endereço da IE é o do imóvel/estabelecimento ESPECÍFICO dessa
-        // inscrição — mais confiável que o endereço da config base, que pode
-        // estar vazio ou ser de outra propriedade do mesmo produtor. Só
-        // sobrescreve quando a IE realmente tem o campo preenchido.
-        if (ieEscolhida.municipio_ibge) cfg.municipio_ibge = ieEscolhida.municipio_ibge;
-        if (ieEscolhida.municipio)      cfg.municipio_nome = ieEscolhida.municipio;
-        if (ieEscolhida.cep)            cfg.cep = ieEscolhida.cep;
-        if (ieEscolhida.logradouro)     cfg.logradouro = ieEscolhida.logradouro;
-        if (ieEscolhida.numero)         cfg.numero = ieEscolhida.numero;
-        if (ieEscolhida.complemento)    cfg.complemento = ieEscolhida.complemento;
-        if (ieEscolhida.bairro)         cfg.bairro = ieEscolhida.bairro;
+        const titular = prodRows?.find(p => p.id === ieEscolhida.produtor_id);
+        if (!titular?.nome) throw new Error("Nome do titular da IE não encontrado no cadastro do produtor.");
         const cfgIeConfig = configsPorIe.get(ieEscolhida.id);
-        if (cfgIeConfig) {
-          Object.assign(cfg, cfgIeConfig);
-          // Guarda de onde veio a config por-IE: o contador de número da NF-e mora nela e precisa ser
-          // incrementado nela também (só incrementar a config base deixava o número repetindo → SEFAZ 539)
-          cfg.__ie_modulo = `${moduloKey}__ie_${ieEscolhida.id}`;
-        }
+        Object.assign(cfg, aplicarInscricaoFiscal(cfg, ieEscolhida, titular, cfgIeConfig));
+        if (cfgIeConfig) cfg.__ie_modulo = `${moduloKey}__ie_${ieEscolhida.id}`;
       }
     }
+  }
+
+  if (ieOverride && somenteDigitos(ieOverride) !== somenteDigitos(cfg.ie_emitente)) {
+    throw new Error("A IE selecionada não corresponde ao estabelecimento da configuração fiscal.");
   }
 
   // Senha do certificado ausente nesta cópia da config: procura a MESMA config (mesmo módulo) em outra
@@ -549,18 +517,7 @@ export async function emitirNFe(
   const emitente: EmitenteCfg = {
     cpf_cnpj:       cpfCnpjEmit,
     razao_social:   confg.razao_social ?? "",
-    ie:             emitIeOverride ?? (() => {
-      // Usa IE da UF do destinatário quando há múltiplas IEs cadastradas
-      const ufDest = (input.destinatario.uf ?? "").toUpperCase();
-      if (ufDest) {
-        try {
-          const iesPorUf: { uf: string; ie: string }[] = JSON.parse(confg.ies_por_uf ?? "[]");
-          const ieMatch = iesPorUf.find(r => r.uf.toUpperCase() === ufDest);
-          if (ieMatch?.ie) return ieMatch.ie;
-        } catch { /* usa IE principal */ }
-      }
-      return confg.ie_emitente ?? "";
-    })(),
+    ie:             confg.ie_emitente ?? "",
     im:             confg.im_emitente,
     crt:            (confg.crt as EmitenteCfg["crt"]) ?? "3",
     logradouro:     confg.logradouro ?? "",

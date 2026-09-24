@@ -947,7 +947,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={lbl}>Fazenda Origem *</label>
-                  <select value={form.fazendaOrigemId} onChange={e => setForm(f => ({ ...f, fazendaOrigemId: e.target.value, depositoOrigemId: "" }))} style={inp}>
+                  <select value={form.fazendaOrigemId} onChange={e => setForm(f => ({ ...f, fazendaOrigemId: e.target.value, depositoOrigemId: "", cpfCnpjOrigem: "", ieOrigem: "" }))} style={inp}>
                     <option value="">— Selecione —</option>
                     {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                   </select>
@@ -1018,7 +1018,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
                 <div style={{ marginBottom: 10 }}>
                   <label style={lbl}>Fazenda Destino *</label>
-                  <select value={form.fazendaDestinoId} onChange={e => setForm(f => ({ ...f, fazendaDestinoId: e.target.value, depositoDestinoId: "" }))} style={inp}>
+                  <select value={form.fazendaDestinoId} onChange={e => setForm(f => ({ ...f, fazendaDestinoId: e.target.value, depositoDestinoId: "", cpfCnpjDestino: "", ieDestino: "" }))} style={inp}>
                     <option value="">— Selecione —</option>
                     {todasFazendas.filter(f => f.id !== form.fazendaOrigemId).map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                   </select>
