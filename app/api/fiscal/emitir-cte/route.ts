@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
       peso_liquido_kg:    number;
       valor_mercadoria:   number;
       aliquota_icms:      number;
-      cst_icms?:          "00" | "40" | "41" | "51";
+      cst_icms?:          "00" | "20" | "40" | "41" | "51";
+      pred_bc_icms?:      number;
       veiculo_placa:      string;
       veiculo_renavam?:   string;
       motorista_nome:     string;
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       // cst_icms e o builder caía na heurística por alíquota (0% → CST 40), então um CT-e marcado
       // como 51 (diferido) saía com CST 40 na SEFAZ. Achado real 24/09/2026 (CT-e 3437).
       cst_icms:           body.cst_icms,
+      pred_bc_icms:       body.pred_bc_icms,
       veiculo_placa:      body.veiculo_placa,
       veiculo_renavam:    body.veiculo_renavam,
       motorista_nome:     body.motorista_nome,

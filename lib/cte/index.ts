@@ -290,6 +290,25 @@ export async function emitirCTe(
       tamanhoNome: c.nome.length,
     })),
   });
+  // Regra fiscal (dono, 24/09/2026): prestação INTRAESTADUAL sai com CST 51 (diferido);
+  // INTERESTADUAL com CST 00 ou 20. Barra aqui — nunca transmite CST fora da regra.
+  {
+    const intra = inputBase.uf_ini === inputBase.uf_fim;
+    const cstUsado = inputBase.cst_icms ?? (inputBase.aliquota_icms > 0 ? "00" : "40");
+    if (intra && cstUsado !== "51") {
+      return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `CT-e intraestadual (${inputBase.uf_ini} → ${inputBase.uf_fim}) precisa sair com CST 51 (ICMS diferido) — está com CST ${cstUsado}. Reabra o rascunho e ajuste a Situação Tributária.` };
+    }
+    if (!intra && cstUsado !== "00" && cstUsado !== "20") {
+      return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `CT-e interestadual (${inputBase.uf_ini} → ${inputBase.uf_fim}) precisa sair com CST 00 ou 20 — está com CST ${cstUsado}. Reabra o rascunho e ajuste a Situação Tributária.` };
+    }
+    if (!intra && !(inputBase.aliquota_icms > 0)) {
+      return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "CT-e interestadual (CST 00/20) precisa de alíquota de ICMS maior que zero." };
+    }
+    if (cstUsado === "20" && !(Number(inputBase.pred_bc_icms) > 0)) {
+      return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "CST 20 (redução de base) precisa do percentual de redução da base de cálculo." };
+    }
+  }
+
   // IBS/CBS (Reforma Tributária) — configurado por emitente em Parâmetros → CT-e. Simples/MEI
   // (CRT 1/2/4) são dispensados do grupo. Se "Destacar IBS/CBS" está ativo mas faltam
   // alíquotas/classificação, BLOQUEIA antes de transmitir (nunca chuta valor num documento fiscal).

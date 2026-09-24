@@ -60,12 +60,13 @@ export interface CTeInput {
   peso_liquido_kg:  number;
   valor_mercadoria: number;
   aliquota_icms:    number;   // ex: 12
-  cst_icms?:        "00" | "40" | "41" | "51"; // situação tributária ICMS — default "00" se alíquota>0, senão "40"
+  cst_icms?:        "00" | "20" | "40" | "41" | "51"; // situação tributária ICMS — default "00" se alíquota>0, senão "40"
   // IBS/CBS (Reforma Tributária — LC 214/2025, NT 2025.001, grupo <IBSCBS> dentro de <imp>).
   // Só vai pro XML se preenchido pelo orquestrador (lib/cte/index.ts) — emitente Lucro
   // Presumido/Real (CRT 3) é obrigado desde 05/01/2026; Simples/MEI (CRT 1/2/4) são dispensados.
   // Alíquotas em % (ex: 0.9 = 0,9%). cst "000" = tributação integral (com valores);
   // "410" = imunidade/não incidência (só CST + cClassTrib, sem gIBSCBS).
+  pred_bc_icms?:    number;   // % de redução da base do ICMS — só CST 20
   ibscbs?: { cst: "000" | "410"; cclasstrib: string; ibsUfAliq: number; ibsMunAliq: number; cbsAliq: number };
   veiculo_placa:    string;
   veiculo_renavam?: string;
@@ -298,6 +299,10 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
 
   const baseCalc  = p2(input.valor_prestacao);
   const valorICMS = p2(input.valor_prestacao * input.aliquota_icms / 100);
+  // CST 20 (interestadual com redução de base): vBC = prestação × (1 − pRedBC%), vICMS sobre a base reduzida
+  const pRedBC   = Math.min(100, Math.max(0, Number(input.pred_bc_icms ?? 0)));
+  const baseRed  = input.valor_prestacao * (1 - pRedBC / 100);
+  const valorICMS20 = p2(baseRed * input.aliquota_icms / 100);
   // CST explícito tem prioridade; sem CST informado, mantém a heurística antiga (compatibilidade)
   const cstIcms   = input.cst_icms || (input.aliquota_icms > 0 ? "00" : "40");
 
@@ -403,7 +408,13 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <vBC>${baseCalc}</vBC>
           <pICMS>${p2(input.aliquota_icms)}</pICMS>
           <vICMS>${valorICMS}</vICMS>
-        </ICMS00>` : `<ICMS45><CST>${cstIcms}</CST></ICMS45>`}
+        </ICMS00>` : cstIcms === "20" ? `<ICMS20>
+          <CST>20</CST>
+          <pRedBC>${p2(pRedBC)}</pRedBC>
+          <vBC>${p2(baseRed)}</vBC>
+          <pICMS>${p2(input.aliquota_icms)}</pICMS>
+          <vICMS>${valorICMS20}</vICMS>
+        </ICMS20>` : `<ICMS45><CST>${cstIcms}</CST></ICMS45>`}
       </ICMS>
       <vTotTrib>0.00</vTotTrib>
       ${ibscbsXml}

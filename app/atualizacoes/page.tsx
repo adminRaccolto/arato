@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-k",
+    data: "24/09/2026",
+    titulo: "CT-e: CST 51 no intraestadual, CST 00 ou 20 no interestadual (regra aplicada automaticamente)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "A Situação Tributária do ICMS do CT-e agora segue a regra fiscal: prestação INTRAESTADUAL (mesma UF de início e fim) sai com CST 51 (diferido); INTERESTADUAL sai com CST 00 ou 20. O formulário escolhe sozinho ao definir origem/destino e só oferece as opções permitidas. Novo CST 20 (tributação com redução de base de cálculo) com o campo % de redução — XML conferido contra o schema oficial. A emissão também barra localmente qualquer CST fora da regra (e interestadual sem alíquota, ou CST 20 sem % de redução), com aviso pedindo pra reabrir o rascunho. Exige a migration Seção 291 (CST 20 e coluna de redução de base)." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.24-j",
     data: "24/09/2026",
     titulo: "CT-e e MDF-e: botão Excluir nos rascunhos",

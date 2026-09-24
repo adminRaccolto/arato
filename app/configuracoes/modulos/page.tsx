@@ -170,7 +170,7 @@ const CTE_BASE_FIELDS: FieldDef[] = [
   // CST ICMS padrão — pré-preenche todo CT-e novo desse emitente. Antes o formulário sempre
   // nascia com alíquota 12% tributada (CST 00), mesmo quando a operação deveria sair isenta ou
   // diferida — não havia nenhuma configuração fiscal de ICMS para CT-e. Achado real 23/09/2026.
-  { key: "cst_icms_padrao", label: "Situação Tributária ICMS Padrão", type: "select",
+  { key: "cst_icms_padrao", label: "Situação Tributária ICMS Padrão (a regra intra/interestadual do CT-e prevalece)", type: "select",
     options: ["00","40","41","51"],
     labels: ["00 – Tributação normal (com ICMS)","40 – Isenta","41 – Não tributada","51 – Diferimento (ICMS diferido)"] },
   // IBS/CBS (Reforma Tributária, LC 214/2025 · NT 2025.001) — obrigatório no CT-e de emitente

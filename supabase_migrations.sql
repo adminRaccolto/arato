@@ -13618,3 +13618,21 @@ ALTER TABLE consorcios
   ADD COLUMN IF NOT EXISTS valor_lance_embutido NUMERIC(14,2),
   ADD COLUMN IF NOT EXISTS efeito_lance TEXT CHECK (efeito_lance IN ('reduz_parcela','reduz_prazo','nenhum'));
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 291 — CT-e: CST 20 (ICMS com redução de base) + regra intra/interestadual
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Regra fiscal do dono (24/09/2026): CT-e intraestadual sai com CST 51 (diferido);
+-- interestadual com CST 00 ou 20. O CHECK da Seção 288 só aceitava 00/40/41/51.
+DO $$
+DECLARE c text;
+BEGIN
+  FOR c IN SELECT conname FROM pg_constraint
+           WHERE conrelid = 'ctes'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) ILIKE '%cst_icms%'
+  LOOP EXECUTE format('ALTER TABLE ctes DROP CONSTRAINT %I', c); END LOOP;
+END $$;
+ALTER TABLE ctes
+  ADD CONSTRAINT ctes_cst_icms_check CHECK (cst_icms IN ('00','20','40','41','51')),
+  ADD COLUMN IF NOT EXISTS pred_bc_icms NUMERIC(5,2);
+COMMENT ON COLUMN ctes.pred_bc_icms IS 'Percentual de redução da base de cálculo do ICMS (CST 20). NULL/0 nas demais situações.';
+NOTIFY pgrst, 'reload schema';

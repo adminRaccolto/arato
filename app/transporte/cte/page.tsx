@@ -63,7 +63,8 @@ interface Cte {
   valor_frete: number;
   base_calc_icms: number;
   aliquota_icms: number;
-  cst_icms?: "00" | "40" | "41" | "51" | null;
+  cst_icms?: "00" | "20" | "40" | "41" | "51" | null;
+  pred_bc_icms?: number | null;
   valor_icms: number;
   emitente_id?: string | null;
   emitente_razao_social?: string | null;
@@ -121,8 +122,9 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 
 // Situação Tributária do ICMS no CT-e (grupo <imp><ICMS>): CST 00 = tributação normal (usa alíquota);
 // CST 40/41/51 usam o grupo ICMS45 — só a tag <CST>, sem base de cálculo nem valor.
-const CST_ICMS_OPCOES: { valor: "00" | "40" | "41" | "51"; label: string }[] = [
+const CST_ICMS_OPCOES: { valor: "00" | "20" | "40" | "41" | "51"; label: string }[] = [
   { valor: "00", label: "00 — Tributação normal (com ICMS)" },
+  { valor: "20", label: "20 — Tributação com redução de base de cálculo" },
   { valor: "40", label: "40 — Isenta" },
   { valor: "41", label: "41 — Não tributada" },
   { valor: "51", label: "51 — Diferimento (ICMS diferido)" },
@@ -154,7 +156,7 @@ function imprimirDacte(c: Cte, logoUrl?: string | null, rntrcEmpresa?: string | 
   // c.cst_icms explícito (00/40/41/51); CT-e's antigos sem o campo caem na heurística por alíquota.
   const cstIcmsDacte = c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40");
   const SITUACAO_TRIB_LABEL: Record<string, string> = {
-    "00": "00 - Tributação normal ICMS", "40": "40 - ICMS isenção",
+    "00": "00 - Tributação normal ICMS", "20": "20 - ICMS com redução de base de cálculo", "40": "40 - ICMS isenção",
     "41": "41 - ICMS não tributado", "51": "51 - ICMS diferido",
   };
   const situacaoTrib = SITUACAO_TRIB_LABEL[cstIcmsDacte] ?? cstIcmsDacte;
@@ -343,10 +345,10 @@ table.mini td{padding:0}
   <!-- Impostos -->
   <div class="grid">
     ${campo("SITUAÇÃO TRIBUTÁRIA", situacaoTrib, 2)}
-    ${campo("BASE DE CALCULO", cstIcmsDacte === "00" ? brl(c.base_calc_icms) : "—", 1)}
-    ${campo("ALÍQ ICMS", cstIcmsDacte === "00" ? c.aliquota_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "—", 1)}
-    ${campo("VALOR ICMS", cstIcmsDacte === "00" ? brl(c.valor_icms) : "0,00", 1)}
-    ${campo("% RED. BC ICMS", "", 1)}
+    ${campo("BASE DE CALCULO", cstIcmsDacte === "00" || cstIcmsDacte === "20" ? brl(c.base_calc_icms) : "—", 1)}
+    ${campo("ALÍQ ICMS", cstIcmsDacte === "00" || cstIcmsDacte === "20" ? c.aliquota_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "—", 1)}
+    ${campo("VALOR ICMS", cstIcmsDacte === "00" || cstIcmsDacte === "20" ? brl(c.valor_icms) : "0,00", 1)}
+    ${campo("% RED. BC ICMS", cstIcmsDacte === "20" && c.pred_bc_icms ? Number(c.pred_bc_icms).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "", 1)}
     ${campo("ICMS ST", "", 1)}
   </div>
 
@@ -510,15 +512,28 @@ function CtePageInner() {
     peso_bruto_kg: 0, peso_liquido_kg: 0,
     valor_mercadoria: 0, valor_frete: 0,
     aliquota_icms: "12",
-    cst_icms: "00" as "00" | "40" | "41" | "51",
+    pred_bc_icms: "0",
+    cst_icms: "00" as "00" | "20" | "40" | "41" | "51",
     veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
     nfe_chave: "", observacao: "",
   });
   const [form, setForm] = useState(FORM_VAZIO());
 
   // Calculados — só há base de cálculo/ICMS quando a situação tributária é 00 (tributação normal)
-  const baseCalcIcms   = form.cst_icms === "00" ? (form.valor_frete || 0) : 0;
-  const valorIcms       = form.cst_icms === "00" ? +(baseCalcIcms * (parseFloat(form.aliquota_icms) / 100)).toFixed(2) : 0;
+  const pRedForm       = form.cst_icms === "20" ? Math.min(100, Math.max(0, parseFloat(form.pred_bc_icms) || 0)) : 0;
+  const tributaIcms    = form.cst_icms === "00" || form.cst_icms === "20";
+  const baseCalcIcms   = tributaIcms ? +((form.valor_frete || 0) * (1 - pRedForm / 100)).toFixed(2) : 0;
+  const valorIcms       = tributaIcms ? +(baseCalcIcms * (parseFloat(form.aliquota_icms) / 100)).toFixed(2) : 0;
+  // Regra fiscal (dono, 24/09/2026): intraestadual = CST 51 (diferido); interestadual = CST 00 ou 20.
+  const ehIntra        = !!form.uf_origem && form.uf_origem === form.uf_destino;
+  const opcoesCst      = CST_ICMS_OPCOES.filter(o => ehIntra ? o.valor === "51" : (o.valor === "00" || o.valor === "20"));
+  // Aplica a regra sozinho: ao definir/mudar origem e destino (ou ao carregar padrão do emitente),
+  // a situação tributária vai pra 51 (intraestadual) ou 00 (interestadual, editável pra 20).
+  useEffect(() => {
+    if (!modal || !form.uf_origem || !form.uf_destino) return;
+    if (ehIntra && form.cst_icms !== "51") setForm(f => ({ ...f, cst_icms: "51" }));
+    else if (!ehIntra && form.cst_icms !== "00" && form.cst_icms !== "20") setForm(f => ({ ...f, cst_icms: "00", aliquota_icms: parseFloat(f.aliquota_icms) > 0 ? f.aliquota_icms : "12" }));
+  }, [modal, ehIntra, form.uf_origem, form.uf_destino, form.cst_icms]);
 
   // ── Carregar ─────────────────────────────────────────────
   const carregar = useCallback(async () => {
@@ -633,7 +648,8 @@ function CtePageInner() {
       peso_bruto_kg: c.peso_bruto_kg ?? 0, peso_liquido_kg: c.peso_liquido_kg ?? 0,
       valor_mercadoria: c.valor_mercadoria ?? 0, valor_frete: c.valor_frete ?? 0,
       aliquota_icms: String(c.aliquota_icms),
-      cst_icms: (c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40")) as "00" | "40" | "41" | "51",
+      pred_bc_icms: String(c.pred_bc_icms ?? 0),
+      cst_icms: (c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40")) as "00" | "20" | "40" | "41" | "51",
       veiculo_id: c.veiculo_id ?? "", motorista_id: c.motorista_id ?? "",
       motorista_nome: c.motorista_nome ?? "", motorista_cpf: c.motorista_cpf ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
@@ -885,8 +901,9 @@ function CtePageInner() {
         valor_mercadoria: form.valor_mercadoria || 0,
         valor_frete: form.valor_frete || 0,
         base_calc_icms: baseCalcIcms,
-        aliquota_icms: form.cst_icms === "00" ? (parseFloat(form.aliquota_icms) || 0) : 0,
+        aliquota_icms: tributaIcms ? (parseFloat(form.aliquota_icms) || 0) : 0,
         cst_icms: form.cst_icms,
+        pred_bc_icms: form.cst_icms === "20" ? pRedForm : null,
         valor_icms: valorIcms,
         veiculo_id: form.veiculo_id || null,
         veiculo_placa: veiculo?.placa ?? "",
@@ -1124,6 +1141,7 @@ function CtePageInner() {
       valor_mercadoria:   c.valor_mercadoria,
       aliquota_icms:      c.aliquota_icms,
       cst_icms:           c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40"),
+      pred_bc_icms:       c.pred_bc_icms ?? undefined,
       veiculo_placa:      c.veiculo_placa,
       motorista_nome:     c.motorista_nome,
       motorista_cpf:      c.motorista_cpf ?? "",
@@ -1568,7 +1586,7 @@ function CtePageInner() {
                         // CST ICMS padrão também vem de Parâmetros (mesma lógica da NF-e) — sem
                         // isso todo CT-e novo nascia com CST 00 (tributação normal) mesmo quando o
                         // emitente deveria sair diferido/isento. Achado real 23/09/2026.
-                        const cstPadrao = (cfg.cst_icms_padrao as "00" | "40" | "41" | "51" | undefined) || "00";
+                        const cstPadrao = (cfg.cst_icms_padrao as "00" | "20" | "40" | "41" | "51" | undefined) || "00";
                         setForm(f => ({ ...f, serie: serieCfg, numero_cte: String(Math.max(numInicial, maxExistente + 1)), cst_icms: cstPadrao }));
                       }}
                       style={{ ...inp, borderColor: !form.emitente_id ? "#E9C97B" : undefined }}
@@ -1854,11 +1872,20 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Situação Tributária ICMS</label>
-                <select value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value as "00" | "40" | "41" | "51" }))} style={inp}>
-                  {CST_ICMS_OPCOES.map(o => <option key={o.valor} value={o.valor}>{o.label}</option>)}
+                <select value={form.cst_icms} onChange={e => setForm(f => ({ ...f, cst_icms: e.target.value as "00" | "20" | "40" | "41" | "51" }))} style={inp}>
+                  {opcoesCst.map(o => <option key={o.valor} value={o.valor}>{o.label}</option>)}
                 </select>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
+                  {ehIntra ? "Prestação intraestadual (mesma UF): CST 51 — ICMS diferido." : "Prestação interestadual: CST 00 ou 20."}
+                </div>
               </div>
-              {form.cst_icms === "00" ? (
+              {form.cst_icms === "20" && (
+                <div>
+                  <label style={lbl}>Redução da base de cálculo (%)</label>
+                  <input value={form.pred_bc_icms} onChange={e => setForm(f => ({ ...f, pred_bc_icms: e.target.value.replace(",", ".") }))} style={inp} placeholder="Ex: 33.33" />
+                </div>
+              )}
+              {tributaIcms ? (
                 <>
                   <div>
                     <label style={lbl}>Alíquota ICMS (%)</label>
