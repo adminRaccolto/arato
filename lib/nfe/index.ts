@@ -572,12 +572,25 @@ export async function emitirNFe(
   let itensComIBSCBS = input.itens;
   if (confg.ibs_cbs_ativo === "sim") {
     const ncmsDosItens = Array.from(new Set(input.itens.map(i => i.ncm.replace(/\D/g, ""))));
+    // Tabela NCM é da CONTA (o cliente cadastra uma vez): antes buscava só na fazenda emissora,
+    // então NF-e de qualquer outra fazenda da conta saía sem IBS/CBS (achado 24/09/2026 — só a
+    // Frei Galvão tinha NCMs cadastrados). Prefere a linha da fazenda emissora, senão qualquer da conta.
+    const { data: fzIbs } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+    let fazIdsIbs = [fazendaId];
+    if (fzIbs?.conta_id) {
+      const { data: fzsIbs } = await sb().from("fazendas").select("id").eq("conta_id", fzIbs.conta_id);
+      if (fzsIbs?.length) fazIdsIbs = fzsIbs.map(f => f.id as string);
+    }
     const { data: ncmRows } = await sb()
       .from("ncm_tributacoes")
-      .select("ncm, ibs_estadual_aliq, ibs_municipal_aliq, cbs_aliq, ibs_cbs_reducao_pct, ibs_cbs_cst, ibs_cbs_cclasstrib")
-      .eq("fazenda_id", fazendaId)
+      .select("fazenda_id, ncm, ibs_estadual_aliq, ibs_municipal_aliq, cbs_aliq, ibs_cbs_reducao_pct, ibs_cbs_cst, ibs_cbs_cclasstrib")
+      .in("fazenda_id", fazIdsIbs)
       .in("ncm", ncmsDosItens);
-    const ncmMap = new Map((ncmRows ?? []).map(r => [String(r.ncm).replace(/\D/g, ""), r]));
+    const ncmMap = new Map<string, NonNullable<typeof ncmRows>[number]>();
+    for (const r of (ncmRows ?? [])) {
+      const k = String(r.ncm).replace(/\D/g, "");
+      if (!ncmMap.has(k) || r.fazenda_id === fazendaId) ncmMap.set(k, r);
+    }
     itensComIBSCBS = input.itens.map(item => {
       const ncmCfg = ncmMap.get(item.ncm.replace(/\D/g, ""));
       if (!ncmCfg) return item; // sem config pro NCM — emite sem o grupo, não bloqueia

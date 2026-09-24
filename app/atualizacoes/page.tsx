@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-p",
+    data: "24/09/2026",
+    titulo: "NF-e: IBS/CBS agora usa a tabela NCM da conta inteira",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A NF-e só destacava IBS/CBS se o NCM do item estivesse cadastrado em Parâmetros → Fiscal → Tabela NCM da MESMA fazenda emissora. No Grupo Ogliari só a Frei Galvão tinha NCMs, então NF-e emitidas por qualquer outra fazenda (ex.: Armazém Santa Rita) saíam sem IBS/CBS, sem aviso. Agora a busca considera todas as fazendas da conta (prefere a da fazenda emissora). Continua exigindo a opção Destacar IBS/CBS ligada no emitente. Atenção: as alíquotas pré-carregadas (IBS 9% / CBS 9,1%) não são as de 2026 (referência: CBS 0,9% e IBS 0,1%) — confirme com o contador antes de emitir. No CT-e, IBS/CBS continua desligado até ser habilitado em Parâmetros → CT-e." },
+    ],
+    onde: "Fiscal → Emissão de NF-e · Parâmetros → Fiscal",
+  },
+  {
     versao: "2026.09.24-o",
     data: "24/09/2026",
     titulo: "Transferência: IE/CPF do remetente e destinatário não ficam mais trocados ao mudar de fazenda",
