@@ -1263,7 +1263,7 @@ function CtePageInner() {
     <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 20px" }}>
+      <main style={{ maxWidth: 1680, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
@@ -1442,7 +1442,7 @@ function CtePageInner() {
                       <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(c.valor_frete)}</td>
                       <td style={{ padding: "10px 12px" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
+                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", whiteSpace: "nowrap" }}>
                           {c.status === "rascunho" && (
                             <button onClick={() => autorizar(c)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Autorizar SEFAZ
@@ -1455,7 +1455,7 @@ function CtePageInner() {
                             <button
                               title="Emitir MDF-e com esse CT-e já vinculado, sem mudar de tela"
                               onClick={() => { sessionStorage.setItem("mdfe_prefill_cte", c.id); router.push("/transporte/mdfe?from_cte=1"); }}
-                              style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}
+                              style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}
                             >
                               🚚 Emitir MDF-e
                             </button>

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-b",
+    data: "24/09/2026",
+    titulo: "CT-e: tela mais larga, botões de ação em uma linha",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "A lista de CT-e Emitidos passou a usar a largura da tela (limite subiu de 1180px para 1680px) — Remetente/Destinatário, Percurso e demais colunas ganham espaço, e o botão \"🚚 Emitir MDF-e\" não quebra mais em várias linhas." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.24-a",
     data: "24/09/2026",
     titulo: "Conciliação: \"já está conciliado com outra linha\" sem existir outra linha (conciliação fantasma)",
