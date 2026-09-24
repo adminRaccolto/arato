@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-v",
+    data: "24/09/2026",
+    titulo: "IBS/CBS: padrão CST 410 / cClassTrib 410999 na NF-e e no CT-e",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Padrão do sistema para IBS/CBS agora é CST 410 (imunidade/não incidência) e cClassTrib 410999, sem valores — vale no XML da NF-e e do CT-e, nos presets da Tabela NCM (alíquotas zeradas), no cadastro de NCM e em Parâmetros → CT-e. NF-e: item cujo NCM não está na tabela deixa de sair sem IBS/CBS e recebe o padrão 410/410999. CT-e: o destaque passa a valer por padrão para emitentes de regime normal (Simples/MEI continuam dispensados) — só \"Não\" explícito desliga. Requer a Seção 294 da migration para converter as linhas de NCM já cadastradas (hoje 000/000001 com alíquotas de teste). Não validado contra o schema da NF-e (só o do CT-e foi validado localmente): faça uma emissão em homologação antes de usar em produção." },
+    ],
+    onde: "Parâmetros → Fiscal · Emissão de NF-e e CT-e",
+  },
+  {
     versao: "2026.09.24-u",
     data: "24/09/2026",
     titulo: "MDF-e: regra do CIOT e Tipo de Transportador (ETC/TAC) corrigido no XML",

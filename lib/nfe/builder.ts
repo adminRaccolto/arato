@@ -445,7 +445,11 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     // BC = mesma base líquida do produto (vProdLiq); reducaoPct, quando
     // presente, aplica <gRed> igualmente aos 3 componentes (IBS UF/Mun/CBS).
     let ibsCbsXml = "";
-    if (item.ibsCbs) {
+    if (item.ibsCbs && item.ibsCbs.cst === "410") {
+      // CST 410 (imunidade/não incidência): só CST + cClassTrib, sem grupo gIBSCBS e sem entrar
+      // nos totais IBSCBSTot (não há valores). Definição do dono/contador 24/09/2026.
+      ibsCbsXml = `<IBSCBS><CST>410</CST><cClassTrib>${item.ibsCbs.cclasstrib}</cClassTrib></IBSCBS>`;
+    } else if (item.ibsCbs) {
       const ic = item.ibsCbs;
       const vBCIbsCbs = vProdLiq;
       const red = ic.reducaoPct && ic.reducaoPct > 0 ? ic.reducaoPct : 0;

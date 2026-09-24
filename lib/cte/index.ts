@@ -316,9 +316,11 @@ export async function emitirCTe(
   // (CRT 1/2/4) são dispensados do grupo. Se "Destacar IBS/CBS" está ativo mas faltam
   // alíquotas/classificação, BLOQUEIA antes de transmitir (nunca chuta valor num documento fiscal).
   let ibscbs: CTeInput["ibscbs"];
-  if (confg.ibs_cbs_ativo === "sim" && !["1", "2", "4"].includes(String(emitente.crt))) {
-    const cst = (confg.ibs_cbs_cst === "410" ? "410" : "000") as "000" | "410";
-    const cclass = String(confg.ibs_cbs_cclasstrib ?? "").replace(/\D/g, "");
+  // Padrão (contador, 24/09/2026): CST 410 / cClassTrib 410999 — vale quando o emitente ainda não
+  // configurou nada; só "nao" explícito desliga. Simples/MEI seguem dispensados.
+  if (confg.ibs_cbs_ativo !== "nao" && !["1", "2", "4"].includes(String(emitente.crt))) {
+    const cst = (confg.ibs_cbs_cst === "000" ? "000" : "410") as "000" | "410";
+    const cclass = String(confg.ibs_cbs_cclasstrib || (cst === "410" ? "410999" : "")).replace(/\D/g, "");
     const num = (v: unknown) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
     const ibsUf = num(confg.ibs_uf_aliq), ibsMun = num(confg.ibs_mun_aliq), cbs = num(confg.cbs_aliq);
     if (cclass.length !== 6 || (cst === "000" && (Number.isNaN(ibsUf) || Number.isNaN(ibsMun) || Number.isNaN(cbs)))) {

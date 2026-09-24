@@ -13664,3 +13664,10 @@ ALTER TABLE mdfes
   ADD COLUMN IF NOT EXISTS apolice_numero   text,
   ADD COLUMN IF NOT EXISTS averbacao_numero text;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 294 — IBS/CBS padrão CST 410 / cClassTrib 410999 (sem valores) — definição do contador 24/09/2026 ──
+UPDATE ncm_tributacoes
+   SET ibs_cbs_cst = '410', ibs_cbs_cclasstrib = '410999',
+       ibs_estadual_aliq = 0, ibs_municipal_aliq = 0, cbs_aliq = 0, ibs_cbs_reducao_pct = 0;
+NOTIFY pgrst, 'reload schema';

@@ -593,12 +593,14 @@ export async function emitirNFe(
     }
     itensComIBSCBS = input.itens.map(item => {
       const ncmCfg = ncmMap.get(item.ncm.replace(/\D/g, ""));
-      if (!ncmCfg) return item; // sem config pro NCM — emite sem o grupo, não bloqueia
+      // Sem linha na Tabela NCM: usa o padrão definido pelo contador (CST 410 / cClassTrib 410999,
+      // sem valores) em vez de omitir o grupo em silêncio.
+      if (!ncmCfg) return { ...item, ibsCbs: { cst: "410", cclasstrib: "410999", ibsEstadualAliq: 0, ibsMunicipalAliq: 0, cbsAliq: 0, reducaoPct: 0 } };
       return {
         ...item,
         ibsCbs: {
-          cst:              ncmCfg.ibs_cbs_cst || "000",
-          cclasstrib:       ncmCfg.ibs_cbs_cclasstrib || "000001",
+          cst:              ncmCfg.ibs_cbs_cst || "410",
+          cclasstrib:       ncmCfg.ibs_cbs_cclasstrib || "410999",
           ibsEstadualAliq:  Number(ncmCfg.ibs_estadual_aliq ?? 0),
           ibsMunicipalAliq: Number(ncmCfg.ibs_municipal_aliq ?? 0),
           cbsAliq:          Number(ncmCfg.cbs_aliq ?? 0),
