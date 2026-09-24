@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ak",
+    data: "24/09/2026",
+    titulo: "Cancelar CT-e cancela o financeiro gerado",
+    modulos: ["Transporte", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao cancelar um CT-e na SEFAZ, o sistema cancela também o a receber da Empresa e o a pagar do produtor que foram gerados na autorização. Lançamentos já pagos/recebidos não são tocados: o aviso na resposta do cancelamento pede o estorno manual." },
+    ],
+    onde: "Transporte → CT-e → Cancelar",
+  },
+  {
     versao: "2026.09.24-aj",
     data: "24/09/2026",
     titulo: "CT-e autorizado lança o financeiro sozinho (a receber e a pagar)",

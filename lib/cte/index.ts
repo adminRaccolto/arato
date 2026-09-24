@@ -7,7 +7,7 @@
  *   4. Salva XML autorizado no Storage e retorna resultado
  */
 
-import { lancarFinanceiroCte } from "./financeiro";
+import { lancarFinanceiroCte, cancelarFinanceiroCte } from "./financeiro";
 import { createClient } from "@supabase/supabase-js";
 import { createHash }  from "crypto";
 import { buildCTe }     from "./builder";
@@ -182,6 +182,14 @@ export async function cancelarCTeEmitido(
       data_cancelamento: resultado.dataRegistro ?? new Date().toISOString(),
       motivo_cancelamento: options.justificativa.trim(),
     };
+    // Cancela também o financeiro automático do CT-e (a receber da Empresa / a pagar do produtor)
+    let avisoFin = "";
+    try {
+      const fin = await cancelarFinanceiroCte(options.cte_id);
+      console.log("[cancelarCTe] financeiro:", fin.log.join(" | "));
+      if (fin.pendenteManual) avisoFin = " ATENÇÃO: há lançamento financeiro deste CT-e já pago/recebido — trate manualmente (estorno).";
+    } catch (e) { console.error("[cancelarCTe] financeiro falhou:", e); avisoFin = " Não foi possível cancelar o financeiro automático — confira Contas a Pagar/Empresa."; }
+
     const { error } = await sb().from("ctes").update(update).eq("id", options.cte_id);
     if (error) {
       console.error("[cancelarCTe] SEFAZ confirmou, mas falhou ao persistir no banco:", error);
@@ -201,7 +209,7 @@ export async function cancelarCTeEmitido(
       console.error("[cancelarCTe] falha também ao gravar status cancelado:", retryError);
       return { ...resultado, sucesso: false, cStat: "PERSISTENCIA", xMotivo: "SEFAZ confirmou o cancelamento, mas o sistema não conseguiu sincronizar o status local. Não reenvie o evento; contate o suporte com a chave do CT-e." };
     }
-    return resultado;
+    return avisoFin ? { ...resultado, xMotivo: `${resultado.xMotivo ?? "Cancelamento homologado."}${avisoFin}` } : resultado;
   } catch (error) {
     console.error("[cancelarCTe]", error);
     return { sucesso: false, cStat: "ERRO_TECNICO", xMotivo: String(error) };

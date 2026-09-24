@@ -104,3 +104,33 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
   }
   return log;
 }
+
+// Cancelamento do CT-e: cancela os lançamentos automáticos que ainda não foram movimentados.
+// Recebido/pago (pago, baixado, parcial) NÃO é tocado — devolve aviso pra tratar à mão.
+export async function cancelarFinanceiroCte(cteId: string): Promise<{ log: string[]; pendenteManual: boolean }> {
+  const log: string[] = [];
+  let pendenteManual = false;
+  const db = sb();
+  const { data: c } = await db.from("ctes").select("numero_cte, serie, chave_acesso, fazenda_id").eq("id", cteId).maybeSingle();
+  if (!c) return { log: ["CT-e não encontrado."], pendenteManual };
+  const numDoc = `${String(c.numero_cte).replace(/^0+/, "")}/${String(c.serie).replace(/^0+/, "")}`;
+  const { data: fz } = await db.from("fazendas").select("conta_id").eq("id", c.fazenda_id).maybeSingle();
+  const { data: fzs } = fz?.conta_id ? await db.from("fazendas").select("id").eq("conta_id", fz.conta_id) : { data: [{ id: c.fazenda_id }] };
+  const fazIds = (fzs ?? []).map(f => f.id as string);
+
+  const { data: emp } = await db.from("empresa_lancamentos").select("id, status, tipo").in("fazenda_id", fazIds).eq("origem", "cte").eq("numero_documento", numDoc);
+  for (const l of emp ?? []) {
+    if (l.status === "pendente") {
+      await db.from("empresa_lancamentos").update({ status: "cancelado" }).eq("id", l.id);
+      log.push(`Empresa (${l.tipo}) cancelado.`);
+    } else if (l.status === "pago") { pendenteManual = true; log.push(`Empresa (${l.tipo}) já movimentado — tratar manualmente.`); }
+  }
+  const { data: lan } = await db.from("lancamentos").select("id, status").in("fazenda_id", fazIds).eq("tipo", "pagar").eq("chave_xml", c.chave_acesso);
+  for (const l of lan ?? []) {
+    if (["previsto", "em_aberto", "vencido", "vencendo"].includes(String(l.status))) {
+      await db.from("lancamentos").update({ status: "cancelado" }).eq("id", l.id);
+      log.push("Conta a pagar do produtor cancelada.");
+    } else if (l.status !== "cancelado") { pendenteManual = true; log.push(`Conta a pagar já ${l.status} — tratar manualmente.`); }
+  }
+  return { log, pendenteManual };
+}
