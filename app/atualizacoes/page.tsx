@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-e",
+    data: "24/09/2026",
+    titulo: "Conciliação: coluna Histórico mais larga (botões e colunas enxutos)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "No extrato OFX da Conciliação, os botões (Vincular, Desvincular, + Tesouraria, Aceitar) ficaram menores e as colunas Data, Valor, Situação e Ação mais estreitas — o espaço que sobrou vai para o Histórico, que agora mostra bem mais do texto de cada lançamento do banco." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.24-d",
     data: "24/09/2026",
     titulo: "Consórcio: lances em dinheiro, embutidos e de terceiros, com efeito nas parcelas",

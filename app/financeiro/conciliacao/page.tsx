@@ -322,7 +322,8 @@ const statusMeta = (l: Lancamento): { label: string; bg: string; color: string }
   return { label: "aberto", bg: "#FEF3C7", color: "#92400E" };
 };
 
-const COLS_OFX = "88px minmax(150px,1fr) 100px 128px 132px";
+// Colunas enxutas (24/09/2026): Histórico ganha o espaço que sobra — botões menores, Situação/Ação mais estreitas.
+const COLS_OFX = "74px minmax(220px,1fr) 90px 92px 82px";
 
 // Cores de status: só número NEGATIVO em vermelho queimado; sinaleiro verde = conciliado, mostarda = pendente
 const COR_NEG  = "#A93226";
@@ -3258,7 +3259,7 @@ function ConciliacaoInner() {
                                   <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}{x.confianca === "media" ? " · média" : ""}</span></div>
                                   <div style={{ textAlign: "right" }}>
                                     <button onClick={() => desvincular(x.id)}
-                                      style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>Desvincular</button>
+                                      style={{ padding: "2px 6px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>Desvincular</button>
                                   </div>
                                 </div>
                               </div>
@@ -3411,7 +3412,7 @@ function ConciliacaoInner() {
                                   {sug && !isAtiva && (
                                     <div style={{ display: "flex", gap: 4 }}>
                                       <button disabled={salvando} onClick={() => aceitarPares([{ linha: l, ids: sug.ids, nivel: sug.nivel }])}
-                                        style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>Aceitar</button>
+                                        style={{ padding: "2px 6px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 10, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap", flex: 1 }}>Aceitar</button>
                                       <button disabled={salvando} onClick={() => ignorarSugestao(l.id)} title="Descartar a sugestão"
                                         style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
                                     </div>
@@ -3423,12 +3424,12 @@ function ConciliacaoInner() {
                                       if (lancsSel.size > 0) { setLinhaAtiva(l); confirmarVinculo(l); }
                                       else setLinhaAtiva(l);
                                     }}
-                                    style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid #1A4870", background: isAtiva || lancsSel.size > 0 ? "#1A4870" : "#fff", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#1A4870", fontSize: 11, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                    style={{ padding: "2px 6px", width: "100%", borderRadius: 6, border: "0.5px solid #1A4870", background: isAtiva || lancsSel.size > 0 ? "#1A4870" : "#fff", color: isAtiva || lancsSel.size > 0 ? "#fff" : "#1A4870", fontSize: 10, fontWeight: 600, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap" }}>
                                     {isAtiva && salvando ? "Salvando…" : isAtiva ? "Cancelar" : lancsSel.size > 0 ? `↗ Vincular (${lancsSel.size})` : "Vincular"}
                                   </button>
                                   {!isAtiva && (
                                     <button onClick={() => abrirTesouraria(l)}
-                                      style={{ padding: "2px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>+ Tesouraria</button>
+                                      style={{ padding: "1px 4px", width: "100%", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 9, cursor: "pointer", whiteSpace: "nowrap" }}>+ Tesouraria</button>
                                   )}
                                 </div>
                               )}
