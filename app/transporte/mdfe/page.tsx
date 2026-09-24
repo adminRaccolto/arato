@@ -1,4 +1,5 @@
 "use client";
+import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -285,7 +286,7 @@ interface CteMin {
   municipio_destino?: string | null; uf_destino?: string | null;
   produto_descricao?: string | null; ncm?: string | null; unidade?: string | null;
 }
-interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; }
+interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; proprietario_tipo?: string | null; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
 
 const STATUS_META: Record<StatusMdfe, { label: string; bg: string; cl: string }> = {
@@ -394,7 +395,7 @@ function MdfePageInner() {
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
-      supabase.from("veiculos").select("id, placa, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
+      supabase.from("veiculos").select("id, placa, tipo, rntrc, proprietario_tipo").in("fazenda_id", fazendaIds).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
     ]);
     const raw = md ?? [];
@@ -1163,12 +1164,14 @@ function MdfePageInner() {
               {/* ── CIOT (TAC) ── */}
               {(() => {
                 const mot = motoristas.find(m => m.id === form.motorista_id);
-                if (!mot || mot.tipo !== "tac") return null;
+                const vei = veiculos.find(v => v.id === form.veiculo_id);
+                // Regra em lib/mdfe/ciot-regra.ts: motorista TAC ou veículo de terceiro exige CIOT.
+                if (!mot || !ciotExigido({ tpEmit: "1", motoristaTipo: mot.tipo, veiculoProprietarioTipo: vei?.proprietario_tipo })) return null;
                 const NATUREZAS = [["2101","Soja"],["2102","Milho"],["2103","Algodão"],["2202","Granel vegetal"],["2201","Fertilizantes"],["4101","Carga geral"]];
                 const PGTOS    = [["6","PIX"],["1","Dinheiro"],["3","TED"]];
                 return <>
                   <div style={{ ...divider, color: ciotGerado ? "#16A34A" : "#C9921B", borderTopColor: ciotGerado ? "#16A34A40" : "#C9921B40" }}>
-                    CIOT — {ciotGerado ? `✓ Gerado: ${ciotGerado.id}` : "Motorista TAC — CIOT obrigatório (Lei 11.442/2007)"}
+                    CIOT — {ciotGerado ? `✓ Gerado: ${ciotGerado.id}` : "CIOT obrigatório — motorista TAC ou veículo de terceiro (Lei 11.442/2007)"}
                   </div>
                   {ciotGerado ? (
                     <div style={{ gridColumn:"1/-1", background:"#F0FDF4", border:"0.5px solid #16A34A50", borderRadius:8, padding:"12px 16px", display:"flex", gap:20, alignItems:"center", flexWrap:"wrap" }}>

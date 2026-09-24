@@ -12,6 +12,7 @@
  * MDF-e nunca fica bloqueada esperando CIOT (ele é opcional no schema, minOccurs=0).
  */
 
+import { ciotExigido } from "./ciot-regra";
 import { createClient } from "@supabase/supabase-js";
 import { buildMDFe } from "./builder";
 import { assinarMDFe } from "./signer";
@@ -181,14 +182,16 @@ export async function emitirMDFe(
 
   // 3. Veículo (placa + tara) e motorista(es)
   if (!m.veiculo_id) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Selecione o Veículo antes de autorizar — a tara é obrigatória no MDF-e." };
-  const { data: veic } = await sb().from("veiculos").select("placa, tara_kg, uf").eq("id", m.veiculo_id).maybeSingle();
+  const { data: veic } = await sb().from("veiculos").select("placa, tara_kg, uf, proprietario_tipo").eq("id", m.veiculo_id).maybeSingle();
   if (!veic) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Veículo selecionado não encontrado no cadastro." };
   if (!veic.tara_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Veículo ${veic.placa} sem Tara (kg) cadastrada — obrigatório pra montar o MDF-e. Preencha em Cadastros → Veículos.` };
 
   const condutores: { nome: string; cpf: string }[] = [];
+  let motoristaTipo: string | null = null;
   if (m.motorista_id) {
-    const { data: mot } = await sb().from("motoristas").select("nome, cpf").eq("id", m.motorista_id).maybeSingle();
+    const { data: mot } = await sb().from("motoristas").select("nome, cpf, tipo").eq("id", m.motorista_id).maybeSingle();
     if (mot?.cpf) condutores.push({ nome: mot.nome, cpf: mot.cpf });
+    motoristaTipo = (mot?.tipo as string | null) ?? null;
   }
   if (condutores.length === 0 && m.motorista_nome && m.motorista_cpf) {
     condutores.push({ nome: m.motorista_nome, cpf: m.motorista_cpf });
@@ -244,7 +247,10 @@ export async function emitirMDFe(
     // NUNCA ler confg.tpEmit pra isso: esse campo na tela guarda o Tipo de Transportador
     // (TAC/ETC/CTC — tpTransp no schema, conceito diferente).
     tpEmit:         confg.carga_propria === "true" ? "2" : "1",
-    tpTransp:       (confg.tpEmit as "1" | "2" | "3" | undefined) ?? undefined,
+    // A tela guarda "1 – Autônomo (TAC) · 2 – ETC · 3 – CTC"; o schema usa tpTransp
+    // 1=ETC · 2=TAC · 3=CTC — as posições 1 e 2 são invertidas, então traduz aqui. Antes o valor
+    // ia direto: uma ETC marcada como "2 – ETC" saía como TAC no XML (achado 24/09/2026).
+    tpTransp:       ({ "1": "2", "2": "1", "3": "3" } as Record<string, "1" | "2" | "3">)[String(confg.tpEmit ?? "")] ?? undefined,
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
     serie:          confg.serie_mdfe ?? "1",
     numero_mdfe:    0, // preenchido abaixo
@@ -255,6 +261,11 @@ export async function emitirMDFe(
     apolice_numero:   (m.apolice_numero   as string | null) || confg.apolice_numero,
     averbacao_numero: (m.averbacao_numero as string | null) || undefined, // por viagem: só a aba do MDF-e (não usa o cadastro)
   };
+
+  // CIOT: exigido em transporte remunerado com TAC / veículo de terceiro (regra em ciot-regra.ts).
+  if (!m.ciot && ciotExigido({ tpEmit: emitente.tpEmit, motoristaTipo, veiculoProprietarioTipo: veic.proprietario_tipo as string | null })) {
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "CIOT obrigatório: o transporte usa motorista TAC ou veículo de terceiro. Gere o CIOT na aba do MDF-e antes de autorizar. (Motorista CLT em veículo próprio da transportadora não exige CIOT.)" };
+  }
 
   // Carga Própria (tpEmit=2) e CT-e vinculado são mutuamente excludentes por definição — um
   // CT-e É um contrato de transporte remunerado, o que já deixa de ser "carga própria". SEFAZ

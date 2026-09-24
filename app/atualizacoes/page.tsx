@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-u",
+    data: "24/09/2026",
+    titulo: "MDF-e: regra do CIOT e Tipo de Transportador (ETC/TAC) corrigido no XML",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O Tipo de Transportador do cadastro (1 – Autônomo/TAC, 2 – ETC, 3 – CTC) ia direto para o XML, mas o schema do MDF-e usa 1=ETC e 2=TAC — as posições estavam invertidas, então uma transportadora marcada como ETC saía como TAC. Agora o sistema traduz corretamente (o cadastro continua igual)." },
+      { tipo: "melhoria", texto: "Nova regra de CIOT: é exigido quando o motorista é TAC ou o veículo é de terceiro (proprietário diferente da transportadora). Motorista CLT em veículo próprio da ETC não exige. Carga própria nunca exige. Quando exigido e não gerado, o MDF-e não é transmitido e o sistema avisa. Confirme a regra com o contador/ANTT." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.24-t",
     data: "24/09/2026",
     titulo: "DAMDFE: campo CIOT sempre impresso",
