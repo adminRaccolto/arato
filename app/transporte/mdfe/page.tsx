@@ -264,6 +264,10 @@ interface Mdfe {
   ciot?: string | null;
   ciot_codigo_verificador?: string | null;
   ciot_protocolo?: string | null;
+  seguradora_nome?: string | null;
+  seguradora_cnpj?: string | null;
+  apolice_numero?: string | null;
+  averbacao_numero?: string | null;
   protocolo_autorizacao?: string | null;
   xml_url?: string | null;
   created_at?: string;
@@ -357,7 +361,10 @@ function MdfePageInner() {
     // Documentos vinculados
     cte_ids: [] as string[],
     nfe_chaves: [""],   // lista de chaves manuais
+    // Seguro da Carga (RCTR-C) — em branco = usa o cadastro de Parâmetros → MDF-e do emitente
+    seguradora_nome: "", seguradora_cnpj: "", apolice_numero: "", averbacao_numero: "",
   });
+  const [abaModal, setAbaModal] = useState<"dados" | "seguro">("dados");
   const [form, setForm] = useState(FORM_VAZIO());
 
   // CIOT
@@ -452,6 +459,7 @@ function MdfePageInner() {
   function abrirNovo() {
     setMdfeEdit(null);
     setForm({ ...FORM_VAZIO(), numero_mdfe: proximoNr });
+    setAbaModal("dados");
     setErr(""); resetCiot();
     setModal(true);
   }
@@ -476,7 +484,10 @@ function MdfePageInner() {
       observacao: m.observacao ?? "",
       cte_ids: cteIds,
       nfe_chaves: nfeChaves.length > 0 ? nfeChaves : [""],
+      seguradora_nome: m.seguradora_nome ?? "", seguradora_cnpj: m.seguradora_cnpj ?? "",
+      apolice_numero: m.apolice_numero ?? "", averbacao_numero: m.averbacao_numero ?? "",
     });
+    setAbaModal("dados");
     setErr(""); resetCiot();
     if (m.ciot) setCiotGerado({ id: m.ciot, cv: m.ciot_codigo_verificador ?? "", protocolo: m.ciot_protocolo ?? "" });
     setModal(true);
@@ -645,6 +656,14 @@ function MdfePageInner() {
         produto_predominante: Object.values(form.produto_predominante).some(v => v.trim()) ? form.produto_predominante : null,
         status: mdfeEdit ? mdfeEdit.status : "rascunho" as StatusMdfe,
         observacao: form.observacao || null,
+        // Só envia os campos de seguro quando há algo (ou já havia) — não quebra o salvamento
+        // de quem ainda não rodou a Seção 293 da migration.
+        ...((form.seguradora_nome || form.seguradora_cnpj || form.apolice_numero || form.averbacao_numero || mdfeEdit?.seguradora_nome || mdfeEdit?.averbacao_numero) ? {
+          seguradora_nome: form.seguradora_nome.trim() || null,
+          seguradora_cnpj: form.seguradora_cnpj.trim() || null,
+          apolice_numero: form.apolice_numero.trim() || null,
+          averbacao_numero: form.averbacao_numero.trim() || null,
+        } : {}),
         ciot: ciotGerado?.id ?? mdfeEdit?.ciot ?? null,
         ciot_codigo_verificador: ciotGerado?.cv ?? mdfeEdit?.ciot_codigo_verificador ?? null,
         ciot_protocolo: ciotGerado?.protocolo ?? mdfeEdit?.ciot_protocolo ?? null,
@@ -940,7 +959,38 @@ function MdfePageInner() {
               <button onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ display: "flex", gap: 4, padding: "0 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+              {([["dados", "Dados do MDF-e"], ["seguro", "Seguro e Averbação"]] as const).map(([k, t]) => (
+                <button key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</button>
+              ))}
+            </div>
+
+            {abaModal === "seguro" && (
+              <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
+                <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--text-3)" }}>
+                  Seguro da Carga (RCTR-C) deste MDF-e. Campos em branco usam o cadastro da transportadora em Parâmetros → MDF-e; o que for preenchido aqui vale só para este manifesto. Necessário quando o transporte é prestação de serviço (com CT-e); carga própria não exige seguro.
+                </div>
+                <div>
+                  <label style={lbl}>Seguradora</label>
+                  <input value={form.seguradora_nome} onChange={e => setForm(f => ({ ...f, seguradora_nome: e.target.value }))} style={inp} placeholder="Ex: Porto Seguro Cia de Seguros Gerais" />
+                </div>
+                <div>
+                  <label style={lbl}>CNPJ da Seguradora</label>
+                  <input value={form.seguradora_cnpj} onChange={e => setForm(f => ({ ...f, seguradora_cnpj: e.target.value }))} style={inp} placeholder="00.000.000/0001-00" />
+                </div>
+                <div>
+                  <label style={lbl}>Nº da Apólice</label>
+                  <input value={form.apolice_numero} onChange={e => setForm(f => ({ ...f, apolice_numero: e.target.value }))} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Nº da Averbação</label>
+                  <input value={form.averbacao_numero} onChange={e => setForm(f => ({ ...f, averbacao_numero: e.target.value }))} style={inp} placeholder="Informe manualmente a cada viagem" />
+                </div>
+              </div>
+            )}
+
+            <div style={{ padding: "20px 24px", display: abaModal === "dados" ? "grid" : "none", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
 
               {/* ── CT-e vinculados — primeiro campo do formulário: marcar aqui já preenche

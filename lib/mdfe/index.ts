@@ -248,10 +248,12 @@ export async function emitirMDFe(
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
     serie:          confg.serie_mdfe ?? "1",
     numero_mdfe:    0, // preenchido abaixo
-    seguradora_nome:  confg.seguradora_nome,
-    seguradora_cnpj:  confg.seguradora_cnpj,
-    apolice_numero:   confg.apolice_numero,
-    averbacao_numero: confg.averbacao_numero,
+    // Dados preenchidos no próprio MDF-e (aba Seguro e Averbação) prevalecem sobre o cadastro
+    // do emitente em Parâmetros → MDF-e — a averbação, em especial, é informada por viagem.
+    seguradora_nome:  (m.seguradora_nome  as string | null) || confg.seguradora_nome,
+    seguradora_cnpj:  (m.seguradora_cnpj  as string | null) || confg.seguradora_cnpj,
+    apolice_numero:   (m.apolice_numero   as string | null) || confg.apolice_numero,
+    averbacao_numero: (m.averbacao_numero as string | null) || confg.averbacao_numero,
   };
 
   // Carga Própria (tpEmit=2) e CT-e vinculado são mutuamente excludentes por definição — um
@@ -273,7 +275,7 @@ export async function emitirMDFe(
   if (emitente.tpEmit === "1" && (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero || !emitente.averbacao_numero)) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
-      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice e Nº da Averbação em Parâmetros → MDF-e, na empresa emitente. Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
+      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice e Nº da Averbação na aba Seguro e Averbação do MDF-e (ou, para valer sempre, em Parâmetros → MDF-e, na empresa emitente). Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
     };
   }
 

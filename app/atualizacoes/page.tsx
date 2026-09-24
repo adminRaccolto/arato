@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-q",
+    data: "24/09/2026",
+    titulo: "MDF-e: aba Seguro e Averbação",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "O lançamento do MDF-e ganhou a aba \"Seguro e Averbação\": seguradora, CNPJ, nº da apólice e nº da averbação informados manualmente em cada manifesto. Campos em branco continuam usando o cadastro da transportadora em Parâmetros → MDF-e; o que for preenchido na aba prevalece só naquele MDF-e (a averbação normalmente muda a cada viagem). Requer a Seção 293 da migration." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.24-p",
     data: "24/09/2026",
     titulo: "NF-e: IBS/CBS agora usa a tabela NCM da conta inteira",

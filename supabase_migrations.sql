@@ -13655,3 +13655,12 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE public.mdfes ADD COLUMN IF NOT EXISTS produto_predominante JSONB;
 COMMENT ON COLUMN public.mdfes.produto_predominante IS 'Descrição, tipo de carga, NCM e CEPs reais de carregamento/descarregamento para prodPred.';
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 293 — MDF-e: dados de seguro/averbação por manifesto (aba "Seguro e Averbação") ──
+ALTER TABLE mdfes
+  ADD COLUMN IF NOT EXISTS seguradora_nome  text,
+  ADD COLUMN IF NOT EXISTS seguradora_cnpj  text,
+  ADD COLUMN IF NOT EXISTS apolice_numero   text,
+  ADD COLUMN IF NOT EXISTS averbacao_numero text;
+NOTIFY pgrst, 'reload schema';
