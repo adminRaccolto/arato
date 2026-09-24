@@ -286,7 +286,7 @@ export async function emitirMDFe(
   if (emitente.tpEmit === "1" && (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero)) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
-      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice (sempre informado na aba Seguro e Averbação do MDF-e, por viagem). Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
+      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice na aba Seguro e Averbação do MDF-e (ou em Parâmetros → MDF-e). A averbação é opcional. Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
     };
   }
 
