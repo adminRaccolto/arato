@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-h",
+    data: "24/09/2026",
+    titulo: "BI → Auditoria de Classificação: passou a enxergar os itens (estava cega) + painel de cobertura",
+    modulos: ["BI"],
+    itens: [
+      { tipo: "correcao", texto: "A auditoria nunca apontou nada porque nunca avaliava nada: as regras cadastradas têm NCM de 6 dígitos (ex: 3808.93) e os itens de NF têm 8 (38089329), e a comparação era por igualdade exata — 0 de 15.174 itens casavam. Agora casa pelo prefixo mais longo (regra de 4/6/8 dígitos vale pra todo item que começa por ela). Também traduz a categoria do insumo (singular: defensivo, herbicida, fertilizante…) para a da regra (plural) — sem isso, consertar só o NCM geraria falso positivo em todo item." },
+      { tipo: "melhoria", texto: "Novo painel \"Cobertura da auditoria\": mostra quantos itens foram realmente avaliados, quantos ficaram sem regra, sem NCM, de estoque sem insumo vinculado, e alerta quando \"0 inconsistências\" não significa nada por falta de cobertura." },
+    ],
+    onde: "BI Raccolto → Auditoria de Classificação",
+  },
+  {
     versao: "2026.09.24-g",
     data: "24/09/2026",
     titulo: "Baixa com desconto (ex: antecipação) não é mais tratada como pagamento parcial",

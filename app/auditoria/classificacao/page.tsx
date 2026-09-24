@@ -38,6 +38,23 @@ type InconsistenciaItem = {
   tipo_inconsistencia: "og_diferente" | "categoria_errada" | "sem_og_direto";
 };
 
+// Categorias de insumo (singular, como estão no cadastro) → categorias das regras (plural). Sem esta
+// tradução, "defensivo" ≠ "defensivos" e TODO item de estoque viraria falso positivo. Cobre também
+// os subtipos que existem de verdade no cadastro (herbicida, fungicida, inseticida, adjuvante…).
+const CAT_INSUMO_PARA_REGRA: Record<string, string> = {
+  defensivo: "defensivos", defensivos: "defensivos", herbicida: "defensivos", fungicida: "defensivos",
+  inseticida: "defensivos", adjuvante: "defensivos", inoculante: "defensivos", biologico: "defensivos",
+  fertilizante: "fertilizantes", fertilizantes: "fertilizantes", micronutriente: "fertilizantes", "nutrição foliar": "fertilizantes",
+  semente: "sementes", sementes: "sementes",
+  correcao_solo: "correcao_solo", corretivo: "correcao_solo",
+  combustivel: "combustivel", lubrificante: "combustivel",
+  peca: "pecas_manutencao", pecas_manutencao: "pecas_manutencao", material: "pecas_manutencao",
+  outros: "outros", uso_consumo: "outros",
+};
+const catRegra = (c?: string) => (c ? (CAT_INSUMO_PARA_REGRA[c.toLowerCase()] ?? c.toLowerCase()) : undefined);
+
+type Cobertura = { itens: number; semNcm: number; semRegra: number; comRegra: number; avaliados: number; estoqueSemInsumo: number; diretoSemOGNaRegra: number; regras: number };
+
 const CAT_LABEL: Record<string, string> = {
   sementes: "Sementes", fertilizantes: "Fertilizantes", defensivos: "Defensivos",
   correcao_solo: "Correção de Solo", combustivel: "Combustível",
@@ -58,6 +75,10 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [ogsDisponiveis, setOgsDisponiveis] = useState<{ id: string; descricao: string; classificacao: string }[]>([]);
   const [ogCorrecao, setOgCorrecao] = useState<Record<string, string>>({});
+  // Cobertura da última execução — "0 inconsistências" só significa algo se a auditoria
+  // realmente avaliou itens. Antes rodava calada: o NCM das regras (6 dígitos) nunca casava com o
+  // NCM do item (8 dígitos) e nada era avaliado, sem nenhum aviso.
+  const [cobertura, setCobertura] = useState<Cobertura | null>(null);
 
   // Carrega OGs para seleção de correção
   useEffect(() => {
@@ -71,6 +92,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
     if (!fazendaId) return;
     setLoading(true);
     setInconsistencias([]);
+    setCobertura(null);
     const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
 
     try {
@@ -82,12 +104,16 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
         .eq("ativo", true)
         .not("ncm", "is", null);
 
-      if (!regrasRaw || regrasRaw.length === 0) { setLoading(false); return; }
+      if (!regrasRaw || regrasRaw.length === 0) { setCobertura({ itens: 0, semNcm: 0, semRegra: 0, comRegra: 0, avaliados: 0, estoqueSemInsumo: 0, diretoSemOGNaRegra: 0, regras: 0 }); setLoading(false); return; }
 
-      const regraMap = new Map<string, RegraMap>();
-      for (const r of regrasRaw) {
-        regraMap.set((r.ncm as string).replace(/\./g, ""), r as RegraMap);
-      }
+      // Regras por prefixo de NCM (dígitos): a regra "3808.93" (6 dígitos) vale pro item 38089329
+      // (8 dígitos). Casa pelo prefixo MAIS LONGO, então uma regra específica de 8 dígitos ainda
+      // ganha da genérica. Antes era igualdade exata — nenhum item casava.
+      const regrasPorPrefixo = regrasRaw
+        .map(r => ({ n: String(r.ncm).replace(/\D/g, ""), r: r as RegraMap }))
+        .filter(x => x.n.length >= 4)
+        .sort((a, b) => b.n.length - a.n.length);
+      const acharRegra = (ncm: string): RegraMap | undefined => regrasPorPrefixo.find(x => ncm.startsWith(x.n))?.r;
 
       // 2. OGs esperadas
       const ogIds = regrasRaw.map(r => r.operacao_gerencial_id).filter(Boolean) as string[];
@@ -108,7 +134,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
         .in("fazenda_id", ids)
         .gte("data_emissao", dataCorte);
 
-      if (!nfsRaw || nfsRaw.length === 0) { setLoading(false); return; }
+      if (!nfsRaw || nfsRaw.length === 0) { setCobertura({ itens: 0, semNcm: 0, semRegra: 0, comRegra: 0, avaliados: 0, estoqueSemInsumo: 0, diretoSemOGNaRegra: 0, regras: regrasRaw.length }); setLoading(false); return; }
 
       const nfIds = nfsRaw.map(n => n.id);
       const nfInfoMap = new Map<string, { numero: string; data_emissao: string; emitente_nome: string }>(
@@ -130,7 +156,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
         if (!page || page.length < PAGE) break;
       }
 
-      if (allItens.length === 0) { setLoading(false); return; }
+      if (allItens.length === 0) { setCobertura({ itens: 0, semNcm: 0, semRegra: 0, comRegra: 0, avaliados: 0, estoqueSemInsumo: 0, diretoSemOGNaRegra: 0, regras: regrasRaw.length }); setLoading(false); return; }
 
       // 5. Carrega insumos
       const insumoIds = [...new Set(allItens.map(i => i.insumo_id as string).filter(Boolean))];
@@ -152,10 +178,13 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
 
       // 7. Cruza e detecta inconsistências
       const resultado: InconsistenciaItem[] = [];
+      const cob: Cobertura = { itens: allItens.length, semNcm: 0, semRegra: 0, comRegra: 0, avaliados: 0, estoqueSemInsumo: 0, diretoSemOGNaRegra: 0, regras: regrasRaw.length };
       for (const item of allItens) {
-        const ncmNorm = ((item.ncm as string) ?? "").replace(/\./g, "");
-        const regra = regraMap.get(ncmNorm);
-        if (!regra) continue;
+        const ncmNorm = ((item.ncm as string) ?? "").replace(/\D/g, "");
+        if (ncmNorm.length < 6) { cob.semNcm++; continue; }
+        const regra = acharRegra(ncmNorm);
+        if (!regra) { cob.semRegra++; continue; }
+        cob.comRegra++;
 
         const nf = nfInfoMap.get(item.nf_entrada_id as string) ?? { numero: "—", data_emissao: "", emitente_nome: "—" };
         const insumo = item.insumo_id ? insumoMap.get(item.insumo_id as string) : undefined;
@@ -182,7 +211,9 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
           og_esperada_classif:   ogEsperada?.classificacao,
         };
 
+        if (item.tipo_apropiacao === "direto" && !regra.operacao_gerencial_id) { cob.diretoSemOGNaRegra++; continue; }
         if (item.tipo_apropiacao === "direto" && regra.operacao_gerencial_id) {
+          cob.avaliados++;
           if (!item.operacao_gerencial_id) {
             resultado.push({ ...base, tipo_inconsistencia: "sem_og_direto" });
           } else if (item.operacao_gerencial_id !== regra.operacao_gerencial_id) {
@@ -191,12 +222,15 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
           continue;
         }
 
-        if (item.tipo_apropiacao === "estoque" && regra.categoria && insumo?.categoria) {
-          if (insumo.categoria !== regra.categoria) {
+        if (item.tipo_apropiacao === "estoque" && regra.categoria) {
+          if (!insumo?.categoria) { cob.estoqueSemInsumo++; continue; }   // sem insumo vinculado: não dá pra auditar
+          cob.avaliados++;
+          if (catRegra(insumo.categoria) !== catRegra(regra.categoria)) {
             resultado.push({ ...base, tipo_inconsistencia: "categoria_errada" });
           }
         }
       }
+      setCobertura(cob);
 
       setInconsistencias(resultado);
     } finally {
@@ -234,6 +268,22 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
             {loading ? "Verificando…" : "Rodar Auditoria"}
           </button>
         </div>
+
+        {/* Cobertura — sempre aparece depois de rodar: "0 inconsistências" só vale se houve itens avaliados */}
+        {cobertura && (() => {
+          const pct = cobertura.itens > 0 ? Math.round((cobertura.avaliados / cobertura.itens) * 100) : 0;
+          const fraca = cobertura.avaliados === 0 || pct < 20;
+          return (
+            <div style={{ background: fraca ? "#FEF3C7" : "var(--bg-card)", border: `0.5px solid ${fraca ? "#F0C060" : "var(--border)"}`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
+              <strong style={{ color: fraca ? "#92400E" : "var(--text-1)" }}>Cobertura da auditoria: {cobertura.avaliados} de {cobertura.itens} itens avaliados ({pct}%).</strong>{" "}
+              {cobertura.regras === 0 && "Nenhuma regra de classificação por NCM cadastrada — sem regra, nada é auditado. "}
+              {cobertura.itens > 0 && <>
+                {cobertura.semRegra} itens têm NCM sem nenhuma regra correspondente · {cobertura.semNcm} sem NCM · {cobertura.estoqueSemInsumo} de estoque sem insumo vinculado (não dá pra conferir a categoria) · {cobertura.diretoSemOGNaRegra} de apropriação direta cuja regra não define a operação gerencial.
+              </>}
+              {fraca && cobertura.regras > 0 && " Poucos itens avaliados: 0 inconsistências aqui NÃO significa que está tudo certo — cadastre mais regras (NCM de 4 ou 6 dígitos vale pra todos os itens que começam por ele) e vincule os insumos."}
+            </div>
+          );
+        })()}
 
         {/* KPIs */}
         {inconsistencias.length > 0 && (
