@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ag",
+    data: "24/09/2026",
+    titulo: "MDF-e: CEPs de carga lotação completados ao abrir rascunho",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "MDF-e de um único documento é carga lotação e exige os CEPs de carregamento e descarregamento. Rascunhos criados antes do preenchimento automático ficavam com os CEPs vazios (ex.: MDF-e 3286). Agora, ao abrir um MDF-e para editar, o sistema completa os CEPs (do cadastro do remetente/destinatário do CT-e) e o seguro, só onde estiver vazio. Confira antes de transmitir." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.24-af",
     data: "24/09/2026",
     titulo: "MDF-e: averbação volta a ser exigida (rejeição 699)",

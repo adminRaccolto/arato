@@ -493,6 +493,9 @@ function MdfePageInner() {
     });
     setAbaModal("dados");
     setErr(""); resetCiot();
+    // MDF-e criado antes do preenchimento automático: completa CEPs (carga lotação) e seguro a
+    // partir do primeiro CT-e vinculado — só preenche o que estiver vazio.
+    if (cteIds[0]) enriquecerPeloCte(cteIds[0]);
     if (m.ciot) setCiotGerado({ id: m.ciot, cv: m.ciot_codigo_verificador ?? "", protocolo: m.ciot_protocolo ?? "" });
     setModal(true);
   }
