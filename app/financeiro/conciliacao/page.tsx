@@ -1101,7 +1101,22 @@ function ConciliacaoInner() {
     // 1 lançamento ↔ 1 linha: lançamento já conciliado com outra linha não pode ser reaproveitado
     // (era como o mesmo CP acabava ligado a várias linhas do extrato). Parcial que já tem a marca
     // pode receber outro pagamento.
-    const jaConc = selecionados.filter(l => l.conciliado && !ehParcial(l) && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
+    let jaConc = selecionados.filter(l => l.conciliado && !ehParcial(l) && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
+    // A marca `conciliado` do lançamento pode ficar ÓRFÃ (extrato desconciliado/reimportado sem
+    // limpar o lançamento) — "conciliação fantasma": bloqueava o vínculo pra sempre, com a
+    // mensagem abaixo, sem existir nenhuma outra linha. Confere no banco se ALGUMA linha ativa
+    // de extrato realmente referencia o lançamento; se não, a marca é lixo e é limpa na hora.
+    // Achado real 24/09/2026 (Grupo Ogliari, 69 lançamentos).
+    if (jaConc.length > 0) {
+      const reais: typeof jaConc = [];
+      for (const l of jaConc) {
+        const { count } = await supabase.from("extrato_transacoes").select("id", { count: "exact", head: true })
+          .eq("conciliado", true).or(`lancamento_id.eq.${l.id},lancamento_ids.cs.{${l.id}}`);
+        if ((count ?? 0) > 0) reais.push(l);
+        else await supabase.from("lancamentos").update({ conciliado: false }).eq("id", l.id);
+      }
+      jaConc = reais;
+    }
     if (jaConc.length > 0) {
       alert(`"${jaConc[0].descricao}" já está conciliado com outra linha do extrato. Desvincule a outra linha antes de usá-lo aqui.`);
       return;

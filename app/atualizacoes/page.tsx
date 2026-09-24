@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-a",
+    data: "24/09/2026",
+    titulo: "Conciliação: \"já está conciliado com outra linha\" sem existir outra linha (conciliação fantasma)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A marca \"conciliado\" do lançamento podia ficar órfã — o extrato era desconciliado ou reimportado e o lançamento continuava marcado. O vínculo passava a ser bloqueado pra sempre com \"já está conciliado com outra linha do extrato\", mesmo sem nenhuma outra linha. Achados 69 casos no Grupo Ogliari (61 já baixados, 8 pendentes de pagamento, inclusive a NF 1891 da Biasi); marcas limpas com snapshot de rollback. Agora o sistema confere no banco se existe mesmo uma linha de extrato ativa e, se não existir, limpa a marca e deixa vincular." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.23-bp",
     data: "23/09/2026",
     titulo: "MDF-e: Encerrar por chave + Encerrar passa a transmitir de verdade",
