@@ -501,6 +501,13 @@ function MdfePageInner() {
   async function gerarCiot() {
     const motorista = motoristas.find(m => m.id === form.motorista_id);
     const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
+    // Contratante = transportadora emitente do CT-e vinculado (quem paga/declara o frete); só
+    // cai na primeira empresa da conta quando não há CT-e. Ambiente vem de Parâmetros → MDF-e
+    // (antes fixo em homologação — CIOT de teste, sem valor legal).
+    const cteSel = ctes.find(c => form.cte_ids.includes(c.id));
+    const contratanteDoc = (cteSel?.emitente_cnpj || empresaCpfCnpj || "").replace(/\D/g, "");
+    const ambienteCiot = mdfeConfig.ambiente === "producao" ? "producao" : "homologacao";
+    if (!contratanteDoc) { setCiotErro("Contratante (transportadora emitente) não identificado — vincule um CT-e."); return; }
     if (!motorista?.cpf) { setCiotErro("Motorista sem CPF cadastrado."); return; }
     if (!veiculo?.placa) { setCiotErro("Selecione um veículo."); return; }
     if (!ciotForm.valor_frete || !ciotForm.data_fim || !ciotForm.cep_origem || !ciotForm.cep_destino || !ciotForm.distancia_km) {
@@ -513,12 +520,12 @@ function MdfePageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "declarar",
-          cnpjContratante: empresaCpfCnpj,
-          ambiente: "homologacao",
+          cnpjContratante: contratanteDoc,
+          ambiente: ambienteCiot,
           dados: {
             CpfCnpjContratado:  motorista.cpf.replace(/\D/g, ""),
             RNTRCContratado:    motorista.rntrc ?? veiculo.rntrc ?? "",
-            CpfCnpjContratante: empresaCpfCnpj.replace(/\D/g, ""),
+            CpfCnpjContratante: contratanteDoc,
             ValorFrete:         parseFloat(ciotForm.valor_frete.replace(",", ".")).toFixed(2),
             DataInicioViagem:   form.data_emissao,
             DataFimViagem:      ciotForm.data_fim,

@@ -320,7 +320,8 @@ export async function emitirMDFe(
     municipios_descarga: municipiosDescarga,
     veiculo: { placa: veic.placa, tara_kg: veic.tara_kg, uf: veic.uf ?? emitente.uf },
     condutores,
-    ciot: m.ciot ? { codigo: m.ciot, cpf_cnpj: condutores[0].cpf } : null,
+    // infCIOT: CPF/CNPJ do responsável pela geração do CIOT = contratante que declarou (a transportadora), não o motorista.
+    ciot: m.ciot ? { codigo: m.ciot, cpf_cnpj: emitente.cpf_cnpj || condutores[0].cpf } : null,
     peso_bruto_kg: m.peso_total_kg || 0,
     valor_carga: m.valor_total_carga || 0,
     produto_predominante: m.produto_predominante,

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-w",
+    data: "24/09/2026",
+    titulo: "CIOT: ambiente vem dos Parâmetros e contratante correto",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A geração do CIOT usava sempre o ambiente de homologação (CIOT de teste, sem valor legal). Agora segue o ambiente de Parâmetros → MDF-e (Produção ou Homologação). O contratante passa a ser a transportadora emitente do CT-e vinculado (antes, a primeira empresa da conta), e o XML do MDF-e informa o CNPJ desse contratante como responsável pelo CIOT (antes, o CPF do motorista). Requer ANTT_API_KEY configurada na Vercel." },
+    ],
+    onde: "Transporte → MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.24-v",
     data: "24/09/2026",
     titulo: "IBS/CBS: padrão CST 410 / cClassTrib 410999 na NF-e e no CT-e",
