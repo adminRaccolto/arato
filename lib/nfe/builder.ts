@@ -526,6 +526,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
         ${cofinsXml}
         ${ibsCbsXml}
       </imposto>
+      ${item.ibsCbs ? `<vItem>${fmtVal(vProdLiq)}</vItem>` : ""}
     </det>`;
   }).join("\n");
 

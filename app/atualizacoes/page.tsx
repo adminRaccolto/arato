@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-aa",
+    data: "24/09/2026",
+    titulo: "NF-e: campo vItem nos itens com IBS/CBS",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Comparando com o XML de uma NF-e emitida por outro sistema, o bloco de IBS/CBS e o grupo de totais já estavam iguais, mas faltava o campo vItem (valor total do item) logo após o grupo de impostos, presente sempre que o item tem IBS/CBS. Agora a NF-e inclui vItem nos itens com IBS/CBS." },
+    ],
+    onde: "Fiscal → Emissão de NF-e",
+  },
+  {
     versao: "2026.09.24-z",
     data: "24/09/2026",
     titulo: "NF-e: rejeição 1119 (total de IBS e CBS) com CST 410",
