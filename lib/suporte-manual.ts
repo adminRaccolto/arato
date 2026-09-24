@@ -790,6 +790,8 @@ Gerencia aplicações e resgates em fundos, CDBs e outros investimentos.
 ### 17.5 Conciliação Bancária
 **Caminho:** Financeiro → Tesouraria → Conciliação Bancária
 
+**Novo 24/09/2026 — conciliar lançamentos JÁ baixados, mais de um por linha do OFX:** quando um único débito/crédito do banco quita vários lançamentos que você já baixou manualmente (ex: dois boletos da mesma empresa pagos de uma vez), use a aba **Baixados**: clique em **Vincular** na linha do extrato e marque os lançamentos baixados que ainda estão como "Pendente" (o sinaleiro amarelo) — dá pra marcar mais de um. O sistema mostra a soma dos marcados × o valor da linha e o botão de confirmar. Antes só a aba "CP/CR abertos" permitia marcar, e ela não lista o que já foi baixado.
+
 **Correção 24/09/2026 — "já está conciliado com outra linha do extrato" sem existir outra linha (conciliação fantasma):** a marca "conciliado" do lançamento podia ficar órfã quando o extrato era desconciliado ou reimportado sem limpar o lançamento — o vínculo ficava bloqueado pra sempre, mesmo sem nenhuma outra linha apontando pra ele. Corrigido: ao vincular, o sistema confere se alguma linha de extrato ativa realmente aponta pro lançamento; se não, a marca é limpa na hora e o vínculo segue. Casos antigos do Grupo Ogliari (69) já foram limpos.
 
 Concilia lançamentos do sistema com o extrato OFX importado do banco.

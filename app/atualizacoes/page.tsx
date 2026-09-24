@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-c",
+    data: "24/09/2026",
+    titulo: "Conciliação: vincular lançamentos JÁ baixados (vários de uma vez) a uma linha do OFX",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Um débito do banco que pagou dois boletos de uma vez (ex: NF 1891 R$ 528,80 + NFS-e 1552 R$ 40,00 = R$ 568,80) não tinha como ser conciliado quando os dois lançamentos já estavam baixados: só a aba \"CP/CR abertos\" permitia marcar lançamentos, e ela não lista os já baixados. Agora, na aba \"Baixados\", clique em Vincular numa linha do OFX e marque um ou mais lançamentos baixados ainda pendentes — aparece a soma × valor da linha e o botão de confirmar, igual à aba de abertos." },
+    ],
+    onde: "Financeiro → Conciliação Bancária → aba Baixados",
+  },
+  {
     versao: "2026.09.24-b",
     data: "24/09/2026",
     titulo: "CT-e: tela mais larga, botões de ação em uma linha",

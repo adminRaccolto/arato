@@ -2015,7 +2015,7 @@ function ConciliacaoInner() {
 
   const COLS_SUG = "78px 78px minmax(150px,1.6fr) 84px 100px 132px";
   const COLS_SIS_ABERTOS = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px";
-  const COLS_SIS_CONC    = "78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px 84px";
+  const COLS_SIS_CONC    = "24px 78px 78px minmax(120px,1.5fr) minmax(90px,1fr) minmax(100px,1fr) 88px 100px 84px";
   const renderLinhaSistema = (r: LinhaSis, i: number, modo: "conciliados" | "abertos") => {
     const l = r.l;
     const lt = r.lote;
@@ -2028,6 +2028,11 @@ function ConciliacaoInner() {
     const om = og ? ORIGEM_LANC[og] ?? ORIGEM_LANC.anterior : null;
     const conciliadoRow = linhaConciliada(r);
     const cinza = modo === "conciliados" && conciliadoRow;   // já conciliado: letra em cinza, só o pendente chama atenção
+    // Na aba Baixados, lançamento JÁ baixado mas ainda não conciliado (ex: dois boletos pagos num
+    // único débito do banco) também pode ser marcado e vinculado à linha do OFX — antes só a aba
+    // de abertos tinha seleção, então pagamento agrupado já baixado nunca dava pra vincular.
+    // Achado real 24/09/2026 (NF 1891 + NFS-e 1552 da Biasi = boleto único de R$ 568,80).
+    const selecionavel = modo === "abertos" || (modo === "conciliados" && !conciliadoRow);
     const expandido = !!lt && lotesAbertos.has(lt.id);
     const vencs = r.comps.map(c => c.data_vencimento).sort();
     const baixas = r.comps.map(c => c.data_baixa).filter(Boolean).sort() as string[];
@@ -2036,16 +2041,16 @@ function ConciliacaoInner() {
     return (
       <div key={r.key} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
         <div
-          onClick={modo === "abertos" ? () => alternarLinhaSis(r) : undefined}
+          onClick={selecionavel ? () => alternarLinhaSis(r) : undefined}
           style={{
             display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
             padding: "7px 10px", fontSize: 12,
             background: sel ? "#DCE6F2" : destaque ? "#EEF3F9" : "transparent",
             ...(cinza ? { ["--text-1" as string]: "#8A8F98", ["--text-2" as string]: "#9AA0A8", ["--text-3" as string]: "#A8ADB5" } : {}),
             borderLeft: sel || destaque ? "3px solid #1A4870" : "3px solid transparent",
-            cursor: modo === "abertos" ? "pointer" : "default",
+            cursor: selecionavel ? "pointer" : "default",
           }}>
-          {modo === "abertos" && <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} />}
+          {modo === "abertos" ? <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} /> : selecionavel ? <input type="checkbox" checked={sel} readOnly style={{ accentColor: "#1A4870", cursor: "pointer" }} /> : <div />}
           <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(vencs[0] ?? l.data_vencimento)}</div>
           <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{lt?.data_pagamento ? fmtDt(lt.data_pagamento) : baixas[0] ? fmtDt(baixas[baixas.length - 1]) : "—"}</div>
           <div style={{ minWidth: 0 }} title={lt ? `Borderô${lt.descricao ? " · " + lt.descricao : ""} · ${r.comps.length} títulos` : `${l.descricao}${l.categoria ? " · " + l.categoria : ""}`}>
@@ -3051,7 +3056,9 @@ function ConciliacaoInner() {
                 <div style={{ padding: "5px 12px", fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
                   {abaSistema === "sugeridos" && "Pares que o sistema encontrou (mesmo valor e data próxima). Confira e aceite — nada é gravado antes disso."}
                   {abaSistema === "inconsistencias" && "Linha do OFX cujo valor foi encontrado num lançamento baixado em OUTRA conta. Corrigir move a baixa para a conta deste extrato (saldo sai da errada e entra na certa) e concilia."}
-                  {abaSistema === "conciliados" && "Todos os lançamentos baixados no período (data de baixa). O sinaleiro mostra se já foram conciliados com o extrato; para conferir com o OFX, use a aba Conferência."}
+                  {abaSistema === "conciliados" && (linhaAtiva
+                    ? <>Marque o(s) lançamento(s) já baixado(s) e ainda <strong>pendentes</strong> que correspondem à linha de <strong>{fmtBRL(linhaAtiva.valor)}</strong> — pode marcar mais de um (pagamento agrupado).</>
+                    : "Todos os lançamentos baixados no período (data de baixa). O sinaleiro mostra se já foram conciliados com o extrato; pra vincular um baixado pendente, clique em Vincular numa linha do OFX e marque-o aqui.")}
                   {abaSistema === "abertos" && (linhaAtiva
                     ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
                     : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#1A4870", fontWeight: 700 }}>destaque azul</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
@@ -3168,7 +3175,7 @@ function ConciliacaoInner() {
                   <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 760, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: abaSistema === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
-                        {abaSistema === "abertos" && <div />}
+                        <div />
                         <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Produtor da baixa</div><div>Conta de baixa</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
                         {abaSistema === "conciliados" && <div>Origem</div>}
                       </div>
@@ -3272,7 +3279,7 @@ function ConciliacaoInner() {
                 )}
 
                 {/* Soma dos selecionados × linha ativa e confirmação (aba de abertos) */}
-                {abaSistema === "abertos" && linhaAtiva && lancsSel.size > 0 && (() => {
+                {(abaSistema === "abertos" || abaSistema === "conciliados") && linhaAtiva && lancsSel.size > 0 && (() => {
                   const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
                   const esperado = sel.reduce((sm, l) => sm + valorParaLinha(l), 0);
                   const dif = Math.round((linhaAtiva.valor - esperado) * 100) / 100;
@@ -3285,7 +3292,7 @@ function ConciliacaoInner() {
                     </div>
                   );
                 })()}
-                {abaSistema === "abertos" && (linhaAtiva || lancsSel.size > 0) && (
+                {(abaSistema === "abertos" || abaSistema === "conciliados") && (linhaAtiva || lancsSel.size > 0) && (
                   <div style={{ padding: "8px 14px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>
                       {lancsSel.size} selecionado{lancsSel.size !== 1 ? "s" : ""}{lancsSel.size > 1 ? " (bordero)" : ""}
