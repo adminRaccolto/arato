@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-r",
+    data: "24/09/2026",
+    titulo: "Usuários & Permissões: editar/excluir usuário de outra fazenda da mesma conta",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "A lista de usuários mostra todas as fazendas do cliente, mas editar ou excluir alguém cadastrado em outra fazenda (que não a ativa) dava \"Usuário não encontrado nesta fazenda\". Agora a checagem é por conta (cliente). Editar também deixou de mover o usuário para a fazenda ativa." },
+    ],
+    onde: "Configurações → Usuários & Permissões",
+  },
+  {
     versao: "2026.09.24-q",
     data: "24/09/2026",
     titulo: "MDF-e: aba Seguro e Averbação",

@@ -32,6 +32,20 @@ async function getUser() {
   return sb.auth.getUser();
 }
 
+
+// O usuário pertence à CONTA (cliente), não a uma fazenda: a listagem em Usuários & Permissões já
+// mostra todas as fazendas da conta, mas PUT/DELETE exigiam que o usuário estivesse na fazenda
+// ATIVA — editar alguém cadastrado em outra fazenda do mesmo cliente dava "Usuário não encontrado
+// nesta fazenda" (achado 24/09/2026). Agora vale "mesma conta" (mesmo conta_id das fazendas).
+async function mesmaConta(db: ReturnType<typeof adminClient>, fazendaA: string, fazendaB: string | null | undefined): Promise<boolean> {
+  if (!fazendaB) return false;
+  if (fazendaA === fazendaB) return true;
+  const { data } = await db.from("fazendas").select("id, conta_id").in("id", [fazendaA, fazendaB]);
+  const a = data?.find(f => f.id === fazendaA)?.conta_id;
+  const b = data?.find(f => f.id === fazendaB)?.conta_id;
+  return !!a && a === b;
+}
+
 export async function PUT(req: Request) {
   const { data: { user }, error } = await getUser();
   if (error || !user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
@@ -48,8 +62,8 @@ export async function PUT(req: Request) {
 
   // Verifica que o usuário alvo pertence à mesma fazenda (segurança cross-tenant)
   const { data: alvo } = await db.from("usuarios").select("fazenda_id").eq("id", id).maybeSingle();
-  if (!alvo || alvo.fazenda_id !== fazenda_id) {
-    return NextResponse.json({ error: "Usuário não encontrado nesta fazenda" }, { status: 403 });
+  if (!alvo || !(await mesmaConta(db, fazenda_id, alvo.fazenda_id))) {
+    return NextResponse.json({ error: "Usuário não encontrado nesta conta" }, { status: 403 });
   }
 
   const { error: dbErr } = await db.from("usuarios").update({
@@ -58,7 +72,8 @@ export async function PUT(req: Request) {
     grupo_id: grupo_id || null,
     ativo,
     whatsapp: whatsapp || null,
-    fazenda_id,
+    // fazenda_id NÃO é reescrito: mantém a fazenda de origem do cadastro (antes editar a partir de
+    // outra fazenda "movia" o usuário pra fazenda ativa).
   }).eq("id", id);
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
@@ -82,8 +97,8 @@ export async function DELETE(req: Request) {
 
   // Verifica que o registro pertence à fazenda antes de deletar
   const { data: alvo } = await db.from("usuarios").select("fazenda_id").eq("id", id).maybeSingle();
-  if (!alvo || alvo.fazenda_id !== fazenda_id) {
-    return NextResponse.json({ error: "Usuário não encontrado nesta fazenda" }, { status: 403 });
+  if (!alvo || !(await mesmaConta(db, fazenda_id, alvo.fazenda_id))) {
+    return NextResponse.json({ error: "Usuário não encontrado nesta conta" }, { status: 403 });
   }
 
   const { error: dbErr } = await db.from("usuarios").delete().eq("id", id);

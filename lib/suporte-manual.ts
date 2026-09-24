@@ -609,6 +609,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 **Correção 23/09/2026 — "🔍 Buscar dados da NF-e" dava "Senha do certificado incorreta" mesmo com a senha certa:** a consulta combinava o certificado de UM emitente com a senha de OUTRO emitente da mesma conta — cada um resolvido como "o primeiro encontrado" separadamente, então numa conta com mais de um certificado (ex: produtor + transportadora) o par podia sair errado mesmo com as duas senhas certas cadastradas nos lugares certos. Corrigido: agora testa todos os certificados válidos da conta até um decodificar com sucesso.
 
+**Correção 24/09/2026 — Usuários & Permissões:** editar ou excluir um usuário cadastrado em outra fazenda do mesmo cliente dava erro "Usuário não encontrado nesta fazenda". Agora vale para qualquer fazenda da mesma conta, e a edição não muda mais a fazenda de origem do usuário.
+
 **Novo 24/09/2026 — MDF-e com aba Seguro e Averbação:** no lançamento do MDF-e, a aba Seguro e Averbação recebe seguradora, CNPJ, nº da apólice e nº da averbação manualmente por manifesto. Em branco, vale o cadastro em Parâmetros → MDF-e da transportadora. Carga própria não exige seguro.
 
 **Correção 24/09/2026 — NF-e sem IBS/CBS:** a NF-e só destacava IBS/CBS se o NCM do item estivesse na Tabela NCM da mesma fazenda emissora (Parâmetros → Fiscal). Agora a tabela vale para a conta toda. Continua necessário ligar Destacar IBS/CBS no emitente e conferir as alíquotas com o contador. No CT-e, habilite em Parâmetros → CT-e. Seguradora e apólice do MDF-e ficam em Parâmetros do Sistema → MDF-e (por emitente, com Este transporte é = Prestador de serviço).
