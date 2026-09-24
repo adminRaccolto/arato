@@ -177,8 +177,8 @@ const CTE_BASE_FIELDS: FieldDef[] = [
   // Lucro Presumido/Real desde 05/01/2026 (Simples/MEI dispensados). 2026 é ano de transição:
   // sugestão da lei p/ o destaque = CBS 0,9% e IBS 0,1% — CONFIRME com o contador antes de ativar.
   { key: "ibs_cbs_ativo",       label: "Destacar IBS/CBS no CT-e",  type: "select", options: ["nao","sim"], labels: ["Não (não recomendado p/ Lucro Presumido/Real)","Sim — obrigatório (CRT 3)"] },
-  { key: "ibs_cbs_cst",         label: "CST do IBS/CBS",            type: "select", options: ["410","000"], labels: ["410 – Imunidade / não incidência (padrão)","000 – Tributação integral (com valores)"] },
-  { key: "ibs_cbs_cclasstrib",  label: "cClassTrib (6 dígitos)",    type: "text",   placeholder: "410999" },
+  { key: "ibs_cbs_cst",         label: "CST do IBS/CBS",            type: "select", options: ["000","410"], labels: ["000 – Tributação integral (padrão do frete)","410 – Imunidade / não incidência (sem valores)"] },
+  { key: "ibs_cbs_cclasstrib",  label: "cClassTrib (6 dígitos)",    type: "text",   placeholder: "000001" },
   { key: "ibs_uf_aliq",         label: "IBS – alíquota UF (%)",     type: "text",   placeholder: "0.10" },
   { key: "ibs_mun_aliq",        label: "IBS – alíquota Município (%)", type: "text", placeholder: "0.00" },
   { key: "cbs_aliq",            label: "CBS – alíquota (%)",        type: "text",   placeholder: "0.90" },

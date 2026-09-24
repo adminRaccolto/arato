@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ae",
+    data: "24/09/2026",
+    titulo: "CT-e: IBS/CBS com CST 000 e alíquotas de 2026",
+    modulos: ["Transporte", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O CT-e saía com a mesma classificação da NF-e (CST 410 / cClassTrib 410999, \"não onerosa\") e sem valores. Frete é prestação de serviço onerosa: agora o padrão do CT-e é CST 000 / cClassTrib 000001 (tributação integral) com as alíquotas fixas de 2026 — IBS UF 0,10%, IBS Município 0,00%, CBS 0,90% — calculadas sobre o valor do serviço. Um 410 salvo explicitamente em Parâmetros → CT-e continua respeitado. Ainda não validado na SEFAZ; confirme com o contador o CST/cClassTrib do frete." },
+    ],
+    onde: "Transporte → CT-e · Parâmetros → CT-e",
+  },
+  {
     versao: "2026.09.24-ad",
     data: "24/09/2026",
     titulo: "MDF-e: nº da averbação deixa de ser obrigatório",

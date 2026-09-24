@@ -316,13 +316,18 @@ export async function emitirCTe(
   // (CRT 1/2/4) são dispensados do grupo. Se "Destacar IBS/CBS" está ativo mas faltam
   // alíquotas/classificação, BLOQUEIA antes de transmitir (nunca chuta valor num documento fiscal).
   let ibscbs: CTeInput["ibscbs"];
-  // Padrão (contador, 24/09/2026): CST 410 / cClassTrib 410999 — vale quando o emitente ainda não
-  // configurou nada; só "nao" explícito desliga. Simples/MEI seguem dispensados.
+  // Padrão do CT-e: frete é prestação de serviço ONEROSA → tributação integral, CST 000 /
+  // cClassTrib 000001 (o 410/410999 da NF-e é "não onerosa" e NÃO serve aqui — achado 24/09/2026:
+  // CT-e saía com a mesma classificação da NF-e e com alíquotas zeradas). Só um "410" salvo
+  // explicitamente em Parâmetros → CT-e mantém o 410. Em 2026 (ano de teste, LC 214/2025 art. 343)
+  // as alíquotas são fixas: IBS UF 0,10%, IBS Município 0,00%, CBS 0,90% — valem mesmo que o
+  // cadastro esteja vazio/zerado. Simples/MEI seguem dispensados; só "nao" explícito desliga.
   if (confg.ibs_cbs_ativo !== "nao" && !["1", "2", "4"].includes(String(emitente.crt))) {
-    const cst = (confg.ibs_cbs_cst === "000" ? "000" : "410") as "000" | "410";
-    const cclass = String(confg.ibs_cbs_cclasstrib || (cst === "410" ? "410999" : "")).replace(/\D/g, "");
+    const cst = (confg.ibs_cbs_cst === "410" ? "410" : "000") as "000" | "410";
+    const cclass = String(confg.ibs_cbs_cclasstrib || (cst === "410" ? "410999" : "000001")).replace(/\D/g, "");
     const num = (v: unknown) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
-    const ibsUf = num(confg.ibs_uf_aliq), ibsMun = num(confg.ibs_mun_aliq), cbs = num(confg.cbs_aliq);
+    const ano2026 = new Date().getFullYear() === 2026;
+    const ibsUf = ano2026 ? 0.10 : num(confg.ibs_uf_aliq), ibsMun = ano2026 ? 0 : num(confg.ibs_mun_aliq), cbs = ano2026 ? 0.90 : num(confg.cbs_aliq);
     if (cclass.length !== 6 || (cst === "000" && (Number.isNaN(ibsUf) || Number.isNaN(ibsMun) || Number.isNaN(cbs)))) {
       return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "IBS/CBS ativo em Parâmetros → CT-e, mas faltam dados: informe cClassTrib (6 dígitos) e as alíquotas de IBS (UF e Município) e CBS — ou desative o destaque. Confirme os valores com o contador." };
     }
