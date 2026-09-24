@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ai",
+    data: "24/09/2026",
+    titulo: "CIOT gerado no lançamento do CT-e",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "O CT-e agora tem o bloco CIOT (aparece quando o motorista é TAC ou o veículo é de terceiro): usa valor do frete, data, IBGE, peso e motorista do próprio CT-e; CEPs vêm do cadastro do remetente/destinatário; você informa só distância, natureza (sugerida pelo produto) e, se quiser, a chave PIX. Um clique em \"Gerar CIOT via ANTT\" — sem ir ao site. O ambiente segue Parâmetros → CT-e e o MDF-e vinculado herda o CIOT do CT-e. Requer a Seção 296 da migration e a ANTT_API_KEY na Vercel. Não testado com a ANTT real." },
+    ],
+    onde: "Transporte → CT-e",
+  },
+  {
     versao: "2026.09.24-ah",
     data: "24/09/2026",
     titulo: "MDF-e: numeração não é mais consumida em rejeição + peso obrigatório",

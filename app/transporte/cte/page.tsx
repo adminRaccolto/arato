@@ -9,6 +9,7 @@ import { supabase } from "../../../lib/supabase";
 import { listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import type { Produtor } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
+import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -76,6 +77,7 @@ interface Cte {
   motorista_nome: string;
   motorista_cpf?: string | null;
   nfe_chave?: string | null;
+  ciot?: string | null; ciot_codigo_verificador?: string | null; ciot_protocolo?: string | null;
   carregamento_id?: string | null;
   xml_url?: string | null;
   protocolo_autorizacao?: string | null;
@@ -87,8 +89,8 @@ interface Cte {
   created_at?: string;
 }
 
-interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; }
-interface MotoristaMin { id: string; nome: string; cpf?: string; cnh?: string; }
+interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; rntrc?: string; proprietario_tipo?: string | null; }
+interface MotoristaMin { id: string; nome: string; cpf?: string; cnh?: string; tipo?: string; rntrc?: string | null; }
 interface TransportadoraMin { id: string; razao_social: string; ativa: boolean; }
 interface PessoaMin {
   id: string; nome: string; cpf_cnpj?: string;
@@ -547,6 +549,23 @@ function CtePageInner() {
   });
   const [form, setForm] = useState(FORM_VAZIO());
 
+  // ── CIOT (Lei 11.442/2007) — emitido aqui, no lançamento do CT-e, em vez de manualmente no
+  // site da ANTT a cada frete. Exigido com motorista TAC ou veículo de terceiro (regra em
+  // lib/mdfe/ciot-regra.ts). O MDF-e vinculado herda o CIOT do CT-e.
+  const [ciotForm, setCiotForm] = useState({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
+  const [ciotGerado, setCiotGerado] = useState<{ id: string; cv: string; protocolo: string } | null>(null);
+  const [gerandoCiot, setGerandoCiot] = useState(false);
+  const [ciotErro, setCiotErro] = useState("");
+  const naturezaCiot = (desc: string) => {
+    const d = desc.toLowerCase();
+    if (d.includes("soja")) return "2101";
+    if (d.includes("milho")) return "2102";
+    if (d.includes("algod")) return "2103";
+    if (d.includes("trigo")) return "2104";
+    if (/(calc|corretiv|fertiliz|adubo|dolom)/.test(d)) return "2201";
+    return "2202";
+  };
+
   // Calculados — só há base de cálculo/ICMS quando a situação tributária é 00 (tributação normal)
   const pRedForm       = form.cst_icms === "20" ? Math.min(100, Math.max(0, parseFloat(form.pred_bc_icms) || 0)) : 0;
   const tributaIcms    = form.cst_icms === "00" || form.cst_icms === "20";
@@ -579,8 +598,8 @@ function CtePageInner() {
       .then(({ data }) => setNotasEmitidas((data ?? []) as NotaEmitidaMin[]));
     const [{ data: cd }, { data: vd }, { data: md }, todasPessoas, { data: ed }, todosProdutores] = await Promise.all([
       supabase.from("ctes").select("*").in("fazenda_id", ids).order("data_emissao", { ascending: false }),
-      supabase.from("veiculos").select("id, placa, tipo, cap_kg").in("fazenda_id", ids).eq("ativo", true),
-      supabase.from("motoristas").select("id, nome, cpf, cnh").in("fazenda_id", ids).eq("ativo", true),
+      supabase.from("veiculos").select("id, placa, tipo, cap_kg, rntrc, proprietario_tipo").in("fazenda_id", ids).eq("ativo", true),
+      supabase.from("motoristas").select("id, nome, cpf, cnh, tipo, rntrc").in("fazenda_id", ids).eq("ativo", true),
       listarPessoasDaConta(fazendaId),
       supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, rntrc").in("fazenda_id", ids).contains("finalidades", ["transportadora"]),
       listarProdutoresDaConta(contaId ?? fazendaId),
@@ -703,11 +722,14 @@ function CtePageInner() {
     setDestinatarioSelUI("");
     setIesDestinatario([]);
     setErr("");
+    setCiotGerado(null); setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
     setModal(true);
   }
 
   function abrirEditar(c: Cte) {
     setCteEdit(c);
+    setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
+    setCiotGerado(c.ciot ? { id: c.ciot, cv: c.ciot_codigo_verificador ?? "", protocolo: c.ciot_protocolo ?? "" } : null);
     setForm({
       emitente_id: c.emitente_id ?? "", emitente_razao_social: c.emitente_razao_social ?? "", emitente_cnpj: c.emitente_cnpj ?? "",
       numero_cte: c.numero_cte, serie: c.serie, data_emissao: c.data_emissao,
@@ -999,6 +1021,8 @@ function CtePageInner() {
         nfe_chave: form.nfe_chave || null,
         status: cteEdit ? cteEdit.status : "rascunho" as StatusCte,
         observacao: form.observacao || null,
+        // Só envia quando há CIOT (não quebra o salvamento de quem ainda não rodou a Seção 296)
+        ...(ciotGerado ? { ciot: ciotGerado.id, ciot_codigo_verificador: ciotGerado.cv, ciot_protocolo: ciotGerado.protocolo } : {}),
       };
 
       // Usa API route com service_role_key para contornar JWT expirado (RLS 42501)
@@ -1024,6 +1048,63 @@ function CtePageInner() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function gerarCiotCte() {
+    if (!fazendaId) return;
+    const motorista = motoristas.find(m => m.id === form.motorista_id);
+    const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
+    const cpfMot = (form.motorista_cpf || motorista?.cpf || "").replace(/\D/g, "");
+    const contratante = (empresasTransp.find(e => e.id === form.emitente_id)?.cpf_cnpj ?? form.emitente_cnpj ?? "").replace(/\D/g, "");
+    const cepOrig = (ciotForm.cep_origem || pessoas.find(p => p.id === form.remetente_id)?.cep || "").replace(/\D/g, "");
+    const cepDest = (ciotForm.cep_destino || pessoas.find(p => p.id === form.destinatario_id)?.cep || "").replace(/\D/g, "");
+    if (!contratante) { setCiotErro("Selecione o Emitente (transportadora) do CT-e — ele é o contratante do CIOT."); return; }
+    if (!cpfMot) { setCiotErro("Informe o CPF do motorista."); return; }
+    if (!veiculo?.placa) { setCiotErro("Selecione o veículo."); return; }
+    if (!form.valor_frete) { setCiotErro("Informe o valor do frete."); return; }
+    if (!form.ibge_origem || !form.ibge_destino) { setCiotErro("Informe o código IBGE de origem e destino."); return; }
+    if (cepOrig.length !== 8 || cepDest.length !== 8) { setCiotErro("Informe os CEPs de origem e destino (8 dígitos)."); return; }
+    if (!ciotForm.distancia_km) { setCiotErro("Informe a distância percorrida (km)."); return; }
+    setGerandoCiot(true); setCiotErro("");
+    try {
+      // Ambiente segue Parâmetros → CT-e do emitente (Produção/Homologação)
+      const { data: cfgRows } = await supabase.from("configuracoes_modulo").select("config")
+        .in("fazenda_id", fazendaIds && fazendaIds.length ? fazendaIds : [fazendaId]).eq("modulo", `cte_emp_${contratante}`);
+      const amb = ((cfgRows ?? []) as { config: Record<string, string> }[]).map(r => r.config?.ambiente).find(Boolean) === "producao" ? "producao" : "homologacao";
+      const dataFim = ciotForm.data_fim || form.data_emissao;
+      const res = await fetch("/api/antt/ciot", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "declarar", cnpjContratante: contratante, ambiente: amb,
+          dados: {
+            CpfCnpjContratado: cpfMot, RNTRCContratado: motorista?.rntrc ?? veiculo.rntrc ?? "",
+            CpfCnpjContratante: contratante, ValorFrete: Number(form.valor_frete).toFixed(2),
+            DataInicioViagem: form.data_emissao, DataFimViagem: dataFim,
+            Veiculos: [{ Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista?.rntrc ?? "", NumeroEixos: "3" }],
+            OrigemDestino: [{
+              Origem:  { CodigoMunicipioOrigem: form.ibge_origem,  CepOrigem: cepOrig },
+              Destino: { CodigoMunicipioDestino: form.ibge_destino, CepDestino: cepDest },
+              DistanciaPercorrida: ciotForm.distancia_km, QtdViagens: "1",
+            }],
+            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: String(((form.peso_bruto_kg || 0) / 1000).toFixed(3)), CodigoTipoCarga: "5" },
+            InfPagamento: [{ TipoPagamento: "6", CpfCnpjCreditado: cpfMot, ChavePix: ciotForm.chave_pix || cpfMot, IndPagamento: "0" }],
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.Sucesso && data.Dados?.IdOperacaoTransporte) {
+        const gerado = { id: data.Dados.IdOperacaoTransporte as string, cv: (data.Dados.CodigoVerificador ?? "") as string, protocolo: (data.Dados.Protocolo ?? "") as string };
+        setCiotGerado(gerado);
+        if (cteEdit?.id) {
+          await fetch("/api/transporte/cte-salvar", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fazenda_id: fazendaId, cte_id: cteEdit.id, payload: { ciot: gerado.id, ciot_codigo_verificador: gerado.cv, ciot_protocolo: gerado.protocolo } }) }).catch(() => {});
+        }
+      } else {
+        setCiotErro(data.Mensagem || data.Erros?.join(", ") || data.error || "Erro ao gerar CIOT.");
+      }
+    } catch (e) {
+      setCiotErro(e instanceof Error ? e.message : "Erro de conexão com a ANTT.");
+    } finally { setGerandoCiot(false); }
   }
 
   // ── Busca IBGE de um município via ViaCEP ─────────────────
@@ -2060,6 +2141,41 @@ function CtePageInner() {
                 </div>
               )}
               <div />
+
+              {/* ── CIOT — só quando exigido (motorista TAC ou veículo de terceiro) ── */}
+              {(() => {
+                const mot = motoristas.find(m => m.id === form.motorista_id);
+                const vei = veiculos.find(v => v.id === form.veiculo_id);
+                if (!ciotExigido({ tpEmit: "1", motoristaTipo: mot?.tipo, veiculoProprietarioTipo: vei?.proprietario_tipo })) return null;
+                const NAT = [["2101","Soja"],["2102","Milho"],["2103","Algodão"],["2104","Trigo"],["2201","Fertilizantes / corretivos"],["2202","Granel vegetal"],["4101","Carga geral"]];
+                return <>
+                  <div style={{ ...divider, color: ciotGerado ? "#16A34A" : "#C9921B" }}>CIOT — {ciotGerado ? `✓ Gerado: ${ciotGerado.id}` : "obrigatório (motorista TAC ou veículo de terceiro)"}</div>
+                  {ciotGerado ? (
+                    <div style={{ gridColumn: "1 / -1", background: "#F0FDF4", border: "0.5px solid #16A34A50", borderRadius: 8, padding: "10px 14px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                      <div><div style={{ fontSize: 10, color: "#16A34A", fontWeight: 700 }}>CIOT</div><div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700 }}>{ciotGerado.id}</div></div>
+                      <div><div style={{ fontSize: 10, color: "var(--text-2)" }}>Cód. verificador</div><div style={{ fontFamily: "monospace" }}>{ciotGerado.cv || "—"}</div></div>
+                      <div style={{ marginLeft: "auto", color: "var(--text-3)" }}>O MDF-e deste CT-e herda este CIOT automaticamente.</div>
+                    </div>
+                  ) : (
+                    <>
+                      {ciotErro && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#791F1F" }}>{ciotErro}</div>}
+                      <div><label style={lbl}>Data fim da viagem</label><input type="date" style={inp} value={ciotForm.data_fim || form.data_emissao} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} /></div>
+                      <div><label style={lbl}>Distância (km) *</label><input style={inp} placeholder="850" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value.replace(/\D/g, "") }))} /></div>
+                      <div><label style={lbl}>Natureza da carga</label>
+                        <select style={inp} value={ciotForm.natureza === "2202" ? naturezaCiot(form.produto_descricao) : ciotForm.natureza} onChange={e => setCiotForm(f => ({ ...f, natureza: e.target.value }))}>
+                          {NAT.map(([c, n]) => <option key={c} value={c}>{c} — {n}</option>)}
+                        </select></div>
+                      <div><label style={lbl}>CEP origem</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.remetente_id)?.cep ?? "78450-000"} value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} /></div>
+                      <div><label style={lbl}>CEP destino</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.destinatario_id)?.cep ?? "78455-000"} value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} /></div>
+                      <div><label style={lbl}>Chave PIX do motorista (vazio = CPF)</label><input style={inp} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} /></div>
+                      <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 12 }}>
+                        <button type="button" onClick={gerarCiotCte} disabled={gerandoCiot} style={{ padding: "8px 18px", background: gerandoCiot ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gerandoCiot ? "default" : "pointer" }}>{gerandoCiot ? "Gerando…" : "Gerar CIOT via ANTT"}</button>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>Usa valor do frete, datas, IBGE, peso e motorista deste CT-e; CEPs vêm do cadastro do remetente/destinatário. Ambiente conforme Parâmetros → CT-e.</span>
+                      </div>
+                    </>
+                  )}
+                </>;
+              })()}
 
               {/* ── Vínculo NF-e ── */}
               <div style={divider}>Vínculo</div>

@@ -13780,3 +13780,11 @@ BEGIN
   END LOOP;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 296 — CIOT emitido no lançamento do CT-e (herdado pelo MDF-e vinculado) ──
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS ciot                    text,
+  ADD COLUMN IF NOT EXISTS ciot_codigo_verificador text,
+  ADD COLUMN IF NOT EXISTS ciot_protocolo          text;
+NOTIFY pgrst, 'reload schema';

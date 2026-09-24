@@ -164,8 +164,10 @@ export async function emitirMDFe(
   const docs = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[] | null;
   const primeiraCteChave = (docs ?? []).find(d => d.tipo === "cte")?.chave?.replace(/\D/g, "");
   if (primeiraCteChave) {
-    const { data: cteRow } = await sb().from("ctes").select("emitente_cnpj").eq("chave_acesso", primeiraCteChave).maybeSingle();
+    const { data: cteRow } = await sb().from("ctes").select("emitente_cnpj, ciot").eq("chave_acesso", primeiraCteChave).maybeSingle();
     empresaCnpj = (cteRow?.emitente_cnpj as string | undefined) ?? undefined;
+    // CIOT emitido no CT-e (Seção 296) vale para o MDF-e vinculado quando o MDF-e não tem o seu
+    if (!m.ciot && cteRow?.ciot) m.ciot = cteRow.ciot as string;
   }
   if (!empresaCnpj && faz?.conta_id) {
     const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
