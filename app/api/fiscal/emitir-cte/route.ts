@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       peso_liquido_kg:    number;
       valor_mercadoria:   number;
       aliquota_icms:      number;
+      cst_icms?:          "00" | "40" | "41" | "51";
       veiculo_placa:      string;
       veiculo_renavam?:   string;
       motorista_nome:     string;
@@ -90,6 +91,10 @@ export async function POST(req: NextRequest) {
       peso_liquido_kg:    body.peso_liquido_kg,
       valor_mercadoria:   body.valor_mercadoria,
       aliquota_icms:      body.aliquota_icms ?? 12,
+      // A situação tributária escolhida na tela precisa CHEGAR no XML — antes esta rota ignorava
+      // cst_icms e o builder caía na heurística por alíquota (0% → CST 40), então um CT-e marcado
+      // como 51 (diferido) saía com CST 40 na SEFAZ. Achado real 24/09/2026 (CT-e 3437).
+      cst_icms:           body.cst_icms,
       veiculo_placa:      body.veiculo_placa,
       veiculo_renavam:    body.veiculo_renavam,
       motorista_nome:     body.motorista_nome,

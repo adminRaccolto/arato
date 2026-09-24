@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-f",
+    data: "24/09/2026",
+    titulo: "CT-e: Situação Tributária escolhida (ex: 51 diferido) saía como CST 40 na SEFAZ",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O CT-e marcado como CST 51 (ICMS diferido) aparecia como 51 no DACTE impresso, mas a SEFAZ registrava CST 40 — a rota que transmite ao SEFAZ nunca recebia a situação tributária escolhida na tela e o XML caía numa regra antiga (alíquota 0% → CST 40). Corrigido: o CST escolhido (00/40/41/51) agora vai de verdade no XML. Os CT-e já autorizados não mudam (o XML transmitido é o que vale) — CT-e 3437 e outros emitidos como 51 saíram como 40 na SEFAZ; confirme com o contador se precisa de tratamento." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.24-e",
     data: "24/09/2026",
     titulo: "Conciliação: coluna Histórico mais larga (botões e colunas enxutos)",
