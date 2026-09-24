@@ -281,6 +281,9 @@ interface CteMin {
   peso_bruto_kg?: number | null; valor_mercadoria?: number | null;
   municipio_origem?: string | null; uf_origem?: string | null; ibge_origem?: string | null;
   nfe_chave?: string | null;
+  emitente_cnpj?: string | null; remetente_id?: string | null; destinatario_id?: string | null;
+  municipio_destino?: string | null; uf_destino?: string | null;
+  produto_descricao?: string | null; ncm?: string | null; unidade?: string | null;
 }
 interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
@@ -387,7 +390,7 @@ function MdfePageInner() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
@@ -561,6 +564,36 @@ function MdfePageInner() {
     }
   }
 
+  // Dados que o CT-e não guarda direto: CEP de carregamento/descarregamento (do cadastro de
+  // Pessoas do remetente/destinatário) e o Seguro da Carga (RCTR-C) cadastrado em Parâmetros →
+  // MDF-e da transportadora emitente do CT-e. A averbação NUNCA é preenchida aqui — é por viagem.
+  async function enriquecerPeloCte(id: string) {
+    const c = ctes.find(x => x.id === id);
+    if (!c) return;
+    try {
+      const ids = [c.remetente_id, c.destinatario_id].filter(Boolean) as string[];
+      const [pes, cfg] = await Promise.all([
+        ids.length ? supabase.from("pessoas").select("id, cep").in("id", ids) : Promise.resolve({ data: [] as { id: string; cep: string | null }[] }),
+        c.emitente_cnpj
+          ? supabase.from("configuracoes_modulo").select("config").in("fazenda_id", fazendaIds).eq("modulo", `mdfe_emp_${c.emitente_cnpj.replace(/\D/g, "")}`)
+          : Promise.resolve({ data: [] as { config: Record<string, string> }[] }),
+      ]);
+      const cepDe = (pid?: string | null) => (pes.data ?? []).find(p => p.id === pid)?.cep?.replace(/\D/g, "") ?? "";
+      const conf = ((cfg.data ?? []) as { config: Record<string, string> }[]).map(r => r.config).find(x => x?.seguradora_nome || x?.apolice_numero) ?? {};
+      setForm(f => ({
+        ...f,
+        produto_predominante: {
+          ...f.produto_predominante,
+          cep_carregamento: f.produto_predominante.cep_carregamento || cepDe(c.remetente_id),
+          cep_descarregamento: f.produto_predominante.cep_descarregamento || cepDe(c.destinatario_id),
+        },
+        seguradora_nome: f.seguradora_nome || conf.seguradora_nome || "",
+        seguradora_cnpj: f.seguradora_cnpj || conf.seguradora_cnpj || "",
+        apolice_numero:  f.apolice_numero  || conf.apolice_numero  || "",
+      }));
+    } catch { /* best-effort: o usuário ainda pode preencher à mão */ }
+  }
+
   // ── Toggle CT-e vinculado ────────────────────────────────
   // Ao marcar o primeiro CT-e (campos do MDF-e ainda vazios), herda veículo, motorista, origem
   // (município/UF/IBGE) e a chave de NF-e do CT-e — tudo isso já foi preenchido na emissão do
@@ -569,6 +602,8 @@ function MdfePageInner() {
   // rodoviário inteiro, que pode passar por estados que o CT-e nem menciona. Pedido do dono
   // 23/09/2026 (fazia isso na mão toda vez, mesma informação já digitada duas vezes).
   function toggleCte(id: string) {
+    const marcandoAgora = !form.cte_ids.includes(id);
+    if (marcandoAgora) enriquecerPeloCte(id);
     setForm(f => {
       const marcando = !f.cte_ids.includes(id);
       const cteIds = marcando ? [...f.cte_ids, id] : f.cte_ids.filter(c => c !== id);
@@ -591,6 +626,22 @@ function MdfePageInner() {
           municipio_inicio: c.municipio_origem,
           uf_inicio: c.uf_origem || f.uf_inicio,
           ibge_inicio: c.ibge_origem || f.ibge_inicio,
+        };
+      }
+      // UF de destino (fim) e produto (descrição/NCM/tipo de carga) também vêm do CT-e — só
+      // preenche o que ainda estiver vazio. Tipo de carga: granel sólido (01) quando o CT-e
+      // é em toneladas (grão, calcário, fertilizante a granel) — revise se for carga diferente.
+      if (marcando && c) {
+        if (c.uf_destino && !f.percurso_ufs.length && f.uf_fim === (mdfeConfig.uf_fim || "MT")) extra = { ...extra, uf_fim: c.uf_destino };
+        const pp = f.produto_predominante;
+        extra = {
+          ...extra,
+          produto_predominante: {
+            ...pp,
+            descricao: pp.descricao || (c.produto_descricao ?? ""),
+            ncm: pp.ncm || (c.ncm ?? "").replace(/\D/g, ""),
+            tipo_carga: pp.tipo_carga || (String(c.unidade ?? "").toUpperCase().startsWith("TON") ? "01" : ""),
+          },
         };
       }
       // Peso e Valor da Carga também já estão no CT-e — soma ao marcar, subtrai ao desmarcar,

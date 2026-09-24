@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-s",
+    data: "24/09/2026",
+    titulo: "MDF-e: CT-e povoa mais campos e traz o seguro do cadastro",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao marcar um CT-e no MDF-e, agora também são preenchidos: UF de destino, produto predominante, NCM, tipo de carga (granel sólido quando o CT-e é em toneladas), CEP de carregamento/descarregamento (do cadastro do remetente/destinatário) e o Seguro da Carga (seguradora, CNPJ e apólice) cadastrado em Parâmetros → MDF-e da transportadora. Só preenche o que estiver vazio — revise antes de emitir." },
+      { tipo: "correcao", texto: "Nº da Averbação é sempre informado manualmente na aba Seguro e Averbação de cada MDF-e (por viagem); não usa mais o valor do cadastro." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.24-r",
     data: "24/09/2026",
     titulo: "Usuários & Permissões: editar/excluir usuário de outra fazenda da mesma conta",
