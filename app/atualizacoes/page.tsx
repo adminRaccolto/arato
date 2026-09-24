@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-d",
+    data: "24/09/2026",
+    titulo: "Consórcio: lances em dinheiro, embutidos e de terceiros, com efeito nas parcelas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Registrar Contemplação agora aceita vários lances, cada um com seu tipo: **em dinheiro** (gera uma conta a pagar na conta escolhida — aparece na Conciliação e casa com o débito do banco), **embutido** (sem saída de caixa: o crédito lançado na conta entra líquido, crédito − lance) e **recurso de terceiros** (FGTS/outro consórcio — registrado, sem conta a pagar). Também escolha como o lance abate o saldo: reduz o valor das parcelas restantes, encurta o prazo (remove as últimas parcelas) ou não altera as parcelas. Antes o lance era só um número solto, sem lançamento nem efeito. Exige a migration Seção 290." },
+    ],
+    onde: "Financeiro → Consórcios → Registrar Contemplação",
+  },
+  {
     versao: "2026.09.24-c",
     data: "24/09/2026",
     titulo: "Conciliação: vincular lançamentos JÁ baixados (vários de uma vez) a uma linha do OFX",

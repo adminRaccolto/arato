@@ -166,6 +166,10 @@ export default function ConsorciosPage() {
 
   // Modal contemplação
   const [modalContempl, setModalContempl] = useState<Consorcio | null>(null);
+  // Lances da contemplação — cada um com tipo próprio (dinheiro / embutido / recurso de terceiros)
+  type LanceForm = { tipo: "dinheiro" | "embutido" | "terceiros"; valor: number; data: string; conta_bancaria_id: string; origem: string };
+  const [lancesForm, setLancesForm] = useState<LanceForm[]>([]);
+  const [efeitoLance, setEfeitoLance] = useState<"reduz_parcela" | "reduz_prazo" | "nenhum">("reduz_parcela");
   const [contemplForm, setContemplForm] = useState({
     data_contemplacao: hoje(),
     valor_lance: 0,
@@ -440,6 +444,8 @@ export default function ConsorciosPage() {
       migrar_financiamento: false, conta_bancaria_id: "",
     });
     setContemplErr("");
+    setLancesForm([]);
+    setEfeitoLance("reduz_parcela");
     const fId = c.fazenda_id || fazendaId;
     if (fId) {
       supabase.from("contas_bancarias").select("id, nome, banco")
@@ -452,6 +458,14 @@ export default function ConsorciosPage() {
     if (!modalContempl || !fazendaId) return;
     if (!contemplForm.data_contemplacao) { setContemplErr("Informe a data de contemplação."); return; }
     if (!contemplForm.conta_bancaria_id) { setContemplErr("Selecione a conta bancária para crédito do valor."); return; }
+    const lancesValidos = lancesForm.filter(l => Number(l.valor) > 0);
+    for (const l of lancesValidos) {
+      if (l.tipo === "dinheiro" && !l.conta_bancaria_id) { setContemplErr("Lance em dinheiro: selecione a conta bancária de pagamento."); return; }
+      if (!l.data) { setContemplErr("Informe a data de cada lance."); return; }
+    }
+    const totalLances = lancesValidos.reduce((sm, l) => sm + Number(l.valor), 0);
+    const totalEmbutido = lancesValidos.filter(l => l.tipo === "embutido").reduce((sm, l) => sm + Number(l.valor), 0);
+    if (totalLances > modalContempl.valor_credito) { setContemplErr("A soma dos lances é maior que o valor do crédito."); return; }
     setContemplSaving(true); setContemplErr("");
     const fId = modalContempl.fazenda_id || fazendaId;
     try {
@@ -459,7 +473,7 @@ export default function ConsorciosPage() {
       const { error: updErr } = await supabase.from("consorcios").update({
         status: "contemplado",
         data_contemplacao: contemplForm.data_contemplacao,
-        valor_lance: contemplForm.valor_lance || null,
+        valor_lance: totalLances || null,
         bem_adquirido: contemplForm.bem_adquirido || null,
       }).eq("id", modalContempl.id);
       if (updErr) throw new Error(updErr.message);
@@ -492,8 +506,9 @@ export default function ConsorciosPage() {
         data_lancamento: contemplForm.data_contemplacao,
         data_vencimento: contemplForm.data_contemplacao,
         data_baixa: contemplForm.data_contemplacao,
-        valor: modalContempl.valor_credito,
-        valor_pago: modalContempl.valor_credito,
+        // Lance embutido sai do próprio crédito — o que entra na conta é o crédito LÍQUIDO.
+        valor: modalContempl.valor_credito - totalEmbutido,
+        valor_pago: modalContempl.valor_credito - totalEmbutido,
         status: "baixado",
         auto: true,
         conta_bancaria: contemplForm.conta_bancaria_id,
@@ -502,6 +517,16 @@ export default function ConsorciosPage() {
         operacao_gerencial_id: ogAlvo,
       });
       if (crErr) throw new Error(crErr.message);
+
+      // 4. Lances: CP dos em dinheiro (vai pra conciliação) + efeito nas parcelas restantes
+      if (lancesValidos.length > 0) {
+        const rl = await fetch("/api/financeiro/consorcios/lance", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ consorcio_id: modalContempl.id, fazenda_id: fId, lances: lancesValidos, efeito: efeitoLance }),
+        });
+        const jl = await rl.json() as { ok?: boolean; error?: string };
+        if (!rl.ok) throw new Error(`Contemplação registrada, mas o lance falhou: ${jl.error ?? "erro"} — não repita a contemplação; registre o lance de novo pelo suporte.`);
+      }
 
       await carregar();
       setModalContempl(null);
@@ -1176,7 +1201,7 @@ export default function ConsorciosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalContempl && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Contemplação</div>
@@ -1193,9 +1218,64 @@ export default function ConsorciosPage() {
                 <label style={lbl}>Data de Contemplação</label>
                 <input type="date" value={contemplForm.data_contemplacao} onChange={e => setContemplForm(f => ({ ...f, data_contemplacao: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Valor do Lance (R$) — se contemplado por lance</label>
-                <InputMonetario style={inp} value={contemplForm.valor_lance} onChange={v => setContemplForm(f => ({ ...f, valor_lance: v }))} placeholder="0,00 se contemplado por sorteio" />
+              <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <label style={{ ...lbl, margin: 0 }}>Lances (deixe vazio se contemplado por sorteio)</label>
+                  <button type="button" onClick={() => setLancesForm(ls => [...ls, { tipo: "dinheiro", valor: 0, data: contemplForm.data_contemplacao, conta_bancaria_id: contemplForm.conta_bancaria_id, origem: "" }])}
+                    style={{ ...btnR, padding: "4px 10px", fontSize: 12 }}>+ Lance</button>
+                </div>
+                {lancesForm.map((l, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "130px 1fr 28px", gap: 8, marginBottom: 8, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Tipo</label>
+                      <select value={l.tipo} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, tipo: e.target.value as LanceForm["tipo"] } : x))} style={inp}>
+                        <option value="dinheiro">Em dinheiro</option>
+                        <option value="embutido">Embutido</option>
+                        <option value="terceiros">Recurso de terceiros</option>
+                      </select>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: l.tipo === "embutido" ? "1fr" : "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label style={lbl}>Valor (R$)</label>
+                        <InputMonetario style={inp} value={l.valor} onChange={v => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, valor: v } : x))} />
+                      </div>
+                      {l.tipo === "dinheiro" && (
+                        <div>
+                          <label style={lbl}>Paga da conta *</label>
+                          <select value={l.conta_bancaria_id} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, conta_bancaria_id: e.target.value } : x))} style={inp}>
+                            <option value="">Selecione…</option>
+                            {contasBancarias.map(cb => <option key={cb.id} value={cb.id}>{cb.nome}{cb.banco ? ` — ${cb.banco}` : ""}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      {l.tipo === "terceiros" && (
+                        <div>
+                          <label style={lbl}>Origem</label>
+                          <input value={l.origem} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, origem: e.target.value } : x))} style={inp} placeholder="FGTS, outro consórcio…" />
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => setLancesForm(ls => ls.filter((_, j) => j !== i))} style={{ height: 34, border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>×</button>
+                  </div>
+                ))}
+                {lancesForm.length > 0 && (() => {
+                  const tot = lancesForm.reduce((sm, l) => sm + (Number(l.valor) || 0), 0);
+                  const dinh = lancesForm.filter(l => l.tipo === "dinheiro").reduce((sm, l) => sm + (Number(l.valor) || 0), 0);
+                  const emb = lancesForm.filter(l => l.tipo === "embutido").reduce((sm, l) => sm + (Number(l.valor) || 0), 0);
+                  return (
+                    <>
+                      <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8 }}>
+                        Total {fmtBRL(tot)} · em dinheiro {fmtBRL(dinh)} (gera contas a pagar) · embutido {fmtBRL(emb)} (sai do crédito) · terceiros {fmtBRL(tot - dinh - emb)}
+                      </div>
+                      <label style={lbl}>O lance abate o saldo…</label>
+                      <select value={efeitoLance} onChange={e => setEfeitoLance(e.target.value as typeof efeitoLance)} style={inp}>
+                        <option value="reduz_parcela">reduzindo o valor das parcelas restantes</option>
+                        <option value="reduz_prazo">reduzindo o prazo (remove as últimas parcelas)</option>
+                        <option value="nenhum">sem alterar as parcelas (contrato já refletiu)</option>
+                      </select>
+                    </>
+                  );
+                })()}
               </div>
               <div>
                 <label style={lbl}>Bem Adquirido / Alienação do Bem</label>
@@ -1215,7 +1295,7 @@ export default function ConsorciosPage() {
                 </select>
               </div>
               <div style={{ background: "#E8F5E9", border: "0.5px solid #A7D7B5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1A6B3C" }}>
-                Será lançado um <strong>crédito de {fmtBRL(modalContempl.valor_credito)}</strong> (valor do crédito da cota) na conta selecionada como baixado.
+                Será lançado um <strong>crédito de {fmtBRL(modalContempl.valor_credito - lancesForm.filter(l => l.tipo === "embutido").reduce((sm, l) => sm + (Number(l.valor) || 0), 0))}</strong>{lancesForm.some(l => l.tipo === "embutido") ? " (crédito menos o lance embutido)" : " (valor do crédito da cota)"} na conta selecionada como baixado.
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
                 <input
@@ -1228,7 +1308,7 @@ export default function ConsorciosPage() {
               </label>
               {contemplForm.migrar_financiamento && (
                 <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
-                  Será criado um financiamento com saldo de {fmtBRL(modalContempl.valor_credito - (contemplForm.valor_lance || 0))}. As parcelas remanescentes continuarão sendo controladas aqui.
+                  Será criado um financiamento com saldo de {fmtBRL(modalContempl.valor_credito - lancesForm.reduce((sm, l) => sm + (Number(l.valor) || 0), 0))}. As parcelas remanescentes continuarão sendo controladas aqui.
                 </div>
               )}
             </div>

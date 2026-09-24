@@ -13580,3 +13580,41 @@ CREATE POLICY "nfe_cartas_correcao_tenant" ON nfe_cartas_correcao FOR ALL
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 290 — Consórcio: lances (dinheiro / embutido / recurso de terceiros)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Antes só existia consorcios.valor_lance (um número solto na contemplação, sem lançamento
+-- financeiro nem efeito nas parcelas). Agora cada lance é um registro:
+--   dinheiro  → gera CP (aparece na conciliação, casa com o débito do banco)
+--   embutido  → sem caixa: reduz o crédito liberado (CR = crédito − embutido)
+--   terceiros → FGTS/outro consórcio/etc.: registrado, sem CP (não sai da conta do cliente)
+-- efeito_lance: como o lance abate o saldo — reduz o valor das parcelas ou encurta o prazo.
+CREATE TABLE IF NOT EXISTS consorcio_lances (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  consorcio_id      UUID NOT NULL REFERENCES consorcios(id) ON DELETE CASCADE,
+  fazenda_id        UUID NOT NULL REFERENCES fazendas(id),
+  tipo              TEXT NOT NULL CHECK (tipo IN ('dinheiro','embutido','terceiros')),
+  valor             NUMERIC(14,2) NOT NULL CHECK (valor > 0),
+  data              DATE NOT NULL,
+  conta_bancaria_id UUID,
+  origem            TEXT,
+  lancamento_id     UUID,
+  observacao        TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_consorcio_lances_cons ON consorcio_lances(consorcio_id);
+ALTER TABLE consorcio_lances ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "consorcio_lances_tenant" ON consorcio_lances FOR ALL
+  USING (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  )
+  WITH CHECK (
+    fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+ALTER TABLE consorcios
+  ADD COLUMN IF NOT EXISTS valor_lance_embutido NUMERIC(14,2),
+  ADD COLUMN IF NOT EXISTS efeito_lance TEXT CHECK (efeito_lance IN ('reduz_parcela','reduz_prazo','nenhum'));
+NOTIFY pgrst, 'reload schema';
