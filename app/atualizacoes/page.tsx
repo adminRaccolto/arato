@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-j",
+    data: "24/09/2026",
+    titulo: "CT-e e MDF-e: botão Excluir nos rascunhos",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Rascunhos de CT-e e de MDF-e agora têm o botão \"Excluir\" na lista. Só rascunho que nunca foi autorizado pela SEFAZ pode ser excluído — autorizado se cancela (CT-e) ou se encerra/cancela (MDF-e), nunca se apaga. Se o rascunho já teve uma tentativa de transmissão (tem chave de acesso), a confirmação avisa pra conferir no portal da SEFAZ antes, porque uma resposta perdida pode significar que ele foi autorizado lá sem o sistema saber. A numeração já consumida não volta." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e e MDF-e)",
+  },
+  {
     versao: "2026.09.24-i",
     data: "24/09/2026",
     titulo: "CT-e: IBS e CBS (Reforma Tributária) parametrizados por emitente",

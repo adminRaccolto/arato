@@ -966,6 +966,18 @@ function CtePageInner() {
   // a mesma rota que a NF de Produtos usa pra reparar NFs sem itens (Storage do SIEG, com fallback SEFAZ).
   const [buscandoNfe, setBuscandoNfe] = useState(false);
   const [nfeBuscaErro, setNfeBuscaErro] = useState("");
+  // Excluir rascunho (nunca autorizado) — pedido do dono 24/09/2026.
+  async function excluirRascunho(c: Cte) {
+    const aviso = c.chave_acesso
+      ? `Este rascunho JÁ TEVE uma tentativa de transmissão (tem chave de acesso). Se a SEFAZ chegou a autorizar sem o sistema saber, o CT-e existiria lá e ficaria sem registro aqui — confira no portal antes.\n\nExcluir o CT-e ${c.numero_cte}/${c.serie} mesmo assim?`
+      : `Excluir o rascunho do CT-e ${c.numero_cte}/${c.serie}? Não dá pra desfazer.`;
+    if (!confirm(aviso)) return;
+    const res = await fetch("/api/transporte/excluir-rascunho", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tabela: "ctes", id: c.id }) });
+    const j = await res.json() as { sucesso?: boolean; erro?: string };
+    if (!res.ok || !j.sucesso) { alert(`Não foi possível excluir: ${j.erro ?? "erro"}`); return; }
+    await carregar();
+  }
+
   async function buscarNfePelaChave() {
     if (!fazendaId) return;
     const chave = form.nfe_chave.replace(/\D/g, "");
@@ -1446,6 +1458,12 @@ function CtePageInner() {
                           {c.status === "rascunho" && (
                             <button onClick={() => autorizar(c)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Autorizar SEFAZ
+                            </button>
+                          )}
+                          {c.status === "rascunho" && (
+                            <button onClick={() => excluirRascunho(c)} title="Excluir este rascunho (nunca autorizado)"
+                              style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                              Excluir
                             </button>
                           )}
                           <button onClick={() => imprimirDacte(c, logoCliente, empresasTransp.find(e => e.id === c.emitente_id)?.rntrc)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>

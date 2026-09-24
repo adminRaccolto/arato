@@ -737,6 +737,18 @@ function MdfePageInner() {
     } finally { setChaveSaving(false); }
   }
 
+  // Excluir rascunho (nunca autorizado) — pedido do dono 24/09/2026.
+  async function excluirRascunho(m: Mdfe) {
+    const aviso = m.chave_acesso
+      ? `Este rascunho JÁ TEVE uma tentativa de transmissão (tem chave de acesso). Se a SEFAZ chegou a autorizar sem o sistema saber, o MDF-e existiria lá e ficaria aberto (bloqueando a placa) — confira no portal antes.\n\nExcluir o MDF-e ${m.numero_mdfe}/${m.serie} mesmo assim?`
+      : `Excluir o rascunho do MDF-e ${m.numero_mdfe}/${m.serie}? Não dá pra desfazer.`;
+    if (!confirm(aviso)) return;
+    const res = await fetch("/api/transporte/excluir-rascunho", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tabela: "mdfes", id: m.id }) });
+    const j = await res.json() as { sucesso?: boolean; erro?: string };
+    if (!res.ok || !j.sucesso) { alert(`Não foi possível excluir: ${j.erro ?? "erro"}`); return; }
+    await carregar();
+  }
+
   async function cancelar(m: Mdfe) {
     if (!confirm("Cancelar este MDF-e?")) return;
     await supabase.from("mdfes").update({ status: "cancelado" }).eq("id", m.id);
@@ -853,6 +865,12 @@ function MdfePageInner() {
                           {m.status === "rascunho" && (
                             <button onClick={() => autorizar(m)} disabled={autorizando === m.id} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: autorizando === m.id ? "default" : "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               {autorizando === m.id ? "Transmitindo…" : "Autorizar SEFAZ"}
+                            </button>
+                          )}
+                          {m.status === "rascunho" && (
+                            <button onClick={() => excluirRascunho(m)} disabled={autorizando === m.id} title="Excluir este rascunho (nunca autorizado)"
+                              style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                              Excluir
                             </button>
                           )}
                           {m.status === "autorizado" && (
