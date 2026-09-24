@@ -671,16 +671,22 @@ function MdfePageInner() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: m.id }),
       });
-      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string };
+      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; respostaSefaz?: boolean };
       if (data.sucesso) {
         alert(`✓ MDF-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
       } else {
-        const cStatNum = parseInt(data.cStat ?? "0");
-        const ehFalhaComunicacao = isNaN(cStatNum) || cStatNum >= 500 || cStatNum === 0;
-        if (ehFalhaComunicacao) {
-          alert(`⚠ Falha de comunicação com a SEFAZ\n\nDetalhe: ${data.xMotivo}`);
-        } else {
+        // cStat fiscal não é status HTTP: rejeições também usam códigos acima de 500.
+        if (data.respostaSefaz) {
           alert(`⚠ MDF-e rejeitado pela SEFAZ\ncStat ${data.cStat}: ${data.xMotivo}`);
+          const chavePendente = data.xMotivo.match(/\[chMDFe N[ãa]o Encerrada:\s*(\d{44})\s*\]/i)?.[1];
+          const protocoloPendente = data.xMotivo.match(/\[NroProtocolo:\s*(\d{15})\s*\]/i)?.[1];
+          if (chavePendente && protocoloPendente) {
+            setChaveForm({ chave: chavePendente, protocolo: protocoloPendente, data: hoje(), municipio: "", uf: "" });
+            setChaveMsg({ ok: false, txt: "A SEFAZ informou um MDF-e não encerrado. Se a viagem já terminou, informe a data, a UF e o município reais do encerramento e confira os dados antes de transmitir o evento." });
+            setModalChave(true);
+          }
+        } else {
+          alert(`⚠ Não foi possível autorizar o MDF-e\n\nDetalhe: ${data.xMotivo}`);
         }
       }
     } catch (e) {
@@ -1202,12 +1208,12 @@ function MdfePageInner() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10, marginTop: 10 }}>
               <div><label style={lbl}>Data</label><input type="date" value={chaveForm.data} onChange={e => setChaveForm(f => ({ ...f, data: e.target.value }))} style={inp} /></div>
               <div><label style={lbl}>Município de encerramento</label><input value={chaveForm.municipio} onChange={e => setChaveForm(f => ({ ...f, municipio: e.target.value }))} style={inp} /></div>
-              <div><label style={lbl}>UF</label><select value={chaveForm.uf} onChange={e => setChaveForm(f => ({ ...f, uf: e.target.value }))} style={inp}>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+              <div><label style={lbl}>UF</label><select value={chaveForm.uf} onChange={e => setChaveForm(f => ({ ...f, uf: e.target.value }))} style={inp}><option value="">UF</option>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
             </div>
             {chaveMsg && <div style={{ marginTop: 12, fontSize: 12, padding: "8px 12px", borderRadius: 8, background: chaveMsg.ok ? "#EAF7EE" : "#FCEBEB", color: chaveMsg.ok ? "#166534" : "#791F1F" }}>{chaveMsg.txt}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
               <button style={btnR} onClick={() => setModalChave(false)}>Fechar</button>
-              <button onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</button>
+              <button onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.uf || !chaveForm.data || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</button>
             </div>
           </div>
         </div>

@@ -43,6 +43,8 @@ export interface CTeInput {
   emitente:         EmitenteCTe;
   remetente:        ParticipanteCTe;
   destinatario:     ParticipanteCTe;
+  expedidor?:       ParticipanteCTe;   // opcional — grupo <exped>; obrigatório se tomador_tipo="1"
+  recebedor?:       ParticipanteCTe;   // opcional — grupo <receb>; obrigatório se tomador_tipo="2"
   municipio_ini_ibge: string;
   municipio_ini_nome: string;
   uf_ini:           string;
@@ -280,11 +282,15 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       ? input.remetente
       : input.tomador_tipo === "3"
         ? input.destinatario
-        : undefined;
+        : input.tomador_tipo === "1"
+          ? input.expedidor
+          : input.recebedor;
 
   if (!tomador) {
     throw new Error(
-      "Tomador 1 ou 2 exige os dados do expedidor ou recebedor, ainda não existentes no CTeInput"
+      input.tomador_tipo === "1"
+        ? "Tomador = Expedidor, mas os dados do Expedidor não foram informados"
+        : "Tomador = Recebedor, mas os dados do Recebedor não foram informados"
     );
   }
 
@@ -395,6 +401,8 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <CRT>${e.crt}</CRT>
     </emit>
     ${xmlParticipante("rem", input.remetente, "enderReme", tpAmb === "2")}
+    ${input.expedidor?.nome ? xmlParticipante("exped", input.expedidor, "enderExped", tpAmb === "2") : ""}
+    ${input.recebedor?.nome ? xmlParticipante("receb", input.recebedor, "enderReceb", tpAmb === "2") : ""}
     ${xmlParticipante("dest", input.destinatario, "enderDest", tpAmb === "2")}
     <vPrest>
       <vTPrest>${p2(input.valor_prestacao)}</vTPrest>

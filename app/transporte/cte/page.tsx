@@ -103,6 +103,19 @@ interface IeCompleta {
   municipio_ibge?: string; cep?: string; logradouro?: string; numero?: string; complemento?: string; bairro?: string;
 }
 
+// Expedidor / Recebedor — participantes opcionais do CT-e (grupos <exped>/<receb>; tomador 1/2).
+type ParticCte = { nome: string; cnpj: string; ie: string; logradouro: string; numero: string; bairro: string; cep: string; municipio: string; uf: string; ibge: string };
+const PARTIC_VAZIO = (): ParticCte => ({ nome: "", cnpj: "", ie: "", logradouro: "", numero: "", bairro: "", cep: "", municipio: "", uf: "MT", ibge: "" });
+const COLS_PARTIC: (keyof ParticCte)[] = ["nome", "cnpj", "ie", "logradouro", "numero", "bairro", "cep", "municipio", "uf", "ibge"];
+const particDeCte = (c: unknown, pref: "expedidor" | "recebedor"): ParticCte => {
+  const r = c as Record<string, unknown>; const o = PARTIC_VAZIO();
+  for (const k of COLS_PARTIC) { const v = r[`${pref}_${k}`]; if (v != null) o[k] = String(v); }
+  return o;
+};
+const particParaColunas = (pref: "expedidor" | "recebedor", p: ParticCte) =>
+  Object.fromEntries(COLS_PARTIC.map(k => [`${pref}_${k}`, p[k] || null]));
+const TOMADOR_CODIGO: Record<string, "0" | "1" | "2" | "3"> = { remetente: "0", expedidor: "1", recebedor: "2", destinatario: "3" };
+
 const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> = {
   rascunho:   { label: "Rascunho",  bg: "#FBF3E0", cl: "#7B4A00" },
   autorizado: { label: "Autorizado",bg: "#E8F5E9", cl: "#1A6B3C" },
@@ -161,10 +174,23 @@ function imprimirDacte(c: Cte, logoUrl?: string | null, rntrcEmpresa?: string | 
   };
   const situacaoTrib = SITUACAO_TRIB_LABEL[cstIcmsDacte] ?? cstIcmsDacte;
 
+  const exp = particDeCte(c, "expedidor");
+  const rec = particDeCte(c, "recebedor");
   const tomadorPessoa =
     c.tomador_tipo === "destinatario"
       ? { nome: c.destinatario_nome, cnpj: c.destinatario_cnpj, municipio: c.municipio_destino, uf: c.uf_destino }
-      : { nome: c.remetente_nome, cnpj: c.remetente_cnpj, municipio: c.municipio_origem, uf: c.uf_origem };
+      : c.tomador_tipo === "expedidor"
+        ? { nome: exp.nome, cnpj: exp.cnpj, municipio: exp.municipio, uf: exp.uf }
+        : c.tomador_tipo === "recebedor"
+          ? { nome: rec.nome, cnpj: rec.cnpj, municipio: rec.municipio, uf: rec.uf }
+          : { nome: c.remetente_nome, cnpj: c.remetente_cnpj, municipio: c.municipio_origem, uf: c.uf_origem };
+  const blocoPartic = (titulo: string, p: ParticCte) => `<div class="cel" style="flex:1">
+      <div class="lbl">${titulo}</div>${p.nome ? `<div class="val">${p.nome}</div>` : ""}
+      <div class="lbl" style="margin-top:0.6mm">ENDEREÇO ${p.nome ? `<strong>${[p.logradouro, p.numero, p.bairro].filter(Boolean).join(", ")}</strong>` : ""}</div>
+      <div class="lbl">MUNICÍPIO ${p.nome ? `<strong>${p.municipio} - ${p.uf}</strong>` : ""}</div>
+      <div class="lbl">CNPJ/CPF ${p.nome ? `<strong>${p.cnpj}</strong> INSCRIÇÃO ESTADUAL <strong>${p.ie}</strong>` : ""}</div>
+      <div class="lbl">PAÍS ${p.nome ? "<strong>BRASIL</strong>" : ""}</div>
+    </div>`;
 
   // Célula de "campo": label pequeno em cima, valor em negrito embaixo — a unidade repetida do
   // documento oficial inteiro. `w` é a largura da coluna dentro da linha (flex-grow).
@@ -296,11 +322,10 @@ table.mini td{padding:0}
     </div>
   </div>
 
-  <!-- Expedidor / Recebedor — não modelados neste sistema (frete rodoviário direto rem→dest);
-       ficam em branco no layout oficial, igual ao documento de referência, quando não se aplicam. -->
+  <!-- Expedidor / Recebedor — preenchidos quando informados na emissão; em branco quando não se aplicam -->
   <div class="grid">
-    <div class="cel" style="flex:1"><div class="lbl">EXPEDIDOR</div><div class="lbl">ENDEREÇO</div><div class="lbl">MUNICÍPIO</div><div class="lbl">CNPJ/CPF</div><div class="lbl">PAÍS</div></div>
-    <div class="cel" style="flex:1"><div class="lbl">RECEBEDOR</div><div class="lbl">ENDEREÇO</div><div class="lbl">MUNICÍPIO</div><div class="lbl">CNPJ/CPF</div><div class="lbl">PAÍS</div></div>
+    ${blocoPartic("EXPEDIDOR", exp)}
+    ${blocoPartic("RECEBEDOR", rec)}
   </div>
 
   <!-- Tomador do serviço (dados completos) -->
@@ -490,6 +515,8 @@ function CtePageInner() {
   const [err, setErr]         = useState("");
   // IEs múltiplas por CPF/CNPJ
   const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
+  const [mostrarExp, setMostrarExp] = useState(false);
+  const [mostrarRec, setMostrarRec] = useState(false);
   const [destinatarioSelUI, setDestinatarioSelUI] = useState("");
   const [iesRemetente,    setIesRemetente]    = useState<IeCompleta[]>([]);
   const [iesDestinatario, setIesDestinatario] = useState<IeCompleta[]>([]);
@@ -504,6 +531,7 @@ function CtePageInner() {
     natureza_operacao: "Prestação de Serviço de Transporte",
     tomador_tipo: "remetente" as TomadorTipo,
     remetente_id: "", remetente_nome: "", remetente_cnpj: "", remetente_ie: "",
+    exp: PARTIC_VAZIO(), rec: PARTIC_VAZIO(),
     destinatario_id: "", destinatario_nome: "", destinatario_cnpj: "", destinatario_ie: "",
     municipio_origem: "", uf_origem: "MT", ibge_origem: "",
     municipio_destino: "", uf_destino: "MT", ibge_destino: "",
@@ -623,6 +651,7 @@ function CtePageInner() {
     setCteEdit(null);
     setForm({ ...FORM_VAZIO(), numero_cte: proximoNr });
     setRemetenteSelUI("");
+    setMostrarExp(false); setMostrarRec(false);
     setIesRemetente([]);
     setDestinatarioSelUI("");
     setIesDestinatario([]);
@@ -637,6 +666,7 @@ function CtePageInner() {
       numero_cte: c.numero_cte, serie: c.serie, data_emissao: c.data_emissao,
       cfop: c.cfop, natureza_operacao: c.natureza_operacao,
       tomador_tipo: c.tomador_tipo,
+      exp: particDeCte(c, "expedidor"), rec: particDeCte(c, "recebedor"),
       remetente_id: c.remetente_id ?? "", remetente_nome: c.remetente_nome, remetente_cnpj: c.remetente_cnpj ?? "",
       remetente_ie: (c as Cte & { remetente_ie?: string }).remetente_ie ?? "",
       destinatario_id: c.destinatario_id ?? "", destinatario_nome: c.destinatario_nome, destinatario_cnpj: c.destinatario_cnpj ?? "",
@@ -655,6 +685,7 @@ function CtePageInner() {
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
     });
     setRemetenteSelUI("");
+    setMostrarExp(false); setMostrarRec(false);
     setIesRemetente([]);
     setDestinatarioSelUI("");
     setIesDestinatario([]);
@@ -860,6 +891,8 @@ function CtePageInner() {
   async function salvar() {
     if (!fazendaId) return;
     if (!form.remetente_nome.trim())   { setErr("Informe o remetente."); return; }
+    if (form.tomador_tipo === "expedidor" && !form.exp.nome.trim()) { setErr("Tomador = Expedidor: informe os dados do Expedidor."); return; }
+    if (form.tomador_tipo === "recebedor" && !form.rec.nome.trim()) { setErr("Tomador = Recebedor: informe os dados do Recebedor."); return; }
     if (!form.destinatario_nome.trim()){ setErr("Informe o destinatário."); return; }
     setSaving(true); setErr("");
     try {
@@ -878,6 +911,8 @@ function CtePageInner() {
         cfop: form.cfop,
         natureza_operacao: form.natureza_operacao,
         tomador_tipo: form.tomador_tipo,
+        ...particParaColunas("expedidor", form.exp),
+        ...particParaColunas("recebedor", form.rec),
         remetente_id: form.remetente_id || null,
         remetente_nome: form.remetente_nome,
         remetente_cnpj: form.remetente_cnpj || null,
@@ -1084,6 +1119,19 @@ function CtePageInner() {
       dest ? Promise.resolve(null) : resolverEnderecoPorCnpjIe(c.destinatario_cnpj ?? undefined, cExt.destinatario_ie),
     ]);
 
+    // Expedidor/Recebedor (opcionais) → participantes do XML; IBGE do município resolvido aqui se faltar.
+    const montarPartic = async (pt: ParticCte) => {
+      if (!pt.nome.trim()) return undefined;
+      const ibge = pt.ibge || (pt.municipio ? await buscarIbge(pt.municipio, pt.uf) : "");
+      return {
+        nome: pt.nome, cpf_cnpj: pt.cnpj || undefined, ie: pt.ie || undefined,
+        logradouro: pt.logradouro || "ZONA RURAL", numero: pt.numero || "S/N", bairro: pt.bairro || "ZONA RURAL",
+        municipio_ibge: ibge || undefined, municipio_nome: pt.municipio, uf: pt.uf, cep: pt.cep || undefined,
+      };
+    };
+    const expPayload = await montarPartic(particDeCte(c, "expedidor"));
+    const recPayload = await montarPartic(particDeCte(c, "recebedor"));
+
     const payload = {
       fazenda_id:         fazendaId,
       cte_id:             c.id,
@@ -1146,7 +1194,12 @@ function CtePageInner() {
       motorista_nome:     c.motorista_nome,
       motorista_cpf:      c.motorista_cpf ?? "",
       nfe_chave:          c.nfe_chave   ?? undefined,
-      tomador_tipo:       "3" as const,
+      // Tomador REAL do CT-e (0=remetente, 1=expedidor, 2=recebedor, 3=destinatário). Estava fixo em
+      // "3" — o XML sempre saía com o destinatário como tomador, mesmo quando o CT-e dizia outro
+      // (o DACTE impresso mostrava o tomador certo, a SEFAZ recebia o errado). Achado 24/09/2026.
+      tomador_tipo:       TOMADOR_CODIGO[c.tomador_tipo] ?? ("3" as const),
+      expedidor:          expPayload,
+      recebedor:          recPayload,
       observacao:         c.observacao  ?? undefined,
     };
 
@@ -1690,6 +1743,60 @@ function CtePageInner() {
                   <input value={form.remetente_ie} onChange={e => setForm(f => ({ ...f, remetente_ie: e.target.value }))} style={inp} placeholder="Apenas dígitos" />
                 )}
               </div>
+
+              {/* ── Expedidor / Recebedor (opcionais) ── */}
+              {(["exp", "rec"] as const).map(k => {
+                const titulo = k === "exp" ? "Expedidor" : "Recebedor";
+                const pt = form[k];
+                const aberto = pt.nome !== "" || (k === "exp" ? mostrarExp : mostrarRec) || form.tomador_tipo === (k === "exp" ? "expedidor" : "recebedor");
+                const setP = (patch: Partial<ParticCte>) => setForm(f => ({ ...f, [k]: { ...f[k], ...patch } }));
+                const escolher = (v: string) => {
+                  if (!v) return;
+                  const [tipo, id] = v.split(":");
+                  const o = (tipo === "produtor" ? produtores.find(x => x.id === id) : pessoas.find(x => x.id === id)) as Record<string, string> | undefined;
+                  if (!o) return;
+                  setP({ nome: o.nome ?? "", cnpj: o.cpf_cnpj ?? "", ie: o.inscricao_est ?? "", logradouro: o.logradouro ?? "", numero: o.numero ?? "", bairro: o.bairro ?? "", cep: o.cep ?? "", municipio: o.municipio ?? "", uf: o.estado ?? "MT", ibge: o.municipio_ibge ?? "" });
+                };
+                return (
+                  <div key={k} style={{ gridColumn: "1 / -1" }}>
+                    {!aberto ? (
+                      <button type="button" onClick={() => k === "exp" ? setMostrarExp(true) : setMostrarRec(true)}
+                        style={{ padding: "6px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+                        + Informar {titulo} (opcional)
+                      </button>
+                    ) : (
+                      <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <strong style={{ fontSize: 12, color: "var(--text-1)" }}>{titulo}</strong>
+                          <button type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === (k === "exp" ? "expedidor" : "recebedor") ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : setMostrarRec(false); }}
+                            style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>remover</button>
+                        </div>
+                        <SelectBusca value="" onChange={escolher} placeholder={`— Selecionar ${titulo} (Produtores ou Pessoas) —`} style={inp}
+                          options={[
+                            ...produtores.map(x => ({ value: `produtor:${x.id}`, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}`, group: "Produtores cadastrados" })),
+                            ...pessoas.map(x => ({ value: `pessoa:${x.id}`, label: `${x.nome}${x.cpf_cnpj ? " · " + x.cpf_cnpj : ""}`, group: "Pessoas cadastradas (terceiros)" })),
+                          ]} />
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8, marginTop: 8 }}>
+                          <div><label style={lbl}>Razão Social / Nome</label><input value={pt.nome} onChange={e => setP({ nome: e.target.value })} style={inp} /></div>
+                          <div><label style={lbl}>CNPJ/CPF</label><input value={pt.cnpj} onChange={e => setP({ cnpj: e.target.value })} style={inp} /></div>
+                          <div><label style={lbl}>Inscrição Estadual</label><input value={pt.ie} onChange={e => setP({ ie: e.target.value })} style={inp} placeholder="Apenas dígitos" /></div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 70px 1fr 1fr", gap: 8, marginTop: 8 }}>
+                          <div><label style={lbl}>Logradouro</label><input value={pt.logradouro} onChange={e => setP({ logradouro: e.target.value })} style={inp} /></div>
+                          <div><label style={lbl}>Nº</label><input value={pt.numero} onChange={e => setP({ numero: e.target.value })} style={inp} /></div>
+                          <div><label style={lbl}>Bairro</label><input value={pt.bairro} onChange={e => setP({ bairro: e.target.value })} style={inp} /></div>
+                          <div><label style={lbl}>CEP</label><input value={pt.cep} onChange={e => setP({ cep: e.target.value })} style={inp} /></div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 70px 1fr", gap: 8, marginTop: 8 }}>
+                          <div><label style={lbl}>Município</label><input value={pt.municipio} onChange={e => setP({ municipio: e.target.value, ibge: "" })} style={inp} /></div>
+                          <div><label style={lbl}>UF</label><select value={pt.uf} onChange={e => setP({ uf: e.target.value, ibge: "" })} style={inp}>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                          <div><label style={lbl}>Cód. IBGE (auto)</label><input value={pt.ibge} onChange={e => setP({ ibge: e.target.value })} style={inp} placeholder="preenche ao transmitir" /></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* ── Destinatário ── */}
               <div style={divider}>Destinatário</div>

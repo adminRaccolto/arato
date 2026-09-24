@@ -13636,3 +13636,17 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS pred_bc_icms NUMERIC(5,2);
 COMMENT ON COLUMN ctes.pred_bc_icms IS 'Percentual de redução da base de cálculo do ICMS (CST 20). NULL/0 nas demais situações.';
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 292 — CT-e: Expedidor e Recebedor
+-- ═══════════════════════════════════════════════════════════════════════════
+-- O formulário do CT-e só tinha Remetente/Destinatário; Expedidor e Recebedor (grupos <exped>/<receb>
+-- do schema, e tomador 1/2) não podiam ser apontados. Guardados como colunas próprias por participante.
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS expedidor_nome TEXT, ADD COLUMN IF NOT EXISTS expedidor_cnpj TEXT, ADD COLUMN IF NOT EXISTS expedidor_ie TEXT,
+  ADD COLUMN IF NOT EXISTS expedidor_logradouro TEXT, ADD COLUMN IF NOT EXISTS expedidor_numero TEXT, ADD COLUMN IF NOT EXISTS expedidor_bairro TEXT,
+  ADD COLUMN IF NOT EXISTS expedidor_cep TEXT, ADD COLUMN IF NOT EXISTS expedidor_municipio TEXT, ADD COLUMN IF NOT EXISTS expedidor_uf TEXT, ADD COLUMN IF NOT EXISTS expedidor_ibge TEXT,
+  ADD COLUMN IF NOT EXISTS recebedor_nome TEXT, ADD COLUMN IF NOT EXISTS recebedor_cnpj TEXT, ADD COLUMN IF NOT EXISTS recebedor_ie TEXT,
+  ADD COLUMN IF NOT EXISTS recebedor_logradouro TEXT, ADD COLUMN IF NOT EXISTS recebedor_numero TEXT, ADD COLUMN IF NOT EXISTS recebedor_bairro TEXT,
+  ADD COLUMN IF NOT EXISTS recebedor_cep TEXT, ADD COLUMN IF NOT EXISTS recebedor_municipio TEXT, ADD COLUMN IF NOT EXISTS recebedor_uf TEXT, ADD COLUMN IF NOT EXISTS recebedor_ibge TEXT;
+NOTIFY pgrst, 'reload schema';

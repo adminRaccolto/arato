@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
       motorista_cpf:      string;
       nfe_chave?:         string;
       tomador_tipo:       CTeInput["tomador_tipo"];
+      expedidor?:         CTeInput["expedidor"];
+      recebedor?:         CTeInput["recebedor"];
       observacao?:        string;
       cte_id?:            string | null;
     };
@@ -75,6 +77,8 @@ export async function POST(req: NextRequest) {
     const input: Omit<CTeInput, "emitente"> = {
       remetente:          body.remetente,
       destinatario:       body.destinatario,
+      expedidor:          body.expedidor?.nome ? body.expedidor : undefined,
+      recebedor:          body.recebedor?.nome ? body.recebedor : undefined,
       municipio_ini_ibge: body.municipio_ini_ibge,
       municipio_ini_nome: body.municipio_ini_nome,
       uf_ini:             body.uf_ini,

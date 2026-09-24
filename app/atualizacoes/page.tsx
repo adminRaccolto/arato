@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-l",
+    data: "24/09/2026",
+    titulo: "CT-e: Expedidor e Recebedor + correção do Tomador que saía sempre como Destinatário",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "O CT-e agora permite informar Expedidor e Recebedor (opcionais): botão \"+ Informar Expedidor/Recebedor\", seleção de Produtor ou Pessoa cadastrada (preenche nome, CNPJ/CPF, IE e endereço) ou digitação livre. Vão no XML nos grupos exped/receb (posição conferida contra o schema oficial) e aparecem no DACTE. O Tomador do Serviço agora aceita Expedidor e Recebedor de verdade (antes o sistema nem tinha os dados). Exige a migration Seção 292." },
+      { tipo: "correcao", texto: "Achado ao implementar: o Tomador do Serviço enviado à SEFAZ estava FIXO em \"3 — Destinatário\", qualquer que fosse o tomador escolhido na tela (o DACTE impresso mostrava o escolhido, o XML levava o destinatário). Corrigido: vai o código real (0 remetente, 1 expedidor, 2 recebedor, 3 destinatário). Conferi o histórico: nenhum CT-e autorizado ativo foi afetado (o 3436, com tomador Remetente, já está cancelado)." },
+      { tipo: "melhoria", texto: "MDF-e: o Contratante do transporte agora respeita Expedidor/Recebedor quando um deles é o tomador do CT-e vinculado." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.24-k",
     data: "24/09/2026",
     titulo: "CT-e: CST 51 no intraestadual, CST 00 ou 20 no interestadual (regra aplicada automaticamente)",

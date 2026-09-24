@@ -77,6 +77,7 @@ export interface ResultadoEmissaoMDFe {
   xmlUrl?:      string;
   cStat:        string;
   xMotivo:      string;
+  respostaSefaz?: boolean;
 }
 
 /** Resolve município + IBGE de destino a partir dos CT-e/NF-e vinculados ao MDF-e. */
@@ -92,7 +93,7 @@ async function resolverMunicipiosDescarga(
 
   if (ctesChaves.length > 0) {
     const { data: ctes } = await sb().from("ctes")
-      .select("chave_acesso, municipio_destino, ibge_destino, status, tomador_tipo, remetente_cnpj, destinatario_cnpj")
+      .select("chave_acesso, municipio_destino, ibge_destino, status, tomador_tipo, remetente_cnpj, destinatario_cnpj, expedidor_cnpj, recebedor_cnpj")
       .in("chave_acesso", ctesChaves);
     for (const c of ctes ?? []) {
       // CT-e cancelado não pode sustentar um MDF-e — referenciar ele provavelmente também seria
@@ -110,7 +111,10 @@ async function resolverMunicipiosDescarga(
       // Achado real 23/09/2026.
       if (!contratanteCnpjCpf) {
         const tomadorTipo = (c as { tomador_tipo?: string }).tomador_tipo;
-        const doc = tomadorTipo === "destinatario" ? c.destinatario_cnpj : c.remetente_cnpj;
+        const doc = tomadorTipo === "destinatario" ? c.destinatario_cnpj
+          : tomadorTipo === "expedidor" ? (c as { expedidor_cnpj?: string }).expedidor_cnpj
+          : tomadorTipo === "recebedor" ? (c as { recebedor_cnpj?: string }).recebedor_cnpj
+          : c.remetente_cnpj;
         if (doc) contratanteCnpjCpf = doc as string;
       }
     }
@@ -341,5 +345,6 @@ export async function emitirMDFe(
     xmlUrl,
     cStat: resposta.cStat ?? "ERR",
     xMotivo: resposta.xMotivo,
+    respostaSefaz: resposta.cStat !== null,
   };
 }
