@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ab",
+    data: "24/09/2026",
+    titulo: "Log do Sistema por cliente, não por fazenda",
+    modulos: ["Configurações Raccolto"],
+    itens: [
+      { tipo: "correcao", texto: "O Log do Sistema abria filtrado em uma única fazenda. Agora mostra por padrão todas as fazendas do cliente, com uma coluna Fazenda (também no CSV); o seletor de fazenda virou só um filtro opcional." },
+    ],
+    onde: "Configurações → Log do Sistema (Raccolto)",
+  },
+  {
     versao: "2026.09.24-aa",
     data: "24/09/2026",
     titulo: "NF-e: campo vItem nos itens com IBS/CBS",

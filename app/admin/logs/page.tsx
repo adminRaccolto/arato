@@ -62,15 +62,16 @@ export default function LogSistema() {
   const { fazendaId, contaId } = useAuth();
 
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
-  const [fazTrabalho, setFazTrabalho] = useState<string>("");
+  // Log é do CLIENTE (conta): por padrão mostra todas as fazendas; a fazenda é só um filtro opcional.
+  const [fazTrabalho, setFazTrabalho] = useState<string>("__todas");
   useEffect(() => {
     if (!fazendaId && !contaId) return;
     listarFazendasDaConta(contaId, fazendaId).then(fzs => {
       setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
-      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+      
     }).catch(() => {});
   }, [fazendaId, contaId]);
-  const fazAtiva = fazTrabalho || fazendaId || "";
+  const fazAtiva = fazTrabalho || "__todas";
 
   const [logs, setLogs]           = useState<LogEntry[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -152,15 +153,15 @@ export default function LogSistema() {
             {fazendasConta.length > 1 && (
               <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
                 style={{ padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}>
-                <option value="__todas">Todas as fazendas da conta</option>
+                <option value="__todas">Todas as fazendas do cliente</option>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             )}
             <button
               onClick={() => {
                 const csv = [
-                  ["Data/Hora","Usuário","Módulo","Ação","Descrição","Entidade","IP"],
-                  ...logsFiltrados.map(l => [fmtDt(l.created_at), l.usuario_nome ?? l.usuario_email ?? "—", l.modulo, l.acao, l.descricao, l.entidade ?? "", l.ip ?? ""])
+                  ["Data/Hora","Fazenda","Usuário","Módulo","Ação","Descrição","Entidade","IP"],
+                  ...logsFiltrados.map(l => [fmtDt(l.created_at), fazendasConta.find(f => f.id === l.fazenda_id)?.nome ?? "", l.usuario_nome ?? l.usuario_email ?? "—", l.modulo, l.acao, l.descricao, l.entidade ?? "", l.ip ?? ""])
                 ].map(r => r.join(";")).join("\n");
                 const a = document.createElement("a");
                 a.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csv);
@@ -273,7 +274,7 @@ export default function LogSistema() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
-                      {["Data / Hora", "Usuário", "Módulo", "Ação", "Descrição", "Entidade", ""].map(h => (
+                      {["Data / Hora", "Fazenda", "Usuário", "Módulo", "Ação", "Descrição", "Entidade", ""].map(h => (
                         <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-row)", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -284,6 +285,7 @@ export default function LogSistema() {
                       return (
                         <tr key={l.id} style={{ borderBottom: i < logsVisiveis.length - 1 ? "0.5px solid #F0F3F8" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                           <td style={{ padding: "8px 14px", color: "#444", whiteSpace: "nowrap", fontFamily: "monospace", fontSize: 11 }}>{fmtDt(l.created_at)}</td>
+                          <td style={{ padding: "8px 14px", color: "#666", fontSize: 11, whiteSpace: "nowrap" }}>{fazendasConta.find(f => f.id === l.fazenda_id)?.nome ?? "—"}</td>
                           <td style={{ padding: "8px 14px", color: "var(--text-1)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             <div style={{ fontWeight: 500 }}>{l.usuario_nome ?? "—"}</div>
                             {l.usuario_email && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{l.usuario_email}</div>}
