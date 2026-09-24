@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-n",
+    data: "24/09/2026",
+    titulo: "CT-e: CFOPs restritos a 5352, 5353 e 6932",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A lista de CFOP do CT-e agora tem somente 5352 (transporte a estabelecimento industrial), 5353 (a estabelecimento comercial) e 6932 (Prestação de Serviço iniciada em outra unidade da federação). O 6932 estava com a descrição errada (exportação). O sistema também bloqueia a emissão com qualquer outro CFOP." },
+    ],
+    onde: "Transporte → CT-e",
+  },
+  {
     versao: "2026.09.24-m",
     data: "24/09/2026",
     titulo: "Transferência entre fazendas: CST 41 em toda impressão/tela (regra única)",

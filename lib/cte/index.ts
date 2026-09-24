@@ -214,6 +214,9 @@ export async function emitirCTe(
   options: EmitirCTeOptions = {},
 ): Promise<ResultadoEmissaoCTe> {
 
+  if (!["5352", "5353", "6932"].includes(String((inputBase as { cfop?: string }).cfop ?? "")))
+    return { sucesso: false, cStat: "503", xMotivo: "CFOP inválido para CT-e — use 5352, 5353 ou 6932." };
+
   // 1. Config CT-e
   const resolved = await resolverConfigCTe(fazendaId, options.emitente_cnpj);
   if (!resolved) return { sucesso: false, cStat: "500", xMotivo: "Configuração CT-e não encontrada — configure em Parâmetros → CT-e" };

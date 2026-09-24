@@ -122,13 +122,13 @@ const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> 
   cancelado:  { label: "Cancelado", bg: "#FCEBEB", cl: "#791F1F" },
 };
 
+// CFOPs de prestação de serviço de transporte aceitos no CT-e (definição do dono, 24/09/2026).
+// 6932 = "Prestação de serviço de transporte iniciada em unidade da federação diversa daquela onde
+// o prestador esteja inscrito" — antes estava rotulado como exportação (errado).
 const CFOPS_CTE = [
-  { cfop: "6353", desc: "Transporte a estabelecimento comercial" },
-  { cfop: "5352", desc: "Transporte a estab. industrial (intraestadual)" },
-  { cfop: "5353", desc: "Transporte a estab. comercial (intraestadual)" },
-  { cfop: "6354", desc: "Prestação de transporte a produtor rural" },
-  { cfop: "5354", desc: "Transporte a produtor rural (intraestadual)" },
-  { cfop: "6932", desc: "Prestação de serviço de transporte — operações de exportação" },
+  { cfop: "5352", desc: "Prestação de serviço de transporte a estabelecimento industrial" },
+  { cfop: "5353", desc: "Prestação de serviço de transporte a estabelecimento comercial" },
+  { cfop: "6932", desc: "Prestação de Serviço iniciada em outra unidade da federação" },
 ];
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
@@ -527,8 +527,8 @@ function CtePageInner() {
   const FORM_VAZIO = () => ({
     emitente_id: "", emitente_razao_social: "", emitente_cnpj: "",
     numero_cte: proximoNr, serie: "1", data_emissao: hoje(),
-    cfop: "6353",
-    natureza_operacao: "Prestação de Serviço de Transporte",
+    cfop: "5353",
+    natureza_operacao: "Prestação de serviço de transporte a estabelecimento comercial",
     tomador_tipo: "remetente" as TomadorTipo,
     remetente_id: "", remetente_nome: "", remetente_cnpj: "", remetente_ie: "",
     exp: PARTIC_VAZIO(), rec: PARTIC_VAZIO(),
@@ -632,8 +632,8 @@ function CtePageInner() {
         // "5.152", CFOP de NF-e de transferência) — ficava "preso" nesse valor inválido porque
         // nenhuma opção do <select> batia com ele. Achado real 23/09/2026. Usa um padrão
         // razoável de CT-e (intra/interestadual) que o usuário pode trocar antes de emitir.
-        cfop: (p.uf_origem || f.uf_origem) === (p.uf_destino || f.uf_destino) ? "5353" : "6353",
-        natureza_operacao: CFOPS_CTE.find(c => c.cfop === ((p.uf_origem || f.uf_origem) === (p.uf_destino || f.uf_destino) ? "5353" : "6353"))?.desc ?? f.natureza_operacao,
+        cfop: "5353",
+        natureza_operacao: CFOPS_CTE.find(c => c.cfop === "5353")?.desc ?? f.natureza_operacao,
         valor_mercadoria:  p.valor_mercadoria  || f.valor_mercadoria,
         nfe_chave:         p.nfe_chave         || f.nfe_chave,
         produto_descricao: p.produto_descricao || f.produto_descricao,
