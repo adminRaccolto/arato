@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-g",
+    data: "24/09/2026",
+    titulo: "Baixa com desconto (ex: antecipação) não é mais tratada como pagamento parcial",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Contas a Pagar → Registrar pagamento: quando o valor pago mais o desconto cobria o título inteiro (ex: R$ 7.916,66 com R$ 36,34 de desconto por antecipação, pago R$ 7.880,32), o botão Confirmar baixa ficava bloqueado exigindo \"nova data de vencimento do saldo restante\" — a tela comparava só o valor pago com o saldo, ignorando o desconto. Agora desconto conta como quitação: só é parcial (e só pede nova data) quando pago + desconto ainda deixa saldo." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Registrar pagamento",
+  },
+  {
     versao: "2026.09.24-f",
     data: "24/09/2026",
     titulo: "CT-e: Situação Tributária escolhida (ex: 51 diferido) saía como CST 40 na SEFAZ",

@@ -2715,7 +2715,7 @@ function ContasPagarInner() {
                   </div>
 
                   {/* Nova data de vencimento — aparece somente em pagamento parcial (não quando há desconto que cobre o restante) */}
-                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorCom - 0.01 && (
+                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) + descV < valorOrig - 0.01 && (
                     <div style={{ marginTop: 12, padding: "12px 14px", background: "#FFF8EC", borderRadius: 8, border: "0.5px solid #F0C060" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#8B5E14", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
                         Reprogramação do saldo — {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}
@@ -2748,7 +2748,10 @@ function ContasPagarInner() {
               <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               {(() => {
                 const vPago = desmascarar(baixa.valorMask);
-                const eParcial = modalBaixa.moeda !== "barter" && vPago > 0 && vPago < valorOrig;
+                // Desconto (ex: por antecipação) conta como quitação: pago + desconto cobre o saldo → NÃO é parcial.
+                // Antes comparava só o valor pago com o saldo, então baixa com desconto exigia nova data de
+                // vencimento como se sobrasse saldo. Achado real 24/09/2026 (Agroquima, desconto R$ 36,34).
+                const eParcial = modalBaixa.moeda !== "barter" && vPago > 0 && vPago + descV < valorOrig - 0.01;
                 const semNovaData = eParcial && !baixa.nova_data_vencimento;
                 return (
                   <button onClick={confirmarBaixa}
