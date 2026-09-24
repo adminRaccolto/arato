@@ -564,9 +564,19 @@ function CtePageInner() {
   }, [modal, ehIntra, form.uf_origem, form.uf_destino, form.cst_icms]);
 
   // ── Carregar ─────────────────────────────────────────────
+  // NF-e emitidas pelo sistema (autorizadas) — origem do seletor "NF-e ainda sem CT-e" no Vínculo.
+  type NotaEmitidaMin = { id: string; numero: string; serie: string; destinatario: string; cnpj_destinatario?: string | null; valor_total: number; data_emissao: string; chave_acesso: string | null; dados_nf_json?: Record<string, unknown> | null; itens_json?: Array<{ item: string; ncm: string; quantidade: number; unidade: string }> | null };
+  const [notasEmitidas, setNotasEmitidas] = useState<NotaEmitidaMin[]>([]);
+
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId];
+    const desde = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
+    supabase.from("notas_fiscais")
+      .select("id, numero, serie, destinatario, cnpj_destinatario, valor_total, data_emissao, chave_acesso, dados_nf_json, itens_json")
+      .in("fazenda_id", ids).eq("tipo", "saida").eq("status", "autorizada").not("chave_acesso", "is", null)
+      .gte("data_emissao", desde).order("data_emissao", { ascending: false }).limit(500)
+      .then(({ data }) => setNotasEmitidas((data ?? []) as NotaEmitidaMin[]));
     const [{ data: cd }, { data: vd }, { data: md }, todasPessoas, { data: ed }, todosProdutores] = await Promise.all([
       supabase.from("ctes").select("*").in("fazenda_id", ids).order("data_emissao", { ascending: false }),
       supabase.from("veiculos").select("id, placa, tipo, cap_kg").in("fazenda_id", ids).eq("ativo", true),
@@ -592,6 +602,43 @@ function CtePageInner() {
 
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { if (aba === "recebidos") carregarRecebidos(); }, [aba, fazendaId]);
+
+  // NF-e autorizadas que ainda não estão em nenhum CT-e (não cancelado) — evita o mesmo
+  // documento em dois CT-e. Recalculado a cada mudança das listas.
+  const notasSemCte = notasEmitidas.filter(n =>
+    !ctes.some(c => c.status !== "cancelado" && (c.nfe_chave ?? "").replace(/\D/g, "") === (n.chave_acesso ?? "").replace(/\D/g, "")));
+
+  // Seleciona uma NF-e emitida pelo sistema e povoa o CT-e (remetente, destinatário, origem/
+  // destino, valor, produto, NCM, quantidade e chave). Destinatário: município/UF/IE vêm do
+  // cadastro de Pessoas (a NF não guarda o endereço completo). CFOP NÃO vem da NF-e.
+  async function preencherPelaNota(notaId: string) {
+    const nota = notasEmitidas.find(n => n.id === notaId);
+    if (!nota) return;
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const it = nota.itens_json ?? [];
+    let destMun = "", destUf = "", destIe = "";
+    const digits = (nota.cnpj_destinatario ?? "").replace(/\D/g, "");
+    if (digits) {
+      const { data: pd } = await supabase.from("pessoas").select("municipio, estado, inscricao_est").eq("cpf_cnpj", digits).limit(1).maybeSingle();
+      destMun = pd?.municipio ?? ""; destUf = pd?.estado ?? ""; destIe = pd?.inscricao_est ?? "";
+    }
+    const kg = it[0]?.unidade === "KG";
+    setForm(f => ({
+      ...f,
+      remetente_id: "", remetente_nome: String(dj.emit_razao ?? f.remetente_nome),
+      remetente_cnpj: String(dj.emit_cnpj ?? f.remetente_cnpj), remetente_ie: String(dj.emit_ie ?? f.remetente_ie),
+      destinatario_id: "", destinatario_nome: nota.destinatario || f.destinatario_nome,
+      destinatario_cnpj: nota.cnpj_destinatario || f.destinatario_cnpj, destinatario_ie: destIe || f.destinatario_ie,
+      municipio_origem: String(dj.emit_municipio ?? f.municipio_origem), uf_origem: String(dj.emit_uf ?? f.uf_origem),
+      municipio_destino: destMun || f.municipio_destino, uf_destino: destUf || f.uf_destino,
+      valor_mercadoria: nota.valor_total || f.valor_mercadoria,
+      nfe_chave: nota.chave_acesso ?? f.nfe_chave,
+      produto_descricao: it[0]?.item || f.produto_descricao,
+      ncm: (it[0]?.ncm ?? "").replace(/\D/g, "") || f.ncm,
+      quantidade: kg ? (it[0]?.quantidade ?? f.quantidade) : f.quantidade,
+      unidade: kg ? "KG" : f.unidade,
+    }));
+  }
 
   // ── Prefill a partir de NF-e (botão "CT-e / MDF-e" na página Fiscal) ────────
   useEffect(() => {
@@ -2016,6 +2063,16 @@ function CtePageInner() {
 
               {/* ── Vínculo NF-e ── */}
               <div style={divider}>Vínculo</div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>NF-e emitida no sistema (ainda sem CT-e)</label>
+                <select value="" onChange={e => { if (e.target.value) preencherPelaNota(e.target.value); }} style={inp}>
+                  <option value="">{notasSemCte.length === 0 ? "Nenhuma NF-e autorizada sem CT-e (últimos 120 dias)" : `Selecione a NF-e (${notasSemCte.length} disponíveis)…`}</option>
+                  {notasSemCte.map(n => (
+                    <option key={n.id} value={n.id}>NF {n.numero}/{n.serie} — {n.destinatario} — {fmtBRL(n.valor_total)} — {n.data_emissao.split("-").reverse().join("/")}</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Ao selecionar, o CT-e é preenchido com os dados da NF-e (remetente, destinatário, origem/destino, produto, NCM, valor e chave). Confira antes de emitir.</div>
+              </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={lbl}>Chave de Acesso da NF-e Referenciada (opcional)</label>
                 <div style={{ display: "flex", gap: 8 }}>

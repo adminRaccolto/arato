@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ac",
+    data: "24/09/2026",
+    titulo: "CT-e: escolher a NF-e emitida no sistema dentro do lançamento",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "No lançamento do CT-e (seção Vínculo) há um seletor com as NF-e de saída autorizadas nos últimos 120 dias que ainda não estão em nenhum CT-e. Ao escolher uma, o CT-e é preenchido com remetente, destinatário (município/UF/IE do cadastro de Pessoas), origem/destino, produto, NCM, valor e chave da NF-e. O CFOP continua escolhido por você." },
+    ],
+    onde: "Transporte → CT-e → Novo CT-e → Vínculo",
+  },
+  {
     versao: "2026.09.24-ab",
     data: "24/09/2026",
     titulo: "Log do Sistema por cliente, não por fazenda",

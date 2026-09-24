@@ -615,6 +615,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 **Melhoria 24/09/2026 — MDF-e a partir do CT-e:** ao marcar o CT-e, o MDF-e preenche também UF de destino, produto, NCM, tipo de carga, CEPs de carga/descarga e o seguro (seguradora, CNPJ, apólice) do cadastro em Parâmetros → MDF-e. O nº da averbação é sempre digitado por você, por viagem, na aba Seguro e Averbação.
 
+**Novo 24/09/2026 — CT-e a partir de NF-e emitida no sistema:** no lançamento do CT-e, a seção Vínculo tem um seletor com as NF-e de saída autorizadas (últimos 120 dias) que ainda não estão em nenhum CT-e. Ao escolher, o CT-e é povoado com os dados da NF-e; o CFOP é escolhido por você.
+
 **Correção 24/09/2026 — Usuários & Permissões:** editar ou excluir um usuário cadastrado em outra fazenda do mesmo cliente dava erro "Usuário não encontrado nesta fazenda". Agora vale para qualquer fazenda da mesma conta, e a edição não muda mais a fazenda de origem do usuário.
 
 **Novo 24/09/2026 — MDF-e com aba Seguro e Averbação:** no lançamento do MDF-e, a aba Seguro e Averbação recebe seguradora, CNPJ, nº da apólice e nº da averbação manualmente por manifesto. Em branco, vale o cadastro em Parâmetros → MDF-e da transportadora. Carga própria não exige seguro.
