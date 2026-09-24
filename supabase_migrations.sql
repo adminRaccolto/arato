@@ -13671,3 +13671,112 @@ UPDATE ncm_tributacoes
    SET ibs_cbs_cst = '410', ibs_cbs_cclasstrib = '410999',
        ibs_estadual_aliq = 0, ibs_municipal_aliq = 0, cbs_aliq = 0, ibs_cbs_reducao_pct = 0;
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 295 — Log do Sistema (Configurações Raccolto → Log do Sistema) ──
+-- Achado 24/09/2026: logs_sistema estava VAZIA. (1) só a tela de Estoque chamava registrarLog();
+-- (2) as policies comparavam perfis.id com auth.uid() (a coluna certa é perfis.user_id), então até
+-- esse insert único era bloqueado por RLS. Correção: policies por conta (+ bypass raccotlo) e
+-- gatilho genérico que registra INSERT/UPDATE/DELETE das tabelas principais automaticamente,
+-- com usuário (auth.uid()) e só os campos alterados. Gravações via service_role (API/cron)
+-- aparecem como "Sistema / API".
+DROP POLICY IF EXISTS logs_leitura  ON logs_sistema;
+DROP POLICY IF EXISTS logs_insercao ON logs_sistema;
+CREATE POLICY logs_leitura ON logs_sistema
+  FOR SELECT USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+       WHERE f.conta_id IN (SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid())
+          OR f.id      IN (SELECT p.fazenda_id FROM perfis p WHERE p.user_id = auth.uid())
+    )
+    OR EXISTS (SELECT 1 FROM perfis p WHERE p.user_id = auth.uid() AND p.role LIKE 'raccotlo%')
+  );
+CREATE POLICY logs_insercao ON logs_sistema
+  FOR INSERT WITH CHECK (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+       WHERE f.conta_id IN (SELECT p.conta_id FROM perfis p WHERE p.user_id = auth.uid())
+          OR f.id      IN (SELECT p.fazenda_id FROM perfis p WHERE p.user_id = auth.uid())
+    )
+    OR EXISTS (SELECT 1 FROM perfis p WHERE p.user_id = auth.uid() AND p.role LIKE 'raccotlo%')
+  );
+
+CREATE OR REPLACE FUNCTION fn_log_sistema() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_new   jsonb := CASE WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW) ELSE NULL END;
+  v_old   jsonb := CASE WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD) ELSE NULL END;
+  v_row   jsonb := COALESCE(v_new, v_old);
+  v_faz   uuid;
+  v_id    uuid;
+  v_nome  text;
+  v_email text;
+  v_ident text;
+  v_mod   text;
+  v_antes jsonb;
+  v_depois jsonb;
+  v_sens  boolean := TG_TABLE_NAME IN ('configuracoes_modulo');
+  k text;
+BEGIN
+  BEGIN v_faz := (v_row->>'fazenda_id')::uuid; EXCEPTION WHEN others THEN v_faz := NULL; END;
+  IF v_faz IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;
+  BEGIN v_id := (v_row->>'id')::uuid; EXCEPTION WHEN others THEN v_id := NULL; END;
+
+  IF TG_OP = 'UPDATE' THEN
+    v_antes := '{}'::jsonb; v_depois := '{}'::jsonb;
+    FOR k IN SELECT jsonb_object_keys(v_new) LOOP
+      IF k NOT IN ('updated_at','created_at') AND (v_new->k) IS DISTINCT FROM (v_old->k) THEN
+        v_antes  := v_antes  || jsonb_build_object(k, v_old->k);
+        v_depois := v_depois || jsonb_build_object(k, v_new->k);
+      END IF;
+    END LOOP;
+    IF v_depois = '{}'::jsonb THEN RETURN NEW; END IF;   -- nada relevante mudou
+  ELSIF TG_OP = 'INSERT' THEN v_antes := NULL; v_depois := v_new;
+  ELSE v_antes := v_old; v_depois := NULL;
+  END IF;
+  IF v_sens THEN v_antes := NULL; v_depois := jsonb_build_object('campos_alterados', 'oculto (dado sensível)'); END IF;
+
+  v_ident := COALESCE(v_row->>'numero', v_row->>'numero_mdfe', v_row->>'numero_cte', v_row->>'numero_nf',
+                      v_row->>'nome', v_row->>'razao_social', v_row->>'descricao', v_row->>'modulo', '');
+  v_mod := CASE TG_TABLE_NAME
+    WHEN 'lancamentos' THEN 'financeiro' WHEN 'empresa_lancamentos' THEN 'financeiro'
+    WHEN 'contas_bancarias' THEN 'financeiro' WHEN 'contratos_financeiros' THEN 'financeiro'
+    WHEN 'nf_entradas' THEN 'compras' WHEN 'nf_servicos' THEN 'compras' WHEN 'pedidos_compra' THEN 'compras'
+    WHEN 'contratos' THEN 'contratos'
+    WHEN 'ctes' THEN 'transporte' WHEN 'mdfes' THEN 'transporte'
+    WHEN 'romaneios_entrada' THEN 'estoque' WHEN 'transferencias_estoque' THEN 'estoque' WHEN 'insumos' THEN 'estoque'
+    WHEN 'colheitas' THEN 'lavoura' WHEN 'plantios' THEN 'lavoura' WHEN 'pulverizacoes' THEN 'lavoura'
+    WHEN 'usuarios' THEN 'configuracoes' WHEN 'grupos_usuarios' THEN 'configuracoes' WHEN 'configuracoes_modulo' THEN 'configuracoes'
+    WHEN 'fazendas' THEN 'cadastros' WHEN 'produtores' THEN 'cadastros' WHEN 'pessoas' THEN 'cadastros'
+    ELSE 'sistema' END;
+
+  IF auth.uid() IS NOT NULL THEN
+    SELECT u.nome, u.email INTO v_nome, v_email FROM usuarios u WHERE u.auth_user_id = auth.uid() LIMIT 1;
+    IF v_email IS NULL THEN SELECT au.email INTO v_email FROM auth.users au WHERE au.id = auth.uid(); END IF;
+  END IF;
+
+  INSERT INTO logs_sistema (fazenda_id, usuario_id, usuario_nome, usuario_email, acao, modulo, entidade, entidade_id, descricao, dados_antes, dados_depois)
+  VALUES (v_faz, auth.uid(), COALESCE(v_nome, CASE WHEN auth.uid() IS NULL THEN 'Sistema / API' END), v_email,
+          lower(TG_OP), v_mod, TG_TABLE_NAME, v_id,
+          CASE TG_OP WHEN 'INSERT' THEN 'Criou ' WHEN 'UPDATE' THEN 'Alterou ' ELSE 'Excluiu ' END
+            || replace(TG_TABLE_NAME, '_', ' ') || CASE WHEN v_ident <> '' THEN ' — ' || left(v_ident, 80) ELSE '' END,
+          v_antes, v_depois);
+  RETURN COALESCE(NEW, OLD);
+EXCEPTION WHEN others THEN
+  RETURN COALESCE(NEW, OLD);   -- log NUNCA pode derrubar a operação principal
+END $$;
+
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['lancamentos','empresa_lancamentos','contas_bancarias','contratos_financeiros',
+    'nf_entradas','nf_servicos','pedidos_compra','contratos','ctes','mdfes','romaneios_entrada',
+    'transferencias_estoque','insumos','colheitas','plantios','pulverizacoes','usuarios','grupos_usuarios',
+    'configuracoes_modulo','fazendas','produtores','pessoas']
+  LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS trg_log_sistema ON %I', t);
+      EXECUTE format('CREATE TRIGGER trg_log_sistema AFTER INSERT OR UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION fn_log_sistema()', t);
+    END IF;
+  END LOOP;
+END $$;
+NOTIFY pgrst, 'reload schema';

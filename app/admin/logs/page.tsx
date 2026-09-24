@@ -94,7 +94,7 @@ export default function LogSistema() {
     let q = supabase
       .from("logs_sistema")
       .select("*")
-      .eq("fazenda_id", fazAtiva)
+      .in("fazenda_id", fazAtiva === "__todas" ? fazendasConta.map(f => f.id) : [fazAtiva])
       .order("created_at", { ascending: false })
       .limit(1000);
 
@@ -108,7 +108,7 @@ export default function LogSistema() {
       else setLogs((data ?? []) as LogEntry[]);
       setCarregando(false);
     });
-  }, [fazAtiva, filtro.inicio, filtro.fim, filtro.modulo, filtro.acao]);
+  }, [fazAtiva, fazendasConta, filtro.inicio, filtro.fim, filtro.modulo, filtro.acao]);
 
   // Filtro client-side para busca e usuário
   const logsFiltrados = logs.filter(l => {
@@ -152,6 +152,7 @@ export default function LogSistema() {
             {fazendasConta.length > 1 && (
               <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
                 style={{ padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}>
+                <option value="__todas">Todas as fazendas da conta</option>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             )}

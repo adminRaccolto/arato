@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-x",
+    data: "24/09/2026",
+    titulo: "Log do Sistema volta a registrar (automático)",
+    modulos: ["Configurações Raccolto"],
+    itens: [
+      { tipo: "correcao", texto: "O Log do Sistema estava vazio: só a tela de Estoque registrava alguma coisa e, mesmo assim, a regra de acesso do banco bloqueava a gravação. Agora um gatilho no banco registra automaticamente criação, edição e exclusão das tabelas principais (financeiro, NF de compras e serviços, contratos, CT-e, MDF-e, romaneios, transferências, insumos, lavoura, usuários, cadastros e parâmetros), com usuário, hora e só os campos alterados; ações feitas por API/automação aparecem como \"Sistema / API\". Parâmetros com dado sensível não gravam o conteúdo. A tela ganhou a opção \"Todas as fazendas da conta\". Requer a Seção 295 da migration; o histórico anterior à migration não existe (a tabela estava vazia)." },
+    ],
+    onde: "Configurações → Log do Sistema (Raccolto)",
+  },
+  {
     versao: "2026.09.24-w",
     data: "24/09/2026",
     titulo: "CIOT: ambiente vem dos Parâmetros e contratante correto",
