@@ -1043,8 +1043,8 @@ function MdfePageInner() {
                   <input value={form.apolice_numero} onChange={e => setForm(f => ({ ...f, apolice_numero: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Nº da Averbação</label>
-                  <input value={form.averbacao_numero} onChange={e => setForm(f => ({ ...f, averbacao_numero: e.target.value }))} style={inp} placeholder="Informe manualmente a cada viagem" />
+                  <label style={lbl}>Nº da Averbação (opcional)</label>
+                  <input value={form.averbacao_numero} onChange={e => setForm(f => ({ ...f, averbacao_numero: e.target.value }))} style={inp} placeholder="Opcional — informe se houver averbação nesta viagem" />
                 </div>
               </div>
             )}

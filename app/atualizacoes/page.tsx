@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ad",
+    data: "24/09/2026",
+    titulo: "MDF-e: nº da averbação deixa de ser obrigatório",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O sistema bloqueava a emissão do MDF-e quando o Nº da Averbação estava vazio. Agora ele é opcional: se preenchido na aba Seguro e Averbação, vai no XML; se vazio, o MDF-e segue só com seguradora, CNPJ e apólice." },
+    ],
+    onde: "Transporte → MDF-e → Seguro e Averbação",
+  },
+  {
     versao: "2026.09.24-ac",
     data: "24/09/2026",
     titulo: "CT-e: escolher a NF-e emitida no sistema dentro do lançamento",
