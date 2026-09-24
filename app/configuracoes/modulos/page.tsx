@@ -167,6 +167,8 @@ const CTE_BASE_FIELDS: FieldDef[] = [
   { key: "serie_cte",      label: "Série CT-e",            type: "text",   placeholder: "001" },
   { key: "numero_inicial", label: "Próx. Número CT-e",     type: "number", placeholder: "1" },
   { key: "rntrc",          label: "RNTRC (Transportador)", type: "text",   placeholder: "12345678" },
+  // Prazo (dias) usado no vencimento do a receber/a pagar gerados automaticamente ao autorizar o CT-e
+  { key: "frete_prazo_dias", label: "Prazo de vencimento do frete (dias)", type: "number", placeholder: "30" },
   // CST ICMS padrão — pré-preenche todo CT-e novo desse emitente. Antes o formulário sempre
   // nascia com alíquota 12% tributada (CST 00), mesmo quando a operação deveria sair isenta ou
   // diferida — não havia nenhuma configuração fiscal de ICMS para CT-e. Achado real 23/09/2026.

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-aj",
+    data: "24/09/2026",
+    titulo: "CT-e autorizado lança o financeiro sozinho (a receber e a pagar)",
+    modulos: ["Transporte", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao autorizar um CT-e, o sistema lança automaticamente: (1) o A RECEBER da transportadora no financeiro isolado da Empresa (operação Prestação de Serviço de Frete — CT-e); (2) o A PAGAR do tomador quando o frete é pago por alguém da própria conta — produtor (Contas a Pagar, operação FRETES conforme o produto: corretivos, sementes, produção ou diversos) ou outra Empresa do grupo (financeiro da Empresa). Tomador de fora da conta gera só o a receber. Vencimento = emissão + prazo em Parâmetros → CT-e (\"Prazo de vencimento do frete\", padrão 30 dias). Não duplica ao reprocessar. Só CT-e autorizados dali em diante; os já emitidos e o cancelamento do CT-e ainda não são cobertos." },
+    ],
+    onde: "Transporte → CT-e · Financeiro → Contas a Pagar / Empresa",
+  },
+  {
     versao: "2026.09.24-ai",
     data: "24/09/2026",
     titulo: "CIOT gerado no lançamento do CT-e",

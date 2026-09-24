@@ -7,6 +7,7 @@
  *   4. Salva XML autorizado no Storage e retorna resultado
  */
 
+import { lancarFinanceiroCte } from "./financeiro";
 import { createClient } from "@supabase/supabase-js";
 import { createHash }  from "crypto";
 import { buildCTe }     from "./builder";
@@ -387,6 +388,13 @@ export async function emitirCTe(
     } else if (updErr) {
       console.error("[emitirCTe] falha ao gravar status autorizado:", updErr);
     }
+  }
+
+  // Financeiro automático (a receber da transportadora + a pagar do tomador da conta) — nunca
+  // derruba a emissão; o resultado vai só pro log do servidor.
+  if (resposta.sucesso && options.cte_id) {
+    try { console.log("[emitirCTe] financeiro:", (await lancarFinanceiroCte(options.cte_id)).join(" | ")); }
+    catch (e) { console.error("[emitirCTe] financeiro falhou:", e); }
   }
 
   return {
