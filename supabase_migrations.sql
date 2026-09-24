@@ -13650,3 +13650,8 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS recebedor_logradouro TEXT, ADD COLUMN IF NOT EXISTS recebedor_numero TEXT, ADD COLUMN IF NOT EXISTS recebedor_bairro TEXT,
   ADD COLUMN IF NOT EXISTS recebedor_cep TEXT, ADD COLUMN IF NOT EXISTS recebedor_municipio TEXT, ADD COLUMN IF NOT EXISTS recebedor_uf TEXT, ADD COLUMN IF NOT EXISTS recebedor_ibge TEXT;
 NOTIFY pgrst, 'reload schema';
+
+-- MDF-e: produto predominante e locais da carga lotação (rejeições 725/726).
+ALTER TABLE public.mdfes ADD COLUMN IF NOT EXISTS produto_predominante JSONB;
+COMMENT ON COLUMN public.mdfes.produto_predominante IS 'Descrição, tipo de carga, NCM e CEPs reais de carregamento/descarregamento para prodPred.';
+NOTIFY pgrst, 'reload schema';

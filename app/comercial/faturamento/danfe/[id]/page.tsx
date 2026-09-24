@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "../../../../../lib/supabase";
 import type { NotaFiscal } from "../../../../../lib/supabase";
+import { cstExibicaoPorCfop } from "../../../../../lib/nfe/cst-por-cfop";
 
 // ── Tabelas auxiliares ─────────────────────────────────────────────────
 const NCM: Record<string, string> = {
@@ -122,7 +123,7 @@ export default function DanfePage() {
         const produto = c?.produto ?? "Produto";
         const pesoKg: number = (rom as { peso_classificado_kg?: number; sacas?: number }).peso_classificado_kg ?? (((rom as { sacas?: number }).sacas ?? 0) * 60);
         const vUnit = pesoKg > 0 ? nf.valor_total / pesoKg : (c?.preco ?? 0);
-        setItens([{ item: produto, ncm: NCM[produto] ?? "12019000", cst: "051", cfop: nf.cfop ?? "5101", unidade: "KG", quantidade: pesoKg, valor_unitario: vUnit, valor_total: nf.valor_total }]);
+        setItens([{ item: produto, ncm: NCM[produto] ?? "12019000", cst: cstExibicaoPorCfop(nf.cfop ?? "5101"), cfop: nf.cfop ?? "5101", unidade: "KG", quantidade: pesoKg, valor_unitario: vUnit, valor_total: nf.valor_total }]);
       }
       setLoading(false);
     })();
@@ -569,7 +570,7 @@ export default function DanfePage() {
                     <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd", fontFamily: "monospace" }}>{String(i + 1).padStart(4, "0")}</td>
                     <td style={{ padding: "0.8mm 1mm", fontWeight: 700, borderRight: "0.2mm solid #ddd" }}>{it.item}</td>
                     <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd", fontFamily: "monospace" }}>{it.ncm}</td>
-                    <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd", textAlign: "center" }}>{it.cst ?? "051"}</td>
+                    <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd", textAlign: "center" }}>{it.cst ?? cstExibicaoPorCfop(it.cfop)}</td>
                     <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd" }}>{it.cfop}</td>
                     <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd" }}>{it.unidade}</td>
                     <td style={{ padding: "0.8mm 1mm", textAlign: "right", borderRight: "0.2mm solid #ddd" }}>{fmtNum(it.quantidade)}</td>

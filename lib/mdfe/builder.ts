@@ -1,10 +1,12 @@
 /**
  * lib/mdfe/builder.ts
- * Gera o XML do MDF-e 3.00 (modal rodoviário, carga fracionada).
+ * Gera o XML do MDF-e 3.00 (modal rodoviário, carga fracionada ou lotação).
  * Namespace: http://www.portalfiscal.inf.br/mdfe
  * Modelo 58 — série/número configuráveis via configuracoes_modulo (mdfe_emp_{cnpj}).
  * Validado campo a campo contra o schema oficial (nfephp-org/sped-mdfe, PL_MDFe_300a) em 23/09/2026.
  */
+
+import { validarProdutoMDFe, type ProdutoMDFe } from "./produto";
 
 export interface EmitenteMDFe {
   cpf_cnpj:       string;
@@ -72,6 +74,7 @@ export interface MDFeInput {
   ciot?:             CiotMDFe | null;
   peso_bruto_kg:     number;
   valor_carga:       number;
+  produto_predominante?: ProdutoMDFe | null;
   observacao?:       string;
   // Contratante do transporte (<infContratante>) — obrigatório pra emitente Prestador de
   // Serviço (tpEmit=1) ou CT-e Globalizado (tpEmit=3). CPF ou CNPJ de quem contratou o frete
@@ -215,6 +218,16 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
 
   const qCTe = input.municipios_descarga.reduce((s, m) => s + m.cte_chaves.length, 0);
   const qNFe = input.municipios_descarga.reduce((s, m) => s + m.nfe_chaves.length, 0);
+  const produto = input.produto_predominante;
+  const erroProduto = validarProdutoMDFe(produto, e.tpEmit !== "2" || !!e.tpTransp, qCTe + qNFe);
+  if (erroProduto) throw new Error(erroProduto);
+  if (produto && !limparTextoSefaz(produto.descricao)) throw new Error("Descrição do produto predominante inválida.");
+  const prodPred = produto
+    ? `<prodPred><tpCarga>${produto.tipo_carga}</tpCarga><xProd>${escLimite(produto.descricao, 120)}</xProd>` +
+      (produto.ncm ? `<NCM>${produto.ncm}</NCM>` : "") +
+      (produto.cep_carregamento && produto.cep_descarregamento
+        ? `<infLotacao><infLocalCarrega><CEP>${produto.cep_carregamento}</CEP></infLocalCarrega><infLocalDescarrega><CEP>${produto.cep_descarregamento}</CEP></infLocalDescarrega></infLotacao>` : "") +
+      `</prodPred>` : "";
 
   const rntrc = e.rntrc ? e.rntrc.replace(/\D/g, "") : "";
   const ciotDigits = input.ciot?.codigo?.replace(/\D/g, "") ?? "";
@@ -313,6 +326,7 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
         (e.averbacao_numero ? `<nAver>${esc(e.averbacao_numero)}</nAver>` : "") +
       `</seg>`;
     })() +
+    prodPred +
     `<tot>` +
       (qCTe > 0 ? `<qCTe>${qCTe}</qCTe>` : "") +
       (qNFe > 0 ? `<qNFe>${qNFe}</qNFe>` : "") +

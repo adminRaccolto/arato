@@ -6,6 +6,9 @@ import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
+import { TIPOS_CARGA, type ProdutoMDFe } from "../../../lib/mdfe/produto";
+
+const produtoVazio = (): ProdutoMDFe => ({ descricao: "", tipo_carga: "", ncm: "", cep_carregamento: "", cep_descarregamento: "" });
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -252,6 +255,7 @@ interface Mdfe {
   documentos: DocVinculado[];
   peso_total_kg?: number | null;
   valor_total_carga?: number | null;
+  produto_predominante?: ProdutoMDFe | null;
   status: StatusMdfe;
   data_encerramento?: string | null;
   municipio_encerramento?: string | null;
@@ -348,6 +352,7 @@ function MdfePageInner() {
     percurso_ufs: [] as string[],
     veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
     peso_total_kg: 0, valor_total_carga: 0,
+    produto_predominante: produtoVazio(),
     observacao: "",
     // Documentos vinculados
     cte_ids: [] as string[],
@@ -467,6 +472,7 @@ function MdfePageInner() {
       motorista_nome: m.motorista_nome ?? "", motorista_cpf: m.motorista_cpf ?? "",
       peso_total_kg: m.peso_total_kg ?? 0,
       valor_total_carga: m.valor_total_carga ?? 0,
+      produto_predominante: { ...produtoVazio(), ...m.produto_predominante },
       observacao: m.observacao ?? "",
       cte_ids: cteIds,
       nfe_chaves: nfeChaves.length > 0 ? nfeChaves : [""],
@@ -636,6 +642,7 @@ function MdfePageInner() {
         documentos,
         peso_total_kg: form.peso_total_kg || null,
         valor_total_carga: form.valor_total_carga || null,
+        produto_predominante: Object.values(form.produto_predominante).some(v => v.trim()) ? form.produto_predominante : null,
         status: mdfeEdit ? mdfeEdit.status : "rascunho" as StatusMdfe,
         observacao: form.observacao || null,
         ciot: ciotGerado?.id ?? mdfeEdit?.ciot ?? null,
@@ -643,14 +650,16 @@ function MdfePageInner() {
         ciot_protocolo: ciotGerado?.protocolo ?? mdfeEdit?.ciot_protocolo ?? null,
       };
       if (mdfeEdit) {
-        await supabase.from("mdfes").update(payload).eq("id", mdfeEdit.id);
+        const { error } = await supabase.from("mdfes").update(payload).eq("id", mdfeEdit.id);
+        if (error) throw error;
       } else {
-        await supabase.from("mdfes").insert(payload);
+        const { error } = await supabase.from("mdfes").insert(payload);
+        if (error) throw error;
       }
       await carregar();
       setModal(false);
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Erro ao salvar.");
+      setErr(e && typeof e === "object" && "message" in e ? String(e.message) : "Erro ao salvar.");
     } finally {
       setSaving(false);
     }
@@ -1161,7 +1170,32 @@ function MdfePageInner() {
               </div>
 
               {/* ── Carga ── */}
-              <div style={divider}>Dados da Carga (opcional)</div>
+              <div style={divider}>Dados da Carga</div>
+              <div>
+                <label style={lbl}>Produto predominante</label>
+                <input value={form.produto_predominante.descricao} maxLength={120} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, descricao: e.target.value } }))} placeholder="Descrição do produto transportado" style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Tipo de carga</label>
+                <select value={form.produto_predominante.tipo_carga} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, tipo_carga: e.target.value } }))} style={inp}>
+                  <option value="">Selecione</option>
+                  {TIPOS_CARGA.map(([codigo, nome]) => <option key={codigo} value={codigo}>{codigo} — {nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>NCM do produto</label>
+                <input value={form.produto_predominante.ncm} maxLength={8} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, ncm: e.target.value.replace(/\D/g, "") } }))} style={inp} />
+              </div>
+              <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--text-3)" }}>Para carga lotação, informe os CEPs dos locais reais de carga e descarga. São exigidos quando há um único documento vinculado nas operações sujeitas à regra de lotação.</div>
+              <div>
+                <label style={lbl}>CEP do carregamento</label>
+                <input value={form.produto_predominante.cep_carregamento} maxLength={9} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, cep_carregamento: e.target.value.replace(/\D/g, "").slice(0, 8) } }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>CEP do descarregamento</label>
+                <input value={form.produto_predominante.cep_descarregamento} maxLength={9} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, cep_descarregamento: e.target.value.replace(/\D/g, "").slice(0, 8) } }))} style={inp} />
+              </div>
+              <div />
               <div>
                 <label style={lbl}>Peso Total (kg)</label>
                 <InputMonetario value={form.peso_total_kg} onChange={v => setForm(f => ({ ...f, peso_total_kg: v }))} style={inp} />

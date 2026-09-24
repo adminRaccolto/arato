@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-m",
+    data: "24/09/2026",
+    titulo: "Transferência entre fazendas: CST 41 em toda impressão/tela (regra única)",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "O XML da NF-e de transferência já saía com CST 41 desde a correção anterior, mas a impressão local do DANFE (Fiscal → Monitor, quando reimprime sem XML), o DANFE de fallback e o payload da tela Fiscal → Transferência ainda tinham \"51\" fixo pra qualquer CFOP 5xxx — ou seja, transferência podia aparecer com CST 51 na tela/impressão. Criada uma regra única (lib/nfe/cst-por-cfop.ts) usada pelo gerador do XML e por todas as telas: transferência (CFOP 5151/6151, 5152/6152, 5409/6409, 5410/6410, 5949/6949) = CST 41; venda interna = 51. Atenção: NF-e de transferência JÁ autorizadas antes da correção continuam com o CST 51 no XML da SEFAZ (5/1, 1297/923 e 1293/923 — ver aviso no chat)." },
+    ],
+    onde: "Fiscal → Monitor de Notas Emitidas · Estoque → Transferências",
+  },
+  {
     versao: "2026.09.24-l",
     data: "24/09/2026",
     titulo: "CT-e: Expedidor e Recebedor + correção do Tomador que saía sempre como Destinatário",

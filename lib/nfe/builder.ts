@@ -3,6 +3,7 @@
  * Gera o XML de NF-e 4.00 não assinado para produtor rural (MT).
  * Todos os valores monetários são formatados com 2 casas; quantidades com 4.
  */
+import { CFOPS_TRANSFERENCIA } from "./cst-por-cfop";
 
 export interface EmitenteCfg {
   cpf_cnpj: string;       // apenas dígitos
@@ -281,8 +282,7 @@ function icmsRule(cfop: string, isNaoContribuinte = false): ICMSRule {
   // Antes disso, TODA operação com CFOP interno (prefixo 5) caía no bloco de diferido genérico
   // abaixo, inclusive as transferências (5151/6151, 5152/6152, 5409/6409, 5410/6410, 5949/6949) —
   // saíam com CST 51 e base de cálculo/vICMSOp/vICMSDif que não deveriam existir nessa operação.
-  const CFOPS_TRANSFERENCIA = new Set(["5151", "6151", "5152", "6152", "5409", "6409", "5410", "6410", "5949", "6949"]);
-  if (CFOPS_TRANSFERENCIA.has(cod)) {
+  if (CFOPS_TRANSFERENCIA.has(prefix)) {
     return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 

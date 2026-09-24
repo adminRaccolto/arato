@@ -18,6 +18,7 @@ import { assinarMDFe } from "./signer";
 import { transmitirMDFe } from "./transmitter";
 import { pfxParaPem } from "../nfe/signer";
 import { resolverConfigMDFe } from "./config";
+import { validarProdutoMDFe } from "./produto";
 import type { MDFeInput, EmitenteMDFe, MunicipioDescarga } from "./builder";
 
 export type { MDFeInput };
@@ -289,6 +290,10 @@ export async function emitirMDFe(
     };
   }
 
+  const quantidadeDocumentos = municipiosDescarga.reduce((total, mun) => total + mun.cte_chaves.length + mun.nfe_chaves.length, 0);
+  const erroProduto = validarProdutoMDFe(m.produto_predominante, emitente.tpEmit !== "2" || !!emitente.tpTransp, quantidadeDocumentos);
+  if (erroProduto) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: erroProduto };
+
   const numero = await proximoNumero(fazendaId, resolved.mdfeModulo, confg);
   emitente.numero_mdfe = numero;
 
@@ -305,6 +310,7 @@ export async function emitirMDFe(
     ciot: m.ciot ? { codigo: m.ciot, cpf_cnpj: condutores[0].cpf } : null,
     peso_bruto_kg: m.peso_total_kg || 0,
     valor_carga: m.valor_total_carga || 0,
+    produto_predominante: m.produto_predominante,
     observacao: m.observacao ?? undefined,
     contratante_cnpj_cpf: emitente.tpEmit !== "2" ? contratanteCnpjCpf : undefined,
   };

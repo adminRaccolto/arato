@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { cstExibicaoPorCfop } from "../../lib/nfe/cst-por-cfop";
 import TopNav from "../../components/TopNav";
 import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
@@ -218,11 +219,7 @@ function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}, logoUrl?: string | 
   // CFOP + CST para itens sem dado explícito
   const cfopD = (nota.cfop ?? "").replace(/\D/g, "");
   const cfopP = cfopD.substring(0, 4);
-  const defCst = cfopD.startsWith("7") ? "041"
-    : (cfopP === "5905" || cfopP === "6905") ? "041"
-    : (cfopP === "5501" || cfopP === "6501") ? "040"
-    : (cfopD.startsWith("5") || cfopD.startsWith("1")) ? "051"
-    : "000";
+  const defCst = cstExibicaoPorCfop(cfopD);
 
   // Itens — usa itens_json se disponível
   const itens = (nota.itens_json && nota.itens_json.length > 0) ? nota.itens_json : [{
@@ -233,11 +230,7 @@ function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}, logoUrl?: string | 
   const itensHtml = itens.map((it, idx) => {
     const itCfopD = (it.cfop ?? "").replace(/\D/g, "");
     const itCfopP = itCfopD.substring(0, 4);
-    const itCst   = itCfopD.startsWith("7") ? "041"
-      : (itCfopP === "5905" || itCfopP === "6905") ? "041"
-      : (itCfopP === "5501" || itCfopP === "6501") ? "040"
-      : (itCfopD.startsWith("5") || itCfopD.startsWith("1")) ? "051"
-      : defCst;
+    const itCst   = itCfopD ? cstExibicaoPorCfop(itCfopD) : defCst;
     const qtdFmt  = it.quantidade > 0 ? it.quantidade.toLocaleString("pt-BR", { minimumFractionDigits: 3 }) : "—";
     const vlUFmt  = it.valor_unitario > 0 ? it.valor_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 4 }) : "—";
     const vlTFmt  = it.valor_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
@@ -1709,7 +1702,7 @@ function FiscalInner() {
             numero: 1, codigo: fTransf.ncm.replace(/\D/g,""), descricao: NCM_OPTIONS.find(n => n.codigo === fTransf.ncm)?.descricao ?? "Produto rural",
             ncm: fTransf.ncm, cfop: fTransf.cfop, unidade: fTransf.unidade,
             quantidade: qtd, valor_unitario: vUnit, valor_bruto: total, valor_liquido: total,
-            cst_icms: "51", cst_pis: "07", cst_cofins: "07",
+            cst_icms: "41", cst_pis: "07", cst_cofins: "07",
             bc_icms: 0, aliq_icms: 0, valor_icms: 0,
             bc_pis: 0, aliq_pis: 0, valor_pis: 0,
             bc_cofins: 0, aliq_cofins: 0, valor_cofins: 0,
