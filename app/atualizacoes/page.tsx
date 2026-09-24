@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-al",
+    data: "24/09/2026",
+    titulo: "CT-e: rejeição 365 (Total do DF-e inválido) corrigida",
+    modulos: ["Transporte", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitava o CT-e com 365 \"Total do DF-e inválido\": o sistema somava IBS e CBS ao total (vTotDFe). Pela NT 2025.001 v1.13, em 2026 o vTotDFe é apenas o valor da prestação (vTPrest); a soma com IBS/CBS só volta a valer a partir de 2027. Corrigido — o sistema usa a regra pelo ano de emissão." },
+    ],
+    onde: "Transporte → CT-e",
+  },
+  {
     versao: "2026.09.24-ak",
     data: "24/09/2026",
     titulo: "Cancelar CT-e cancela o financeiro gerado",

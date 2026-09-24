@@ -312,7 +312,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   // CST explícito tem prioridade; sem CST informado, mantém a heurística antiga (compatibilidade)
   const cstIcms   = input.cst_icms || (input.aliquota_icms > 0 ? "00" : "40");
 
-  // IBS/CBS — vBC = valor da prestação; vTotDFe = vTPrest + IBS + CBS (regra do schema, NT 2025.001).
+  // IBS/CBS — vBC = valor da prestação; vTotDFe = vTPrest (2026) ou vTPrest + IBS + CBS (a partir de 2027) — NT 2025.001 v1.13.
   const pctIbs = (n: number) => { const t = n.toFixed(4).replace(/0{1,2}$/, ""); return t; }; // mínimo 2 casas, máximo 4 (TDec_0302_04)
   let ibscbsXml = "";
   let vTotDFeXml = "";
@@ -335,7 +335,10 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <gCBS><pCBS>${pctIbs(ic.cbsAliq)}</pCBS><vCBS>${p2(vCBS)}</vCBS></gCBS>
         </gIBSCBS>
       </IBSCBS>`;
-      vTotDFeXml = `<vTotDFe>${p2(vBC + vIBS + vCBS)}</vTotDFe>`;
+      // NT 2025.001 v1.13 — em 2026 os valores de IBS e CBS NÃO são somados ao vTotDFe
+      // (vTotDFe = vTPrest); somar gera a rejeição 365 "Total do DF-e inválido" (achado 24/09/2026).
+      // A regra geral (vTPrest + vIBS + vCBS) volta a valer a partir de 2027.
+      vTotDFeXml = `<vTotDFe>${p2(new Date().getFullYear() === 2026 ? vBC : vBC + vIBS + vCBS)}</vTotDFe>`;
     } else {
       ibscbsXml = `<IBSCBS><CST>${ic.cst}</CST><cClassTrib>${ic.cclasstrib}</cClassTrib></IBSCBS>`;
       vTotDFeXml = `<vTotDFe>${p2(input.valor_prestacao)}</vTotDFe>`;
