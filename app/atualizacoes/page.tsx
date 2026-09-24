@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-ah",
+    data: "24/09/2026",
+    titulo: "MDF-e: numeração não é mais consumida em rejeição + peso obrigatório",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Cada tentativa de transmissão rejeitada avançava o contador de numeração (o MDF-e 3287 virou 3288 sem ter sido autorizado). Agora o contador só avança quando a SEFAZ autoriza, e um rascunho que já tentou transmitir reaproveita o próprio número. Também passou a bloquear localmente a transmissão com Peso Total zerado ou vazio." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.24-ag",
     data: "24/09/2026",
     titulo: "MDF-e: CEPs de carga lotação completados ao abrir rascunho",

@@ -37,12 +37,24 @@ async function carregarPfx(storagePath: string): Promise<Buffer> {
   return Buffer.from(await data.arrayBuffer());
 }
 
-async function proximoNumero(fazendaId: string, modulo: string, confg: Record<string, string>): Promise<number> {
-  const atual = parseInt(String(confg.numero_inicial ?? "1"));
+// Número do MDF-e SEM queimar numeração em rejeição (achado 24/09/2026: o 3287 virou 3288 numa
+// tentativa rejeitada). Só LÊ o contador; ele avança (avancarNumero) apenas quando a SEFAZ
+// autoriza. Um rascunho que já tentou transmitir reaproveita o próprio número — a SEFAZ não
+// consome número de documento rejeitado —, salvo se esse número já ficou para trás do contador
+// (foi usado por outro MDF-e autorizado).
+function numeroParaTentativa(confg: Record<string, string>, m: { numero_mdfe?: unknown; chave_acesso?: unknown }): number {
+  const contador = parseInt(String(confg.numero_inicial ?? "1")) || 1;
+  const anterior = parseInt(String(m.numero_mdfe ?? ""));
+  const jaTentou = !!m.chave_acesso && Number.isFinite(anterior) && anterior > 0;
+  return jaTentou && anterior >= contador ? anterior : contador;
+}
+
+async function avancarNumero(fazendaId: string, modulo: string, confg: Record<string, string>, usado: number): Promise<void> {
+  const contador = parseInt(String(confg.numero_inicial ?? "1")) || 1;
+  if (usado < contador) return;
   await sb().from("configuracoes_modulo")
-    .update({ config: { ...confg, numero_inicial: String(atual + 1) } })
+    .update({ config: { ...confg, numero_inicial: String(usado + 1) } })
     .eq("fazenda_id", fazendaId).eq("modulo", modulo);
-  return atual;
 }
 
 const QR_BASE: Record<string, string> = {
@@ -307,7 +319,12 @@ export async function emitirMDFe(
   const erroProduto = validarProdutoMDFe(m.produto_predominante, emitente.tpEmit !== "2" || !!emitente.tpTransp, quantidadeDocumentos);
   if (erroProduto) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: erroProduto };
 
-  const numero = await proximoNumero(fazendaId, resolved.mdfeModulo, confg);
+  // Carga total (qCarga) obrigatória e maior que zero — bloqueia aqui em vez de gastar tentativa.
+  if (!(Number(m.peso_total_kg) > 0)) {
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Informe o Peso Total (kg) da carga em Dados da Carga — o MDF-e não pode ser transmitido com peso zero ou vazio." };
+  }
+
+  const numero = numeroParaTentativa(confg, m);
   emitente.numero_mdfe = numero;
 
   const input: MDFeInput = {
@@ -346,6 +363,8 @@ export async function emitirMDFe(
   if (resposta.sucesso && resposta.xmlProt) {
     try { xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt); } catch { /* best-effort */ }
   }
+
+  if (resposta.sucesso) await avancarNumero(fazendaId, resolved.mdfeModulo, confg, Number(built.numero));
 
   const { error: updErr } = await sb().from("mdfes").update({
     status:       resposta.sucesso ? "autorizado" : "rascunho",
