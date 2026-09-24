@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-af",
+    data: "24/09/2026",
+    titulo: "MDF-e: averbação volta a ser exigida (rejeição 699)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao tornar a averbação opcional, o MDF-e 3287 foi transmitido só com seguradora, CNPJ e apólice e a SEFAZ rejeitou com 699 (seguro incompleto). Para emitente prestador de serviço (com CT-e), a SEFAZ exige o Nº da Averbação junto com a apólice — o sistema volta a bloquear localmente com essa explicação, antes de gastar uma transmissão. Carga própria continua sem seguro." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.24-ae",
     data: "24/09/2026",
     titulo: "CT-e: IBS/CBS com CST 000 e alíquotas de 2026",

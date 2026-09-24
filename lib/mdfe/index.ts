@@ -283,10 +283,10 @@ export async function emitirMDFe(
   // SEFAZ rejeita o MDF-e rodoviário sem os dados de Seguro da Carga completos — mas só quando
   // o emitente presta serviço remunerado (tpEmit=1). Carga própria (tpEmit=2) não tem essa
   // exigência. Bloqueia aqui com um aviso claro em vez de gastar uma tentativa real na SEFAZ.
-  if (emitente.tpEmit === "1" && (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero)) {
+  if (emitente.tpEmit === "1" && (!emitente.seguradora_nome || !emitente.seguradora_cnpj || !emitente.apolice_numero || !emitente.averbacao_numero)) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
-      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice na aba Seguro e Averbação do MDF-e (ou em Parâmetros → MDF-e). A averbação é opcional. Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
+      xMotivo: "Dados do Seguro da Carga (RCTR-C) incompletos — preencha Nome/CNPJ da Seguradora, Nº da Apólice e Nº da Averbação (a SEFAZ rejeita com 699 sem a averbação quando o emitente é prestador de serviço). Preencha na aba Seguro e Averbação do MDF-e; a apólice pode vir de Parâmetros → MDF-e. Se este transporte não cobra frete de terceiros, marque \"Este transporte é: Carga própria\" em Parâmetros → MDF-e pra dispensar o seguro.",
     };
   }
 
