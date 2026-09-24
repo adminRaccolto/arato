@@ -173,6 +173,15 @@ const CTE_BASE_FIELDS: FieldDef[] = [
   { key: "cst_icms_padrao", label: "Situação Tributária ICMS Padrão", type: "select",
     options: ["00","40","41","51"],
     labels: ["00 – Tributação normal (com ICMS)","40 – Isenta","41 – Não tributada","51 – Diferimento (ICMS diferido)"] },
+  // IBS/CBS (Reforma Tributária, LC 214/2025 · NT 2025.001) — obrigatório no CT-e de emitente
+  // Lucro Presumido/Real desde 05/01/2026 (Simples/MEI dispensados). 2026 é ano de transição:
+  // sugestão da lei p/ o destaque = CBS 0,9% e IBS 0,1% — CONFIRME com o contador antes de ativar.
+  { key: "ibs_cbs_ativo",       label: "Destacar IBS/CBS no CT-e",  type: "select", options: ["nao","sim"], labels: ["Não (não recomendado p/ Lucro Presumido/Real)","Sim — obrigatório (CRT 3)"] },
+  { key: "ibs_cbs_cst",         label: "CST do IBS/CBS",            type: "select", options: ["000","410"], labels: ["000 – Tributação integral (com valores)","410 – Imunidade / não incidência (sem valores)"] },
+  { key: "ibs_cbs_cclasstrib",  label: "cClassTrib (6 dígitos)",    type: "text",   placeholder: "000001" },
+  { key: "ibs_uf_aliq",         label: "IBS – alíquota UF (%)",     type: "text",   placeholder: "0.10" },
+  { key: "ibs_mun_aliq",        label: "IBS – alíquota Município (%)", type: "text", placeholder: "0.00" },
+  { key: "cbs_aliq",            label: "CBS – alíquota (%)",        type: "text",   placeholder: "0.90" },
 ];
 
 const CTE_CERT_FIELDS: FieldDef[] = [

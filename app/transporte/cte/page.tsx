@@ -1145,7 +1145,7 @@ function CtePageInner() {
 
     try {
       const res  = await fetch("/api/fiscal/emitir-cte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string };
+      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string; aviso?: string };
 
       // Atualização otimista — o alert() bloqueia o browser antes do React re-renderizar,
       // então atualizamos o estado local imediatamente para o DACTE abrir com a chave correta.
@@ -1161,7 +1161,7 @@ function CtePageInner() {
       }
 
       if (data.sucesso) {
-        alert(`✓ CT-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
+        alert(`✓ CT-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}${data.aviso ? `\n\n⚠ ATENÇÃO FISCAL: ${data.aviso}` : ""}`);
         await carregar(); // re-sync com o banco
       } else {
         // cStats internos (5xx) = falha de comunicação antes de a SEFAZ responder.

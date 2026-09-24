@@ -97,6 +97,7 @@ export interface ResultadoEmissaoCTe {
   cStat:      string;
   xMotivo:    string;
   xmlAssinado?: string;
+  aviso?:     string;   // aviso não-bloqueante mostrado depois de autorizado (ex: IBS/CBS não destacado)
 }
 
 export interface EmitirCTeOptions {
@@ -289,7 +290,27 @@ export async function emitirCTe(
       tamanhoNome: c.nome.length,
     })),
   });
-  const built = buildCTe({ ...inputBase, emitente });
+  // IBS/CBS (Reforma Tributária) — configurado por emitente em Parâmetros → CT-e. Simples/MEI
+  // (CRT 1/2/4) são dispensados do grupo. Se "Destacar IBS/CBS" está ativo mas faltam
+  // alíquotas/classificação, BLOQUEIA antes de transmitir (nunca chuta valor num documento fiscal).
+  let ibscbs: CTeInput["ibscbs"];
+  if (confg.ibs_cbs_ativo === "sim" && !["1", "2", "4"].includes(String(emitente.crt))) {
+    const cst = (confg.ibs_cbs_cst === "410" ? "410" : "000") as "000" | "410";
+    const cclass = String(confg.ibs_cbs_cclasstrib ?? "").replace(/\D/g, "");
+    const num = (v: unknown) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
+    const ibsUf = num(confg.ibs_uf_aliq), ibsMun = num(confg.ibs_mun_aliq), cbs = num(confg.cbs_aliq);
+    if (cclass.length !== 6 || (cst === "000" && (Number.isNaN(ibsUf) || Number.isNaN(ibsMun) || Number.isNaN(cbs)))) {
+      return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "IBS/CBS ativo em Parâmetros → CT-e, mas faltam dados: informe cClassTrib (6 dígitos) e as alíquotas de IBS (UF e Município) e CBS — ou desative o destaque. Confirme os valores com o contador." };
+    }
+    ibscbs = { cst, cclasstrib: cclass, ibsUfAliq: cst === "000" ? ibsUf : 0, ibsMunAliq: cst === "000" ? ibsMun : 0, cbsAliq: cst === "000" ? cbs : 0 };
+  }
+  // IBS/CBS não destacado por emitente que é obrigado (CRT normal) — a SEFAZ ainda autorizou sem o
+  // grupo quando isso foi checado, mas a NT 2025.001 prevê validação desde 05/01/2026: nunca deixar
+  // passar em silêncio. Não bloqueia (não trava a operação), mas o aviso aparece pra quem emitiu.
+  const avisoIbsCbs = (!ibscbs && !["1", "2", "4"].includes(String(emitente.crt)))
+    ? "IBS/CBS NÃO foi destacado neste CT-e. Emitente Lucro Presumido/Real é obrigado desde 05/01/2026 (LC 214/2025, NT 2025.001). Configure em Parâmetros → CT-e → \"Destacar IBS/CBS no CT-e\" (confirme as alíquotas com o contador)."
+    : undefined;
+  const built = buildCTe({ ...inputBase, emitente, ibscbs });
 
   // 6. Assinar
   let xmlAssinado: string;
@@ -349,5 +370,6 @@ export async function emitirCTe(
     cStat:      resposta.cStat ?? resposta.errorCode ?? "ERR",
     xMotivo:    resposta.xMotivo,
     xmlAssinado,
+    aviso:      resposta.sucesso ? avisoIbsCbs : undefined,
   };
 }

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.24-i",
+    data: "24/09/2026",
+    titulo: "CT-e: IBS e CBS (Reforma Tributária) parametrizados por emitente",
+    modulos: ["Transporte", "Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "O CT-e não tinha nenhum suporte a IBS/CBS (NT 2025.001, obrigatório para emitente Lucro Presumido/Real desde 05/01/2026; Simples/MEI dispensados). Agora Parâmetros → CT-e, por transportadora, tem: Destacar IBS/CBS (sim/não), CST (000 tributação integral ou 410 imunidade/não incidência), cClassTrib (6 dígitos) e alíquotas de IBS (UF e Município) e CBS. Com \"sim\", o XML leva o grupo IBSCBS dentro de imp e o vTotDFe (vTPrest + IBS + CBS), na ordem exata do schema oficial — conferido contra o XSD da SEFAZ (PL_CTe_400_RTC) com e sem o grupo. Se estiver ativo mas faltar dado, a emissão bloqueia antes de transmitir." },
+      { tipo: "melhoria", texto: "Emitente obrigado que ainda NÃO ativou o destaque continua emitindo (a SEFAZ segue autorizando), mas agora aparece um aviso fiscal ao autorizar, em vez de passar em silêncio. As alíquotas NÃO vêm preenchidas de propósito: 2026 é ano de transição (referência da lei: CBS 0,9% e IBS 0,1%) — confirme com o contador antes de ativar." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → CT-e · Fretes e Transporte (CT-e)",
+  },
+  {
     versao: "2026.09.24-h",
     data: "24/09/2026",
     titulo: "BI → Auditoria de Classificação: passou a enxergar os itens (estava cega) + painel de cobertura",

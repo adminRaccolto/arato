@@ -61,6 +61,12 @@ export interface CTeInput {
   valor_mercadoria: number;
   aliquota_icms:    number;   // ex: 12
   cst_icms?:        "00" | "40" | "41" | "51"; // situação tributária ICMS — default "00" se alíquota>0, senão "40"
+  // IBS/CBS (Reforma Tributária — LC 214/2025, NT 2025.001, grupo <IBSCBS> dentro de <imp>).
+  // Só vai pro XML se preenchido pelo orquestrador (lib/cte/index.ts) — emitente Lucro
+  // Presumido/Real (CRT 3) é obrigado desde 05/01/2026; Simples/MEI (CRT 1/2/4) são dispensados.
+  // Alíquotas em % (ex: 0.9 = 0,9%). cst "000" = tributação integral (com valores);
+  // "410" = imunidade/não incidência (só CST + cClassTrib, sem gIBSCBS).
+  ibscbs?: { cst: "000" | "410"; cclasstrib: string; ibsUfAliq: number; ibsMunAliq: number; cbsAliq: number };
   veiculo_placa:    string;
   veiculo_renavam?: string;
   motorista_nome:   string;
@@ -295,6 +301,36 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
   // CST explícito tem prioridade; sem CST informado, mantém a heurística antiga (compatibilidade)
   const cstIcms   = input.cst_icms || (input.aliquota_icms > 0 ? "00" : "40");
 
+  // IBS/CBS — vBC = valor da prestação; vTotDFe = vTPrest + IBS + CBS (regra do schema, NT 2025.001).
+  const pctIbs = (n: number) => { const t = n.toFixed(4).replace(/0{1,2}$/, ""); return t; }; // mínimo 2 casas, máximo 4 (TDec_0302_04)
+  let ibscbsXml = "";
+  let vTotDFeXml = "";
+  if (input.ibscbs) {
+    const ic = input.ibscbs;
+    if (ic.cst === "000") {
+      const vBC = input.valor_prestacao;
+      const vIBSUF  = Math.round(vBC * ic.ibsUfAliq  ) / 100;
+      const vIBSMun = Math.round(vBC * ic.ibsMunAliq ) / 100;
+      const vCBS    = Math.round(vBC * ic.cbsAliq    ) / 100;
+      const vIBS    = Math.round((vIBSUF + vIBSMun) * 100) / 100;
+      ibscbsXml = `<IBSCBS>
+        <CST>000</CST>
+        <cClassTrib>${ic.cclasstrib}</cClassTrib>
+        <gIBSCBS>
+          <vBC>${p2(vBC)}</vBC>
+          <gIBSUF><pIBSUF>${pctIbs(ic.ibsUfAliq)}</pIBSUF><vIBSUF>${p2(vIBSUF)}</vIBSUF></gIBSUF>
+          <gIBSMun><pIBSMun>${pctIbs(ic.ibsMunAliq)}</pIBSMun><vIBSMun>${p2(vIBSMun)}</vIBSMun></gIBSMun>
+          <vIBS>${p2(vIBS)}</vIBS>
+          <gCBS><pCBS>${pctIbs(ic.cbsAliq)}</pCBS><vCBS>${p2(vCBS)}</vCBS></gCBS>
+        </gIBSCBS>
+      </IBSCBS>`;
+      vTotDFeXml = `<vTotDFe>${p2(vBC + vIBS + vCBS)}</vTotDFe>`;
+    } else {
+      ibscbsXml = `<IBSCBS><CST>${ic.cst}</CST><cClassTrib>${ic.cclasstrib}</cClassTrib></IBSCBS>`;
+      vTotDFeXml = `<vTotDFe>${p2(input.valor_prestacao)}</vTotDFe>`;
+    }
+  }
+
   const naturezaLimpa = (limparTextoSefaz(input.natureza ?? "").slice(0, 60).trim())
     || "PRESTACAO DE SERVICO DE TRANSPORTE";
 
@@ -370,6 +406,8 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
         </ICMS00>` : `<ICMS45><CST>${cstIcms}</CST></ICMS45>`}
       </ICMS>
       <vTotTrib>0.00</vTotTrib>
+      ${ibscbsXml}
+      ${vTotDFeXml}
     </imp>
     <infCTeNorm>
       <infCarga>
