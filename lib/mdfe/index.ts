@@ -162,20 +162,28 @@ export async function emitirMDFe(
   //    cuja config de Seguro da Carga continuava incompleta. Só cai no fallback "primeira
   //    empresa da conta" quando o MDF-e não tem CT-e nenhum vinculado (NF-e avulsas puras).
   const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  let empresaCnpj: string | undefined;
+  // Emitente escolhido no próprio MDF-e (seletor) tem prioridade sobre o do CT-e vinculado
+  let empresaCnpj: string | undefined = (m.emitente_cnpj as string | null)?.replace(/\D/g, "") || undefined;
   const docs = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[] | null;
   const primeiraCteChave = (docs ?? []).find(d => d.tipo === "cte")?.chave?.replace(/\D/g, "");
   if (primeiraCteChave) {
     const { data: cteRow } = await sb().from("ctes").select("emitente_cnpj, ciot").eq("chave_acesso", primeiraCteChave).maybeSingle();
-    empresaCnpj = (cteRow?.emitente_cnpj as string | undefined) ?? undefined;
+    if (!empresaCnpj) empresaCnpj = (cteRow?.emitente_cnpj as string | undefined) ?? undefined;
     // CIOT emitido no CT-e (Seção 296) vale para o MDF-e vinculado quando o MDF-e não tem o seu
     if (!m.ciot && cteRow?.ciot) m.ciot = cteRow.ciot as string;
   }
   if (!empresaCnpj && faz?.conta_id) {
     const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
     const idsConta = (fzs ?? []).map(f => f.id as string);
-    const { data: emp } = await sb().from("empresas").select("cpf_cnpj").in("fazenda_id", idsConta).limit(1).maybeSingle();
-    empresaCnpj = emp?.cpf_cnpj ?? undefined;
+    // Sem emitente escolhido no MDF-e nem CT-e vinculado: só assume a empresa se houver UMA. Com
+    // várias, escolher a "primeira" emitia por empresa/certificado errado (risco apontado
+    // 25/09/2026) — exige o seletor "Emitente do MDF-e".
+    const { data: emps } = await sb().from("empresas").select("cpf_cnpj").in("fazenda_id", idsConta);
+    const distintas = Array.from(new Set((emps ?? []).map(e => String(e.cpf_cnpj ?? "").replace(/\D/g, "")).filter(Boolean)));
+    if (distintas.length > 1) {
+      return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Há mais de uma empresa cadastrada: escolha o Emitente do MDF-e (seletor em Dados do MDF-e) ou vincule um CT-e." };
+    }
+    empresaCnpj = distintas[0] || undefined;
   }
 
   // 2. Config MDF-e + Fiscal + Certificado
@@ -317,6 +325,15 @@ export async function emitirMDFe(
       sucesso: false, cStat: "VALIDACAO_LOCAL",
       xMotivo: "Não foi possível determinar o Contratante do transporte — vincule pelo menos um CT-e autorizado a este MDF-e (é dali que vem o Tomador do Serviço).",
     };
+  }
+
+  // NF-e avulsa precisa de município de descarga próprio. Antes ela era anexada ao PRIMEIRO
+  // município encontrado (ou sumia sem nenhum) — atribuição arbitrária num documento fiscal.
+  const nfesAvulsas = (documentos ?? []).filter(d => d.tipo === "nfe").length;
+  if (nfesAvulsas > 0 && municipiosDescarga.length !== 1) {
+    return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: municipiosDescarga.length === 0
+      ? "NF-e avulsa sem município de descarga: o MDF-e ainda não tem destino informado para ela. Vincule o CT-e correspondente (o destino vem dele)."
+      : "MDF-e com NF-e avulsa e mais de um município de descarga: não dá para saber a qual município a NF-e pertence. Separe em MDF-e distintos." };
   }
 
   const quantidadeDocumentos = municipiosDescarga.reduce((total, mun) => total + mun.cte_chaves.length + mun.nfe_chaves.length, 0);

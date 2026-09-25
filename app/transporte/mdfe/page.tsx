@@ -270,6 +270,7 @@ interface Mdfe {
   apolice_numero?: string | null;
   averbacao_numero?: string | null;
   pag_pix?: string | null; pag_cod_banco?: string | null; pag_agencia?: string | null;
+  emitente_id?: string | null; emitente_cnpj?: string | null; emitente_razao_social?: string | null;
   protocolo_autorizacao?: string | null;
   xml_url?: string | null;
   created_at?: string;
@@ -341,6 +342,10 @@ function MdfePageInner() {
   const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
   const [empresaCpfCnpj, setEmpresaCpfCnpj] = useState("");
   const [empresaNome,    setEmpresaNome]    = useState("");
+  // Empresas transportadoras da conta — seletor "Emitente do MDF-e" (antes o sistema usava sempre a
+  // primeira empresa cadastrada, e o DAMDFE saía com a razão social errada — achado 25/09/2026).
+  type EmpTransp = { id: string; cpf_cnpj: string; razao_social?: string | null; nome?: string | null };
+  const [empresasTransp, setEmpresasTransp] = useState<EmpTransp[]>([]);
   const [mdfeConfig,     setMdfeConfig]     = useState<Record<string, string>>({});
 
   // Filtros
@@ -370,6 +375,7 @@ function MdfePageInner() {
     seguradora_nome: "", seguradora_cnpj: "", apolice_numero: "", averbacao_numero: "",
     // Pagamento do frete (infPag) — em branco = usa Parâmetros → MDF-e da transportadora
     pag_pix: "", pag_cod_banco: "", pag_agencia: "",
+    emitente_id: "",
   });
   const [abaModal, setAbaModal] = useState<"dados" | "seguro">("dados");
   const [form, setForm] = useState(FORM_VAZIO());
@@ -418,6 +424,10 @@ function MdfePageInner() {
     // Parâmetros → MDF-e (série, próximo número, UFs padrão) pra esse emitente — sem isso a
     // tela nunca lia o que foi configurado lá e sempre sugeria série "1" e o próprio contador
     // interno (baseado só nos MDF-e já criados aqui), ignorando o número real combinado.
+    const { data: empsT } = await supabase.from("empresas").select("id, cpf_cnpj, razao_social, nome, finalidades")
+      .in("fazenda_id", fazendaIds);
+    const transp = ((empsT ?? []) as (EmpTransp & { finalidades?: string[] | null })[]).filter(e => (e.finalidades ?? []).includes("transportadora"));
+    setEmpresasTransp(transp.length ? transp : ((empsT ?? []) as EmpTransp[]));
     const { data: emp } = await supabase.from("empresas").select("cpf_cnpj, razao_social, nome")
       .in("fazenda_id", fazendaIds).limit(1).single();
     if (emp?.cpf_cnpj) setEmpresaCpfCnpj(emp.cpf_cnpj);
@@ -494,6 +504,7 @@ function MdfePageInner() {
       seguradora_nome: m.seguradora_nome ?? "", seguradora_cnpj: m.seguradora_cnpj ?? "",
       apolice_numero: m.apolice_numero ?? "", averbacao_numero: m.averbacao_numero ?? "",
       pag_pix: m.pag_pix ?? "", pag_cod_banco: m.pag_cod_banco ?? "", pag_agencia: m.pag_agencia ?? "",
+      emitente_id: m.emitente_id ?? "",
     });
     setAbaModal("dados");
     setErr(""); resetCiot();
@@ -624,6 +635,12 @@ function MdfePageInner() {
       const cteIds = marcando ? [...f.cte_ids, id] : f.cte_ids.filter(c => c !== id);
       const c = ctes.find(x => x.id === id);
       let extra: Partial<typeof f> = {};
+      // Emitente do MDF-e acompanha a transportadora do CT-e (se ainda não escolhido)
+      if (marcando && !f.emitente_id && c?.emitente_cnpj) {
+        const dc = c.emitente_cnpj.replace(/\D/g, "");
+        const emp = empresasTransp.find(e => e.cpf_cnpj.replace(/\D/g, "") === dc);
+        if (emp) extra = { ...extra, emitente_id: emp.id };
+      }
       if (marcando && !f.veiculo_id && !f.motorista_id && !f.motorista_nome) {
         if (c?.veiculo_id && veiculos.some(v => v.id === c.veiculo_id)) extra = { ...extra, veiculo_id: c.veiculo_id };
         // Herda o motorista do CT-e mesmo quando ele foi digitado livre lá (sem cadastro) —
@@ -730,6 +747,10 @@ function MdfePageInner() {
           apolice_numero: form.apolice_numero.trim() || null,
           averbacao_numero: form.averbacao_numero.trim() || null,
         } : {}),
+        ...(form.emitente_id ? (() => {
+          const e = empresasTransp.find(x => x.id === form.emitente_id);
+          return { emitente_id: form.emitente_id, emitente_cnpj: e?.cpf_cnpj ?? null, emitente_razao_social: e?.razao_social ?? e?.nome ?? null };
+        })() : {}),
         ...((form.pag_pix || form.pag_cod_banco || form.pag_agencia || mdfeEdit?.pag_pix) ? {
           pag_pix: form.pag_pix.trim() || null, pag_cod_banco: form.pag_cod_banco.trim() || null, pag_agencia: form.pag_agencia.trim() || null,
         } : {}),
@@ -852,9 +873,25 @@ function MdfePageInner() {
     await carregar();
   }
 
+  // Cancelamento REAL: MDF-e autorizado é cancelado na SEFAZ (evento 110111, até 24h e antes de
+  // encerrar); o banco só muda depois da confirmação. Antes era só um UPDATE local — o manifesto
+  // seguia válido na SEFAZ e bloqueando a placa. Rascunho (nunca transmitido) continua local.
   async function cancelar(m: Mdfe) {
-    if (!confirm("Cancelar este MDF-e?")) return;
-    await supabase.from("mdfes").update({ status: "cancelado" }).eq("id", m.id);
+    if (m.status !== "autorizado") {
+      if (!confirm("Cancelar este MDF-e (ainda não transmitido)?")) return;
+      await supabase.from("mdfes").update({ status: "cancelado" }).eq("id", m.id);
+      await carregar();
+      return;
+    }
+    const just = prompt(`Cancelar oficialmente o MDF-e ${m.numero_mdfe} na SEFAZ.\nInforme a justificativa (mínimo 15 caracteres):`);
+    if (just === null) return;
+    if (just.trim().length < 15) { alert("A justificativa precisa ter pelo menos 15 caracteres."); return; }
+    try {
+      const res = await fetch("/api/fiscal/cancelar-mdfe", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, mdfe_id: m.id, justificativa: just.trim() }) });
+      const j = await res.json() as { sucesso: boolean; cStat: string; xMotivo: string };
+      alert(j.sucesso ? "✓ MDF-e cancelado na SEFAZ." : `⚠ Não foi possível cancelar\ncStat ${j.cStat}: ${j.xMotivo}`);
+    } catch (e) { alert("Erro ao cancelar: " + (e instanceof Error ? e.message : String(e))); }
     await carregar();
   }
 
@@ -982,7 +1019,14 @@ function MdfePageInner() {
                             </button>
                           )}
                           {(m.status === "autorizado" || m.status === "encerrado") && (
-                            <button onClick={() => imprimirDamdfe(m, empresaCpfCnpj, empresaNome)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                            <button onClick={() => {
+                              // Emitente real do MDF-e: o escolhido nele; senão a transportadora do CT-e vinculado; senão a 1ª empresa.
+                              const cteChave = (m.documentos.find(d => d.tipo === "cte")?.chave ?? "").replace(/\D/g, "");
+                              const cnpjCte = ctes.find(c => (c.chave_acesso ?? "").replace(/\D/g, "") === cteChave)?.emitente_cnpj ?? null;
+                              const doc = m.emitente_cnpj || cnpjCte || empresaCpfCnpj;
+                              const emp = empresasTransp.find(e => e.cpf_cnpj.replace(/\D/g, "") === (doc ?? "").replace(/\D/g, ""));
+                              imprimirDamdfe(m, doc, m.emitente_razao_social || emp?.razao_social || emp?.nome || empresaNome);
+                            }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                               DAMDFE
                             </button>
                           )}
@@ -1103,6 +1147,20 @@ function MdfePageInner() {
 
               {/* ── Identificação ── */}
               <div style={divider}>Identificação</div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Emitente do MDF-e (transportadora)</label>
+                <select value={form.emitente_id} onChange={e => setForm(f => ({ ...f, emitente_id: e.target.value }))} style={inp}>
+                  <option value="">{empresasTransp.length ? "— Automático (transportadora do CT-e vinculado) —" : "Nenhuma empresa cadastrada"}</option>
+                  {empresasTransp.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome} — {e.cpf_cnpj}</option>)}
+                </select>
+                {(() => {
+                  const sel = empresasTransp.find(e => e.id === form.emitente_id);
+                  const cte = ctes.find(c => form.cte_ids.includes(c.id));
+                  if (sel && cte?.emitente_cnpj && sel.cpf_cnpj.replace(/\D/g, "") !== cte.emitente_cnpj.replace(/\D/g, ""))
+                    return <div style={{ fontSize: 11, color: "#A93226", marginTop: 4 }}>Atenção: o CT-e vinculado foi emitido por outra empresa ({cte.emitente_cnpj}). Confirme que o MDF-e deve sair por {sel.razao_social ?? sel.nome}.</div>;
+                  return null;
+                })()}
+              </div>
               <div>
                 <label style={lbl}>Nº MDF-e</label>
                 <input value={form.numero_mdfe} onChange={e => setForm(f => ({ ...f, numero_mdfe: e.target.value }))} style={inp} />

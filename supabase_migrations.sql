@@ -13796,3 +13796,11 @@ ALTER TABLE mdfes
   ADD COLUMN IF NOT EXISTS pag_cod_banco  text,
   ADD COLUMN IF NOT EXISTS pag_agencia    text;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 298 — MDF-e: emitente (transportadora) escolhido no lançamento ──
+ALTER TABLE mdfes
+  ADD COLUMN IF NOT EXISTS emitente_id           uuid,
+  ADD COLUMN IF NOT EXISTS emitente_cnpj         text,
+  ADD COLUMN IF NOT EXISTS emitente_razao_social text;
+NOTIFY pgrst, 'reload schema';

@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-c",
+    data: "25/09/2026",
+    titulo: "MDF-e: emitente selecionável, cancelamento real na SEFAZ e NF-e sem destino arbitrário",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Seletor \"Emitente do MDF-e (transportadora)\" em Dados do MDF-e: acompanha a transportadora do CT-e vinculado e pode ser trocado. O DAMDFE passa a imprimir a razão social/CNPJ do emitente real (antes usava a primeira empresa da conta, por isso saía a empresa errada). Requer a Seção 298 da migration." },
+      { tipo: "correcao", texto: "Cancelar MDF-e autorizado agora envia o evento oficial de cancelamento (110111) à SEFAZ, com justificativa (15 a 255 caracteres), e só depois muda o status no banco — antes era apenas uma alteração local e o manifesto seguia válido/aberto na SEFAZ. Rascunhos ainda não transmitidos continuam cancelados só no sistema. Encerrado não cancela." },
+      { tipo: "correcao", texto: "Sem emitente escolhido nem CT-e vinculado, o sistema não assume mais a \"primeira empresa\" quando há mais de uma: pede o emitente. NF-e avulsa deixou de ser anexada ao primeiro município encontrado: exige um único município de descarga (vem do CT-e) e bloqueia com explicação quando não dá para definir." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.25-b",
     data: "25/09/2026",
     titulo: "MDF-e: pagamento do frete com vContrato (rejeição 580)",
