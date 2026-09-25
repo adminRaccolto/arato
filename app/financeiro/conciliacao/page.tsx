@@ -991,21 +991,26 @@ function ConciliacaoInner() {
   // (o vínculo é só removido daqui). Isso evita desfazer conciliações reais
   // por engano ao limpar uma cópia velha/duplicada.
   async function excluirExtrato(ext: Extrato) {
-    if (!confirm(`Excluir a importação "${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})?\n\nAs ${ext.total_linhas} transações trazidas por este OFX serão removidas da conta e os lançamentos vinculados a elas deixam de constar como conciliados.`)) return;
+    const fmtP = `"${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})`;
+    // Opção 1: só limpar o histórico, mantendo transações e conciliações na conta
+    const soRegistro = confirm(`Importação ${fmtP}\n\nOK = excluir SÓ o registro do histórico (as transações e as conciliações continuam na conta).\nCancelar = ver a exclusão completa desta importação.`);
     let reabrir = false;
-    if (ext.conciliados > 0) {
-      reabrir = confirm(`Este OFX tem ${ext.conciliados} linha(s) conciliada(s).\n\nOK = também REABRIR os lançamentos que foram baixados por ela (voltam para em aberto/vencido).\nCancelar = manter os lançamentos baixados (só deixam de ser conciliados).`);
+    if (!soRegistro) {
+      if (!confirm(`Excluir COMPLETAMENTE a importação ${fmtP}?\n\nAs ${ext.total_linhas} transações trazidas por este OFX serão removidas da conta e os lançamentos vinculados a elas deixam de constar como conciliados.`)) return;
+      if (ext.conciliados > 0) {
+        reabrir = confirm(`Este OFX tem ${ext.conciliados} linha(s) conciliada(s).\n\nOK = também REABRIR os lançamentos que foram baixados por ela (voltam para em aberto/vencido).\nCancelar = manter os lançamentos baixados (só deixam de ser conciliados).`);
+      }
     }
     setLoading(true);
     try {
       // Via API route com service_role_key — o delete direto do cliente
       // podia falhar silenciosamente com sessão/JWT expirado (achado real 18/09/2026).
-      const res = await authFetch(`/api/financeiro/persistir-extrato?id=${ext.id}${reabrir ? "&reabrir=1" : ""}`, { method: "DELETE" });
+      const res = await authFetch(`/api/financeiro/persistir-extrato?id=${ext.id}${soRegistro ? "&modo=registro" : reabrir ? "&reabrir=1" : ""}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({ ok: false }));
       if (!res.ok || json?.ok === false) throw new Error(json?.error);
       setExtratos(prev => prev.filter(e => e.id !== ext.id));
       if (extrato?.id === ext.id) setExtrato(null);
-      alert(`Importação excluída: ${json.transacoes_removidas ?? 0} transações removidas${reabrir ? `, ${json.lancamentos_reabertos ?? 0} lançamentos reabertos` : ""}.`);
+      alert(soRegistro ? "Registro excluído do histórico. Transações e conciliações foram mantidas." : `Importação excluída: ${json.transacoes_removidas ?? 0} transações removidas${reabrir ? `, ${json.lancamentos_reabertos ?? 0} lançamentos reabertos` : ""}.`);
       carregar();
     } catch (e) {
       alert("Não foi possível excluir o extrato: " + (e instanceof Error && e.message ? e.message : "tente novamente."));

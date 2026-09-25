@@ -12,7 +12,7 @@ const RELEASES = [
     modulos: ["Financeiro"],
     itens: [
       { tipo: "correcao", texto: "Ao importar um OFX, o sistema agora compara a conta do arquivo (ACCTID) com a conta bancária selecionada. Se o extrato pertence a outra conta cadastrada (por exemplo, de outro produtor), a importação é barrada e informa a conta correta; se a conta do arquivo não for de nenhuma conta cadastrada, pede confirmação." },
-      { tipo: "correcao", texto: "Excluir uma importação (Conciliação → Histórico → 🗑) antes apagava só o registro do histórico e as transações continuavam na conta. Agora remove as transações trazidas por aquele OFX e desmarca a conciliação dos lançamentos vinculados; se você escolher, também reabre os lançamentos que aquela importação baixou (exceto os de borderô)." },
+      { tipo: "correcao", texto: "Excluir uma importação (Conciliação → Histórico → 🗑) antes apagava só o registro do histórico e as transações continuavam na conta. Agora remove as transações trazidas por aquele OFX e desmarca a conciliação dos lançamentos vinculados; se você escolher, também reabre os lançamentos que aquela importação baixou (exceto os de borderô). Se quiser só reduzir o histórico, há a opção de excluir apenas o registro, mantendo transações e conciliações." },
     ],
     onde: "Financeiro → Conciliação Bancária",
   },

@@ -220,10 +220,13 @@ export async function DELETE(req: NextRequest) {
     // Lançamentos ligados a essas linhas voltam a conciliado=false; com reabrir=1 os que estavam
     // baixados (e fora de borderô) também voltam para em aberto/vencido.
     const reabrir = new URL(req.url).searchParams.get("reabrir") === "1";
+    // modo=registro: só limpa o histórico (log + arquivo OFX); transações e conciliações permanecem
+    // (o vínculo primeiro_extrato_id vira NULL por ON DELETE SET NULL).
+    const soRegistro = new URL(req.url).searchParams.get("modo") === "registro";
     const trans: { id: string; lancamento_id: string | null; lancamento_ids: string[] | null }[] = [];
     for (let de = 0; ; de += 1000) {
       const { data: page, error: eT } = await sb.from("extrato_transacoes")
-        .select("id, lancamento_id, lancamento_ids").eq("primeiro_extrato_id", id).order("id").range(de, de + 999);
+        .select("id, lancamento_id, lancamento_ids").eq("primeiro_extrato_id", soRegistro ? "__nenhum__" : id).order("id").range(de, de + 999);
       if (eT) return NextResponse.json({ ok: false, error: eT.message }, { status: 400 });
       trans.push(...(page ?? []) as typeof trans);
       if (!page || page.length < 1000) break;
