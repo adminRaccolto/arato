@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-u",
+    data: "25/09/2026",
+    titulo: "NFS-e: CP vai para o financeiro certo (Empresa transportadora ou produtor)",
+    modulos: ["Compras", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O contas a pagar da NFS-e (Compras → NF de Serviços) era criado sempre na tabela do produtor, mas com o campo Empresa preenchido quando o tomador era uma empresa — e o grid de CP do produtor esconde lançamentos \"de empresa\" enquanto o CP das Empresas lê outra tabela: o lançamento não aparecia em lugar nenhum. Agora: tomador = Empresa TRANSPORTADORA → CP no financeiro da Empresa (com parcelas); qualquer outro caso → CP do produtor, sem marcar empresa. Não duplica ao reprocessar. As 12 NFS-e que estavam invisíveis (Muriana 10 e Ogliari Transportes 2, R$ 15.484,00) foram movidas para o CP da Empresa." },
+    ],
+    onde: "Compras → NF de Serviços · Financeiro → Empresas → Contas a Pagar",
+  },
+  {
     versao: "2026.09.25-t",
     data: "25/09/2026",
     titulo: "Contas a Receber: baixa equivalente ao Contas a Pagar (encargos em R$, reprogramação do saldo e estorno de borderô)",

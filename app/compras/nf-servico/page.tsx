@@ -537,8 +537,51 @@ export default function NfServicoPage() {
         nfId = inserted.id;
       }
 
+      // Destino do CP: financeiro da EMPRESA (empresa_lancamentos) só quando o tomador é uma Empresa
+      // TRANSPORTADORA; senão contas a pagar do produtor (lancamentos, SEM empresa_id). Antes o CP
+      // ia para `lancamentos` com empresa_id preenchido — o CP do produtor esconde esses (são "de
+      // empresa") e o CP da Empresa lê outra tabela: o lançamento não aparecia em lugar nenhum
+      // (12 NFS-e da Muriana/Ogliari Transportes, R$ 15.484 — achado 25/09/2026).
+      let empTranspNfs: { id: string; fazenda_id: string } | null = null;
+      if (cab.empresa_id) {
+        const { data: eRef } = await supabase.from("empresas").select("cpf_cnpj").eq("id", cab.empresa_id).maybeSingle();
+        if (eRef?.cpf_cnpj) {
+          const { data: mesmas } = await supabase.from("empresas").select("id, fazenda_id, finalidades").eq("cpf_cnpj", eRef.cpf_cnpj);
+          if ((mesmas ?? []).some(e => Array.isArray(e.finalidades) && e.finalidades.includes("transportadora"))) {
+            const m = (mesmas ?? []).find(e => e.id === cab.empresa_id) ?? (mesmas ?? [])[0];
+            empTranspNfs = { id: m.id as string, fazenda_id: m.fazenda_id as string };
+          }
+        }
+      }
+
+      if (status === "processada" && empTranspNfs && !nfEdit?.lancamento_id) {
+        const baseEmp = {
+          fazenda_id:       empTranspNfs.fazenda_id,
+          empresa_id:       empTranspNfs.id,
+          tipo:             "pagar" as const,
+          moeda:            "BRL",
+          descricao:        `NFS-e ${cab.numero_nf} — ${cab.prestador_nome}`,
+          categoria:        "Serviços de Terceiros",
+          competencia:      String(cab.data_prestacao ?? "").slice(0, 7),
+          status:           "pendente" as const,
+          pessoa_id:        cab.prestador_id || undefined,
+          numero_documento: cab.numero_nf,
+          forma_pagamento:  cab.forma_pagamento || undefined,
+          origem:           "nf_servico" as const,
+        };
+        const empRows = nfCondicao === "prazo" && nfParcelas.length > 1
+          ? nfParcelas.map((parc, i) => ({ ...baseEmp, data_vencimento: parc.data, valor: parseFloat(parc.valorMask.replace(/\./g, "").replace(",", ".")) || 0, observacao: `Parcela ${i + 1}/${nfParcelas.length}` }))
+          : [{ ...baseEmp, data_vencimento: cab.data_vencimento_cp || cab.data_prestacao, valor: vLiquido }];
+        // Idempotente: reprocessar/editar a NFS-e não duplica o CP da Empresa
+        const { data: jaEmp } = await supabase.from("empresa_lancamentos").select("id").eq("empresa_id", empTranspNfs.id).eq("origem", "nf_servico").eq("numero_documento", cab.numero_nf).limit(1);
+        if (jaEmp?.length) empRows.length = 0;
+        const empRes = empRows.length === 0 ? { json: async () => ({ ok: true }) } : await fetch("/api/empresa-lancamentos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows: empRows }) });
+        const empJson = await empRes.json() as { ok: boolean; error?: string };
+        if (!empJson.ok) throw new Error(`Erro ao criar CP da Empresa: ${empJson.error}`);
+      }
+
       // Cria CP em lancamentos quando processada (e ainda não tem lancamento vinculado)
-      if (status === "processada" && !nfEdit?.lancamento_id) {
+      if (status === "processada" && !empTranspNfs && !nfEdit?.lancamento_id) {
         const baseCP = {
           fazenda_id:            cab.fazenda_id || fazendaId,
           tipo:                  "pagar",
@@ -559,7 +602,8 @@ export default function NfServicoPage() {
           operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
           centro_custo_id:       cab.centro_custo_id       || undefined,
           ano_safra_id:          cab.ano_safra_id           || undefined,
-          empresa_id:            cab.empresa_id             || undefined,
+          // empresa_id NÃO vai: CP de NFS-e no financeiro do produtor não pode ficar "de empresa"
+          // (o grid do produtor esconde lançamentos com empresa_id).
           forma_pagamento:       cab.forma_pagamento        || undefined,
         };
 
