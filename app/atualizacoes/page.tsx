@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-g",
+    data: "25/09/2026",
+    titulo: "MDF-e: salvar não trava mais quando a migration está pendente",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao salvar o MDF-e, o erro \"Could not find the 'emitente_cnpj' column of 'mdfes'\" aparecia porque a migration das colunas novas (emitente, seguro, pagamento) ainda não tinha sido rodada no banco. Agora o sistema salva sem essas colunas e avisa quais dados ficaram de fora. Para gravar tudo, rode as Seções 293, 297 e 298 do supabase_migrations.sql no Supabase SQL Editor." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.25-f",
     data: "25/09/2026",
     titulo: "Parâmetros Fiscais: produtores com o mesmo CPF abrem cada um no seu cartão",

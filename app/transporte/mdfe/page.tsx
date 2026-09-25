@@ -758,15 +758,24 @@ function MdfePageInner() {
         ciot_codigo_verificador: ciotGerado?.cv ?? mdfeEdit?.ciot_codigo_verificador ?? null,
         ciot_protocolo: ciotGerado?.protocolo ?? mdfeEdit?.ciot_protocolo ?? null,
       };
-      if (mdfeEdit) {
-        const { error } = await supabase.from("mdfes").update(payload).eq("id", mdfeEdit.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("mdfes").insert(payload);
-        if (error) throw error;
+      // Colunas adicionadas por migrations recentes (Seções 293, 297, 298). Se alguma ainda não
+      // existe no banco, salva SEM elas (em vez de travar o salvamento) e avisa quais ficaram de fora.
+      const COLUNAS_NOVAS = ["seguradora_nome", "seguradora_cnpj", "apolice_numero", "averbacao_numero", "pag_pix", "pag_cod_banco", "pag_agencia", "emitente_id", "emitente_cnpj", "emitente_razao_social"];
+      const gravar = (dados: Record<string, unknown>) => mdfeEdit
+        ? supabase.from("mdfes").update(dados).eq("id", mdfeEdit.id)
+        : supabase.from("mdfes").insert(dados);
+      let { error } = await gravar(payload as Record<string, unknown>);
+      let ficaramFora: string[] = [];
+      if (error && /Could not find the '.+' column|schema cache/i.test(error.message)) {
+        const dados = { ...(payload as Record<string, unknown>) };
+        ficaramFora = COLUNAS_NOVAS.filter(c => c in dados);
+        for (const c of ficaramFora) delete dados[c];
+        ({ error } = await gravar(dados));
       }
+      if (error) throw error;
       await carregar();
       setModal(false);
+      if (ficaramFora.length) alert(`MDF-e salvo, mas estes dados NÃO foram gravados porque a migration do banco ainda não foi aplicada: ${ficaramFora.join(", ")}.\nRode as Seções 293, 297 e 298 do supabase_migrations.sql no Supabase SQL Editor.`);
     } catch (e: unknown) {
       setErr(e && typeof e === "object" && "message" in e ? String(e.message) : "Erro ao salvar.");
     } finally {
