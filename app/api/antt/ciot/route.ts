@@ -119,11 +119,25 @@ export async function POST(req: NextRequest) {
       }
 
       // F) Declara (DataDeclaracao no horário de Brasília, na hora do envio)
-      const d = await svc.declarar(id, dados);
-      if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(" | ") || "sem detalhe"}` }, { status: 422 });
-      const dd = d.Dados;
-      await db.from("ciots").update({ codigo_verificador: dd?.CodigoVerificador, protocolo: dd?.Protocolo, valor_frete: parseFloat(dados.ValorFrete), data_inicio: dados.DataInicioViagem, data_fim: dados.DataFimViagem, status: "declarado" }).eq("id_operacao", id);
-      return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: dd?.IdOperacaoTransporte ?? id, CodigoVerificador: dd?.CodigoVerificador ?? "", Protocolo: dd?.Protocolo ?? "" } });
+      let d = await svc.declarar(id, dados);
+      // Resposta ambígua ou "já cadastrado" (219: a declaração anterior FOI aceita, mas a tela não viu)
+      // → consulta o CIOT na ANTT: devolve o código completo com o dígito verificador.
+      const jaCadastrado = !d.Sucesso && /j[aá] cadastrad/i.test(d.Mensagem ?? "");
+      if (d.Sucesso || jaCadastrado) {
+        let verificador = d.Dados?.CodigoVerificador ?? "";
+        let protocolo = d.Dados?.Protocolo ?? "";
+        if (!verificador) {
+          try {
+            const c = await svc.consultar(id, new Date().getFullYear().toString());
+            const cod = String((c as unknown as { CodigoIdentificacaoOperacao?: string }).CodigoIdentificacaoOperacao ?? "");
+            if (cod.length >= 16) verificador = cod.slice(12, 16);
+          } catch { /* segue sem verificador; consultável depois */ }
+        }
+        if (jaCadastrado) d = { ...d, Sucesso: true, Mensagem: "Declaração já registrada na ANTT (recuperada pela consulta).", Erros: [] };
+        await db.from("ciots").update({ codigo_verificador: verificador || null, protocolo: protocolo || null, valor_frete: parseFloat(dados.ValorFrete), data_inicio: dados.DataInicioViagem, data_fim: dados.DataFimViagem, status: "declarado" }).eq("id_operacao", id);
+        return NextResponse.json({ Sucesso: true, Mensagem: d.Mensagem, Erros: [], Dados: { IdOperacaoTransporte: id, CodigoVerificador: verificador, Protocolo: protocolo } });
+      }
+      return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || "sem detalhe"}` }, { status: 422 });
     }
 
     if (b.acao === "consultar") return NextResponse.json(await svc.consultar(b.ciot ?? "", b.ano ?? String(new Date().getFullYear())));

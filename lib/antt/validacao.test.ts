@@ -44,3 +44,16 @@ test("peso zero, placa duplicada, PIX ausente e destinatário inválido", () => 
   const er = prepararDeclaracao({ dados: b, cnpjEmitente: "21016959000195" }).erros.join(" ");
   assert.match(er, /Peso/); assert.match(er, /duplicadas/); assert.match(er, /PIX/); assert.match(er, /destinatário/);
 });
+
+import { normalizarRespostaAntt } from "./ciot";
+test("resposta de sucesso da ANTT (sem envelope Sucesso) é sucesso", () => {
+  const r = normalizarRespostaAntt({ IdOperacaoTransporte: "560000569297", CodigoVerificador: "3535", Protocolo: "T98000000000720", Codigo: "110", Mensagem: "Dados inseridos com sucesso!", AvisoTransportador: null });
+  assert.equal(r.Sucesso, true);
+  assert.equal(r.Dados.CodigoVerificador, "3535");
+});
+test("lista de rejeições é falha, com as mensagens", () => {
+  const r = normalizarRespostaAntt({ Mensagem: '["Rejeição: A data e hora da declaração está fora do intervalo"]' });
+  assert.equal(r.Sucesso, false);
+  assert.match(r.Mensagem, /fora do intervalo/);
+  assert.equal(normalizarRespostaAntt(["Rejeição: x"]).Sucesso, false);
+});

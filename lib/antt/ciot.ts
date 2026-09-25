@@ -90,6 +90,30 @@ import { agoraBrasilia } from "./validacao";
 
 export type CertificadoPem = { cert: string; key: string };
 
+/**
+ * A ANTT NÃO devolve o envelope {Sucesso, Dados} na declaração: a resposta é
+ * {IdOperacaoTransporte, CodigoVerificador, Protocolo, Codigo:"110", Mensagem:"Dados inseridos com
+ * sucesso!"} (ou uma lista de rejeições). A versão anterior tratava a AUSÊNCIA de "Sucesso" como falha
+ * — o CIOT 560000569297 foi declarado com êxito e a tela mostrou erro (25/09/2026).
+ */
+export function normalizarRespostaAntt(raw: unknown): ApiResponseANTT<CiotGerado> {
+  const r = (Array.isArray(raw) ? { Mensagem: raw } : (raw ?? {})) as Record<string, unknown>;
+  let msgs: string[] = [];
+  const m = r.Mensagem;
+  if (Array.isArray(m)) msgs = m.map(String);
+  else if (typeof m === "string") { try { const j = JSON.parse(m); msgs = Array.isArray(j) ? j.map(String) : [m]; } catch { msgs = [m]; } }
+  if (Array.isArray(r.Erros)) msgs = msgs.concat((r.Erros as unknown[]).map(String));
+  const id = String(r.IdOperacaoTransporte ?? "");
+  const codigo = Array.isArray(r.Codigo) ? String(r.Codigo[0] ?? "") : String(r.Codigo ?? "");
+  const ok = r.Sucesso === true || (r.Sucesso === undefined && (codigo === "110" || (id.length === 12 && !msgs.some(x => /rejei/i.test(x)))));
+  return {
+    Sucesso: ok,
+    Dados: { IdOperacaoTransporte: id, CodigoVerificador: String(r.CodigoVerificador ?? ""), Protocolo: String(r.Protocolo ?? ""), Codigo: codigo, Mensagem: msgs.join(" | "), AvisoTransportador: (r.AvisoTransportador as string | null) ?? null },
+    Mensagem: msgs.join(" | "),
+    Erros: ok ? [] : msgs,
+  };
+}
+
 export class CiotService {
   private host: string;
   private basePath: string;
@@ -139,7 +163,7 @@ export class CiotService {
       InfIndicadoresOperacionais: { IndAltoDesempenho: "false", IndRetornoVazio: "false", ComposicaoVeicular: "false" },
       ...dados,
     };
-    return this.post<CiotGerado>("/api/DeclaracaoOperacaoTransporte", payload);
+    return this.post<Record<string, unknown>>("/api/DeclaracaoOperacaoTransporte", payload).then(normalizarRespostaAntt);
   }
 
   /** Pré-checagem (B15/B20): as placas pertencem ao RNTRC do transportador? */
@@ -148,7 +172,7 @@ export class CiotService {
   }
 
   consultar(ciot: string, ano: string) {
-    return this.post("/api/ConsultarCIOTGerado", { CodigoIdentificacaoOperacao: ciot, AnoDeclaracao: ano });
+    return this.post("/api/ConsultarCIOTGerado", { CodigoIdentificacaoOperacao: ciot, AnoDeclaracao: Number(ano) });
   }
 
   cancelar(ciotComVerificador: string, motivo: string) {

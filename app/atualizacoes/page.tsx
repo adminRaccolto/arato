@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-p",
+    data: "25/09/2026",
+    titulo: "CIOT: sucesso da ANTT era exibido como erro",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A ANTT respondeu \"Dados inseridos com sucesso!\" (código 110) e o CIOT 560000569297 foi de fato declarado, mas a tela mostrou falha: a resposta da declaração não traz o campo Sucesso, e o sistema tratava a ausência como erro. Agora a resposta é interpretada corretamente (código 110 / número devolvido = sucesso); quando a ANTT diz que a operação já está cadastrada, o sistema consulta o CIOT e recupera o dígito verificador. Para o CIOT 560000569297: use o campo \"Já emitiu o CIOT? Informe o número\" com esse número — ele já está válido na ANTT." },
+    ],
+    onde: "Transporte → CT-e e MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.25-o",
     data: "25/09/2026",
     titulo: "CIOT: validação completa (regras B1–B120 da ANTT) antes de reservar o número",
