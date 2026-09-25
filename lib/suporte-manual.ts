@@ -1383,4 +1383,5 @@ Campo que classifica o lançamento para fins fiscais:
 | CP não aparece no Fluxo de Caixa | Produtor ou conta bancária não selecionados no filtro | Usar os botões "Selecionar Todos" nos filtros |
 | "Seu plano Essencial não inclui armazenamento" ao anexar arquivo, mas a conta é Performance | Conta sem assinatura paga (pro bono) era lida como Essencial | Corrigido: sem assinatura, vale o pacote da conta (Performance = 3 GB). Se ainda aparecer, conferir o pacote da conta em Admin |
 | Baixa de CP/CR de Empresa pede conta bancária e novo vencimento | A baixa das Empresas segue o padrão do produtor | Escolher a conta; se pagar menos que o devido, informar o novo vencimento do saldo (fica Parcial); para desfazer usar Reabrir |
+| Como reprogramar o vencimento de um CP/CR de Empresa | Igual ao produtor | Botão ↕ na linha: informa nova data (e novo valor, se houver), o vencimento original fica registrado |
 `;

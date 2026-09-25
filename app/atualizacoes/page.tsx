@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-y",
+    data: "25/09/2026",
+    titulo: "Reprogramar vencimento no CP/CR das Empresas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Contas a Pagar e a Receber das Empresas ganharam o botão ↕ Reprogramar, igual ao do produtor: nova data de vencimento, novo valor opcional e motivo. O vencimento original fica guardado e a observação registra a reprogramação." },
+    ],
+    onde: "Financeiro → Empresas → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.09.25-x",
     data: "25/09/2026",
     titulo: "Baixa do CP/CR das Empresas igual à dos Produtores",

@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import ReprogramarEmpresaModal from "../../../components/ReprogramarEmpresaModal";
 import BaixaEmpresaModal from "../../../components/BaixaEmpresaModal";
 import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, listarContasBancariasDaConta } from "../../../lib/db";
 import type { EmpresaLancamento, Empresa, Pessoa } from "../../../lib/supabase";
@@ -90,6 +91,7 @@ export default function EmpresaPagarPage() {
   const [tabModal,   setTabModal]   = useState<"principal"|"adicionais">("principal");
 
   // baixa
+  const [reprogLanc, setReprogLanc] = useState<EmpresaLancamento | null>(null);
   const [baixaOpen,  setBaixaOpen]  = useState(false);
   const [baixaLanc,  setBaixaLanc]  = useState<EmpresaLancamento | null>(null);
   const [baixaData,  setBaixaData]  = useState(TODAY);
@@ -309,6 +311,9 @@ export default function EmpresaPagarPage() {
                             {(l.status === "pago" || l.status === "parcial") && (
                               <button style={{ ...S.btn("#C9921B"), fontSize: 11, padding: "3px 8px" }} title="Reabrir — apaga dados de baixa" onClick={() => reabrir(l)}>↺ Reabrir</button>
                             )}
+                            {l.status !== "pago" && l.status !== "cancelado" && (
+                              <button style={{ ...S.btn("#555"), fontSize: 11, padding: "3px 8px" }} title="Reprogramar vencimento" onClick={() => setReprogLanc(l)}>↕</button>
+                            )}
                             <button style={{ ...S.btn("#1A4870"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirEditar(l)}>✏</button>
                             <button style={{ ...S.btn("#E24B4A"), fontSize: 11, padding: "3px 8px" }} onClick={() => excluir(l.id)}>✕</button>
                           </div>
@@ -428,6 +433,9 @@ export default function EmpresaPagarPage() {
         </div>
       )}
 
+      {reprogLanc && (
+        <ReprogramarEmpresaModal lanc={reprogLanc} onClose={() => setReprogLanc(null)} onDone={() => { setReprogLanc(null); carregar(); }} />
+      )}
       {baixaOpen && baixaLanc && (
         <BaixaEmpresaModal lanc={baixaLanc} contas={contas} onClose={() => setBaixaOpen(false)} onDone={() => { setBaixaOpen(false); setBaixaLanc(null); carregar(); }} />
       )}

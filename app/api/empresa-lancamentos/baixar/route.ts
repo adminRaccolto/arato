@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const body = await req.json() as {
-      acao: "baixar" | "reabrir";
+      acao: "baixar" | "reabrir" | "reprogramar";
+      nova_data?: string;
+      novo_valor?: number;
       lancamento_id: string;
       valor_pago_agora?: number;
       data_baixa?: string;
@@ -34,12 +36,27 @@ export async function POST(req: NextRequest) {
 
     const sb = admin();
     const { data: atual } = await sb.from("empresa_lancamentos")
-      .select("fazenda_id, valor, moeda, cotacao_usd, valor_pago, data_vencimento, valor_desconto")
+      .select("fazenda_id, status, observacao, data_prorrogacao, valor, moeda, cotacao_usd, valor_pago, data_vencimento, valor_desconto")
       .eq("id", body.lancamento_id).maybeSingle();
     if (!atual) return NextResponse.json({ ok: false, error: "Lançamento não encontrado" }, { status: 404 });
 
     const access = await validateFazendaAccess(atual.fazenda_id as string);
     if (!access.ok) return NextResponse.json({ ok: false, error: access.error }, { status: access.status });
+
+    if (body.acao === "reprogramar") {
+      if (!body.nova_data) return NextResponse.json({ ok: false, error: "Informe a nova data de vencimento." }, { status: 400 });
+      const [y, m, d] = body.nova_data.split("-");
+      const marca = `[Reprogramado para ${d}/${m}/${y}]${body.observacao ? " " + body.observacao : ""}`;
+      const patch: Record<string, unknown> = {
+        data_vencimento: body.nova_data,
+        data_prorrogacao: (atual.data_prorrogacao as string | null) ?? atual.data_vencimento,
+        observacao: atual.observacao ? `${atual.observacao} | ${marca}` : marca,
+      };
+      if (body.novo_valor && body.novo_valor > 0) patch.valor = body.novo_valor;
+      const { error } = await sb.from("empresa_lancamentos").update(patch).eq("id", body.lancamento_id);
+      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      return NextResponse.json({ ok: true });
+    }
 
     if (body.acao === "reabrir") {
       const { error } = await sb.from("empresa_lancamentos").update({
