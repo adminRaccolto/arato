@@ -13839,3 +13839,18 @@ CREATE POLICY emp_lanc_delete ON empresa_lancamentos FOR DELETE USING (
   OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND (role LIKE 'raccotlo%' OR role = 'bpo'))
 );
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- SEÇÃO 301 — empresa_lancamentos: baixa idêntica ao CP/CR do produtor
+-- Status 'parcial'; encargos em R$; prorrogação do saldo.
+-- Não altera dados existentes (pendente/pago/cancelado continuam válidos).
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE empresa_lancamentos DROP CONSTRAINT IF EXISTS empresa_lancamentos_status_check;
+ALTER TABLE empresa_lancamentos ADD CONSTRAINT empresa_lancamentos_status_check
+  CHECK (status IN ('pendente','parcial','pago','cancelado'));
+ALTER TABLE empresa_lancamentos
+  ADD COLUMN IF NOT EXISTS valor_multa    numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_juros    numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_desconto numeric(14,2),
+  ADD COLUMN IF NOT EXISTS data_prorrogacao date;
+NOTIFY pgrst, 'reload schema';

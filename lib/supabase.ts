@@ -344,10 +344,14 @@ export type EmpresaLancamento = {
   valor: number;
   moeda?: string;
   cotacao_usd?: number;
-  status: "pendente" | "pago" | "cancelado";
+  status: "pendente" | "parcial" | "pago" | "cancelado";
   data_vencimento: string;
   data_pagamento?: string;
   valor_pago?: number;
+  valor_multa?: number;
+  valor_juros?: number;
+  valor_desconto?: number;
+  data_prorrogacao?: string;
   competencia?: string;           // YYYY-MM
   categoria?: string;
   centro_custo?: string;

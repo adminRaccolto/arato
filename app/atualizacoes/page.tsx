@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-x",
+    data: "25/09/2026",
+    titulo: "Baixa do CP/CR das Empresas igual à dos Produtores",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A baixa em Financeiro → Empresas → Contas a Pagar / Receber agora segue o mesmo processo do produtor: conta bancária obrigatória, multa, juros e desconto em R$, valor pago com sugestão do total devido, baixa parcial com novo vencimento do saldo (status Parcial), botão Reabrir para desfazer a baixa e totais pelo saldo em aberto. Requer executar a Seção 301 de migration (status parcial e colunas de encargos). Borderô e conciliação bancária das Empresas ficam para uma próxima etapa." },
+    ],
+    onde: "Financeiro → Empresas → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.09.25-w",
     data: "25/09/2026",
     titulo: "Upload de documentos liberado para contas pro bono (plano Performance)",

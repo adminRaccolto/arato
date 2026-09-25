@@ -3,7 +3,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, baixarEmpresaLancamento, listarContasBancariasDaConta } from "../../../lib/db";
+import BaixaEmpresaModal from "../../../components/BaixaEmpresaModal";
+import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, listarContasBancariasDaConta } from "../../../lib/db";
 import type { EmpresaLancamento, Empresa, Pessoa } from "../../../lib/supabase";
 
 // ─── Categorias empresariais ─────────────────────────────────
@@ -133,16 +134,16 @@ export default function EmpresaPagarPage() {
         const busca = fBusca.toLowerCase();
         if (!l.descricao.toLowerCase().includes(busca) && !(l.pessoa_nome ?? "").toLowerCase().includes(busca)) return false;
       }
-      if (fStatus === "aberto")  return l.status === "pendente" && l.data_vencimento >= hoje;
-      if (fStatus === "vencido") return l.status === "pendente" && l.data_vencimento < hoje;
+      if (fStatus === "aberto")  return (l.status === "pendente" || l.status === "parcial") && l.data_vencimento >= hoje;
+      if (fStatus === "vencido") return (l.status === "pendente" || l.status === "parcial") && l.data_vencimento < hoje;
       if (fStatus === "pago")    return l.status === "pago";
       return true;
     });
   }, [lancamentos, fEmpresa, fCat, fBusca, fStatus, hoje]);
 
   // ─── KPIs ────────────────────────────────────────────────────
-  const totAberto  = lancamentos.filter(l => l.status === "pendente" && l.data_vencimento >= hoje).reduce((s,l) => s+l.valor, 0);
-  const totVencido = lancamentos.filter(l => l.status === "pendente" && l.data_vencimento < hoje).reduce((s,l) => s+l.valor, 0);
+  const totAberto  = lancamentos.filter(l => (l.status === "pendente" || l.status === "parcial") && l.data_vencimento >= hoje).reduce((s,l) => s+l.valor-(l.valor_pago ?? 0), 0);
+  const totVencido = lancamentos.filter(l => (l.status === "pendente" || l.status === "parcial") && l.data_vencimento < hoje).reduce((s,l) => s+l.valor-(l.valor_pago ?? 0), 0);
   const totPago    = lancamentos.filter(l => l.status === "pago").reduce((s,l) => s+(l.valor_pago ?? l.valor), 0);
 
   // ─── Salvar ──────────────────────────────────────────────────
@@ -170,16 +171,17 @@ export default function EmpresaPagarPage() {
     setForm({ ...l }); setEditId(l.id); setTabModal("principal"); setMsg(""); setModalOpen(true);
   }
 
+  async function reabrir(l: EmpresaLancamento) {
+    if (!confirm("Reabrir este lançamento? Os dados de baixa (valor, data, encargos) serão apagados.")) return;
+    const r = await fetch("/api/empresa-lancamentos/baixar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "reabrir", lancamento_id: l.id }) });
+    const j = await r.json();
+    if (!j.ok) { alert("Erro: " + j.error); return; }
+    carregar();
+  }
+
   async function excluir(id: string) {
     if (!confirm("Excluir este lançamento?")) return;
     await excluirEmpresaLancamento(id); carregar();
-  }
-
-  async function confirmarBaixa() {
-    if (!baixaLanc) return;
-    setSaving(true);
-    await baixarEmpresaLancamento(baixaLanc.id, baixaData, parseFloat(baixaValor.replace(",",".")) || baixaLanc.valor);
-    setBaixaOpen(false); setBaixaLanc(null); carregar(); setSaving(false);
   }
 
   function abrirBaixa(l: EmpresaLancamento) {
@@ -189,6 +191,7 @@ export default function EmpresaPagarPage() {
   const statusBadge = (l: EmpresaLancamento) => {
     if (l.status === "pago") return { label: "Pago", bg: "#DCFCE7", color: "#16A34A" };
     if (l.status === "cancelado") return { label: "Cancelado", bg: "#F0F0F0", color: "#888" };
+    if (l.status === "parcial") return { label: "Parcial", bg: "#FDE9BB", color: "#7A5500" };
     if (l.data_vencimento < hoje) return { label: "Vencido", bg: "#FFEAEA", color: "#E24B4A" };
     return { label: "Aberto", bg: "#FBF3E0", color: "#C9921B" };
   };
@@ -300,8 +303,11 @@ export default function EmpresaPagarPage() {
                         </td>
                         <td style={S.td}>
                           <div style={{ display: "flex", gap: 4 }}>
-                            {l.status === "pendente" && (
+                            {(l.status === "pendente" || l.status === "parcial") && (
                               <button style={{ ...S.btn("#16A34A"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirBaixa(l)}>↓ Baixar</button>
+                            )}
+                            {(l.status === "pago" || l.status === "parcial") && (
+                              <button style={{ ...S.btn("#C9921B"), fontSize: 11, padding: "3px 8px" }} title="Reabrir — apaga dados de baixa" onClick={() => reabrir(l)}>↺ Reabrir</button>
                             )}
                             <button style={{ ...S.btn("#1A4870"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirEditar(l)}>✏</button>
                             <button style={{ ...S.btn("#E24B4A"), fontSize: 11, padding: "3px 8px" }} onClick={() => excluir(l.id)}>✕</button>
@@ -422,28 +428,8 @@ export default function EmpresaPagarPage() {
         </div>
       )}
 
-      {/* ═══ Modal Baixa ═══ */}
       {baixaOpen && baixaLanc && (
-        <div style={{ ...S.overlay, zIndex: 1100 }} onClick={() => setBaixaOpen(false)}>
-          <div style={{ ...S.modal, width: "min(96vw,440px)" }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Registrar Pagamento</h3>
-            <p style={{ fontSize: 13, color: "#555", marginBottom: 16 }}><strong>{baixaLanc.descricao}</strong> — {fmtBRL(baixaLanc.valor)}</p>
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <label style={S.label}>Data do Pagamento *</label>
-                <input type="date" style={S.inp} value={baixaData} onChange={e => setBaixaData(e.target.value)} />
-              </div>
-              <div>
-                <label style={S.label}>Valor Pago (R$)</label>
-                <input style={S.inp} value={baixaValor} onChange={e => setBaixaValor(e.target.value)} />
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-              <button style={{ ...S.btn("transparent", "#555"), border: "0.5px solid #DDE2EE" }} onClick={() => setBaixaOpen(false)}>Cancelar</button>
-              <button style={S.btn("#16A34A")} onClick={confirmarBaixa} disabled={saving}>✓ Confirmar</button>
-            </div>
-          </div>
-        </div>
+        <BaixaEmpresaModal lanc={baixaLanc} contas={contas} onClose={() => setBaixaOpen(false)} onDone={() => { setBaixaOpen(false); setBaixaLanc(null); carregar(); }} />
       )}
     </div>
   );
