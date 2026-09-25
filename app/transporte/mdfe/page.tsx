@@ -285,6 +285,7 @@ interface CteMin {
   municipio_origem?: string | null; uf_origem?: string | null; ibge_origem?: string | null;
   nfe_chave?: string | null;
   ciot?: string | null; ciot_codigo_verificador?: string | null; ciot_protocolo?: string | null;
+  ibge_destino?: string | null;
   emitente_cnpj?: string | null; remetente_id?: string | null; destinatario_id?: string | null;
   municipio_destino?: string | null; uf_destino?: string | null;
   produto_descricao?: string | null; ncm?: string | null; unidade?: string | null;
@@ -402,7 +403,7 @@ function MdfePageInner() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade, ciot, ciot_codigo_verificador, ciot_protocolo").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade, ciot, ciot_codigo_verificador, ciot_protocolo, ibge_destino").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
@@ -634,6 +635,8 @@ function MdfePageInner() {
           : Promise.resolve({ data: [] as { config: Record<string, string> }[] }),
       ]);
       const cepDe = (pid?: string | null) => (pes.data ?? []).find(p => p.id === pid)?.cep?.replace(/\D/g, "") ?? "";
+      // CEPs também alimentam o formulário do CIOT (se ainda vazios)
+      setCiotForm(f => ({ ...f, cep_origem: f.cep_origem || cepDe(c.remetente_id), cep_destino: f.cep_destino || cepDe(c.destinatario_id) }));
       const conf = ((cfg.data ?? []) as { config: Record<string, string> }[]).map(r => r.config).find(x => x?.seguradora_nome || x?.apolice_numero) ?? {};
       setForm(f => ({
         ...f,
@@ -648,6 +651,31 @@ function MdfePageInner() {
       }));
     } catch { /* best-effort: o usuário ainda pode preencher à mão */ }
   }
+
+  // Preenche o formulário do CIOT com o que o(s) CT-e vinculado(s) já sabem: valor do frete
+  // (soma), IBGE de origem/destino, peso em toneladas, natureza da carga (pelo produto) e a data
+  // fim. Só completa campo vazio, exceto valor e peso, que acompanham a seleção. Distância e
+  // CEPs: os CEPs vêm do cadastro de Pessoas (enriquecerPeloCte); a distância é manual.
+  useEffect(() => {
+    const sel = ctes.filter(c => form.cte_ids.includes(c.id));
+    if (!sel.length) return;
+    const primeiro = sel[0];
+    const frete = sel.reduce((t, c) => t + (Number(c.valor_frete) || 0), 0);
+    const pesoTon = sel.reduce((t, c) => t + (Number(c.peso_bruto_kg) || 0), 0) / 1000;
+    const d = (primeiro.produto_descricao ?? "").toLowerCase();
+    const natureza = d.includes("soja") ? "2101" : d.includes("milho") ? "2102" : d.includes("algod") ? "2103" : d.includes("trigo") ? "2104"
+      : /(calc|corretiv|fertiliz|adubo|dolom)/.test(d) ? "2201" : "2202";
+    setCiotForm(f => ({
+      ...f,
+      valor_frete: frete > 0 ? frete.toFixed(2) : f.valor_frete,
+      peso_ton: pesoTon > 0 ? pesoTon.toFixed(3) : f.peso_ton,
+      ibge_origem: f.ibge_origem || (primeiro.ibge_origem ?? ""),
+      ibge_destino: f.ibge_destino || (primeiro.ibge_destino ?? ""),
+      data_fim: f.data_fim || form.data_emissao,
+      natureza: f.natureza && f.natureza !== "2101" ? f.natureza : natureza,
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.cte_ids.join(","), ctes.length]);
 
   // ── Toggle CT-e vinculado ────────────────────────────────
   // Ao marcar o primeiro CT-e (campos do MDF-e ainda vazios), herda veículo, motorista, origem

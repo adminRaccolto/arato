@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-k",
+    data: "25/09/2026",
+    titulo: "MDF-e: formulário do CIOT preenchido pelo CT-e vinculado",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao marcar o CT-e no MDF-e, o bloco de CIOT já vem preenchido com o que o CT-e sabe: valor do frete (soma dos CT-e), peso em toneladas, códigos IBGE de origem e destino, natureza da carga (pelo produto), data fim (= emissão) e os CEPs do cadastro do remetente/destinatário. Sobra só a distância em km (e a chave PIX, que usa o CPF do motorista se ficar em branco)." },
+    ],
+    onde: "Transporte → MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.25-j",
     data: "25/09/2026",
     titulo: "CIOT obrigatório em todo frete remunerado (regra ANTT de 24/05/2026) + entrada manual",
