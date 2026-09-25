@@ -2155,7 +2155,7 @@ export async function listarEmpresaLancamentos(
   if (!fazendaIds.length) return [];
   let q = supabase
     .from("empresa_lancamentos")
-    .select("*, empresas(nome), pessoas(nome_razao_social)")
+    .select("*, empresas(nome), pessoas(nome_razao_social:nome)")
     .in("fazenda_id", fazendaIds)
     .order("data_vencimento", { ascending: true });
   if (opts?.empresaId) q = q.eq("empresa_id", opts.empresaId);
@@ -2919,6 +2919,7 @@ export async function processarNfEntrada(
   // Se cnpj_destino da NF bate com o CNPJ de uma empresa cadastrada,
   // o CP vai para empresa_lancamentos em vez de lancamentos.
   let empresaDestinoId: string | null = null;
+  let empresaDestinoFazendaId: string | null = null;
   {
     const { data: nfRow } = await supabase
       .from("nf_entradas").select("cnpj_destino").eq("id", nfId).maybeSingle();
@@ -2927,12 +2928,17 @@ export async function processarNfEntrada(
       const cdFmt = cd.length === 14
         ? cd.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
         : cd.length === 11 ? cd.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : cd;
-      const { data: empDest } = await supabase
-        .from("empresas").select("id")
-        .eq("fazenda_id", fazenda_id)
-        .or(`cpf_cnpj.eq.${cd},cpf_cnpj.eq.${cdFmt}`)
-        .maybeSingle();
+      // Empresa da CONTA (não só da fazenda da NF): a mesma empresa/CNPJ pode estar cadastrada em
+      // outra fazenda do cliente — buscar só na fazenda da NF deixava a NF sem CP no financeiro
+      // da Empresa (achado 25/09/2026). Prefere o cadastro da própria fazenda.
+      const idsContaEmp = await resolverFazendaIdsDaConta(fazenda_id);
+      const { data: empsDest } = await supabase
+        .from("empresas").select("id, fazenda_id")
+        .in("fazenda_id", idsContaEmp.length ? idsContaEmp : [fazenda_id])
+        .or(`cpf_cnpj.eq.${cd},cpf_cnpj.eq.${cdFmt}`);
+      const empDest = (empsDest ?? []).find(e => e.fazenda_id === fazenda_id) ?? (empsDest ?? [])[0];
       empresaDestinoId = empDest?.id ?? null;
+      empresaDestinoFazendaId = (empDest?.fazenda_id as string | undefined) ?? null;
     }
   }
 
@@ -3010,7 +3016,7 @@ export async function processarNfEntrada(
       const competenciaEmp = dataEntrada.slice(0, 7); // YYYY-MM
 
       const baseEmpCP = {
-        fazenda_id,
+        fazenda_id:    empresaDestinoFazendaId ?? fazenda_id,
         empresa_id:    empresaDestinoId,
         tipo:          "pagar" as const,
         moeda:         "BRL",

@@ -181,12 +181,12 @@ export default function RelatorioEndividamento() {
       const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
       const [ctsRaw, { data: prods }, ptaxResult, { data: cctRaw }] = await Promise.all([
         listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds),
-        supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").in("fazenda_id", fazendaIds).order("nome_razao_social"),
+        supabase.from("produtores").select("id,nome_razao_social:nome,cpf_cnpj").in("fazenda_id", fazendaIds).order("nome"),
         fetch("/api/precos").then(r => r.json()).then(d => d.usdPtax ?? d.usdBrl ?? null).catch(() => null),
         supabase.from("cct_pagamentos")
           .select(`id, data_vencimento, valor, status, moeda_parcela, quantidade_sacas, preco_sc_ref,
                    contrato_id, contratos_compra_terra!inner(imovel_nome, valor_total, vendedor_id,
-                     pessoas!contratos_compra_terra_vendedor_id_fkey(nome_razao_social))`)
+                     pessoas!contratos_compra_terra_vendedor_id_fkey(nome_razao_social:nome))`)
           .in("fazenda_id", hintIds)
           .order("data_vencimento"),
       ]);

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-q",
+    data: "25/09/2026",
+    titulo: "Financeiro Empresas: lista de CP/CR aparecia vazia + NF de empresa agora vai para o financeiro da Empresa",
+    modulos: ["Financeiro", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Contas a Pagar/Receber — Empresas mostravam \"Nenhum lançamento\" mesmo com lançamentos no banco: a consulta pedia a coluna nome_razao_social da tabela de Pessoas, que se chama nome, então dava erro e a tela engolia o erro. Corrigido (também no seletor de fornecedor/cliente das duas telas e no filtro de produtores/vendedores do Endividamento, que tinham o mesmo nome de coluna errado)." },
+      { tipo: "correcao", texto: "NF de entrada destinada ao CNPJ de uma Empresa só ia para o financeiro da Empresa se a empresa estivesse cadastrada na MESMA fazenda da NF; senão o CP caía no financeiro do produtor. Agora a empresa é procurada na conta inteira (prefere a da fazenda da NF) e o lançamento vai para a fazenda dela." },
+    ],
+    onde: "Financeiro → Empresas → CP e CR · Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.25-p",
     data: "25/09/2026",
     titulo: "CIOT: sucesso da ANTT era exibido como erro",

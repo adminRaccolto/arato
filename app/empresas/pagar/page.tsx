@@ -104,7 +104,7 @@ export default function EmpresaPagarPage() {
         listarContasBancariasDaConta(fazendaIds[0]),
       ]);
       // Query direta para pessoas — usa fazendaIds completo, sem resolução interna
-      const { data: pessData } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).order("nome_razao_social");
+      const { data: pessData } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).order("nome");
       const pess = pessData ?? [];
       setEmpresas(emps);
       setPessoas(pess as Pessoa[]);
@@ -375,7 +375,7 @@ export default function EmpresaPagarPage() {
                   <label style={S.label}>Fornecedor</label>
                   <select style={S.inp} value={form.pessoa_id ?? ""} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value || undefined }))}>
                     <option value="">— Nenhum —</option>
-                    {pessoas.map((p: any) => <option key={p.id} value={p.id}>{p.nome_razao_social}</option>)}
+                    {pessoas.map((p: any) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                   </select>
                 </div>
                 <div>

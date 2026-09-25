@@ -323,7 +323,7 @@ export default function EmpresaReceberPage() {
                 <label style={S.label}>Cliente</label>
                 <select style={S.inp} value={form.pessoa_id ?? ""} onChange={e => setForm(p=>({...p, pessoa_id: e.target.value||undefined}))}>
                   <option value="">— Nenhum —</option>
-                  {pessoas.map((p: any) => <option key={p.id} value={p.id}>{p.nome_razao_social}</option>)}
+                  {pessoas.map((p: any) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
               <div>
