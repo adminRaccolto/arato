@@ -42,8 +42,11 @@ export async function GET() {
     .limit(1)
     .maybeSingle();
 
-  const plano_id  = (assinatura?.plano_id as string) ?? "essencial";
-  const storageGb = ((assinatura?.planos as { storage_gb?: number } | null)?.storage_gb)
+  // Sem assinatura ativa (ex.: contas pro bono) → usa o pacote da própria conta
+  const { data: contaPacote } = await db.from("contas")
+    .select("pacote").eq("id", perfil.conta_id).maybeSingle();
+  const plano_id  = (assinatura?.plano_id as string) ?? (contaPacote?.pacote as string | null) ?? "essencial";
+  const storageGb = (assinatura ? (assinatura.planos as { storage_gb?: number } | null)?.storage_gb : undefined)
     ?? COTAS_FALLBACK[plano_id]
     ?? 0;
   const cota_bytes = storageGb * 1024 * 1024 * 1024;

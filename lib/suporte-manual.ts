@@ -1381,4 +1381,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Pedido de compra não pode ser excluído | Tem NFs de entrada vinculadas | Usar status "Cancelado" em vez de excluir |
 | "Ciclo não encontrado" ao registrar operação | Ciclo não cadastrado | Cadastrar em Configurações → Cadastros → Safras e Ciclos |
 | CP não aparece no Fluxo de Caixa | Produtor ou conta bancária não selecionados no filtro | Usar os botões "Selecionar Todos" nos filtros |
+| "Seu plano Essencial não inclui armazenamento" ao anexar arquivo, mas a conta é Performance | Conta sem assinatura paga (pro bono) era lida como Essencial | Corrigido: sem assinatura, vale o pacote da conta (Performance = 3 GB). Se ainda aparecer, conferir o pacote da conta em Admin |
 `;

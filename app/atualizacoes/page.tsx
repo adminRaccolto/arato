@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-w",
+    data: "25/09/2026",
+    titulo: "Upload de documentos liberado para contas pro bono (plano Performance)",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Contas pro bono (sem assinatura paga cadastrada) eram tratadas como plano Essencial no upload de documentos e recebiam a mensagem \"faça upgrade\", mesmo estando no plano Performance. Agora, sem assinatura ativa, o sistema usa o pacote definido na própria conta (Performance = 3 GB de armazenamento)." },
+    ],
+    onde: "Anexos de documentos em todo o sistema",
+  },
+  {
     versao: "2026.09.25-v",
     data: "25/09/2026",
     titulo: "NF de Entrada: desconto/impostos do XML, centavos e parcelas que fecham",
