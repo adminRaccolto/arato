@@ -13811,3 +13811,31 @@ ALTER TABLE ciots ALTER COLUMN codigo_verificador DROP NOT NULL;
 ALTER TABLE ciots DROP CONSTRAINT IF EXISTS ciots_status_check;
 ALTER TABLE ciots ADD CONSTRAINT ciots_status_check CHECK (status IN ('reservado','declarado','encerrado','cancelado'));
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 300 — empresa_lancamentos: acesso da equipe Raccolto/BPO (raccotlo*, sem conta no perfil) ──
+-- Achado 25/09/2026: a BPO2 (role raccotlo_seletor, perfis.conta_id NULL) via os lançamentos do
+-- contas a pagar/receber do produtor (tabela lancamentos, que já tem esse acesso) mas NÃO os das
+-- Empresas: as policies de empresa_lancamentos só olhavam perfis.conta_id. Mesmo padrão da
+-- policy lancamentos_tenant (role LIKE 'raccotlo%').
+DROP POLICY IF EXISTS emp_lanc_select ON empresa_lancamentos;
+DROP POLICY IF EXISTS emp_lanc_insert ON empresa_lancamentos;
+DROP POLICY IF EXISTS emp_lanc_update ON empresa_lancamentos;
+DROP POLICY IF EXISTS emp_lanc_delete ON empresa_lancamentos;
+
+CREATE POLICY emp_lanc_select ON empresa_lancamentos FOR SELECT USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND (role LIKE 'raccotlo%' OR role = 'bpo'))
+);
+CREATE POLICY emp_lanc_insert ON empresa_lancamentos FOR INSERT WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND (role LIKE 'raccotlo%' OR role = 'bpo'))
+);
+CREATE POLICY emp_lanc_update ON empresa_lancamentos FOR UPDATE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND (role LIKE 'raccotlo%' OR role = 'bpo'))
+);
+CREATE POLICY emp_lanc_delete ON empresa_lancamentos FOR DELETE USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND (role LIKE 'raccotlo%' OR role = 'bpo'))
+);
+NOTIFY pgrst, 'reload schema';
