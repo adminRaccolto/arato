@@ -80,6 +80,10 @@ export interface MDFeInput {
   // Serviço (tpEmit=1) ou CT-e Globalizado (tpEmit=3). CPF ou CNPJ de quem contratou o frete
   // (o Tomador do Serviço do CT-e vinculado). Achado real 23/09/2026.
   contratante_cnpj_cpf?: string;
+  // Pagamento do contrato de transporte (<infPag>) — obrigatório em carga lotação (um único DF-e)
+  // p/ tpEmit 1/3 ou 2 com tpTransp (rejeição 302, NT 2025.001 regra F55b). Favorecido = a
+  // transportadora contratada (emitente); componente 04 = Frete; infBanc = PIX ou banco/agência.
+  pagamento?: { nome: string; doc: string; valor: number; aVista?: boolean; pix?: string; codBanco?: string; codAgencia?: string } | null;
 }
 
 export interface MDFeBuiltResult {
@@ -241,8 +245,21 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
   const infContratante = contratanteDigits
     ? `<infContratante>${contratanteDigits.length === 14 ? `<CNPJ>${contratanteDigits}</CNPJ>` : `<CPF>${contratanteDigits}</CPF>`}</infContratante>`
     : "";
-  const infANTT = (rntrc || infCIOT || infContratante)
-    ? `<infANTT>${rntrc ? `<RNTRC>${rntrc}</RNTRC>` : ""}${infContratante}${infCIOT}</infANTT>`
+  const pg = input.pagamento;
+  const pgDoc = (pg?.doc ?? "").replace(/\D/g, "");
+  const infPag = pg && pgDoc && pg.valor > 0
+    ? `<infPag>` +
+        (pg.nome ? `<xNome>${escLimite(pg.nome, 60)}</xNome>` : "") +
+        (pgDoc.length === 14 ? `<CNPJ>${pgDoc}</CNPJ>` : `<CPF>${pgDoc}</CPF>`) +
+        `<Comp><tpComp>04</tpComp><vComp>${p2(pg.valor)}</vComp></Comp>` +
+        `<indPag>${pg.aVista === false ? "1" : "0"}</indPag>` +
+        (pg.pix ? `<infBanc><PIX>${esc(pg.pix)}</PIX></infBanc>`
+          : pg.codBanco && pg.codAgencia ? `<infBanc><codBanco>${esc(pg.codBanco.replace(/\D/g, ""))}</codBanco><codAgencia>${esc(pg.codAgencia.replace(/\D/g, ""))}</codAgencia></infBanc>` : "") +
+      `</infPag>`
+    : "";
+  // Ordem do schema em infANTT: RNTRC, infCIOT, valePed, infContratante, infPag
+  const infANTT = (rntrc || infCIOT || infContratante || infPag)
+    ? `<infANTT>${rntrc ? `<RNTRC>${rntrc}</RNTRC>` : ""}${infCIOT}${infContratante}${infPag}</infANTT>`
     : "";
 
   const condutores = input.condutores.map(c =>

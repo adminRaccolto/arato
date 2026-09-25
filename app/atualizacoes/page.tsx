@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-a",
+    data: "25/09/2026",
+    titulo: "MDF-e: pagamento do frete (infPag) — rejeição 302 carga lotação",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ exige, em MDF-e de carga lotação (um único CT-e/NF-e) de prestador de serviço, o grupo de pagamento do contrato (infPag) — rejeição 302, NT 2025.001 regra F55b. O gerador não tinha esse grupo. Agora o MDF-e inclui infPag com: favorecido = transportadora emitente, componente 04 (Frete) com o valor somado dos CT-e, pagamento à vista e a chave PIX (ou banco/agência) — informados em Parâmetros → MDF-e (\"Pagamento do frete\", vale para todos) ou na aba Seguro do próprio MDF-e (vale só para ele). Sem PIX/banco o sistema avisa antes de transmitir. Também corrigi a ordem interna do infANTT (RNTRC, CIOT, contratante, pagamento). Requer a Seção 297 da migration para gravar o PIX na aba do MDF-e (em Parâmetros já funciona). Ainda não validado na SEFAZ." },
+    ],
+    onde: "Transporte → MDF-e · Parâmetros → MDF-e",
+  },
+  {
     versao: "2026.09.24-al",
     data: "24/09/2026",
     titulo: "CT-e: rejeição 365 (Total do DF-e inválido) corrigida",

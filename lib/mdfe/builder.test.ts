@@ -53,3 +53,13 @@ test("rejeita tipo, NCM, descrição e CEPs inválidos antes da transmissão", (
     assert.throws(() => buildMDFe(input));
   }
 });
+
+test("infPag (carga lotação, rejeição 302) entra em infANTT depois de infCIOT e infContratante", () => {
+  const e = entrada();
+  e.emitente.rntrc = "47964242";
+  e.ciot = { codigo: "123456789012", cpf_cnpj: "12345678000195" };
+  e.contratante_cnpj_cpf = "17679842949";
+  e.pagamento = { nome: "Transportadora de teste", doc: "12345678000195", valor: 3479.7, aVista: true, pix: "12345678000195" };
+  const { xml } = buildMDFe(e);
+  assert.match(xml, /<infANTT><RNTRC>47964242<\/RNTRC><infCIOT>.*<\/infCIOT><infContratante><CPF>17679842949<\/CPF><\/infContratante><infPag><xNome>Transportadora de teste<\/xNome><CNPJ>12345678000195<\/CNPJ><Comp><tpComp>04<\/tpComp><vComp>3479\.70<\/vComp><\/Comp><indPag>0<\/indPag><infBanc><PIX>12345678000195<\/PIX><\/infBanc><\/infPag><\/infANTT>/);
+});

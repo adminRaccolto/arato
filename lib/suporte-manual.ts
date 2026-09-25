@@ -609,6 +609,8 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
 **Correção 23/09/2026 — "🔍 Buscar dados da NF-e" dava "Senha do certificado incorreta" mesmo com a senha certa:** a consulta combinava o certificado de UM emitente com a senha de OUTRO emitente da mesma conta — cada um resolvido como "o primeiro encontrado" separadamente, então numa conta com mais de um certificado (ex: produtor + transportadora) o par podia sair errado mesmo com as duas senhas certas cadastradas nos lugares certos. Corrigido: agora testa todos os certificados válidos da conta até um decodificar com sucesso.
 
+**Correção 25/09/2026 — MDF-e carga lotação (rejeição 302):** MDF-e com um único CT-e/NF-e exige o pagamento do frete. Cadastre a chave PIX (ou banco e agência) de quem recebe o frete em Parâmetros → MDF-e → Pagamento do frete; para um MDF-e específico use a aba Seguro do próprio MDF-e. O valor vem da soma do frete dos CT-e.
+
 **Regra 24/09/2026 — IBS/CBS padrão:** NF-e e CT-e usam CST 410 e cClassTrib 410999 (sem valores). NCM fora da Tabela NCM também recebe esse padrão na NF-e. No CT-e o destaque vale por padrão para regime normal (Simples/MEI dispensados). Alterações por NCM ficam em Parâmetros → Fiscal → Tabela NCM.
 
 **Regra 24/09/2026 — CIOT no MDF-e:** exigido quando o motorista é TAC ou o veículo é de terceiro; motorista CLT em veículo próprio da transportadora (ETC) e carga própria não exigem. Se exigido e não gerado, o MDF-e não é transmitido. O Tipo de Transportador do cadastro (1 Autônomo, 2 ETC, 3 CTC) agora é traduzido corretamente para o XML.

@@ -13788,3 +13788,11 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS ciot_codigo_verificador text,
   ADD COLUMN IF NOT EXISTS ciot_protocolo          text;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 297 — MDF-e: pagamento do frete (infPag) por manifesto — rejeição 302 carga lotação ──
+ALTER TABLE mdfes
+  ADD COLUMN IF NOT EXISTS pag_pix        text,
+  ADD COLUMN IF NOT EXISTS pag_cod_banco  text,
+  ADD COLUMN IF NOT EXISTS pag_agencia    text;
+NOTIFY pgrst, 'reload schema';

@@ -155,6 +155,13 @@ const MDFE_FIELDS: FieldDef[] = [
 // achado real 23/09/2026 (rejeições 698 depois 699). É uma apólice fixa por transportadora
 // (RCTR-C, renovada anualmente), não por viagem — por isso mora aqui, não no formulário do
 // MDF-e.
+// Pagamento do contrato de transporte (infPag) — exigido em carga lotação (SEFAZ 302). Favorecido = a transportadora.
+const MDFE_PAGAMENTO_FIELDS: FieldDef[] = [
+  { key: "pag_pix",        label: "Chave PIX da transportadora (recebe o frete)", type: "text", placeholder: "CNPJ, e-mail, telefone ou chave aleatória" },
+  { key: "pag_cod_banco",  label: "Cód. do banco (alternativa ao PIX)",           type: "text", placeholder: "001" },
+  { key: "pag_agencia",    label: "Agência (alternativa ao PIX)",                 type: "text", placeholder: "1234" },
+];
+
 const MDFE_SEGURO_FIELDS: FieldDef[] = [
   { key: "seguradora_nome", label: "Nome da Seguradora",             type: "text", placeholder: "Ex: Porto Seguro Cia de Seguros Gerais" },
   { key: "seguradora_cnpj", label: "CNPJ da Seguradora",             type: "text", placeholder: "00.000.000/0001-00" },
@@ -2226,6 +2233,20 @@ function ParametrosSistemaContent() {
                             </div>
                           );
                         })()}
+
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingTop: 4, borderTop: "0.5px solid var(--border)" }}>
+                          Pagamento do frete (obrigatório em carga lotação — SEFAZ 302)
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                          {MDFE_PAGAMENTO_FIELDS.map(f => (
+                            <div key={f.key}>
+                              <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
+                              <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
+                                value={String(c[f.key] ?? "")} placeholder={f.placeholder}
+                                onChange={e => setCfg(mk, f.key, e.target.value)} />
+                            </div>
+                          ))}
+                        </div>
 
                         <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>

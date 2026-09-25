@@ -269,6 +269,7 @@ interface Mdfe {
   seguradora_cnpj?: string | null;
   apolice_numero?: string | null;
   averbacao_numero?: string | null;
+  pag_pix?: string | null; pag_cod_banco?: string | null; pag_agencia?: string | null;
   protocolo_autorizacao?: string | null;
   xml_url?: string | null;
   created_at?: string;
@@ -367,6 +368,8 @@ function MdfePageInner() {
     nfe_chaves: [""],   // lista de chaves manuais
     // Seguro da Carga (RCTR-C) — em branco = usa o cadastro de Parâmetros → MDF-e do emitente
     seguradora_nome: "", seguradora_cnpj: "", apolice_numero: "", averbacao_numero: "",
+    // Pagamento do frete (infPag) — em branco = usa Parâmetros → MDF-e da transportadora
+    pag_pix: "", pag_cod_banco: "", pag_agencia: "",
   });
   const [abaModal, setAbaModal] = useState<"dados" | "seguro">("dados");
   const [form, setForm] = useState(FORM_VAZIO());
@@ -490,6 +493,7 @@ function MdfePageInner() {
       nfe_chaves: nfeChaves.length > 0 ? nfeChaves : [""],
       seguradora_nome: m.seguradora_nome ?? "", seguradora_cnpj: m.seguradora_cnpj ?? "",
       apolice_numero: m.apolice_numero ?? "", averbacao_numero: m.averbacao_numero ?? "",
+      pag_pix: m.pag_pix ?? "", pag_cod_banco: m.pag_cod_banco ?? "", pag_agencia: m.pag_agencia ?? "",
     });
     setAbaModal("dados");
     setErr(""); resetCiot();
@@ -725,6 +729,9 @@ function MdfePageInner() {
           seguradora_cnpj: form.seguradora_cnpj.trim() || null,
           apolice_numero: form.apolice_numero.trim() || null,
           averbacao_numero: form.averbacao_numero.trim() || null,
+        } : {}),
+        ...((form.pag_pix || form.pag_cod_banco || form.pag_agencia || mdfeEdit?.pag_pix) ? {
+          pag_pix: form.pag_pix.trim() || null, pag_cod_banco: form.pag_cod_banco.trim() || null, pag_agencia: form.pag_agencia.trim() || null,
         } : {}),
         ciot: ciotGerado?.id ?? mdfeEdit?.ciot ?? null,
         ciot_codigo_verificador: ciotGerado?.cv ?? mdfeEdit?.ciot_codigo_verificador ?? null,
@@ -1044,6 +1051,17 @@ function MdfePageInner() {
                 <div>
                   <label style={lbl}>Nº da Apólice</label>
                   <input value={form.apolice_numero} onChange={e => setForm(f => ({ ...f, apolice_numero: e.target.value }))} style={inp} />
+                </div>
+                <div style={{ gridColumn: "1 / -1", borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, fontSize: 12, color: "var(--text-3)" }}>
+                  <strong style={{ color: "var(--text-2)" }}>Pagamento do frete</strong> — exigido em carga lotação (um único CT-e/NF-e, SEFAZ 302). Favorecido = transportadora emitente; valor = frete do CT-e. Em branco usa a chave PIX de Parâmetros → MDF-e.
+                </div>
+                <div>
+                  <label style={lbl}>Chave PIX de quem recebe o frete</label>
+                  <input value={form.pag_pix} onChange={e => setForm(f => ({ ...f, pag_pix: e.target.value }))} style={inp} placeholder="CNPJ, e-mail, telefone ou chave aleatória" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div><label style={lbl}>Banco (alternativa)</label><input value={form.pag_cod_banco} onChange={e => setForm(f => ({ ...f, pag_cod_banco: e.target.value }))} style={inp} placeholder="001" /></div>
+                  <div><label style={lbl}>Agência</label><input value={form.pag_agencia} onChange={e => setForm(f => ({ ...f, pag_agencia: e.target.value }))} style={inp} placeholder="1234" /></div>
                 </div>
                 <div>
                   <label style={lbl}>Nº da Averbação (obrigatório p/ prestador de serviço)</label>

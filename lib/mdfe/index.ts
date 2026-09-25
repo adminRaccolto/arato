@@ -97,23 +97,25 @@ export interface ResultadoEmissaoMDFe {
 /** Resolve município + IBGE de destino a partir dos CT-e/NF-e vinculados ao MDF-e. */
 async function resolverMunicipiosDescarga(
   documentos: { tipo: string; chave: string }[],
-): Promise<{ municipios: MunicipioDescarga[]; ctesCanceladas: string[]; contratanteCnpjCpf?: string }> {
+): Promise<{ municipios: MunicipioDescarga[]; ctesCanceladas: string[]; contratanteCnpjCpf?: string; valorFrete: number }> {
   const ctesChaves = documentos.filter(d => d.tipo === "cte").map(d => d.chave.replace(/\D/g, ""));
   const nfeChaves  = documentos.filter(d => d.tipo === "nfe").map(d => d.chave.replace(/\D/g, ""));
 
   const grupos = new Map<string, MunicipioDescarga>();
   const ctesCanceladas: string[] = [];
   let contratanteCnpjCpf: string | undefined;
+  let valorFrete = 0;
 
   if (ctesChaves.length > 0) {
     const { data: ctes } = await sb().from("ctes")
-      .select("chave_acesso, municipio_destino, ibge_destino, status, tomador_tipo, remetente_cnpj, destinatario_cnpj, expedidor_cnpj, recebedor_cnpj")
+      .select("chave_acesso, valor_frete, municipio_destino, ibge_destino, status, tomador_tipo, remetente_cnpj, destinatario_cnpj, expedidor_cnpj, recebedor_cnpj")
       .in("chave_acesso", ctesChaves);
     for (const c of ctes ?? []) {
       // CT-e cancelado não pode sustentar um MDF-e — referenciar ele provavelmente também seria
       // rejeitado pela SEFAZ (ou pior, aceito indevidamente referenciando um documento inválido).
       // Acha isso aqui, localmente, em vez de deixar a SEFAZ recusar sem explicação clara.
       if (c.status === "cancelado") { ctesCanceladas.push(c.chave_acesso as string); continue; }
+      valorFrete += Number((c as { valor_frete?: number }).valor_frete) || 0;
       const ibge = (c as { ibge_destino?: string }).ibge_destino;
       if (!ibge) continue;
       if (!grupos.has(ibge)) grupos.set(ibge, { municipio_ibge: ibge, municipio_nome: c.municipio_destino, cte_chaves: [], nfe_chaves: [] });
@@ -141,7 +143,7 @@ async function resolverMunicipiosDescarga(
     if (primeiroGrupo) primeiroGrupo.nfe_chaves.push(chave);
   }
 
-  return { municipios: Array.from(grupos.values()), ctesCanceladas, contratanteCnpjCpf };
+  return { municipios: Array.from(grupos.values()), ctesCanceladas, contratanteCnpjCpf, valorFrete: Math.round(valorFrete * 100) / 100 };
 }
 
 export async function emitirMDFe(
@@ -222,7 +224,7 @@ export async function emitirMDFe(
 
   // 5. Municípios de descarga — resolvidos a partir dos CT-e/NF-e vinculados
   const documentos = (typeof m.documentos === "string" ? JSON.parse(m.documentos) : m.documentos) as { tipo: string; chave: string }[];
-  const { municipios: municipiosDescarga, ctesCanceladas, contratanteCnpjCpf } = await resolverMunicipiosDescarga(documentos ?? []);
+  const { municipios: municipiosDescarga, ctesCanceladas, contratanteCnpjCpf, valorFrete } = await resolverMunicipiosDescarga(documentos ?? []);
   if (ctesCanceladas.length > 0) {
     return {
       sucesso: false, cStat: "VALIDACAO_LOCAL",
@@ -318,6 +320,25 @@ export async function emitirMDFe(
   }
 
   const quantidadeDocumentos = municipiosDescarga.reduce((total, mun) => total + mun.cte_chaves.length + mun.nfe_chaves.length, 0);
+
+  // Pagamento do contrato (<infPag>) — rejeição 302 (NT 2025.001 F55b): obrigatório em carga
+  // lotação (um único DF-e) quando tpEmit é 1/3 ou 2 com tpTransp. Favorecido = transportadora
+  // emitente; valor = soma do frete dos CT-e; PIX/banco da aba do MDF-e ou de Parâmetros → MDF-e.
+  const exigePagamento = quantidadeDocumentos === 1 && (emitente.tpEmit !== "2" || !!emitente.tpTransp);
+  const pix = ((m.pag_pix as string | null) || confg.pag_pix || "").trim();
+  const codBanco = ((m.pag_cod_banco as string | null) || confg.pag_cod_banco || "").trim();
+  const codAgencia = ((m.pag_agencia as string | null) || confg.pag_agencia || "").trim();
+  const pagamento = (valorFrete > 0 && (pix || (codBanco && codAgencia)))
+    ? { nome: emitente.razao_social, doc: emitente.cpf_cnpj, valor: valorFrete, aVista: true, pix: pix || undefined, codBanco: codBanco || undefined, codAgencia: codAgencia || undefined }
+    : null;
+  if (exigePagamento && !pagamento) {
+    return {
+      sucesso: false, cStat: "VALIDACAO_LOCAL",
+      xMotivo: valorFrete > 0
+        ? "Carga lotação (um único documento) exige as informações de pagamento do frete (SEFAZ 302). Informe a chave PIX (ou banco e agência) do favorecido na aba Seguro e Pagamento do MDF-e, ou em Parâmetros → MDF-e."
+        : "Carga lotação exige as informações de pagamento do frete (SEFAZ 302), mas o valor do frete não foi encontrado: o CT-e vinculado está sem valor de frete.",
+    };
+  }
   const erroProduto = validarProdutoMDFe(m.produto_predominante, emitente.tpEmit !== "2" || !!emitente.tpTransp, quantidadeDocumentos);
   if (erroProduto) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: erroProduto };
 
@@ -346,6 +367,7 @@ export async function emitirMDFe(
     produto_predominante: m.produto_predominante,
     observacao: m.observacao ?? undefined,
     contratante_cnpj_cpf: emitente.tpEmit !== "2" ? contratanteCnpjCpf : undefined,
+    pagamento,
   };
 
   const built = buildMDFe(input);
