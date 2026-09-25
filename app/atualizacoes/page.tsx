@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-v",
+    data: "25/09/2026",
+    titulo: "NF de Entrada: desconto/impostos do XML, centavos e parcelas que fecham",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Três falhas na NF de Entrada importada (ex.: NF 207864, desconto de R$ 820,92): (1) o desconto e os impostos do XML (ICMSTot: vDesc, IPI, ST, FCP-ST, DIFAL, ICMS deson.) não vinham para o assistente — o cadastro guardava só o valor final; agora, ao abrir uma NF pendente importada, os totais e as duplicatas do XML são aplicados, e a importação (Sieg) já grava esses totais. (2) Nos campos Desconto/IPI/ST/DIFAL o valor \"820,92\" virava 820,00 (a vírgula era lida como ponto), por isso o total mostrava R$ 3.740,64 em vez de R$ 3.739,72; corrigido para aceitar vírgula e ponto. (3) As parcelas eram calculadas sobre o total dos produtos, sem o desconto (2 × R$ 2.280,32 = 4.560,64); agora vêm das duplicatas do XML (2 × R$ 1.869,86) ou, ao gerar manualmente, do total líquido. Se você já digitou o desconto errado numa NF pendente, basta reabri-la: os totais do XML voltam sozinhos." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.25-u",
     data: "25/09/2026",
     titulo: "NFS-e: CP vai para o financeiro certo (Empresa transportadora ou produtor)",

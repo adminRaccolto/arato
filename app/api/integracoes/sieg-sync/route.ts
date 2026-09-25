@@ -228,6 +228,7 @@ export async function POST(req: NextRequest) {
           emitente_nome:     nfe.nome_emitente,
           emitente_cnpj:     nfe.cnpj_emitente,
           valor_total:       nfe.valor_total,
+          ...nfe.totais,   // valor_produtos, desconto, IPI, ST, FCP-ST, DIFAL, ICMS deson. do <ICMSTot>
           natureza:          nfe.natureza,
           cfop:              nfe.cfop,
           cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação
@@ -255,6 +256,7 @@ export async function POST(req: NextRequest) {
           emitente_nome:     nfe.nome_emitente,
           emitente_cnpj:     nfe.cnpj_emitente,
           valor_total:       nfe.valor_total,
+          ...nfe.totais,   // valor_produtos, desconto, IPI, ST, FCP-ST, DIFAL, ICMS deson. do <ICMSTot>
           natureza:          nfe.natureza,
           cfop:              nfe.cfop,
           cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação

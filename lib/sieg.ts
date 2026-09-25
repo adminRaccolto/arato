@@ -138,6 +138,8 @@ export interface NFeParseResult {
   cnpj_destinatario:  string;
   nome_destinatario:  string;
   valor_total:        number;
+  // Totais do <ICMSTot> — antes só o vNF era guardado, e desconto/IPI/ST/DIFAL nunca chegavam ao cadastro
+  totais:             { valor_produtos: number; valor_desconto: number; valor_ipi: number; valor_st: number; valor_fcp_st: number; valor_difal: number; valor_icms_deson: number };
   cfop:               string;
   itens:              NFeItemParsed[];
 }
@@ -185,6 +187,9 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
     const nome_destinatario = tagVal(destBlock, "xNome");
 
     const valor_total = parseFloat(tagVal(xml, "vNF") || "0");
+    const icmsTot = blockOf(xml, "ICMSTot") || "";
+    const tn = (tag: string) => parseFloat(tagVal(icmsTot, tag) || "0") || 0;
+    const totais = { valor_produtos: tn("vProd"), valor_desconto: tn("vDesc"), valor_ipi: tn("vIPI"), valor_st: tn("vST"), valor_fcp_st: tn("vFCPST"), valor_difal: tn("vICMSUFDest"), valor_icms_deson: tn("vICMSDeson") };
 
     // Suporta aspas simples ou duplas e prefixo de namespace opcional
     const detRe = new RegExp(`<${NS}det\\s+nItem=["'](\\d+)["']>([\\s\\S]*?)</${NS}det>`, "g");
@@ -208,7 +213,7 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
     return { chave, numero, serie, data_emissao, natureza,
              cnpj_emitente, nome_emitente, ie_emitente,
              cnpj_destinatario, nome_destinatario,
-             valor_total, cfop, itens };
+             valor_total, totais, cfop, itens };
   } catch {
     return null;
   }

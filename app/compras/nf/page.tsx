@@ -273,6 +273,15 @@ const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: strin
 // ─────────────────────────────────────────────────────────────
 // Componente principal
 // ─────────────────────────────────────────────────────────────
+// Número digitado/salvo em pt-BR OU ponto-decimal ("820,92" / "1.234,56" / "820.92"). parseFloat("820,92")
+// devolve 820 — os campos de impostos/desconto perdiam os centavos e o total e as parcelas não fechavam
+// (NF 207864: desconto 820,92 → 820,00; achado 25/09/2026).
+const numBR = (v: unknown): number => {
+  const t = String(v ?? "").trim();
+  if (!t) return 0;
+  return t.includes(",") ? (parseFloat(t.replace(/\./g, "").replace(",", ".")) || 0) : (parseFloat(t) || 0);
+};
+
 export default function NfCompraPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, nomeUsuario } = useAuth();
   const router = useRouter();
@@ -1154,12 +1163,57 @@ export default function NfCompraPage() {
         if (xmlJson.ok && xmlJson.xmlCompleto) parsearXml(xmlJson.xmlCompleto);
       } catch { /* sem XML disponível — usuário preenche manualmente */ }
     }
+    // NF pendente que já tem itens no BD (importada via Sieg): o XML é a fonte dos totais e das parcelas.
+    if (itensCarregadosDoBd && nf.status !== "processada" && nf.chave_acesso && nf.chave_acesso.replace(/\D/g,"").length === 44) {
+      try {
+        const xr = await fetch("/api/nfe/xml-por-chave", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazendaId: nf.fazenda_id ?? fazendaId, chaveAcesso: nf.chave_acesso, ambiente: "producao" }) });
+        const xj = await xr.json();
+        if (xj.ok && xj.xmlCompleto) aplicarTotaisDoXml(xj.xmlCompleto);
+      } catch { /* sem XML: mantém os valores do cadastro */ }
+    }
     setEtapa("cabecalho");
     setErr("");
     // Carrega CC/depósitos/pedidos frescos para a fazenda desta NF (sempre fresh, sem cache)
     const nfFazId = nf.fazenda_id ?? fazendaId ?? "";
     await carregarWizardData(nfFazId || fazendaId || "");
     setWizard(true);
+  }
+
+  // Duplicatas do XML (<cobr><dup>) viram as parcelas do CP — o total das duplicatas é o valor LÍQUIDO da
+  // nota (com desconto/impostos), não a divisão dos produtos.
+  function aplicarDuplicatasXml(doc: Document) {
+    const dups = Array.from(doc.getElementsByTagName("dup"));
+    const lista = dups.map(d => ({
+      data:  (d.getElementsByTagName("dVenc")[0]?.textContent ?? "").slice(0, 10),
+      valor: parseFloat(d.getElementsByTagName("vDup")[0]?.textContent ?? "0") || 0,
+    })).filter(d => d.data && d.valor > 0);
+    if (lista.length > 1) {
+      setNfCondicao("prazo");
+      setNfQtdParcelas(String(lista.length));
+      setNfParcelas(lista.map(d => ({ data: d.data, valorMask: d.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })));
+    }
+  }
+
+  // NF já importada (Sieg) reaberta no assistente: os TOTAIS da nota (desconto, IPI, ST, FCP-ST, DIFAL,
+  // ICMS deson.) e as duplicatas vêm do XML — o cadastro guardava só o vNF. Só cabeçalho: itens não mudam.
+  function aplicarTotaisDoXml(xmlText: string) {
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+      if (doc.querySelector("parsererror")) return;
+      const tot = doc.getElementsByTagName("ICMSTot")[0];
+      const g = (tag: string) => parseFloat(tot?.getElementsByTagName(tag)[0]?.textContent ?? "0") || 0;
+      const vProd = g("vProd");
+      if (vProd <= 0) return;
+      const f = (n: number) => (n > 0 ? String(n) : "");
+      setCab(p => ({
+        ...p,
+        valor_total: String(vProd),
+        valor_ipi: f(g("vIPI")), valor_st: f(g("vST")), valor_fcp_st: f(g("vFCPST")),
+        valor_difal: f(g("vICMSUFDest")), valor_desconto: f(g("vDesc")), valor_icms_deson: f(g("vICMSDeson")),
+      }));
+      aplicarDuplicatasXml(doc);
+    } catch { /* mantém o que já está */ }
   }
 
   // ── Parse XML ─────────────────────────────────────────────
@@ -1263,6 +1317,7 @@ export default function NfCompraPage() {
         forma_pagamento:   formaPagXml  || p.forma_pagamento,
         data_vencimento_cp: vencISO     || p.data_vencimento_cp,
       }));
+      aplicarDuplicatasXml(doc);
 
       // Verifica se o DOMParser retornou um erro de parse
       if (doc.querySelector("parsererror")) {
@@ -1423,7 +1478,7 @@ export default function NfCompraPage() {
       cfop:                  cab.cfop         || undefined,
       data_emissao:          cab.data_emissao,
       data_entrada:          cab.data_entrada || undefined,
-      valor_total:           (parseFloat(cab.valor_total)||0) + (parseFloat(cab.valor_ipi)||0) + (parseFloat(cab.valor_st)||0) + (parseFloat(cab.valor_fcp_st)||0) + (parseFloat(cab.valor_difal)||0) - (parseFloat(cab.valor_desconto)||0) - (parseFloat(cab.valor_icms_deson)||0),
+      valor_total:           (numBR(cab.valor_total)||0) + (numBR(cab.valor_ipi)||0) + (numBR(cab.valor_st)||0) + (numBR(cab.valor_fcp_st)||0) + (numBR(cab.valor_difal)||0) - (numBR(cab.valor_desconto)||0) - (numBR(cab.valor_icms_deson)||0),
       natureza:              cab.natureza     || undefined,
       status:                "pendente",
       origem:                orig,
@@ -1441,13 +1496,13 @@ export default function NfCompraPage() {
       ie_produtor:           cab.ie_produtor           || undefined,
       vinculo_atividade:     cab.vinculo_atividade,
       entidade_contabil:     cab.entidade_contabil,
-      valor_produtos:        parseFloat(cab.valor_total) || 0,
-      valor_ipi:             parseFloat(cab.valor_ipi)    || 0,
-      valor_st:              parseFloat(cab.valor_st)     || 0,
-      valor_fcp_st:          parseFloat(cab.valor_fcp_st) || 0,
-      valor_difal:           parseFloat(cab.valor_difal)  || 0,
-      valor_desconto:        parseFloat(cab.valor_desconto) || 0,
-      valor_icms_deson:      parseFloat(cab.valor_icms_deson) || 0,
+      valor_produtos:        numBR(cab.valor_total) || 0,
+      valor_ipi:             numBR(cab.valor_ipi)    || 0,
+      valor_st:              numBR(cab.valor_st)     || 0,
+      valor_fcp_st:          numBR(cab.valor_fcp_st) || 0,
+      valor_difal:           numBR(cab.valor_difal)  || 0,
+      valor_desconto:        numBR(cab.valor_desconto) || 0,
+      valor_icms_deson:      numBR(cab.valor_icms_deson) || 0,
     };
     try {
       let nf: NfEntrada;
@@ -1503,7 +1558,9 @@ export default function NfCompraPage() {
     if (!venc) { alert("Informe o 1º vencimento antes de gerar as parcelas."); return; }
     const qtd  = Math.max(2, parseInt(nfQtdParcelas) || 2);
     const freq = Math.max(1, parseInt(nfFreq) || 1);
-    const totalVal = parseFloat(nfEdit?.valor_total?.toString() ?? cab.valor_total) || 0;
+    // Total LÍQUIDO do cabeçalho (produtos + IPI/ST/FCP/DIFAL − desconto − ICMS deson.) — antes usava o
+    // valor salvo/bruto e as parcelas somavam os produtos sem o desconto.
+    const totalVal = numBR(cab.valor_total) + numBR(cab.valor_ipi) + numBR(cab.valor_st) + numBR(cab.valor_fcp_st) + numBR(cab.valor_difal) - numBR(cab.valor_desconto) - numBR(cab.valor_icms_deson);
     const valorParc = totalVal > 0 ? totalVal / qtd : 0;
     const novas = Array.from({ length: qtd }, (_, i) => {
       const d = new Date(venc + "T12:00");
@@ -3556,13 +3613,13 @@ export default function NfCompraPage() {
                       ))}
                     </div>
                     {(() => {
-                      const vProd   = parseFloat(cab.valor_total)   || 0;
-                      const vIpi    = parseFloat(cab.valor_ipi)      || 0;
-                      const vSt     = parseFloat(cab.valor_st)       || 0;
-                      const vFcp    = parseFloat(cab.valor_fcp_st)   || 0;
-                      const vDifal  = parseFloat(cab.valor_difal)    || 0;
-                      const vDesc   = parseFloat(cab.valor_desconto) || 0;
-                      const vDeson  = parseFloat(cab.valor_icms_deson) || 0;
+                      const vProd   = numBR(cab.valor_total)   || 0;
+                      const vIpi    = numBR(cab.valor_ipi)      || 0;
+                      const vSt     = numBR(cab.valor_st)       || 0;
+                      const vFcp    = numBR(cab.valor_fcp_st)   || 0;
+                      const vDifal  = numBR(cab.valor_difal)    || 0;
+                      const vDesc   = numBR(cab.valor_desconto) || 0;
+                      const vDeson  = numBR(cab.valor_icms_deson) || 0;
                       const total   = vProd + vIpi + vSt + vFcp + vDifal - vDesc - vDeson;
                       const temExtra = vIpi + vSt + vFcp + vDifal + vDesc + vDeson > 0;
                       if (!temExtra) return null;
@@ -4439,8 +4496,8 @@ export default function NfCompraPage() {
 
                     {/* Rodapé totais */}
                     <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border-table)", gap: 24 }}>
-                      <span style={{ fontSize: 12, color: "var(--text-2)" }}>Cabeçalho NF: <strong>{fmtBRL(parseFloat(cab.valor_total)||0)}</strong></span>
-                      <span style={{ fontSize: 12, color: "var(--text-2)" }}>Total itens: <strong style={{ color: Math.abs(totalItens - (parseFloat(cab.valor_total)||0)) > 0.01 ? "#E24B4A" : "#1A5C38" }}>{fmtBRL(totalItens)}</strong></span>
+                      <span style={{ fontSize: 12, color: "var(--text-2)" }}>Cabeçalho NF: <strong>{fmtBRL(numBR(cab.valor_total)||0)}</strong></span>
+                      <span style={{ fontSize: 12, color: "var(--text-2)" }}>Total itens: <strong style={{ color: Math.abs(totalItens - (numBR(cab.valor_total)||0)) > 0.01 ? "#E24B4A" : "#1A5C38" }}>{fmtBRL(totalItens)}</strong></span>
                     </div>
                   </div>
 
@@ -4462,7 +4519,7 @@ export default function NfCompraPage() {
                         { label: "Vencimento CP",     value: cab.data_vencimento_cp ? fmtData(cab.data_vencimento_cp) : "Não informado" },
                         { label: "Pedido vinculado",  value: cab.pedido_compra_id ? (pedidos.find(p=>p.id===cab.pedido_compra_id)?.nr_pedido ?? "Sim") : "Não" },
                         { label: "Itens",             value: `${itens.filter(i=>i.descricao_nf.trim()).length} item(s)` },
-                        { label: "Valor produtos",    value: fmtBRL(parseFloat(cab.valor_total)||0) },
+                        { label: "Valor produtos",    value: fmtBRL(numBR(cab.valor_total)||0) },
                       ].map(({ label, value }) => (
                         <div key={label}>
                           <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>{label}</div>
