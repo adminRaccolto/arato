@@ -467,6 +467,33 @@ function MdfePageInner() {
     toggleCte(cteId);
   }, [ctes, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Série e nº do MDF-e herdados de Parâmetros → MDF-e do EMITENTE escolhido (mdfe_emp_<cnpj>).
+  // Antes o formulário usava a configuração da primeira empresa e mostrava sempre série 1 /
+  // nº 1. Só em MDF-e novo: rascunho já criado mantém o número dele.
+  useEffect(() => {
+    if (!modal || mdfeEdit || !form.emitente_id) return;
+    const emp = empresasTransp.find(e => e.id === form.emitente_id);
+    const digits = (emp?.cpf_cnpj ?? "").replace(/\D/g, "");
+    if (!digits) return;
+    let cancelado = false;
+    supabase.from("configuracoes_modulo").select("config").in("fazenda_id", fazendaIds).eq("modulo", `mdfe_emp_${digits}`)
+      .then(({ data }) => {
+        if (cancelado) return;
+        // Une as linhas do emitente (uma por fazenda): 1ª série preenchida e o MAIOR contador.
+        const linhas = ((data ?? []) as { config: Record<string, string> }[]).map(r => r.config).filter(Boolean);
+        const serie = linhas.map(c => c.serie_mdfe).find(Boolean);
+        const numero = Math.max(0, ...linhas.map(c => parseInt(String(c.numero_inicial ?? "0")) || 0));
+        if (!serie && !numero) return;
+        setForm(f => ({
+          ...f,
+          serie: serie ? String(serie) : f.serie,
+          numero_mdfe: numero > 0 ? String(numero) : f.numero_mdfe,
+        }));
+      });
+    return () => { cancelado = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal, mdfeEdit, form.emitente_id, empresasTransp.length]);
+
   // ── Abrir modal ──────────────────────────────────────────
   function resetCiot() {
     setCiotForm({ valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "", ibge_origem: "", ibge_destino: "", distancia_km: "", peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "" });

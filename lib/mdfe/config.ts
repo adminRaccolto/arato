@@ -52,7 +52,21 @@ async function buscarConfigContaWide(
   if (!data || data.length === 0) return null;
   const preferido = data.find(r => r.fazenda_id === fazendaPreferida);
   const linha = preferido ?? data[0];
-  return { config: (linha.config as Record<string, string>) ?? {}, fazendaId: linha.fazenda_id as string };
+  const base = { ...((linha.config as Record<string, string>) ?? {}) };
+  // MDF-e: o mesmo emitente pode ter uma linha de parâmetros por fazenda (ex.: a Muriana tinha
+  // série "002"/nº 3292 numa fazenda e sem série/nº 3189 em outra). Escolher só a da fazenda
+  // atual herdava série vazia e numeração atrasada — risco de número duplicado na SEFAZ. Une as
+  // linhas: campos vazios são completados pelas demais e o contador é sempre o MAIOR.
+  if (modulo.startsWith("mdfe")) {
+    for (const r of data) {
+      const c = (r.config as Record<string, string>) ?? {};
+      for (const [k, v] of Object.entries(c)) if (base[k] === undefined || base[k] === null || base[k] === "") base[k] = v;
+    }
+    const maiores = data.map(r => parseInt(String((r.config as Record<string, string>)?.numero_inicial ?? "0")) || 0);
+    const max = Math.max(0, ...maiores);
+    if (max > 0) base.numero_inicial = String(max);
+  }
+  return { config: base, fazendaId: linha.fazenda_id as string };
 }
 
 async function buscarPrimeiroMdfePorEmitente(idsConta: string[]) {

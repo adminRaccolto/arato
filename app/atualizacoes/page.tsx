@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-h",
+    data: "25/09/2026",
+    titulo: "MDF-e herda série e numeração de Parâmetros → MDF-e do emitente",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O formulário do MDF-e mostrava série 1 e nº 1 porque lia a configuração da primeira empresa da conta. Agora, ao escolher o emitente (ou marcar o CT-e, que já define o emitente), série e número vêm de Parâmetros → MDF-e daquele emitente. Na emissão, quando o emitente tem uma linha de parâmetros por fazenda, o sistema une as linhas: usa a série preenchida em qualquer uma e sempre o MAIOR contador — antes a linha da fazenda ativa podia vir sem série (saía \"1\") e com numeração atrasada (risco de número duplicado na SEFAZ). Vale conferir se há linhas de parâmetro duplicadas do mesmo emitente." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.25-g",
     data: "25/09/2026",
     titulo: "MDF-e: salvar não trava mais quando a migration está pendente",
