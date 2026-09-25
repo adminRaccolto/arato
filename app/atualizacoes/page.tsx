@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-z",
+    data: "25/09/2026",
+    titulo: "Conciliação: barra OFX de outra conta e exclusão completa da importação",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao importar um OFX, o sistema agora compara a conta do arquivo (ACCTID) com a conta bancária selecionada. Se o extrato pertence a outra conta cadastrada (por exemplo, de outro produtor), a importação é barrada e informa a conta correta; se a conta do arquivo não for de nenhuma conta cadastrada, pede confirmação." },
+      { tipo: "correcao", texto: "Excluir uma importação (Conciliação → Histórico → 🗑) antes apagava só o registro do histórico e as transações continuavam na conta. Agora remove as transações trazidas por aquele OFX e desmarca a conciliação dos lançamentos vinculados; se você escolher, também reabre os lançamentos que aquela importação baixou (exceto os de borderô)." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.09.25-y",
     data: "25/09/2026",
     titulo: "Reprogramar vencimento no CP/CR das Empresas",

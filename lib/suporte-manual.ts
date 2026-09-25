@@ -1384,4 +1384,6 @@ Campo que classifica o lançamento para fins fiscais:
 | "Seu plano Essencial não inclui armazenamento" ao anexar arquivo, mas a conta é Performance | Conta sem assinatura paga (pro bono) era lida como Essencial | Corrigido: sem assinatura, vale o pacote da conta (Performance = 3 GB). Se ainda aparecer, conferir o pacote da conta em Admin |
 | Baixa de CP/CR de Empresa pede conta bancária e novo vencimento | A baixa das Empresas segue o padrão do produtor | Escolher a conta; se pagar menos que o devido, informar o novo vencimento do saldo (fica Parcial); para desfazer usar Reabrir |
 | Como reprogramar o vencimento de um CP/CR de Empresa | Igual ao produtor | Botão ↕ na linha: informa nova data (e novo valor, se houver), o vencimento original fica registrado |
+| Como excluir um OFX importado errado | Histórico da Conciliação | Aba Histórico → 🗑 na importação: remove as transações e pergunta se reabre os lançamentos que ela baixou |
+| "Este OFX é da conta X" ao importar | O arquivo pertence a outra conta bancária | Selecionar a conta correta antes de importar |
 `;

@@ -215,6 +215,42 @@ export async function DELETE(req: NextRequest) {
     const acesso = await validateFazendaAccess(ext.fazenda_id as string, req.headers.get("authorization") ?? undefined);
     if (!acesso.ok) return NextResponse.json({ ok: false, error: acesso.error }, { status: acesso.status });
 
+    // Remove também as transações que ESTA importação trouxe (primeiro_extrato_id) — antes só o
+    // registro do log era apagado e as linhas continuavam na conta ("não consigo excluir o OFX").
+    // Lançamentos ligados a essas linhas voltam a conciliado=false; com reabrir=1 os que estavam
+    // baixados (e fora de borderô) também voltam para em aberto/vencido.
+    const reabrir = new URL(req.url).searchParams.get("reabrir") === "1";
+    const trans: { id: string; lancamento_id: string | null; lancamento_ids: string[] | null }[] = [];
+    for (let de = 0; ; de += 1000) {
+      const { data: page, error: eT } = await sb.from("extrato_transacoes")
+        .select("id, lancamento_id, lancamento_ids").eq("primeiro_extrato_id", id).order("id").range(de, de + 999);
+      if (eT) return NextResponse.json({ ok: false, error: eT.message }, { status: 400 });
+      trans.push(...(page ?? []) as typeof trans);
+      if (!page || page.length < 1000) break;
+    }
+    const lancIds = Array.from(new Set(trans.flatMap(t => t.lancamento_ids?.length ? t.lancamento_ids : t.lancamento_id ? [t.lancamento_id] : [])));
+    let reabertos = 0;
+    const hoje = new Date().toISOString().slice(0, 10);
+    for (let i = 0; i < lancIds.length; i += 200) {
+      const lote = lancIds.slice(i, i + 200);
+      await sb.from("lancamentos").update({ conciliado: false }).in("id", lote);
+      const { data: ls } = await sb.from("lancamentos").select("id, status, data_vencimento, lote_id").in("id", lote);
+      const loteIds = Array.from(new Set((ls ?? []).map(l => l.lote_id as string | null).filter(Boolean) as string[]));
+      if (loteIds.length) await sb.from("pagamento_lotes").update({ conciliado: false }).in("id", loteIds);
+      if (reabrir) {
+        for (const l of ls ?? []) {
+          if (l.lote_id || (l.status !== "baixado" && l.status !== "parcial")) continue;
+          const novo = (l.data_vencimento as string) < hoje ? "vencido" : "em_aberto";
+          const r = await sb.from("lancamentos").update({ status: novo, data_baixa: null, valor_pago: null, conta_bancaria: null }).eq("id", l.id);
+          if (!r.error) { reabertos++; await sb.from("parcelas_pagamento").update({ status: "pendente", data_pagamento: null }).eq("lancamento_id", l.id); }
+        }
+      }
+    }
+    for (let i = 0; i < trans.length; i += 200) {
+      const r = await sb.from("extrato_transacoes").delete().in("id", trans.slice(i, i + 200).map(t => t.id));
+      if (r.error) return NextResponse.json({ ok: false, error: r.error.message }, { status: 400 });
+    }
+
     const { error } = await sb.from("extratos_bancarios").delete().eq("id", id);
     if (error) {
       console.error("[persistir-extrato][DELETE] erro:", error.message);
@@ -225,7 +261,7 @@ export async function DELETE(req: NextRequest) {
       await sb.storage.from("arquivos").remove([ext.ofx_storage_path]).catch(() => {});
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, transacoes_removidas: trans.length, lancamentos_reabertos: reabertos });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[persistir-extrato][DELETE]", msg);

@@ -163,6 +163,21 @@ const OPS_TESOURARIA_PADRAO: OpTesouraria[] = [
 ];
 
 // ─── Parse OFX ────────────────────────────────────────────────────────────────
+// Conta do cabeçalho do OFX (ACCTID). Serve para barrar a importação do extrato de um produtor
+// na conta de outro: compara só dígitos, sem zeros à esquerda, tolerando o dígito verificador.
+function acctidOFX(texto: string): string {
+  const m = texto.match(/<ACCTID>([^<\r\n]+)/i);
+  return m ? m[1].trim() : "";
+}
+function contaBate(acctid: string, contaCad?: string | null): boolean | null {
+  const a = acctid.replace(/\D/g, "").replace(/^0+/, "");
+  const c = (contaCad ?? "").replace(/\D/g, "").replace(/^0+/, "");
+  if (!a || !c) return null; // sem dado para comparar
+  const va = [a, a.slice(0, -1)];
+  const vc = [c, c.slice(0, -1)];
+  return va.some(x => x && vc.some(y => y && (x === y || x.endsWith(y) || y.endsWith(x))));
+}
+
 function parseOFX(texto: string): LinhaOFX[] {
   const linhas: LinhaOFX[] = [];
   const transacoes = texto.split(/<STMTTRN>/i).slice(1);
@@ -724,6 +739,18 @@ function ConciliacaoInner() {
       const buf = await file.arrayBuffer();
       let texto = new TextDecoder("utf-8").decode(buf);
       if (texto.includes("\uFFFD")) texto = new TextDecoder("windows-1252").decode(buf);
+      // Barra OFX de outra conta (ex.: extrato de um produtor importado na conta de outro).
+      const acct = acctidOFX(texto);
+      const contaEsc = contas.find(c => c.id === contaSel);
+      if (acct && contaBate(acct, contaEsc?.conta) === false) {
+        const dona = contas.find(c => c.id !== contaSel && contaBate(acct, c.conta) === true);
+        if (dona) {
+          const prod = dona.produtor_id ? produtoresNomes.get(dona.produtor_id) : "";
+          alert(`Este OFX é da conta "${dona.nome}"${prod ? ` (${prod})` : ""} — conta ${acct} — mas você selecionou "${contaEsc?.nome}". Selecione a conta correta e importe de novo. Nada foi importado.`);
+          return;
+        }
+        if (!confirm(`A conta do arquivo OFX (${acct}) não confere com a conta selecionada "${contaEsc?.nome}" (${contaEsc?.conta}).\n\nImportar mesmo assim?`)) return;
+      }
       let linhas = parseOFX(texto);
       if (linhas.length === 0) {
         alert("Nenhuma transação encontrada no arquivo OFX.");
@@ -964,23 +991,24 @@ function ConciliacaoInner() {
   // (o vínculo é só removido daqui). Isso evita desfazer conciliações reais
   // por engano ao limpar uma cópia velha/duplicada.
   async function excluirExtrato(ext: Extrato) {
-    const aviso = ext.conciliados > 0
-      ? `Este extrato tem ${ext.conciliados} linha(s) já conciliada(s). Os lançamentos vinculados a partir dele CONTINUAM conciliados — só o registro deste extrato é removido.\n\n`
-      : "";
-    if (!confirm(`${aviso}Excluir o extrato "${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})?\n\nEssa ação não pode ser desfeita.`)) return;
+    if (!confirm(`Excluir a importação "${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})?\n\nAs ${ext.total_linhas} transações trazidas por este OFX serão removidas da conta e os lançamentos vinculados a elas deixam de constar como conciliados.`)) return;
+    let reabrir = false;
+    if (ext.conciliados > 0) {
+      reabrir = confirm(`Este OFX tem ${ext.conciliados} linha(s) conciliada(s).\n\nOK = também REABRIR os lançamentos que foram baixados por ela (voltam para em aberto/vencido).\nCancelar = manter os lançamentos baixados (só deixam de ser conciliados).`);
+    }
     setLoading(true);
     try {
       // Via API route com service_role_key — o delete direto do cliente
-      // podia falhar silenciosamente com sessão/JWT expirado (achado real
-      // 18/09/2026: "não tem mais como excluir"), mesmo padrão já usado em
-      // persistExtrato pro mesmo motivo.
-      const res = await authFetch(`/api/financeiro/persistir-extrato?id=${ext.id}`, { method: "DELETE" });
+      // podia falhar silenciosamente com sessão/JWT expirado (achado real 18/09/2026).
+      const res = await authFetch(`/api/financeiro/persistir-extrato?id=${ext.id}${reabrir ? "&reabrir=1" : ""}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({ ok: false }));
       if (!res.ok || json?.ok === false) throw new Error(json?.error);
       setExtratos(prev => prev.filter(e => e.id !== ext.id));
       if (extrato?.id === ext.id) setExtrato(null);
-    } catch {
-      alert("Não foi possível excluir o extrato. Tente novamente.");
+      alert(`Importação excluída: ${json.transacoes_removidas ?? 0} transações removidas${reabrir ? `, ${json.lancamentos_reabertos ?? 0} lançamentos reabertos` : ""}.`);
+      carregar();
+    } catch (e) {
+      alert("Não foi possível excluir o extrato: " + (e instanceof Error && e.message ? e.message : "tente novamente."));
     } finally {
       setLoading(false);
     }
@@ -2892,7 +2920,7 @@ function ConciliacaoInner() {
                               Ver conciliação
                             </button>
                             <button
-                              title="Excluir este registro de importação (não desfaz conciliações já feitas)"
+                              title="Excluir esta importação de OFX (remove as transações trazidas por ela)"
                               onClick={() => excluirExtrato(ex)}
                               style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
                             >
