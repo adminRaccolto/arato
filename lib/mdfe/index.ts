@@ -271,10 +271,14 @@ export async function emitirMDFe(
     // NUNCA ler confg.tpEmit pra isso: esse campo na tela guarda o Tipo de Transportador
     // (TAC/ETC/CTC — tpTransp no schema, conceito diferente).
     tpEmit:         confg.carga_propria === "true" ? "2" : "1",
-    // A tela guarda "1 – Autônomo (TAC) · 2 – ETC · 3 – CTC"; o schema usa tpTransp
-    // 1=ETC · 2=TAC · 3=CTC — as posições 1 e 2 são invertidas, então traduz aqui. Antes o valor
+    // (mapeamento futuro) A tela guarda "1 – Autônomo (TAC) · 2 – ETC · 3 – CTC"; o schema usa
+    // tpTransp 1=ETC · 2=TAC · 3=CTC — posições 1 e 2 invertidas: {"1":"2","2":"1","3":"3"}. Antes o valor
     // ia direto: uma ETC marcada como "2 – ETC" saía como TAC no XML (achado 24/09/2026).
-    tpTransp:       ({ "1": "2", "2": "1", "3": "3" } as Record<string, "1" | "2" | "3">)[String(confg.tpEmit ?? "")] ?? undefined,
+    // SEFAZ 745: "O tipo de transportador não pode ser informado quando não estiver informado o
+    // proprietário do veículo de tração" (<prop> em veicTracao). O sistema ainda não envia <prop>,
+    // então tpTransp NÃO vai no XML (é opcional/informativo para o prestador tpEmit=1). A tradução
+    // abaixo fica pronta para quando o proprietário do veículo for enviado.
+    tpTransp:       undefined as "1" | "2" | "3" | undefined,
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
     serie:          confg.serie_mdfe ?? "1",
     numero_mdfe:    0, // preenchido abaixo

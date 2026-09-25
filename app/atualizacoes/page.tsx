@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-i",
+    data: "25/09/2026",
+    titulo: "MDF-e: rejeição 745 (tipo de transportador sem proprietário do veículo)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitava com 745: o Tipo de Transportador (ETC/TAC/CTC) só pode ir no XML quando o proprietário do veículo de tração também é informado, e o sistema ainda não envia o proprietário. Como o campo é opcional para o prestador de serviço, o MDF-e agora sai sem o tipo de transportador. O restante (RNTRC, contratante, pagamento e seguro) continua igual." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.25-h",
     data: "25/09/2026",
     titulo: "MDF-e herda série e numeração de Parâmetros → MDF-e do emitente",
