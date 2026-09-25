@@ -611,10 +611,13 @@ function MdfePageInner() {
           }).then(() => carregar()).catch(() => {/* best-effort */});
         }
       } else {
-        setCiotErro(data.Mensagem || data.Erros?.join(", ") || "Erro ao gerar CIOT.");
+        setCiotErro(/ANTT_API_KEY/.test(String(data.error ?? data.Mensagem ?? "")) ? "A geração automática ainda não está habilitada (falta a chave da API do CIOT no servidor). Emita o CIOT no site e informe o número na caixa abaixo — \"Usar este CIOT\"." : (data.Mensagem || data.Erros?.join(", ") || "Erro ao gerar CIOT."));
       }
     } catch (e) {
-      setCiotErro(e instanceof Error ? e.message : "Erro de conexão com a ANTT.");
+      {
+        const msg = e instanceof Error ? e.message : "Erro de conexão com a ANTT.";
+        setCiotErro(/ANTT_API_KEY/.test(msg) ? "A geração automática ainda não está habilitada (falta a chave da API do CIOT no servidor). Emita o CIOT no site e informe o número na caixa abaixo — \"Usar este CIOT\"." : msg);
+      }
     } finally {
       setGerandoCiot(false);
     }
