@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-b",
+    data: "25/09/2026",
+    titulo: "MDF-e: pagamento do frete com vContrato (rejeição 580)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A SEFAZ rejeitou o infPag com 580 (falha de schema): depois dos componentes de pagamento é obrigatório o valor total do contrato (vContrato) antes do indicador de pagamento. O MDF-e agora envia vContrato igual ao valor do frete." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.25-a",
     data: "25/09/2026",
     titulo: "MDF-e: pagamento do frete (infPag) — rejeição 302 carga lotação",

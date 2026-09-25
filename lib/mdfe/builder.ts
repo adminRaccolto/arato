@@ -252,6 +252,9 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
         (pg.nome ? `<xNome>${escLimite(pg.nome, 60)}</xNome>` : "") +
         (pgDoc.length === 14 ? `<CNPJ>${pgDoc}</CNPJ>` : `<CPF>${pgDoc}</CPF>`) +
         `<Comp><tpComp>04</tpComp><vComp>${p2(pg.valor)}</vComp></Comp>` +
+        // vContrato (valor total do contrato) é obrigatório logo após os Comp — a SEFAZ rejeitou com
+        // 580 ("expected: Comp, vContrato") sem ele. Igual à soma dos componentes.
+        `<vContrato>${p2(pg.valor)}</vContrato>` +
         `<indPag>${pg.aVista === false ? "1" : "0"}</indPag>` +
         (pg.pix ? `<infBanc><PIX>${esc(pg.pix)}</PIX></infBanc>`
           : pg.codBanco && pg.codAgencia ? `<infBanc><codBanco>${esc(pg.codBanco.replace(/\D/g, ""))}</codBanco><codAgencia>${esc(pg.codAgencia.replace(/\D/g, ""))}</codAgencia></infBanc>` : "") +
