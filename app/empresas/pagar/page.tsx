@@ -94,7 +94,9 @@ export default function EmpresaPagarPage() {
   const [baixaData,  setBaixaData]  = useState(TODAY);
   const [baixaValor, setBaixaValor] = useState("");
 
+  const [erroCarga, setErroCarga] = useState("");
   const carregar = useCallback(async () => {
+    setErroCarga("");
     if (!fazendaIds.length) return;
     setLoading(true);
     try {
@@ -113,7 +115,7 @@ export default function EmpresaPagarPage() {
       try {
         const lancs = await listarEmpresaLancamentos(fazendaIds, { tipo: "pagar", de: fDe, ate: fAte });
         setLancamentos(lancs);
-      } catch { /* tabela empresa_lancamentos ainda não criada no Supabase */ }
+      } catch (e) { setErroCarga(e && typeof e === "object" && "message" in e ? String((e as { message: string }).message) : "Erro ao carregar os lançamentos."); }
     } finally {
       setLoading(false);
     }
@@ -269,7 +271,7 @@ export default function EmpresaPagarPage() {
           {loading ? (
             <div style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</div>
           ) : filtrados.length === 0 ? (
-            <div style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado.</div>
+            <div style={{ padding: 32, textAlign: "center", color: erroCarga ? "#791F1F" : "#888" }}>{erroCarga ? `Não foi possível carregar os lançamentos: ${erroCarga}` : "Nenhum lançamento encontrado."}</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
