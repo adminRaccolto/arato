@@ -40,8 +40,8 @@ export type VeiculoCiot = {
 };
 
 export type OrigemDestinoCiot = {
-  Origem:  { CodigoMunicipioOrigem:   string; CepOrigem:   string };
-  Destino: { CodigoMunicipioDestino:  string; CepDestino:  string };
+  Origem:  { CodigoMunicipioOrigem:   string; CepOrigem?:   string; LatitudeOrigem?:  string; LongitudeOrigem?:  string };
+  Destino: { CodigoMunicipioDestino:  string; CepDestino?:  string; LatitudeDestino?: string; LongitudeDestino?: string };
   DistanciaPercorrida: string; // km
   QtdViagens:          string; // "1"
 };
@@ -132,7 +132,9 @@ export class CiotService {
       IdOperacaoTransporte: idOperacao,
       TipoOperacao: 1,
       IndContingencia: "false",
-      DataDeclaracao: new Date().toISOString().slice(0, 19),
+      // Horário LOCAL de MT (America/Cuiaba, UTC-4): a ANTT rejeita a declaração "fora do intervalo
+      // de tolerância" quando vai em UTC (4h adiantada). Achado 25/09/2026.
+      DataDeclaracao: new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Cuiaba", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date()).replace(" ", "T"),
       InfIndicadoresOperacionais: { IndAltoDesempenho: "false", IndRetornoVazio: "false", ComposicaoVeicular: "false" },
       ...dados,
     };

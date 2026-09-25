@@ -552,7 +552,7 @@ function CtePageInner() {
   // ── CIOT (Lei 11.442/2007) — emitido aqui, no lançamento do CT-e, em vez de manualmente no
   // site da ANTT a cada frete. Exigido com motorista TAC ou veículo de terceiro (regra em
   // lib/mdfe/ciot-regra.ts). O MDF-e vinculado herda o CIOT do CT-e.
-  const [ciotForm, setCiotForm] = useState({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
+  const [ciotForm, setCiotForm] = useState({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "", implementos: "" });
   const [ciotGerado, setCiotGerado] = useState<{ id: string; cv: string; protocolo: string } | null>(null);
   const [gerandoCiot, setGerandoCiot] = useState(false);
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
@@ -724,13 +724,13 @@ function CtePageInner() {
     setDestinatarioSelUI("");
     setIesDestinatario([]);
     setErr("");
-    setCiotGerado(null); setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
+    setCiotGerado(null); setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "", implementos: "" });
     setModal(true);
   }
 
   function abrirEditar(c: Cte) {
     setCteEdit(c);
-    setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
+    setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "", implementos: "" });
     setCiotGerado(c.ciot ? { id: c.ciot, cv: c.ciot_codigo_verificador ?? "", protocolo: c.ciot_protocolo ?? "" } : null);
     setForm({
       emitente_id: c.emitente_id ?? "", emitente_razao_social: c.emitente_razao_social ?? "", emitente_cnpj: c.emitente_cnpj ?? "",
@@ -1086,7 +1086,11 @@ function CtePageInner() {
             CpfCnpjDestinatario: (form.destinatario_cnpj || "").replace(/\D/g, "") || undefined,
             ValorFrete: Number(form.valor_frete).toFixed(2),
             DataInicioViagem: form.data_emissao, DataFimViagem: dataFim,
-            Veiculos: [{ Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista?.rntrc ?? "", NumeroEixos: "3" }],
+            Veiculos: [
+              { Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista?.rntrc ?? "", NumeroEixos: "3" },
+              // Cavalo-trator exige ao menos um implemento (carreta) — placas separadas por vírgula
+              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7).map(pl => ({ Placa: pl, RNTRC: veiculo.rntrc ?? motorista?.rntrc ?? "", NumeroEixos: "3" })),
+            ],
             OrigemDestino: [{
               Origem:  { CodigoMunicipioOrigem: form.ibge_origem,  CepOrigem: cepOrig },
               Destino: { CodigoMunicipioDestino: form.ibge_destino, CepDestino: cepDest },
@@ -2187,6 +2191,7 @@ function CtePageInner() {
                         </select></div>
                       <div><label style={lbl}>CEP origem</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.remetente_id)?.cep ?? "78450-000"} value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} /></div>
                       <div><label style={lbl}>CEP destino</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.destinatario_id)?.cep ?? "78455-000"} value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} /></div>
+                      <div><label style={lbl}>Placa(s) do implemento/carreta (cavalo-trator exige)</label><input style={{ ...inp, textTransform: "uppercase" }} value={ciotForm.implementos} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} placeholder="ABC1D23, ABC1D24" /></div>
                       <div><label style={lbl}>Chave PIX do motorista (vazio = CPF)</label><input style={inp} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} /></div>
                       <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
                         <div style={{ flex: "1 1 200px" }}><label style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>

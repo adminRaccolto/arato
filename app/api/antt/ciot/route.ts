@@ -60,6 +60,39 @@ export async function POST(req: NextRequest) {
         RNTRCContratado: cert.rntrc || b.dados.RNTRCContratado,
         InfPagamento: pgto,
       };
+      // 3) CEP que a ANTT não conhece ("ainda não está cadastrado") → manda coordenadas geográficas
+      //    (o mais específico: LatLong → CEP → Cidade). Fonte: BrasilAPI CEP v2; sem coordenada, o
+      //    centro do município (malha do IBGE).
+      const coordDe = async (cep?: string, ibge?: string): Promise<{ lat: string; lon: string } | null> => {
+        const c = (cep ?? "").replace(/\D/g, "");
+        try {
+          if (c.length === 8) {
+            const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${c}`, { signal: AbortSignal.timeout(8000) });
+            if (r.ok) { const j = await r.json() as { location?: { coordinates?: { latitude?: string; longitude?: string } } }; const co = j.location?.coordinates; if (co?.latitude && co?.longitude) return { lat: Number(co.latitude).toFixed(6), lon: Number(co.longitude).toFixed(6) }; }
+          }
+          if (ibge) {
+            const r = await fetch(`https://servicodados.ibge.gov.br/api/v3/malhas/municipios/${ibge}?formato=application/vnd.geo+json`, { signal: AbortSignal.timeout(10000) });
+            if (r.ok) {
+              const j = await r.json() as { features?: { geometry?: { coordinates?: unknown } }[] };
+              const pts: number[][] = [];
+              const walk = (x: unknown): void => { if (Array.isArray(x)) { if (typeof x[0] === "number") pts.push(x as number[]); else x.forEach(walk); } };
+              walk(j.features?.[0]?.geometry?.coordinates);
+              if (pts.length) { const lons = pts.map(p => p[0]), lats = pts.map(p => p[1]); return { lat: ((Math.min(...lats) + Math.max(...lats)) / 2).toFixed(6), lon: ((Math.min(...lons) + Math.max(...lons)) / 2).toFixed(6) }; }
+            }
+          }
+        } catch { /* sem coordenada: segue só com CEP/cidade */ }
+        return null;
+      };
+      if (!dados.OrigemDestino?.every(o => o.Origem.LatitudeOrigem)) {
+        dados.OrigemDestino = await Promise.all((dados.OrigemDestino ?? []).map(async o => {
+          const [co, cd] = await Promise.all([coordDe(o.Origem.CepOrigem, o.Origem.CodigoMunicipioOrigem), coordDe(o.Destino.CepDestino, o.Destino.CodigoMunicipioDestino)]);
+          return {
+            ...o,
+            Origem: co ? { CodigoMunicipioOrigem: o.Origem.CodigoMunicipioOrigem, LatitudeOrigem: co.lat, LongitudeOrigem: co.lon } : o.Origem,
+            Destino: cd ? { CodigoMunicipioDestino: o.Destino.CodigoMunicipioDestino, LatitudeDestino: cd.lat, LongitudeDestino: cd.lon } : o.Destino,
+          };
+        }));
+      }
       const d = await svc.declarar(id, dados);
       if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(", ") || "sem detalhe"} [enviado: DadosCarga=${JSON.stringify(dados.DadosCarga)} ValorFrete=${dados.ValorFrete} Dist=${JSON.stringify(dados.OrigemDestino?.map(o => o.DistanciaPercorrida))}]` }, { status: 422 });
       const dd = d.Dados;

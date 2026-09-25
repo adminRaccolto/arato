@@ -387,7 +387,7 @@ function MdfePageInner() {
   const [ciotForm, setCiotForm] = useState({
     valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "",
     ibge_origem: "", ibge_destino: "", distancia_km: "",
-    peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "",
+    peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "", implementos: "",
   });
   const [ciotGerado,   setCiotGerado]   = useState<{ id: string; cv: string; protocolo: string } | null>(null);
   const [gerandoCiot,  setGerandoCiot]  = useState(false);
@@ -501,7 +501,7 @@ function MdfePageInner() {
 
   // ── Abrir modal ──────────────────────────────────────────
   function resetCiot() {
-    setCiotForm({ valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "", ibge_origem: "", ibge_destino: "", distancia_km: "", peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "" });
+    setCiotForm({ valor_frete: "", data_fim: "", cep_origem: "", cep_destino: "", ibge_origem: "", ibge_destino: "", distancia_km: "", peso_ton: "", natureza: "2101", tipo_pagamento: "6", chave_pix: "", implementos: "" });
     setCiotGerado(null); setCiotErro("");
   }
 
@@ -584,7 +584,11 @@ function MdfePageInner() {
             ValorFrete:         parseFloat(ciotForm.valor_frete.replace(",", ".")).toFixed(2),
             DataInicioViagem:   form.data_emissao,
             DataFimViagem:      ciotForm.data_fim,
-            Veiculos: [{ Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista.rntrc ?? "", NumeroEixos: String(veiculo.num_eixos ?? 3) }],
+            Veiculos: [
+              { Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista.rntrc ?? "", NumeroEixos: String(veiculo.num_eixos ?? 3) },
+              // Cavalo-trator exige ao menos um implemento (carreta) — placas separadas por vírgula
+              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7).map(pl => ({ Placa: pl, RNTRC: veiculo.rntrc ?? motorista.rntrc ?? "", NumeroEixos: "3" })),
+            ],
             OrigemDestino: [{
               Origem:  { CodigoMunicipioOrigem:  ciotForm.ibge_origem,  CepOrigem:   ciotForm.cep_origem.replace(/\D/g,"")  },
               Destino: { CodigoMunicipioDestino: ciotForm.ibge_destino, CepDestino:  ciotForm.cep_destino.replace(/\D/g,"") },
@@ -1374,6 +1378,10 @@ function MdfePageInner() {
                       <div>
                         <label style={lbl}>CEP Origem *</label>
                         <input style={{ ...inp, fontFamily:"monospace" }} placeholder="78450-000" value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Placa(s) do implemento/carreta *</label>
+                        <input style={{ ...inp, textTransform: "uppercase" }} placeholder="ABC1D23, ABC1D24" value={ciotForm.implementos} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} />
                       </div>
                       <div>
                         <label style={lbl}>Cód. IBGE Município Origem *</label>

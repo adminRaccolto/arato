@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-n",
+    data: "25/09/2026",
+    titulo: "CIOT: coordenadas quando o CEP é desconhecido, implemento obrigatório e horário de MT",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Três rejeições da ANTT na declaração do CIOT: (1) CEP não cadastrado (78460000) — agora o sistema envia latitude/longitude do local (BrasilAPI por CEP; sem coordenada, o centro do município pelo IBGE) no lugar do CEP; (2) cavalo-trator exige ao menos um implemento — novo campo \"Placa(s) do implemento/carreta\" no bloco do CIOT (várias placas separadas por vírgula); (3) data/hora da declaração fora da tolerância — ia em horário UTC (4h adiantado); agora vai no horário de Mato Grosso (America/Cuiaba). Não testado novamente na ANTT." },
+    ],
+    onde: "Transporte → CT-e e MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.25-m",
     data: "25/09/2026",
     titulo: "CIOT: peso com 2 casas e reaproveitamento do número reservado",
