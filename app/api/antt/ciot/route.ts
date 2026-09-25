@@ -23,6 +23,7 @@ type Body = {
   ambiente?: AmbienteCiot;
   dados?: DeclaracaoCIOT;
   ciot?: string;              // 12 dígitos + verificador quando exigido
+  ciotReservado?: string;     // CIOT já reservado (POST /gerar) cuja declaração falhou — reaproveita em vez de gerar outro
   ano?: string; peso?: string; motivo?: string;
 };
 
@@ -44,9 +45,12 @@ export async function POST(req: NextRequest) {
     if (b.acao === "declarar") {
       if (!b.dados) return falha("dados da operação obrigatórios.");
       // 1) reserva o número do CIOT
-      const g = await svc.gerar(cnpj);
-      const id = g.Dados?.CIOT;
-      if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+      let id = (b.ciotReservado ?? "").replace(/\D/g, "");
+      if (id.length !== 12) {
+        const g = await svc.gerar(cnpj);
+        id = g.Dados?.CIOT ?? "";
+        if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+      }
       // 2) declara a operação. ETC sem subcontratação de TAC: contratado = a própria transportadora
       //    (CNPJ + RNTRC do emitente) e o favorecido do pagamento também.
       const pgto = (b.dados.InfPagamento ?? []).map(p => ({ ...p, CpfCnpjCreditado: cnpj, ChavePix: p.ChavePix && p.ChavePix.replace(/\D/g, "") !== (b.dados!.CpfCnpjContratado ?? "").replace(/\D/g, "") ? p.ChavePix : (cert.pagPix || p.ChavePix) }));

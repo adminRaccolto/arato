@@ -556,6 +556,7 @@ function CtePageInner() {
   const [ciotGerado, setCiotGerado] = useState<{ id: string; cv: string; protocolo: string } | null>(null);
   const [gerandoCiot, setGerandoCiot] = useState(false);
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
+  const [ciotReservado, setCiotReservado] = useState("");
   const [ciotErro, setCiotErro] = useState("");
   const naturezaCiot = (desc: string) => {
     const d = desc.toLowerCase();
@@ -1076,7 +1077,7 @@ function CtePageInner() {
       const res = await fetch("/api/antt/ciot", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb,
+          acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb, ciotReservado: ciotReservado || undefined,
           dados: {
             // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor
             // ajusta CNPJ/RNTRC do emitente); contratante = o TOMADOR do frete; destinatário da carga.
@@ -1091,7 +1092,7 @@ function CtePageInner() {
               Destino: { CodigoMunicipioDestino: form.ibge_destino, CepDestino: cepDest },
               DistanciaPercorrida: ciotForm.distancia_km, QtdViagens: "1",
             }],
-            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: String(((form.peso_bruto_kg || 0) / 1000).toFixed(3)), CodigoTipoCarga: "5" },
+            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: String(Math.max(0.01, (form.peso_bruto_kg || 0) / 1000).toFixed(2)), CodigoTipoCarga: "5" },
             InfPagamento: [{ TipoPagamento: "6", CpfCnpjCreditado: cpfMot, ChavePix: ciotForm.chave_pix || cpfMot, IndPagamento: "0" }],
           },
         }),
@@ -1105,7 +1106,8 @@ function CtePageInner() {
             body: JSON.stringify({ fazenda_id: fazendaId, cte_id: cteEdit.id, payload: { ciot: gerado.id, ciot_codigo_verificador: gerado.cv, ciot_protocolo: gerado.protocolo } }) }).catch(() => {});
         }
       } else {
-        setCiotErro(/ANTT_API_KEY/.test(String(data.error ?? data.Mensagem ?? "")) ? "A geração automática ainda não está habilitada (falta a chave da API do CIOT no servidor). Emita o CIOT no site e informe o número na caixa abaixo — \"Usar este CIOT\"." : (data.Mensagem || data.Erros?.join(", ") || data.error || "Erro ao gerar CIOT."));
+        if (data.Dados?.IdOperacaoTransporte) setCiotReservado(String(data.Dados.IdOperacaoTransporte)); // reaproveita na próxima tentativa
+        setCiotErro(data.Mensagem || data.Erros?.join(", ") || data.error || "Erro ao gerar CIOT.");
       }
     } catch (e) {
       {

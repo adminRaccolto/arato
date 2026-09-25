@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-m",
+    data: "25/09/2026",
+    titulo: "CIOT: peso com 2 casas e reaproveitamento do número reservado",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A ANTT rejeitou a declaração com \"PesoCarga deve ser maior que 0 e menor que 99999.99\": o peso ia com 3 casas decimais (75.040); agora vai com 2 (75.04) e nunca zero. Como o número do CIOT já é reservado antes da declaração (o 560000569256 ficou reservado), uma nova tentativa reaproveita o número reservado em vez de gerar outro." },
+    ],
+    onde: "Transporte → CT-e e MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.25-l",
     data: "25/09/2026",
     titulo: "CIOT: integração refeita com certificado digital (sem chave de API)",

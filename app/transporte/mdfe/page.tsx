@@ -392,6 +392,7 @@ function MdfePageInner() {
   const [ciotGerado,   setCiotGerado]   = useState<{ id: string; cv: string; protocolo: string } | null>(null);
   const [gerandoCiot,  setGerandoCiot]  = useState(false);
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
+  const [ciotReservado, setCiotReservado] = useState("");
   const [ciotErro,     setCiotErro]     = useState("");
 
   // Modal encerramento
@@ -570,6 +571,7 @@ function MdfePageInner() {
         body: JSON.stringify({
           acao: "declarar",
           fazenda_id: fazendaId,
+          ciotReservado: ciotReservado || undefined,
           cnpjContratante: contratanteDoc,
           ambiente: ambienteCiot,
           dados: {
@@ -589,7 +591,7 @@ function MdfePageInner() {
               DistanciaPercorrida: ciotForm.distancia_km,
               QtdViagens: "1",
             }],
-            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: ciotForm.peso_ton || "0", CodigoTipoCarga: "5" },
+            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: Math.max(0.01, parseFloat(String(ciotForm.peso_ton || "0").replace(",", ".")) || 0).toFixed(2), CodigoTipoCarga: "5" },
             InfPagamento: [{
               TipoPagamento: ciotForm.tipo_pagamento,
               CpfCnpjCreditado: motorista.cpf.replace(/\D/g,""),
@@ -616,7 +618,8 @@ function MdfePageInner() {
           }).then(() => carregar()).catch(() => {/* best-effort */});
         }
       } else {
-        setCiotErro(/ANTT_API_KEY/.test(String(data.error ?? data.Mensagem ?? "")) ? "A geração automática ainda não está habilitada (falta a chave da API do CIOT no servidor). Emita o CIOT no site e informe o número na caixa abaixo — \"Usar este CIOT\"." : (data.Mensagem || data.Erros?.join(", ") || "Erro ao gerar CIOT."));
+        if (data.Dados?.IdOperacaoTransporte) setCiotReservado(String(data.Dados.IdOperacaoTransporte)); // reaproveita na próxima tentativa
+        setCiotErro(data.Mensagem || data.Erros?.join(", ") || data.error || "Erro ao gerar CIOT.");
       }
     } catch (e) {
       {
