@@ -2933,10 +2933,15 @@ export async function processarNfEntrada(
       // da Empresa (achado 25/09/2026). Prefere o cadastro da própria fazenda.
       const idsContaEmp = await resolverFazendaIdsDaConta(fazenda_id);
       const { data: empsDest } = await supabase
-        .from("empresas").select("id, fazenda_id")
+        .from("empresas").select("id, fazenda_id, finalidades")
         .in("fazenda_id", idsContaEmp.length ? idsContaEmp : [fazenda_id])
         .or(`cpf_cnpj.eq.${cd},cpf_cnpj.eq.${cdFmt}`);
-      const empDest = (empsDest ?? []).find(e => e.fazenda_id === fazenda_id) ?? (empsDest ?? [])[0];
+      // Por enquanto o financeiro da Empresa é SÓ das TRANSPORTADORAS (decisão do dono 25/09/2026).
+      // O mesmo CNPJ pode estar cadastrado em várias fazendas com finalidades diferentes — basta
+      // uma linha marcada como transportadora. Demais empresas (holding, armazém, agropecuária)
+      // seguem no contas a pagar do produtor.
+      const ehTransportadora = (empsDest ?? []).some(e => Array.isArray(e.finalidades) && e.finalidades.includes("transportadora"));
+      const empDest = ehTransportadora ? ((empsDest ?? []).find(e => e.fazenda_id === fazenda_id) ?? (empsDest ?? [])[0]) : undefined;
       empresaDestinoId = empDest?.id ?? null;
       empresaDestinoFazendaId = (empDest?.fazenda_id as string | undefined) ?? null;
     }

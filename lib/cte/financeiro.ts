@@ -50,10 +50,14 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
     const { data } = await db.from("pessoas").select("id").in("fazenda_id", fazIds).or(`cpf_cnpj.eq.${doc},cpf_cnpj.eq.${fmtDoc(doc)}`).limit(1).maybeSingle();
     return (data?.id as string | undefined) ?? null;
   };
+  // Financeiro da Empresa só para TRANSPORTADORAS (decisão do dono, 25/09/2026): o mesmo CNPJ pode
+  // estar cadastrado em várias fazendas — vale se alguma linha for transportadora.
   const empresaPorDoc = async (doc: string) => {
     if (!doc) return null;
-    const { data } = await db.from("empresas").select("id, fazenda_id").in("fazenda_id", fazIds).or(`cpf_cnpj.eq.${doc},cpf_cnpj.eq.${fmtDoc(doc)}`).limit(1).maybeSingle();
-    return data ?? null;
+    const { data } = await db.from("empresas").select("id, fazenda_id, finalidades").in("fazenda_id", fazIds).or(`cpf_cnpj.eq.${doc},cpf_cnpj.eq.${fmtDoc(doc)}`);
+    const linhas = data ?? [];
+    if (!linhas.some(e => Array.isArray(e.finalidades) && e.finalidades.includes("transportadora"))) return null;
+    return linhas.find(e => e.fazenda_id === c.fazenda_id) ?? linhas[0];
   };
 
   // 1) A RECEBER — empresa transportadora (financeiro isolado)

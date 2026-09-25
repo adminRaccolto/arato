@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-r",
+    data: "25/09/2026",
+    titulo: "Financeiro Empresas: só transportadoras",
+    modulos: ["Financeiro", "Compras", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Por decisão do dono, o controle financeiro das Empresas (PJ) fica, por enquanto, só com as TRANSPORTADORAS (cadastro de Empresa com a finalidade Transportadora — o mesmo CNPJ cadastrado em várias fazendas vale se alguma for transportadora). NF de entrada destinada a CNPJ de outra empresa (holding, armazém, agropecuária) segue no contas a pagar do produtor, e o CT-e só gera a receber/a pagar de empresa para transportadora. A NF 1921 da Santa Rita Armazéns Gerais, que tinha sido movida por engano para o financeiro da Empresa, voltou para o contas a pagar do produtor." },
+    ],
+    onde: "Financeiro → Empresas · Compras → NF de Produtos · Transporte → CT-e",
+  },
+  {
     versao: "2026.09.25-q",
     data: "25/09/2026",
     titulo: "Financeiro Empresas: lista de CP/CR aparecia vazia + NF de empresa agora vai para o financeiro da Empresa",
