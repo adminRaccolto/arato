@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         InfPagamento: pgto,
       };
       const d = await svc.declarar(id, dados);
-      if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+      if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(", ") || "sem detalhe"} [enviado: DadosCarga=${JSON.stringify(dados.DadosCarga)} ValorFrete=${dados.ValorFrete} Dist=${JSON.stringify(dados.OrigemDestino?.map(o => o.DistanciaPercorrida))}]` }, { status: 422 });
       const dd = d.Dados;
       await db.from("ciots").insert({
         id_operacao: dd?.IdOperacaoTransporte ?? id, codigo_verificador: dd?.CodigoVerificador, protocolo: dd?.Protocolo,
