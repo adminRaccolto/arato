@@ -555,6 +555,7 @@ function CtePageInner() {
   const [ciotForm, setCiotForm] = useState({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "" });
   const [ciotGerado, setCiotGerado] = useState<{ id: string; cv: string; protocolo: string } | null>(null);
   const [gerandoCiot, setGerandoCiot] = useState(false);
+  const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
   const [ciotErro, setCiotErro] = useState("");
   const naturezaCiot = (desc: string) => {
     const d = desc.toLowerCase();
@@ -2147,9 +2148,19 @@ function CtePageInner() {
                 const mot = motoristas.find(m => m.id === form.motorista_id);
                 const vei = veiculos.find(v => v.id === form.veiculo_id);
                 if (!ciotExigido({ tpEmit: "1", motoristaTipo: mot?.tipo, veiculoProprietarioTipo: vei?.proprietario_tipo })) return null;
+                const usarCiotManual = async () => {
+                  const cod = ciotManual.codigo.replace(/\D/g, "");
+                  if (cod.length !== 12) { setCiotErro("O CIOT tem 12 dígitos."); return; }
+                  const g = { id: cod, cv: ciotManual.cv.trim(), protocolo: "" };
+                  setCiotGerado(g); setCiotErro("");
+                  if (cteEdit?.id && fazendaId) {
+                    await fetch("/api/transporte/cte-salvar", { method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ fazenda_id: fazendaId, cte_id: cteEdit.id, payload: { ciot: g.id, ciot_codigo_verificador: g.cv || null } }) }).catch(() => {});
+                  }
+                };
                 const NAT = [["2101","Soja"],["2102","Milho"],["2103","Algodão"],["2104","Trigo"],["2201","Fertilizantes / corretivos"],["2202","Granel vegetal"],["4101","Carga geral"]];
                 return <>
-                  <div style={{ ...divider, color: ciotGerado ? "#16A34A" : "#C9921B" }}>CIOT — {ciotGerado ? `✓ Gerado: ${ciotGerado.id}` : "obrigatório (motorista TAC ou veículo de terceiro)"}</div>
+                  <div style={{ ...divider, color: ciotGerado ? "#16A34A" : "#C9921B" }}>CIOT — {ciotGerado ? `✓ ${ciotGerado.id}` : "obrigatório em todo frete remunerado (ANTT, desde 24/05/2026)"}</div>
                   {ciotGerado ? (
                     <div style={{ gridColumn: "1 / -1", background: "#F0FDF4", border: "0.5px solid #16A34A50", borderRadius: 8, padding: "10px 14px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
                       <div><div style={{ fontSize: 10, color: "#16A34A", fontWeight: 700 }}>CIOT</div><div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700 }}>{ciotGerado.id}</div></div>
@@ -2168,6 +2179,11 @@ function CtePageInner() {
                       <div><label style={lbl}>CEP origem</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.remetente_id)?.cep ?? "78450-000"} value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} /></div>
                       <div><label style={lbl}>CEP destino</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.destinatario_id)?.cep ?? "78455-000"} value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} /></div>
                       <div><label style={lbl}>Chave PIX do motorista (vazio = CPF)</label><input style={inp} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} /></div>
+                      <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
+                        <div style={{ flex: "1 1 200px" }}><label style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>
+                        <div style={{ flex: "0 1 140px" }}><label style={lbl}>Cód. verificador</label><input style={inp} value={ciotManual.cv} onChange={e => setCiotManual(m => ({ ...m, cv: e.target.value }))} /></div>
+                        <button type="button" onClick={usarCiotManual} style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Usar este CIOT</button>
+                      </div>
                       <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 12 }}>
                         <button type="button" onClick={gerarCiotCte} disabled={gerandoCiot} style={{ padding: "8px 18px", background: gerandoCiot ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gerandoCiot ? "default" : "pointer" }}>{gerandoCiot ? "Gerando…" : "Gerar CIOT via ANTT"}</button>
                         <span style={{ fontSize: 11, color: "var(--text-3)" }}>Usa valor do frete, datas, IBGE, peso e motorista deste CT-e; CEPs vêm do cadastro do remetente/destinatário. Ambiente conforme Parâmetros → CT-e.</span>

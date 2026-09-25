@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-j",
+    data: "25/09/2026",
+    titulo: "CIOT obrigatório em todo frete remunerado (regra ANTT de 24/05/2026) + entrada manual",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A regra do CIOT estava desatualizada: exigia só com motorista TAC ou veículo de terceiro. Desde 24/05/2026 (atualização da Resolução ANTT 5.862/2020) o CIOT é obrigatório em TODA operação de transporte rodoviário remunerada, inclusive ETC com frota própria e motorista CLT — fica dispensado apenas o transporte internacional e a carga própria sem contratação de terceiros. Frete pago entre empresas do mesmo grupo é operação remunerada e exige CIOT. Agora o bloco de CIOT aparece em todo CT-e/MDF-e de prestador de serviço, o MDF-e herda o CIOT do CT-e e a autorização é bloqueada localmente sem ele. Como a geração automática via API ainda não foi validada, há também a entrada manual: informe o número de 12 dígitos do CIOT emitido no site e clique em \"Usar este CIOT\". Confirme a regra com a ANTT/contador." },
+    ],
+    onde: "Transporte → CT-e e MDF-e",
+  },
+  {
     versao: "2026.09.25-i",
     data: "25/09/2026",
     titulo: "MDF-e: rejeição 745 (tipo de transportador sem proprietário do veículo)",
