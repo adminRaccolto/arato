@@ -990,17 +990,20 @@ function ConciliacaoInner() {
   // conciliado a partir deste extrato, o lançamento continua conciliado
   // (o vínculo é só removido daqui). Isso evita desfazer conciliações reais
   // por engano ao limpar uma cópia velha/duplicada.
-  async function excluirExtrato(ext: Extrato) {
-    const fmtP = `"${ext.conta_nome}" (${fmtDt(ext.data_inicio)} a ${fmtDt(ext.data_fim)})`;
-    // Opção 1: só limpar o histórico, mantendo transações e conciliações na conta
-    const soRegistro = confirm(`Importação ${fmtP}\n\nOK = excluir SÓ o registro do histórico (as transações e as conciliações continuam na conta).\nCancelar = ver a exclusão completa desta importação.`);
-    let reabrir = false;
-    if (!soRegistro) {
-      if (!confirm(`Excluir COMPLETAMENTE a importação ${fmtP}?\n\nAs ${ext.total_linhas} transações trazidas por este OFX serão removidas da conta e os lançamentos vinculados a elas deixam de constar como conciliados.`)) return;
-      if (ext.conciliados > 0) {
-        reabrir = confirm(`Este OFX tem ${ext.conciliados} linha(s) conciliada(s).\n\nOK = também REABRIR os lançamentos que foram baixados por ela (voltam para em aberto/vencido).\nCancelar = manter os lançamentos baixados (só deixam de ser conciliados).`);
-      }
-    }
+  // A lixeira só abre o pop-up com as 3 opções; a execução é em executarExclusao.
+  const [modalExcluir, setModalExcluir] = useState<Extrato | null>(null);
+  const [modoExcluir, setModoExcluir]   = useState<"registro" | "completa" | "completa_reabrir">("registro");
+  function excluirExtrato(ext: Extrato) {
+    setModoExcluir("registro");
+    setModalExcluir(ext);
+  }
+
+  async function executarExclusao() {
+    const ext = modalExcluir;
+    if (!ext) return;
+    const soRegistro = modoExcluir === "registro";
+    const reabrir = modoExcluir === "completa_reabrir";
+    setModalExcluir(null);
     setLoading(true);
     try {
       // Via API route com service_role_key — o delete direto do cliente
@@ -2196,6 +2199,46 @@ function ConciliacaoInner() {
       <TopNav />
 
       {/* ── Modal Tesouraria ──────────────────────────────────────────────── */}
+      {modalExcluir && (() => {
+        const ex = modalExcluir;
+        const opcoes: { k: "registro" | "completa" | "completa_reabrir"; titulo: string; desc: string; aviso?: string; cor: string }[] = [
+          { k: "registro", titulo: "Excluir só o registro do histórico", cor: "#1A4870",
+            desc: "Remove a importação da lista do histórico e o arquivo OFX guardado. As transações e as conciliações continuam na conta, e nenhum lançamento é alterado.",
+            aviso: "Use para diminuir o histórico. O botão \"Ver conciliação\" desta importação deixa de existir." },
+          { k: "completa", titulo: "Excluir a importação e as transações", cor: "#C9921B",
+            desc: `Remove as ${ex.total_linhas} transações que este OFX trouxe e desmarca a conciliação dos lançamentos ligados a elas. Os lançamentos continuam baixados.`,
+            aviso: "Use quando o OFX foi importado na conta errada, mas as baixas devem ser mantidas." },
+          { k: "completa_reabrir", titulo: "Excluir tudo e reabrir os lançamentos baixados", cor: "#E24B4A",
+            desc: "Faz o mesmo que a opção anterior e, além disso, reabre os lançamentos que estavam baixados e ligados a este OFX (voltam para em aberto/vencido, sem data e valor de baixa). Lançamentos de borderô não são reabertos.",
+            aviso: `Atenção: inclui lançamentos que já estavam baixados antes da importação e só foram conciliados por ela.${ex.conciliados > 0 ? ` Este OFX tem ${ex.conciliados} linha(s) conciliada(s).` : ""}` },
+        ];
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalExcluir(null)}>
+            <div style={{ background: "var(--bg-card, #fff)", borderRadius: 12, padding: "22px 26px", width: "min(96vw,600px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>🗑 Excluir importação de OFX</div>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>{ex.conta_nome} · {fmtDt(ex.data_inicio)} a {fmtDt(ex.data_fim)} · {ex.total_linhas} transações · {ex.conciliados} conciliadas</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {opcoes.map(o => (
+                  <label key={o.k} style={{ display: "flex", gap: 10, padding: "12px 14px", borderRadius: 10, cursor: "pointer", border: `${modoExcluir === o.k ? 1.5 : 0.5}px solid ${modoExcluir === o.k ? o.cor : "#DDE2EE"}`, background: modoExcluir === o.k ? "#F8FAFD" : "transparent" }}>
+                    <input type="radio" name="modo-excluir" checked={modoExcluir === o.k} onChange={() => setModoExcluir(o.k)} style={{ marginTop: 3 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: o.cor }}>{o.titulo}</div>
+                      <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>{o.desc}</div>
+                      {o.aviso && <div style={{ fontSize: 11, color: o.k === "completa_reabrir" ? "#E24B4A" : "#888", marginTop: 4 }}>{o.aviso}</div>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 12 }}>Esta ação não pode ser desfeita.</div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                <button onClick={() => setModalExcluir(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={executarExclusao} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: modoExcluir === "registro" ? "#1A4870" : modoExcluir === "completa" ? "#C9921B" : "#E24B4A", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Excluir</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {modalTes && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
