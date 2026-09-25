@@ -70,7 +70,7 @@ const STATUS_BADGE: Record<string, { bg: string; cl: string; label: string }> = 
 };
 
 export default function TransferenciaMaquinasPage() {
-  const { contaId, fazendaId } = useAuth();
+  const { contaId, fazendaId, fazendaIds } = useAuth();
 
   const [itens,     setItens]     = useState<TransferenciaMaquina[]>([]);
   const [maquinas,  setMaquinas]  = useState<Maquina[]>([]);
@@ -93,6 +93,34 @@ export default function TransferenciaMaquinasPage() {
     // do documento que o proprietário/terceiro eventualmente passou.
     nf_terceiro_numero: "", nf_terceiro_chave: "", nf_terceiro_data: "",
   });
+
+  // Emitentes fiscais da conta (módulos fiscal_pf_/fiscal_emp_) — seletor "Emitente da NF". Antes o
+  // sistema usava sempre o primeiro módulo da fazenda, sem saber de quem era a máquina.
+  type EmitenteFiscal = { modulo: string; fazenda_id: string; cpf: string; nome: string; ie: string };
+  const [emitentes, setEmitentes] = useState<EmitenteFiscal[]>([]);
+  const [emitenteSel, setEmitenteSel] = useState("");
+  useEffect(() => {
+    const ids = fazendaIds && fazendaIds.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!ids.length) return;
+    supabase.from("configuracoes_modulo").select("modulo, fazenda_id, config").in("fazenda_id", ids)
+      .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%").then(({ data }) => {
+        const lista = ((data ?? []) as { modulo: string; fazenda_id: string; config: Record<string, string> | null }[])
+          .filter(r => r.config?.cpf_cnpj_emitente)
+          .map(r => ({ modulo: r.modulo, fazenda_id: r.fazenda_id, cpf: r.config!.cpf_cnpj_emitente, nome: r.config!.razao_social || r.modulo, ie: r.config!.ie_emitente || "" }));
+        // dedupe por CPF/CNPJ + IE
+        const vistos = new Set<string>();
+        setEmitentes(lista.filter(e => { const k = `${e.cpf.replace(/\D/g, "")}|${e.ie.replace(/\D/g, "")}`; if (vistos.has(k)) return false; vistos.add(k); return true; }));
+      });
+  }, [fazendaId, fazendaIds?.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve o emitente: o escolhido; senão (retorno) o da remessa original pelo CPF/CNPJ; senão o único.
+  function resolverEmitente(cpfHint?: string | null): EmitenteFiscal | { erro: string } {
+    if (emitenteSel) { const e = emitentes.find(x => `${x.modulo}|${x.fazenda_id}` === emitenteSel); if (e) return e; }
+    const dig = (cpfHint ?? "").replace(/\D/g, "");
+    if (dig) { const e = emitentes.find(x => x.cpf.replace(/\D/g, "") === dig); if (e) return e; }
+    if (emitentes.length === 1) return emitentes[0];
+    return { erro: emitentes.length === 0 ? "Nenhum emitente fiscal configurado em Parâmetros → Fiscal." : "Escolha o Emitente da NF (de quem é a máquina)." };
+  }
 
   // Modal Retorno
   const [modalRet, setModalRet] = useState<TransferenciaMaquina | null>(null);
@@ -187,18 +215,15 @@ export default function TransferenciaMaquinasPage() {
     try {
       // Emitente: titular fiscal da fazenda (mesmo padrão de Devolução/Remessa — resolve pelo
       // certificado configurado, sem precisar escolher módulo manualmente).
-      const { data: fiscalMods } = await supabase
-        .from("configuracoes_modulo")
-        .select("modulo, config")
-        .eq("fazenda_id", fazendaId)
-        .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-      const moduloKey = fiscalMods?.[0]?.modulo ?? "";
-      const cpfCnpjHint = (fiscalMods?.[0]?.config as Record<string, string> | undefined)?.cpf_cnpj_emitente;
+      const em = resolverEmitente();
+      if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
+      const moduloKey = em.modulo;
+      const cpfCnpjHint = em.cpf;
 
       const resp = await fetch("/api/fiscal/emitir-nfe", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id: fazendaId,
+          fazenda_id: em.fazenda_id,
           modulo_key: moduloKey,
           cpf_cnpj_hint: cpfCnpjHint,
           destinatario: {
@@ -294,17 +319,14 @@ export default function TransferenciaMaquinasPage() {
     setRetSalvando(true);
     setRetErro("");
     try {
-      const { data: fiscalMods } = await supabase
-        .from("configuracoes_modulo")
-        .select("modulo, config")
-        .eq("fazenda_id", fazendaId)
-        .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
-      const moduloKey = fiscalMods?.[0]?.modulo ?? "";
+      const emR = resolverEmitente(modalRet.emitente_cpf_cnpj);
+      if ("erro" in emR) { setRetErro(emR.erro); setRetSalvando(false); return; }
+      const moduloKey = emR.modulo;
 
       const resp = await fetch("/api/fiscal/emitir-nfe", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id: fazendaId,
+          fazenda_id: emR.fazenda_id,
           modulo_key: moduloKey,
           cpf_cnpj_hint: modalRet.emitente_cpf_cnpj,
           // A contraparte do documento é sempre quem participou da remessa original —
@@ -467,6 +489,14 @@ export default function TransferenciaMaquinasPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Emitente da NF (de quem é a máquina)</label>
+                <select value={emitenteSel} onChange={e => setEmitenteSel(e.target.value)} style={inp}>
+                  <option value="">{emitentes.length === 1 ? `${emitentes[0].nome} — ${emitentes[0].cpf}` : emitentes.length ? "— Selecione o emitente —" : "Nenhum emitente fiscal configurado"}</option>
+                  {emitentes.length > 1 && emitentes.map(e => <option key={`${e.modulo}|${e.fazenda_id}`} value={`${e.modulo}|${e.fazenda_id}`}>{e.nome} — {e.cpf}{e.ie ? ` · IE ${e.ie}` : ""}</option>)}
+                </select>
               </div>
 
               <div style={{ gridColumn: "1 / -1" }}>

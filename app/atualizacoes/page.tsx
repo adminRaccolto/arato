@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-e",
+    data: "25/09/2026",
+    titulo: "Transferência de Máquinas: seletor de emitente da NF",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "A tela de Transferência de Máquinas/Equipamentos ganhou o campo \"Emitente da NF (de quem é a máquina)\", com os emitentes fiscais da conta (CPF/CNPJ e IE). Antes o sistema usava sempre o primeiro emitente da fazenda, sem saber de quem era a máquina. Com mais de um emitente é preciso escolher; com um só ele é usado automaticamente. A NF de devolução (retorno) usa o mesmo emitente da remessa original pelo CPF/CNPJ." },
+    ],
+    onde: "Fiscal → Transferência de Máquinas",
+  },
+  {
     versao: "2026.09.25-d",
     data: "25/09/2026",
     titulo: "NF-e: IBGE do emitente completado pela IE do produtor (transferência de máquinas)",
