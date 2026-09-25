@@ -12,6 +12,7 @@ const RELEASES = [
     modulos: ["Financeiro"],
     itens: [
       { tipo: "melhoria", texto: "Na baixa do Contas a Receber, Multa, Juros e Desconto agora são informados em R$ (antes só em %), como no Contas a Pagar. Em recebimento parcial aparece a \"Nova data de vencimento do saldo restante\" (obrigatória) e o título é reprogramado; desconto que cobre o saldo conta como quitação, não como parcial." },
+      { tipo: "novo", texto: "Contas a Receber também ganhou o restante da paridade com o CP: borderôs PENDENTES no topo da grid com \"Confirmar Recebimento\" (data e conta) e \"Cancelar\"; aba \"Parcial\" e filtro Vencendo; \"Baixados\" agora inclui os recebidos parcialmente; ao abrir \"Vencidos\" o período recua 2 anos, como no CP." },
       { tipo: "novo", texto: "Estorno de borderô no Contas a Receber: na aba Baixados, cada borderô de recebimento aparece em uma linha (expansível, com os títulos) com o botão \"↩ Estornar\" — todos os títulos voltam para \"Em aberto\" e o borderô é excluído. Título recebido por borderô não é mais reaberto individualmente (mostra BDR): estorna-se o borderô, como no CP." },
     ],
     onde: "Financeiro → Contas a Receber",

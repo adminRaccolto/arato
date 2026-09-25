@@ -11,7 +11,7 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes, listarBorderosPagos, estornarBordero, buscarLancamentoDuplicado } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes, listarBorderosPagos, estornarBordero, confirmarPagamentoBordero, cancelarBordero, buscarLancamentoDuplicado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import ConciliacaoOfxInfo from "../../../components/ConciliacaoOfxInfo";
@@ -20,7 +20,7 @@ interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?:
 
 // ── Tipos ────────────────────────────────────────────────────
 type Moeda  = "BRL" | "USD" | "barter";
-type Filtro = "aberto" | "vencido" | "baixado" | "barter" | "previsao" | "pedidos" | "todos";
+type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "parcial" | "barter" | "previsao" | "pedidos" | "todos";
 
 // ── Constantes ────────────────────────────────────────────────
 const TODAY       = new Date().toISOString().split("T")[0];
@@ -149,7 +149,7 @@ function ContasReceberInner() {
   const [erro,     setErro]     = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>(() => {
     const f = searchParams.get("filtro") as Filtro | null;
-    const valid: Filtro[] = ["aberto","vencido","baixado","barter","previsao","pedidos","todos"];
+    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","parcial","barter","previsao","pedidos","todos"];
     return f && valid.includes(f) ? f : "aberto";
   });
 
@@ -317,6 +317,13 @@ function ContasReceberInner() {
   // Borderôs de recebimento já recebidos (aba Baixados) — permitem ESTORNO, como no Contas a Pagar
   const [borderosRecebidos, setBorderosRecebidos] = useState<PagamentoLote[]>([]);
   const [expandedBordRec, setExpandedBordRec] = useState<Set<string>>(new Set());
+  // Borderô pendente: confirmar recebimento / cancelar (igual ao CP)
+  const [expandedBordPend, setExpandedBordPend] = useState<Set<string>>(new Set());
+  const [modalConfirmar,   setModalConfirmar]   = useState<PagamentoLote | null>(null);
+  const [confirmData,      setConfirmData]      = useState(TODAY);
+  const [confirmConta,     setConfirmConta]     = useState("");
+  const [confirmSalvando,  setConfirmSalvando]  = useState(false);
+  const [confirmErro,      setConfirmErro]      = useState("");
 
   // ── Carga ──────────────────────────────────────────────────
 
@@ -426,7 +433,10 @@ function ContasReceberInner() {
       const sEfet  = statusEfetivo(l);
       if (filtro === "aberto")   return isReal && sEfet !== "baixado" && sEfet !== "cancelado" && sEfet !== "previsto" && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
-      if (filtro === "baixado")  return isReal && sEfet === "baixado" && !l.lote_id;
+      if (filtro === "vencendo") return isReal && sEfet === "vencendo";
+      // Baixados inclui os recebidos PARCIALMENTE (igual ao CP); os de borderô aparecem no bloco do borderô
+      if (filtro === "baixado")  return isReal && (sEfet === "baixado" || sEfet === "parcial") && !l.lote_id;
+      if (filtro === "parcial")  return isReal && l.status === "parcial";
       if (filtro === "barter")   return isReal && l.moeda === "barter";
       if (filtro === "pedidos")  return isReal && sEfet === "previsto";
       if (filtro === "previsao") return l.natureza === "previsao";
@@ -549,6 +559,55 @@ function ContasReceberInner() {
       alert("Erro ao estornar borderô: " + msg);
     }
   };
+
+  const recarregarBorderos = () => {
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!fids.length) return;
+    listarBorderosPendentes(fids, "receber").then(setBorderosCR).catch(() => {});
+    listarBorderosPagos(fids, "receber").then(setBorderosRecebidos).catch(() => {});
+  };
+
+  const confirmarBorderoRec = async () => {
+    if (!modalConfirmar || !confirmData || !confirmConta) return;
+    setConfirmSalvando(true); setConfirmErro("");
+    try {
+      await confirmarPagamentoBordero(modalConfirmar.id, confirmData, confirmConta);
+      setModalConfirmar(null);
+      recarregarBorderos();
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e);
+      setConfirmErro(msg || "Erro ao confirmar recebimento");
+    } finally {
+      setConfirmSalvando(false);
+    }
+  };
+
+  const cancelarBorderoRec = async (b: PagamentoLote) => {
+    if (!confirm(`Cancelar borderô "${b.descricao}"? Os títulos voltam ao estado em aberto.`)) return;
+    try {
+      await cancelarBordero(b.id);
+      recarregarBorderos();
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message) : JSON.stringify(e);
+      alert("Erro ao cancelar borderô: " + msg);
+    }
+  };
+
+  const borderosPendentesFiltrados = useMemo(() =>
+    !fFornecedor
+      ? borderosCR
+      : borderosCR.filter(b =>
+          (b.descricao ?? "").toLowerCase().includes(fFornecedor.toLowerCase()) ||
+          (b.itens ?? []).some(item => {
+            const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+            const pessoaNome = lanc?.pessoa_id ? (pessoas.find(p => p.id === lanc.pessoa_id)?.nome ?? "") : "";
+            const desc = lanc?.descricao ?? (item as { lancamento?: { descricao?: string } }).lancamento?.descricao ?? "";
+            return [pessoaNome, desc].join(" ").toLowerCase().includes(fFornecedor.toLowerCase());
+          })
+        ),
+  [borderosCR, fFornecedor, lancamentos, pessoas]);
 
   const borderosRecebidosFiltrados = useMemo(() =>
     !fFornecedor
@@ -941,12 +1000,21 @@ function ContasReceberInner() {
                   { key: "aberto",   label: "Em aberto",       count: lancOpReal.filter(l => statusEfetivo(l) !== "baixado").length,                             cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",    activeBorder: "rgba(34,197,94,0.35)"   },
                   { key: "pedidos",  label: "Pedidos de Venda", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "previsto").length, cor: "#8B80D1", activeBg: "rgba(139,128,209,0.12)", activeBorder: "rgba(139,128,209,0.35)" },
                   { key: "vencido",  label: "Vencidos",         count: qVencido + qVencendo,                                                                          cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",    activeBorder: "rgba(239,68,68,0.4)"    },
-                  { key: "baixado",  label: "Baixados",         count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length,   cor: "#60A5FA", activeBg: "rgba(59,130,246,0.12)",   activeBorder: "rgba(59,130,246,0.35)"  },
+                  { key: "baixado",  label: "Baixados",         count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && (l.status === "baixado" || l.status === "parcial")).length + borderosRecebidos.length,   cor: "#60A5FA", activeBg: "rgba(59,130,246,0.12)",   activeBorder: "rgba(59,130,246,0.35)"  },
+                  { key: "parcial",  label: "Parcial",          count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "parcial").length,  cor: "#F59E0B", activeBg: "rgba(245,158,11,0.15)",  activeBorder: "rgba(245,158,11,0.4)"   },
                   { key: "barter",   label: "Barter",           count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,     cor: "#555555", activeBg: "rgba(251,191,36,0.12)",   activeBorder: "rgba(251,191,36,0.35)"  },
                   { key: "previsao", label: "Previsões",        count: lancamentos.filter(l => l.natureza === "previsao").length,                                    cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)",  activeBorder: "rgba(129,140,248,0.35)" },
                   { key: "todos",    label: "Todos",            count: lancamentos.length,                                                                           cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
-                  <button key={f.key} className="cr-tab" onClick={() => setFiltro(f.key)}
+                  <button key={f.key} className="cr-tab" onClick={() => {
+                    setFiltro(f.key);
+                    // Vencidos: busca 2 anos atrás para capturar títulos antigos (igual ao Contas a Pagar)
+                    if (f.key === "vencido") {
+                      const d2a = new Date(); d2a.setFullYear(d2a.getFullYear() - 2);
+                      setPeriodoInicio(d2a.toISOString().split("T")[0]);
+                      setPeriodoFim(new Date().toISOString().split("T")[0]);
+                    }
+                  }}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
                     {f.label}
                     <span style={{ marginLeft: 6, fontSize: 10, background: filtro === f.key ? f.cor : "var(--border)", color: filtro === f.key ? "#000" : "var(--text-3)", padding: "1px 5px", borderRadius: 8, fontWeight: 700 }}>
@@ -1058,6 +1126,56 @@ function ContasReceberInner() {
                       </tr>
                     </thead>
                     <tbody>
+                      {/* ── Borderôs pendentes no topo da grid (Confirmar recebimento / Cancelar) ── */}
+                      {borderosPendentesFiltrados.map(b => {
+                        const itensB   = b.itens ?? [];
+                        const totalB   = itensB.reduce((s2, i) => s2 + (i.valor_pago ?? 0), 0);
+                        const dtCriac  = b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "—";
+                        const expanded = expandedBordPend.has(b.id);
+                        const toggleExp = () => setExpandedBordPend(prev => { const n = new Set(prev); if (n.has(b.id)) n.delete(b.id); else n.add(b.id); return n; });
+                        return (
+                          <Fragment key={`bdr-pend-${b.id}`}>
+                            <tr style={{ background: "#FBF3E0", borderLeft: "3px solid #C9921B", borderBottom: "0.5px solid #C9921B30", cursor: "pointer" }} onClick={toggleExp}>
+                              <td style={{ padding: "8px 4px", textAlign: "center" }}>
+                                <span style={{ fontSize: 10, background: "#C9921B", color: "#fff", borderRadius: 4, padding: "2px 5px", fontWeight: 700 }}>BDR</span>
+                              </td>
+                              <td style={{ padding: "8px 4px", textAlign: "center", fontSize: 11, color: "#7A5C00" }}>—</td>
+                              <td colSpan={99} style={{ padding: "8px 10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#7A5C00" }}>{b.descricao || "Borderô"}</span>
+                                  <span style={{ fontSize: 11, color: "#7A5C00" }}>Criado em {dtCriac}</span>
+                                  <span style={{ fontSize: 11, background: "#fff", color: "#7A5C00", border: "0.5px solid #C9921B60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>{itensB.length} título{itensB.length !== 1 ? "s" : ""}</span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#16A34A" }}>{fmtBRL(totalB)}</span>
+                                  <span style={{ fontSize: 11, color: "#7A5C00" }}>{expanded ? "▲ ocultar" : "▼ ver títulos"}</span>
+                                  <div style={{ display: "flex", gap: 8, marginLeft: "auto" }} onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => { setModalConfirmar(b); setConfirmData(TODAY); setConfirmConta(""); setConfirmErro(""); }}
+                                      style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 7, padding: "5px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Confirmar Recebimento</button>
+                                    <button onClick={() => cancelarBorderoRec(b)}
+                                      style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>Cancelar</button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                            {expanded && itensB.map((item, idx) => {
+                              const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+                              const desc = lanc?.descricao ?? (item as { lancamento?: { descricao?: string } }).lancamento?.descricao ?? "—";
+                              return (
+                                <tr key={`bdr-pend-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#FDFAF2" : "#FAF5E4", borderLeft: "3px solid #C9921B40", borderBottom: "0.5px solid #C9921B20" }}>
+                                  <td style={{ padding: "6px 4px", textAlign: "center" }}><span style={{ fontSize: 9, color: "#C9921B" }}>└</span></td>
+                                  <td style={{ padding: "6px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>{lanc?.numero ?? "—"}</td>
+                                  <td colSpan={99} style={{ padding: "6px 10px" }}>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                                      <span style={{ flex: 1, minWidth: 200, color: "var(--text-1)" }}>{desc}</span>
+                                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>{lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</span>
+                                      <span style={{ fontWeight: 700, color: "#16A34A" }}>{fmtBRL(item.valor_pago ?? 0)}</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </Fragment>
+                        );
+                      })}
                       {/* ── Borderôs recebidos — só na aba Baixados (com ESTORNO, como no CP) ── */}
                       {filtro === "baixado" && borderosRecebidosFiltrados.map(b => {
                         const itensB   = b.itens ?? [];
@@ -1601,6 +1719,60 @@ function ContasReceberInner() {
         </div>
         );
       })()}
+
+      {/* ── Modal Confirmar Recebimento de Borderô ─────────────── */}
+      {modalConfirmar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 480, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Confirmar Recebimento</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{modalConfirmar.descricao}</div>
+              </div>
+              <button onClick={() => setModalConfirmar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 22px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do Recebimento *</label>
+                  <input type="date" style={{ ...inp }} value={confirmData} onChange={e => setConfirmData(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
+                  <select style={{ ...inp }} value={confirmConta} onChange={e => setConfirmConta(e.target.value)}>
+                    <option value="">— Selecionar conta —</option>
+                    {contas.map(c => {
+                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                      return <option key={c.id} value={c.id}>{label}</option>;
+                    })}
+                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros</option>}
+                  </select>
+                </div>
+              </div>
+              <div style={{ background: "var(--bg-stripe)", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ color: "var(--text-2)" }}>Títulos no borderô</span>
+                  <span style={{ fontWeight: 600 }}>{(modalConfirmar.itens ?? []).length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--text-2)" }}>Total a receber</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#16A34A" }}>{fmtBRL(modalConfirmar.valor_total)}</span>
+                </div>
+              </div>
+              {confirmErro && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 12 }}>{confirmErro}</div>
+              )}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModalConfirmar(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={confirmarBorderoRec} disabled={confirmSalvando || !confirmData || !confirmConta}
+                  style={{ padding: "8px 20px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: confirmSalvando ? 0.6 : 1 }}>
+                  {confirmSalvando ? "Recebendo…" : "Confirmar e Baixar Todos"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {duplicataEncontrada && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center" }}>
