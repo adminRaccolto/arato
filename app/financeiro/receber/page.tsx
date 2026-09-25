@@ -14,6 +14,7 @@ import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes, buscarLancamentoDuplicado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
+import ConciliacaoOfxInfo from "../../../components/ConciliacaoOfxInfo";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
 
@@ -1626,6 +1627,7 @@ function ContasReceberInner() {
             <div style={{ padding: "20px 24px", flex: 1, overflowY: "auto" as const }}>
 
               {/* ─── Aba Principal ─── */}
+              {editandoId && (() => { const le = lancamentos.find(x => x.id === editandoId); return le?.conciliado ? <ConciliacaoOfxInfo lancamentoId={editandoId} conciliado /> : null; })()}
               {modalTab === "principal" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-s",
+    data: "25/09/2026",
+    titulo: "Conciliação: conta bancária sempre gravada e linha do OFX visível no CP/CR",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Lançamentos baixados e conciliados podiam ficar sem a Conta bancária (coluna \"—\" na Conferência), e a Posição Bancária não fechava com o extrato. Agora o servidor, no ponto único por onde todo vínculo com o extrato passa, grava a conta do extrato em todo lançamento baixado/parcial que ainda esteja sem conta (não move conta já definida). Os 63 lançamentos que já estavam assim foram corrigidos (conta única no extrato); 7 com contas ambíguas continuam para revisão manual." },
+      { tipo: "novo", texto: "Ao abrir um lançamento conciliado em Contas a Pagar / Contas a Receber, aparece o quadro \"Conciliado com a linha do extrato OFX\": data, descrição do extrato, conta, FITID e valor — inclusive quando há várias linhas. Se estiver marcado como conciliado mas sem nenhuma linha ligada, avisa (conciliação fantasma)." },
+    ],
+    onde: "Financeiro → Conciliação Bancária · Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.09.25-r",
     data: "25/09/2026",
     titulo: "Financeiro Empresas: só transportadoras",

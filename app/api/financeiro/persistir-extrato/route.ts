@@ -145,6 +145,21 @@ export async function POST(req: NextRequest) {
       if (r.error) falhas.push(`conciliado=true: ${r.error.message}`);
     }
 
+    // 3a. GARANTIA no servidor: todo lançamento BAIXADO/PARCIAL ligado a uma linha do extrato tem que
+    // carregar a conta do extrato. 70 lançamentos conciliados ficaram sem conta (Conferência mostrava
+    // "—") porque só o cliente gravava a conta e alguns caminhos não gravavam (achado 25/09/2026).
+    // Este é o ponto único por onde todo vínculo passa; só preenche quem está SEM conta (não move
+    // conta já definida — mover exige confirmação do usuário, passo 2c).
+    if (body.lancamento_ids_conciliados?.length) {
+      const { data: extConta } = await sb.from("extratos_bancarios").select("conta_id").eq("id", body.id).maybeSingle();
+      const contaExtrato = extConta?.conta_id as string | undefined;
+      if (contaExtrato) {
+        const r = await sb.from("lancamentos").update({ conta_bancaria: contaExtrato })
+          .in("id", body.lancamento_ids_conciliados).is("conta_bancaria", null).in("status", ["baixado", "parcial"]);
+        if (r.error) falhas.push(`conta do extrato: ${r.error.message}`);
+      }
+    }
+
     // 3b. Borderô (lote de pagamento) conciliado = todos os títulos dele ligados a uma linha
     if (body.lancamento_ids_conciliados?.length) {
       const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", body.lancamento_ids_conciliados).not("lote_id", "is", null);
