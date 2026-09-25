@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useState, useEffect, useMemo, useCallback, Suspense, type CSSProperties } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback, Suspense, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -11,7 +11,7 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes, buscarLancamentoDuplicado } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta, atualizarLancamento, listarEmpresasDaConta, listarBorderosPendentes, listarBorderosPagos, estornarBordero, buscarLancamentoDuplicado } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao, Empresa, PagamentoLote } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import ConciliacaoOfxInfo from "../../../components/ConciliacaoOfxInfo";
@@ -245,9 +245,11 @@ function ContasReceberInner() {
 
   const [baixa, setBaixa] = useState({
     valorMask: "", data: TODAY, conta: "", obs: "",
-    multa_pct: "", juros_pct: "", desconto_pct: "",
+    // Encargos em R$ (igual ao Contas a Pagar — antes eram só em %)
+    multa_valor: "", juros_valor: "", desconto_valor: "",
     pessoa_id: "", operacao_gerencial_id: "", og_busca: "",
     ano_safra_id: "", ciclo_id: "",
+    nova_data_vencimento: "",   // reprogramação do saldo em recebimento parcial
   });
   const [form, setForm] = useState({
     moeda: "BRL" as Moeda,
@@ -312,6 +314,9 @@ function ContasReceberInner() {
   const [fEmpresa,    setFEmpresa]    = useState("");
   const [filtroLoteId, setFiltroLoteId] = useState("");
   const [borderosCR,   setBorderosCR]   = useState<PagamentoLote[]>([]);
+  // Borderôs de recebimento já recebidos (aba Baixados) — permitem ESTORNO, como no Contas a Pagar
+  const [borderosRecebidos, setBorderosRecebidos] = useState<PagamentoLote[]>([]);
+  const [expandedBordRec, setExpandedBordRec] = useState<Set<string>>(new Set());
 
   // ── Carga ──────────────────────────────────────────────────
 
@@ -343,6 +348,7 @@ function ContasReceberInner() {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (fids.length) listarEmpresasDaConta(fids).then(setEmpresas).catch(() => {});
     if (fids.length) listarBorderosPendentes(fids, "receber").then(setBorderosCR).catch(() => {});
+    if (fids.length) listarBorderosPagos(fids, "receber").then(setBorderosRecebidos).catch(() => {});
   }, [contaId, fazendaId]);
 
   // Reload ciclos e talhões sempre que a fazenda selecionada no formulário mudar
@@ -420,7 +426,7 @@ function ContasReceberInner() {
       const sEfet  = statusEfetivo(l);
       if (filtro === "aberto")   return isReal && sEfet !== "baixado" && sEfet !== "cancelado" && sEfet !== "previsto" && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
-      if (filtro === "baixado")  return isReal && sEfet === "baixado";
+      if (filtro === "baixado")  return isReal && sEfet === "baixado" && !l.lote_id;
       if (filtro === "barter")   return isReal && l.moeda === "barter";
       if (filtro === "pedidos")  return isReal && sEfet === "previsto";
       if (filtro === "previsao") return l.natureza === "previsao";
@@ -470,10 +476,11 @@ function ContasReceberInner() {
     setBaixa({
       valorMask: l.moeda === "barter" ? "" : numParaMascara(Math.max(0, saldoRestante)),
       data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
-      multa_pct: "", juros_pct: "", desconto_pct: "",
+      multa_valor: "", juros_valor: "", desconto_valor: "",
       pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
       og_busca: "",
       ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+      nova_data_vencimento: "",
     });
   };
 
@@ -485,10 +492,9 @@ function ContasReceberInner() {
     try {
       setSalvando(true);
       const valorOriginalCR = paraBRL(modalBaixa);
-      const saldoRestanteCR = Math.max(0, valorOriginalCR - (modalBaixa.valor_pago ?? 0));
-      const multaValorCR    = saldoRestanteCR * (parseFloat(baixa.multa_pct.replace(",", ".")) || 0) / 100;
-      const jurosValorCR    = saldoRestanteCR * (parseFloat(baixa.juros_pct.replace(",", ".")) || 0) / 100;
-      const descontoValorCR = saldoRestanteCR * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
+      const multaValorCR    = desmascarar(baixa.multa_valor);
+      const jurosValorCR    = desmascarar(baixa.juros_valor);
+      const descontoValorCR = desmascarar(baixa.desconto_valor);
       await baixarLancamento(
         modalBaixa.id, valorPago, baixa.data, modalBaixa.moeda === "barter" ? "" : baixa.conta,
         {
@@ -500,15 +506,21 @@ function ContasReceberInner() {
           multa_valor:           multaValorCR || undefined,
           juros_valor:           jurosValorCR || undefined,
           desconto_valor:        descontoValorCR || undefined,
+          nova_data_vencimento:  baixa.nova_data_vencimento || undefined,
         }
       );
       const novoTotalPago = (modalBaixa.valor_pago ?? 0) + valorPago;
       const novoStatus = novoTotalPago + descontoValorCR >= valorOriginalCR - 0.01 ? "baixado" : "parcial";
+      // Parcial com nova data → reprograma o vencimento do saldo restante (igual ao CP)
+      const novaDataVenc = novoStatus === "parcial" && baixa.nova_data_vencimento ? baixa.nova_data_vencimento : null;
+      if (novaDataVenc) await supabase.from("lancamentos").update({ data_vencimento: novaDataVenc }).eq("id", modalBaixa.id);
       setLancamentos(prev => prev.map(l =>
         l.id !== modalBaixa.id ? l : {
           ...l, status: novoStatus as Lancamento["status"], data_baixa: baixa.data,
           valor_pago: novoTotalPago, conta_bancaria: baixa.conta,
           pessoa_id: baixa.pessoa_id || l.pessoa_id,
+          operacao_gerencial_id: baixa.operacao_gerencial_id || l.operacao_gerencial_id,
+          ...(novaDataVenc ? { data_vencimento: novaDataVenc } : {}),
         }
       ));
       setModalBaixa(null);
@@ -518,6 +530,38 @@ function ContasReceberInner() {
       setSalvando(false);
     }
   };
+
+  // ── Estornar borderô de recebimento ─────────────────────────
+  // Igual ao Contas a Pagar: todos os títulos voltam a "em aberto" e o borderô é excluído. Título
+  // baixado por borderô NÃO se reabre um a um (deixaria o borderô inconsistente): estorna-se o borderô.
+  const estornarBorderoRecebido = async (b: PagamentoLote) => {
+    if (!confirm(`Estornar borderô "${b.descricao}"?\n\nTodos os títulos voltarão para "Em aberto" e o borderô será excluído.\nPara alterar um título, estorne o borderô, faça a correção e crie um novo borderô.`)) return;
+    try {
+      await estornarBordero(b.id);
+      const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+      if (fids.length) {
+        listarBorderosPendentes(fids, "receber").then(setBorderosCR).catch(() => {});
+        listarBorderosPagos(fids, "receber").then(setBorderosRecebidos).catch(() => {});
+      }
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message) : JSON.stringify(e);
+      alert("Erro ao estornar borderô: " + msg);
+    }
+  };
+
+  const borderosRecebidosFiltrados = useMemo(() =>
+    !fFornecedor
+      ? borderosRecebidos
+      : borderosRecebidos.filter(b =>
+          (b.descricao ?? "").toLowerCase().includes(fFornecedor.toLowerCase()) ||
+          (b.itens ?? []).some(item => {
+            const lanc = item.lancamento as { descricao?: string; pessoa_id?: string } | undefined;
+            const pessoaNome = lanc?.pessoa_id ? (pessoas.find(p => p.id === lanc.pessoa_id)?.nome ?? "") : "";
+            return [pessoaNome, lanc?.descricao ?? ""].join(" ").toLowerCase().includes(fFornecedor.toLowerCase());
+          })
+        ),
+  [borderosRecebidos, fFornecedor, pessoas]);
 
   // ── Reabrir títulos ────────────────────────────────────────
 
@@ -1014,13 +1058,70 @@ function ContasReceberInner() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtrados.length === 0 ? (
+                      {/* ── Borderôs recebidos — só na aba Baixados (com ESTORNO, como no CP) ── */}
+                      {filtro === "baixado" && borderosRecebidosFiltrados.map(b => {
+                        const itensB   = b.itens ?? [];
+                        const totalB   = itensB.reduce((s2, i) => s2 + (i.valor_pago ?? 0), 0);
+                        const dtRec    = b.data_pagamento ? new Date(b.data_pagamento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+                        const expanded = expandedBordRec.has(b.id);
+                        const toggleExp = () => setExpandedBordRec(prev => { const n = new Set(prev); if (n.has(b.id)) n.delete(b.id); else n.add(b.id); return n; });
+                        const nomes = [...new Set(itensB.map(it => {
+                          const pid = (it.lancamento as { pessoa_id?: string } | undefined)?.pessoa_id;
+                          return pid ? pessoas.find(p => p.id === pid)?.nome : undefined;
+                        }).filter((n): n is string => !!n))];
+                        const resumo = nomes.length === 0 ? (b.descricao || "Borderô") : nomes.length <= 2 ? nomes.join(" · ") : `${nomes.slice(0, 2).join(" · ")} +${nomes.length - 2}`;
+                        return (
+                          <Fragment key={`bdr-rec-${b.id}`}>
+                            <tr style={{ borderBottom: "0.5px solid rgba(255,255,255,0.04)", borderLeft: "3px solid #22C55E", cursor: "pointer" }} onClick={toggleExp}>
+                              <td style={{ padding: "8px 4px", textAlign: "center" }}>
+                                <span style={{ fontSize: 9, background: "#DCFCE7", color: "#166534", borderRadius: 4, padding: "2px 5px", fontWeight: 700, border: "0.5px solid #22C55E60" }}>BDR</span>
+                              </td>
+                              <td style={{ padding: "8px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>—</td>
+                              <td colSpan={99} style={{ padding: "8px 10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                                  <div style={{ minWidth: 220, flex: 1 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{resumo}</div>
+                                    <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{itensB.length} título{itensB.length !== 1 ? "s" : ""}{b.conta_bancaria ? ` · ${contas.find(c => c.id === b.conta_bancaria)?.nome ?? b.conta_bancaria}` : ""}</div>
+                                  </div>
+                                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>Recebido em {dtRec}</span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(totalB)}</span>
+                                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }} onClick={e => e.stopPropagation()}>
+                                    <span onClick={toggleExp} style={{ fontSize: 11, color: "#16A34A", cursor: "pointer", whiteSpace: "nowrap" }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
+                                    <button onClick={() => estornarBorderoRecebido(b)}
+                                      style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
+                                      ↩ Estornar
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                            {expanded && itensB.map((item, idx) => {
+                              const lanc = item.lancamento as { numero?: number; descricao?: string; data_vencimento?: string; categoria?: string; pessoa_id?: string } | undefined;
+                              const nomeItem = lanc?.pessoa_id ? pessoas.find(p => p.id === lanc.pessoa_id)?.nome : undefined;
+                              return (
+                                <tr key={`bdr-rec-item-${item.id}`} style={{ background: idx % 2 === 0 ? "var(--bg-page)" : "transparent", borderBottom: "0.5px solid rgba(255,255,255,0.04)" }}>
+                                  <td style={{ padding: "6px 4px", textAlign: "center" }}><span style={{ fontSize: 9, color: "var(--text-3)" }}>└</span></td>
+                                  <td style={{ padding: "6px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>{lanc?.numero ?? "—"}</td>
+                                  <td colSpan={99} style={{ padding: "6px 10px" }}>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", fontSize: 12 }}>
+                                      <span style={{ color: "var(--text-1)", flex: 1, minWidth: 200 }}>{nomeItem ? <strong>{nomeItem}</strong> : null}{nomeItem && lanc?.descricao ? " — " : ""}{lanc?.descricao ?? (nomeItem ? "" : "—")}</span>
+                                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>{lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</span>
+                                      <span style={{ fontWeight: 700 }}>{fmtBRL(item.valor_pago ?? 0)}</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </Fragment>
+                        );
+                      })}
+                      {filtrados.length === 0 ? (filtro === "baixado" && borderosRecebidosFiltrados.length > 0 ? null : (
                         <tr>
                           <td colSpan={18} style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 11 }}>
                             Nenhum resultado para os filtros aplicados.
                           </td>
                         </tr>
-                      ) : filtrados.map((l, li) => {
+                      )) : filtrados.map((l, li) => {
                         const isPrevisao = l.natureza === "previsao";
                         const sEfet      = statusEfetivo(l);
                         const dot        = dotStatus(sEfet);
@@ -1158,6 +1259,9 @@ function ContasReceberInner() {
                               ) : l.status !== "baixado" ? (
                                 <button onClick={() => abrirBaixa(l)} title="Receber / Registrar recebimento"
                                   style={btnAcao("#16A34A", "#fff")}>↓</button>
+                              ) : l.lote_id ? (
+                                <span title="Recebido em borderô — estorne o borderô (aba Baixados) para reabrir"
+                                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:28, height:26, fontSize:9, fontWeight:700, borderRadius:6, background:"#EDFAF3", color:"#0B5C31", border:"0.5px solid rgba(22,163,74,0.4)", cursor:"default" }}>BDR</span>
                               ) : (
                                 <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de recebimento"
                                   style={btnAcao("#F5F5F5", "#555555", "0.5px solid #D0D0D0")}>↺</button>
@@ -1292,9 +1396,9 @@ function ContasReceberInner() {
         const valorTotal = paraBRL(modalBaixa);
         const jaPago     = modalBaixa.valor_pago ?? 0;
         const valorOrig  = Math.max(0, valorTotal - jaPago);  // saldo restante — base para encargos
-        const multaV   = valorOrig * (parseFloat(baixa.multa_pct.replace(",", ".")) || 0) / 100;
-        const jurosV   = valorOrig * (parseFloat(baixa.juros_pct.replace(",", ".")) || 0) / 100;
-        const descV    = valorOrig * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
+        const multaV   = desmascarar(baixa.multa_valor);
+        const jurosV   = desmascarar(baixa.juros_valor);
+        const descV    = desmascarar(baixa.desconto_valor);
         const valorCom = valorOrig + multaV + jurosV - descV;
         const temEncargo = multaV + jurosV + descV !== 0;
         return (
@@ -1374,36 +1478,36 @@ function ContasReceberInner() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={lbl}>Acréscimo (%)</label>
-                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.multa_pct}
+                      <label style={lbl}>Multa (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.multa_valor}
                         onChange={e => {
-                          const v = e.target.value.replace(/[^\d,]/g, "");
-                          const com = valorOrig + valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100 + jurosV - descV;
-                          setBaixa(p => ({ ...p, multa_pct: v, valorMask: numParaMascara(com) }));
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + desmascarar(v) + jurosV - descV;
+                          setBaixa(p => ({ ...p, multa_valor: v, valorMask: numParaMascara(com) }));
                         }} />
                     </div>
                     <div>
-                      <label style={lbl}>Juros (%)</label>
-                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.juros_pct}
+                      <label style={lbl}>Juros (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.juros_valor}
                         onChange={e => {
-                          const v = e.target.value.replace(/[^\d,]/g, "");
-                          const com = valorOrig + multaV + valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100 - descV;
-                          setBaixa(p => ({ ...p, juros_pct: v, valorMask: numParaMascara(com) }));
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + multaV + desmascarar(v) - descV;
+                          setBaixa(p => ({ ...p, juros_valor: v, valorMask: numParaMascara(com) }));
                         }} />
                     </div>
                     <div>
-                      <label style={lbl}>Desconto (%)</label>
-                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.desconto_pct}
+                      <label style={lbl}>Desconto (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.desconto_valor}
                         onChange={e => {
-                          const v = e.target.value.replace(/[^\d,]/g, "");
-                          const com = valorOrig + multaV + jurosV - valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100;
-                          setBaixa(p => ({ ...p, desconto_pct: v, valorMask: numParaMascara(com) }));
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + multaV + jurosV - desmascarar(v);
+                          setBaixa(p => ({ ...p, desconto_valor: v, valorMask: numParaMascara(Math.max(0, com)) }));
                         }} />
                     </div>
                   </div>
                   {temEncargo && (
                     <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0D0D0D", display: "flex", gap: 16, flexWrap: "wrap" }}>
-                      {multaV > 0 && <span>Acréscimo: +{fmtBRL(multaV)}</span>}
+                      {multaV > 0 && <span>Multa: +{fmtBRL(multaV)}</span>}
                       {jurosV > 0 && <span>Juros: +{fmtBRL(jurosV)}</span>}
                       {descV  > 0 && <span>Desconto: -{fmtBRL(descV)}</span>}
                       <span style={{ fontWeight: 700 }}>Total com encargos: {fmtBRL(valorCom)}</span>
@@ -1445,6 +1549,30 @@ function ContasReceberInner() {
                       <input style={inp} placeholder="Opcional" value={baixa.obs} onChange={e => setBaixa(p => ({ ...p, obs: e.target.value }))} />
                     </div>
                   </div>
+
+                  {/* Nova data de vencimento — só em recebimento parcial (desconto que cobre o saldo não é parcial) */}
+                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) + descV < valorOrig - 0.01 && (
+                    <div style={{ marginTop: 12, padding: "12px 14px", background: "#FFF8EC", borderRadius: 8, border: "0.5px solid #F0C060" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#8B5E14", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+                        Reprogramação do saldo — {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}
+                      </div>
+                      <label style={{ ...lbl, color: "#8B5E14" }}>
+                        Nova data de vencimento do saldo restante <span style={{ color: "#E24B4A" }}>*</span>
+                      </label>
+                      <input
+                        style={{ ...inp, borderColor: !baixa.nova_data_vencimento ? "#F0C060" : undefined, maxWidth: 200 }}
+                        type="date"
+                        value={baixa.nova_data_vencimento}
+                        min={baixa.data || TODAY}
+                        onChange={e => setBaixa(p => ({ ...p, nova_data_vencimento: e.target.value }))}
+                      />
+                      {!baixa.nova_data_vencimento && (
+                        <div style={{ fontSize: 10, color: "#C9921B", marginTop: 4 }}>
+                          Informe quando o saldo restante vence para reprogramar o título.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1454,11 +1582,20 @@ function ContasReceberInner() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={confirmarBaixa}
-                disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta))}
-                style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Salvando…" : "↓ Confirmar recebimento"}
-              </button>
+              {(() => {
+                const vRec = desmascarar(baixa.valorMask);
+                // Desconto conta como quitação (igual ao CP): recebido + desconto cobre o saldo → NÃO é parcial
+                const eParcial = modalBaixa.moeda !== "barter" && vRec > 0 && vRec + descV < valorOrig - 0.01;
+                const semNovaData = eParcial && !baixa.nova_data_vencimento;
+                return (
+                  <button onClick={confirmarBaixa}
+                    disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta)) || semNovaData}
+                    title={semNovaData ? "Informe a nova data de vencimento do saldo restante" : undefined}
+                    style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: semNovaData ? "not-allowed" : "pointer", fontSize: 13, opacity: semNovaData ? 0.6 : 1 }}>
+                    {salvando ? "Salvando…" : "↓ Confirmar recebimento"}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

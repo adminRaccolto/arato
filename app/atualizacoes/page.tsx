@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-t",
+    data: "25/09/2026",
+    titulo: "Contas a Receber: baixa equivalente ao Contas a Pagar (encargos em R$, reprogramação do saldo e estorno de borderô)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na baixa do Contas a Receber, Multa, Juros e Desconto agora são informados em R$ (antes só em %), como no Contas a Pagar. Em recebimento parcial aparece a \"Nova data de vencimento do saldo restante\" (obrigatória) e o título é reprogramado; desconto que cobre o saldo conta como quitação, não como parcial." },
+      { tipo: "novo", texto: "Estorno de borderô no Contas a Receber: na aba Baixados, cada borderô de recebimento aparece em uma linha (expansível, com os títulos) com o botão \"↩ Estornar\" — todos os títulos voltam para \"Em aberto\" e o borderô é excluído. Título recebido por borderô não é mais reaberto individualmente (mostra BDR): estorna-se o borderô, como no CP." },
+    ],
+    onde: "Financeiro → Contas a Receber",
+  },
+  {
     versao: "2026.09.25-s",
     data: "25/09/2026",
     titulo: "Conciliação: conta bancária sempre gravada e linha do OFX visível no CP/CR",
