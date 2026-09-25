@@ -1,6 +1,10 @@
 // ANTT CIOT — GeradorCIOTService_v3
-// API REST/JSON com autenticação JWT (Bearer token ~59 min)
-// Baseado na análise da DLL GeradorCIOTShared fornecida pela ANTT
+// API REST/JSON pefServices da ANTT. AUTENTICAÇÃO: mTLS com o certificado e-CNPJ (ICP-Brasil) do
+// emitente — o MESMO A1 usado na SEFAZ. NÃO existe chave de API (ANTT_API_KEY): a versão anterior
+// desta integração (token via /v1/autenticacoes) estava errada — corrigido em 25/09/2026 com base
+// na coleção pública stoix-dev/antt-webservices-postman e no guia flexdocs (Gera CIOT/Declara).
+// Fluxo ETC sem subcontratação de TAC: POST /pefServices/gerar {CpfCnpj} → CIOT (12 dígitos);
+// POST /pefServices/api/DeclaracaoOperacaoTransporte vincula os dados da viagem ao CIOT.
 
 export const ANTT_ENDPOINTS = {
   homologacao: "https://appservices-hml.antt.gov.br/pefServices",
@@ -79,118 +83,78 @@ export type DeclaracaoCIOT = {
   };
 };
 
-// ── Cache de token por CNPJ (reutiliza em invocações quentes do Vercel) ──────
+// ── Serviço CIOT (mTLS) ───────────────────────────────────────────────────────
 
-type TokenCacheEntry = { token: string; expires: Date };
-const _tokenCache = new Map<string, TokenCacheEntry>();
+import https from "node:https";
 
-// ── Serviço CIOT ──────────────────────────────────────────────────────────────
+export type CertificadoPem = { cert: string; key: string };
 
 export class CiotService {
-  private baseUrl: string;
-  private apiKey: string;
-
-  constructor(apiKey: string, ambiente: AmbienteCiot = "homologacao") {
-    this.apiKey  = apiKey;
-    this.baseUrl = ANTT_ENDPOINTS[ambiente];
+  private host: string;
+  private basePath: string;
+  constructor(private pem: CertificadoPem, ambiente: AmbienteCiot = "homologacao") {
+    const u = new URL(ANTT_ENDPOINTS[ambiente]);
+    this.host = u.host;
+    this.basePath = u.pathname; // /pefServices
   }
 
-  // ── Auth ────────────────────────────────────────────────────────────────────
-
-  private async autenticar(cnpj: string): Promise<string> {
-    const cnpjLimpo = cnpj.replace(/\D/g, "");
-    const res = await fetch(`${this.baseUrl}/v1/autenticacoes`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ cnpj: cnpjLimpo, apiKey: this.apiKey }),
+  private post<T = unknown>(path: string, body: unknown): Promise<ApiResponseANTT<T>> {
+    const payload = JSON.stringify(body);
+    return new Promise((resolve, reject) => {
+      const req = https.request({
+        host: this.host, path: `${this.basePath}${path}`, method: "POST",
+        cert: this.pem.cert, key: this.pem.key,
+        headers: { "Content-Type": "application/json", Accept: "application/json", "Content-Length": Buffer.byteLength(payload) },
+        timeout: 45000,
+      }, res => {
+        let buf = "";
+        res.on("data", d => { buf += d; });
+        res.on("end", () => {
+          try { resolve(JSON.parse(buf) as ApiResponseANTT<T>); }
+          catch { resolve({ Sucesso: false, Dados: null as unknown as T, Mensagem: `Resposta inesperada da ANTT (HTTP ${res.statusCode}): ${buf.slice(0, 300)}`, Erros: [] }); }
+        });
+      });
+      req.on("timeout", () => { req.destroy(new Error("Tempo esgotado ao falar com a ANTT.")); });
+      req.on("error", reject);
+      req.write(payload);
+      req.end();
     });
-
-    const data = await res.json() as ApiResponseANTT<{ token: string }>;
-    if (!data.Sucesso || !data.Dados?.token) {
-      throw new Error(`ANTT auth falhou: ${data.Mensagem || data.Erros?.join(", ")}`);
-    }
-
-    const expires = new Date(Date.now() + 58 * 60 * 1000); // 58 min (margem de 1 min)
-    _tokenCache.set(cnpjLimpo, { token: data.Dados.token, expires });
-    return data.Dados.token;
   }
 
-  private async getToken(cnpj: string): Promise<string> {
-    const cnpjLimpo = cnpj.replace(/\D/g, "");
-    const cached = _tokenCache.get(cnpjLimpo);
-    if (cached && cached.expires > new Date()) return cached.token;
-    return this.autenticar(cnpjLimpo);
+  /** Passo 1 — reserva o número do CIOT (12 dígitos) para o CPF/CNPJ do certificado. */
+  gerar(cpfCnpj: string) {
+    return this.post<{ CIOT: string; CpfCnpj?: string; DataGeracao?: string }>("/gerar", { CpfCnpj: cpfCnpj.replace(/\D/g, "") });
   }
 
-  // ── Operações ────────────────────────────────────────────────────────────────
-
-  async declarar(cnpjContratante: string, dados: DeclaracaoCIOT): Promise<ApiResponseANTT<CiotGerado>> {
-    const token = await this.getToken(cnpjContratante);
-
-    const payload: DeclaracaoCIOT = {
-      TipoOperacao:   1,
+  /** Passo 2 — vincula os dados da viagem ao CIOT gerado. */
+  declarar(idOperacao: string, dados: DeclaracaoCIOT) {
+    const payload: Record<string, unknown> = {
+      IdOperacaoTransporte: idOperacao,
+      TipoOperacao: 1,
       IndContingencia: "false",
-      DataDeclaracao: new Date().toISOString(),
-      InfIndicadoresOperacionais: {
-        IndAltoDesempenho:  "false",
-        IndRetornoVazio:    "false",
-        ComposicaoVeicular: "false",
-      },
+      DataDeclaracao: new Date().toISOString().slice(0, 19),
+      InfIndicadoresOperacionais: { IndAltoDesempenho: "false", IndRetornoVazio: "false", ComposicaoVeicular: "false" },
       ...dados,
     };
-
-    const res = await fetch(`${this.baseUrl}/api/DeclaracaoOperacaoTransporte`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body:    JSON.stringify(payload),
-    });
-    return res.json();
+    return this.post<CiotGerado>("/api/DeclaracaoOperacaoTransporte", payload);
   }
 
-  async consultar(cnpj: string, idOperacao: string): Promise<ApiResponseANTT> {
-    const token = await this.getToken(cnpj);
-    const res = await fetch(`${this.baseUrl}/api/ConsultarCIOTGerado?IdOperacaoTransporte=${idOperacao}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.json();
+  consultar(ciot: string, ano: string) {
+    return this.post("/api/ConsultarCIOTGerado", { CodigoIdentificacaoOperacao: ciot, AnoDeclaracao: ano });
   }
 
-  async encerrar(cnpj: string, idOperacao: string, codigoVerificador: string): Promise<ApiResponseANTT> {
-    const token = await this.getToken(cnpj);
-    const res = await fetch(`${this.baseUrl}/api/EncerramentoOperacaoTransporte`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ IdOperacaoTransporte: idOperacao, CodigoVerificador: codigoVerificador }),
-    });
-    return res.json();
+  cancelar(ciotComVerificador: string, motivo: string) {
+    return this.post("/api/CancelamentoOperacaoTransporte", { CodigoIdentificacaoOperacao: ciotComVerificador, MotivoCancelamento: motivo });
   }
 
-  async cancelar(cnpj: string, idOperacao: string, codigoVerificador: string): Promise<ApiResponseANTT> {
-    const token = await this.getToken(cnpj);
-    const res = await fetch(`${this.baseUrl}/api/CancelamentoOperacaoTransporte`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ IdOperacaoTransporte: idOperacao, CodigoVerificador: codigoVerificador }),
-    });
-    return res.json();
-  }
-
-  async consultarFrota(cnpj: string, cnpjTransportador: string): Promise<ApiResponseANTT> {
-    const token = await this.getToken(cnpj);
-    const res = await fetch(
-      `${this.baseUrl}/api/ConsultarFrotaTransportador?CpfCnpjTransportador=${cnpjTransportador.replace(/\D/g,"")}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    return res.json();
+  /** Encerra após a viagem: código = CIOT (12) + verificador (4) e peso total da carga. */
+  encerrar(ciotComVerificador: string, pesoTotalCarga: string) {
+    return this.post("/api/EncerramentoOperacaoTransporte", { CodigoIdentificacaoOperacao: ciotComVerificador, DadosCarga: { PesoTotalCarga: pesoTotalCarga } });
   }
 }
 
-// ── Factory (usa ANTT_API_KEY do env) ────────────────────────────────────────
-
-export function criarCiotService(ambiente: AmbienteCiot = "homologacao"): CiotService {
-  const apiKey = process.env.ANTT_API_KEY;
-  if (!apiKey) throw new Error("ANTT_API_KEY não configurada — adicionar nas variáveis de ambiente do Vercel");
-  return new CiotService(apiKey, ambiente);
+export function criarCiotService(pem: CertificadoPem, ambiente: AmbienteCiot = "homologacao"): CiotService {
+  return new CiotService(pem, ambiente);
 }
 
 // ── Tabelas auxiliares (para uso no frontend) ─────────────────────────────────

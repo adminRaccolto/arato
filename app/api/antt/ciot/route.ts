@@ -1,89 +1,87 @@
+/**
+ * POST /api/antt/ciot — CIOT pela API pefServices da ANTT, autenticada por mTLS com o certificado
+ * A1 (e-CNPJ) do emitente — o mesmo da SEFAZ. Não usa chave de API.
+ *
+ * acao "declarar" (= gerar + declarar): reserva o CIOT (POST /gerar) e vincula os dados da viagem
+ *   body: { fazenda_id, cnpjContratante (CNPJ do emitente/ETC), ambiente, dados }
+ * acao "consultar" | "encerrar" | "cancelar": operam sobre um CIOT já gerado.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { criarCiotService, type DeclaracaoCIOT, type AmbienteCiot } from "../../../../lib/antt/ciot";
 import { createClient } from "@supabase/supabase-js";
+import { criarCiotService, type DeclaracaoCIOT, type AmbienteCiot } from "../../../../lib/antt/ciot";
+import { carregarCertificadoEmitente } from "../../../../lib/antt/certificado";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-type Body =
-  | { acao: "declarar";  cnpjContratante: string; dados: DeclaracaoCIOT; ambiente?: AmbienteCiot }
-  | { acao: "consultar"; cnpj: string; idOperacao: string; ambiente?: AmbienteCiot }
-  | { acao: "encerrar";  cnpj: string; idOperacao: string; codigoVerificador: string; ambiente?: AmbienteCiot }
-  | { acao: "cancelar";  cnpj: string; idOperacao: string; codigoVerificador: string; ambiente?: AmbienteCiot }
-  | { acao: "consultar_frota"; cnpj: string; cnpjTransportador: string; ambiente?: AmbienteCiot };
+type Body = {
+  acao: "declarar" | "consultar" | "encerrar" | "cancelar";
+  fazenda_id?: string;
+  cnpjContratante?: string;   // emitente (ETC)
+  ambiente?: AmbienteCiot;
+  dados?: DeclaracaoCIOT;
+  ciot?: string;              // 12 dígitos + verificador quando exigido
+  ano?: string; peso?: string; motivo?: string;
+};
+
+const falha = (msg: string, status = 400) => NextResponse.json({ Sucesso: false, Mensagem: msg, Erros: [msg], error: msg }, { status });
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as Body;
-    const ambiente = body.ambiente ?? "homologacao";
-    const svc = criarCiotService(ambiente);
+    const b = await req.json() as Body;
+    if (!b.fazenda_id || !b.cnpjContratante) return falha("fazenda_id e cnpjContratante (CNPJ do emitente) são obrigatórios.");
+    const acesso = await validateFazendaAccess(b.fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!acesso.ok) return falha(acesso.error ?? "Sem acesso.", acesso.status);
 
-    switch (body.acao) {
-      case "declarar": {
-        const resultado = await svc.declarar(body.cnpjContratante, body.dados);
+    const cnpj = b.cnpjContratante.replace(/\D/g, "");
+    const cert = await carregarCertificadoEmitente(b.fazenda_id, cnpj);
+    if ("erro" in cert) return falha(cert.erro);
+    const svc = criarCiotService(cert.pem, b.ambiente ?? "homologacao");
+    const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
-        // Se gerou com sucesso, persiste no banco
-        if (resultado.Sucesso && resultado.Dados?.IdOperacaoTransporte) {
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-          );
-          // Salva na tabela ciots para rastreamento
-          await supabase.from("ciots").insert({
-            id_operacao:        resultado.Dados.IdOperacaoTransporte,
-            codigo_verificador: resultado.Dados.CodigoVerificador,
-            protocolo:          resultado.Dados.Protocolo,
-            cpf_cnpj_contratante: body.cnpjContratante,
-            cpf_cnpj_contratado:  body.dados.CpfCnpjContratado,
-            valor_frete:          parseFloat(body.dados.ValorFrete),
-            data_inicio:          body.dados.DataInicioViagem,
-            data_fim:             body.dados.DataFimViagem,
-            placa:                body.dados.Veiculos[0]?.Placa,
-            ambiente,
-            status:               "declarado",
-          }).select().single();
-        }
-
-        return NextResponse.json(resultado);
-      }
-
-      case "consultar":
-        return NextResponse.json(await svc.consultar(body.cnpj, body.idOperacao));
-
-      case "encerrar": {
-        const res = await svc.encerrar(body.cnpj, body.idOperacao, body.codigoVerificador);
-        if (res.Sucesso) {
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-          );
-          await supabase.from("ciots").update({ status: "encerrado" }).eq("id_operacao", body.idOperacao);
-        }
-        return NextResponse.json(res);
-      }
-
-      case "cancelar": {
-        const res = await svc.cancelar(body.cnpj, body.idOperacao, body.codigoVerificador);
-        if (res.Sucesso) {
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-          );
-          await supabase.from("ciots").update({ status: "cancelado" }).eq("id_operacao", body.idOperacao);
-        }
-        return NextResponse.json(res);
-      }
-
-      case "consultar_frota":
-        return NextResponse.json(await svc.consultarFrota(body.cnpj, body.cnpjTransportador));
-
-      default:
-        return NextResponse.json({ ok: false, error: "Ação inválida" }, { status: 400 });
+    if (b.acao === "declarar") {
+      if (!b.dados) return falha("dados da operação obrigatórios.");
+      // 1) reserva o número do CIOT
+      const g = await svc.gerar(cnpj);
+      const id = g.Dados?.CIOT;
+      if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+      // 2) declara a operação. ETC sem subcontratação de TAC: contratado = a própria transportadora
+      //    (CNPJ + RNTRC do emitente) e o favorecido do pagamento também.
+      const pgto = (b.dados.InfPagamento ?? []).map(p => ({ ...p, CpfCnpjCreditado: cnpj, ChavePix: p.ChavePix && p.ChavePix.replace(/\D/g, "") !== (b.dados!.CpfCnpjContratado ?? "").replace(/\D/g, "") ? p.ChavePix : (cert.pagPix || p.ChavePix) }));
+      const dados: DeclaracaoCIOT = {
+        ...b.dados,
+        CpfCnpjContratado: cnpj,
+        RNTRCContratado: cert.rntrc || b.dados.RNTRCContratado,
+        InfPagamento: pgto,
+      };
+      const d = await svc.declarar(id, dados);
+      if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+      const dd = d.Dados;
+      await db.from("ciots").insert({
+        id_operacao: dd?.IdOperacaoTransporte ?? id, codigo_verificador: dd?.CodigoVerificador, protocolo: dd?.Protocolo,
+        cpf_cnpj_contratante: cnpj, cpf_cnpj_contratado: cnpj, valor_frete: parseFloat(b.dados.ValorFrete),
+        data_inicio: b.dados.DataInicioViagem, data_fim: b.dados.DataFimViagem, placa: b.dados.Veiculos?.[0]?.Placa,
+        ambiente: b.ambiente ?? "homologacao", status: "declarado",
+      });
+      return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: dd?.IdOperacaoTransporte ?? id, CodigoVerificador: dd?.CodigoVerificador ?? "", Protocolo: dd?.Protocolo ?? "" } });
     }
+
+    if (b.acao === "consultar") return NextResponse.json(await svc.consultar(b.ciot ?? "", b.ano ?? String(new Date().getFullYear())));
+    if (b.acao === "encerrar") {
+      const r = await svc.encerrar(b.ciot ?? "", b.peso ?? "");
+      if (r.Sucesso) await db.from("ciots").update({ status: "encerrado" }).eq("id_operacao", (b.ciot ?? "").slice(0, 12));
+      return NextResponse.json(r);
+    }
+    if (b.acao === "cancelar") {
+      const r = await svc.cancelar(b.ciot ?? "", b.motivo ?? "");
+      if (r.Sucesso) await db.from("ciots").update({ status: "cancelado" }).eq("id_operacao", (b.ciot ?? "").slice(0, 12));
+      return NextResponse.json(r);
+    }
+    return falha("Ação inválida.");
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, Sucesso: false, Mensagem: msg, Erros: [msg] }, { status: 500 });
+    return NextResponse.json({ ok: false, Sucesso: false, Mensagem: msg, Erros: [msg], error: msg }, { status: 500 });
   }
 }

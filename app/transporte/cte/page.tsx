@@ -1076,10 +1076,14 @@ function CtePageInner() {
       const res = await fetch("/api/antt/ciot", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          acao: "declarar", cnpjContratante: contratante, ambiente: amb,
+          acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb,
           dados: {
-            CpfCnpjContratado: cpfMot, RNTRCContratado: motorista?.rntrc ?? veiculo.rntrc ?? "",
-            CpfCnpjContratante: contratante, ValorFrete: Number(form.valor_frete).toFixed(2),
+            // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor
+            // ajusta CNPJ/RNTRC do emitente); contratante = o TOMADOR do frete; destinatário da carga.
+            CpfCnpjContratado: contratante, RNTRCContratado: motorista?.rntrc ?? veiculo.rntrc ?? "",
+            CpfCnpjContratante: (({ remetente: form.remetente_cnpj, destinatario: form.destinatario_cnpj, expedidor: form.exp.cnpj, recebedor: form.rec.cnpj } as Record<string, string>)[form.tomador_tipo] || form.destinatario_cnpj || contratante).replace(/\D/g, ""),
+            CpfCnpjDestinatario: (form.destinatario_cnpj || "").replace(/\D/g, "") || undefined,
+            ValorFrete: Number(form.valor_frete).toFixed(2),
             DataInicioViagem: form.data_emissao, DataFimViagem: dataFim,
             Veiculos: [{ Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista?.rntrc ?? "", NumeroEixos: "3" }],
             OrigemDestino: [{

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-l",
+    data: "25/09/2026",
+    titulo: "CIOT: integração refeita com certificado digital (sem chave de API)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A geração automática do CIOT pedia uma chave de API (ANTT_API_KEY) que não existe: a API pefServices da ANTT autentica por certificado digital A1 (e-CNPJ) do emitente — o mesmo da SEFAZ. A integração foi refeita: o botão \"Gerar CIOT via ANTT\" usa o certificado da transportadora, reserva o número (POST /pefServices/gerar) e declara a operação (DeclaracaoOperacaoTransporte), com a transportadora como contratada (CNPJ + RNTRC), o tomador do frete como contratante, o destinatário da carga e o PIX de Parâmetros → MDF-e como favorecido. O ambiente (Homologação/Produção) segue Parâmetros. Não testado com a ANTT real e o formato exato dos campos vem de documentação de terceiros (a ANTT recomenda conferir o Swagger oficial): faça a primeira em Homologação e envie a resposta se der erro. A entrada manual do número continua disponível." },
+    ],
+    onde: "Transporte → CT-e e MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.25-k",
     data: "25/09/2026",
     titulo: "MDF-e: formulário do CIOT preenchido pelo CT-e vinculado",

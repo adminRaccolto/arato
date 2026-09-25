@@ -286,6 +286,7 @@ interface CteMin {
   nfe_chave?: string | null;
   ciot?: string | null; ciot_codigo_verificador?: string | null; ciot_protocolo?: string | null;
   ibge_destino?: string | null;
+  tomador_tipo?: string | null; remetente_cnpj?: string | null; destinatario_cnpj?: string | null;
   emitente_cnpj?: string | null; remetente_id?: string | null; destinatario_id?: string | null;
   municipio_destino?: string | null; uf_destino?: string | null;
   produto_descricao?: string | null; ncm?: string | null; unidade?: string | null;
@@ -403,7 +404,7 @@ function MdfePageInner() {
     if (!fazendaId) return;
     const [{ data: md }, { data: cd }, { data: vd }, { data: mot }] = await Promise.all([
       supabase.from("mdfes").select("*").in("fazenda_id", fazendaIds).order("data_emissao", { ascending: false }),
-      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade, ciot, ciot_codigo_verificador, ciot_protocolo, ibge_destino").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
+      supabase.from("ctes").select("id, numero_cte, serie, chave_acesso, remetente_nome, destinatario_nome, valor_frete, status, veiculo_id, veiculo_placa, motorista_id, motorista_nome, motorista_cpf, peso_bruto_kg, valor_mercadoria, municipio_origem, uf_origem, ibge_origem, nfe_chave, emitente_cnpj, remetente_id, destinatario_id, municipio_destino, uf_destino, produto_descricao, ncm, unidade, ciot, ciot_codigo_verificador, ciot_protocolo, ibge_destino, tomador_tipo, remetente_cnpj, destinatario_cnpj").in("fazenda_id", fazendaIds).eq("status", "autorizado"),
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
@@ -568,12 +569,16 @@ function MdfePageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "declarar",
+          fazenda_id: fazendaId,
           cnpjContratante: contratanteDoc,
           ambiente: ambienteCiot,
           dados: {
-            CpfCnpjContratado:  motorista.cpf.replace(/\D/g, ""),
+            // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor usa CNPJ/
+            // RNTRC do emitente); contratante = tomador do frete do CT-e; destinatário da carga.
+            CpfCnpjContratado:  contratanteDoc,
             RNTRCContratado:    motorista.rntrc ?? veiculo.rntrc ?? "",
-            CpfCnpjContratante: contratanteDoc,
+            CpfCnpjContratante: (((cteSel?.tomador_tipo === "destinatario" ? cteSel.destinatario_cnpj : cteSel?.remetente_cnpj) ?? contratanteDoc) as string).replace(/\D/g, ""),
+            CpfCnpjDestinatario: (cteSel?.destinatario_cnpj ?? "").replace(/\D/g, "") || undefined,
             ValorFrete:         parseFloat(ciotForm.valor_frete.replace(",", ".")).toFixed(2),
             DataInicioViagem:   form.data_emissao,
             DataFimViagem:      ciotForm.data_fim,
