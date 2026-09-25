@@ -86,6 +86,7 @@ export type DeclaracaoCIOT = {
 // ── Serviço CIOT (mTLS) ───────────────────────────────────────────────────────
 
 import https from "node:https";
+import { agoraBrasilia } from "./validacao";
 
 export type CertificadoPem = { cert: string; key: string };
 
@@ -132,13 +133,18 @@ export class CiotService {
       IdOperacaoTransporte: idOperacao,
       TipoOperacao: 1,
       IndContingencia: "false",
-      // Horário LOCAL de MT (America/Cuiaba, UTC-4): a ANTT rejeita a declaração "fora do intervalo
-      // de tolerância" quando vai em UTC (4h adiantada). Achado 25/09/2026.
-      DataDeclaracao: new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Cuiaba", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date()).replace(" ", "T"),
+      // Horário OFICIAL DE BRASÍLIA (regra B11: tolerância de -15/+5 min). Nem UTC nem MT (Cuiabá,
+      // 1h atrás de Brasília) servem — as duas primeiras tentativas foram rejeitadas por isso.
+      DataDeclaracao: agoraBrasilia().dataHora,
       InfIndicadoresOperacionais: { IndAltoDesempenho: "false", IndRetornoVazio: "false", ComposicaoVeicular: "false" },
       ...dados,
     };
     return this.post<CiotGerado>("/api/DeclaracaoOperacaoTransporte", payload);
+  }
+
+  /** Pré-checagem (B15/B20): as placas pertencem ao RNTRC do transportador? */
+  consultarFrota(cnpjInteressado: string, cnpjTransportador: string, rntrc: string, placas: string[]) {
+    return this.post<Record<string, unknown>>("/api/ConsultarFrotaTransportador", { CPFCNPJInteressado: cnpjInteressado.replace(/\D/g, ""), CPFCNPJTransportador: cnpjTransportador.replace(/\D/g, ""), RNTRCTransportador: rntrc, Placas: placas });
   }
 
   consultar(ciot: string, ano: string) {
@@ -173,8 +179,8 @@ export const NATUREZA_CARGA: Record<string, string> = {
 };
 
 export const TIPO_CARGA: Record<string, string> = {
-  "5": "Granel sólido",
-  "1": "Carga geral",
+  "1": "Granel sólido",
+  "5": "Carga geral",
   "2": "Granel líquido",
   "3": "Frigorificada/aquecida",
   "4": "Conteinerizada",
@@ -183,11 +189,9 @@ export const TIPO_CARGA: Record<string, string> = {
   "9": "Outros",
 };
 
+// Tipos de pagamento do PEF (DCS v1.1): 1 cartão pré-pago de IP/IF (só via instituição de pagamento),
+// 2 conta corrente, 3 poupança, 4 conta pagamento (2–4 exigem banco/agência/conta), 5 outros
+// (não permitido a TAC/equiparado), 6 Pix (exige a chave). Este sistema usa apenas o Pix.
 export const TIPO_PAGAMENTO: Record<string, string> = {
-  "1": "Dinheiro",
-  "2": "Cheque",
-  "3": "TED",
-  "4": "DOC",
-  "5": "Cartão",
-  "6": "PIX",
+  "6": "Pix",
 };

@@ -393,6 +393,7 @@ function MdfePageInner() {
   const [gerandoCiot,  setGerandoCiot]  = useState(false);
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
   const [ciotReservado, setCiotReservado] = useState("");
+  const [ciotSemImpl, setCiotSemImpl] = useState(false);
   const [ciotErro,     setCiotErro]     = useState("");
 
   // Modal encerramento
@@ -571,7 +572,7 @@ function MdfePageInner() {
         body: JSON.stringify({
           acao: "declarar",
           fazenda_id: fazendaId,
-          ciotReservado: ciotReservado || undefined,
+          ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
           cnpjContratante: contratanteDoc,
           ambiente: ambienteCiot,
           dados: {
@@ -595,7 +596,7 @@ function MdfePageInner() {
               DistanciaPercorrida: ciotForm.distancia_km,
               QtdViagens: "1",
             }],
-            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: Math.max(0.01, parseFloat(String(ciotForm.peso_ton || "0").replace(",", ".")) || 0).toFixed(2), CodigoTipoCarga: "5" },
+            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: Math.max(0.01, parseFloat(String(ciotForm.peso_ton || "0").replace(",", ".")) || 0).toFixed(2), CodigoTipoCarga: "1" },
             InfPagamento: [{
               TipoPagamento: ciotForm.tipo_pagamento,
               CpfCnpjCreditado: motorista.cpf.replace(/\D/g,""),
@@ -1337,7 +1338,7 @@ function MdfePageInner() {
                 // Regra em lib/mdfe/ciot-regra.ts: motorista TAC ou veículo de terceiro exige CIOT.
                 if (!ciotExigido({ tpEmit: "1", motoristaTipo: mot?.tipo, veiculoProprietarioTipo: vei?.proprietario_tipo })) return null;
                 const NATUREZAS = [["2101","Soja"],["2102","Milho"],["2103","Algodão"],["2202","Granel vegetal"],["2201","Fertilizantes"],["4101","Carga geral"]];
-                const PGTOS    = [["6","PIX"],["1","Dinheiro"],["3","TED"]];
+                const PGTOS    = [["6","PIX"]];
                 return <>
                   <div style={{ ...divider, color: ciotGerado ? "#16A34A" : "#C9921B", borderTopColor: ciotGerado ? "#16A34A40" : "#C9921B40" }}>
                     CIOT — {ciotGerado ? `✓ Gerado: ${ciotGerado.id}` : "CIOT obrigatório em todo frete remunerado (ANTT, desde 24/05/2026)"}
@@ -1381,7 +1382,8 @@ function MdfePageInner() {
                       </div>
                       <div>
                         <label style={lbl}>Placa(s) do implemento/carreta *</label>
-                        <input style={{ ...inp, textTransform: "uppercase" }} placeholder="ABC1D23, ABC1D24" value={ciotForm.implementos} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} />
+                        <input style={{ ...inp, textTransform: "uppercase" }} placeholder="ABC1D23, ABC1D24" value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} />
+                        <label style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label>
                       </div>
                       <div>
                         <label style={lbl}>Cód. IBGE Município Origem *</label>

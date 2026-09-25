@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { criarCiotService, type DeclaracaoCIOT, type AmbienteCiot } from "../../../../lib/antt/ciot";
 import { carregarCertificadoEmitente } from "../../../../lib/antt/certificado";
+import { prepararDeclaracao } from "../../../../lib/antt/validacao";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
@@ -23,6 +24,7 @@ type Body = {
   ambiente?: AmbienteCiot;
   dados?: DeclaracaoCIOT;
   ciot?: string;              // 12 dígitos + verificador quando exigido
+  semImplemento?: boolean;    // caminhão simples (sem carreta)
   ciotReservado?: string;     // CIOT já reservado (POST /gerar) cuja declaração falhou — reaproveita em vez de gerar outro
   ano?: string; peso?: string; motivo?: string;
 };
@@ -44,25 +46,16 @@ export async function POST(req: NextRequest) {
 
     if (b.acao === "declarar") {
       if (!b.dados) return falha("dados da operação obrigatórios.");
-      // 1) reserva o número do CIOT
-      let id = (b.ciotReservado ?? "").replace(/\D/g, "");
-      if (id.length !== 12) {
-        const g = await svc.gerar(cnpj);
-        id = g.Dados?.CIOT ?? "";
-        if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
-      }
-      // 2) declara a operação. ETC sem subcontratação de TAC: contratado = a própria transportadora
-      //    (CNPJ + RNTRC do emitente) e o favorecido do pagamento também.
-      const pgto = (b.dados.InfPagamento ?? []).map(p => ({ ...p, CpfCnpjCreditado: cnpj, ChavePix: p.ChavePix && p.ChavePix.replace(/\D/g, "") !== (b.dados!.CpfCnpjContratado ?? "").replace(/\D/g, "") ? p.ChavePix : (cert.pagPix || p.ChavePix) }));
-      const dados: DeclaracaoCIOT = {
+
+      // A) Base: ETC sem subcontratação de TAC → contratado = a própria transportadora (CNPJ + RNTRC
+      //    do emitente) e favorecido do Pix; contratante = tomador; destinatário = da carga.
+      const base: DeclaracaoCIOT = {
         ...b.dados,
-        CpfCnpjContratado: cnpj,
-        RNTRCContratado: cert.rntrc || b.dados.RNTRCContratado,
-        InfPagamento: pgto,
+        InfPagamento: (b.dados.InfPagamento ?? []).map(p => ({ ...p, CpfCnpjCreditado: cnpj, ChavePix: cert.pagPix || p.ChavePix })),
       };
-      // 3) CEP que a ANTT não conhece ("ainda não está cadastrado") → manda coordenadas geográficas
-      //    (o mais específico: LatLong → CEP → Cidade). Fonte: BrasilAPI CEP v2; sem coordenada, o
-      //    centro do município (malha do IBGE).
+
+      // B) Coordenadas (ANTT não conhece todo CEP). Origem e destino DEVEM ter o mesmo tipo de
+      //    localização (B111): ambos com coordenadas, ou ambos só com o município.
       const coordDe = async (cep?: string, ibge?: string): Promise<{ lat: string; lon: string } | null> => {
         const c = (cep ?? "").replace(/\D/g, "");
         try {
@@ -80,28 +73,56 @@ export async function POST(req: NextRequest) {
               if (pts.length) { const lons = pts.map(p => p[0]), lats = pts.map(p => p[1]); return { lat: ((Math.min(...lats) + Math.max(...lats)) / 2).toFixed(6), lon: ((Math.min(...lons) + Math.max(...lons)) / 2).toFixed(6) }; }
             }
           }
-        } catch { /* sem coordenada: segue só com CEP/cidade */ }
+        } catch { /* sem coordenada */ }
         return null;
       };
-      if (!dados.OrigemDestino?.every(o => o.Origem.LatitudeOrigem)) {
-        dados.OrigemDestino = await Promise.all((dados.OrigemDestino ?? []).map(async o => {
-          const [co, cd] = await Promise.all([coordDe(o.Origem.CepOrigem, o.Origem.CodigoMunicipioOrigem), coordDe(o.Destino.CepDestino, o.Destino.CodigoMunicipioDestino)]);
-          return {
-            ...o,
-            Origem: co ? { CodigoMunicipioOrigem: o.Origem.CodigoMunicipioOrigem, LatitudeOrigem: co.lat, LongitudeOrigem: co.lon } : o.Origem,
-            Destino: cd ? { CodigoMunicipioDestino: o.Destino.CodigoMunicipioDestino, LatitudeDestino: cd.lat, LongitudeDestino: cd.lon } : o.Destino,
-          };
-        }));
+      base.OrigemDestino = await Promise.all((base.OrigemDestino ?? []).map(async o => {
+        const [co, cd] = await Promise.all([coordDe(o.Origem.CepOrigem, o.Origem.CodigoMunicipioOrigem), coordDe(o.Destino.CepDestino, o.Destino.CodigoMunicipioDestino)]);
+        return co && cd
+          ? { ...o, Origem: { CodigoMunicipioOrigem: o.Origem.CodigoMunicipioOrigem, LatitudeOrigem: co.lat, LongitudeOrigem: co.lon }, Destino: { CodigoMunicipioDestino: o.Destino.CodigoMunicipioDestino, LatitudeDestino: cd.lat, LongitudeDestino: cd.lon } }
+          : { ...o, Origem: { CodigoMunicipioOrigem: o.Origem.CodigoMunicipioOrigem }, Destino: { CodigoMunicipioDestino: o.Destino.CodigoMunicipioDestino } };
+      }));
+
+      // C) Validação COMPLETA antes de reservar o número (regras B1–B120 do DCS PEF v1.1)
+      const prep = prepararDeclaracao({ dados: base, cnpjEmitente: cnpj, rntrcEmitente: cert.rntrc, semImplemento: b.semImplemento, pagPix: cert.pagPix });
+      if (prep.erros.length) {
+        const msg = `Corrija antes de gerar o CIOT: ${prep.erros.join(" | ")}`;
+        return NextResponse.json({ Sucesso: false, Mensagem: msg, Erros: prep.erros, error: msg }, { status: 422 });
       }
+      const dados = prep.dados;
+
+      // D) Pré-checagem da frota (B15/B20): as placas pertencem ao RNTRC da transportadora?
+      try {
+        const fr = await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, dados.Veiculos.map(v => v.Placa));
+        const frota = (fr.Dados as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] } | undefined)?.Frota
+          ?? (fr as unknown as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] }).Frota;
+        const fora = (frota ?? []).filter(x => !(x.SituacaoVeiculoFrotaTransportador === true || x.SituacaoVeiculoFrotaTransportador === 1 || x.SituacaoVeiculoFrotaTransportador === "true")).map(x => x.PlacaVeiculo);
+        if (fora.length) {
+          const msg = `A(s) placa(s) ${fora.join(", ")} não pertence(m) à frota do RNTRC ${dados.RNTRCContratado} (transportador ${cnpj}) na ANTT — confira a placa, ou se a carreta é de outro RNTRC.`;
+          return NextResponse.json({ Sucesso: false, Mensagem: msg, Erros: [msg], error: msg }, { status: 422 });
+        }
+      } catch { /* consulta indisponível: a própria declaração valida (B15) */ }
+
+      // E) Número do CIOT: reaproveita um reservado e ainda não declarado do mesmo transportador/placa
+      //    (evita queimar um número a cada tentativa), senão reserva novo.
+      let id = (b.ciotReservado ?? "").replace(/\D/g, "");
+      if (id.length !== 12) {
+        const desde = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
+        const { data: sobras } = await db.from("ciots").select("id_operacao").eq("cpf_cnpj_contratante", cnpj).eq("placa", dados.Veiculos[0]?.Placa ?? "").eq("status", "reservado").gte("created_at", desde).order("created_at", { ascending: false }).limit(1);
+        id = (sobras?.[0]?.id_operacao as string | undefined) ?? "";
+      }
+      if (id.length !== 12) {
+        const g = await svc.gerar(cnpj);
+        id = g.Dados?.CIOT ?? "";
+        if (!g.Sucesso || !id) return NextResponse.json({ ...g, Mensagem: `Falha ao gerar o CIOT: ${g.Mensagem || g.Erros?.join(", ") || "sem detalhe"}` }, { status: 422 });
+        await db.from("ciots").insert({ id_operacao: id, cpf_cnpj_contratante: cnpj, cpf_cnpj_contratado: cnpj, placa: dados.Veiculos[0]?.Placa, valor_frete: parseFloat(dados.ValorFrete), ambiente: b.ambiente ?? "homologacao", status: "reservado" });
+      }
+
+      // F) Declara (DataDeclaracao no horário de Brasília, na hora do envio)
       const d = await svc.declarar(id, dados);
-      if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(", ") || "sem detalhe"} [enviado: DadosCarga=${JSON.stringify(dados.DadosCarga)} ValorFrete=${dados.ValorFrete} Dist=${JSON.stringify(dados.OrigemDestino?.map(o => o.DistanciaPercorrida))}]` }, { status: 422 });
+      if (!d.Sucesso) return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: id }, Mensagem: `CIOT ${id} reservado, mas a declaração da operação falhou: ${d.Mensagem || d.Erros?.join(" | ") || "sem detalhe"}` }, { status: 422 });
       const dd = d.Dados;
-      await db.from("ciots").insert({
-        id_operacao: dd?.IdOperacaoTransporte ?? id, codigo_verificador: dd?.CodigoVerificador, protocolo: dd?.Protocolo,
-        cpf_cnpj_contratante: cnpj, cpf_cnpj_contratado: cnpj, valor_frete: parseFloat(b.dados.ValorFrete),
-        data_inicio: b.dados.DataInicioViagem, data_fim: b.dados.DataFimViagem, placa: b.dados.Veiculos?.[0]?.Placa,
-        ambiente: b.ambiente ?? "homologacao", status: "declarado",
-      });
+      await db.from("ciots").update({ codigo_verificador: dd?.CodigoVerificador, protocolo: dd?.Protocolo, valor_frete: parseFloat(dados.ValorFrete), data_inicio: dados.DataInicioViagem, data_fim: dados.DataFimViagem, status: "declarado" }).eq("id_operacao", id);
       return NextResponse.json({ ...d, Dados: { IdOperacaoTransporte: dd?.IdOperacaoTransporte ?? id, CodigoVerificador: dd?.CodigoVerificador ?? "", Protocolo: dd?.Protocolo ?? "" } });
     }
 

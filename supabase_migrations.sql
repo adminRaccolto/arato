@@ -13804,3 +13804,10 @@ ALTER TABLE mdfes
   ADD COLUMN IF NOT EXISTS emitente_cnpj         text,
   ADD COLUMN IF NOT EXISTS emitente_razao_social text;
 NOTIFY pgrst, 'reload schema';
+
+
+-- ── Seção 299 — CIOT: permite registrar o número RESERVADO (antes da declaração) e reaproveitá-lo ──
+ALTER TABLE ciots ALTER COLUMN codigo_verificador DROP NOT NULL;
+ALTER TABLE ciots DROP CONSTRAINT IF EXISTS ciots_status_check;
+ALTER TABLE ciots ADD CONSTRAINT ciots_status_check CHECK (status IN ('reservado','declarado','encerrado','cancelado'));
+NOTIFY pgrst, 'reload schema';

@@ -557,6 +557,7 @@ function CtePageInner() {
   const [gerandoCiot, setGerandoCiot] = useState(false);
   const [ciotManual, setCiotManual] = useState({ codigo: "", cv: "" });
   const [ciotReservado, setCiotReservado] = useState("");
+  const [ciotSemImpl, setCiotSemImpl] = useState(false);
   const [ciotErro, setCiotErro] = useState("");
   const naturezaCiot = (desc: string) => {
     const d = desc.toLowerCase();
@@ -1077,7 +1078,7 @@ function CtePageInner() {
       const res = await fetch("/api/antt/ciot", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb, ciotReservado: ciotReservado || undefined,
+          acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb, ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
           dados: {
             // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor
             // ajusta CNPJ/RNTRC do emitente); contratante = o TOMADOR do frete; destinatário da carga.
@@ -1096,7 +1097,7 @@ function CtePageInner() {
               Destino: { CodigoMunicipioDestino: form.ibge_destino, CepDestino: cepDest },
               DistanciaPercorrida: ciotForm.distancia_km, QtdViagens: "1",
             }],
-            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: String(Math.max(0.01, (form.peso_bruto_kg || 0) / 1000).toFixed(2)), CodigoTipoCarga: "5" },
+            DadosCarga: { CodigoNaturezaCarga: ciotForm.natureza, PesoCarga: String(Math.max(0.01, (form.peso_bruto_kg || 0) / 1000).toFixed(2)), CodigoTipoCarga: "1" },
             InfPagamento: [{ TipoPagamento: "6", CpfCnpjCreditado: cpfMot, ChavePix: ciotForm.chave_pix || cpfMot, IndPagamento: "0" }],
           },
         }),
@@ -2191,7 +2192,7 @@ function CtePageInner() {
                         </select></div>
                       <div><label style={lbl}>CEP origem</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.remetente_id)?.cep ?? "78450-000"} value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} /></div>
                       <div><label style={lbl}>CEP destino</label><input style={{ ...inp, fontFamily: "monospace" }} placeholder={pessoas.find(p => p.id === form.destinatario_id)?.cep ?? "78455-000"} value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} /></div>
-                      <div><label style={lbl}>Placa(s) do implemento/carreta (cavalo-trator exige)</label><input style={{ ...inp, textTransform: "uppercase" }} value={ciotForm.implementos} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} placeholder="ABC1D23, ABC1D24" /></div>
+                      <div><label style={lbl}>Placa(s) do implemento/carreta (cavalo-trator exige)</label><input style={{ ...inp, textTransform: "uppercase" }} value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} placeholder="ABC1D23, ABC1D24" /><label style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label></div>
                       <div><label style={lbl}>Chave PIX do motorista (vazio = CPF)</label><input style={inp} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} /></div>
                       <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
                         <div style={{ flex: "1 1 200px" }}><label style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>

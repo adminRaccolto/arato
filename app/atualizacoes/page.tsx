@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-o",
+    data: "25/09/2026",
+    titulo: "CIOT: validação completa (regras B1–B120 da ANTT) antes de reservar o número",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A declaração do CIOT era corrigida rejeição por rejeição. Agora o sistema aplica localmente as regras do documento oficial da ANTT (DCS PEF v1.1) ANTES de reservar o número e lista todos os problemas de uma vez: horário oficial de BRASÍLIA (a ANTT tolera -15/+5 min; a versão anterior usava UTC e depois o horário de Cuiabá — ambos rejeitados), data de início nunca no passado, RNTRC com 9 dígitos, dígito verificador de CPF/CNPJ, placas no formato válido e sem duplicidade, cavalo-trator com implemento (ou marcar \"caminhão simples\"), eixos (2–4 automotor, 1–4 implemento), origem e destino com o MESMO tipo de localização (coordenadas para os dois, ou só município), distância não menor que a linha reta, Pix com chave e sem campos bancários, peso 0–99999.99. Também: tipo de carga \"1 – Granel sólido\" (o sistema enviava 5 = Carga geral), só Pix como forma de pagamento (as outras exigem instituição de pagamento), checagem prévia de que as placas pertencem ao RNTRC da transportadora, e o número reservado sem declaração é reaproveitado (Seção 299 da migration) em vez de queimar outro a cada tentativa." },
+    ],
+    onde: "Transporte → CT-e e MDF-e → CIOT",
+  },
+  {
     versao: "2026.09.25-n",
     data: "25/09/2026",
     titulo: "CIOT: coordenadas quando o CEP é desconhecido, implemento obrigatório e horário de MT",
