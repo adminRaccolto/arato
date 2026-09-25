@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-f",
+    data: "25/09/2026",
+    titulo: "Parâmetros Fiscais: produtores com o mesmo CPF abrem cada um no seu cartão",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Em Parâmetros → Fiscal → NF-e por Emitente, produtores diferentes que compartilham o mesmo CPF (ex.: \"Dirceu Ogliari Junior\" e \"Dirceu Ogliari Junior e Outro\") usavam a mesma chave de tela, então clicar no segundo abria o primeiro e ele não podia ser configurado. Cada cartão agora tem chave própria (módulo + cadastro) e abre com as suas Inscrições Estaduais. A configuração-base (série, certificado, endereço) continua sendo por CPF, compartilhada entre eles; as configurações por IE são de cada produtor." },
+    ],
+    onde: "Configurações → Parâmetros do Sistema → Fiscal",
+  },
+  {
     versao: "2026.09.25-e",
     data: "25/09/2026",
     titulo: "Transferência de Máquinas: seletor de emitente da NF",

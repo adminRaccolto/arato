@@ -1145,7 +1145,12 @@ function ParametrosSistemaContent() {
           </div>
         ) : (
           emitters.map(emitter => {
-            const isOpen = expandedEmitter === emitter.moduloKey;
+            // Chave ÚNICA do cartão (módulo + id do cadastro): dois produtores com o mesmo CPF
+            // (ex.: "Dirceu Ogliari Junior" e "Dirceu Ogliari Junior e Outro") têm o mesmo
+            // moduloKey — usar só ele como chave/expansão abria sempre o primeiro cartão e impedia
+            // configurar o segundo (achado 25/09/2026).
+            const uid = `${emitter.moduloKey}::${emitter.id}`;
+            const isOpen = expandedEmitter === uid;
             const c = cfgs[emitter.moduloKey] ?? {};
             const isConfigured = !!(c.cpf_cnpj_emitente);
             const certPath = String(c.cert_a1_path ?? "");
@@ -1158,11 +1163,11 @@ function ParametrosSistemaContent() {
             const certCorrectPath = String((certMeta as Record<string, unknown>)?.storage_path ?? "");
 
             return (
-              <div key={emitter.moduloKey} style={{ border: `0.5px solid ${isOpen ? "#111111" : "var(--border)"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
+              <div key={uid} style={{ border: `0.5px solid ${isOpen ? "#111111" : "var(--border)"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
 
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: isOpen ? "#F0F5FF" : "var(--bg-card)", cursor: "pointer", userSelect: "none" }}
-                  onClick={() => { const opening = !isOpen; setExpandedEmitter(opening ? emitter.moduloKey : null); if (opening) autoPreencherDoCadastro(emitter); }}>
+                  onClick={() => { const opening = !isOpen; setExpandedEmitter(opening ? uid : null); if (opening) autoPreencherDoCadastro(emitter); }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 10, background: emitter.type === "empresa" ? "#F2F2F2" : "#F0FDF4", color: emitter.type === "empresa" ? "#2A2A2A" : "#16A34A", border: `0.5px solid ${emitter.type === "empresa" ? "#BFDBFE" : "#BBF7D0"}` }}>
                       {emitter.type === "empresa" ? "PJ — e-CNPJ" : "PF — e-CPF"}
