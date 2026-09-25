@@ -512,7 +512,9 @@ export async function emitirNFe(
   const serie = String(serieConfg).padStart(3, "0");
 
   // 3. Próximo número (reservado de forma atômica) — só depois da configuração validada
-  const numero = await proximoNumero(fazendaId, moduloKey, confg);
+  // Número só é reservado DEPOIS da validação do emitente (abaixo): reservar antes queimava um
+  // número de NF-e a cada tentativa barrada por configuração (ex.: IBGE do município faltando).
+  let numero = 0;
 
   const emitente: EmitenteCfg = {
     cpf_cnpj:       cpfCnpjEmit,
@@ -530,8 +532,36 @@ export async function emitirNFe(
     fone:           confg.fone,
     ambiente:       (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
     serie,
-    numero_nfe:     numero,
+    numero_nfe:     0,
   };
+
+  // 3b. Endereço do emitente incompleto (IBGE/CEP/logradouro): completa pela Inscrição Estadual
+  // cadastrada do produtor (produtor_inscricoes_estaduais já guarda município, IBGE, CEP e
+  // logradouro por IE) em vez de exigir que o cliente repita tudo em Parâmetros → Fiscal.
+  // Achado 25/09/2026: NF de transferência de máquina parou com "IBGE do município não configurado".
+  if ((!emitente.municipio_ibge || !/^\d{7}$/.test(emitente.municipio_ibge)) && emitente.ie) {
+    try {
+      const ieDig = String(emitente.ie).replace(/\D/g, "");
+      const { data: fzIe } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+      let fazIdsIe = [fazendaId];
+      if (fzIe?.conta_id) {
+        const { data: fzsIe } = await sb().from("fazendas").select("id").eq("conta_id", fzIe.conta_id);
+        if (fzsIe?.length) fazIdsIe = fzsIe.map(f => f.id as string);
+      }
+      const { data: ies } = await sb().from("produtor_inscricoes_estaduais")
+        .select("inscricao_estadual, municipio, municipio_ibge, cep, logradouro, numero, bairro, estado, fazenda_id").in("fazenda_id", fazIdsIe);
+      const ie = (ies ?? []).find(r => String(r.inscricao_estadual ?? "").replace(/\D/g, "") === ieDig && /^\d{7}$/.test(String(r.municipio_ibge ?? "")));
+      if (ie) {
+        emitente.municipio_ibge = String(ie.municipio_ibge);
+        if (!emitente.municipio_nome) emitente.municipio_nome = String(ie.municipio ?? "");
+        if (!confg.cep && ie.cep) emitente.cep = String(ie.cep).replace(/\D/g, "");
+        if (!emitente.logradouro && ie.logradouro) emitente.logradouro = String(ie.logradouro);
+        if ((!emitente.numero || emitente.numero === "S/N") && ie.numero) emitente.numero = String(ie.numero);
+        if (!emitente.bairro && ie.bairro) emitente.bairro = String(ie.bairro);
+        if (ie.estado) emitente.uf = String(ie.estado);
+      }
+    } catch { /* best-effort: cai na validação abaixo com mensagem clara */ }
+  }
 
   // 4. Validação prévia de campos obrigatórios — retorna CFG antes de tentar construir/transmitir
   if (!emitente.municipio_ibge || !/^\d{7}$/.test(emitente.municipio_ibge)) {
@@ -540,9 +570,12 @@ export async function emitirNFe(
       cStat: "CFG",
       xMotivo:
         "Código IBGE do município do emitente não configurado (campo obrigatório <cMun>). " +
-        "Acesse Parâmetros → Fiscal → emitente e preencha o CEP para auto-completar o IBGE, depois salve.",
+        `Emitente ${cpfCnpjEmit} (IE ${emitente.ie || "sem IE"}): acesse Parâmetros → Fiscal → esse emitente e preencha o CEP para auto-completar o IBGE, depois salve — ou cadastre a IE do produtor com município em Cadastros → Produtores.`,
     };
   }
+
+  numero = await proximoNumero(fazendaId, moduloKey, confg);
+  emitente.numero_nfe = numero;
 
   // Auto-compõe infCpl a partir das configurações do emitente (Funrural, ICMS diferido, etc.)
   const cfopPrimario = (input.itens[0]?.cfop ?? "").replace(/\D/g, "");

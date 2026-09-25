@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.25-d",
+    data: "25/09/2026",
+    titulo: "NF-e: IBGE do emitente completado pela IE do produtor (transferência de máquinas)",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A NF de transferência de máquina/equipamento parava com \"Código IBGE do município do emitente não configurado\" quando o emitente escolhido em Parâmetros → Fiscal não tinha o município preenchido. Agora o sistema completa município, IBGE, CEP e logradouro a partir da Inscrição Estadual cadastrada do produtor (Cadastros → Produtores → IEs) antes de exigir a configuração. A mensagem, quando ainda falta, agora diz qual emitente/IE precisa ser preenchido. Também: o número da NF-e só é reservado depois dessa validação — antes cada tentativa barrada por configuração queimava um número." },
+    ],
+    onde: "Fiscal → Transferência de Máquinas · Emissão de NF-e",
+  },
+  {
     versao: "2026.09.25-c",
     data: "25/09/2026",
     titulo: "MDF-e: emitente selecionável, cancelamento real na SEFAZ e NF-e sem destino arbitrário",
