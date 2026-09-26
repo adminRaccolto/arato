@@ -13889,3 +13889,11 @@ CREATE POLICY "fazenda_owner" ON funcionario_rescisoes
   USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
          OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- SEÇÃO 303 — funcionarios: líquido do holerite e valor em mãos
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS salario_liquido numeric(14,2),
+  ADD COLUMN IF NOT EXISTS valor_em_maos   numeric(14,2);
+NOTIFY pgrst, 'reload schema';

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-e",
+    data: "26/09/2026",
+    titulo: "Funcionários: líquido do holerite e valor em mãos preenchem o complemento",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Na aba Remuneração do funcionário há dois campos novos: Líquido da carteira (o que sobra do salário base depois de INSS/IRRF, conforme o holerite) e Valor que recebe em mãos (total líquido pago). O Complemento Salarial é preenchido sozinho pela diferença (em mãos − líquido da carteira); sem o líquido informado, usa o salário base. O complemento continua editável. Requer executar a Seção 303 de migration." },
+    ],
+    onde: "Cadastros → Funcionários → Remuneração",
+  },
+  {
     versao: "2026.09.26-d",
     data: "26/09/2026",
     titulo: "NF de Entrada: retorno e entrada de bem do imobilizado",

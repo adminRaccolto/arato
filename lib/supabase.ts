@@ -991,6 +991,8 @@ export type Funcionario = {
   ativo: boolean;
   // Remuneração
   salario_base?: number;
+  salario_liquido?: number;     // líquido do holerite (base − INSS/IRRF)
+  valor_em_maos?: number;       // total líquido que o funcionário recebe (líquido da carteira + complemento)
   complemento_salarial?: number;
   piso_categoria?: number;
   // Benefícios (vêm do cadastro; propagados para a folha)

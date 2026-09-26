@@ -434,7 +434,7 @@ function CadastrosInner() {
     tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
     area_trabalho: "operacional" as Funcionario["area_trabalho"],
     funcao: "", data_admissao: "", data_demissao: "", ativo: true,
-    salario_base: "", complemento_salarial: "", piso_categoria: "",
+    salario_base: "", salario_liquido: "", valor_em_maos: "", complemento_salarial: "", piso_categoria: "",
     vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
     fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
     provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
@@ -2223,6 +2223,8 @@ function CadastrosInner() {
       area_trabalho: f.area_trabalho ?? "operacional",
       funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
       salario_base: f.salario_base ? String(f.salario_base) : "",
+      salario_liquido: f.salario_liquido ? String(f.salario_liquido) : "",
+      valor_em_maos: f.valor_em_maos ? String(f.valor_em_maos) : "",
       complemento_salarial: f.complemento_salarial ? String(f.complemento_salarial) : "",
       piso_categoria: f.piso_categoria ? String(f.piso_categoria) : "",
       vale_transporte: f.vale_transporte ? String(f.vale_transporte) : "",
@@ -2240,7 +2242,7 @@ function CadastrosInner() {
       tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
       area_trabalho: "operacional" as Funcionario["area_trabalho"],
       funcao: "", data_admissao: "", data_demissao: "", ativo: true,
-      salario_base: "", complemento_salarial: "", piso_categoria: "",
+      salario_base: "", salario_liquido: "", valor_em_maos: "", complemento_salarial: "", piso_categoria: "",
       vale_transporte: "", vale_refeicao: "", outros_beneficios: "",
       fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
       provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
@@ -2268,6 +2270,8 @@ function CadastrosInner() {
       data_admissao: fFunc.data_admissao || undefined, data_demissao: fFunc.data_demissao || undefined,
       ativo: fFunc.ativo,
       salario_base: fFunc.salario_base ? Number(fFunc.salario_base) : undefined,
+      salario_liquido: fFunc.salario_liquido ? Number(fFunc.salario_liquido) : undefined,
+      valor_em_maos: fFunc.valor_em_maos ? Number(fFunc.valor_em_maos) : undefined,
       complemento_salarial: fFunc.complemento_salarial ? Number(fFunc.complemento_salarial) : undefined,
       piso_categoria: fFunc.piso_categoria ? Number(fFunc.piso_categoria) : undefined,
       vale_transporte: fFunc.vale_transporte ? Number(fFunc.vale_transporte) : undefined,
@@ -10229,14 +10233,30 @@ function CadastrosInner() {
               <div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                   <div>
-                    <label style={lbl}>Salário base (R$)</label>
+                    <label style={lbl}>Salário base — bruto da carteira (R$)</label>
                     <InputMonetario style={inp} value={fFunc.salario_base} onChange={v => setFFunc(p => ({ ...p, salario_base: String(v) }))} placeholder="0,00" />
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Carteira — base dos encargos e Livro Caixa</div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Base dos encargos e do Livro Caixa</div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Líquido da carteira — holerite (R$)</label>
+                    <InputMonetario style={inp} value={fFunc.salario_liquido} onChange={v => setFFunc(p => {
+                      const liq = Number(v) || 0, maos = Number(p.valor_em_maos) || 0;
+                      return { ...p, salario_liquido: String(v), ...(maos > 0 ? { complemento_salarial: String(Math.max(0, Math.round((maos - (liq || Number(p.salario_base) || 0)) * 100) / 100)) } : {}) };
+                    })} placeholder="0,00" />
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Quanto sobra do salário base depois do INSS/IRRF{sal > 0 && Number(fFunc.salario_liquido) > 0 ? ` (descontos: R$ ${R(sal - Number(fFunc.salario_liquido))})` : ""}</div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Valor que recebe em mãos (R$)</label>
+                    <InputMonetario style={inp} value={fFunc.valor_em_maos} onChange={v => setFFunc(p => {
+                      const maos = Number(v) || 0, liq = Number(p.salario_liquido) || Number(p.salario_base) || 0;
+                      return { ...p, valor_em_maos: String(v), ...(maos > 0 ? { complemento_salarial: String(Math.max(0, Math.round((maos - liq) * 100) / 100)) } : {}) };
+                    })} placeholder="0,00" />
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Total líquido pago ao funcionário — o complemento é preenchido pela diferença</div>
                   </div>
                   <div>
                     <label style={lbl}>Complemento Salarial (R$)</label>
                     <InputMonetario style={inp} value={fFunc.complemento_salarial} onChange={v => setFFunc(p => ({ ...p, complemento_salarial: String(v) }))} placeholder="0,00" />
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Por fora — sem encargos, sem Livro Caixa</div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Por fora — sem encargos, sem Livro Caixa{Number(fFunc.valor_em_maos) > 0 ? " (calculado: em mãos − líquido)" : ""}</div>
                   </div>
                   <div>
                     <label style={lbl}>Piso da categoria (R$)</label>
