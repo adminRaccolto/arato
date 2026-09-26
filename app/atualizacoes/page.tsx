@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-a",
+    data: "26/09/2026",
+    titulo: "Funcionários: rotina financeira de férias e rescisão",
+    modulos: ["Cadastros", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Férias com rotina financeira: ao conceder férias de um período disponível, o sistema calcula o valor (dias/30 do salário + 1/3 constitucional), o abono pecuniário (até 10 dias, também com 1/3), define o vencimento do pagamento (2 dias antes do gozo) e lança automaticamente no Contas a Pagar com a operação gerencial de férias (FAZ ou ADM). Os valores podem ser ajustados antes de confirmar. Depois é possível marcar como gozada ou cancelar a concessão (exclui o lançamento em aberto)." },
+      { tipo: "novo", texto: "Nova aba Rescisão no cadastro do funcionário: escolha o tipo de desligamento (sem justa causa, pedido de demissão, justa causa, acordo 484-A, término de contrato), a data e o aviso prévio. O sistema calcula saldo de salário, aviso prévio indenizado (30 dias + 3 por ano, até 90), 13º proporcional, férias vencidas e proporcionais + 1/3 e multa do FGTS (40% ou 20%, sobre o saldo informado). Cada verba pode ser ajustada; INSS, IRRF e outros descontos são digitados. Ao lançar, cria o Contas a Pagar da rescisão (pagar em até 10 dias) e o da multa do FGTS, e marca o funcionário como desligado. Há botão de estorno. Requer a Seção 302 de migration." },
+    ],
+    onde: "Cadastros → Funcionários → Férias / Rescisão",
+  },
+  {
     versao: "2026.09.25-z",
     data: "25/09/2026",
     titulo: "Conciliação: barra OFX de outra conta e exclusão completa da importação",

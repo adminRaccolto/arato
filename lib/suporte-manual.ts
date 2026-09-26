@@ -1386,4 +1386,6 @@ Campo que classifica o lançamento para fins fiscais:
 | Como reprogramar o vencimento de um CP/CR de Empresa | Igual ao produtor | Botão ↕ na linha: informa nova data (e novo valor, se houver), o vencimento original fica registrado |
 | Como excluir um OFX importado errado | Histórico da Conciliação | Aba Histórico → 🗑 na importação: remove as transações e pergunta se reabre os lançamentos que ela baixou |
 | "Este OFX é da conta X" ao importar | O arquivo pertence a outra conta bancária | Selecionar a conta correta antes de importar |
+| Como lançar as férias de um funcionário no financeiro | Cadastros → Funcionários → aba Férias | Em um período disponível, clicar Conceder: informar início, dias e abono; o sistema calcula (dias/30 + 1/3) e lança no Contas a Pagar. Para desfazer, usar Cancelar na linha do período |
+| Como fazer a rescisão de um funcionário | Cadastros → Funcionários → aba Rescisão | Informar tipo, data e aviso; conferir as verbas calculadas (editáveis), digitar INSS/IRRF e lançar. Cria o Contas a Pagar da rescisão e da multa do FGTS e desliga o funcionário. Estorno disponível na própria aba |
 `;

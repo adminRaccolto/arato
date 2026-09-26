@@ -51,6 +51,9 @@ import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import ProdutorCombo from "../../components/ProdutorCombo";
 import SelectBusca from "../../components/SelectBusca";
+import ConcederFeriasModal from "../../components/ConcederFeriasModal";
+import RescisaoFuncionario from "../../components/RescisaoFuncionario";
+import { cancelarConcessaoFerias, marcarFeriasGozada } from "../../lib/rh-financeiro";
 import type {
   Fazenda as FazendaDB, Talhao, Arrendamento,
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
@@ -424,7 +427,7 @@ function CadastrosInner() {
   const [buscaFunc, setBuscaFunc]           = useState("");
   const [modalFunc, setModalFunc]           = useState(false);
   const [editFunc, setEditFunc]             = useState<Funcionario | null>(null);
-  const [abaFunc, setAbaFunc]               = useState<"dados"|"remuneracao"|"premiacoes"|"ferias">("dados");
+  const [abaFunc, setAbaFunc]               = useState<"dados"|"remuneracao"|"premiacoes"|"ferias"|"rescisao">("dados");
   const [fFunc, setFFunc]                   = useState({
     nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
     ctps_numero: "", ctps_serie: "", ctps_uf: "",
@@ -10128,8 +10131,8 @@ function CadastrosInner() {
           <Modal titulo={editFunc ? `Funcionário — ${editFunc.nome}` : "Novo Funcionário"} onClose={() => setModalFunc(false)} width={920}>
             {/* Tabs */}
             <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-row)", marginBottom: 20, gap: 0 }}>
-              {(["dados","remuneracao","premiacoes","ferias"] as const).map(t => {
-                const labels: Record<string, string> = { dados: "Dados Pessoais", remuneracao: "Remuneração", premiacoes: `Premiações (${premiacoes.length})`, ferias: `Férias${ferDisp > 0 ? ` ⚠ ${ferDisp}` : ""}` };
+              {((["dados","remuneracao","premiacoes","ferias", ...(editFunc ? ["rescisao"] : [])]) as ("dados"|"remuneracao"|"premiacoes"|"ferias"|"rescisao")[]).map(t => {
+                const labels: Record<string, string> = { dados: "Dados Pessoais", remuneracao: "Remuneração", premiacoes: `Premiações (${premiacoes.length})`, ferias: `Férias${ferDisp > 0 ? ` ⚠ ${ferDisp}` : ""}`, rescisao: editFunc?.ativo === false ? "Rescisão ✓" : "Rescisão" };
                 return (
                   <button key={t} onClick={() => setAbaFunc(t)} style={{ padding: "8px 18px", fontSize: 12, fontWeight: abaFunc === t ? 700 : 400, color: abaFunc === t ? "#111111" : "#666", background: "none", border: "none", borderBottom: abaFunc === t ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>
                     {labels[t]}
@@ -10369,7 +10372,7 @@ function CadastrosInner() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
-                        {["Período aquisitivo", "Vencimento", "Status", "Gozo", "Dias", ""].map((h, i) => (
+                        {["Período aquisitivo", "Vencimento", "Status", "Gozo", "Dias", "Valor lançado", ""].map((h, i) => (
                           <th key={i} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 11, borderBottom: "0.5px solid var(--border-row)" }}>{h}</th>
                         ))}
                       </tr>
@@ -10398,11 +10401,20 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 12px", color: "var(--text-1)" }}>
                               {fer.dias_gozados ? `${fer.dias_gozados}d${fer.abono_pecuniario ? ` + ${fer.dias_abono}d abono` : ""}` : "30d"}
                             </td>
-                            <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                            <td style={{ padding: "10px 12px", color: "var(--text-1)" }}>
+                              {fer.lancado_financeiro ? `R$ ${((fer.valor_ferias ?? 0) + (fer.valor_abono ?? 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                            </td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
                               {(fer.status === "disponivel" || fer.status === "vencido") && (
-                                <button style={btnE} onClick={() => { setModalGozo(fer); setFGozo({ data_inicio_gozo: "", data_fim_gozo: "", dias_gozados: "30", abono_pecuniario: false, dias_abono: "10" }); }}>
+                                <button style={btnE} onClick={() => setModalGozo(fer)}>
                                   Conceder
                                 </button>
+                              )}
+                              {fer.status === "concedido" && (
+                                <>
+                                  <button style={{ ...btnE, marginRight: 6 }} onClick={async () => { try { await marcarFeriasGozada(fer.id); setFerias(prev => prev.map(x => x.id === fer.id ? { ...x, status: "gozado" } : x)); } catch (e) { alert("Erro: " + (e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e))); } }}>Marcar gozada</button>
+                                  <button style={btnE} title="Desfaz a concessão e exclui o lançamento em aberto do Contas a Pagar" onClick={async () => { if (!confirm("Cancelar esta concessão de férias? O lançamento em aberto no Contas a Pagar será excluído.")) return; try { const n = await cancelarConcessaoFerias(fer); setFerias(prev => prev.map(x => x.id === fer.id ? n : x)); } catch (e) { alert("Erro: " + (e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e))); } }}>Cancelar</button>
+                                </>
                               )}
                             </td>
                           </tr>
@@ -10412,6 +10424,11 @@ function CadastrosInner() {
                   </table>
                 )}
               </div>
+            )}
+
+            {abaFunc === "rescisao" && editFunc && (
+              <RescisaoFuncionario func={editFunc} fazendaId={fazIdEff!} ferias={ferias}
+                onChanged={(p) => { setEditFunc(prev => prev ? { ...prev, ...p } as typeof prev : prev); setFFunc(prev => ({ ...prev, ativo: p.ativo ?? prev.ativo, data_demissao: p.data_demissao ?? "" })); setFuncs(prev => prev.map(x => x.id === editFunc.id ? { ...x, ...p } as typeof x : x)); }} />
             )}
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20, borderTop: "0.5px solid var(--bg-tag)", paddingTop: 16 }}>
@@ -10465,27 +10482,9 @@ function CadastrosInner() {
       )}
 
       {/* Modal Concessão de Férias */}
-      {modalGozo && (
-        <Modal titulo={`Conceder Férias — Período ${modalGozo.periodo_inicio}`} onClose={() => setModalGozo(null)} width={500}>
-          <div style={{ display: "grid", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div><label style={lbl}>Início do gozo</label><input style={inp} type="date" value={fGozo.data_inicio_gozo} onChange={e => { const v = e.target.value; setFGozo(p => ({ ...p, data_inicio_gozo: v })); }} /></div>
-              <div><label style={lbl}>Fim do gozo</label><input style={inp} type="date" value={fGozo.data_fim_gozo} onChange={e => setFGozo(p => ({ ...p, data_fim_gozo: e.target.value }))} /></div>
-            </div>
-            <div><label style={lbl}>Dias de gozo</label><InputNumerico style={inp} decimais={0} value={fGozo.dias_gozados} onChange={v => setFGozo(p => ({ ...p, dias_gozados: v }))} /></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="checkbox" id="abonoPec" checked={fGozo.abono_pecuniario} onChange={e => setFGozo(p => ({ ...p, abono_pecuniario: e.target.checked }))} />
-              <label htmlFor="abonoPec" style={{ fontSize: 12, color: "var(--text-2)" }}>Abono pecuniário (venda de 1/3 dos dias)</label>
-            </div>
-            {fGozo.abono_pecuniario && (
-              <div><label style={lbl}>Dias de abono</label><InputNumerico style={inp} decimais={0} value={fGozo.dias_abono} onChange={v => setFGozo(p => ({ ...p, dias_abono: v }))} /></div>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => { setModalGozo(null); setErroModal(""); }}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarGozo}>{salvando ? "Salvando…" : "Confirmar"}</button>
-          </div>
-        </Modal>
+      {modalGozo && editFunc && (
+        <ConcederFeriasModal func={editFunc} fazendaId={fazIdEff!} fer={modalGozo} onClose={() => setModalGozo(null)}
+          onDone={(n) => { setFerias(prev => prev.map(f => f.id === n.id ? n : f)); setModalGozo(null); }} />
       )}
 
       {/* Modal Grupo */}

@@ -13854,3 +13854,38 @@ ALTER TABLE empresa_lancamentos
   ADD COLUMN IF NOT EXISTS valor_desconto numeric(14,2),
   ADD COLUMN IF NOT EXISTS data_prorrogacao date;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- SEÇÃO 302 — RH financeiro: férias (valores/CP) e rescisão de funcionário
+-- ═══════════════════════════════════════════════════════════════
+ALTER TABLE funcionario_ferias
+  ADD COLUMN IF NOT EXISTS lancamento_ids uuid[],
+  ADD COLUMN IF NOT EXISTS data_pagamento date;
+
+CREATE TABLE IF NOT EXISTS funcionario_rescisoes (
+  id                uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  funcionario_id    uuid NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  fazenda_id        uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  data_desligamento date NOT NULL,
+  tipo_desligamento text NOT NULL,   -- sem_justa_causa | pedido_demissao | justa_causa | acordo | termino_contrato
+  aviso_previo      text NOT NULL DEFAULT 'trabalhado',  -- trabalhado | indenizado | dispensado
+  salario_base      numeric(14,2),
+  saldo_fgts        numeric(14,2),
+  verbas            jsonb NOT NULL DEFAULT '[]'::jsonb,
+  total_proventos   numeric(14,2) DEFAULT 0,
+  total_descontos   numeric(14,2) DEFAULT 0,
+  total_liquido     numeric(14,2) DEFAULT 0,
+  multa_fgts        numeric(14,2) DEFAULT 0,
+  data_pagamento    date,
+  lancamento_ids    uuid[],
+  status            varchar(15) NOT NULL DEFAULT 'lancada',  -- lancada | estornada
+  obs               text,
+  created_at        timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_func_rescisoes_func ON funcionario_rescisoes(funcionario_id);
+ALTER TABLE funcionario_rescisoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "fazenda_owner" ON funcionario_rescisoes;
+CREATE POLICY "fazenda_owner" ON funcionario_rescisoes
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+NOTIFY pgrst, 'reload schema';

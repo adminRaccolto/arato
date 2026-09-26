@@ -1044,6 +1044,8 @@ export type FuncionarioFerias = {
   valor_ferias?: number;
   valor_abono?: number;
   lancado_financeiro?: boolean;
+  lancamento_ids?: string[];
+  data_pagamento?: string;
   obs?: string;
   created_at?: string;
 };
