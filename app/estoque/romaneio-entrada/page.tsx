@@ -380,6 +380,7 @@ export default function RomaneioEntradaPage() {
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
           <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Relatório de recebimento de grãos — pesagem própria e tickets de terceiros</p>
         </div>
+        <button style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
       </div>
 
       {/* KPI cards */}

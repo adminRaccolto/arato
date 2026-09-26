@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-b",
+    data: "26/09/2026",
+    titulo: "Romaneio de Entrada: botão + Novo Romaneio de volta",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "A tela Produção → Romaneios de Produção voltou a ter o botão + Novo Romaneio, para lançar um romaneio de entrada direto, sem passar pela Colheita Própria. O fluxo em dois passos da Colheita Própria (peso bruto e tara) continua funcionando normalmente." },
+    ],
+    onde: "Produção → Romaneios de Produção",
+  },
+  {
     versao: "2026.09.26-a",
     data: "26/09/2026",
     titulo: "Funcionários: rotina financeira de férias e rescisão",
