@@ -1388,4 +1388,5 @@ Campo que classifica o lançamento para fins fiscais:
 | "Este OFX é da conta X" ao importar | O arquivo pertence a outra conta bancária | Selecionar a conta correta antes de importar |
 | Como lançar as férias de um funcionário no financeiro | Cadastros → Funcionários → aba Férias | Em um período disponível, clicar Conceder: informar início, dias e abono; o sistema calcula (dias/30 + 1/3) e lança no Contas a Pagar. Para desfazer, usar Cancelar na linha do período |
 | Como fazer a rescisão de um funcionário | Cadastros → Funcionários → aba Rescisão | Informar tipo, data e aviso; conferir as verbas calculadas (editáveis), digitar INSS/IRRF e lançar. Cria o Contas a Pagar da rescisão e da multa do FGTS e desliga o funcionário. Estorno disponível na própria aba |
+| NF de retorno de bem (CFOP 1554/1555) não gera Contas a Pagar | É o comportamento correto: retorno/entrada de bem do imobilizado não tem cobrança | Ao processar, escolher a remessa correspondente para baixá-la em Transferência de Máquinas. Compra de bem (1551/1556) continua gerando CP |
 `;

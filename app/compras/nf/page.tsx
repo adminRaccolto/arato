@@ -1,4 +1,5 @@
 "use client";
+import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../../lib/cfop-imobilizado";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -30,8 +31,9 @@ import {
   listarPedidoCompraItens,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
+import { listarTransferenciasMaquinas, atualizarTransferenciaMaquina } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../../lib/supabase";
+import type { TransferenciaMaquina, NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
@@ -61,6 +63,12 @@ const CFOP_NATUREZA: Record<string, string> = {
   "1201": "Devolução de venda de produção do estabelecimento",
   "1202": "Devolução de venda de mercadoria adquirida ou recebida de terceiros",
   "1551": "Compra de bem para o ativo imobilizado",
+  "1552": "Transferência de bem do ativo imobilizado",
+  "1554": "Retorno de bem do ativo imobilizado que tenha saído para uso fora do estabelecimento",
+  "1555": "Entrada de bem do ativo imobilizado de terceiro, remetido para uso no estabelecimento",
+  "2552": "Transferência de bem do ativo imobilizado",
+  "2554": "Retorno de bem do ativo imobilizado que tenha saído para uso fora do estabelecimento",
+  "2555": "Entrada de bem do ativo imobilizado de terceiro, remetido para uso no estabelecimento",
   "1556": "Compra de bem para o ativo imobilizado",
   "1652": "Compra de combustível e lubrificantes por consumidor ou usuário final",
   "1653": "Compra de combustível e lubrificantes para uso em processo de industrialização",
@@ -87,7 +95,7 @@ const CFOP_NATUREZA: Record<string, string> = {
 // operacional, é investimento (CAPEX). Item nesse CFOP entra como "Direto" (sem mexer em estoque)
 // e a Operação Gerencial vai pra "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM." (2.03.01.003), que já é
 // excluída do DRE — decisão do dono, 23/09/2026, pra não precisar classificar isso na mão toda vez.
-const CFOPS_ATIVO_IMOBILIZADO = new Set(["1551", "1556", "2551", "2556", "5554", "6554"]);
+const CFOPS_ATIVO_IMOBILIZADO = new Set([...Array.from(CFOPS_COMPRA_BEM), ...Array.from(CFOPS_BEM_SEM_PAGAMENTO)]);
 function tipoApropDeCfop(cfop: string | undefined, fallback: NfEntradaItem["tipo_apropiacao"]): NfEntradaItem["tipo_apropiacao"] {
   return CFOPS_ATIVO_IMOBILIZADO.has((cfop ?? "").trim()) ? "direto" : fallback;
 }
@@ -387,6 +395,10 @@ export default function NfCompraPage() {
 
   // Wizard — visão de NF (edição)
   const [nfEdit, setNfEdit] = useState<NfEntrada | null>(null);
+  // Retorno de bem do imobilizado: remessas abertas (Transferência de Máquinas) que esta NF pode baixar
+  const [transfCandidatas, setTransfCandidatas] = useState<TransferenciaMaquina[]>([]);
+  const [transfVinculoId, setTransfVinculoId] = useState("");
+  const [refNfeXml, setRefNfeXml] = useState("");
 
   // Modal de Reclassificação (pós-processamento)
   const [reparando,       setReparando]       = useState<Set<string>>(new Set());
@@ -1213,6 +1225,7 @@ export default function NfCompraPage() {
         valor_difal: f(g("vICMSUFDest")), valor_desconto: f(g("vDesc")), valor_icms_deson: f(g("vICMSDeson")),
       }));
       aplicarDuplicatasXml(doc);
+      setRefNfeXml(doc.getElementsByTagName("refNFe")[0]?.textContent?.trim() ?? "");
     } catch { /* mantém o que já está */ }
   }
 
@@ -1318,6 +1331,7 @@ export default function NfCompraPage() {
         data_vencimento_cp: vencISO     || p.data_vencimento_cp,
       }));
       aplicarDuplicatasXml(doc);
+      setRefNfeXml(doc.getElementsByTagName("refNFe")[0]?.textContent?.trim() ?? "");
 
       // Verifica se o DOMParser retornou um erro de parse
       if (doc.querySelector("parsererror")) {
@@ -1587,7 +1601,7 @@ export default function NfCompraPage() {
     // Guard: operação gerencial é obrigatória.
     // Exceção: NF com classificação automática aplicada (sugestaoNome != null) —
     // a regra já carrega a informação gerencial e o bloqueio seria redundante.
-    if (!cab.operacao_gerencial_id && !sugestaoNome) {
+    if (!cab.operacao_gerencial_id && !sugestaoNome && !CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop ?? "").trim())) {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
       return;
     }
@@ -1830,7 +1844,8 @@ export default function NfCompraPage() {
       // qualquer outro caso sem CP/emp_lancamento agora é bloqueado aqui em vez
       // de deixar a NF marcada como concluída de forma enganosa.
       const temApenasRemessa = itensDB.length > 0 && itensDB.every(i => i.tipo_apropiacao === "remessa");
-      if (!temApenasRemessa) {
+      const semPagamentoBem = CFOPS_BEM_SEM_PAGAMENTO.has(((cab.cfop || nfEdit.cfop) ?? "").trim());
+      if (!temApenasRemessa && !semPagamentoBem) {
         const { data: nfPosProc } = await supabase
           .from("nf_entradas")
           .select("lancamento_id, emp_lancamento_id")
@@ -1839,6 +1854,16 @@ export default function NfCompraPage() {
         if (!nfPosProc?.lancamento_id && !nfPosProc?.emp_lancamento_id) {
           throw new Error("O estoque foi movimentado, mas o lançamento financeiro (CP) não foi criado. A NF NÃO foi marcada como processada — tente novamente; se o erro persistir, avise o suporte antes de reprocessar.");
         }
+      }
+
+      // 2c. Retorno de bem: baixa a remessa vinculada em Fiscal → Transferência de Máquinas
+      if (transfVinculoId) {
+        await atualizarTransferenciaMaquina(transfVinculoId, {
+          status: "retornada",
+          nf_retorno_chave:  cab.chave_acesso || nfEdit.chave_acesso || undefined,
+          nf_retorno_numero: nfEdit.numero,
+          nf_retorno_data:   cab.data_emissao || nfEdit.data_emissao || new Date().toISOString().slice(0, 10),
+        });
       }
 
       // 3. Marcar como processada
@@ -2538,6 +2563,23 @@ export default function NfCompraPage() {
       };
     }));
   }, [fazendaId, tipo, itens]);
+
+  // ── Retorno de bem: carrega remessas abertas e sugere a correta (refNFe do XML, senão CNPJ do emitente) ──
+  useEffect(() => {
+    const c = (cab.cfop || "").trim();
+    if (!wizard || !CFOPS_RETORNO_DE_REMESSA.has(c) || !contaId) { setTransfCandidatas([]); setTransfVinculoId(""); return; }
+    let vivo = true;
+    listarTransferenciasMaquinas(contaId).then(all => {
+      if (!vivo) return;
+      const abertas = all.filter(t => t.status === "emitida" && (t.direcao ?? "saida") === "saida");
+      setTransfCandidatas(abertas);
+      const cnpj = (cab.emitente_cnpj || "").replace(/\D/g, "");
+      const porChave = refNfeXml ? abertas.find(t => t.nf_saida_chave === refNfeXml) : undefined;
+      const porCnpj = abertas.filter(t => cnpj && (t.destinatario_cnpj || "").replace(/\D/g, "") === cnpj);
+      setTransfVinculoId(prev => prev || porChave?.id || (porCnpj.length === 1 ? porCnpj[0].id : ""));
+    }).catch(() => { if (vivo) setTransfCandidatas([]); });
+    return () => { vivo = false; };
+  }, [wizard, cab.cfop, cab.emitente_cnpj, refNfeXml, contaId]);
 
   // ── Auto-fill tipo_apropiacao por tipo de entrada ─────────
   const tipoAprpDefault = (t: TipoEntrada): NfEntradaItem["tipo_apropiacao"] =>
@@ -3422,7 +3464,7 @@ export default function NfCompraPage() {
                           // sem precisar escolher na mão toda vez.
                           if (CFOPS_ATIVO_IMOBILIZADO.has(cfop)) {
                             const ogCapex = reclassOps.find(o => o.classificacao === OG_ATIVO_IMOBILIZADO_CODIGO);
-                            if (ogCapex && !cab.operacao_gerencial_id) setCab(p => ({ ...p, operacao_gerencial_id: ogCapex.id }));
+                            if (CFOPS_COMPRA_BEM.has(cfop) && ogCapex && !cab.operacao_gerencial_id) setCab(p => ({ ...p, operacao_gerencial_id: ogCapex.id }));
                             setItens(prev => prev.map(it => ({ ...it, tipo_apropiacao: "direto" })));
                           }
                         }}
@@ -3431,6 +3473,29 @@ export default function NfCompraPage() {
                       />
                     </div>
                   </div>
+
+                  {CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop || "").trim()) && (
+                    <div style={{ border: "0.5px solid #C9921B", background: "#FBF3E0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5500" }}>Bem do ativo imobilizado — {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) ? "retorno / entrada de bem" : "transferência de bem"}</div>
+                      <div style={{ fontSize: 11, color: "#7A5500", marginTop: 2 }}>Sem cobrança: esta NF não gera Contas a Pagar nem movimenta estoque, e não exige Operação Gerencial.</div>
+                      {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) && (
+                        <div style={{ marginTop: 10 }}>
+                          <label style={lbl}>Baixar a remessa correspondente (Fiscal → Transferência de Máquinas)</label>
+                          <select value={transfVinculoId} onChange={e => setTransfVinculoId(e.target.value)} style={inp}>
+                            <option value="">— não vincular a nenhuma remessa —</option>
+                            {transfCandidatas.map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.maquina_nome} · {t.destinatario_nome} · NF {t.nf_saida_numero ?? "s/nº"}{t.nf_saida_data ? ` de ${t.nf_saida_data.split("-").reverse().join("/")}` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <div style={{ fontSize: 10, color: "#7A5500", marginTop: 3 }}>
+                            {transfCandidatas.length === 0 ? "Nenhuma remessa aberta encontrada." : transfVinculoId ? "Ao processar, a remessa selecionada passa a Retornada com os dados desta NF." : "Selecione a remessa para dar baixa nela ao processar."}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>

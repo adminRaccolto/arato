@@ -2958,7 +2958,11 @@ export async function processarNfEntrada(
   if (opts?.formaPagamento)   nfUpdates.forma_pagamento    = opts.formaPagamento;
   if (opts?.produtorId)       nfUpdates.produtor_id        = opts.produtorId;
 
-  if (!temRemessa || temOutros || temVef) {
+  // Retorno/entrada de bem do imobilizado (CFOP 1554/1555/2554/2555/1552/2552): não há cobrança — sem CP.
+  const { data: nfCfopRow } = await supabase.from("nf_entradas").select("cfop").eq("id", nfId).maybeSingle();
+  const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(((nfCfopRow?.cfop as string | null) ?? "").trim());
+
+  if (!nfSemPagamento && (!temRemessa || temOutros || temVef)) {
     // Se NF está vinculada a um pedido que já tem lançamento → atualiza em vez de duplicar
     let lancamentoIdPedido: string | null = null;
     if (opts?.pedidoCompraId) {
@@ -7179,6 +7183,7 @@ export async function atualizarNfRemessaLogistica(
 // TRANSFERÊNCIA DE MÁQUINAS E EQUIPAMENTOS (Remessa/Retorno)
 // ════════════════════════════════════════════════════════════
 import type { TransferenciaMaquina } from "./supabase";
+import { CFOPS_BEM_SEM_PAGAMENTO } from "./cfop-imobilizado";
 
 export async function listarTransferenciasMaquinas(contaId: string): Promise<TransferenciaMaquina[]> {
   const { data: fazIds } = await supabase.from("fazendas").select("id").eq("conta_id", contaId);

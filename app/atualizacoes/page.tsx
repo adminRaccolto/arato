@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-d",
+    data: "26/09/2026",
+    titulo: "NF de Entrada: retorno e entrada de bem do imobilizado",
+    modulos: ["Compras", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "A NF de Produtos passou a reconhecer os CFOPs de retorno e entrada de bem do ativo imobilizado (1554, 1555, 2554, 2555) e de transferência de bem (1552, 2552). Esses documentos não têm cobrança: não geram Contas a Pagar, não movimentam estoque e não exigem Operação Gerencial. Antes eram tratados como item comum e podiam gerar um CP indevido." },
+      { tipo: "novo", texto: "Nos CFOPs de retorno (1554/1555/2554/2555) a NF mostra as remessas abertas de Fiscal → Transferência de Máquinas e sugere a correta (pela chave de referência do XML ou pelo CNPJ do emitente). Ao processar a NF, a remessa escolhida passa para Retornada com a chave, o número e a data do retorno. Compra de bem (1551, 1556, 2551, 2556) continua igual: gera CP e classifica em Aquisição de Máquinas e Equipamentos (CAPEX)." },
+    ],
+    onde: "Compras → NF de Produtos · Fiscal → Transferência de Máquinas",
+  },
+  {
     versao: "2026.09.26-c",
     data: "26/09/2026",
     titulo: "Romaneio de Entrada: confirmação exige produto e depósito",
