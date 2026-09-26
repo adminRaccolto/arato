@@ -244,6 +244,7 @@ export default function RomaneioEntradaPage() {
   const salvar = async (confirmar = false) => {
     if (!fazendaId) return;
     if (!form.peso_bruto || parseFloat(form.peso_bruto) <= 0) { alert("Informe o peso bruto."); return; }
+    if (confirmar && !form.insumo_id) { alert("Selecione o produto (grão) do romaneio — sem ele a entrada no estoque não é gerada."); return; }
     if (confirmar && !form.deposito_id) { alert("Selecione o depósito de destino."); return; }
     setSalvando(true);
     try {
@@ -328,6 +329,7 @@ export default function RomaneioEntradaPage() {
   // ── Confirmar rascunho existente ─────────────────────────────────────────
   const confirmarExistente = async (r: RomaneioEntrada) => {
     if (!fazendaId) return;
+    if (!r.insumo_id) { alert("Edite o romaneio e selecione o produto (grão) antes de confirmar — sem ele a entrada no estoque não é gerada."); return; }
     if (!r.deposito_id) { alert("Edite o romaneio e selecione o depósito de destino antes de confirmar."); return; }
     if (!confirm(`Confirmar romaneio ${r.ticket_numero ?? r.id.slice(0, 8)}? Isso gerará entrada no estoque.`)) return;
     try {

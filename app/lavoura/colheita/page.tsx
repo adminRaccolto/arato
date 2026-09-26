@@ -395,6 +395,10 @@ export default function ColheitaPage() {
   const confirmarEntrada = async () => {
     if (!fazendaId || !modalRomaneio) return;
     if (!formRomaneio.depositoId) { setErro("Selecione o depósito de destino"); return; }
+    {
+      const colSel = colheitas.find(c => c.id === modalRomaneio) as (ColheitaRegistro & { insumo_id?: string }) | undefined;
+      if (!colSel?.insumo_id) { setErro("Esta colheita não tem produto (grão) vinculado — sem ele a entrada no estoque não é gerada. Edite a colheita e informe o produto."); return; }
+    }
     if (formRomaneio.peso_bruto_kg <= 0) { setErro("Informe o peso bruto"); return; }
     if (formRomaneio.tara_kg <= 0) { setErro("Informe o peso tara"); return; }
     setSalvando(true);

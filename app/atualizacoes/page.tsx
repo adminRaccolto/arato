@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-c",
+    data: "26/09/2026",
+    titulo: "Romaneio de Entrada: confirmação exige produto e depósito",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Confirmar um romaneio de entrada sem produto (grão) ou sem depósito deixava o romaneio como Confirmado sem gerar a entrada no estoque, sem avisar. Agora a confirmação é barrada com a mensagem do que falta, na tela de Romaneio de Entrada e na Colheita Própria (que agora avisa antes de criar o romaneio se a colheita não tem produto vinculado)." },
+    ],
+    onde: "Produção → Romaneios de Produção · Lavoura → Colheita Própria",
+  },
+  {
     versao: "2026.09.26-b",
     data: "26/09/2026",
     titulo: "Romaneio de Entrada: botão + Novo Romaneio de volta",

@@ -6880,6 +6880,10 @@ export async function confirmarRomaneioEntrada(
   fazenda_id: string,
 ): Promise<void> {
   if (romaneio.entrada_estoque) return; // idempotente
+  // Antes confirmava em silêncio sem gerar estoque quando faltava produto/depósito.
+  if (!romaneio.insumo_id || !romaneio.deposito_id) {
+    throw new Error("Romaneio sem produto ou depósito: informe os dois para gerar a entrada no estoque.");
+  }
   const pl    = (romaneio.peso_bruto_kg ?? 0) - (romaneio.tara_kg ?? 0);
   const sacas = romaneio.sacas ?? pl / 60;
 
