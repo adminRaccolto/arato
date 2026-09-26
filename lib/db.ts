@@ -1984,7 +1984,9 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
 
   for (const f of funcs) {
     if (!f.salario_base) continue;
-    const sal = Number(f.salario_base);
+    // Contas a Pagar de salário = valor que o funcionário recebe em mãos (líquido + complemento),
+    // não o bruto da carteira.
+    const sal = valorEmMaos(f);
 
     // FAZ = funcionários da fazenda, ADM = administrativos
     const prefixo = f.area_trabalho === "administrativo" ? "2.01.02.01.03" : "2.01.01.10";
@@ -7184,6 +7186,7 @@ export async function atualizarNfRemessaLogistica(
 // ════════════════════════════════════════════════════════════
 import type { TransferenciaMaquina } from "./supabase";
 import { CFOPS_BEM_SEM_PAGAMENTO } from "./cfop-imobilizado";
+import { valorEmMaos } from "./folha-calculo";
 
 export async function listarTransferenciasMaquinas(contaId: string): Promise<TransferenciaMaquina[]> {
   const { data: fazIds } = await supabase.from("fazendas").select("id").eq("conta_id", contaId);

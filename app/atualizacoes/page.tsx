@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-h",
+    data: "26/09/2026",
+    titulo: "Contas a Pagar de salários usa o valor em mãos",
+    modulos: ["Cadastros", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O botão Processar Folha (Cadastros → Funcionários) lançava o salário bruto da carteira no Contas a Pagar. Agora lança o valor que o funcionário recebe em mãos (campo da aba Remuneração; sem ele, líquido da carteira + complemento salarial). O fechamento da Folha de Pagamento já lançava o líquido (bruto − INSS − IRRF − adiantamentos + benefícios + complemento) e não mudou." },
+    ],
+    onde: "Cadastros → Funcionários → Processar Folha",
+  },
+  {
     versao: "2026.09.26-g",
     data: "26/09/2026",
     titulo: "IRRF da folha: isenção até R$ 5.000 (regra 2026)",

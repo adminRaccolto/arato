@@ -39,3 +39,11 @@ export function liquidoCarteira(bruto: number): number {
   const inss = calcINSS(bruto);
   return Math.round((bruto - inss - calcIRRF(bruto, inss)) * 100) / 100;
 }
+
+// Valor que o funcionário recebe em mãos — é o valor lançado no Contas a Pagar de salários.
+// Usa o "valor em mãos" do cadastro; sem ele, líquido da carteira (holerite) + complemento salarial.
+export function valorEmMaos(f: { salario_base?: number | null; salario_liquido?: number | null; valor_em_maos?: number | null; complemento_salarial?: number | null }): number {
+  if (Number(f.valor_em_maos) > 0) return Math.round(Number(f.valor_em_maos) * 100) / 100;
+  const liq = Number(f.salario_liquido) > 0 ? Number(f.salario_liquido) : liquidoCarteira(Number(f.salario_base) || 0);
+  return Math.round((liq + (Number(f.complemento_salarial) || 0)) * 100) / 100;
+}
