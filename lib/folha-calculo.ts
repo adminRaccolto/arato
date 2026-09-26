@@ -15,21 +15,24 @@ export function calcINSS(bruto: number): number {
   }
   return Math.round(inss * 100) / 100;
 }
+// IRRF mensal (regra vigente desde jan/2026, Lei 15.270/2025): isenção total para rendimento tributável
+// até R$ 5.000,00; redutor decrescente entre R$ 5.000,01 e R$ 7.350,00; acima disso, tabela progressiva
+// normal. A base é o bruto menos o maior entre o INSS e o desconto simplificado (R$ 607,20).
 export function calcIRRF(bruto: number, inss: number): number {
-  const base = bruto - inss;
+  if (bruto <= 5000) return 0;
+  const base = bruto - Math.max(inss, 607.20);
   const faixas = [
-    { lim: 2259.20, a: 0,     ded: 0       },
-    { lim: 2826.65, a: 0.075, ded: 169.44  },
-    { lim: 3751.05, a: 0.15,  ded: 381.44  },
-    { lim: 4664.68, a: 0.225, ded: 662.77  },
-    { lim: Infinity,a: 0.275, ded: 896.00  },
+    { lim: 2428.80, a: 0,     ded: 0      },
+    { lim: 2826.65, a: 0.075, ded: 182.16 },
+    { lim: 3751.05, a: 0.15,  ded: 394.16 },
+    { lim: 4664.68, a: 0.225, ded: 675.49 },
+    { lim: Infinity, a: 0.275, ded: 908.73 },
   ];
-  for (const f of faixas) {
-    if (base <= f.lim) return Math.max(0, Math.round((base * f.a - f.ded) * 100) / 100);
-  }
-  return 0;
+  const f = faixas.find(x => base <= x.lim)!;
+  let imposto = Math.max(0, base * f.a - f.ded);
+  if (bruto <= 7350) imposto = Math.max(0, imposto - (978.62 - 0.133145 * bruto));
+  return Math.round(imposto * 100) / 100;
 }
-
 // Líquido do holerite: bruto − INSS − IRRF (estimativa; o valor pode ser corrigido na tela)
 export function liquidoCarteira(bruto: number): number {
   if (!(bruto > 0)) return 0;

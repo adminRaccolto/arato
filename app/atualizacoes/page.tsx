@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-g",
+    data: "26/09/2026",
+    titulo: "IRRF da folha: isenção até R$ 5.000 (regra 2026)",
+    modulos: ["Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "O cálculo de IRRF da Folha de Pagamento e do líquido da carteira no cadastro de funcionários passou a seguir a regra de 2026: sem IRRF para rendimento até R$ 5.000,00; redutor decrescente de R$ 5.000,01 a R$ 7.350,00; acima disso, tabela progressiva (base = bruto − maior entre INSS e desconto simplificado de R$ 607,20). O INSS segue a tabela já usada na folha; confirme com o contador se a tabela de INSS vigente precisa de atualização." },
+    ],
+    onde: "Financeiro → Folha de Pagamento · Cadastros → Funcionários → Remuneração",
+  },
+  {
     versao: "2026.09.26-f",
     data: "26/09/2026",
     titulo: "Funcionários: líquido da carteira calculado sozinho e complemento correto",
