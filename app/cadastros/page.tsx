@@ -51,6 +51,7 @@ import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import ProdutorCombo from "../../components/ProdutorCombo";
 import SelectBusca from "../../components/SelectBusca";
+import { liquidoCarteira } from "../../lib/folha-calculo";
 import ConcederFeriasModal from "../../components/ConcederFeriasModal";
 import RescisaoFuncionario from "../../components/RescisaoFuncionario";
 import { cancelarConcessaoFerias, marcarFeriasGozada } from "../../lib/rh-financeiro";
@@ -2223,9 +2224,12 @@ function CadastrosInner() {
       area_trabalho: f.area_trabalho ?? "operacional",
       funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
       salario_base: f.salario_base ? String(f.salario_base) : "",
-      salario_liquido: f.salario_liquido ? String(f.salario_liquido) : "",
+      salario_liquido: f.salario_liquido ? String(f.salario_liquido) : (f.salario_base ? String(liquidoCarteira(Number(f.salario_base))) : ""),
       valor_em_maos: f.valor_em_maos ? String(f.valor_em_maos) : "",
-      complemento_salarial: f.complemento_salarial ? String(f.complemento_salarial) : "",
+      // com valor em mãos informado, o complemento é sempre em mãos − líquido da carteira
+      complemento_salarial: f.valor_em_maos && f.salario_base
+        ? String(Math.max(0, Math.round((Number(f.valor_em_maos) - Number(f.salario_liquido || liquidoCarteira(Number(f.salario_base)))) * 100) / 100))
+        : (f.complemento_salarial ? String(f.complemento_salarial) : ""),
       piso_categoria: f.piso_categoria ? String(f.piso_categoria) : "",
       vale_transporte: f.vale_transporte ? String(f.vale_transporte) : "",
       vale_refeicao: f.vale_refeicao ? String(f.vale_refeicao) : "",
@@ -10234,21 +10238,24 @@ function CadastrosInner() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
                   <div>
                     <label style={lbl}>Salário base — bruto da carteira (R$)</label>
-                    <InputMonetario style={inp} value={fFunc.salario_base} onChange={v => setFFunc(p => ({ ...p, salario_base: String(v) }))} placeholder="0,00" />
+                    <InputMonetario style={inp} value={fFunc.salario_base} onChange={v => setFFunc(p => {
+                      const liq = liquidoCarteira(Number(v) || 0), maos = Number(p.valor_em_maos) || 0;
+                      return { ...p, salario_base: String(v), salario_liquido: liq > 0 ? String(liq) : "", ...(maos > 0 ? { complemento_salarial: String(Math.max(0, Math.round((maos - liq) * 100) / 100)) } : {}) };
+                    })} placeholder="0,00" />
                     <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Base dos encargos e do Livro Caixa</div>
                   </div>
                   <div>
-                    <label style={lbl}>Líquido da carteira — holerite (R$)</label>
+                    <label style={lbl}>Líquido da carteira (base − INSS − IRRF) (R$)</label>
                     <InputMonetario style={inp} value={fFunc.salario_liquido} onChange={v => setFFunc(p => {
                       const liq = Number(v) || 0, maos = Number(p.valor_em_maos) || 0;
-                      return { ...p, salario_liquido: String(v), ...(maos > 0 ? { complemento_salarial: String(Math.max(0, Math.round((maos - (liq || Number(p.salario_base) || 0)) * 100) / 100)) } : {}) };
+                      return { ...p, salario_liquido: String(v), ...(maos > 0 ? { complemento_salarial: String(Math.max(0, Math.round((maos - liq) * 100) / 100)) } : {}) };
                     })} placeholder="0,00" />
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Quanto sobra do salário base depois do INSS/IRRF{sal > 0 && Number(fFunc.salario_liquido) > 0 ? ` (descontos: R$ ${R(sal - Number(fFunc.salario_liquido))})` : ""}</div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Calculado sozinho a partir do salário base{sal > 0 && Number(fFunc.salario_liquido) > 0 ? ` (deduções do funcionário: R$ ${R(sal - Number(fFunc.salario_liquido))})` : ""}; corrija se o holerite for diferente</div>
                   </div>
                   <div>
                     <label style={lbl}>Valor que recebe em mãos (R$)</label>
                     <InputMonetario style={inp} value={fFunc.valor_em_maos} onChange={v => setFFunc(p => {
-                      const maos = Number(v) || 0, liq = Number(p.salario_liquido) || Number(p.salario_base) || 0;
+                      const maos = Number(v) || 0, liq = Number(p.salario_liquido) || 0;
                       return { ...p, valor_em_maos: String(v), ...(maos > 0 ? { complemento_salarial: String(Math.max(0, Math.round((maos - liq) * 100) / 100)) } : {}) };
                     })} placeholder="0,00" />
                     <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Total líquido pago ao funcionário — o complemento é preenchido pela diferença</div>
@@ -10256,7 +10263,7 @@ function CadastrosInner() {
                   <div>
                     <label style={lbl}>Complemento Salarial (R$)</label>
                     <InputMonetario style={inp} value={fFunc.complemento_salarial} onChange={v => setFFunc(p => ({ ...p, complemento_salarial: String(v) }))} placeholder="0,00" />
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Por fora — sem encargos, sem Livro Caixa{Number(fFunc.valor_em_maos) > 0 ? " (calculado: em mãos − líquido)" : ""}</div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Por fora — sem encargos, sem Livro Caixa{Number(fFunc.valor_em_maos) > 0 ? " (calculado: em mãos − líquido da carteira)" : ""}</div>
                   </div>
                   <div>
                     <label style={lbl}>Piso da categoria (R$)</label>

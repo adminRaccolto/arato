@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.26-f",
+    data: "26/09/2026",
+    titulo: "Funcionários: líquido da carteira calculado sozinho e complemento correto",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Na aba Remuneração, o Líquido da carteira agora é calculado automaticamente (salário base − INSS − IRRF do funcionário, mesma tabela da Folha) ao informar ou alterar o salário base, e pode ser corrigido se o holerite for diferente. O Complemento Salarial passa a ser Valor em mãos − Líquido da carteira (antes usava o salário base quando o líquido estava vazio). Ao abrir um funcionário que já tem valor em mãos, o complemento é recalculado por essa regra." },
+    ],
+    onde: "Cadastros → Funcionários → Remuneração",
+  },
+  {
     versao: "2026.09.26-e",
     data: "26/09/2026",
     titulo: "Funcionários: líquido do holerite e valor em mãos preenchem o complemento",
