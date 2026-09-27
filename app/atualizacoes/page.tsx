@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.27-a",
+    data: "27/09/2026",
+    titulo: "NF-e saindo em Homologação mesmo com o Ambiente SEFAZ em Produção",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O botão Ambiente SEFAZ (Parâmetros → Fiscal), que deveria valer para o cliente inteiro, era lido durante a EMISSÃO da NF-e olhando só a fazenda ativa naquele momento — em cliente com mais de uma fazenda, girar o botão com uma fazenda ativa não valia para as NF-e emitidas com outra fazenda ativa, que continuavam saindo em Homologação mesmo com a tela mostrando "Produção" (a tela já lia certo, conta inteira; só a emissão não). Corrigido: a emissão agora busca o Ambiente SEFAZ em qualquer fazenda da conta, igual a tela já fazia." },
+    ],
+    onde: "Fiscal → Configurações → Parâmetros Fiscais",
+  },
+  {
     versao: "2026.09.26-h",
     data: "26/09/2026",
     titulo: "Contas a Pagar de salários usa o valor em mãos",

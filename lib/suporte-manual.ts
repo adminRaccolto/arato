@@ -1390,4 +1390,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Como fazer a rescisão de um funcionário | Cadastros → Funcionários → aba Rescisão | Informar tipo, data e aviso; conferir as verbas calculadas (editáveis), digitar INSS/IRRF e lançar. Cria o Contas a Pagar da rescisão e da multa do FGTS e desliga o funcionário. Estorno disponível na própria aba |
 | NF de retorno de bem (CFOP 1554/1555) não gera Contas a Pagar | É o comportamento correto: retorno/entrada de bem do imobilizado não tem cobrança | Ao processar, escolher a remessa correspondente para baixá-la em Transferência de Máquinas. Compra de bem (1551/1556) continua gerando CP |
 | Como lançar o complemento salarial sem calcular na mão | Cadastros → Funcionários → Remuneração | Informar o Líquido da carteira (holerite) e o Valor que recebe em mãos; o Complemento é preenchido pela diferença |
+| NF-e sai em Homologação mesmo com Ambiente SEFAZ em Produção | Bug corrigido 27/09/2026 — a emissão só olhava a fazenda ativa, não a conta inteira | Reemitir a NF-e depois do deploy; se persistir, conferir Parâmetros → Fiscal com a fazenda do emitente ativa |
 `;

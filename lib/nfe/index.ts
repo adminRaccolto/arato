@@ -53,11 +53,17 @@ export async function buscarConfEmitente(
   // Carrega em paralelo: config do emitente + ambiente global + todos os certs cadastrados
   // Config base do emitente: primeiro tenta na fazenda exata (pode ter dados específicos dela,
   // ex: endereço); moduloKey em si é o titular (CPF/CNPJ), não a fazenda.
-  const [emitLocalResult, { data: globalData }, { data: certRows }] = await Promise.all([
+  const [emitLocalResult, { data: globalRows }, { data: certRows }] = await Promise.all([
     sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", moduloKey).maybeSingle(),
-    sb().from("configuracoes_modulo").select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_global").single(),
+    // "fiscal_global" (o botão Ambiente SEFAZ — master switch) é do CLIENTE, não da fazenda ativa:
+    // achado real 27/09/2026 — cliente com várias fazendas trocava pra Produção vendo a tela conta-wide
+    // (já corrigida) e a NF-e continuava saindo em Homologação porque ESTA busca (a que emite de
+    // verdade) só olhava a fazenda exata da emissão. Mesma classe de bug de emitData logo abaixo:
+    // busca em todas as fazendas da conta e fica com a mais recente (updated_at), igual à tela.
+    sb().from("configuracoes_modulo").select("config, updated_at").in("fazenda_id", fazendaIdsConta).eq("modulo", "fiscal_global").order("updated_at", { ascending: false }).limit(1),
     sb().from("configuracoes_modulo").select("modulo, config").in("fazenda_id", fazendaIdsConta).like("modulo", "certificado_a1_%"),
   ]);
+  const globalData = globalRows?.[0] ?? null;
 
   let emitData: { config: unknown } | null = emitLocalResult.data;
 
