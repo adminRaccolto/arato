@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-o",
+    data: "28/09/2026",
+    titulo: "Relatório CP / CR: filtro por nome do fornecedor",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo campo de busca por nome do fornecedor nos filtros do Relatório CP / CR (Financeiro → Relatórios → aba CP / CR — Contas), ao lado do filtro de Produtor. Busca por texto, sem diferenciar maiúsculas/minúsculas, comparando com o nome já usado na coluna Fornecedor (pessoa vinculada ou nome extraído da descrição). Entra também no resumo da exportação em Excel." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR — Contas",
+  },
+  {
     versao: "2026.09.28-n",
     data: "28/09/2026",
     titulo: "Folha de Pagamento: botão Excluir Folha, com exclusão em cascata",

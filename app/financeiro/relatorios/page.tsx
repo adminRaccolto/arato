@@ -178,6 +178,7 @@ function FinanceiroRelatoriosInner() {
   const [statusCPCR,  setStatusCPCR]  = useState<Set<string>>(new Set());   // vazio = todos
   const [catCPCR,     setCatCPCR]     = useState<Set<string>>(new Set());   // vazio = todas
   const [prodCPCR,    setProdCPCR]    = useState<Set<string>>(new Set());   // vazio = todos
+  const [fornCPCR,    setFornCPCR]    = useState("");   // busca por nome do fornecedor
   const [statusDDOpen, setStatusDDOpen] = useState(false);
   const [catDDOpen,    setCatDDOpen]    = useState(false);
   const [prodDDOpen,   setProdDDOpen]   = useState(false);
@@ -1780,6 +1781,10 @@ function FinanceiroRelatoriosInner() {
                   if (statusCPCR.size > 0 && !statusCPCR.has(statusEfetivo(l))) return false;
                   if (catCPCR.size > 0 && !catCPCR.has(l.categoria ?? "")) return false;
                   if (prodCPCR.size > 0 && !prodCPCR.has(l.produtor_id ?? "")) return false;
+                  if (fornCPCR.trim()) {
+                    const nomeForn = ((l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "").toLowerCase();
+                    if (!nomeForn.includes(fornCPCR.trim().toLowerCase())) return false;
+                  }
                   return true;
                 });
 
@@ -1868,6 +1873,7 @@ function FinanceiroRelatoriosInner() {
                     ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].join(", ")],
                     ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
                     ["Produtor", prodCPCR.size === 0 ? "Todos" : [...prodCPCR].map(id => prodMap[id] ?? id).join(", ")],
+                    ["Fornecedor", fornCPCR.trim() || "Todos"],
                     ["Agrupamentos", agrupAtivos.map(k => GRUPOS_CONF.find(c => c.key === k)?.label ?? k).join(" › ")],
                     [],
                     ["Total a Receber (CR)", totalCR],
@@ -2000,6 +2006,17 @@ function FinanceiroRelatoriosInner() {
                           <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
                           <button onClick={() => { setProdCPCR(new Set()); setProdDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
                         </div>}
+                      </div>
+
+                      {/* Fornecedor — busca por nome */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }} onClick={e=>e.stopPropagation()}>
+                        <label style={labelStyle}>Fornecedor</label>
+                        <input
+                          value={fornCPCR}
+                          onChange={e => setFornCPCR(e.target.value)}
+                          placeholder="Buscar por nome…"
+                          style={{ ...inputStyle, width: 190 }}
+                        />
                       </div>
 
                       <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end", gap: 8, position: "relative" }}>
