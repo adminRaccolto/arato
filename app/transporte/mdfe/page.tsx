@@ -573,6 +573,7 @@ function MdfePageInner() {
           acao: "declarar",
           fazenda_id: fazendaId,
           ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
+          veiculoTerceiro: veiculo.proprietario_tipo === "terceiro",
           cnpjContratante: contratanteDoc,
           ambiente: ambienteCiot,
           dados: {

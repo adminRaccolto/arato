@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-c",
+    data: "28/09/2026",
+    titulo: "CIOT: aviso “não pertence à frota” bloqueava veículo de terceiro legítimo",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao gerar o CIOT (no CT-e ou no MDF-e), o sistema conferia se a placa pertence à frota registrada do PRÓPRIO RNTRC da transportadora na ANTT antes de declarar. Um veículo cadastrado como “Terceiro (caminhão autônomo)” nunca vai aparecer nessa frota — por definição ele não é registrado sob o nosso RNTRC — e por isso a checagem sempre reprovava, mesmo sendo um veículo de terceiro legítimo. Corrigido: essa pré-checagem agora é pulada quando o veículo está cadastrado como Terceiro; a validação de verdade continua acontecendo na própria declaração à ANTT." },
+    ],
+    onde: "Transporte → CT-e / MDF-e → Gerar CIOT",
+  },
+  {
     versao: "2026.09.28-b",
     data: "28/09/2026",
     titulo: "MDF-e: numeração não avançava (número repetido na próxima emissão)",

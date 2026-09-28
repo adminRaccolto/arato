@@ -1079,6 +1079,7 @@ function CtePageInner() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           acao: "declarar", fazenda_id: fazendaId, cnpjContratante: contratante, ambiente: amb, ciotReservado: ciotReservado || undefined, semImplemento: ciotSemImpl,
+          veiculoTerceiro: veiculo.proprietario_tipo === "terceiro",
           dados: {
             // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor
             // ajusta CNPJ/RNTRC do emitente); contratante = o TOMADOR do frete; destinatário da carga.

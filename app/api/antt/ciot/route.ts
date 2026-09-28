@@ -26,6 +26,7 @@ type Body = {
   ciot?: string;              // 12 dígitos + verificador quando exigido
   semImplemento?: boolean;    // caminhão simples (sem carreta)
   ciotReservado?: string;     // CIOT já reservado (POST /gerar) cuja declaração falhou — reaproveita em vez de gerar outro
+  veiculoTerceiro?: boolean;  // veículo/carreta cadastrado como "Terceiro (caminhão autônomo)" — pula a pré-checagem de frota (ver abaixo)
   ano?: string; peso?: string; motivo?: string;
 };
 
@@ -92,16 +93,25 @@ export async function POST(req: NextRequest) {
       const dados = prep.dados;
 
       // D) Pré-checagem da frota (B15/B20): as placas pertencem ao RNTRC da transportadora?
-      try {
-        const fr = await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, dados.Veiculos.map(v => v.Placa));
-        const frota = (fr.Dados as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] } | undefined)?.Frota
-          ?? (fr as unknown as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] }).Frota;
-        const fora = (frota ?? []).filter(x => !(x.SituacaoVeiculoFrotaTransportador === true || x.SituacaoVeiculoFrotaTransportador === 1 || x.SituacaoVeiculoFrotaTransportador === "true")).map(x => x.PlacaVeiculo);
-        if (fora.length) {
-          const msg = `A(s) placa(s) ${fora.join(", ")} não pertence(m) à frota do RNTRC ${dados.RNTRCContratado} (transportador ${cnpj}) na ANTT — confira a placa, ou se a carreta é de outro RNTRC.`;
-          return NextResponse.json({ Sucesso: false, Mensagem: msg, Erros: [msg], error: msg }, { status: 422 });
-        }
-      } catch { /* consulta indisponível: a própria declaração valida (B15) */ }
+      // Só faz sentido quando o veículo é da NOSSA frota — nesse fluxo (ETC sem subcontratação de
+      // TAC) o contratado declarado é sempre a própria transportadora, com o RNTRC dela (rntrcEmitente,
+      // sobrescrito acima em prepararDeclaracao). Um veículo cadastrado como "Terceiro (caminhão
+      // autônomo)" nunca vai aparecer na frota do NOSSO RNTRC — não pertence a ela mesmo, por
+      // definição — então essa checagem sempre reprovava (achado real 28/09/2026: "não pertence à
+      // frota" mesmo emitindo para um veículo de terceiro legítimo). A validação real de quem pode
+      // transportar continua acontecendo na própria declaração (regra B15 da ANTT).
+      if (!b.veiculoTerceiro) {
+        try {
+          const fr = await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, dados.Veiculos.map(v => v.Placa));
+          const frota = (fr.Dados as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] } | undefined)?.Frota
+            ?? (fr as unknown as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] }).Frota;
+          const fora = (frota ?? []).filter(x => !(x.SituacaoVeiculoFrotaTransportador === true || x.SituacaoVeiculoFrotaTransportador === 1 || x.SituacaoVeiculoFrotaTransportador === "true")).map(x => x.PlacaVeiculo);
+          if (fora.length) {
+            const msg = `A(s) placa(s) ${fora.join(", ")} não pertence(m) à frota do RNTRC ${dados.RNTRCContratado} (transportador ${cnpj}) na ANTT — confira a placa, ou marque o veículo como "Terceiro" em Cadastros → Veículos se ele não for da frota própria.`;
+            return NextResponse.json({ Sucesso: false, Mensagem: msg, Erros: [msg], error: msg }, { status: 422 });
+          }
+        } catch { /* consulta indisponível: a própria declaração valida (B15) */ }
+      }
 
       // E) Número do CIOT: reaproveita um reservado e ainda não declarado do mesmo transportador/placa
       //    (evita queimar um número a cada tentativa), senão reserva novo.
