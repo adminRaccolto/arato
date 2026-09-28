@@ -732,25 +732,30 @@ function ParametrosSistemaContent() {
 
     // Config fiscal (fiscal_global, fiscal_pf_*, fiscal_emp_*) e os parâmetros de CT-e/MDF-e por
     // emitente (cte_emp_*, mdfe_emp_*) são da EMPRESA/cliente inteiro, NUNCA da fazenda ativa — mas
-    // a coluna fazenda_id é NOT NULL e o upsert usa onConflict (fazenda_id, modulo). Sem isso,
-    // editar um emitente com uma fazenda ativa diferente da que criou o registro original inseria
-    // uma linha NOVA e duplicada em vez de atualizar a existente. Foi exatamente essa falha que
-    // fez a Muriana (uma transportadora terceira, sem nenhuma ligação com as fazendas do cliente)
-    // terminar com série/número de CT-e DIFERENTES e desencontrados dependendo de qual fazenda
-    // estava ativa no momento de salvar — a fazenda ativa nunca deveria decidir onde esse dado mora.
-    // Reaproveita a fazenda_id do registro já existente (se houver, em qualquer fazenda da conta)
-    // em vez de sempre usar a ativa.
-    let fazendaIdParaSalvar = fazendaId;
-    if ((modulo.startsWith("fiscal_") || modulo.startsWith("cte_emp_") || modulo.startsWith("mdfe_emp_")) && contaFazendaIds.length > 0) {
-      const { data: existente } = await supabase
+    // a coluna fazenda_id é NOT NULL e o upsert usa onConflict (fazenda_id, modulo). Editar um
+    // emitente com uma fazenda ativa diferente da que criou o registro original inseria uma linha
+    // NOVA e duplicada em vez de atualizar a existente (foi assim que a Muriana terminou com
+    // série/número de CT-e desencontrados, e é a mesma causa do "Ambiente SEFAZ não pega" e do
+    // "número do MDF-e não avança" — achados reais de set/2026).
+    //
+    // Achado real 28/09/2026 (dono pediu a correção de raiz): guardar numa fazenda só não bastava
+    // — quando já existiam VÁRIAS cópias (uma por fazenda em que alguém salvou antes), escolher
+    // "a primeira encontrada" deixava as outras cópias desatualizadas, e alguma leitura no sistema
+    // podia pegar exatamente a cópia velha. Agora grava em TODAS as cópias existentes desse
+    // módulo na conta — ficam sempre idênticas entre si (mesmo efeito prático de uma fonte única,
+    // sem precisar apagar/consolidar linhas às cegas). Só cria uma linha nova (na fazenda ativa)
+    // quando não existe NENHUMA cópia ainda.
+    let fazendasParaSalvar = [fazendaId];
+    const ehConfigDeConta = modulo.startsWith("fiscal_") || modulo.startsWith("cte_emp_") || modulo.startsWith("mdfe_emp_");
+    if (ehConfigDeConta && contaFazendaIds.length > 0) {
+      const { data: existentes } = await supabase
         .from("configuracoes_modulo")
         .select("fazenda_id")
         .in("fazenda_id", contaFazendaIds)
-        .eq("modulo", modulo)
-        .limit(1)
-        .maybeSingle();
-      if (existente?.fazenda_id) fazendaIdParaSalvar = existente.fazenda_id;
+        .eq("modulo", modulo);
+      if (existentes && existentes.length > 0) fazendasParaSalvar = existentes.map(e => e.fazenda_id as string);
     }
+    const fazendaIdParaSalvar = fazendasParaSalvar[0];
 
     // O formulário pode estar com uma cópia velha da config (ex.: depois de enviar o certificado,
     // a tela guardava o caminho mas não a senha). Salvar a cópia velha por cima apagava a senha do
@@ -770,10 +775,8 @@ function ParametrosSistemaContent() {
         setCfgs(prev => ({ ...prev, [modulo]: cfgFinal }));
       }
     }
-    const { error } = await supabase.from("configuracoes_modulo").upsert(
-      { fazenda_id: fazendaIdParaSalvar, modulo, config: cfgFinal, updated_at: new Date().toISOString() },
-      { onConflict: "fazenda_id,modulo" }
-    );
+    const linhas = fazendasParaSalvar.map(fid => ({ fazenda_id: fid, modulo, config: cfgFinal, updated_at: new Date().toISOString() }));
+    const { error } = await supabase.from("configuracoes_modulo").upsert(linhas, { onConflict: "fazenda_id,modulo" });
     setSalvando(null);
     // Mesmo motivo do salvar() acima — sem isso, sessão ociosa fazia a tela mostrar "✓ Salvo" com
     // nada gravado no banco (é assim que a série/número de NF-e por IE "sumia").

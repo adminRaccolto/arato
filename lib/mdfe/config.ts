@@ -9,7 +9,8 @@ import { createClient } from "@supabase/supabase-js";
 export interface ConfigMDFeResolvida {
   mdfeConfig: Record<string, string>;
   mdfeConfigEncontrada: boolean;
-  mdfeFazendaId: string;   // fazenda_id onde o registro mdfe_emp_* realmente está gravado
+  mdfeFazendaId: string;   // fazenda_id onde o registro mdfe_emp_* realmente está gravado (uma das cópias)
+  mdfeContaId: string | null; // conta_id do cliente — chave real pra gravar de volta em TODAS as cópias
   fiscalConfig: Record<string, string>;
   mdfeModulo: string;
   fiscalModulo: string;
@@ -31,10 +32,19 @@ function moduloFiscalPorDocumento(digits: string): string {
   return digits.length === 14 ? `fiscal_emp_${digits}` : `fiscal_pf_${digits}`;
 }
 
-async function idsFazendasDaConta(fazendaId: string): Promise<string[]> {
+// Achado real 28/09/2026: parâmetros de MDF-e são do CLIENTE (mesma regra de sempre — dado do
+// cliente é por conta_id, nunca por fazenda_id), mas a tabela grava por fazenda_id (PK antiga).
+// Em vez de resolver "todas as fazendas da conta" toda vez, resolve o conta_id UMA vez e lê/grava
+// direto por ele (Seção 304 — conta_id populado e mantido em dia por trigger).
+async function contaIdDaFazenda(fazendaId: string): Promise<string | null> {
   const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  if (!faz?.conta_id) return [fazendaId];
-  const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
+  return (faz?.conta_id as string | null) ?? null;
+}
+
+async function idsFazendasDaConta(fazendaId: string): Promise<string[]> {
+  const contaId = await contaIdDaFazenda(fazendaId);
+  if (!contaId) return [fazendaId];
+  const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", contaId);
   return fzs?.length ? fzs.map(f => f.id as string) : [fazendaId];
 }
 
@@ -43,11 +53,11 @@ async function buscarConfigContaWide(
   fazendaPreferida: string,
   modulo: string,
 ): Promise<{ config: Record<string, string>; fazendaId: string } | null> {
-  const { data } = await sb()
-    .from("configuracoes_modulo")
-    .select("fazenda_id, config")
-    .in("fazenda_id", idsConta)
-    .eq("modulo", modulo);
+  const contaId = await contaIdDaFazenda(fazendaPreferida);
+  const query = sb().from("configuracoes_modulo").select("fazenda_id, config");
+  // Sem conta_id resolvida (fazenda órfã) cai no comportamento antigo, por segurança.
+  const { data } = contaId ? await query.eq("conta_id", contaId).eq("modulo", modulo)
+                            : await query.in("fazenda_id", idsConta).eq("modulo", modulo);
 
   if (!data || data.length === 0) return null;
   const preferido = data.find(r => r.fazenda_id === fazendaPreferida);
@@ -113,7 +123,7 @@ export async function resolverConfigMDFe(
   fazendaId: string,
   emitenteCnpj?: string | null,
 ): Promise<ConfigMDFeResolvida | null> {
-  const idsConta = await idsFazendasDaConta(fazendaId);
+  const [idsConta, mdfeContaId] = await Promise.all([idsFazendasDaConta(fazendaId), contaIdDaFazenda(fazendaId)]);
 
   let emitenteDigits = somenteDigitos(emitenteCnpj);
   let mdfeModulo = emitenteDigits ? `mdfe_emp_${emitenteDigits}` : "mdfe";
@@ -154,6 +164,7 @@ export async function resolverConfigMDFe(
     mdfeConfig,
     mdfeConfigEncontrada,
     mdfeFazendaId,
+    mdfeContaId,
     fiscalConfig,
     mdfeModulo,
     fiscalModulo,

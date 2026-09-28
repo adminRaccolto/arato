@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-d",
+    data: "28/09/2026",
+    titulo: "Parâmetros Fiscais/CT-e/MDF-e passam a ser gravados por conta (não mais por fazenda)",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Correção de raiz dos bugs de Ambiente SEFAZ, certificado do Sintegra e numeração do MDF-e corrigidos nesta semana: os parâmetros de emissão (Fiscal, CT-e, MDF-e, Ambiente SEFAZ) são do cliente, mas a tabela só grava por fazenda — um mesmo emitente podia acumular várias cópias divergentes conforme a fazenda ativa no momento de cada salvamento (achado em produção: o Ambiente SEFAZ tinha 6 cópias, um emitente de MDF-e tinha 2). Adicionado conta_id (Seção 304 de migration, com sincronização automática) e agora: salvar um parâmetro atualiza TODAS as cópias existentes do cliente de uma vez (nunca mais cria uma cópia nova e desencontrada); o avanço de numeração do CT-e e do MDF-e também grava em todas as cópias." },
+    ],
+    onde: "Configurações → Parâmetros Fiscais/MDF-e/CT-e",
+  },
+  {
     versao: "2026.09.28-c",
     data: "28/09/2026",
     titulo: "CIOT: aviso “não pertence à frota” bloqueava veículo de terceiro legítimo",

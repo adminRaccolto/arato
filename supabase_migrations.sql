@@ -13897,3 +13897,52 @@ ALTER TABLE funcionarios
   ADD COLUMN IF NOT EXISTS salario_liquido numeric(14,2),
   ADD COLUMN IF NOT EXISTS valor_em_maos   numeric(14,2);
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 304 — configuracoes_modulo: conta_id como chave real de leitura para
+-- módulos de CLIENTE (fiscal_*, mdfe_emp_*, cte_emp_*, fiscal_global,
+-- certificado_a1_*) — mesma regra de sempre: dado do cliente é por conta_id,
+-- nunca por fazenda_id (feedback repetido do dono, 28/09/2026).
+--
+-- Causa raiz confirmada em produção: a PK é (fazenda_id, modulo) — um
+-- emitente com fazenda ativa diferente em cada salvamento acumula VÁRIAS
+-- linhas pro mesmo módulo (ex.: mdfe_emp_21016959000195 já tem 2 linhas
+-- distintas; fiscal_global tem 6). Cada leitura que só olhava a fazenda ativa
+-- (ou que comparava fazenda_id errado ao gravar de volta) pegava/gravava numa
+-- cópia desatualizada — causa dos bugs de Ambiente SEFAZ, certificado do
+-- Sintegra e numeração do MDF-e corrigidos nesta mesma sessão.
+--
+-- Esta seção NÃO muda a PK (mudaria o comportamento de upsert em ~10 lugares
+-- de uma vez — risco alto demais pra fazer sem o dono revisar cada JSON
+-- conflitante manualmente). Em vez disso: garante conta_id preenchido e
+-- SEMPRE sincronizado (trigger), e o código passa a ler por conta_id e
+-- gravar em TODAS as cópias existentes daquele módulo — as cópias duplicadas
+-- continuam existindo, mas ficam sempre idênticas entre si a partir de agora
+-- (mesmo efeito prático de ter uma fonte única, sem o risco de consolidar
+-- dados divergentes às cegas).
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE configuracoes_modulo ADD COLUMN IF NOT EXISTS conta_id UUID REFERENCES contas(id) ON DELETE SET NULL;
+
+UPDATE configuracoes_modulo cm SET conta_id = f.conta_id
+FROM fazendas f WHERE cm.fazenda_id = f.id AND cm.conta_id IS NULL AND f.conta_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_config_modulo_conta ON configuracoes_modulo(conta_id, modulo);
+
+-- Mantém conta_id sincronizado sozinho em todo INSERT/UPDATE — nenhuma das
+-- ~25 telas/rotas que gravam nesta tabela precisa ser lembrada de preencher
+-- conta_id; o gatilho resolve a partir de fazenda_id sempre que necessário.
+CREATE OR REPLACE FUNCTION trg_configuracoes_modulo_conta_id() RETURNS trigger AS $$
+BEGIN
+  IF NEW.fazenda_id IS NOT NULL AND (NEW.conta_id IS NULL OR TG_OP = 'UPDATE') THEN
+    SELECT conta_id INTO NEW.conta_id FROM fazendas WHERE id = NEW.fazenda_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_config_modulo_conta_id ON configuracoes_modulo;
+CREATE TRIGGER trg_config_modulo_conta_id
+  BEFORE INSERT OR UPDATE ON configuracoes_modulo
+  FOR EACH ROW EXECUTE FUNCTION trg_configuracoes_modulo_conta_id();
+
+NOTIFY pgrst, 'reload schema';

@@ -49,12 +49,17 @@ function numeroParaTentativa(confg: Record<string, string>, m: { numero_mdfe?: u
   return jaTentou && anterior >= contador ? anterior : contador;
 }
 
-async function avancarNumero(fazendaId: string, modulo: string, confg: Record<string, string>, usado: number): Promise<void> {
+// Achado real 28/09/2026: os parâmetros de MDF-e são do CLIENTE, mas a tabela grava por
+// fazenda_id, e um emitente pode ter mais de uma cópia da config (uma por fazenda em que já foi
+// salva). Gravar só numa fazenda deixava o contador parado quando a leitura seguinte olhava outra
+// cópia. Agora grava em TODAS as cópias do mesmo conta_id+módulo — ficam sempre idênticas entre
+// si, e a leitura (que já pega o MAIOR número entre as cópias) nunca mais vê uma desatualizada.
+async function avancarNumero(contaId: string | null, fazendaId: string, modulo: string, confg: Record<string, string>, usado: number): Promise<void> {
   const contador = parseInt(String(confg.numero_inicial ?? "1")) || 1;
   if (usado < contador) return;
-  await sb().from("configuracoes_modulo")
-    .update({ config: { ...confg, numero_inicial: String(usado + 1) } })
-    .eq("fazenda_id", fazendaId).eq("modulo", modulo);
+  const novaConfig = { ...confg, numero_inicial: String(usado + 1) };
+  const query = sb().from("configuracoes_modulo").update({ config: novaConfig });
+  await (contaId ? query.eq("conta_id", contaId) : query.eq("fazenda_id", fazendaId)).eq("modulo", modulo);
 }
 
 const QR_BASE: Record<string, string> = {
@@ -414,7 +419,7 @@ export async function emitirMDFe(
   // `resolved.mdfeFazendaId`, que pode ser outra fazenda do mesmo cliente. Quando a fazenda ativa
   // não tinha linha própria pra esse módulo, o UPDATE não encontrava nenhuma linha pra atualizar —
   // o contador nunca avançava e o próximo MDF-e reservava o MESMO número outra vez.
-  if (resposta.sucesso) await avancarNumero(resolved.mdfeFazendaId, resolved.mdfeModulo, confg, Number(built.numero));
+  if (resposta.sucesso) await avancarNumero(resolved.mdfeContaId, resolved.mdfeFazendaId, resolved.mdfeModulo, confg, Number(built.numero));
 
   const { error: updErr } = await sb().from("mdfes").update({
     status:       resposta.sucesso ? "autorizado" : "rascunho",

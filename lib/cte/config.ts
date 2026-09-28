@@ -5,6 +5,7 @@ export interface ConfigCTeResolvida {
   cteConfigEncontrada: boolean;
   cteFazendaId: string;    // fazenda_id ONDE o registro cte_emp_* realmente está gravado (pode
                             // divergir da fazenda que está emitindo — ver comentário em resolverConfigCTe)
+  cteContaId: string | null; // conta_id do cliente — chave real pra gravar de volta em TODAS as cópias
   fiscalConfig: Record<string, string>;
   cteModulo: string;
   fiscalModulo: string;
@@ -31,10 +32,18 @@ function moduloFiscalPorDocumento(digits: string): string {
 // EMPRESA/cliente inteiro, não de uma fazenda específica — uma transportadora usada como
 // emitente em mais de uma fazenda do mesmo cliente deve ter UM só registro, visível pra
 // qualquer fazenda da conta (mesmo padrão já usado pra Fiscal em app/configuracoes/modulos).
-async function idsFazendasDaConta(fazendaId: string): Promise<string[]> {
+// Achado real 28/09/2026 (mesma classe de bug corrigida no MDF-e): resolve o conta_id uma vez e
+// lê/grava direto por ele (Seção 304 — conta_id populado e mantido em dia por trigger) em vez de
+// montar a lista de fazendas toda vez.
+async function contaIdDaFazenda(fazendaId: string): Promise<string | null> {
   const { data: faz } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  if (!faz?.conta_id) return [fazendaId];
-  const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", faz.conta_id);
+  return (faz?.conta_id as string | null) ?? null;
+}
+
+async function idsFazendasDaConta(fazendaId: string): Promise<string[]> {
+  const contaId = await contaIdDaFazenda(fazendaId);
+  if (!contaId) return [fazendaId];
+  const { data: fzs } = await sb().from("fazendas").select("id").eq("conta_id", contaId);
   return fzs?.length ? fzs.map(f => f.id as string) : [fazendaId];
 }
 
@@ -56,11 +65,10 @@ async function buscarConfigContaWide(
   fazendaPreferida: string,
   modulo: string,
 ): Promise<{ config: Record<string, string>; fazendaId: string } | null> {
-  const { data } = await sb()
-    .from("configuracoes_modulo")
-    .select("fazenda_id, config")
-    .in("fazenda_id", idsConta)
-    .eq("modulo", modulo);
+  const contaId = await contaIdDaFazenda(fazendaPreferida);
+  const query = sb().from("configuracoes_modulo").select("fazenda_id, config");
+  const { data } = contaId ? await query.eq("conta_id", contaId).eq("modulo", modulo)
+                            : await query.in("fazenda_id", idsConta).eq("modulo", modulo);
 
   if (!data || data.length === 0) return null;
   const preferido = data.find(r => r.fazenda_id === fazendaPreferida);
@@ -112,7 +120,7 @@ export async function resolverConfigCTe(
   fazendaId: string,
   emitenteCnpj?: string | null,
 ): Promise<ConfigCTeResolvida | null> {
-  const idsConta = await idsFazendasDaConta(fazendaId);
+  const [idsConta, cteContaId] = await Promise.all([idsFazendasDaConta(fazendaId), contaIdDaFazenda(fazendaId)]);
 
   let emitenteDigits = somenteDigitos(emitenteCnpj);
   let cteModulo = emitenteDigits ? `cte_emp_${emitenteDigits}` : "cte";
@@ -163,6 +171,7 @@ export async function resolverConfigCTe(
     cteConfig,
     cteConfigEncontrada,
     cteFazendaId,
+    cteContaId,
     fiscalConfig,
     cteModulo,
     fiscalModulo,

@@ -35,13 +35,14 @@ async function carregarPfx(storagePath: string): Promise<Buffer> {
 }
 
 // ─── Próximo número do CT-e ───────────────────────────────────────────────────
-async function proximoNumero(fazendaId: string, modulo: string, confg: Record<string, string>): Promise<number> {
+// Achado real 28/09/2026 (mesma classe corrigida no MDF-e): os parâmetros de CT-e são do CLIENTE
+// e podem existir em mais de uma cópia (uma por fazenda em que já foram salvos). Gravar em TODAS
+// as cópias do mesmo conta_id+módulo mantém elas sempre idênticas, então a leitura (que já pega
+// a MAIOR entre as cópias) nunca vê uma desatualizada.
+async function proximoNumero(contaId: string | null, fazendaId: string, modulo: string, confg: Record<string, string>): Promise<number> {
   const atual = parseInt(String(confg.numero_inicial ?? "1"));
-  await sb()
-    .from("configuracoes_modulo")
-    .update({ config: { ...confg, numero_inicial: String(atual + 1) } })
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", modulo);
+  const query = sb().from("configuracoes_modulo").update({ config: { ...confg, numero_inicial: String(atual + 1) } });
+  await (contaId ? query.eq("conta_id", contaId) : query.eq("fazenda_id", fazendaId)).eq("modulo", modulo);
   return atual;
 }
 
@@ -254,7 +255,7 @@ export async function emitirCTe(
   // Incrementa o número sequencial na fazenda onde o registro cte_emp_* REALMENTE está gravado
   // (resolved.cteFazendaId) — pode ser diferente da fazenda que está emitindo agora, já que os
   // parâmetros do emitente são compartilhados pela conta inteira, não duplicados por fazenda.
-  const numero = await proximoNumero(resolved.cteFazendaId, resolved.cteModulo, confg);
+  const numero = await proximoNumero(resolved.cteContaId, resolved.cteFazendaId, resolved.cteModulo, confg);
 
   const emitente: EmitenteCTe = {
     cpf_cnpj:       fc.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits,
