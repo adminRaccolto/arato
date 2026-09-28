@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-k",
+    data: "28/09/2026",
+    titulo: "Romaneio de Entrada confirmava sem gerar estoque nenhum (colunas erradas)",
+    modulos: ["Estoque", "Lavoura"],
+    itens: [
+      { tipo: "correcao", texto: "Confirmar um romaneio de entrada (tela de Romaneio de Entrada ou Colheita Própria) marcava o romaneio como Confirmado, mas a movimentação de estoque usava 3 colunas que não existem na tabela (o nome certo de uma delas é diferente, as outras duas não existem) e buscava o custo médio numa tabela que também não existe — o erro nunca era mostrado, e nada era realmente gravado: Kardex e Posição de Estoque ficavam sem nada. Corrigido, com o erro agora impedindo a confirmação se a movimentação falhar. Requer a Seção 306 de migration." },
+    ],
+    onde: "Produção → Romaneios de Produção · Lavoura → Colheita Própria",
+  },
+  {
     versao: "2026.09.28-j",
     data: "28/09/2026",
     titulo: "CIOT: implemento/carreta declarado com o RNTRC errado (do veículo, não da transportadora)",

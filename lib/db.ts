@@ -6893,29 +6893,29 @@ export async function confirmarRomaneioEntrada(
   const pl    = (romaneio.peso_bruto_kg ?? 0) - (romaneio.tara_kg ?? 0);
   const sacas = romaneio.sacas ?? pl / 60;
 
-  // Movimentação de estoque: entrada
+  // Movimentação de estoque: entrada.
+  // Achado real 28/09/2026: este insert usava 3 colunas que não existem em movimentacoes_estoque
+  // ("unidade", "custo_unitario", "referencia_id" — os nomes certos são "valor_unitario" e a nova
+  // "romaneio_entrada_id") e buscava custo médio numa tabela "estoque" que também não existe (o
+  // custo médio mora em insumos.custo_medio). O erro do insert nunca era checado, então a falha
+  // era silenciosa: o romaneio ficava "Confirmado" com entrada_estoque=true, mas NENHUMA
+  // movimentação era criada — Kardex e Estoque não mostravam nada. Corrigido, com o erro agora
+  // propagando (se falhar, o romaneio não é marcado como confirmado).
   if (romaneio.insumo_id && romaneio.deposito_id) {
-    // Busca custo médio atual
-    const { data: est } = await supabase
-      .from("estoque")
-      .select("custo_medio_unitario")
-      .eq("fazenda_id", fazenda_id)
-      .eq("insumo_id", romaneio.insumo_id)
-      .eq("deposito_id", romaneio.deposito_id)
-      .maybeSingle();
-    await supabase.from("movimentacoes_estoque").insert({
+    const { data: ins } = await supabase.from("insumos").select("custo_medio").eq("id", romaneio.insumo_id).maybeSingle();
+    const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
       fazenda_id,
-      insumo_id:           romaneio.insumo_id,
-      deposito_id:         romaneio.deposito_id,
-      tipo:                "entrada",
-      quantidade:          sacas,
-      unidade:             "sc",
-      custo_unitario:      est?.custo_medio_unitario ?? 0,
-      data:                romaneio.data,
-      origem:              romaneio.tipo === "proprio" ? "romaneio_entrada_proprio" : "romaneio_entrada_terceiro",
-      referencia_id:       romaneio.id,
-      observacao:          romaneio.obs ?? undefined,
+      insumo_id:            romaneio.insumo_id,
+      deposito_id:          romaneio.deposito_id,
+      tipo:                 "entrada",
+      quantidade:           sacas,
+      valor_unitario:       ins?.custo_medio ?? 0,
+      data:                 romaneio.data,
+      origem:               romaneio.tipo === "proprio" ? "romaneio_entrada_proprio" : "romaneio_entrada_terceiro",
+      romaneio_entrada_id:  romaneio.id,
+      observacao:           romaneio.obs ?? undefined,
     });
+    if (errMov) throw errMov;
   }
   // Marca como confirmado
   const { error } = await supabase

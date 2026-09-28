@@ -13976,3 +13976,12 @@ CREATE POLICY "re_fazenda" ON romaneios_entrada FOR ALL USING (
   OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
 );
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 306 — movimentacoes_estoque: coluna romaneio_entrada_id (rastreio da
+-- entrada de grão) — mesmo padrão já usado por nf_entrada_id/nf_entrada_item_id.
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS romaneio_entrada_id UUID REFERENCES romaneios_entrada(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_mov_estoque_romaneio ON movimentacoes_estoque(romaneio_entrada_id) WHERE romaneio_entrada_id IS NOT NULL;
+NOTIFY pgrst, 'reload schema';

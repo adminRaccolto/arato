@@ -1400,4 +1400,5 @@ Campo que classifica o lançamento para fins fiscais:
 | "Erro: [object Object]" ao gravar Romaneio de Entrada | Bug corrigido 28/09/2026 -- mensagem de erro nao era lida certo + RLS so olhava a fazenda ativa (Secao 305) | Testar apos deploy + Secao 305; se persistir, o alerta agora mostra o motivo real |
 | CIOT bloqueado por "nao pertence a frota" mesmo com veiculo cadastrado certo | Bug corrigido 28/09/2026 -- pre-checagem de frota virou aviso, nao bloqueia mais | Se a ANTT recusar de verdade na declaracao, ai sim e preciso corrigir o RNTRC do veiculo ou da transportadora |
 | CIOT rejeitado "placa nao pertence ao transportador de RNTRC Y" | Bug corrigido 28/09/2026 -- veiculo/implemento usava RNTRC do cadastro do veiculo em vez do da transportadora | Testar de novo apos o deploy; se persistir, conferir o RNTRC cadastrado da transportadora em Parametros -> MDF-e |
+| Romaneio de entrada confirmado mas nao aparece no Kardex/Estoque | Bug corrigido 28/09/2026 -- colunas erradas na movimentacao, erro nunca aparecia (Secao 306) | Romaneios confirmados ANTES da correcao nao geraram estoque de verdade -- avisar o suporte pra conferir e corrigir cada um |
 `;
