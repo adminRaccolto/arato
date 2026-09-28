@@ -1398,4 +1398,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Total da NF nao bate ao processar com Desconto/ICMS Desonerado | Bug corrigido 28/09/2026 -- o total agora e recalculado na hora de processar | Conferir o total apos o deploy; se uma NF ja processada saiu errada, reprocessar (Estornar -> corrigir -> Processar de novo) |
 | CIOT reprova pela placa da carreta mesmo sendo campo livre | Bug corrigido 28/09/2026 -- a pre-checagem de frota so olha mais a placa do veiculo principal |
 | "Erro: [object Object]" ao gravar Romaneio de Entrada | Bug corrigido 28/09/2026 -- mensagem de erro nao era lida certo + RLS so olhava a fazenda ativa (Secao 305) | Testar apos deploy + Secao 305; se persistir, o alerta agora mostra o motivo real |
+| CIOT bloqueado por "nao pertence a frota" mesmo com veiculo cadastrado certo | Bug corrigido 28/09/2026 -- pre-checagem de frota virou aviso, nao bloqueia mais | Se a ANTT recusar de verdade na declaracao, ai sim e preciso corrigir o RNTRC do veiculo ou da transportadora |
 `;

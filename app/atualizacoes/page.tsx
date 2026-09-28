@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-i",
+    data: "28/09/2026",
+    titulo: "CIOT: pré-checagem de frota vira aviso, não bloqueia mais a geração",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Depois de duas rodadas de ajuste (implemento sem cadastro, depois veículo Terceiro), o aviso \"não pertence à frota\" voltou a bloquear com um caso legítimo: um veículo cadastrado como Próprio cujo RNTRC na ANTT é diferente do RNTRC da transportadora (comum em veículo financiado/registrado à parte). O sistema não tem como saber com qual RNTRC a ANTT espera aquela placa, então essa pré-checagem nunca vai acertar sempre — virou só um aviso no log do servidor e não bloqueia mais a geração do CIOT. A validação de verdade continua sendo a própria declaração enviada à ANTT." },
+    ],
+    onde: "Transporte → CT-e / MDF-e → Gerar CIOT",
+  },
+  {
     versao: "2026.09.28-h",
     data: "28/09/2026",
     titulo: "Correção urgente: gatilho da Seção 304 sem a coluna trava gravação em Parâmetros",

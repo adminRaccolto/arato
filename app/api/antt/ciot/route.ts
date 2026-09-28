@@ -92,34 +92,24 @@ export async function POST(req: NextRequest) {
       }
       const dados = prep.dados;
 
-      // D) Pré-checagem da frota (B15/B20): as placas pertencem ao RNTRC da transportadora?
-      // Só faz sentido quando o veículo é da NOSSA frota — nesse fluxo (ETC sem subcontratação de
-      // TAC) o contratado declarado é sempre a própria transportadora, com o RNTRC dela (rntrcEmitente,
-      // sobrescrito acima em prepararDeclaracao). Um veículo cadastrado como "Terceiro (caminhão
-      // autônomo)" nunca vai aparecer na frota do NOSSO RNTRC — não pertence a ela mesmo, por
-      // definição — então essa checagem sempre reprovava (achado real 28/09/2026: "não pertence à
-      // frota" mesmo emitindo para um veículo de terceiro legítimo). A validação real de quem pode
-      // transportar continua acontecendo na própria declaração (regra B15 da ANTT).
-      // Achado real 28/09/2026: mesmo pulando a checagem pro veículo (cavalo) marcado Terceiro, a
-      // consulta continuava reprovando pelas placas de IMPLEMENTO/carreta — que nunca tiveram
-      // cadastro nenhum (campo livre, texto separado por vírgula, de propósito: carreta muda a
-      // cada viagem, não vale a pena exigir cadastro toda vez). Só a placa do veículo principal
-      // (a única que TEM cadastro, com RNTRC e "Terceiro"/"Próprio" configuráveis) é checada aqui;
-      // a validação de verdade de toda a composição acontece na própria declaração à ANTT (B15).
-      if (!b.veiculoTerceiro) {
-        try {
-          const placaPrincipal = dados.Veiculos[0]?.Placa;
-          const fr = placaPrincipal ? await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, [placaPrincipal]) : null;
-          if (!fr) throw new Error("sem placa principal");
+      // D) Pré-checagem da frota (B15/B20) — achado real 28/09/2026, 3ª rodada de falso positivo
+      // seguida (implemento sem cadastro; veículo Terceiro; agora um veículo "Próprio" cujo RNTRC
+      // cadastrado — 56033488 — genuinamente é diferente do RNTRC da transportadora — 047964242 —
+      // caso legítimo, veículo financiado/registrado à parte na ANTT apesar de operar como frota
+      // própria): nossa pré-checagem não tem como saber com QUAL RNTRC a ANTT espera essa placa,
+      // e vem reprovando operações válidas repetidamente. Virou só um AVISO no log do servidor —
+      // nunca mais bloqueia. A validação de verdade (quem realmente pode transportar) é a própria
+      // declaração enviada à ANTT (regra B15), que segue acontecendo normalmente logo abaixo.
+      try {
+        const placaPrincipal = dados.Veiculos[0]?.Placa;
+        if (placaPrincipal) {
+          const fr = await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, [placaPrincipal]);
           const frota = (fr.Dados as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] } | undefined)?.Frota
             ?? (fr as unknown as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] }).Frota;
           const fora = (frota ?? []).filter(x => !(x.SituacaoVeiculoFrotaTransportador === true || x.SituacaoVeiculoFrotaTransportador === 1 || x.SituacaoVeiculoFrotaTransportador === "true")).map(x => x.PlacaVeiculo);
-          if (fora.length) {
-            const msg = `A(s) placa(s) ${fora.join(", ")} não pertence(m) à frota do RNTRC ${dados.RNTRCContratado} (transportador ${cnpj}) na ANTT — confira a placa, ou marque o veículo como "Terceiro" em Cadastros → Veículos se ele não for da frota própria.`;
-            return NextResponse.json({ Sucesso: false, Mensagem: msg, Erros: [msg], error: msg }, { status: 422 });
-          }
-        } catch { /* consulta indisponível: a própria declaração valida (B15) */ }
-      }
+          if (fora.length) console.warn(`[ciot] placa(s) ${fora.join(", ")} fora da frota do RNTRC ${dados.RNTRCContratado} na ANTT (aviso, não bloqueia) — CNPJ ${cnpj}`);
+        }
+      } catch { /* consulta indisponível: a própria declaração valida (B15) */ }
 
       // E) Número do CIOT: reaproveita um reservado e ainda não declarado do mesmo transportador/placa
       //    (evita queimar um número a cada tentativa), senão reserva novo.
