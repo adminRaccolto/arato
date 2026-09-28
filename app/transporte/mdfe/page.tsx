@@ -587,9 +587,9 @@ function MdfePageInner() {
             DataInicioViagem:   form.data_emissao,
             DataFimViagem:      ciotForm.data_fim,
             Veiculos: [
-              { Placa: veiculo.placa, RNTRC: veiculo.rntrc ?? motorista.rntrc ?? "", NumeroEixos: String(veiculo.num_eixos ?? 3) },
+              { Placa: veiculo.placa, RNTRC: "", NumeroEixos: String(veiculo.num_eixos ?? 3) },
               // Cavalo-trator exige ao menos um implemento (carreta) — placas separadas por vírgula
-              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7).map(pl => ({ Placa: pl, RNTRC: veiculo.rntrc ?? motorista.rntrc ?? "", NumeroEixos: "3" })),
+              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7).map(pl => ({ Placa: pl, RNTRC: "", NumeroEixos: "3" })),
             ],
             OrigemDestino: [{
               Origem:  { CodigoMunicipioOrigem:  ciotForm.ibge_origem,  CepOrigem:   ciotForm.cep_origem.replace(/\D/g,"")  },

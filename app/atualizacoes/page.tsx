@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-j",
+    data: "28/09/2026",
+    titulo: "CIOT: implemento/carreta declarado com o RNTRC errado (do veículo, não da transportadora)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Causa real da rejeição \"placa X não pertence ao transportador de RNTRC Y\": cada veículo do CIOT (cavalo e implementos) era enviado com o RNTRC individual do veículo/motorista quando preenchido no cadastro — mas nesse fluxo (contratado = a própria transportadora) TODOS devem usar o RNTRC da transportadora, não o de cada veículo. Se o veículo principal tivesse RNTRC próprio cadastrado (ex.: financiado à parte), o implemento herdava esse RNTRC errado, em vez do RNTRC da transportadora. Corrigido: o RNTRC de cada veículo não é mais enviado do cadastro — o servidor preenche automaticamente com o RNTRC certo (da transportadora) para todos." },
+    ],
+    onde: "Transporte → CT-e / MDF-e → Gerar CIOT",
+  },
+  {
     versao: "2026.09.28-i",
     data: "28/09/2026",
     titulo: "CIOT: pré-checagem de frota vira aviso, não bloqueia mais a geração",
