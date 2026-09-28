@@ -1403,4 +1403,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Romaneio de entrada confirmado mas nao aparece no Kardex/Estoque | Bug corrigido 28/09/2026 -- colunas erradas na movimentacao, erro nunca aparecia (Secao 306) | Romaneios confirmados ANTES da correcao nao geraram estoque de verdade -- avisar o suporte pra conferir e corrigir cada um |
 | MDF-e/CT-e/NF-e rejeitado com xNome vazio (nome do emitente em branco) | Bug corrigido 28/09/2026 -- upload de certificado criava copia incompleta do cadastro fiscal | Testar apos o deploy; se ocorrer de novo com outro emitente, reenviar o certificado dele em Parametros -> Fiscal |
 | NF de combustivel pede veiculo e nao mostra catalogo | Apropriacao Direta e so pra abastecimento direto de veiculo; reposicao de tanque usa Compra Normal + E Combustivel | Usar o botao "E reposicao de tanque -> Mudar para Compra Normal" que aparece na tela |
+| Como excluir uma folha de pagamento | Financeiro -> Folha de Pagamento -> abrir a folha -> Excluir Folha | Reverte CPs de salario/FGTS/INSS e adiantamentos antes de apagar; bloqueia se algum CP ja foi baixado em bordero |
 `;

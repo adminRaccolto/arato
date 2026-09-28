@@ -569,6 +569,32 @@ export default function FolhaPagamentoPage() {
     }
   }
 
+  async function excluirFolha() {
+    if (!folhaEdit.id || !folhaEdit.competencia) return;
+    const fechada = folhaEdit.status === "fechado";
+    const mesLabel = nomeMes(folhaEdit.competencia);
+    const aviso = fechada
+      ? `Excluir a folha de ${mesLabel}?\n\nEsta folha está fechada — isso vai:\n• Excluir os CPs gerados (salário de cada funcionário, FGTS e INSS Patronal)\n• Reverter adiantamentos de "Descontado" para "Pendente"\n• Apagar a folha e todos os funcionários dela\n\nAtenção: se algum CP já foi baixado em borderô, a exclusão será bloqueada — estorne o borderô primeiro.`
+      : `Excluir a folha de ${mesLabel} (rascunho)?\n\nA folha e todos os funcionários dela serão apagados.`;
+    if (!confirm(aviso)) return;
+    setSaving(true);
+    try {
+      await apiFolha({
+        operacao: "delete_folha",
+        id: folhaEdit.id,
+        fazenda_id: folhaEdit.fazenda_id,
+        competencia: folhaEdit.competencia,
+      });
+      setModalFolha(false);
+      setMsg("Folha excluída.");
+      carregar();
+    } catch (e: any) {
+      setMsg("Erro: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function salvarAdiantamento() {
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
       setMsg("Preencha funcionário, data e valor."); return;
@@ -1257,6 +1283,11 @@ export default function FolhaPagamentoPage() {
                 {folhaEdit.id && (
                   <button onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>
                     ↻ Replicar Folha
+                  </button>
+                )}
+                {folhaEdit.id && (
+                  <button onClick={excluirFolha} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5" }} disabled={saving}>
+                    🗑 Excluir Folha
                   </button>
                 )}
               </div>

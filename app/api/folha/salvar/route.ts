@@ -336,8 +336,42 @@ export async function POST(req: Request) {
     }
 
     // ─── delete_folha ─────────────────────────────────────────────────────────
+    // Exclui em cascata: mesma segurança do reabrir_folha (bloqueia se algum CP já foi baixado em
+    // borderô, exclui os CPs gerados — salário de cada funcionário + FGTS + INSS Patronal — reverte
+    // adiantamentos "Descontado" pra "Pendente"), e só então apaga as linhas e o cabeçalho da folha.
+    // Achado real 28/09/2026: esta operação já existia, mas fazia só metade — apagava
+    // folha_funcionarios/folha_pagamento sem tocar nos CPs gerados nem nos adiantamentos, deixando
+    // lançamentos órfãos (CP de salário sem folha nenhuma por trás) e adiantamentos presos em
+    // "Descontado" para sempre. Nunca tinha um botão na tela — corrigido e ligado agora.
     if (operacao === "delete_folha") {
-      const { id } = payload as { id: string };
+      const { id, fazenda_id, competencia } = payload as { id: string; fazenda_id?: string; competencia?: string };
+
+      const { data: itens } = await sb.from("folha_funcionarios").select("id, funcionario_id, cp_lancamento_id").eq("folha_id", id);
+      const { data: folhaRow } = await sb.from("folha_pagamento").select("cp_fgts_id, cp_inss_patronal_id").eq("id", id).maybeSingle();
+      const cpFgtsId = (folhaRow as any)?.cp_fgts_id ?? null;
+      const cpInssPatId = (folhaRow as any)?.cp_inss_patronal_id ?? null;
+      const cpIds = [
+        ...(itens ?? []).map((i: any) => i.cp_lancamento_id).filter(Boolean),
+        cpFgtsId, cpInssPatId,
+      ].filter(Boolean) as string[];
+
+      if (cpIds.length > 0) {
+        const { data: baixados } = await sb.from("lancamentos").select("id, descricao").in("id", cpIds).eq("status", "baixado");
+        if ((baixados ?? []).length > 0) {
+          const nomes = (baixados ?? []).map((l: any) => l.descricao).join("; ");
+          throw new Error(`Não é possível excluir: os seguintes CPs já foram baixados em borderô — ${nomes}. Estorne o borderô primeiro.`);
+        }
+        await sb.from("lancamentos").delete().in("id", cpIds);
+      }
+
+      const funcIds = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
+      if (funcIds.length > 0 && fazenda_id && competencia) {
+        await sb.from("adiantamentos_salario")
+          .update({ status: "pendente" })
+          .eq("fazenda_id", fazenda_id).eq("competencia_ref", competencia).eq("status", "descontado")
+          .in("funcionario_id", funcIds);
+      }
+
       await sb.from("folha_funcionarios").delete().eq("folha_id", id);
       const { error } = await sb.from("folha_pagamento").delete().eq("id", id);
       if (error) throw error;

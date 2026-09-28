@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-n",
+    data: "28/09/2026",
+    titulo: "Folha de Pagamento: botão Excluir Folha, com exclusão em cascata",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Novo botão \"🗑 Excluir Folha\" no modal da folha (rascunho ou fechada). Numa folha fechada, excluir reverte tudo o que o fechamento gerou: apaga os CPs de salário de cada funcionário, o CP de FGTS e o de INSS Patronal, e devolve os adiantamentos descontados para \"Pendente\" — só depois apaga a folha. Bloqueia a exclusão se algum desses CPs já foi baixado em borderô, pedindo para estornar o borderô primeiro. A rotina no servidor já existia mas estava incompleta (apagava só a folha, sem reverter CPs nem adiantamentos) e nunca tinha um botão — corrigida e ligada agora." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.09.28-m",
     data: "28/09/2026",
     titulo: "NF de Combustível: aviso pra sair da Apropriação Direta quando é reposição de tanque",
