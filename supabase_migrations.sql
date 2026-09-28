@@ -13946,3 +13946,26 @@ CREATE TRIGGER trg_config_modulo_conta_id
   FOR EACH ROW EXECUTE FUNCTION trg_configuracoes_modulo_conta_id();
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 305 — romaneios_entrada: RLS por conta (não pela fazenda ativa do
+-- perfil) + correção da tabela de IE do produtor no romaneio de entrada.
+--
+-- A policy "re_fazenda" (Seção do módulo Colheita/Romaneio original) usava
+-- fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()) —
+-- a fazenda ATIVA do perfil, não todas as fazendas da conta. Num cliente com
+-- várias fazendas, um insert/update de romaneio numa fazenda diferente da
+-- ativa no perfil era barrado pela RLS (erro "new row violates row-level
+-- security policy"), que a tela mostrava como "Erro: [object Object]" por a
+-- mensagem do Postgres não ser extraída corretamente (corrigido no código).
+-- Mesmo padrão já corrigido em várias outras tabelas.
+-- ═══════════════════════════════════════════════════════════════════════════
+DROP POLICY IF EXISTS "re_fazenda" ON romaneios_entrada;
+CREATE POLICY "re_fazenda" ON romaneios_entrada FOR ALL USING (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+) WITH CHECK (
+  fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+);
+NOTIFY pgrst, 'reload schema';

@@ -1397,4 +1397,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Ambiente SEFAZ, numero de MDF-e ou CT-e nao batem entre fazendas do mesmo cliente | Bug corrigido 28/09/2026 -- parametros de emissao agora gravam em todas as copias do cliente (Secao 304) | Testar apos o deploy e rodar a Secao 304; se ainda houver copias divergentes, salvar o parametro de novo em Parametros -> Fiscal/MDF-e/CT-e uma vez para sincronizar |
 | Total da NF nao bate ao processar com Desconto/ICMS Desonerado | Bug corrigido 28/09/2026 -- o total agora e recalculado na hora de processar | Conferir o total apos o deploy; se uma NF ja processada saiu errada, reprocessar (Estornar -> corrigir -> Processar de novo) |
 | CIOT reprova pela placa da carreta mesmo sendo campo livre | Bug corrigido 28/09/2026 -- a pre-checagem de frota so olha mais a placa do veiculo principal |
+| "Erro: [object Object]" ao gravar Romaneio de Entrada | Bug corrigido 28/09/2026 -- mensagem de erro nao era lida certo + RLS so olhava a fazenda ativa (Secao 305) | Testar apos deploy + Secao 305; se persistir, o alerta agora mostra o motivo real |
 `;

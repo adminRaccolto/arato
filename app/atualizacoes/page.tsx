@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-g",
+    data: "28/09/2026",
+    titulo: "Romaneio de Entrada: erro ao gravar e seletor de IE do produtor",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "\"Erro: [object Object]\" ao confirmar um Novo Romaneio de Entrada: a mensagem de erro do banco não estava sendo lida corretamente, então a causa real ficava escondida. Agora o alerta mostra o motivo de verdade. A causa mais provável em contas com mais de uma fazenda: a permissão de acesso ao romaneio olhava só a fazenda ativa do usuário, não todas as fazendas da conta — corrigida." },
+      { tipo: "correcao", texto: "O seletor \"Selecionar IE\" do Produtor Responsável, no Romaneio de Entrada, consultava uma tabela que não existe (\"produtores_ie\") e por isso nunca trazia nada, ficando sempre como campo de texto livre. Corrigido para a tabela certa — agora mostra as IEs cadastradas do produtor num dropdown." },
+    ],
+    onde: "Produção → Romaneios de Produção → + Novo Romaneio",
+  },
+  {
     versao: "2026.09.28-e",
     data: "28/09/2026",
     titulo: "NF de Entrada: total não batia com Desconto/ICMS Desonerado ajustados na hora de processar",

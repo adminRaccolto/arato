@@ -232,7 +232,7 @@ export default function RomaneioEntradaPage() {
     });
     // carregar IEs se há produtor vinculado
     if (r.produtor_id) {
-      supabase.from("produtores_ie").select("*").eq("produtor_id", r.produtor_id).eq("ativa", true)
+      supabase.from("produtor_inscricoes_estaduais").select("*").eq("produtor_id", r.produtor_id).eq("ativa", true)
         .then(({ data }) => setIesModal(data ?? []));
     } else {
       setIesModal([]);
@@ -241,7 +241,15 @@ export default function RomaneioEntradaPage() {
   };
 
   // ── Salvar ───────────────────────────────────────────────────────────────
-  const salvar = async (confirmar = false) => {
+  // Extrai a mensagem de erros do Supabase (PostgrestError é objeto simples, não Error —
+// String(e) virava "[object Object]" no alert, escondendo a causa real).
+function mensagemErro(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
+  return String(e);
+}
+
+const salvar = async (confirmar = false) => {
     if (!fazendaId) return;
     if (!form.peso_bruto || parseFloat(form.peso_bruto) <= 0) { alert("Informe o peso bruto."); return; }
     if (confirmar && !form.insumo_id) { alert("Selecione o produto (grão) do romaneio — sem ele a entrada no estoque não é gerada."); return; }
@@ -320,7 +328,7 @@ export default function RomaneioEntradaPage() {
       );
       setModal(false);
     } catch (e) {
-      alert("Erro: " + (e instanceof Error ? e.message : String(e)));
+      alert("Erro ao salvar o romaneio: " + mensagemErro(e));
     } finally {
       setSalvando(false);
     }
@@ -336,7 +344,7 @@ export default function RomaneioEntradaPage() {
       await confirmarRomaneioEntrada(r, fazendaId);
       setRomaneios(prev => prev.map(x => x.id === r.id ? { ...x, status: "confirmado", entrada_estoque: true } : x));
     } catch (e) {
-      alert("Erro: " + (e instanceof Error ? e.message : String(e)));
+      alert("Erro ao salvar o romaneio: " + mensagemErro(e));
     }
   };
 
@@ -715,7 +723,7 @@ export default function RomaneioEntradaPage() {
                     const prod = produtores.find(p => p.id === pid);
                     setForm(p => ({ ...p, produtor_id: pid, ie_produtor: prod?.inscricao_est ?? "", ie_municipio: "" }));
                     if (pid) {
-                      supabase.from("produtores_ie").select("*").eq("produtor_id", pid).eq("ativa", true)
+                      supabase.from("produtor_inscricoes_estaduais").select("*").eq("produtor_id", pid).eq("ativa", true)
                         .then(({ data }) => {
                           const ies = (data ?? []) as ProdutorIE[];
                           setIesModal(ies);
@@ -930,7 +938,7 @@ export default function RomaneioEntradaPage() {
                     ? deposArmazem.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)
                     : depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                 </select>
-                {deposArmazem.length === 0 && <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>Nenhum armazém cadastrado. Vá em Cadastros → Depósitos.</div>}
+                {depositos.length === 0 && <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>Nenhum depósito cadastrado. Vá em Cadastros → Depósitos.</div>}
               </div>
             </div>
           )}
