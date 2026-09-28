@@ -1220,6 +1220,7 @@ function CadastrosInner() {
     // por produtor_id, respeitando a "Fazenda vinculada" própria de cada IE (antes
     // isso era sobrescrito à força pela fazenda ativa geral, em todas as IEs).
     await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
+      id: ie.id,
       produtor_id: prodId,
       // "|| null", não "?? null": parseVincIE (edição de IE existente) usa "" pra
       // "Nenhuma", e "" não é UUID válido pro Postgres — precisa virar NULL também.

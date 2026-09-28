@@ -1404,4 +1404,5 @@ Campo que classifica o lançamento para fins fiscais:
 | MDF-e/CT-e/NF-e rejeitado com xNome vazio (nome do emitente em branco) | Bug corrigido 28/09/2026 -- upload de certificado criava copia incompleta do cadastro fiscal | Testar apos o deploy; se ocorrer de novo com outro emitente, reenviar o certificado dele em Parametros -> Fiscal |
 | NF de combustivel pede veiculo e nao mostra catalogo | Apropriacao Direta e so pra abastecimento direto de veiculo; reposicao de tanque usa Compra Normal + E Combustivel | Usar o botao "E reposicao de tanque -> Mudar para Compra Normal" que aparece na tela |
 | Como excluir uma folha de pagamento | Financeiro -> Folha de Pagamento -> abrir a folha -> Excluir Folha | Reverte CPs de salario/FGTS/INSS e adiantamentos antes de apagar; bloqueia se algum CP ja foi baixado em bordero |
+| Serie/numero de NF-e de uma IE "sumiu" depois de editar o produtor | Bug corrigido 28/09/2026 -- salvar o produtor recriava as IEs, orfando a config fiscal (Secao 304 nao relacionada) | Reconfigurar a serie/numero dessa IE em Parametros -> Fiscal; a partir do deploy nao acontece mais |
 `;

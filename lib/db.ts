@@ -1460,14 +1460,32 @@ export async function listarIEsDoProdutor(produtor_id: string, fazenda_id?: stri
   return data ?? [];
 }
 
-export async function salvarIEsDoProdutor(produtor_id: string, ies: Omit<ProdutorIE, "id" | "created_at">[], fazenda_id?: string): Promise<void> {
-  let del = supabase.from("produtor_inscricoes_estaduais").delete().eq("produtor_id", produtor_id);
-  if (fazenda_id) del = del.eq("fazenda_id", fazenda_id);
-  await del;
+// Achado real 28/09/2026 (auditoria de integridade): a versão antiga apagava TODAS as IEs do
+// produtor e reinseria com UUID novo a cada salvamento — mesmo sem nenhuma alteração de verdade.
+// Isso quebrava, em silêncio, o vínculo com contratos/arrendamentos (ON DELETE SET NULL) e órfava
+// a configuração fiscal por IE (`fiscal_pf_<cpf>__ie_<id antigo>`, com série/número/CRT daquela IE)
+// — confirmado em produção: 4 configurações órfãs, 2 produtores reais afetados. Agora preserva o
+// id de cada IE (a tela já gera um UUID estável ao adicionar uma linha nova — `newIE` em
+// app/cadastros/page.tsx): atualiza quem já existe, insere só quem é novo, e exclui só quem foi
+// removido explicitamente da lista pelo usuário.
+export async function salvarIEsDoProdutor(produtor_id: string, ies: (Omit<ProdutorIE, "created_at"> & { id: string })[], fazenda_id?: string): Promise<void> {
+  let qExistentes = supabase.from("produtor_inscricoes_estaduais").select("id").eq("produtor_id", produtor_id);
+  if (fazenda_id) qExistentes = qExistentes.eq("fazenda_id", fazenda_id);
+  const { data: existentes } = await qExistentes;
+  const idsAtuais = new Set((existentes ?? []).map(r => r.id as string));
+  const idsNovos = new Set(ies.map(ie => ie.id));
+
+  const idsParaExcluir = [...idsAtuais].filter(id => !idsNovos.has(id));
+  if (idsParaExcluir.length > 0) {
+    const { error: errDel } = await supabase.from("produtor_inscricoes_estaduais").delete().in("id", idsParaExcluir);
+    if (errDel) throw errDel;
+  }
   if (ies.length > 0) {
-    await supabase.from("produtor_inscricoes_estaduais").insert(
-      ies.map(ie => ({ ...ie, produtor_id, ...(fazenda_id ? { fazenda_id } : {}) }))
+    const { error: errUp } = await supabase.from("produtor_inscricoes_estaduais").upsert(
+      ies.map(ie => ({ ...ie, produtor_id, ...(fazenda_id ? { fazenda_id } : {}) })),
+      { onConflict: "id" }
     );
+    if (errUp) throw errUp;
   }
 }
 

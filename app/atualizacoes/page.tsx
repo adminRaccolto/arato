@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-p",
+    data: "28/09/2026",
+    titulo: "Cadastro de Produtor: salvar não recria mais as Inscrições Estaduais",
+    modulos: ["Cadastros", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Salvar o cadastro de um produtor apagava e recriava TODAS as Inscrições Estaduais dele, mesmo sem alterar nada — cada uma ganhava um ID novo. Isso quebrava em silêncio o vínculo com contratos, arrendamentos e, principalmente, a configuração fiscal daquela IE (série de NF-e, número, CRT), que fica presa ao ID antigo e vira inalcançável. Confirmado em produção: 4 configurações fiscais órfãs em 2 produtores reais. Corrigido: salvar agora atualiza as IEs existentes preservando o ID, insere só as novas e exclui só as removidas explicitamente na tela." },
+    ],
+    onde: "Cadastros → Produtores → Inscrições Estaduais",
+  },
+  {
     versao: "2026.09.28-o",
     data: "28/09/2026",
     titulo: "Relatório CP / CR: filtro por nome do fornecedor",
