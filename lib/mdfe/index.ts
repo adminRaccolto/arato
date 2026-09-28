@@ -409,7 +409,12 @@ export async function emitirMDFe(
     try { xmlUrl = await salvarXml(fazendaId, built.chave, resposta.xmlProt); } catch { /* best-effort */ }
   }
 
-  if (resposta.sucesso) await avancarNumero(fazendaId, resolved.mdfeModulo, confg, Number(built.numero));
+  // Achado real 28/09/2026: gravava em `fazendaId` (a fazenda ativa na emissão), mas o config MDF-e
+  // é da CONTA — a linha lida (e cujo numero_inicial virou a base do contador acima) mora em
+  // `resolved.mdfeFazendaId`, que pode ser outra fazenda do mesmo cliente. Quando a fazenda ativa
+  // não tinha linha própria pra esse módulo, o UPDATE não encontrava nenhuma linha pra atualizar —
+  // o contador nunca avançava e o próximo MDF-e reservava o MESMO número outra vez.
+  if (resposta.sucesso) await avancarNumero(resolved.mdfeFazendaId, resolved.mdfeModulo, confg, Number(built.numero));
 
   const { error: updErr } = await sb().from("mdfes").update({
     status:       resposta.sucesso ? "autorizado" : "rascunho",

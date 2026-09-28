@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-b",
+    data: "28/09/2026",
+    titulo: "MDF-e: numeração não avançava (número repetido na próxima emissão)",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao autorizar um MDF-e, o contador de numeração era salvo na fazenda ATIVA no momento da emissão. Como os parâmetros de MDF-e são da conta (do CNPJ emitente, não de uma fazenda específica) e podem estar gravados em outra fazenda do mesmo cliente, o salvamento muitas vezes não encontrava nenhuma linha para atualizar — o contador ficava parado e o próximo MDF-e reservava o mesmo número de novo. Corrigido: o avanço do contador agora grava na fazenda onde os parâmetros realmente estão (a mesma usada para ler o próximo número)." },
+    ],
+    onde: "Transporte → MDF-e",
+  },
+  {
     versao: "2026.09.28-a",
     data: "28/09/2026",
     titulo: "Consulta Sintegra: “Nenhum certificado A1 configurado” mesmo com o certificado enviado",
