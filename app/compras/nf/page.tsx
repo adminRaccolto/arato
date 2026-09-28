@@ -3908,8 +3908,32 @@ export default function NfCompraPage() {
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#1A6B3C", marginBottom: 6 }}>Apropriação Direta — sem movimentação de estoque</div>
                       <div style={{ fontSize: 12, color: "#166534" }}>
                         Cada item desta NF será apropriado diretamente a um centro de custo. Nenhum produto será lançado no estoque.
-                        Ideal para NFs de mercado, energia, combustível externo, serviços, fretes e demais despesas operacionais.
+                        Ideal para NFs de mercado, energia, combustível externo (abastecimento direto de um veículo, fora da fazenda), serviços, fretes e demais despesas operacionais.
                       </div>
+                    </div>
+                  )}
+
+                  {tipo === "custo_direto" && modoDireto === "combustivel" && (
+                    <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ fontSize: 12, color: "#7A5800" }}>
+                        Aqui só cabe abastecimento DIRETO de um veículo (posto de terceiro). Se esta NF é uma
+                        <strong> compra de combustível para o tanque/bomba da fazenda</strong>, mude para Compra Normal —
+                        aí aparece o catálogo do produto e o crédito na bomba, sem exigir veículo.
+                      </div>
+                      <button
+                        onClick={() => {
+                          // Preserva descrição/quantidade/valor já digitados — só troca o tipo da NF
+                          // (habilita o catálogo + bomba/tanque) e a apropriação de cada item, que
+                          // ainda estava marcada "direto" (sem estoque) por ter sido criada em
+                          // Apropriação Direta.
+                          setTipo("insumos");
+                          setCab(p => ({ ...p, e_combustivel: true }));
+                          setItens(prev => prev.map(it => ({ ...it, tipo_apropiacao: "estoque" })));
+                        }}
+                        style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        É reposição de tanque → Mudar para Compra Normal
+                      </button>
                     </div>
                   )}
 

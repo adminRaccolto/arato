@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-m",
+    data: "28/09/2026",
+    titulo: "NF de Combustível: aviso pra sair da Apropriação Direta quando é reposição de tanque",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "novo", texto: "A Apropriação Direta, no modo combustível, serve só para abastecimento direto de um veículo num posto de terceiro — por isso só pede o veículo, sem catálogo (nada é lançado no estoque). Compra de combustível para o tanque/bomba da fazenda é outro fluxo: Compra Normal com \"É Combustível\" marcado, que credita a bomba e pede o produto do catálogo. Agora, ao entrar em Apropriação Direta com um item de combustível, aparece um aviso com o botão \"É reposição de tanque → Mudar para Compra Normal\", que troca o tipo da NF sem perder o que já foi digitado." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.28-l",
     data: "28/09/2026",
     titulo: "MDF-e/CT-e/NF-e com nome do emitente em branco após upload de certificado",
