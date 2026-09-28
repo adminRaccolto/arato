@@ -54,10 +54,21 @@ async function buscarConfigContaWide(
   modulo: string,
 ): Promise<{ config: Record<string, string>; fazendaId: string } | null> {
   const contaId = await contaIdDaFazenda(fazendaPreferida);
-  const query = sb().from("configuracoes_modulo").select("fazenda_id, config");
-  // Sem conta_id resolvida (fazenda órfã) cai no comportamento antigo, por segurança.
-  const { data } = contaId ? await query.eq("conta_id", contaId).eq("modulo", modulo)
-                            : await query.in("fazenda_id", idsConta).eq("modulo", modulo);
+  // Fallback duplo, por segurança: (1) sem conta_id resolvida (fazenda órfã); (2) a coluna
+  // conta_id ainda não existe nesta base (Seção 304 não rodada) — a query por ela retorna erro
+  // (42703 coluna inexistente) em vez de dado, e SEM checar o erro aqui "data" ficava sempre
+  // vazio e a config nunca era achada (achado real 28/09/2026: cert A1 "não configurado" mesmo
+  // com o certificado no banco, exatamente por causa disso). Sempre cai pro caminho antigo
+  // (lista de fazendas da conta) se a busca por conta_id vier vazia OU der erro.
+  let data: { fazenda_id: string; config: unknown }[] | null = null;
+  if (contaId) {
+    const r = await sb().from("configuracoes_modulo").select("fazenda_id, config").eq("conta_id", contaId).eq("modulo", modulo);
+    if (!r.error && r.data && r.data.length > 0) data = r.data;
+  }
+  if (!data) {
+    const r2 = await sb().from("configuracoes_modulo").select("fazenda_id, config").in("fazenda_id", idsConta).eq("modulo", modulo);
+    data = r2.data;
+  }
 
   if (!data || data.length === 0) return null;
   const preferido = data.find(r => r.fazenda_id === fazendaPreferida);

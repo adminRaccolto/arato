@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-h",
+    data: "28/09/2026",
+    titulo: "Correção urgente: gatilho da Seção 304 sem a coluna trava gravação em Parâmetros",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Se a Seção 304 for executada parcialmente (o gatilho criado antes da coluna conta_id), toda gravação em Parâmetros (certificado A1, Fiscal, MDF-e, CT-e) passava a falhar com \"record 'new' has no field 'conta_id'\". O gatilho agora nunca bloqueia a gravação nesse caso. Também corrigida a leitura de certificado/config de MDF-e e CT-e: sem a coluna conta_id ainda criada, a busca ficava sempre vazia (mesmo bug do Sintegra, agora também no certificado do CIOT/MDF-e) — agora cai automaticamente no modo antigo até a Seção 304 rodar por completo." },
+    ],
+    onde: "Configurações → Parâmetros Fiscais/MDF-e/CT-e",
+  },
+  {
     versao: "2026.09.28-g",
     data: "28/09/2026",
     titulo: "Romaneio de Entrada: erro ao gravar e seletor de IE do produtor",

@@ -13931,11 +13931,18 @@ CREATE INDEX IF NOT EXISTS idx_config_modulo_conta ON configuracoes_modulo(conta
 -- Mantém conta_id sincronizado sozinho em todo INSERT/UPDATE — nenhuma das
 -- ~25 telas/rotas que gravam nesta tabela precisa ser lembrada de preencher
 -- conta_id; o gatilho resolve a partir de fazenda_id sempre que necessário.
+-- Blindado com EXCEPTION: se por algum motivo rodar antes da coluna conta_id existir (ordem de
+-- execução fora da esperada, re-run parcial), nunca bloqueia o INSERT/UPDATE — só não preenche
+-- conta_id dessa vez (achado real 28/09/2026: sem isso, uma execução parcial desta seção travou
+-- toda gravação em configuracoes_modulo, inclusive upload de certificado A1, com o erro
+-- 'record "new" has no field "conta_id"').
 CREATE OR REPLACE FUNCTION trg_configuracoes_modulo_conta_id() RETURNS trigger AS $$
 BEGIN
   IF NEW.fazenda_id IS NOT NULL AND (NEW.conta_id IS NULL OR TG_OP = 'UPDATE') THEN
     SELECT conta_id INTO NEW.conta_id FROM fazendas WHERE id = NEW.fazenda_id;
   END IF;
+  RETURN NEW;
+EXCEPTION WHEN undefined_column THEN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
