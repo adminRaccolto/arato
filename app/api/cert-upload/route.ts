@@ -127,7 +127,17 @@ export async function POST(req: Request) {
 
     const cfgPorFazenda = new Map<string, Record<string, string>>();
     (existentes ?? []).forEach(e => cfgPorFazenda.set(e.fazenda_id, (e.config as Record<string, string>) ?? {}));
-    const idsAlvo = new Set<string>([fazendaId, ...cfgPorFazenda.keys(), ...(cteRows ?? []).map(r => r.fazenda_id)]);
+    // Achado real 28/09/2026: incluir SEMPRE a fazenda ativa criava uma cópia NOVA e incompleta
+    // (só cert_a1_path/senha, sem razão social/CNPJ/etc) sempre que o upload acontecia com uma
+    // fazenda ativa diferente da que já tinha o cadastro fiscal completo desse emitente — e essa
+    // cópia vazia podia ser a escolhida na hora de emitir, causando NF-e/CT-e/MDF-e com o nome do
+    // emitente em branco (rejeição de schema "xNome ... Pattern constraint failed"). Só inclui a
+    // fazenda ativa quando NÃO existe NENHUMA cópia ainda em lugar nenhum da conta (primeiro
+    // upload desse emitente) — nesse caso é razoável criar o registro ali.
+    const jaExisteConfigNaConta = cfgPorFazenda.size > 0 || (cteRows?.length ?? 0) > 0;
+    const idsAlvo = jaExisteConfigNaConta
+      ? new Set<string>([...cfgPorFazenda.keys(), ...(cteRows ?? []).map(r => r.fazenda_id)])
+      : new Set<string>([fazendaId]);
 
     for (const fid of idsAlvo) {
       const cfgAtual = cfgPorFazenda.get(fid) ?? {};

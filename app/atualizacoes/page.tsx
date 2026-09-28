@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-l",
+    data: "28/09/2026",
+    titulo: "MDF-e/CT-e/NF-e com nome do emitente em branco após upload de certificado",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Causa real da rejeição \"xNome ... Pattern constraint failed\" (nome do emitente vazio): o upload de certificado A1 sempre incluía a fazenda ativa no momento do upload na sincronização do módulo Fiscal — se essa fazenda nunca teve o cadastro fiscal completo daquele emitente (razão social, CNPJ, IE…), criava uma cópia NOVA só com o certificado, sem o resto. Essa cópia incompleta podia ser a escolhida na hora de emitir, saindo com o nome do emitente em branco. Corrigido: só cria uma cópia nova quando não existe NENHUMA configuração daquele emitente ainda na conta; senão, atualiza só as que já existem. A cópia incompleta da Muriana (criada durante os testes de hoje) já foi corrigida no banco, e a divergência do MDF-e (produção/homologação, número desencontrado) também." },
+    ],
+    onde: "Configurações → Parâmetros Fiscais → Certificado Digital",
+  },
+  {
     versao: "2026.09.28-k",
     data: "28/09/2026",
     titulo: "Romaneio de Entrada confirmava sem gerar estoque nenhum (colunas erradas)",
