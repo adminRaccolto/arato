@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-a",
+    data: "28/09/2026",
+    titulo: "Consulta Sintegra: “Nenhum certificado A1 configurado” mesmo com o certificado enviado",
+    modulos: ["Cadastros", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A consulta ao Sintegra (botão de busca ao lado da Inscrição Estadual, em Cadastros → Produtores e no cadastro de Pessoas) usava um nome de módulo fiscal que nunca existiu de verdade — por isso nunca achava o certificado, mesmo ele estando configurado corretamente em Parâmetros → Fiscal, e o erro aparecia em qualquer tela que tivesse esse botão. Corrigido: agora resolve o emitente padrão de verdade (mesma lógica usada para emitir NF-e) e, se ele não tiver certificado, procura em qualquer outro emitente configurado na conta." },
+    ],
+    onde: "Cadastros → Produtores / Pessoas → busca por IE (Sintegra)",
+  },
+  {
     versao: "2026.09.27-a",
     data: "27/09/2026",
     titulo: "NF-e saindo em Homologação mesmo com o Ambiente SEFAZ em Produção",

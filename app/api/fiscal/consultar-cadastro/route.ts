@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { buscarConfEmitente, carregarPfx } from "@/lib/nfe";
 import { pfxParaPem } from "@/lib/nfe/signer";
 import { consultarCadastroContribuinte } from "@/lib/nfe/consulta-cadastro";
+import { resolverModuloKeyFiscal } from "@/lib/nfe/resolver-emitente";
 
 export const dynamic = "force-dynamic";
 
@@ -37,29 +38,34 @@ export async function POST(req: NextRequest) {
 
   const ufFinal = (uf || "MT").toUpperCase();
 
-  // moduloKey exato não importa — buscarConfEmitente já cai no fallback de
-  // "qualquer módulo fiscal com CPF/CNPJ e certificado" dessa fazenda.
-  let confg = await buscarConfEmitente(fazenda_id, "fiscal_pf_consulta_cadastro");
+  // Achado real 28/09/2026: "fiscal_pf_consulta_cadastro" nunca foi um módulo de verdade — é só um
+  // rótulo interno desta rota. buscarConfEmitente() não tem (nunca teve) um fallback de "qualquer
+  // módulo fiscal com certificado"; ele só resolve a chave exata que recebe. Chamá-lo com esse
+  // rótulo inventado sempre voltava vazio, mesmo com o certificado configurado — daí o erro
+  // "Nenhum certificado A1 configurado" aparecer em toda consulta de Sintegra. Corrigido: resolve
+  // primeiro a chave REAL do emitente padrão da conta (mesma função usada na emissão de NF-e), que
+  // já busca em qualquer fazenda do cliente — a consulta de cadastro é um serviço de busca genérico
+  // (qualquer certificado válido consulta qualquer contribuinte daquela UF), não precisa ser o
+  // certificado da fazenda ativa nem de um emitente específico.
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const moduloKeyReal = await resolverModuloKeyFiscal(fazenda_id, admin);
+  let confg = moduloKeyReal ? await buscarConfEmitente(fazenda_id, moduloKeyReal) : null;
   let fazendaIdComCert = fazenda_id;
 
-  // Certificado não achado nesta fazenda específica — antes de desistir,
-  // procura em qualquer outra fazenda da mesma conta. A consulta de cadastro
-  // é um serviço de busca genérico (qualquer certificado válido consulta
-  // qualquer contribuinte daquela UF) — diferente da emissão de NF-e, não
-  // precisa ser o certificado da própria fazenda ativa. Sem isso, uma conta
-  // com várias fazendas via "nenhum certificado configurado" mesmo o
-  // certificado existindo, só que cadastrado noutra fazenda da mesma conta
-  // (achado real 18/09/2026, mesmo padrão de bug já corrigido em Operações
-  // Gerenciais, Plano de Contas, Usuários, Grupos de Acesso e Máquinas).
+  // Certificado não achado nesse emitente padrão — procura em qualquer outro emitente cadastrado
+  // em qualquer fazenda da mesma conta, até achar um com certificado A1 completo.
   if (!confg?.cert_a1_path || !confg?.cert_a1_senha) {
-    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const { data: faz } = await admin.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
     if (faz?.conta_id) {
       const { data: fazendasDaConta } = await admin.from("fazendas").select("id").eq("conta_id", faz.conta_id);
-      for (const f of fazendasDaConta ?? []) {
-        if (f.id === fazenda_id) continue;
-        const tentativa = await buscarConfEmitente(f.id, "fiscal_pf_consulta_cadastro");
-        if (tentativa?.cert_a1_path && tentativa?.cert_a1_senha) { confg = tentativa; fazendaIdComCert = f.id; break; }
+      const { data: modulosFiscais } = await admin.from("configuracoes_modulo").select("fazenda_id, modulo")
+        .in("fazenda_id", (fazendasDaConta ?? []).map(f => f.id as string))
+        .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%")
+        .not("modulo", "like", "%__ie_%");
+      for (const m of modulosFiscais ?? []) {
+        if (m.modulo === moduloKeyReal) continue; // já tentado acima
+        const tentativa = await buscarConfEmitente(m.fazenda_id as string, m.modulo as string);
+        if (tentativa?.cert_a1_path && tentativa?.cert_a1_senha) { confg = tentativa; fazendaIdComCert = m.fazenda_id as string; break; }
       }
     }
   }
