@@ -6,6 +6,26 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.28-e",
+    data: "28/09/2026",
+    titulo: "NF de Entrada: total não batia com Desconto/ICMS Desonerado ajustados na hora de processar",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Ao processar a NF, o sistema usava o total salvo da última vez que o cabeçalho foi gravado, em vez do total recalculado com o Desconto e o ICMS Desonerado que estavam digitados na hora. Se o usuário ajustava esses campos e processava sem passar de novo pelo \"Avançar\" do cabeçalho, o estoque e o Contas a Pagar saíam com o valor antigo — o total da NF não batia. Agora o total é sempre recalculado (produtos + impostos − desconto − ICMS deson.) no momento de processar, e o cabeçalho é resalvo automaticamente se estiver desatualizado." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
+    versao: "2026.09.28-f",
+    data: "28/09/2026",
+    titulo: "CIOT: placas de implemento/carreta (sem cadastro) não são mais checadas na frota",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "Mesmo depois de pular a checagem de frota para veículos marcados como Terceiro, o aviso \"não pertence à frota\" continuava aparecendo pelas placas de IMPLEMENTO/carreta — que são um campo livre, sem cadastro nenhum, de propósito (a carreta muda a cada viagem). Agora só a placa do veículo principal (a única que tem cadastro) é conferida nessa pré-checagem; a validação de verdade da composição inteira continua acontecendo na declaração enviada à ANTT." },
+    ],
+    onde: "Transporte → CT-e / MDF-e → Gerar CIOT",
+  },
+  {
     versao: "2026.09.28-d",
     data: "28/09/2026",
     titulo: "Parâmetros Fiscais/CT-e/MDF-e passam a ser gravados por conta (não mais por fazenda)",

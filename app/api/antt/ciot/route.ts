@@ -100,9 +100,17 @@ export async function POST(req: NextRequest) {
       // definição — então essa checagem sempre reprovava (achado real 28/09/2026: "não pertence à
       // frota" mesmo emitindo para um veículo de terceiro legítimo). A validação real de quem pode
       // transportar continua acontecendo na própria declaração (regra B15 da ANTT).
+      // Achado real 28/09/2026: mesmo pulando a checagem pro veículo (cavalo) marcado Terceiro, a
+      // consulta continuava reprovando pelas placas de IMPLEMENTO/carreta — que nunca tiveram
+      // cadastro nenhum (campo livre, texto separado por vírgula, de propósito: carreta muda a
+      // cada viagem, não vale a pena exigir cadastro toda vez). Só a placa do veículo principal
+      // (a única que TEM cadastro, com RNTRC e "Terceiro"/"Próprio" configuráveis) é checada aqui;
+      // a validação de verdade de toda a composição acontece na própria declaração à ANTT (B15).
       if (!b.veiculoTerceiro) {
         try {
-          const fr = await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, dados.Veiculos.map(v => v.Placa));
+          const placaPrincipal = dados.Veiculos[0]?.Placa;
+          const fr = placaPrincipal ? await svc.consultarFrota(cnpj, cnpj, dados.RNTRCContratado, [placaPrincipal]) : null;
+          if (!fr) throw new Error("sem placa principal");
           const frota = (fr.Dados as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] } | undefined)?.Frota
             ?? (fr as unknown as { Frota?: { PlacaVeiculo: string; SituacaoVeiculoFrotaTransportador: boolean | number | string }[] }).Frota;
           const fora = (frota ?? []).filter(x => !(x.SituacaoVeiculoFrotaTransportador === true || x.SituacaoVeiculoFrotaTransportador === 1 || x.SituacaoVeiculoFrotaTransportador === "true")).map(x => x.PlacaVeiculo);

@@ -1808,11 +1808,23 @@ export default function NfCompraPage() {
       const itensDB = await listarNfEntradaItens(nfEdit.id);
       // Deriva a máquina do item de manutenção (primeiro item com maquina_id)
       const maquinaIdDominante = itensDB.find(i => i.maquina_id)?.maquina_id || undefined;
+      // Achado real 28/09/2026: usava nfEdit.valor_total (o que foi salvo da ÚLTIMA vez que o
+      // cabeçalho foi gravado) em vez do total calculado agora a partir de `cab` — se o usuário
+      // ajustou Desconto ou ICMS Desonerado no cabeçalho e processou sem passar de novo pelo
+      // "Avançar" (que é quem resalva o cabeçalho), o CP/estoque saíam com o total ANTIGO, sem o
+      // ajuste, e por isso "o valor total da NF não bate". Agora recalcula sempre na hora de
+      // processar, com a mesma fórmula usada no cabeçalho e nas parcelas (produtos + impostos −
+      // desconto − ICMS deson.), e resalva o cabeçalho pra não ficar dessincronizado de novo.
+      const totalLiquidoAgora = numBR(cab.valor_total) + numBR(cab.valor_ipi) + numBR(cab.valor_st)
+        + numBR(cab.valor_fcp_st) + numBR(cab.valor_difal) - numBR(cab.valor_desconto) - numBR(cab.valor_icms_deson);
+      if (Math.abs(totalLiquidoAgora - nfEdit.valor_total) > 0.01) {
+        await atualizarNfEntrada(nfEdit.id, { valor_total: totalLiquidoAgora });
+      }
       await processarNfEntrada(
         nfEdit.id,
         fazendaId,
         itensDB,
-        nfEdit.valor_total,
+        totalLiquidoAgora,
         nfEdit.emitente_nome,
         nfEdit.data_emissao ?? nfEdit.data_entrada,
         nfEdit.emitente_cnpj,
