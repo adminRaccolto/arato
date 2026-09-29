@@ -858,7 +858,18 @@ export default function NfCompraPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim, force_reimport: siegForceReimport }),
       });
-      const d = await res.json() as Record<string, unknown>;
+      // Achado real 29/09/2026: "Forçar re-importação" num período com muitas notas pode passar do
+      // tempo limite da função — a Vercel devolve uma página de erro (HTML), não JSON, e o
+      // navegador tentava interpretar aquilo como JSON e mostrava o erro técnico bruto do
+      // navegador. Detecta esse caso e dá o motivo real, sugerindo reduzir o período.
+      let d: Record<string, unknown>;
+      try { d = await res.json() as Record<string, unknown>; }
+      catch {
+        setSiegSyncMsg(res.ok
+          ? "✗ A sincronização demorou demais e não terminou a tempo. Tente um período menor, ou sem \"Forçar re-importação\"."
+          : `✗ Falha do servidor (HTTP ${res.status}). Tente novamente com um período menor.`);
+        return;
+      }
       if (d.erro) setSiegSyncMsg(`✗ ${d.erro}`);
       else {
         const imp  = Number(d.importados_nfe ?? 0);

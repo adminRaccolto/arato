@@ -13,6 +13,12 @@ import { createClient }              from "@supabase/supabase-js";
 import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
+// "Forçar re-importação" reprocessa TODAS as notas do período (não só as novas) — com muitas
+// pendentes isso passa fácil do timeout padrão da função e a Vercel devolve uma página de erro em
+// vez de JSON, o navegador tenta interpretar aquilo como JSON e mostra um erro genérico do
+// próprio navegador ("SyntaxError: The string did not match the expected pattern" no Safari) em
+// vez do erro de verdade. Teto elevado pro máximo do plano.
+export const maxDuration = 300;
 
 // GET — health check / validação de URL pelo portal Sieg
 export async function GET() {

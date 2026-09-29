@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-h",
+    data: "29/09/2026",
+    titulo: "Sincronizar SIEG com \"Forçar re-importação\": erro de tempo esgotado",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "\"Forçar re-importação\" reprocessa TODAS as notas do período, não só as novas — com muitas pendentes (ex.: 564) isso podia passar do tempo limite do servidor. Quando estourava, aparecia um erro técnico do navegador sem explicação (\"SyntaxError: The string did not match the expected pattern\"). Aumentado o tempo limite da sincronização para o máximo do plano, e agora, se mesmo assim não terminar a tempo, a mensagem explica o motivo e sugere reduzir o período ou sincronizar sem forçar re-importação." },
+    ],
+    onde: "Compras → NF de Produtos → Sincronizar SIEG",
+  },
+  {
     versao: "2026.09.29-g",
     data: "29/09/2026",
     titulo: "Ver e DANFE saíram da linha da NF — agora ficam na barra de seleção",
