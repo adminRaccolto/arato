@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-k",
+    data: "29/09/2026",
+    titulo: "CP/CR das Empresas: erro ao editar e lista de Fornecedor cortada",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Editar um lançamento de CP ou CR de Empresa falhava com \"Could not find the 'empresa_nome' column ... in the schema cache\": o formulário copiava o lançamento inteiro (incluindo campos de junção, que não são colunas reais) e mandava tudo de volta no update. Corrigido nas duas telas." },
+      { tipo: "correcao", texto: "A lista de Fornecedor no CP das Empresas parava na letra \"I\" — a consulta de pessoas não paginava, e o limite padrão do banco (1.000 linhas) cortava a lista no meio (a conta tem 3.043 pessoas cadastradas). Corrigida para usar a mesma busca já paginada usada em outras telas." },
+    ],
+    onde: "Financeiro → Empresas → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.09.29-j",
     data: "29/09/2026",
     titulo: "NF de combustível (Apropriação Direta): veículo deixa de ser obrigatório",

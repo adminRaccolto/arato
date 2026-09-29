@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import ReprogramarEmpresaModal from "../../../components/ReprogramarEmpresaModal";
 import BaixaEmpresaModal from "../../../components/BaixaEmpresaModal";
-import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, listarContasBancariasDaConta } from "../../../lib/db";
+import { listarEmpresasDaConta, listarEmpresaLancamentos, criarEmpresaLancamento, atualizarEmpresaLancamento, excluirEmpresaLancamento, listarContasBancariasDaConta, listarPessoasDaConta } from "../../../lib/db";
 import type { EmpresaLancamento, Empresa, Pessoa } from "../../../lib/supabase";
 
 // ─── Categorias empresariais ─────────────────────────────────
@@ -108,11 +108,12 @@ export default function EmpresaPagarPage() {
         listarEmpresasDaConta(fazendaIds),
         listarContasBancariasDaConta(fazendaIds[0]),
       ]);
-      // Query direta para pessoas — usa fazendaIds completo, sem resolução interna
-      const { data: pessData } = await supabase.from("pessoas").select("*").in("fazenda_id", fazendaIds).order("nome");
-      const pess = pessData ?? [];
+      // Achado real 29/09/2026: a query direta sem paginação cortava em 1.000 linhas (limite
+      // padrão do PostgREST) — com 3.043 pessoas na conta, a lista de Fornecedor parava na
+      // letra "I". listarPessoasDaConta já pagina certo (mesmo padrão usado em outras telas).
+      const pess = await listarPessoasDaConta(fazendaIds[0]).catch(() => [] as Pessoa[]);
       setEmpresas(emps);
-      setPessoas(pess as Pessoa[]);
+      setPessoas(pess);
       setContas(conts as ContaBancariaMin[]);
       // Lançamentos separado — pode falhar se tabela ainda não existe
       try {
@@ -155,7 +156,12 @@ export default function EmpresaPagarPage() {
     }
     setSaving(true);
     try {
-      const payload = { ...form, fazenda_id: fazendaId, tipo: "pagar" as const };
+      // empresa_nome/pessoa_nome/numero são campos de junção (join), não colunas reais de
+      // empresa_lancamentos — abrirEditar() copia o lançamento inteiro (com esses campos) pro
+      // formulário, e mandar isso de volta no update quebrava com "Could not find the
+      // 'empresa_nome' column ... in the schema cache" (achado real 29/09/2026).
+      const { empresa_nome: _en, pessoa_nome: _pn, numero: _nu, created_at: _ca, id: _id, ...formLimpo } = form as EmpresaLancamento;
+      const payload = { ...formLimpo, fazenda_id: fazendaId, tipo: "pagar" as const };
       if (editId) {
         await atualizarEmpresaLancamento(editId, payload);
       } else {

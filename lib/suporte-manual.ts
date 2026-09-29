@@ -1409,4 +1409,6 @@ Campo que classifica o lançamento para fins fiscais:
 | Baixa de CP/CR de Empresa vira parcial so por causa de juros/multa pequenos | Bug corrigido 29/09/2026 -- o valor pago agora recalcula sozinho ao digitar multa/juros/desconto |
 | "SyntaxError: The string did not match the expected pattern" ao sincronizar SIEG | Tempo esgotado -- "Forcar re-importacao" com muitas notas demora demais | Sincronizar um periodo menor, ou sem marcar "Forcar re-importacao" |
 | Entrada de NF de combustivel pede veiculo obrigatorio | Corrigido 29/09/2026 -- veiculo virou opcional, obrigatorio e Centro de Custo + Ano Safra do topo da NF |
+| "Could not find the empresa_nome column" ao editar CP/CR de Empresa | Bug corrigido 29/09/2026 |
+| Lista de Fornecedor no CP das Empresas para na letra I | Bug de paginacao corrigido 29/09/2026 (limite de 1.000 linhas do banco) |
 `;

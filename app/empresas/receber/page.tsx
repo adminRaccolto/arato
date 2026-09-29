@@ -131,7 +131,11 @@ export default function EmpresaReceberPage() {
     }
     setSaving(true);
     try {
-      const payload = { ...form, fazenda_id: fazendaId, tipo: "receber" as const };
+      // Mesmo bug do CP das Empresas: empresa_nome/pessoa_nome/numero são campos de junção,
+      // não colunas reais — mandá-los no update quebrava com "Could not find the 'empresa_nome'
+      // column ... in the schema cache" (achado real 29/09/2026).
+      const { empresa_nome: _en, pessoa_nome: _pn, numero: _nu, created_at: _ca, id: _id, ...formLimpo } = form as EmpresaLancamento;
+      const payload = { ...formLimpo, fazenda_id: fazendaId, tipo: "receber" as const };
       if (editId) { await atualizarEmpresaLancamento(editId, payload); }
       else         { await criarEmpresaLancamento(payload as any); }
       setModalOpen(false); carregar();
