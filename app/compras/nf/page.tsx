@@ -2881,6 +2881,7 @@ export default function NfCompraPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1100 }}>
               <colgroup>
                 <col style={{ width: 36 }} />     {/* checkbox */}
+                <col style={{ width: 56 }} />     {/* Doc. — NFE/NFSE/CTE */}
                 <col style={{ width: 90 }} />     {/* Nº/Série */}
                 <col style={{ width: "22%" }} />  {/* Emitente — flex */}
                 <col style={{ width: "18%" }} />  {/* Destinatário — flex */}
@@ -2896,7 +2897,7 @@ export default function NfCompraPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
+                  {["", "Doc.", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "6px 8px", textAlign: i >= 8 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -2922,6 +2923,7 @@ export default function NfCompraPage() {
                           style={{ cursor: "pointer" }}
                         />
                       </td>
+                      <td style={{ padding: "7px 8px" }}>{badge("NFE", "#E6F1FB", "#0C447C")}</td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
@@ -3113,6 +3115,7 @@ export default function NfCompraPage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
                 <colgroup>
+                  <col style={{ width: 56 }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: "24%" }} />
                   <col style={{ width: 90 }} />
@@ -3123,8 +3126,8 @@ export default function NfCompraPage() {
                 </colgroup>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Nº / Série", "Prestador", "Prestação", "Competência", "Serviço (código LC 116)", "Valor", "Status"].map((c, i) => (
-                      <th key={i} style={{ padding: "6px 8px", textAlign: i === 5 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                    {["Doc.", "Nº / Série", "Prestador", "Prestação", "Competência", "Serviço (código LC 116)", "Valor", "Status"].map((c, i) => (
+                      <th key={i} style={{ padding: "6px 8px", textAlign: i === 6 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                     ))}
                   </tr>
                 </thead>
@@ -3134,6 +3137,7 @@ export default function NfCompraPage() {
                       style={{ borderBottom: "0.5px solid var(--bg-tag)", cursor: "pointer" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <td style={{ padding: "7px 8px" }}>{badge("NFSE", "#F5F3FF", "#5B21B6")}</td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                         {ns.numero_nf}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{ns.serie}</span>
                       </td>

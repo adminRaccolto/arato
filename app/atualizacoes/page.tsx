@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-c",
+    data: "29/09/2026",
+    titulo: "Nova coluna \"Doc.\" identifica o tipo de documento (NFE/NFSE)",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A coluna \"Tipo\" da lista de NF de Produtos mostra a apropriação interna (Insumos, Peças…), não o tipo de documento fiscal — por isso não dava pra saber se a linha era NF-e, NFS-e ou (no futuro) CT-e só de olhar. Adicionada a coluna \"Doc.\" no início da linha, com uma etiqueta clara: NFE na tabela de NF de Produtos, NFSE na tabela de NF de Serviços." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-b",
     data: "29/09/2026",
     titulo: "NF de Serviços pendentes agora aparecem em Compras → NF de Produtos",
