@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-e",
+    data: "29/09/2026",
+    titulo: "Coluna Parcelamento diferencia à vista, à prazo e parcelado",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "A coluna Parcelamento da lista de NF de Produtos agora mostra três situações: \"à vista\" (sem duplicata, ou 1 única vencendo na própria emissão), \"À prazo\" (1 duplicata só, com a data de vencimento) e \"Nx parcelado\" (2 ou mais duplicatas, mostrando a quantidade e o 1º vencimento — o resto aparece passando o mouse). Só preenchida em NFs sincronizadas com o Sieg a partir de ontem (29/09-a); notas importadas antes continuam sem essa informação até serem ressincronizadas." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-d",
     data: "29/09/2026",
     titulo: "NF de Produtos: coluna Parcelamento, com as duplicatas do XML",

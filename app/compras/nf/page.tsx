@@ -2949,12 +2949,27 @@ export default function NfCompraPage() {
                         {nf.natureza || <span style={{ color: "var(--text-muted)" }}>—</span>}
                       </td>
                       <td style={{ padding: "7px 8px" }}>
-                        {nf.duplicatas_xml && nf.duplicatas_xml.length > 0 ? (
-                          <div title={nf.duplicatas_xml.map(d => `${d.numero || "—"}: ${fmtBRL(d.valor)} em ${fmtData(d.data_vencimento)}`).join("\n")}>
-                            {badge(`${nf.duplicatas_xml.length}x`, "#EDF4FB", "#0B3A6B")}
-                            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>1ª {fmtData(nf.duplicatas_xml[0].data_vencimento)}</div>
-                          </div>
-                        ) : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>à vista</span>}
+                        {(() => {
+                          const dups = nf.duplicatas_xml ?? [];
+                          // à vista: sem duplicata, ou 1 única com vencimento na própria emissão.
+                          // à prazo: 1 duplicata só, vencendo depois da emissão.
+                          // parcelado: 2+ duplicatas — mostra só a quantidade e o 1º vencimento.
+                          const aVista = dups.length === 0 || (dups.length === 1 && dups[0].data_vencimento === nf.data_emissao);
+                          if (aVista) return <span style={{ fontSize: 11, color: "var(--text-muted)" }}>à vista</span>;
+                          const tooltip = dups.map(d => `${d.numero || "—"}: ${fmtBRL(d.valor)} em ${fmtData(d.data_vencimento)}`).join("\n");
+                          if (dups.length === 1) return (
+                            <div title={tooltip}>
+                              {badge("À prazo", "#FBF3E0", "#7B4A00")}
+                              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>{fmtData(dups[0].data_vencimento)}</div>
+                            </div>
+                          );
+                          return (
+                            <div title={tooltip}>
+                              {badge(`${dups.length}x parcelado`, "#EDF4FB", "#0B3A6B")}
+                              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>1ª {fmtData(dups[0].data_vencimento)}</div>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>
                         {fmtBRL(nf.valor_total)}
