@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { EmpresaLancamento } from "../lib/supabase";
 
 type Conta = { id: string; nome: string };
@@ -36,7 +36,12 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
   const parcial = valorPago < devido - 0.01;
   const restante = Math.max(0, devido - valorPago);
 
-  const sugerido = useMemo(() => mask(Math.max(0, saldo + num(multa) + num(juros) - num(desc))), [saldo, multa, juros, desc]);
+  // Achado real 29/09/2026 (mesmo bug já corrigido no CP do produtor): Multa/Juros/Desconto
+  // só alteravam o próprio campo — "Valor pago agora" ficava parado no saldo original, então
+  // pagar o saldo + 4 centavos de juros (por exemplo) sempre virava "baixa parcial" com esses
+  // centavos "em aberto". Agora, como no produtor, cada encargo recalcula o valor pago na hora.
+  const recalcValor = (novaMulta: string, novoJuros: string, novoDesc: string) =>
+    setValor(mask(Math.max(0, saldo + num(novaMulta) + num(novoJuros) - num(novoDesc))));
 
   async function confirmar() {
     setErro("");
@@ -78,13 +83,13 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
-          <div><label style={lbl}>Multa (R$)</label><input style={inp} value={multa} onChange={e => setMulta(e.target.value)} placeholder="0,00" /></div>
-          <div><label style={lbl}>Juros (R$)</label><input style={inp} value={juros} onChange={e => setJuros(e.target.value)} placeholder="0,00" /></div>
-          <div><label style={lbl}>Desconto (R$)</label><input style={inp} value={desc} onChange={e => setDesc(e.target.value)} placeholder="0,00" /></div>
+          <div><label style={lbl}>Multa (R$)</label><input style={inp} value={multa} onChange={e => { setMulta(e.target.value); recalcValor(e.target.value, juros, desc); }} placeholder="0,00" /></div>
+          <div><label style={lbl}>Juros (R$)</label><input style={inp} value={juros} onChange={e => { setJuros(e.target.value); recalcValor(multa, e.target.value, desc); }} placeholder="0,00" /></div>
+          <div><label style={lbl}>Desconto (R$)</label><input style={inp} value={desc} onChange={e => { setDesc(e.target.value); recalcValor(multa, juros, e.target.value); }} placeholder="0,00" /></div>
           <div>
             <label style={lbl}>Valor {pagar ? "pago" : "recebido"} agora (R$) *</label>
             <input style={{ ...inp, fontWeight: 700 }} value={valor} onChange={e => setValor(e.target.value)} />
-            {sugerido !== valor && <button type="button" onClick={() => setValor(sugerido)} style={{ background: "none", border: "none", color: "#1A4870", fontSize: 11, cursor: "pointer", padding: "3px 0" }}>Usar total devido ({fmtBRL(num(sugerido))})</button>}
+            <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Recalculado sozinho com multa/juros/desconto; edite se pagou valor diferente</div>
           </div>
         </div>
         {parcial && valorPago > 0 && (

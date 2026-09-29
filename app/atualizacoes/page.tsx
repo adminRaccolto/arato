@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-f",
+    data: "29/09/2026",
+    titulo: "Baixa de CP/CR das Empresas: juros/multa não eram somados no valor pago",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Mesmo bug já corrigido no Contas a Pagar/Receber do produtor: ao digitar Multa, Juros ou Desconto na baixa de um CP/CR de Empresa, o campo \"Valor pago agora\" não recalculava sozinho — pagar o saldo mais alguns centavos de juros sempre virava \"baixa parcial\", com os centavos ficando em aberto pra sempre. Agora o valor pago é recalculado automaticamente a cada encargo digitado, do mesmo jeito que já funciona no financeiro do produtor." },
+    ],
+    onde: "Financeiro → Empresas → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.09.29-e",
     data: "29/09/2026",
     titulo: "Coluna Parcelamento diferencia à vista, à prazo e parcelado",
