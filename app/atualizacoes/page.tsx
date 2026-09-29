@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-i",
+    data: "29/09/2026",
+    titulo: "NF de Serviços pendentes: erro ao carregar agora aparece na tela",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A seção \"NF de Serviços pendentes\" em Compras → NF de Produtos podia ficar vazia sem nenhum aviso quando a consulta falhasse — o erro do banco não era conferido. Agora, se a consulta falhar, aparece uma faixa explicando o motivo em vez de a seção simplesmente sumir." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-h",
     data: "29/09/2026",
     titulo: "Sincronizar SIEG com \"Forçar re-importação\": erro de tempo esgotado",

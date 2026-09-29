@@ -300,6 +300,7 @@ export default function NfCompraPage() {
   // pendentes nesta mesma tela; clicar leva para o wizard de NF de Serviços (documento diferente,
   // continua processado lá — nunca misturar os dois formulários, ver histórico do projeto).
   const [nfServicosPend, setNfServicosPend] = useState<{ id: string; numero_nf: string; serie: string; prestador_nome: string; prestador_cnpj?: string; data_prestacao: string; competencia?: string; codigo_servico?: string; valor_servico: number; status: string }[]>([]);
+  const [nfServicosErro, setNfServicosErro] = useState("");
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
   const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
@@ -654,14 +655,18 @@ export default function NfCompraPage() {
     setDepositos(depData);
     setPessoas(pesData);
 
-    // NFS-e pendentes/digitando — mesma conta, exibidas junto nesta tela (etapa 1 da unificação)
+    // NFS-e pendentes/digitando — mesma conta, exibidas junto nesta tela (etapa 1 da unificação).
+    // Achado real 29/09/2026: a query anterior só lia `{ data }`, nunca conferia `{ error }` — uma
+    // falha (sessão, RLS) voltava data=null em silêncio, sem lançar exceção, então nada aparecia e
+    // nenhum aviso indicava o motivo (mesmo padrão já corrigido em vários outros pontos hoje).
     try {
-      const { data: nfse } = await supabase.from("nf_servicos")
+      const { data: nfse, error: nfseErr } = await supabase.from("nf_servicos")
         .select("id, numero_nf, serie, prestador_nome, prestador_cnpj, data_prestacao, competencia, codigo_servico, valor_servico, status")
         .in("fazenda_id", idsParaNf).in("status", ["pendente", "digitando"])
         .order("data_prestacao", { ascending: false });
-      setNfServicosPend(nfse ?? []);
-    } catch { setNfServicosPend([]); }
+      if (nfseErr) { console.error("[NFS-e pendentes]", nfseErr); setNfServicosErro(nfseErr.message); setNfServicosPend([]); }
+      else { setNfServicosErro(""); setNfServicosPend(nfse ?? []); }
+    } catch (e) { setNfServicosErro(e instanceof Error ? e.message : String(e)); setNfServicosPend([]); }
 
     // Centros de custo — usa da conta para abranger todas as fazendas do produtor
     try {
@@ -3146,6 +3151,11 @@ export default function NfCompraPage() {
 
         {/* ── NFS-e pendentes — etapa 1 da unificação: mostradas nesta mesma tela, clique leva
             pro wizard de NF de Serviços (documento diferente, processado lá) ── */}
+        {nfServicosErro && (
+          <div style={{ ...card, marginTop: 20, background: "#FEE2E2", border: "0.5px solid #E24B4A50", color: "#791F1F", fontSize: 12, padding: "10px 16px" }}>
+            Não foi possível carregar as NF de Serviços pendentes: {nfServicosErro}
+          </div>
+        )}
         {nfServicosPend.length > 0 && (
           <div style={{ ...card, padding: "0", overflow: "hidden", marginTop: 20 }}>
             <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
