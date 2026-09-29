@@ -296,6 +296,10 @@ export default function NfCompraPage() {
 
   // Dados mestre
   const [nfs, setNfs]             = useState<NfEntrada[]>([]);
+  // Etapa 1 da unificação das telas de nota (NF/NFS-e/CT-e, a pedido do dono) — mostra as NFS-e
+  // pendentes nesta mesma tela; clicar leva para o wizard de NF de Serviços (documento diferente,
+  // continua processado lá — nunca misturar os dois formulários, ver histórico do projeto).
+  const [nfServicosPend, setNfServicosPend] = useState<{ id: string; numero_nf: string; serie: string; prestador_nome: string; prestador_cnpj?: string; data_prestacao: string; competencia?: string; codigo_servico?: string; valor_servico: number; status: string }[]>([]);
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
   const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
@@ -649,6 +653,15 @@ export default function NfCompraPage() {
     setInsumos(insData);
     setDepositos(depData);
     setPessoas(pesData);
+
+    // NFS-e pendentes/digitando — mesma conta, exibidas junto nesta tela (etapa 1 da unificação)
+    try {
+      const { data: nfse } = await supabase.from("nf_servicos")
+        .select("id, numero_nf, serie, prestador_nome, prestador_cnpj, data_prestacao, competencia, codigo_servico, valor_servico, status")
+        .in("fazenda_id", idsParaNf).in("status", ["pendente", "digitando"])
+        .order("data_prestacao", { ascending: false });
+      setNfServicosPend(nfse ?? []);
+    } catch { setNfServicosPend([]); }
 
     // Centros de custo — usa da conta para abranger todas as fazendas do produtor
     try {
@@ -3085,6 +3098,61 @@ export default function NfCompraPage() {
             </div>
           )}
         </div>
+
+        {/* ── NFS-e pendentes — etapa 1 da unificação: mostradas nesta mesma tela, clique leva
+            pro wizard de NF de Serviços (documento diferente, processado lá) ── */}
+        {nfServicosPend.length > 0 && (
+          <div style={{ ...card, padding: "0", overflow: "hidden", marginTop: 20 }}>
+            <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>NF de Serviços pendentes</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>Clique numa linha para processar em Compras → NF de Serviços</div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, background: "#FBF3E0", color: "#7B4A00", padding: "3px 10px", borderRadius: 10 }}>{nfServicosPend.length}</span>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
+                <colgroup>
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: "24%" }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 90 }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "var(--bg-page)" }}>
+                    {["Nº / Série", "Prestador", "Prestação", "Competência", "Serviço (código LC 116)", "Valor", "Status"].map((c, i) => (
+                      <th key={i} style={{ padding: "6px 8px", textAlign: i === 5 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {nfServicosPend.map(ns => (
+                    <tr key={ns.id} onClick={() => router.push("/compras/nf-servico")}
+                      style={{ borderBottom: "0.5px solid var(--bg-tag)", cursor: "pointer" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+                        {ns.numero_nf}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{ns.serie}</span>
+                      </td>
+                      <td style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)", overflow: "hidden" }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ns.prestador_nome}</div>
+                        {ns.prestador_cnpj && <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{ns.prestador_cnpj}</div>}
+                      </td>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(ns.data_prestacao)}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{ns.competencia || "—"}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ns.codigo_servico || "—"}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>{fmtBRL(ns.valor_servico)}</td>
+                      <td style={{ padding: "7px 8px" }}>{badge(ns.status === "pendente" ? "Pendente" : "Digitando", ns.status === "pendente" ? "#FBF3E0" : "#EEEEEE", ns.status === "pendente" ? "#7B4A00" : "#555")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ══════════════════════════════════════════════════════

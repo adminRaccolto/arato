@@ -1405,4 +1405,5 @@ Campo que classifica o lançamento para fins fiscais:
 | NF de combustivel pede veiculo e nao mostra catalogo | Apropriacao Direta e so pra abastecimento direto de veiculo; reposicao de tanque usa Compra Normal + E Combustivel | Usar o botao "E reposicao de tanque -> Mudar para Compra Normal" que aparece na tela |
 | Como excluir uma folha de pagamento | Financeiro -> Folha de Pagamento -> abrir a folha -> Excluir Folha | Reverte CPs de salario/FGTS/INSS e adiantamentos antes de apagar; bloqueia se algum CP ja foi baixado em bordero |
 | Serie/numero de NF-e de uma IE "sumiu" depois de editar o produtor | Bug corrigido 28/09/2026 -- salvar o produtor recriava as IEs, orfando a config fiscal (Secao 304 nao relacionada) | Reconfigurar a serie/numero dessa IE em Parametros -> Fiscal; a partir do deploy nao acontece mais |
+| Onde ver NF de Servicos pendentes | Aparecem tambem em Compras -> NF de Produtos, numa secao abaixo da lista principal; clicar leva pro processamento em NF de Servicos |
 `;

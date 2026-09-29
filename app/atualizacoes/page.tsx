@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-b",
+    data: "29/09/2026",
+    titulo: "NF de Serviços pendentes agora aparecem em Compras → NF de Produtos",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Etapa 2 da unificação das telas de nota: a lista de Compras → NF de Produtos agora mostra também uma seção com as NF de Serviços pendentes (número/série, prestador, data de prestação, competência, código do serviço LC 116, valor, status). Clicar numa linha leva para Compras → NF de Serviços, onde o processamento continua — os dois documentos continuam sendo formulários diferentes por baixo (retenções, ISS, CNAE não têm equivalente em NF de produto), só a visão de \"o que está pendente\" ficou num lugar só." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-a",
     data: "29/09/2026",
     titulo: "NF de Produtos: removidos os cards de resumo, nova coluna Operação NF",
