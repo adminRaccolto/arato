@@ -2800,6 +2800,26 @@ export default function NfCompraPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
               {selectedNfs.size} NF{selectedNfs.size > 1 ? "s" : ""} selecionada{selectedNfs.size > 1 ? "s" : ""}
             </span>
+            {/* Ver / DANFE — só fazem sentido numa NF por vez; aparecem aqui com exatamente 1 marcada */}
+            {selectedNfs.size === 1 && (() => {
+              const nfUnica = nfsFiltradas.find(n => selectedNfs.has(n.id));
+              if (!nfUnica) return null;
+              return (
+                <>
+                  <button onClick={() => abrirVisualizador(nfUnica)} disabled={nfViewerLoading}
+                    style={{ padding: "6px 14px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                    👁 Ver
+                  </button>
+                  {nfUnica.chave_acesso && (
+                    <a href={`/api/fiscal/danfe?chave=${nfUnica.chave_acesso}&fazenda_id=${nfUnica.fazenda_id}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ padding: "6px 14px", background: "#F0FDF4", color: "#15803D", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      ↗ DANFE
+                    </a>
+                  )}
+                </>
+              );
+            })()}
             <button
               onClick={() => {
                 const nfsSel = nfsFiltradas.filter(n => selectedNfs.has(n.id) && n.status === "pendente");
@@ -3016,20 +3036,8 @@ export default function NfCompraPage() {
                       </td>
                       <td style={{ padding: "7px 8px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
-                          {/* Ver */}
-                          <button onClick={() => abrirVisualizador(nf)} disabled={nfViewerLoading}
-                            style={{ padding: "3px 8px", border: "0.5px solid #44444450", borderRadius: 6, background: "#F2F2F2", cursor: "pointer", fontSize: 10, color: "#111111", fontWeight: 600, whiteSpace: "nowrap" }}>
-                            Ver
-                          </button>
-
-                          {/* DANFE */}
-                          {nf.chave_acesso && (
-                            <a href={`/api/fiscal/danfe?chave=${nf.chave_acesso}&fazenda_id=${nf.fazenda_id}`}
-                              target="_blank" rel="noopener noreferrer"
-                              style={{ padding: "3px 8px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#F0FDF4", fontSize: 10, color: "#15803D", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap" }}>
-                              ↗ DANFE
-                            </a>
-                          )}
+                          {/* Ver e DANFE saíram daqui — ficam na barra de seleção acima da tabela
+                              quando 1 NF está marcada, pra dar mais espaço à linha. */}
 
                           {/* ⋮ dropdown — todas as ações secundárias */}
                           {nf.status !== "cancelada" && (() => {

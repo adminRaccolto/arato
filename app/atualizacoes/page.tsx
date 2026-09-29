@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-g",
+    data: "29/09/2026",
+    titulo: "Ver e DANFE saíram da linha da NF — agora ficam na barra de seleção",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Os botões Ver e DANFE deixaram de aparecer em toda linha da lista de NF de Produtos, deixando a tabela mais limpa. Agora aparecem na barra escura que já existe quando você marca o checkbox de uma NF — com exatamente 1 marcada, os dois botões surgem ali e agem sobre ela. O menu ⋮ (com todas as outras ações — Processar, Editar, Reparar, Reclassificar, Estornar…) continua na linha, porque muda conforme o status de cada NF." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-f",
     data: "29/09/2026",
     titulo: "Baixa de CP/CR das Empresas: juros/multa não eram somados no valor pago",
