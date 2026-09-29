@@ -2890,6 +2890,7 @@ export default function NfCompraPage() {
                 <col style={{ width: 80 }} />     {/* Tipo */}
                 <col style={{ width: 60 }} />     {/* Origem */}
                 <col style={{ width: "16%" }} />  {/* Operação NF — natureza declarada no XML */}
+                <col style={{ width: 100 }} />    {/* Parcelamento — duplicatas do XML */}
                 <col style={{ width: 110 }} />    {/* Valor Total */}
                 <col style={{ width: 90 }} />     {/* Status */}
                 <col style={{ width: 100 }} />    {/* Manifest. */}
@@ -2897,7 +2898,7 @@ export default function NfCompraPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["", "Doc.", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
+                  {["", "Doc.", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "6px 8px", textAlign: i >= 8 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -2946,6 +2947,14 @@ export default function NfCompraPage() {
                       <td style={{ padding: "7px 8px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
                       <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.natureza ?? undefined}>
                         {nf.natureza || <span style={{ color: "var(--text-muted)" }}>—</span>}
+                      </td>
+                      <td style={{ padding: "7px 8px" }}>
+                        {nf.duplicatas_xml && nf.duplicatas_xml.length > 0 ? (
+                          <div title={nf.duplicatas_xml.map(d => `${d.numero || "—"}: ${fmtBRL(d.valor)} em ${fmtData(d.data_vencimento)}`).join("\n")}>
+                            {badge(`${nf.duplicatas_xml.length}x`, "#EDF4FB", "#0B3A6B")}
+                            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>1ª {fmtData(nf.duplicatas_xml[0].data_vencimento)}</div>
+                          </div>
+                        ) : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>à vista</span>}
                       </td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>
                         {fmtBRL(nf.valor_total)}

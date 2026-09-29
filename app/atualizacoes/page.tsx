@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-d",
+    data: "29/09/2026",
+    titulo: "NF de Produtos: coluna Parcelamento, com as duplicatas do XML",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "novo", texto: "Nova coluna \"Parcelamento\" na lista de NF de Produtos: mostra quantas duplicatas (parcelas) o emitente declarou no XML e a data da 1ª — passe o mouse pra ver todas com valor e vencimento. NFs sem duplicata aparecem como \"à vista\". Preenchida automaticamente nas NFs importadas do Sieg a partir de agora — NFs já importadas antes ficam em branco até serem reimportadas. Requer a Seção 307 de migration." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-c",
     data: "29/09/2026",
     titulo: "Nova coluna \"Doc.\" identifica o tipo de documento (NFE/NFSE)",

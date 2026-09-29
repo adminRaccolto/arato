@@ -1271,6 +1271,7 @@ export type NfEntrada = {
   operacao_gerencial_id?: string; // para consumo direto
   centro_custo_id?: string;       // para consumo direto
   data_vencimento_cp?: string;    // vencimento da CP gerada
+  duplicatas_xml?: { numero: string; data_vencimento: string; valor: number }[]; // parcelamento declarado no XML (cobr/dup)
   deposito_destino_id?: string;   // para remessa: depósito operacional destino
   // Safra e ciclo (classificação na entrada)
   ano_safra_id?: string;

@@ -230,6 +230,7 @@ export async function POST(req: NextRequest) {
           valor_total:       nfe.valor_total,
           ...nfe.totais,   // valor_produtos, desconto, IPI, ST, FCP-ST, DIFAL, ICMS deson. do <ICMSTot>
           natureza:          nfe.natureza,
+          duplicatas_xml:    nfe.duplicatas.length > 0 ? nfe.duplicatas : null,
           cfop:              nfe.cfop,
           cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação
           nome_destinatario: nfe.nome_destinatario,
@@ -258,6 +259,7 @@ export async function POST(req: NextRequest) {
           valor_total:       nfe.valor_total,
           ...nfe.totais,   // valor_produtos, desconto, IPI, ST, FCP-ST, DIFAL, ICMS deson. do <ICMSTot>
           natureza:          nfe.natureza,
+          duplicatas_xml:    nfe.duplicatas.length > 0 ? nfe.duplicatas : null,
           cfop:              nfe.cfop,
           cnpj_destino:      nfe.cnpj_destinatario,   // CNPJ/CPF exato do <dest> — essencial para Manifestação
           nome_destinatario: nfe.nome_destinatario,

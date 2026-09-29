@@ -142,6 +142,10 @@ export interface NFeParseResult {
   totais:             { valor_produtos: number; valor_desconto: number; valor_ipi: number; valor_st: number; valor_fcp_st: number; valor_difal: number; valor_icms_deson: number };
   cfop:               string;
   itens:              NFeItemParsed[];
+  // Duplicatas (cobr/dup) — parcelamento declarado pelo emitente na própria NF-e. Usado só pra
+  // exibir "parcelado em N vezes" e o próximo vencimento na lista, sem abrir a nota; o cronograma
+  // de pagamento de verdade continua sendo decidido pelo usuário ao processar (Passo 2).
+  duplicatas:         { numero: string; data_vencimento: string; valor: number }[];
 }
 
 export interface NFeItemParsed {
@@ -210,10 +214,24 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
       });
     }
 
+    const cobrBlock = blockOf(xml, "cobr");
+    const dupRe = new RegExp(`<${NS}dup(?:\\s[^>]*)?>([\\s\\S]*?)</${NS}dup>`, "g");
+    const duplicatas: { numero: string; data_vencimento: string; valor: number }[] = [];
+    let dm;
+    while ((dm = dupRe.exec(cobrBlock)) !== null) {
+      const bloco = dm[1];
+      duplicatas.push({
+        numero:          tagVal(bloco, "nDup"),
+        data_vencimento: tagVal(bloco, "dVenc"),
+        valor:           parseFloat(tagVal(bloco, "vDup") || "0"),
+      });
+    }
+    duplicatas.sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+
     return { chave, numero, serie, data_emissao, natureza,
              cnpj_emitente, nome_emitente, ie_emitente,
              cnpj_destinatario, nome_destinatario,
-             valor_total, totais, cfop, itens };
+             valor_total, totais, cfop, itens, duplicatas };
   } catch {
     return null;
   }

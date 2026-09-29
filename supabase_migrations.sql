@@ -13985,3 +13985,12 @@ ALTER TABLE movimentacoes_estoque
   ADD COLUMN IF NOT EXISTS romaneio_entrada_id UUID REFERENCES romaneios_entrada(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_mov_estoque_romaneio ON movimentacoes_estoque(romaneio_entrada_id) WHERE romaneio_entrada_id IS NOT NULL;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 307 — nf_entradas: duplicatas (parcelamento) declaradas no XML, pra
+-- exibir na lista sem precisar abrir cada NF (etapa da unificação das telas
+-- de nota — NF/NFS-e/CT-e, pedido do dono 29/09/2026).
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS duplicatas_xml JSONB;   -- [{numero,data_vencimento,valor}], ordenado por vencimento
+NOTIFY pgrst, 'reload schema';
