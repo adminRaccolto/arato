@@ -2721,21 +2721,6 @@ export default function NfCompraPage() {
           </div>
         </div>
 
-        {/* ── Cards de resumo ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
-          {[
-            { label: "Total no mês",   value: fmtBRL(nfs.filter(n => n.data_emissao?.startsWith(new Date().toISOString().substring(0,7)) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_total,0)), bg: "var(--bg-card)" },
-            { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente").length),   bg: "#FBF3E0" },
-            { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
-            { label: "Canceladas",     value: String(nfs.filter(n=>n.status==="cancelada").length),  bg: "#FCEBEB" },
-          ].map(({ label, value, bg }) => (
-            <div key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
-              <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
-            </div>
-          ))}
-        </div>
-
         {/* ── Filtros ── */}
         <div style={{ ...card, marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <input
@@ -2890,6 +2875,7 @@ export default function NfCompraPage() {
                 <col style={{ width: 82 }} />     {/* Entrada */}
                 <col style={{ width: 80 }} />     {/* Tipo */}
                 <col style={{ width: 60 }} />     {/* Origem */}
+                <col style={{ width: "16%" }} />  {/* Operação NF — natureza declarada no XML */}
                 <col style={{ width: 110 }} />    {/* Valor Total */}
                 <col style={{ width: 90 }} />     {/* Status */}
                 <col style={{ width: 100 }} />    {/* Manifest. */}
@@ -2897,7 +2883,7 @@ export default function NfCompraPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
+                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "6px 8px", textAlign: i >= 8 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -2943,6 +2929,9 @@ export default function NfCompraPage() {
                       <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
                       <td style={{ padding: "7px 8px" }}>{tm ? badge(tm.label, tm.bg, "#333") : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
                       <td style={{ padding: "7px 8px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.natureza ?? undefined}>
+                        {nf.natureza || <span style={{ color: "var(--text-muted)" }}>—</span>}
+                      </td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>
                         {fmtBRL(nf.valor_total)}
                         {nf.observacao?.includes("WhatsApp") && (

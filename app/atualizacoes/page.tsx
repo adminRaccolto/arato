@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-a",
+    data: "29/09/2026",
+    titulo: "NF de Produtos: removidos os cards de resumo, nova coluna Operação NF",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Primeira etapa da unificação da tela de processamento de notas (NF, NFS-e, CT-e), a pedido do dono, inspirada no sistema de referência. Removidos os 4 cards de resumo do topo (Total no mês / Pendentes / Processadas / Canceladas). Nova coluna \"Operação NF\" mostrando a natureza da operação declarada pelo emitente no XML da nota. Próximas etapas: unir a lista com NF de Serviços (clique abre o wizard certo de cada tipo), mostrar parcelamento/vencimento das duplicatas, e desenhar o fluxo de CT-e recebido de terceiro (não existe hoje — hoje só emitimos CT-e)." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.28-p",
     data: "28/09/2026",
     titulo: "Cadastro de Produtor: salvar não recria mais as Inscrições Estaduais",
