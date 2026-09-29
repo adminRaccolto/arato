@@ -1678,12 +1678,21 @@ export default function NfCompraPage() {
     if (tipo === "custo_direto") {
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
-        if (modoDireto === "combustivel" && !it.maquina_id) {
-          setErr(`Item "${it.descricao_nf}": selecione o veículo que abasteceu.`);
-          return;
-        }
+        // Achado real 29/09/2026 (pedido do dono): veículo deixou de ser obrigatório em
+        // combustível — nem toda compra é abastecimento de um veículo específico (pode ser
+        // reposição de tanque/bomba, ver o botão "É reposição de tanque" acima). Continua
+        // disponível pra quem quer registrar no histórico de abastecimento; se informar o
+        // veículo, o horímetro continua pedido (é o que alimenta esse histórico).
         if (modoDireto === "combustivel" && it.maquina_id && !it.horimetro) {
           setErr(`Item "${it.descricao_nf}": informe o hodômetro/horímetro do veículo — obrigatório pra registrar no histórico de abastecimento.`);
+          return;
+        }
+        if (modoDireto === "combustivel" && !cab.centro_custo_id) {
+          setErr(`Item "${it.descricao_nf}": selecione o Centro de Custo do lançamento (campo no topo da NF).`);
+          return;
+        }
+        if (modoDireto === "combustivel" && !cab.ano_safra_id) {
+          setErr(`Item "${it.descricao_nf}": selecione o Ano Safra (campo no topo da NF).`);
           return;
         }
         // Manutenção: rateio por frota é opcional (critério do operador). Sem máquina,
@@ -1813,7 +1822,9 @@ export default function NfCompraPage() {
           valor_unitario:      it.vunit_nf,     // preço original da NF (custo real = valor_total/qtd em db.ts)
           valor_total:         it.valor_total,
           tipo_apropiacao:     tipoAprp,
-          centro_custo_id:     it.centro_custo_id || undefined,
+          // Combustível não tem seletor de CC por item (usa o do cabeçalho, agora obrigatório
+          // ali — veículo deixou de ser o campo obrigatório, ver guard acima).
+          centro_custo_id:     it.centro_custo_id || (modoDireto === "combustivel" ? cab.centro_custo_id : undefined) || undefined,
           // Só envia quando usado (true / não-vazio) — evita mandar essas colunas em
           // toda NF de Apropriação Direta enquanto a Seção 271 (novas colunas) não
           // tiver sido executada no banco; item que não usa o recurso novo continua
@@ -4755,7 +4766,7 @@ export default function NfCompraPage() {
                     {tipo === "custo_direto" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)", fontSize: 11, color: "#1A6B3C" }}>
                         {modoDireto === "combustivel" && (
-                          <>⛽ Combustível — {itens.filter(i => i.maquina_id && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com veículo selecionado.</>
+                          <>⛽ Combustível — {itens.filter(i => i.maquina_id && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com veículo selecionado (opcional — obrigatório é Centro de Custo e Ano Safra, no topo da NF).</>
                         )}
                         {modoDireto === "manutencao" && (
                           <>🔧 Manutenção — {itens.filter(i => i.maquinas_rateio.length > 0 && i.descricao_nf.trim()).length}/{itens.filter(i => i.descricao_nf.trim()).length} item(s) com rateio por frota (opcional).</>

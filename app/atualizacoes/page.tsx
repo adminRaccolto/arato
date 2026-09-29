@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.09.29-j",
+    data: "29/09/2026",
+    titulo: "NF de combustível (Apropriação Direta): veículo deixa de ser obrigatório",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Na Apropriação Direta com item de combustível, o veículo que abasteceu não é mais obrigatório para processar a NF — passam a ser obrigatórios o Centro de Custo e o Ano Safra do topo da NF (os mesmos campos que já existiam ali). O veículo continua disponível pra quem quer registrar no histórico de abastecimento do veículo; se for informado, o hodômetro/horímetro continua sendo pedido." },
+    ],
+    onde: "Compras → NF de Produtos → Apropriação Direta",
+  },
+  {
     versao: "2026.09.29-i",
     data: "29/09/2026",
     titulo: "NF de Serviços pendentes: erro ao carregar agora aparece na tela",

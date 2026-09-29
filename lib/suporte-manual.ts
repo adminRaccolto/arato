@@ -1408,4 +1408,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Onde ver NF de Servicos pendentes | Aparecem tambem em Compras -> NF de Produtos, numa secao abaixo da lista principal; clicar leva pro processamento em NF de Servicos |
 | Baixa de CP/CR de Empresa vira parcial so por causa de juros/multa pequenos | Bug corrigido 29/09/2026 -- o valor pago agora recalcula sozinho ao digitar multa/juros/desconto |
 | "SyntaxError: The string did not match the expected pattern" ao sincronizar SIEG | Tempo esgotado -- "Forcar re-importacao" com muitas notas demora demais | Sincronizar um periodo menor, ou sem marcar "Forcar re-importacao" |
+| Entrada de NF de combustivel pede veiculo obrigatorio | Corrigido 29/09/2026 -- veiculo virou opcional, obrigatorio e Centro de Custo + Ano Safra do topo da NF |
 `;
