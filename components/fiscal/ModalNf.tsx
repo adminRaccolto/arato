@@ -3365,8 +3365,19 @@ export default function ModalNf({
                     </div>
                   )}
 
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <button style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</button>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</button>
+                      {/* Estornar/Excluir — ficam aqui dentro do modal (não há mais botões de
+                          linha por tipo na grid unificada); mesmas condições de status do
+                          dropdown de ações da tela antiga. */}
+                      {nfEdit && nfEdit.status === "processada" && (
+                        <button onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
+                      )}
+                      {nfEdit && nfEdit.status !== "cancelada" && (
+                        <button onClick={() => iniciarExclusaoNf(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
+                      )}
+                    </div>
                     <div style={{ display: "flex", gap: 10 }}>
                       <button style={btnR} onClick={async () => {
                         // Salvar como pendente sem processar
