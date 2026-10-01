@@ -14302,3 +14302,271 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 312 — rel_lancamentos: tabela de leitura unificada de CP/CR
+-- (produtor + empresa), trigger-sync — 2º domínio do padrão validado no
+-- Pedido de Compra (Seções 310/311). Pedido do dono 01/10/2026.
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Une `lancamentos` (produtor) e `empresa_lancamentos` (empresa) numa só
+-- tabela de LEITURA — mesmo filtro/relatório consegue trazer CP/CR de
+-- produtor e de empresa juntos (resolve de quebra o backlog antigo
+-- "CP/CR Empresas idêntico ao do produtor").
+--
+-- IMPORTANTE — a ESCRITA não muda em nada: baixar, estornar, reprogramar,
+-- conciliar continuam batendo direto em lancamentos/empresa_lancamentos,
+-- exatamente como hoje. O trigger só REFLETE depois, nunca é o caminho de
+-- escrita — nenhuma rotina financeira existente muda de comportamento.
+--
+-- Vocabulário de status normalizado (status_normalizado), porque as duas
+-- tabelas usam palavras diferentes pro mesmo conceito:
+--   lancamentos:        previsto/em_aberto/vencido/vencendo/parcial/baixado/cancelado
+--   empresa_lancamentos: pendente/parcial/pago/cancelado
+-- → rel_lancamentos.status_normalizado: em_aberto | vencido | parcial | baixado | cancelado
+-- (status_origem guarda o valor cru original, sem perder nada)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS rel_lancamentos (
+  id                      uuid PRIMARY KEY,
+  origem_tabela           text NOT NULL,   -- 'lancamentos' | 'empresa_lancamentos'
+  fazenda_id              uuid,
+  conta_id                uuid,
+  empresa_id              uuid,
+  empresa_nome            text,
+  produtor_id             uuid,
+  produtor_nome           text,
+  tipo                    text,            -- 'pagar' | 'receber'
+  descricao               text,
+  categoria               text,
+  valor                   numeric,
+  valor_pago              numeric,
+  valor_multa             numeric,
+  valor_juros             numeric,
+  valor_desconto          numeric,
+  moeda                   text,
+  status_origem           text,            -- valor cru, como está na tabela de origem
+  status_normalizado      text,            -- em_aberto | vencido | parcial | baixado | cancelado
+  data_lancamento         date,
+  data_vencimento         date,
+  data_baixa              date,
+  pessoa_id               uuid,
+  pessoa_nome             text,
+  conta_bancaria          text,
+  centro_custo_id         uuid,
+  centro_custo_nome       text,
+  ano_safra_id            uuid,
+  ano_safra_descricao     text,
+  ciclo_id                uuid,
+  ciclo_descricao         text,
+  operacao_gerencial_id   uuid,
+  operacao_gerencial_nome text,
+  vinculo_atividade       text,
+  entidade_contabil       text,
+  origem_lancamento       text,            -- de onde veio (nf_entrada, folha, manual, etc.)
+  numero_documento        text,
+  observacao              text,
+  conciliado              boolean,
+  lote_id                 uuid,
+  updated_at              timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_conta    ON rel_lancamentos(conta_id);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_fazenda   ON rel_lancamentos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_status    ON rel_lancamentos(status_normalizado);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_tipo      ON rel_lancamentos(tipo);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_pessoa    ON rel_lancamentos(pessoa_id);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_venc      ON rel_lancamentos(data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_rel_lancamentos_origem    ON rel_lancamentos(origem_tabela);
+
+ALTER TABLE rel_lancamentos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_rel_lancamentos" ON rel_lancamentos;
+CREATE POLICY "allow_all_rel_lancamentos" ON rel_lancamentos
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT ON rel_lancamentos TO authenticated, anon;
+
+-- ── Recalcula 1 linha vinda de `lancamentos` (produtor) ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_lancamento_produtor(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v            lancamentos%ROWTYPE;
+  v_conta_id   uuid;
+  v_prod_nome  text;
+  v_pes_nome   text;
+  v_cc_nome    text;
+  v_safra_desc text;
+  v_ciclo_desc text;
+  v_og_nome    text;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM lancamentos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_lancamentos WHERE id = p_id AND origem_tabela = 'lancamentos';
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  SELECT nome INTO v_prod_nome FROM produtores WHERE id = v.produtor_id;
+  SELECT nome INTO v_pes_nome  FROM pessoas    WHERE id = v.pessoa_id;
+  SELECT nome INTO v_cc_nome   FROM centros_custo WHERE id = v.centro_custo_id;
+  SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v.ano_safra_id;
+  SELECT descricao INTO v_ciclo_desc FROM ciclos WHERE id = v.ciclo_id;
+  SELECT descricao INTO v_og_nome FROM operacoes_gerenciais WHERE id = v.operacao_gerencial_id;
+
+  -- lancamentos já usa o vocabulário alvo (em_aberto/vencido/parcial/baixado/
+  -- cancelado); "previsto"/"vencendo" caem em em_aberto por falta de coluna
+  -- própria pra esses dois estados no normalizado.
+  v_status_norm := CASE v.status
+    WHEN 'baixado'   THEN 'baixado'
+    WHEN 'cancelado' THEN 'cancelado'
+    WHEN 'parcial'   THEN 'parcial'
+    WHEN 'vencido'   THEN 'vencido'
+    ELSE 'em_aberto'
+  END;
+
+  INSERT INTO rel_lancamentos (
+    id, origem_tabela, fazenda_id, conta_id, empresa_id, empresa_nome, produtor_id, produtor_nome,
+    tipo, descricao, categoria, valor, valor_pago, valor_multa, valor_juros, valor_desconto, moeda,
+    status_origem, status_normalizado, data_lancamento, data_vencimento, data_baixa,
+    pessoa_id, pessoa_nome, conta_bancaria, centro_custo_id, centro_custo_nome,
+    ano_safra_id, ano_safra_descricao, ciclo_id, ciclo_descricao,
+    operacao_gerencial_id, operacao_gerencial_nome, vinculo_atividade, entidade_contabil,
+    origem_lancamento, numero_documento, observacao, conciliado, lote_id, updated_at
+  ) VALUES (
+    v.id, 'lancamentos', v.fazenda_id, v_conta_id, NULL, NULL, v.produtor_id, v_prod_nome,
+    v.tipo, v.descricao, v.categoria, v.valor, v.valor_pago, v.valor_multa, v.valor_juros, v.valor_desconto, v.moeda,
+    v.status, v_status_norm, v.data_lancamento, v.data_vencimento, v.data_baixa,
+    v.pessoa_id, v_pes_nome, v.conta_bancaria, v.centro_custo_id, v_cc_nome,
+    v.ano_safra_id, v_safra_desc, v.ciclo_id, v_ciclo_desc,
+    v.operacao_gerencial_id, v_og_nome, v.vinculo_atividade, v.entidade_contabil,
+    v.origem_lancamento, v.numero_documento, v.observacao, v.conciliado, v.lote_id, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id,
+    empresa_id = EXCLUDED.empresa_id, empresa_nome = EXCLUDED.empresa_nome,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome,
+    tipo = EXCLUDED.tipo, descricao = EXCLUDED.descricao, categoria = EXCLUDED.categoria,
+    valor = EXCLUDED.valor, valor_pago = EXCLUDED.valor_pago, valor_multa = EXCLUDED.valor_multa,
+    valor_juros = EXCLUDED.valor_juros, valor_desconto = EXCLUDED.valor_desconto, moeda = EXCLUDED.moeda,
+    status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    data_lancamento = EXCLUDED.data_lancamento, data_vencimento = EXCLUDED.data_vencimento, data_baixa = EXCLUDED.data_baixa,
+    pessoa_id = EXCLUDED.pessoa_id, pessoa_nome = EXCLUDED.pessoa_nome, conta_bancaria = EXCLUDED.conta_bancaria,
+    centro_custo_id = EXCLUDED.centro_custo_id, centro_custo_nome = EXCLUDED.centro_custo_nome,
+    ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    ciclo_id = EXCLUDED.ciclo_id, ciclo_descricao = EXCLUDED.ciclo_descricao,
+    operacao_gerencial_id = EXCLUDED.operacao_gerencial_id, operacao_gerencial_nome = EXCLUDED.operacao_gerencial_nome,
+    vinculo_atividade = EXCLUDED.vinculo_atividade, entidade_contabil = EXCLUDED.entidade_contabil,
+    origem_lancamento = EXCLUDED.origem_lancamento, numero_documento = EXCLUDED.numero_documento,
+    observacao = EXCLUDED.observacao, conciliado = EXCLUDED.conciliado, lote_id = EXCLUDED.lote_id,
+    updated_at = now();
+END;
+$$;
+
+-- ── Recalcula 1 linha vinda de `empresa_lancamentos` (empresa) ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_lancamento_empresa(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v            empresa_lancamentos%ROWTYPE;
+  v_conta_id   uuid;
+  v_emp_nome   text;
+  v_pes_nome   text;
+  v_cc_nome    text;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM empresa_lancamentos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_lancamentos WHERE id = p_id AND origem_tabela = 'empresa_lancamentos';
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  SELECT nome INTO v_emp_nome FROM empresas WHERE id = v.empresa_id;
+  SELECT nome INTO v_pes_nome FROM pessoas  WHERE id = v.pessoa_id;
+  -- centro_custo em empresa_lancamentos é texto livre (sem FK) — só repassa.
+  v_cc_nome := v.centro_custo;
+
+  v_status_norm := CASE v.status
+    WHEN 'pago'      THEN 'baixado'
+    WHEN 'cancelado' THEN 'cancelado'
+    WHEN 'parcial'   THEN 'parcial'
+    ELSE 'em_aberto'
+  END;
+
+  INSERT INTO rel_lancamentos (
+    id, origem_tabela, fazenda_id, conta_id, empresa_id, empresa_nome, produtor_id, produtor_nome,
+    tipo, descricao, categoria, valor, valor_pago, valor_multa, valor_juros, valor_desconto, moeda,
+    status_origem, status_normalizado, data_lancamento, data_vencimento, data_baixa,
+    pessoa_id, pessoa_nome, conta_bancaria, centro_custo_id, centro_custo_nome,
+    ano_safra_id, ano_safra_descricao, ciclo_id, ciclo_descricao,
+    operacao_gerencial_id, operacao_gerencial_nome, vinculo_atividade, entidade_contabil,
+    origem_lancamento, numero_documento, observacao, conciliado, lote_id, updated_at
+  ) VALUES (
+    v.id, 'empresa_lancamentos', v.fazenda_id, v_conta_id, v.empresa_id, v_emp_nome, NULL, NULL,
+    v.tipo, v.descricao, v.categoria, v.valor, v.valor_pago, v.valor_multa, v.valor_juros, v.valor_desconto, v.moeda,
+    v.status, v_status_norm, NULL, v.data_vencimento, v.data_pagamento,
+    v.pessoa_id, v_pes_nome, v.conta_bancaria, NULL, v_cc_nome,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    v.origem, v.numero_documento, v.observacao, v.conciliado, NULL, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id,
+    empresa_id = EXCLUDED.empresa_id, empresa_nome = EXCLUDED.empresa_nome,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome,
+    tipo = EXCLUDED.tipo, descricao = EXCLUDED.descricao, categoria = EXCLUDED.categoria,
+    valor = EXCLUDED.valor, valor_pago = EXCLUDED.valor_pago, valor_multa = EXCLUDED.valor_multa,
+    valor_juros = EXCLUDED.valor_juros, valor_desconto = EXCLUDED.valor_desconto, moeda = EXCLUDED.moeda,
+    status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    data_lancamento = EXCLUDED.data_lancamento, data_vencimento = EXCLUDED.data_vencimento, data_baixa = EXCLUDED.data_baixa,
+    pessoa_id = EXCLUDED.pessoa_id, pessoa_nome = EXCLUDED.pessoa_nome, conta_bancaria = EXCLUDED.conta_bancaria,
+    centro_custo_id = EXCLUDED.centro_custo_id, centro_custo_nome = EXCLUDED.centro_custo_nome,
+    origem_lancamento = EXCLUDED.origem_lancamento, numero_documento = EXCLUDED.numero_documento,
+    observacao = EXCLUDED.observacao, conciliado = EXCLUDED.conciliado,
+    updated_at = now();
+END;
+$$;
+
+-- ── Triggers ──
+CREATE OR REPLACE FUNCTION trg_fn_rel_lancamento_produtor() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_lancamentos WHERE id = OLD.id AND origem_tabela = 'lancamentos';
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_lancamento_produtor(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_lancamento_produtor ON lancamentos;
+CREATE TRIGGER trg_rel_lancamento_produtor
+AFTER INSERT OR UPDATE OR DELETE ON lancamentos
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_lancamento_produtor();
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_lancamento_empresa() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_lancamentos WHERE id = OLD.id AND origem_tabela = 'empresa_lancamentos';
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_lancamento_empresa(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_lancamento_empresa ON empresa_lancamentos;
+CREATE TRIGGER trg_rel_lancamento_empresa
+AFTER INSERT OR UPDATE OR DELETE ON empresa_lancamentos
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_lancamento_empresa();
+
+-- ── Backfill (pode demorar alguns minutos dependendo do volume real) ──
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM lancamentos LOOP
+    PERFORM fn_recalc_rel_lancamento_produtor(r.id);
+  END LOOP;
+  FOR r IN SELECT id FROM empresa_lancamentos LOOP
+    PERFORM fn_recalc_rel_lancamento_empresa(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

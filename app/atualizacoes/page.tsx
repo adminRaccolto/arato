@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-i",
+    data: "01/10/2026",
+    titulo: "Piloto 2: tabela de leitura unificada de CP/CR (rel_lancamentos)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Mesmo padrão validado no Pedido de Compra (Seções 310/311), aplicado agora ao Financeiro: tabela rel_lancamentos (Seção 312) une lancamentos (produtor) e empresa_lancamentos (empresa) numa única tabela de leitura, sincronizada por trigger, com status normalizado entre as duas origens (em_aberto/vencido/parcial/baixado/cancelado). A escrita (baixar, estornar, reprogramar, conciliar) continua 100% intocada nas tabelas originais — o trigger só reflete depois. Tela de validação em /financeiro/lancamentos-rel-piloto, fora do menu, só leitura." },
+    ],
+    onde: "Financeiro (piloto, fora do menu)",
+  },
+  {
     versao: "2026.10.01-h",
     data: "01/10/2026",
     titulo: "Relatório de Pedidos: filtro agora consulta a tabela rel_pedidos_compra (trigger-sync)",
