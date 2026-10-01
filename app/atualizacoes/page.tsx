@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-y",
+    data: "01/10/2026",
+    titulo: "Menu reorganizado: Documentos Fiscais e Compras",
+    modulos: ["Sistema"],
+    itens: [
+      { tipo: "novo", texto: "O menu Suprimentos virou Documentos Fiscais, organizado por direção: Notas de Entrada (Notas de Terceiro — a tela nova unificada de NF+NFS —, Notas Próprias, Retorno de Insumo, Retorno de Máquinas e Equipamentos), Notas de Saída (Notas de Venda, Notas de Transferência, Remessa) e Transporte (CT-e, MDF-e). \"NF de Produtos\" e \"NF de Serviços\" saíram do menu como itens próprios — moram agora dentro de Notas de Terceiro, que já é a tela nova unificada (NF + NFS juntas, numa linha de tempo só)." },
+      { tipo: "novo", texto: "Pedidos de Compra, Estoque de Insumos, Estoque de Grãos e a integração com SIEG saíram de Suprimentos e foram para Comercial → Logística, dentro de um novo grupo Compras — junto com um novo espaço de Relatórios (Insumos, Compras, Pendências de Classificação). Nenhuma tela mudou de lugar de verdade, nenhuma funcionalidade sumiu — só o menu que ficou mais organizado." },
+    ],
+    onde: "Documentos Fiscais / Comercial & Logística",
+  },
+  {
     versao: "2026.10.01-x",
     data: "01/10/2026",
     titulo: "Pedidos de Compra mais rápido (bastidor) — grid na tabela já pronta",

@@ -111,30 +111,42 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "suprimentos", label: "Suprimentos", panel: true, minStep: 5,
+    type: "group", id: "documentos-fiscais", label: "Documentos Fiscais", panel: true, minStep: 5,
     children: [
-      { type: "divider", label: "Compras" },
-      { id: "sup-pedidos",        label: "Pedidos de Compra",           path: "/compras",                     moduleId: "compras"    },
-      { id: "sup-nf-produtos",    label: "NF de Produtos",              path: "/compras/nf",                  moduleId: "nf_entrada" },
-      { id: "sup-nf-servicos",    label: "NF de Serviços",              path: "/compras/nf-servico",          moduleId: "nf_servico" },
-      { id: "sup-doc-fiscais",    label: "Documentos Fiscais (novo — em construção)", path: "/fiscal/documentos", moduleId: "nf_entrada" },
-      { id: "sup-pendencias-cl",  label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"                         },
-      { type: "divider", label: "Estoque de Insumos" },
-      { id: "sup-posicao",        label: "Posição de Insumos",          path: "/estoque"                                          },
-      { id: "sup-kardex",         label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex"                                   },
-      { id: "sup-transferencias", label: "Transferência entre Fazendas", path: "/estoque/transferencias"                          },
-      { type: "divider", label: "Estoque de Grãos" },
-      { id: "sup-graos-posicao",  label: "Estoque de Grãos",            path: "/estoque/graos"                                    },
-      { id: "sup-rom-terceiros",  label: "Romaneios de Terceiros",      path: "/relatorios/romaneios?aba=entrada"                 },
-      { type: "divider", label: "Integração de Documentos" },
-      { id: "sup-notas-capt",     label: "Notas Capturadas (SIEG)",     path: "/configuracoes/classificacao"                      },
-      { id: "sup-ligar-sieg",     label: "⚡ Ligar / Desligar SIEG",    path: "/configuracoes/automacoes"                         },
+      { type: "divider", label: "Notas de Entrada" },
+      { id: "docfis-terceiro",   label: "Notas de Terceiro",                 path: "/fiscal/documentos",             moduleId: "nf_entrada" },
+      { id: "docfis-proprias",   label: "Notas Próprias",                    path: "/fiscal/notas-proprias",         moduleId: "fiscal_nfe" },
+      { id: "docfis-ret-insumo", label: "Retorno de Insumo",                 path: "/fiscal/remessas",               moduleId: "fiscal_nfe" },
+      { id: "docfis-ret-maq",    label: "Retorno de Máquinas e Equipamentos", path: "/fiscal/transferencia-maquinas", moduleId: "fiscal_nfe" },
+      { type: "divider", label: "Notas de Saída" },
+      { id: "docfis-venda",      label: "Notas de Venda",                    path: "/comercial/faturamento",         moduleId: "contratos"  },
+      { id: "docfis-transf",     label: "Notas de Transferência",            path: "/fiscal/transferencia-maquinas", moduleId: "fiscal_nfe" },
+      { id: "docfis-remessa",    label: "Remessa",                          path: "/fiscal/remessas",               moduleId: "fiscal_nfe" },
+      { type: "divider", label: "Transporte" },
+      { id: "docfis-cte",        label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",                moduleId: "transporte" },
+      { id: "docfis-mdfe",       label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",               moduleId: "transporte" },
     ],
   },
 
   {
     type: "group", id: "comercial", label: "Comercial & Logística", panel: true, minStep: 4,
     children: [
+      { type: "divider", label: "Compras" },
+      { id: "com-pedidos",        label: "Pedido de Compras",           path: "/compras",                            moduleId: "compras" },
+      { type: "divider", label: "Estoque" },
+      { id: "com-transferencias", label: "Transferência entre Fazendas", path: "/estoque/transferencias"                          },
+      { id: "com-rom-terceiros",  label: "Romaneios de Terceiros",      path: "/relatorios/romaneios?aba=entrada"                 },
+      { type: "divider", label: "Integração de Documentos" },
+      { id: "com-notas-capt",     label: "Notas Capturadas (SIEG)",     path: "/configuracoes/classificacao"                      },
+      { id: "com-ligar-sieg",     label: "⚡ Ligar / Desligar SIEG",    path: "/configuracoes/automacoes"                         },
+      { type: "divider", label: "Relatórios — Insumos" },
+      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque"                                          },
+      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex"                                   },
+      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos"                                    },
+      { type: "divider", label: "Relatórios — Compras" },
+      { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/financeiro/relatorios?aba=pedidos_compra",        moduleId: "fin_relatorios" },
+      { type: "divider", label: "Relatórios — Pendências de Classificação" },
+      { id: "com-rel-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"                         },
       { type: "divider", label: "Comercialização" },
       { id: "com-contratos",          label: "Contratos de Grãos",          path: "/contratos",                    moduleId: "contratos"   },
       { id: "com-migrar-nf",          label: "Migração de NF entre Contratos", path: "/contratos/migrar-nf",       moduleId: "contratos"   },
@@ -275,8 +287,8 @@ const NAV: NavItem[] = [
 // Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
 const NAV_MODULE_MAP: Record<string, string[]> = {
   "producao":      ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades", "lavoura", "lavoura_planejamento", "lavoura_relatorios"],
-  "suprimentos":   ["compras", "nf_entrada", "nf_servico"],
-  "comercial":     ["contratos", "expedicao", "arrendamento", "transporte"],
+  "documentos-fiscais": ["nf_entrada", "nf_servico", "fiscal_nfe", "transporte"],
+  "comercial":     ["contratos", "expedicao", "arrendamento", "transporte", "compras", "fin_relatorios"],
   "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros", "apoio_financeiro", "fin_relatorios"],
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],
   "resultados":    ["custos", "fin_relatorios", "bi"],
@@ -472,8 +484,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   const grupoAtivo = (item: Extract<NavItem, { type: "group" }>) => {
     if (item.id === "producao")      return pathname.startsWith("/lavoura") || pathname.startsWith("/algodao") || pathname === "/estoque/romaneio-entrada" || pathname === "/mapa";
-    if (item.id === "suprimentos")   return pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/fiscal/manifestacao";
-    if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte") || pathname.startsWith("/balanca");
+    if (item.id === "documentos-fiscais") return pathname.startsWith("/fiscal/documentos") || pathname === "/fiscal/notas-proprias" || pathname === "/fiscal/remessas" || pathname.startsWith("/fiscal/transferencia-maquinas") || pathname === "/fiscal/manifestacao" || pathname.startsWith("/transporte/cte") || pathname.startsWith("/transporte/mdfe");
+    if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte") || pathname.startsWith("/balanca") || pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/configuracoes/classificacao" || pathname === "/configuracoes/automacoes";
     if (item.id === "financeiro")    return pathname.startsWith("/financeiro") || pathname.startsWith("/empresas");
     if (item.id === "fiscal")        return pathname === "/fiscal" || pathname.startsWith("/fiscal") || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
     if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios");
