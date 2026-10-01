@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-m",
+    data: "01/10/2026",
+    titulo: "Pilotos 3/4 (CP/CR unificado): tira o popup de filtro, vira grid sempre visível",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Correção de desenho no mesmo dia: os pilotos de Contas a Pagar/Receber unificado abriam com um popup de filtro bloqueando a tela — isso é jeito de relatório, não de lançamento. Reescritos pra abrir já com a lista carregada (mesmo período padrão da tela real: hoje até +3 meses), filtros como barra sempre visível acima do grid (Origem e Status viram botões de alternar, não exigem confirmar nada) e botão ↻ Atualizar só pra quando período/busca mudam de verdade. Baixar/Reprogramar/Reabrir/Novo Lançamento continuam chamando as mesmas rotinas das telas reais de produção." },
+    ],
+    onde: "Financeiro (pilotos, fora do menu): /financeiro/pagar-unificado-piloto e /financeiro/receber-unificado-piloto",
+  },
+  {
     versao: "2026.10.01-l",
     data: "01/10/2026",
     titulo: "Novo espaço dedicado a Relatórios: Pedidos de Compra sai de Compras e vai pra Financeiro → Relatórios",
