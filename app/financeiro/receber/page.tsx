@@ -655,15 +655,19 @@ export default function ContasAReceberPage() {
           <span>Saldo a receber: <strong style={{ color: "#16A34A" }}>{fmtBRL(totalAberto)}</strong></span>
         </div>
 
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
+        {/* maxHeight + overflow:auto (em vez de só overflowX no container inteiro) —
+            a barra de rolagem horizontal fica logo abaixo da área visível, não depois
+            dos 1000 registros. Cabeçalho sticky pra não perder o contexto das colunas
+            ao rolar verticalmente dentro do grid. */}
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 330px)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F4F6FA" }}>
-                <th style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE" }}>
+              <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}>
+                <th style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
                   <input type="checkbox" checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))} onChange={toggleTodos} />
                 </th>
                 {["Origem", "Nº", "Cliente", "Descrição", "Operação", "Safra", "Ciclo", "Centro Custo", "Vencimento", "Dias", "Venc. Original", "Baixa", "Valor", "Pago", "Saldo", "Moeda", "Conta", "Nº NF", "Lançado via", "Observação", "Status", "Ações"].map(h => (
-                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -683,7 +687,7 @@ export default function ContasAReceberPage() {
                     </td>
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
-                        {l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}
+                        {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                       </span>
                     </td>
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
@@ -781,7 +785,7 @@ export default function ContasAReceberPage() {
               </div>
               {itensLote.map((l, i) => (
                 <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 100px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
                   <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
                   <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                   <span style={{ fontWeight: 700, color: "#16A34A", textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(saldoLote(l))}</span>
@@ -863,7 +867,7 @@ export default function ContasAReceberPage() {
                 </div>
                 {verBorderoItens.map((l, i) => (
                   <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
                     <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(l.valor)}</span>
@@ -914,7 +918,7 @@ export default function ContasAReceberPage() {
                 const inpMini: React.CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, textAlign: "right", background: "#fff", boxSizing: "border-box", outline: "none" };
                 return (
                   <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 68px 80px 70px 70px 70px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
                     <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ color: "#888", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }}>{fmtBRL(saldoLote(l))}</span>

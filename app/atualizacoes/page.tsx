@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-d",
+    data: "02/10/2026",
+    titulo: "Ajustes de usabilidade: grids mais compactos, menu reorganizado e ações direto da lista de Documentos Fiscais",
+    modulos: ["Financeiro", "Fiscal", "Sistema"],
+    itens: [
+      { tipo: "novo", texto: "Contas a Pagar e Contas a Receber: coluna Origem agora mostra \"PF\"/\"PJ\" em vez de \"Produtor\"/\"Empresa\" — grid mais compacto, menos rolagem horizontal." },
+      { tipo: "novo", texto: "Contas a Pagar e Contas a Receber: a barra de rolagem horizontal do grid agora fica logo abaixo da área visível (cabeçalho fixo ao rolar), em vez de só aparecer depois de descer os 1000 registros." },
+      { tipo: "novo", texto: "Menu Comercial & Logística reorganizado: todos os relatórios (Posição de Insumos, Kardex, Estoque de Grãos, Pedidos de Compra, Pendências de Classificação) agora ficam juntos numa seção \"Relatórios\" só, separada por linha das funções de operação — mesmo padrão que o menu Financeiro já usava." },
+      { tipo: "novo", texto: "Documentos Fiscais → Notas de Terceiro: o grid ganhou coluna \"Ações\" com \"⋮\" por linha — Processar/Editar (pendente), Devolver e Estornar (processada) direto da lista, sem precisar abrir a NF primeiro. NFs importadas via SIEG também ganharam o controle de Manifestação (Ciência/Confirmar/Desconhecer/Não Realizada) direto na lista, igual a tela antiga." },
+    ],
+    onde: "Financeiro → Contas a Pagar/Receber · Comercial & Logística · Documentos Fiscais → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.02-c",
     data: "02/10/2026",
     titulo: "Ações em lote agora também na tela nova de Documentos Fiscais — Notas de Terceiro completa",

@@ -140,14 +140,6 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Integração de Documentos" },
       { id: "com-notas-capt",     label: "Notas Capturadas (SIEG)",     path: "/configuracoes/classificacao"                      },
       { id: "com-ligar-sieg",     label: "⚡ Ligar / Desligar SIEG",    path: "/configuracoes/automacoes"                         },
-      { type: "divider", label: "Relatórios — Insumos" },
-      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque"                                          },
-      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex"                                   },
-      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos"                                    },
-      { type: "divider", label: "Relatórios — Compras" },
-      { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/financeiro/relatorios?aba=pedidos_compra",        moduleId: "fin_relatorios" },
-      { type: "divider", label: "Relatórios — Pendências de Classificação" },
-      { id: "com-rel-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"                         },
       { type: "divider", label: "Comercialização" },
       { id: "com-contratos",          label: "Contratos de Grãos",          path: "/contratos",                    moduleId: "contratos"   },
       { id: "com-migrar-nf",          label: "Migração de NF entre Contratos", path: "/contratos/migrar-nf",       moduleId: "contratos"   },
@@ -166,6 +158,17 @@ const NAV: NavItem[] = [
       { id: "transp-cadastros",       label: "Transportadoras / Veículos",        path: "/transporte/cadastros",     moduleId: "transporte" },
       { type: "divider", label: "Balança" },
       { id: "com-pesagem-avulsa",     label: "Pesagem Avulsa",                    path: "/balanca/pesagem-avulsa"                           },
+      // Tudo acima é OPERAÇÃO (lançamento/execução); tudo abaixo é RELATÓRIO
+      // (consulta/filtro/exportar) — agrupado numa seção final só, com o
+      // mesmo separador horizontal que já existe antes de cada divider.
+      // Mesmo padrão já usado no grupo Financeiro ("Relatórios Financeiros"
+      // como única seção final).
+      { type: "divider", label: "Relatórios" },
+      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque"                                          },
+      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex"                                   },
+      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos"                                    },
+      { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/financeiro/relatorios?aba=pedidos_compra",        moduleId: "fin_relatorios" },
+      { id: "com-rel-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"                         },
     ],
   },
 

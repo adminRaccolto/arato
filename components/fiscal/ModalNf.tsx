@@ -301,11 +301,16 @@ const numBR = (v: unknown): number => {
 };
 
 export default function ModalNf({
-  id, onClose, onSaved,
+  id, onClose, onSaved, acaoInicial,
 }: {
   id: string | null;
   onClose: () => void;
   onSaved: () => void;
+  // Dispara uma ação assim que a NF carrega, sem exigir um segundo clique no
+  // rodapé — usado pelo "⋮" do grid unificado (Documentos Fiscais) pra dar
+  // acesso a Estornar/Devolver direto da lista, sem duplicar a lógica fiscal
+  // aqui (ela continua existindo só uma vez, nas funções já extraídas).
+  acaoInicial?: "devolver" | "estornar";
 }) {
   const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
   const router = useRouter();
@@ -2041,6 +2046,11 @@ export default function ModalNf({
       if (!nf) { setErr("NF não encontrada."); setCarregandoNf(false); return; }
       await abrirEditar(nf);
       setCarregandoNf(false);
+      if (acaoInicial === "devolver" && nf.status === "processada" && nf.tipo_entrada === "insumos") {
+        abrirDevolucao(nf);
+      } else if (acaoInicial === "estornar" && nf.status === "processada") {
+        estornarNFClick(nf);
+      }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, fazendaId]);

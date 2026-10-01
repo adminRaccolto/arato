@@ -47,6 +47,34 @@ type RelDocFiscal = {
   observacao: string | null;
 };
 
+// Detalhe real da NF — buscado sob demanda (lazy, só ao abrir o "⋮" de uma
+// linha), porque rel_documentos_fiscais (Seção 321) não carrega esses campos
+// específicos de nf_entradas (seriam só pra 1/3 dos tipos de documento).
+type NfDetalhe = {
+  id: string;
+  status: string;
+  tipo_entrada: string | null;
+  origem: string | null;
+  cnpj_destino: string | null;
+  chave_acesso: string | null;
+  manifestacao_tipo: number | null;
+};
+
+const MAN_CFG = [
+  { tipo: 0, label: "Ciência",       cor: "#444444", bg: "#F2F2F2", status: "ciencia",        justObrig: false },
+  { tipo: 1, label: "Confirmar",     cor: "#16A34A", bg: "#DCFCE7", status: "confirmada",      justObrig: false },
+  { tipo: 2, label: "Desconhecer",   cor: "#C9921B", bg: "#FBF3E0", status: "desconhecimento", justObrig: true  },
+  { tipo: 3, label: "Não Realizada", cor: "#E24B4A", bg: "#FFF0F0", status: "nao_realizada",   justObrig: true  },
+] as const;
+type ManStatus = "pendente" | "ciencia" | "confirmada" | "desconhecimento" | "nao_realizada";
+const MAN_ST: Record<ManStatus, { label: string; short: string; cor: string; bg: string }> = {
+  pendente:        { label: "Pendente",        short: "Pend.", cor: "#888",    bg: "#F3F4F6" },
+  ciencia:         { label: "Ciência",         short: "Ci.",   cor: "#444444", bg: "#F2F2F2" },
+  confirmada:      { label: "Confirmada",      short: "Conf.", cor: "#16A34A", bg: "#DCFCE7" },
+  desconhecimento: { label: "Desconhecimento", short: "Desc.", cor: "#C9921B", bg: "#FBF3E0" },
+  nao_realizada:   { label: "Não Realizada",   short: "N.R.",  cor: "#E24B4A", bg: "#FFF0F0" },
+};
+
 const TIPO_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
   { v: "NF",  label: "NF de Produtos",  bg: "#E6F1FB", color: "#0C447C" },
   { v: "NFS", label: "NF de Serviços",  bg: "#F5F3FF", color: "#5B21B6" },
@@ -119,12 +147,89 @@ export default function DocumentosFiscaisPage() {
 
   // ── Modais por tipo ligados nesta fase ──
   const [modalNfs, setModalNfs] = useState<{ id: string | null } | null>(null);
-  const [modalNf,  setModalNf]  = useState<{ id: string | null } | null>(null);
+  const [modalNf,  setModalNf]  = useState<{ id: string | null; acaoInicial?: "devolver" | "estornar" } | null>(null);
 
   // ── Ações em lote — seleção restrita a linhas de tipo NF (a única com
   // processamento em lote implementado; NFS/CT-e nunca tiveram essa ação) ──
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalLote, setModalLote] = useState(false);
+
+  // ── "⋮" de ações por linha (Processar/Estornar/Devolver/Manifestar) —
+  // o detalhe real da NF é buscado sob demanda, só quando o dropdown é
+  // aberto, pra não disparar 1 query por linha renderizada ──
+  const [acaoDropdown, setAcaoDropdown] = useState<string | null>(null);
+  const [acaoDetalhe,  setAcaoDetalhe]  = useState<Record<string, NfDetalhe>>({});
+  const [acaoCarregando, setAcaoCarregando] = useState<string | null>(null);
+
+  async function abrirAcaoDropdown(d: RelDocFiscal) {
+    if (acaoDropdown === d.id) { setAcaoDropdown(null); return; }
+    setAcaoDropdown(d.id);
+    if (!acaoDetalhe[d.id]) {
+      setAcaoCarregando(d.id);
+      const { data } = await supabase.from("nf_entradas")
+        .select("id, status, tipo_entrada, origem, cnpj_destino, chave_acesso, manifestacao_tipo")
+        .eq("id", d.id).maybeSingle();
+      if (data) setAcaoDetalhe(prev => ({ ...prev, [d.id]: data as NfDetalhe }));
+      setAcaoCarregando(null);
+    }
+  }
+
+  async function estornarNfGrid(d: RelDocFiscal) {
+    const ok = confirm(
+      `Estornar NF ${d.numero}?\n\n` +
+      `Isso irá:\n• Reverter todo o estoque creditado por esta NF\n• Cancelar o lançamento financeiro (CP) associado\n• Retornar a NF para "Rascunho" para reprocessamento\n\n` +
+      `Use isto se o estoque ficou duplicado ou incorreto.`
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch("/api/compras/estornar-nf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nf_id: d.id }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as { error?: string }).error ?? `Erro HTTP ${res.status}`);
+      }
+      alert(`NF ${d.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
+      carregar();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Erro ao estornar NF");
+    }
+  }
+
+  // ── Manifestação SIEG — inline, fora do modal (nunca foi parte do wizard
+  // na tela antiga; é um controle só de grid, por isso fica aqui direto) ──
+  const [manDropdown, setManDropdown] = useState<string | null>(null);
+  const [siegBusy,  setSiegBusy]  = useState<Record<string, boolean>>({});
+  const [siegErros, setSiegErros] = useState<Record<string, string>>({});
+  const [siegJustModal, setSiegJustModal] = useState<{ d: RelDocFiscal; tipo: number } | null>(null);
+  const [siegJustText,  setSiegJustText]  = useState("");
+
+  async function executarManifestacao(d: RelDocFiscal, nf: NfDetalhe, tipo: number, justificativa?: string) {
+    setSiegBusy(p => ({ ...p, [d.id]: true }));
+    setSiegErros(p => { const n = { ...p }; delete n[d.id]; return n; });
+    try {
+      const res = await fetch("/api/integracoes/sieg-manifestar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: d.fazenda_id, nf_id: d.id, chave_acesso: nf.chave_acesso, cnpj_destinatario: nf.cnpj_destino, tipo, justificativa }),
+      });
+      const j = await res.json() as Record<string, unknown>;
+      if (j.erro) {
+        setSiegErros(p => ({ ...p, [d.id]: String(j.erro) }));
+      } else {
+        setAcaoDetalhe(prev => ({ ...prev, [d.id]: { ...nf, manifestacao_tipo: tipo } }));
+      }
+    } catch (e) { setSiegErros(p => ({ ...p, [d.id]: String(e) })); }
+    finally { setSiegBusy(p => ({ ...p, [d.id]: false })); }
+  }
+
+  function manifestar(d: RelDocFiscal, nf: NfDetalhe, tipo: number) {
+    if (!nf.cnpj_destino) { setSiegErros(p => ({ ...p, [d.id]: "NF sem CNPJ de destinatário — manifeste pela tela antiga (/compras/nf)." })); return; }
+    const m = MAN_CFG.find(x => x.tipo === tipo)!;
+    if (m.justObrig) { setSiegJustModal({ d, tipo }); setSiegJustText(""); return; }
+    executarManifestacao(d, nf, tipo);
+  }
 
   const linhas = (resultado ?? []).filter(d => {
     if (fTipo.size > 0 && !fTipo.has(d.tipo_doc)) return false;
@@ -293,11 +398,12 @@ export default function DocumentosFiscaisPage() {
                 {["Tipo", "Data", "Número", "Série", "Participante", "CNPJ", "CFOP", "Valor", "Status", "Observação"].map(h => (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
+                <th style={{ padding: "7px 10px", textAlign: "right", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhas.map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
@@ -342,11 +448,91 @@ export default function DocumentosFiscaisPage() {
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? d.status_normalizado}</span>
                     </td>
                     <td style={{ padding: "7px 10px", color: "#888", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? d.natureza_operacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
+                      {d.tipo_doc === "NF" && (() => {
+                        const nf = acaoDetalhe[d.id];
+                        const carregandoDetalhe = acaoCarregando === d.id;
+                        const aberto = acaoDropdown === d.id;
+                        return (
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                            {/* Manifestação SIEG — só aparece depois do detalhe carregado e só pra NFs de origem SIEG */}
+                            {nf?.origem === "sieg" && (() => {
+                              const isBusy = siegBusy[d.id];
+                              const manTipo = nf.manifestacao_tipo ?? null;
+                              const manSt = manTipo !== null ? (MAN_CFG.find(m => m.tipo === manTipo)?.status ?? "pendente") : "pendente";
+                              const stCfg = MAN_ST[manSt as ManStatus] ?? MAN_ST.pendente;
+                              const manAberto = manDropdown === d.id;
+                              return (
+                                <div style={{ position: "relative" }}>
+                                  <button
+                                    disabled={isBusy}
+                                    onClick={() => setManDropdown(manAberto ? null : d.id)}
+                                    style={{ padding: "2px 6px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 10, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+                                    {isBusy ? "⏳" : stCfg.short} {!isBusy && "▾"}
+                                  </button>
+                                  {manAberto && (
+                                    <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 400, minWidth: 150, overflow: "hidden" }}>
+                                      {MAN_CFG.map(m => (
+                                        <button key={m.tipo}
+                                          onClick={() => { setManDropdown(null); manifestar(d, nf, m.tipo); }}
+                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
+                                          {m.tipo === manTipo ? "✓ " : ""}{m.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {siegErros[d.id] && <div style={{ position: "absolute", right: 0, top: "100%", fontSize: 9, color: "#E24B4A", background: "#fff", border: "0.5px solid #F5C6C6", borderRadius: 6, padding: "3px 6px", whiteSpace: "nowrap", zIndex: 400 }}>{siegErros[d.id]}</div>}
+                                </div>
+                              );
+                            })()}
+                            <div style={{ position: "relative" }}>
+                              <button
+                                onClick={() => abrirAcaoDropdown(d)}
+                                style={{ padding: "3px 7px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: aberto ? "#F4F6FA" : "transparent", cursor: "pointer", fontSize: 13, color: "#555", fontWeight: 700, lineHeight: 1 }}>
+                                ⋮
+                              </button>
+                              {aberto && (
+                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 170, overflow: "hidden" }}>
+                                  {carregandoDetalhe && (
+                                    <div style={{ padding: "10px 12px", fontSize: 11, color: "#888" }}>Carregando…</div>
+                                  )}
+                                  {!carregandoDetalhe && nf && (
+                                    <>
+                                      {nf.status === "pendente" && (
+                                        <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id }); }}
+                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                          Processar / Editar NF
+                                        </button>
+                                      )}
+                                      {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
+                                        <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
+                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
+                                          Devolver
+                                        </button>
+                                      )}
+                                      {nf.status === "processada" && (
+                                        <button onClick={() => { setAcaoDropdown(null); estornarNfGrid(d); }}
+                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
+                                          Estornar
+                                        </button>
+                                      )}
+                                      {nf.status !== "pendente" && nf.status !== "processada" && (
+                                        <div style={{ padding: "8px 12px", fontSize: 11, color: "#888" }}>Sem ações para o status atual.</div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </td>
                   </tr>
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
+                <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
               )}
             </tbody>
           </table>
@@ -373,9 +559,41 @@ export default function DocumentosFiscaisPage() {
       {modalNf && fazendaId && (
         <ModalNf
           id={modalNf.id}
+          acaoInicial={modalNf.acaoInicial}
           onClose={() => setModalNf(null)}
           onSaved={carregar}
         />
+      )}
+
+      {/* ── Justificativa obrigatória pra Desconhecer/Não Realizada (manifestação SIEG) ── */}
+      {siegJustModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2200 }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", padding: 22 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", marginBottom: 4 }}>
+              {MAN_CFG.find(m => m.tipo === siegJustModal.tipo)?.label} — Justificativa
+            </div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>
+              NF {siegJustModal.d.numero}/{siegJustModal.d.serie} — mínimo 15 caracteres, exigido pela SEFAZ.
+            </div>
+            <textarea value={siegJustText} onChange={e => setSiegJustText(e.target.value)} rows={3}
+              style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, boxSizing: "border-box", resize: "vertical" }} />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+              <button onClick={() => setSiegJustModal(null)} style={{ ...inp, cursor: "pointer" }}>Cancelar</button>
+              <button
+                disabled={siegJustText.trim().length < 15}
+                onClick={async () => {
+                  const { d, tipo } = siegJustModal;
+                  const nf = acaoDetalhe[d.id];
+                  setSiegJustModal(null);
+                  if (nf) await executarManifestacao(d, nf, tipo, siegJustText);
+                }}
+                style={{ ...inp, background: siegJustText.trim().length < 15 ? "#ccc" : "#2A2A2A", color: "#fff", fontWeight: 600, cursor: siegJustText.trim().length < 15 ? "default" : "pointer" }}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
