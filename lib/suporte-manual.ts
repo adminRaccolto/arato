@@ -1411,4 +1411,5 @@ Campo que classifica o lançamento para fins fiscais:
 | "Could not find the empresa_nome column" ao editar CP/CR de Empresa | Bug corrigido 29/09/2026 |
 | Lista de Fornecedor no CP das Empresas para na letra I | Bug de paginacao corrigido 29/09/2026 (limite de 1.000 linhas do banco) |
 | OG aparece no CP mas nao no template (Padroes do Sistema) | Template desatualizado -- clicar em "Carregar Plano Padrao" agora so atualiza/adiciona, corrigido 01/10/2026 |
+| Folha de Pagamento -- Empresa aparece sem funcionarios | A tela filtra por Empresa vinculada no cadastro do funcionario (campo Empresa), nao pelo produtor | Vincular o funcionario a Empresa certa em Cadastros -> Funcionarios; backfill feito 01/10/2026 pra quem ja apontava pro produtor PJ equivalente |
 `;

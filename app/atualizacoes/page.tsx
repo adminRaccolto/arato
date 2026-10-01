@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-d",
+    data: "01/10/2026",
+    titulo: "Correção de dados: 45 funcionários vinculados à Empresa certa (Folha de Pagamento)",
+    modulos: ["Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Financeiro → Empresas → Folha de Pagamento mostrava poucos (ou nenhum) funcionário porque a tela filtra pelo campo Empresa do cadastro do funcionário, e quase todos estavam só com o Produtor preenchido — mesmo quando esse produtor era, na prática, uma das empresas do grupo (CNPJ igual ao de uma Empresa cadastrada). Feito backfill: todo funcionário cujo Produtor era uma pessoa jurídica com CNPJ batendo com uma Empresa cadastrada teve o campo Empresa preenchido automaticamente — 45 funcionários corrigidos (27 Ogliari Agropecuária, 8 Santa Rita Armazéns Gerais, 7 Ogliari Transportes, 3 Muriana Transportes). Funcionários sem produtor, ou com produtor pessoa física, não foram tocados — continuam como funcionários da fazenda, sem empresa." },
+    ],
+    onde: "Financeiro → Empresas → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.01-c",
     data: "01/10/2026",
     titulo: "NF de Produtos: mantidas as colunas Doc., Operação NF e Parcelamento; removida só a seção de NF de Serviços",
