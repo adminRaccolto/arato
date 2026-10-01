@@ -117,6 +117,7 @@ const NAV: NavItem[] = [
       { id: "sup-pedidos",        label: "Pedidos de Compra",           path: "/compras",                     moduleId: "compras"    },
       { id: "sup-nf-produtos",    label: "NF de Produtos",              path: "/compras/nf",                  moduleId: "nf_entrada" },
       { id: "sup-nf-servicos",    label: "NF de Serviços",              path: "/compras/nf-servico",          moduleId: "nf_servico" },
+      { id: "sup-doc-fiscais",    label: "Documentos Fiscais (novo — em construção)", path: "/fiscal/documentos", moduleId: "nf_entrada" },
       { id: "sup-pendencias-cl",  label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"                         },
       { type: "divider", label: "Estoque de Insumos" },
       { id: "sup-posicao",        label: "Posição de Insumos",          path: "/estoque"                                          },

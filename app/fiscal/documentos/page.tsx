@@ -1,24 +1,22 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
-// PILOTO — Fase 1 da unificação de NF de Produtos + NF de Serviços + CT-e
-// numa tela só (Seção 321 da migration), pedido do dono 01/10/2026.
+// Documentos Fiscais — NF de Produtos + NF de Serviços unificados numa tela
+// só, ordenados por data, filtro por tipo (Seção 321 da migration, trigger-
+// sync de nf_entradas + nf_servicos + ctes em rel_documentos_fiscais).
+// Promovida de piloto em 01/10/2026, a pedido do dono, pra teste real.
 //
-// Esta é a validação da listagem unificada (lê rel_documentos_fiscais,
-// trigger-sync das 3 tabelas) — ordenada por data, filtro por tipo.
+// Processamento de cada tipo acontece via MODAL dentro desta mesma tela,
+// sem redirecionar: "+ Nova NF de Produtos"/"+ Nova NF de Serviço" ou
+// clicar numa linha abre o modal certo (ModalNf / ModalNfServico — núcleo
+// de cada wizard extraído das telas antigas, lógica preservada).
 //
-// Fase 2 (em andamento): o processamento de cada tipo entra como MODAL
-// dentro desta mesma tela, sem redirecionar — "tudo acontece na tela de
-// Documentos Fiscais" (instrução do dono). Núcleo ligado até aqui:
-//   NF de Serviço — ModalNfServico, extraído de app/compras/nf-servico/page.tsx
-//   NF de Produtos — ModalNf, extraído (núcleo: wizard+salvar/processar/
-//     excluir/estornar — devolução, remessa logística, reclassificação e
-//     ações em lote NÃO migradas, continuam só em app/compras/nf/page.tsx)
-// Ambas as páginas originais continuam existindo e funcionando sozinhas,
-// intocadas. CT-e (deixado de fora por decisão do dono) continua só na
-// tela própria (app/transporte/cte) — sem modal unificado por enquanto.
-//
-// Essa tela é só pra validar o padrão em localhost — fora do menu (TopNav),
-// ninguém chega nela sem digitar a URL direto.
+// AINDA EM CONSTRUÇÃO — o que esta tela NÃO cobre ainda:
+//   • CT-e: não tem modal aqui — continua só em Fretes e Transporte → CT-e.
+//   • NF de Produtos: devolução de compra, remessa logística (emissão de
+//     NF-e), reclassificação pós-processamento e ações em lote NÃO foram
+//     migradas — continuam só em Compras → NF de Produtos (tela antiga).
+// As duas telas antigas (NF de Produtos, NF de Serviços) continuam no menu,
+// funcionando normalmente, para quem precisar dessas funções.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -66,13 +64,12 @@ const chip = (ativo: boolean): React.CSSProperties => ({
   border: ativo ? "1.5px solid #2A2A2A" : "0.5px solid #DDE2EE", background: ativo ? "#2A2A2A" : "#fff", color: ativo ? "#fff" : "#555",
 });
 
-export default function DocumentosFiscaisRelPilotoPage() {
+export default function DocumentosFiscaisPage() {
   const { fazendaId, fazendaIds, contaId } = useAuth();
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<RelDocFiscal[] | null>(null);
-  const [tempoMs, setTempoMs] = useState<number | null>(null);
 
   const [fTipo,    setFTipo]    = useState<Set<string>>(new Set());
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
@@ -91,7 +88,6 @@ export default function DocumentosFiscaisRelPilotoPage() {
     if (!fids.length && !contaId) return;
     setCarregando(true);
     setErro("");
-    const t0 = performance.now();
     try {
       let q = supabase.from("rel_documentos_fiscais").select("*");
       q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
@@ -108,9 +104,8 @@ export default function DocumentosFiscaisRelPilotoPage() {
       const { data, error } = await q;
       if (error) throw error;
       setResultado((data ?? []) as RelDocFiscal[]);
-      setTempoMs(Math.round(performance.now() - t0));
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao consultar rel_documentos_fiscais — a migration da Seção 321 já foi rodada no Supabase?");
+      setErro(e instanceof Error ? e.message : "Erro ao consultar documentos fiscais.");
     } finally {
       setCarregando(false);
     }
@@ -135,16 +130,21 @@ export default function DocumentosFiscaisRelPilotoPage() {
       <TopNav />
       <div style={{ maxWidth: 1500, margin: "0 auto", padding: "22px 20px" }}>
 
-        <div style={{ background: "#111111", color: "#fff", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 12, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>🧪</span>
+        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 12, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}>🚧</span>
           <div>
-            <strong>Piloto — Fase 1: tabela de leitura rel_documentos_fiscais</strong>
-            <div style={{ color: "#bbb", marginTop: 2 }}>Tela fora do menu, só pra validação local. NF de Produtos + NF de Serviços + CT-e juntos, lidos direto da tabela sincronizada por trigger. Não toca em nenhuma das 3 telas reais.</div>
+            <strong style={{ color: "#7A5200" }}>Em construção — cobre só o essencial por enquanto</strong>
+            <div style={{ color: "#7A5200", marginTop: 2 }}>
+              NF de Produtos aqui ainda não tem devolução, remessa logística, reclassificação nem ações em lote — use <strong>Compras → NF de Produtos</strong> pra isso. CT-e ainda não está nesta tela — continua em <strong>Fretes e Transporte → CT-e</strong>.
+            </div>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais — piloto (query em tabela)</h1>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais</h1>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>NF de Produtos e NF de Serviços juntos, ordenados por data</p>
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setModalNf({ id: null })} style={{ ...inp, background: "#0C447C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
               + Nova NF de Produtos
@@ -200,11 +200,6 @@ export default function DocumentosFiscaisRelPilotoPage() {
               <div style={{ fontSize: 11, color: "#888" }}>{fmtBRL(t.total)}</div>
             </div>
           ))}
-          <div style={{ background: "#111111", color: "#fff", borderRadius: 10, padding: "8px 14px", flex: "1 1 160px" }}>
-            <span style={{ fontSize: 10, color: "#bbb" }}>Consulta</span>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4, color: "#16A34A" }}>{tempoMs}ms</div>
-            <div style={{ fontSize: 11, color: "#bbb" }}>direto na tabela, sem join</div>
-          </div>
         </div>
 
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
@@ -231,7 +226,7 @@ export default function DocumentosFiscaisRelPilotoPage() {
                 return (
                   <tr key={d.id} onClick={() => clicavel && abrir()}
                     style={{ borderBottom: "0.5px solid #F0F2F7", cursor: clicavel ? "pointer" : "default" }}
-                    title={clicavel ? "Abrir documento" : "Processamento deste tipo ainda não ligado nesta fase"}>
+                    title={clicavel ? "Abrir documento" : "CT-e ainda não tem modal nesta tela — use Fretes e Transporte → CT-e"}>
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 8px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
                     </td>
