@@ -7,21 +7,33 @@
 // de leitura única, sincronizada por trigger — mesma consulta traz CP/CR de
 // produtor e de empresa juntos, com status normalizado entre as duas.
 //
-// IMPORTANTE: só leitura. Nenhuma ação de baixa/estorno/reprogramação fica
-// nesta tela — isso continua em Financeiro → Contas a Pagar/Receber, batendo
-// direto nas tabelas originais. Esta tela é só pra validar a consulta.
+// Fase 2 (mesmo dia): adiciona Baixar/Reabrir — o caso mais arriscado do
+// padrão, porque mistura LEITURA (rel_lancamentos) com ESCRITA. A escrita em
+// si NÃO é reinventada aqui: chama exatamente as mesmas rotas que a tela real
+// já usa em produção —
+//   produtor: baixarLancamento()/reabrirLancamento() (lib/db.ts → /api/financeiro/baixar)
+//   empresa:  fetch direto /api/empresa-lancamentos/baixar (mesmo payload da
+//             tela real em app/empresas/pagar/page.tsx)
+// A tabela de leitura decide qual rota chamar via origem_tabela, e depois do
+// sucesso recarrega a lista direto de rel_lancamentos — prova que o trigger
+// já refletiu a mudança a tempo da tela mostrar o resultado certo.
 //
-// Fora do menu (TopNav) — só acessível digitando a URL. Não interfere em
-// nada do que o usuário real logado vê ou usa hoje.
+// Fora do menu (TopNav) — só acessível digitando a URL. Não mexe em nada da
+// tela real de Contas a Pagar/Receber nem de suas rotas — só CONSOME as
+// mesmas rotas que elas já usam.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { baixarLancamento, reabrirLancamento, listarContas, listarContasPorEmpresa } from "../../../lib/db";
+import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 
 type RelLancamento = {
   id: string;
   origem_tabela: string;
+  fazenda_id: string | null;
+  empresa_id: string | null;
   tipo: string | null;
   descricao: string | null;
   categoria: string | null;
@@ -86,6 +98,78 @@ export default function LancamentosRelPilotoPage() {
     next.has(v) ? next.delete(v) : next.add(v);
     setFn(next);
   };
+
+  // ── Baixar / Reabrir — escrita real, nas MESMAS rotas que a tela de
+  //    produção já usa. A tabela de leitura só decide qual rota chamar. ──
+  const [modalBaixa,   setModalBaixa]   = useState<RelLancamento | null>(null);
+  const [contasOpcoes, setContasOpcoes] = useState<ContaBancaria[]>([]);
+  const [baixaValor,   setBaixaValor]   = useState("");
+  const [baixaData,    setBaixaData]    = useState("");
+  const [baixaConta,   setBaixaConta]   = useState("");
+  const [salvandoAcao, setSalvandoAcao] = useState(false);
+  const [erroAcao,     setErroAcao]     = useState("");
+
+  async function abrirBaixa(l: RelLancamento) {
+    setErroAcao("");
+    setModalBaixa(l);
+    const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+    setBaixaValor(saldo.toFixed(2));
+    setBaixaData(new Date().toISOString().slice(0, 10));
+    setBaixaConta("");
+    try {
+      const contas = l.origem_tabela === "empresa_lancamentos" && l.empresa_id
+        ? await listarContasPorEmpresa(l.empresa_id)
+        : l.fazenda_id ? await listarContas(l.fazenda_id) : [];
+      setContasOpcoes(contas);
+    } catch { setContasOpcoes([]); }
+  }
+
+  async function confirmarBaixa() {
+    if (!modalBaixa || !baixaConta || !baixaValor) { setErroAcao("Preencha valor e conta bancária."); return; }
+    setSalvandoAcao(true);
+    setErroAcao("");
+    try {
+      if (modalBaixa.origem_tabela === "lancamentos") {
+        await baixarLancamento(modalBaixa.id, parseFloat(baixaValor), baixaData, baixaConta);
+      } else {
+        const res = await fetch("/api/empresa-lancamentos/baixar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            acao: "baixar", lancamento_id: modalBaixa.id,
+            valor_pago_agora: parseFloat(baixaValor), data_baixa: baixaData, conta_bancaria: baixaConta,
+          }),
+        });
+        const json = await res.json() as { ok: boolean; error?: string };
+        if (!json.ok) throw new Error(json.error ?? "Erro ao baixar");
+      }
+      setModalBaixa(null);
+      await aplicarFiltro(); // reconsulta rel_lancamentos — prova que o trigger já refletiu
+    } catch (e: unknown) {
+      setErroAcao(e instanceof Error ? e.message : "Erro ao baixar lançamento");
+    } finally {
+      setSalvandoAcao(false);
+    }
+  }
+
+  async function reabrir(l: RelLancamento) {
+    if (!confirm(`Reabrir "${l.descricao}"? Volta pra em aberto/vencido.`)) return;
+    setErroAcao("");
+    try {
+      if (l.origem_tabela === "lancamentos") {
+        await reabrirLancamento(l.id);
+      } else {
+        const res = await fetch("/api/empresa-lancamentos/baixar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ acao: "reabrir", lancamento_id: l.id }),
+        });
+        const json = await res.json() as { ok: boolean; error?: string };
+        if (!json.ok) throw new Error(json.error ?? "Erro ao reabrir");
+      }
+      await aplicarFiltro();
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : "Erro ao reabrir lançamento");
+    }
+  }
 
   useEffect(() => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
@@ -188,7 +272,7 @@ export default function LancamentosRelPilotoPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA" }}>
-                    {["Origem", "Tipo", "Descrição", "Pessoa/Empresa", "Produtor", "Centro Custo", "Vencimento", "Baixa", "Valor", "Pago", "Status"].map(h => (
+                    {["Origem", "Tipo", "Descrição", "Pessoa/Empresa", "Produtor", "Centro Custo", "Vencimento", "Baixa", "Valor", "Pago", "Status", "Ação"].map(h => (
                       <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -215,11 +299,18 @@ export default function LancamentosRelPilotoPage() {
                         <td style={{ padding: "7px 10px" }}>
                           <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>
                         </td>
+                        <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
+                          {(l.status_normalizado === "baixado") ? (
+                            <button onClick={() => reabrir(l)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Reabrir</button>
+                          ) : (l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial") ? (
+                            <button onClick={() => abrirBaixa(l)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>Baixar</button>
+                          ) : null}
+                        </td>
                       </tr>
                     );
                   })}
                   {resultado.length === 0 && (
-                    <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro.</td></tr>
+                    <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -303,6 +394,50 @@ export default function LancamentosRelPilotoPage() {
               <button onClick={aplicarFiltro} disabled={carregando}
                 style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 700, cursor: "pointer", padding: "9px 20px" }}>
                 {carregando ? "Consultando..." : "Aplicar Filtro"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL — Baixar (escrita real, rota de produção) ══ */}
+      {modalBaixa && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setModalBaixa(null)}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 420px)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>Baixar Lançamento</h2>
+              <button onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+            </div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
+              {modalBaixa.descricao} · <span style={{ fontWeight: 700 }}>{fmtBRL(modalBaixa.valor)}</span>
+              <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                Rota: {modalBaixa.origem_tabela === "lancamentos" ? "/api/financeiro/baixar" : "/api/empresa-lancamentos/baixar"} (mesma da tela real)
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label style={lbl}>Valor pago agora</label>
+                <input type="number" step="0.01" value={baixaValor} onChange={e => setBaixaValor(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={lbl}>Data da baixa</label>
+                <input type="date" value={baixaData} onChange={e => setBaixaData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={lbl}>Conta bancária</label>
+                <select value={baixaConta} onChange={e => setBaixaConta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                  <option value="">Selecionar...</option>
+                  {contasOpcoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+            </div>
+            {erroAcao && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroAcao}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
+              <button onClick={() => setModalBaixa(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={confirmarBaixa} disabled={salvandoAcao}
+                style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
+                {salvandoAcao ? "Baixando..." : "Confirmar Baixa"}
               </button>
             </div>
           </div>

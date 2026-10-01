@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-j",
+    data: "01/10/2026",
+    titulo: "Piloto 2 (fase 2): Baixar/Reabrir no piloto do CP/CR unificado",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Teste do caso mais arriscado do padrão — misturar leitura da tabela nova com escrita real. A lista vem de rel_lancamentos, e o botão Baixar/Reabrir chama exatamente as mesmas rotas que a tela real já usa em produção (/api/financeiro/baixar pro produtor, /api/empresa-lancamentos/baixar pra empresa) — nenhuma lógica de escrita nova foi criada. Depois de baixar ou reabrir, a lista é recarregada direto de rel_lancamentos, confirmando que o trigger já refletiu a mudança a tempo. Ainda em /financeiro/lancamentos-rel-piloto, fora do menu." },
+    ],
+    onde: "Financeiro (piloto, fora do menu)",
+  },
+  {
     versao: "2026.10.01-i",
     data: "01/10/2026",
     titulo: "Piloto 2: tabela de leitura unificada de CP/CR (rel_lancamentos)",
