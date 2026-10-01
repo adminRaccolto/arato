@@ -1966,26 +1966,45 @@ export async function seedOperacoesGerenciais(fazenda_id: string, client?: any):
 
 // ── Seeder para templates do sistema (fazenda_id = NULL) ──────────────────────
 // Usado pelo painel admin Raccolto — Padrões do Sistema
+//
+// Achado real 01/10/2026: a versão antiga apagava TODOS os templates e recriava do zero —
+// cada registro ganhava um ID novo. Como "Contas a Pagar", DRE, relatórios etc. guardam o
+// operacao_gerencial_id em cada lançamento (2.600 lançamentos reais apontavam pra um ID de
+// template no banco), isso quebraria a classificação de todos eles de uma vez só, em silêncio,
+// na próxima vez que alguém clicasse "Carregar Plano Padrão" — o botão nunca tinha sido
+// clicado desde que o arquivo de seed cresceu de 308 pra 343 operações, e só por isso o
+// problema não tinha aparecido ainda. Agora: atualiza quem já existe (mesmo ID, campos
+// atualizados) e insere só os códigos novos — nunca apaga, nunca troca ID de nada.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function seedOperacoesGerenciaisTemplate(client?: any): Promise<{ inseridos: number }> {
+export async function seedOperacoesGerenciaisTemplate(client?: any): Promise<{ inseridos: number; atualizados: number }> {
   const db = client ?? supabase;
 
-  // Limpa templates existentes (fazenda_id IS NULL)
-  const { error: delErr } = await db
+  const { data: existentes, error: listErr } = await db
     .from("operacoes_gerenciais")
-    .delete()
+    .select("id, classificacao")
     .is("fazenda_id", null);
-  if (delErr) throw new Error(`Erro ao limpar templates: ${delErr.message}`);
+  if (listErr) throw new Error(`Erro ao ler templates existentes: ${listErr.message}`);
+  const idPorClassificacao = new Map<string, string>((existentes ?? []).map((r: { id: string; classificacao: string }) => [r.classificacao, r.id]));
 
-  const rows = OPERACOES_GERENCIAIS_PADRAO.map((op: SeedOp) => ({ ...op, fazenda_id: null, conta_id: null }));
+  const paraInserir: Record<string, unknown>[] = [];
+  const paraAtualizar: { id: string; op: SeedOp }[] = [];
+  for (const op of OPERACOES_GERENCIAIS_PADRAO as SeedOp[]) {
+    const idExistente = idPorClassificacao.get(op.classificacao);
+    if (idExistente) paraAtualizar.push({ id: idExistente, op });
+    else paraInserir.push({ ...op, fazenda_id: null, conta_id: null });
+  }
 
-  for (let i = 0; i < rows.length; i += 30) {
-    const lote = rows.slice(i, i + 30);
+  for (let i = 0; i < paraInserir.length; i += 30) {
+    const lote = paraInserir.slice(i, i + 30);
     const { error } = await db.from("operacoes_gerenciais").insert(lote);
     if (error) throw new Error(`Erro ao inserir lote ${i}: ${error.message}`);
   }
+  for (const { id, op } of paraAtualizar) {
+    const { error } = await db.from("operacoes_gerenciais").update(op).eq("id", id);
+    if (error) throw new Error(`Erro ao atualizar "${op.classificacao}": ${error.message}`);
+  }
 
-  return { inseridos: rows.length };
+  return { inseridos: paraInserir.length, atualizados: paraAtualizar.length };
 }
 
 /** Retorna as operações padrão (sem banco) — para uso em memória */

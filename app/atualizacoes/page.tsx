@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-c",
+    data: "01/10/2026",
+    titulo: "Padrões do Sistema: \"Carregar Plano Padrão\" não apaga mais o template inteiro",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"↺ Carregar Plano Padrão\" apagava todos os 308 templates e recriava do zero, cada um com ID novo. 2.600 lançamentos reais (CP/CR) apontam para esses IDs pela Operação Gerencial — clicar no botão quebraria a classificação de todos eles de uma vez, em silêncio. Nunca tinha sido clicado desde que o arquivo de padrões cresceu de 308 para 343 operações, por isso o problema não tinha aparecido (é a causa de operações como \"COMPRA MAT. USO/CONSUMO\" aparecerem no Contas a Pagar mas sumirem do template). Corrigido: agora atualiza quem já existe (mesmo ID) e só adiciona os códigos novos — nunca apaga, nunca troca ID." },
+    ],
+    onde: "Configurações → Admin → Padrões do Sistema",
+  },
+  {
     versao: "2026.10.01-b",
     data: "01/10/2026",
     titulo: "Origem única para NF/NFS-e: view notas_pendentes_unificadas",

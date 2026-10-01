@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await seedOperacoesGerenciaisTemplate(admin);
-    return NextResponse.json({ ok: true, inseridos: result.inseridos });
+    return NextResponse.json({ ok: true, inseridos: result.inseridos, atualizados: result.atualizados });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

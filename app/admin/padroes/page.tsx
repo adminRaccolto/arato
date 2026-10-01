@@ -92,7 +92,7 @@ export default function PadroesPage() {
 
   // ── Carregar padrões do sistema ─────────────────────────────────────────────
   async function carregarPadroes() {
-    if (!confirm(`Isso vai substituir TODOS os templates atuais (${templates.length} operações) pelo plano padrão do sistema. Continuar?`)) return;
+    if (!confirm(`Isso vai atualizar os templates existentes (campos recalculados) e adicionar os códigos novos do plano padrão do sistema. Nenhum registro é apagado nem troca de ID — a classificação já usada em lançamentos não é afetada. Continuar?`)) return;
     setSeeding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -104,7 +104,7 @@ export default function PadroesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro desconhecido");
       await carregar();
-      setSyncBanner(`✓ ${data.inseridos} operações padrão carregadas. Clique em "Sincronizar" para propagar aos clientes.`);
+      setSyncBanner(`✓ ${data.inseridos} operação(ões) nova(s) adicionada(s), ${data.atualizados} atualizada(s). Clique em "Sincronizar" para propagar aos clientes.`);
     } catch (e) {
       alert("Erro ao carregar padrões: " + (e instanceof Error ? e.message : String(e)));
     } finally {
