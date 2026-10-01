@@ -1,7 +1,7 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
 // PILOTO — validação do padrão "tabela de leitura alimentada por trigger"
-// (Seção 310 da migration), pedido do dono 01/10/2026.
+// (Seções 310/311 da migration), pedido do dono 01/10/2026.
 //
 // Em vez de montar a query sob demanda (como /compras/page.tsx faz hoje —
 // carrega tudo e filtra no client), esta tela consulta direto a tabela
@@ -13,11 +13,16 @@
 // ninguém chega nela sem digitar a URL direto. Não interfere em nada do que
 // o usuário real logado vê ou usa hoje.
 //
-// Também valida os outros 2 pontos pedidos junto:
+// Também valida os pontos pedidos junto:
 // 1. Popup de filtro ANTES de buscar (não carrega tudo pra filtrar ao vivo).
-// 2. Filtro de Status com múltipla seleção (checkboxes, não <select> único).
+// 2. Status com caixa de seleção de verdade (<input type="checkbox">, não
+//    botão), podendo marcar vários ao mesmo tempo.
+// 3. Fornecedor, Nº do Pedido DO FORNECEDOR (nr_pedido_fornecedor — não o
+//    interno do sistema) e Ano Safra — as OPÇÕES desses 3 filtros também
+//    vêm da própria rel_pedidos_compra (distinct), sem consultar pessoas/
+//    anos_safra separadamente — mais uma prova do padrão.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
@@ -26,9 +31,12 @@ type RelPedido = {
   id: string;
   numero: number | null;
   nr_pedido: string | null;
+  nr_pedido_fornecedor: string | null;
+  fornecedor_id: string | null;
   fornecedor_nome: string | null;
   fornecedor_cpf_cnpj: string | null;
   produtor_nome: string | null;
+  ano_safra_id: string | null;
   ano_safra_descricao: string | null;
   operacao_nome: string | null;
   data_registro: string | null;
@@ -66,18 +74,44 @@ export default function PedidosRelPilotoPage() {
   const [resultado, setResultado] = useState<RelPedido[] | null>(null);
   const [tempoMs, setTempoMs] = useState<number | null>(null);
 
+  // ── Opções dos dropdowns — vêm da própria rel_pedidos_compra (distinct),
+  //    carregadas uma vez ao abrir a tela, leves (poucas colunas, sem join) ──
+  const [opcoesFornecedor, setOpcoesFornecedor] = useState<{ id: string; nome: string }[]>([]);
+  const [opcoesAnoSafra,   setOpcoesAnoSafra]   = useState<{ id: string; descricao: string }[]>([]);
+
   // ── Estado do popup de filtro (nada é buscado até "Aplicar") ──
-  const [fBusca, setFBusca] = useState("");
-  const [fStatus, setFStatus] = useState<Set<string>>(new Set());
-  const [fMoeda, setFMoeda] = useState("");
-  const [fDataDe, setFDataDe] = useState("");
-  const [fDataAte, setFDataAte] = useState("");
+  const [fFornecedor,   setFFornecedor]   = useState("");
+  const [fNrPedForn,    setFNrPedForn]    = useState("");
+  const [fStatus,       setFStatus]       = useState<Set<string>>(new Set());
+  const [fAnoSafra,     setFAnoSafra]     = useState("");
+  const [fMoeda,        setFMoeda]        = useState("");
+  const [fDataDe,       setFDataDe]       = useState("");
+  const [fDataAte,      setFDataAte]      = useState("");
 
   const toggleStatus = (v: string) => setFStatus(prev => {
     const next = new Set(prev);
     next.has(v) ? next.delete(v) : next.add(v);
     return next;
   });
+
+  // Carrega as opções dos dropdowns (uma vez), direto da rel_pedidos_compra.
+  useEffect(() => {
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!fids.length && !contaId) return;
+    (async () => {
+      let q = supabase.from("rel_pedidos_compra").select("fornecedor_id, fornecedor_nome, ano_safra_id, ano_safra_descricao");
+      q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
+      const { data } = await q;
+      const forn = new Map<string, string>();
+      const safra = new Map<string, string>();
+      for (const r of data ?? []) {
+        if (r.fornecedor_id && r.fornecedor_nome) forn.set(r.fornecedor_id, r.fornecedor_nome);
+        if (r.ano_safra_id && r.ano_safra_descricao) safra.set(r.ano_safra_id, r.ano_safra_descricao);
+      }
+      setOpcoesFornecedor(Array.from(forn, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)));
+      setOpcoesAnoSafra(Array.from(safra, ([id, descricao]) => ({ id, descricao })).sort((a, b) => b.descricao.localeCompare(a.descricao)));
+    })();
+  }, [fazendaId, fazendaIds, contaId]);
 
   async function aplicarFiltro() {
     setCarregando(true);
@@ -87,14 +121,13 @@ export default function PedidosRelPilotoPage() {
       const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
       let q = supabase.from("rel_pedidos_compra").select("*");
       q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
+      if (fFornecedor) q = q.eq("fornecedor_id", fFornecedor);
+      if (fNrPedForn.trim()) q = q.ilike("nr_pedido_fornecedor", `%${fNrPedForn.trim()}%`);
       if (fStatus.size > 0) q = q.in("status", Array.from(fStatus));
+      if (fAnoSafra) q = q.eq("ano_safra_id", fAnoSafra);
       if (fMoeda) q = q.eq("moeda", fMoeda);
       if (fDataDe) q = q.gte("data_registro", fDataDe);
       if (fDataAte) q = q.lte("data_registro", fDataAte);
-      if (fBusca.trim()) {
-        const t = fBusca.trim();
-        q = q.or(`fornecedor_nome.ilike.%${t}%,nr_pedido.ilike.%${t}%`);
-      }
       q = q.order("data_registro", { ascending: false }).limit(500);
 
       const { data, error } = await q;
@@ -103,18 +136,24 @@ export default function PedidosRelPilotoPage() {
       setTempoMs(Math.round(performance.now() - t0));
       setFiltroAberto(false);
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao consultar rel_pedidos_compra — a migration da Seção 310 já foi rodada no Supabase?");
+      setErro(e instanceof Error ? e.message : "Erro ao consultar rel_pedidos_compra — as migrations das Seções 310/311 já foram rodadas no Supabase?");
     } finally {
       setCarregando(false);
     }
   }
+
+  const limparFiltro = () => {
+    setFFornecedor(""); setFNrPedForn(""); setFStatus(new Set()); setFAnoSafra("");
+    setFMoeda(""); setFDataDe(""); setFDataAte("");
+  };
+  const temFiltro = fFornecedor || fNrPedForn || fStatus.size > 0 || fAnoSafra || fMoeda || fDataDe || fDataAte;
 
   const totalFiltrado = (resultado ?? []).reduce((s, p) => s + (p.total_financeiro ?? 0), 0);
 
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: "22px 20px" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "22px 20px" }}>
 
         <div style={{ background: "#111111", color: "#fff", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 12, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 16 }}>🧪</span>
@@ -153,11 +192,11 @@ export default function PedidosRelPilotoPage() {
               <span style={{ color: "#16A34A" }}>Consulta em {tempoMs}ms (direto na tabela, sem join)</span>
             </div>
 
-            <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA" }}>
-                    {["Nº Pedido", "Fornecedor", "Produtor", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Entrada (NF)", "A Receber", "NFs", "Status"].map(h => (
+                    {["Nº Pedido", "Nº Pedido Fornecedor", "Fornecedor", "Produtor", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Entrada (NF)", "A Receber", "NFs", "Status"].map(h => (
                       <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -168,6 +207,7 @@ export default function PedidosRelPilotoPage() {
                     return (
                       <tr key={p.id} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
                         <td style={{ padding: "7px 10px", fontWeight: 600 }}>{p.nr_pedido || `#${p.numero}`}</td>
+                        <td style={{ padding: "7px 10px", color: "#555" }}>{p.nr_pedido_fornecedor || "—"}</td>
                         <td style={{ padding: "7px 10px" }}>{p.fornecedor_nome ?? "—"}</td>
                         <td style={{ padding: "7px 10px" }}>{p.produtor_nome ?? "—"}</td>
                         <td style={{ padding: "7px 10px" }}>{p.ano_safra_descricao ?? "—"}</td>
@@ -185,7 +225,7 @@ export default function PedidosRelPilotoPage() {
                     );
                   })}
                   {resultado.length === 0 && (
-                    <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum pedido encontrado para esse filtro.</td></tr>
+                    <tr><td colSpan={13} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum pedido encontrado para esse filtro.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -198,7 +238,7 @@ export default function PedidosRelPilotoPage() {
       {filtroAberto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => resultado !== null && setFiltroAberto(false)}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 26, width: "min(94vw, 560px)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 26, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <h2 style={{ margin: 0, fontSize: 16, color: "#0B2D50" }}>Filtrar Pedidos de Compra</h2>
               {resultado !== null && (
@@ -206,31 +246,41 @@ export default function PedidosRelPilotoPage() {
               )}
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Buscar (fornecedor ou nº pedido)</label>
-              <input value={fBusca} onChange={e => setFBusca(e.target.value)} placeholder="Ex: ADM, 09087125..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={lbl}>Fornecedor</label>
+                <select value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                  <option value="">Todos os fornecedores</option>
+                  {opcoesFornecedor.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Nº Pedido do Fornecedor</label>
+                <input value={fNrPedForn} onChange={e => setFNrPedForn(e.target.value)}
+                  placeholder="Vazio = todos os pedidos" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
             </div>
 
             <div style={{ marginBottom: 14 }}>
               <label style={lbl}>Status — pode marcar mais de um</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {STATUS_OPCOES.map(s => {
-                  const ativo = fStatus.has(s.v);
-                  return (
-                    <button key={s.v} onClick={() => toggleStatus(s.v)}
-                      style={{
-                        padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                        border: ativo ? `1.5px solid ${s.color}` : "0.5px solid #DDE2EE",
-                        background: ativo ? s.bg : "#fff", color: ativo ? s.color : "#555",
-                      }}>
-                      {ativo ? "✓ " : ""}{s.label}
-                    </button>
-                  );
-                })}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 12px" }}>
+                {STATUS_OPCOES.map(s => (
+                  <label key={s.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#333", cursor: "pointer" }}>
+                    <input type="checkbox" checked={fStatus.has(s.v)} onChange={() => toggleStatus(s.v)} />
+                    {s.label}
+                  </label>
+                ))}
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={lbl}>Ano Safra</label>
+                <select value={fAnoSafra} onChange={e => setFAnoSafra(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                  <option value="">Todas as safras</option>
+                  {opcoesAnoSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                </select>
+              </div>
               <div>
                 <label style={lbl}>Moeda</label>
                 <select value={fMoeda} onChange={e => setFMoeda(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
@@ -240,6 +290,10 @@ export default function PedidosRelPilotoPage() {
                   <option value="barter">Barter</option>
                 </select>
               </div>
+              <div />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
               <div>
                 <label style={lbl}>Data de</label>
                 <input type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
@@ -251,9 +305,8 @@ export default function PedidosRelPilotoPage() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              {(fStatus.size > 0 || fMoeda || fDataDe || fDataAte || fBusca) && (
-                <button onClick={() => { setFBusca(""); setFStatus(new Set()); setFMoeda(""); setFDataDe(""); setFDataAte(""); }}
-                  style={{ ...inp, background: "#fff", cursor: "pointer", color: "#555" }}>Limpar</button>
+              {temFiltro && (
+                <button onClick={limparFiltro} style={{ ...inp, background: "#fff", cursor: "pointer", color: "#555" }}>Limpar</button>
               )}
               <button onClick={aplicarFiltro} disabled={carregando}
                 style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 700, cursor: "pointer", padding: "9px 20px" }}>
