@@ -1412,4 +1412,6 @@ Campo que classifica o lançamento para fins fiscais:
 | Lista de Fornecedor no CP das Empresas para na letra I | Bug de paginacao corrigido 29/09/2026 (limite de 1.000 linhas do banco) |
 | OG aparece no CP mas nao no template (Padroes do Sistema) | Template desatualizado -- clicar em "Carregar Plano Padrao" agora so atualiza/adiciona, corrigido 01/10/2026 |
 | Folha de Pagamento -- Empresa aparece sem funcionarios | A tela filtra por Empresa vinculada no cadastro do funcionario (campo Empresa), nao pelo produtor | Vincular o funcionario a Empresa certa em Cadastros -> Funcionarios; backfill feito 01/10/2026 pra quem ja apontava pro produtor PJ equivalente |
+| Como imprimir o relatorio de um Pedido de Compra | Compras -> Pedidos de Compra -> botao impressora (icone) na linha do pedido | Abre em nova aba, layout A4 pronto pra Imprimir / Salvar PDF |
+| Como gerar relatorio de todos os pedidos de um fornecedor | Compras -> Pedidos de Compra -> bloco "Relatorio por Fornecedor" acima da lista -> escolher fornecedor -> Gerar Relatorio | Um documento so, 1 pedido por pagina A4, com quebra de pagina entre eles |
 `;

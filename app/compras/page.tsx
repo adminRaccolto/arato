@@ -328,7 +328,7 @@ const PEDIDO_VAZIO: FormPedido = {
 };
 
 export default function ComprasPage() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId, contaModulosOverrides, nomeUsuario } = useAuth();
 
   const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
@@ -565,6 +565,230 @@ export default function ComprasPage() {
   };
   const ciclosFiltrados = (anoSafraId: string) =>
     anoSafraId ? ciclos.filter(c => c.ano_safra_id === anoSafraId) : ciclos;
+
+  // ══════════════════════════════════════════════════════════════
+  // RELATÓRIO IMPRESSO DO PEDIDO DE COMPRA — layout de relatório (A4),
+  // não de tela: cabeçalho com dados do pedido, grid de NFs vinculadas
+  // com produtos/valores, e resumo de valor de entrada × a receber.
+  // Reaproveita o mesmo cálculo de "entregue por linha" do modal de
+  // Entregas/NFs Vinculadas (alocarEntregaPorLinha pra pedido fiscal,
+  // qtd_entregue armazenado pra pedido manual) pra bater com a tela.
+  // Suporta 1 pedido (botão na linha) ou N pedidos de um fornecedor
+  // (botão "Relatório do Fornecedor"), cada pedido em sua própria
+  // página A4 com quebra de página entre eles.
+  // ══════════════════════════════════════════════════════════════
+
+  const logoFazendaSrc = (fzId?: string): string | null => {
+    if (!fzId) return null;
+    try { return localStorage.getItem(`fazenda_logo_${fzId}`); } catch { return null; }
+  };
+
+  const buildPaginaPedidoHtml = (
+    ped: PedidoCompra,
+    itens: PedidoCompraItem[],
+    nfs: NfEntrada[],
+    nfItens: NfEntradaItem[],
+  ): string => {
+    const faz = fazendas.find(f => f.id === ped.fazenda_id);
+    const fornecedor = pessoas.find(p => p.id === ped.fornecedor_id);
+    const produtor = produtores.find(p => p.id === ped.produtor_id);
+    const moeda = ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$");
+    const logo = logoFazendaSrc(ped.fazenda_id);
+
+    const ehFiscal = ped.fiscal ?? false;
+    const nfsProcessadasIds = new Set(nfs.filter(n => n.status === "processada").map(n => n.id));
+    const entregaPorLinha = ehFiscal
+      ? alocarEntregaPorLinha(itens, nfItens.filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? "")))
+      : new Map<string, number>();
+
+    const NF_STATUS_REL: Record<string, { label: string; cor: string }> = {
+      digitando:  { label: "Digitando",  cor: "#555" },
+      pendente:   { label: "Pendente",   cor: "#7A5200" },
+      processada: { label: "Processada", cor: "#166534" },
+      cancelada:  { label: "Cancelada",  cor: "#791F1F" },
+    };
+
+    const valorEntrada  = nfs.filter(n => n.status === "processada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
+    const valorTotalPed = ped.total_financeiro ?? 0;
+    const valorAReceber = Math.max(0, valorTotalPed - valorEntrada);
+    const pctRecebido   = valorTotalPed > 0 ? Math.min(100, (valorEntrada / valorTotalPed) * 100) : 0;
+
+    const td = (v: string, right = false, bold = false) =>
+      `<td style="padding:4px 7px;border:1px solid #E5E7EB;${right ? "text-align:right;" : ""}${bold ? "font-weight:700;" : ""}white-space:nowrap">${v}</td>`;
+
+    // ── Tabela: Itens do Pedido ──
+    const linhasItens = itens.map(it => {
+      const entregue = ehFiscal ? (entregaPorLinha.get(it.id) ?? 0) : (it.qtd_entregue ?? 0);
+      const cancelada = it.qtd_cancelada ?? 0;
+      const saldo = Math.max(0, it.quantidade - cancelada - entregue);
+      return `<tr>
+        ${td(it.nome_item)}${td(it.unidade)}
+        ${td(fmtN(it.quantidade), true)}
+        ${td(fmtMoeda(it.valor_unitario, moeda), true)}
+        ${td(fmtMoeda(it.valor_total ?? (it.quantidade * it.valor_unitario), moeda), true, true)}
+        ${td(fmtN(entregue), true)}
+        ${td(fmtN(saldo), true)}
+      </tr>`;
+    }).join("");
+    const totalItensPedido = itens.reduce((s, it) => s + (it.valor_total ?? (it.quantidade * it.valor_unitario)), 0);
+
+    // ── Tabela: NFs vinculadas, agrupadas visualmente por NF, com produtos e valores ──
+    let linhasNfs = "";
+    if (nfs.length === 0) {
+      linhasNfs = `<tr><td colspan="5" style="padding:14px 10px;text-align:center;color:#888;border:1px solid #E5E7EB">Nenhuma NF de entrada vinculada a este pedido.</td></tr>`;
+    } else {
+      for (const nf of nfs) {
+        const sm = NF_STATUS_REL[nf.status] ?? NF_STATUS_REL.pendente;
+        linhasNfs += `<tr style="background:#F3F6F9">
+          <td colspan="5" style="padding:5px 8px;border:1px solid #E5E7EB;font-weight:700">
+            NF ${nf.numero}/${nf.serie} — ${fmtData(nf.data_emissao)} — ${nf.emitente_nome}
+            <span style="float:right;color:${sm.cor}">${sm.label} · ${fmtBRL(nf.valor_total)}</span>
+          </td>
+        </tr>`;
+        const itensDaNf = nfItens.filter(it => it.nf_entrada_id === nf.id);
+        if (itensDaNf.length === 0) {
+          linhasNfs += `<tr><td colspan="5" style="padding:4px 10px 4px 18px;border:1px solid #E5E7EB;color:#888;font-style:italic">Sem itens detalhados</td></tr>`;
+        } else {
+          linhasNfs += itensDaNf.map(it => `<tr>
+            <td style="padding:3px 8px 3px 18px;border:1px solid #E5E7EB">${it.descricao_produto}</td>
+            ${td(it.unidade)}
+            ${td(fmtN(it.quantidade), true)}
+            ${td(fmtBRL(it.valor_unitario), true)}
+            ${td(fmtBRL(it.valor_total), true, true)}
+          </tr>`).join("");
+        }
+      }
+    }
+
+    return `<div class="rt-page">
+<div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
+  <div style="display:flex;align-items:center;gap:12px">
+    ${logo ? `<img src="${logo}" style="height:40px;object-fit:contain">` : ""}
+    <div>
+      <div style="font-size:14pt;font-weight:700;color:#111111">${faz?.nome ?? "Fazenda"}</div>
+      <div style="font-size:8pt;color:#555">${[faz?.municipio, faz?.estado].filter(Boolean).join(" · ")}</div>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:13pt;font-weight:700;color:#111111">RELATÓRIO DE PEDIDO DE COMPRA</div>
+    <div style="font-size:9pt;color:#555">${ped.nr_pedido || `Pedido #${ped.numero}`}${ehFiscal ? " · Fiscal" : ""}</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #DDE2EE;border-radius:4px;margin-bottom:10px;font-size:8.5pt;overflow:hidden">
+  <div style="padding:7px 10px;border-right:1px solid #DDE2EE;border-bottom:1px solid #DDE2EE"><span style="color:#888">Fornecedor: </span><strong>${fornecedor?.nome ?? nomePessoa(ped.fornecedor_id)}</strong>${fornecedor?.cpf_cnpj ? `<div style="color:#888;font-size:7.5pt">${fornecedor.cpf_cnpj}</div>` : ""}</div>
+  <div style="padding:7px 10px;border-right:1px solid #DDE2EE;border-bottom:1px solid #DDE2EE"><span style="color:#888">Produtor: </span><strong>${produtor?.nome ?? "—"}</strong>${produtor?.inscricao_est ? `<div style="color:#888;font-size:7.5pt">IE ${produtor.inscricao_est}</div>` : ""}</div>
+  <div style="padding:7px 10px;border-bottom:1px solid #DDE2EE"><span style="color:#888">Data do Pedido: </span><strong>${fmtData(ped.data_registro)}</strong></div>
+  <div style="padding:7px 10px;border-right:1px solid #DDE2EE"><span style="color:#888">Ano Safra: </span><strong>${nomeAnoSafra(ped.ano_safra_id)}</strong></div>
+  <div style="padding:7px 10px;border-right:1px solid #DDE2EE"><span style="color:#888">Operação: </span><strong>${nomeOp(ped.operacao)}</strong></div>
+  <div style="padding:7px 10px"><span style="color:#888">Status: </span><strong>${STATUS_MAP[ped.status]?.label ?? ped.status}</strong></div>
+</div>
+
+<div style="font-size:10pt;font-weight:700;color:#111111;margin:10px 0 4px">Itens do Pedido</div>
+<table style="width:100%;border-collapse:collapse;font-size:8pt">
+  <thead><tr>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:left;border:1px solid #111111">Item</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:left;border:1px solid #111111">Un.</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Qtd. Pedida</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Vlr. Unit.</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Vlr. Total</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Qtd. Entregue</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Saldo</th>
+  </tr></thead>
+  <tbody>${linhasItens}</tbody>
+  <tfoot><tr>
+    <td colspan="4" style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;border:1px solid #111111">TOTAL DO PEDIDO</td>
+    <td style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;text-align:right;border:1px solid #111111">${fmtMoeda(totalItensPedido, moeda)}</td>
+    <td colspan="2" style="background:#111111;border:1px solid #111111"></td>
+  </tr></tfoot>
+</table>
+
+<div style="font-size:10pt;font-weight:700;color:#111111;margin:12px 0 4px">Notas Fiscais de Entrada Vinculadas</div>
+<table style="width:100%;border-collapse:collapse;font-size:8pt">
+  <thead><tr>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:left;border:1px solid #111111">Produto</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:left;border:1px solid #111111">Un.</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Qtd.</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Vlr. Unit.</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Vlr. Total</th>
+  </tr></thead>
+  <tbody>${linhasNfs}</tbody>
+</table>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px">
+  ${[
+    { l: "Valor do Pedido",   v: fmtMoeda(valorTotalPed, moeda), hl: false },
+    { l: "Valor de Entrada (NF)",  v: fmtBRL(valorEntrada),  hl: true  },
+    { l: "Valor a Receber (NF)",   v: fmtBRL(valorAReceber), hl: false },
+    { l: "% Recebido",        v: `${Math.round(pctRecebido)}%`,  hl: false },
+  ].map(s => `<div style="border:1px solid #DDE2EE;border-radius:4px;padding:6px 9px;background:${s.hl ? "#111111" : "#fff"};color:${s.hl ? "#fff" : "#111111"}">
+    <div style="font-size:7pt;color:${s.hl ? "rgba(255,255,255,0.8)" : "#888"};margin-bottom:2px">${s.l}</div>
+    <div style="font-size:11pt;font-weight:700">${s.v}</div>
+  </div>`).join("")}
+</div>
+
+<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#888">
+  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — RacTech · Gestão Agrícola de Precisão
+</div>
+</div>`;
+  };
+
+  const buildRelatorioPedidosHtml = (paginas: string[], tituloToolbar: string): string => `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>${tituloToolbar}</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#D1D5DB}
+  .rt-toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .rt-toolbar span{color:#fff;font-size:13px;font-weight:700}
+  .rt-btn{background:#fff;color:#111111;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .rt-btn:hover{background:#f0f5fa}
+  .rt-page-wrapper{display:flex;flex-direction:column;align-items:center;padding:24px;gap:24px}
+  .rt-page{background:#fff;width:210mm;min-height:277mm;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.18);box-sizing:border-box}
+  @page{size:A4 portrait;margin:14mm}
+  @media print{
+    body{background:#fff}
+    .rt-toolbar{display:none!important}
+    .rt-page-wrapper{padding:0;gap:0}
+    .rt-page{box-shadow:none;width:100%;min-height:0;padding:0;page-break-after:always}
+    .rt-page:last-child{page-break-after:auto}
+  }
+</style></head><body>
+<div class="rt-toolbar">
+  <span>${tituloToolbar}</span>
+  <button class="rt-btn" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+</div>
+<div class="rt-page-wrapper">${paginas.join("")}</div>
+</body></html>`;
+
+  const imprimirRelatorioPedido = async (ped: PedidoCompra) => {
+    const [itens, nfData] = await Promise.all([
+      listarPedidoCompraItens(ped.id),
+      ped.fiscal ? listarNfEntradasPorPedido(ped.id) : Promise.resolve({ nfs: [], itens: [] }),
+    ]);
+    const pagina = buildPaginaPedidoHtml(ped, itens, nfData.nfs, nfData.itens);
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(buildRelatorioPedidosHtml([pagina], `Pedido ${ped.nr_pedido || `#${ped.numero}`} — RacTech`));
+    win.document.close();
+    win.focus();
+  };
+
+  const imprimirRelatorioFornecedor = async (fornecedorId: string) => {
+    const pedidosDoFornecedor = pedidos.filter(p => p.fornecedor_id === fornecedorId)
+      .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
+    if (pedidosDoFornecedor.length === 0) return;
+    const dados = await Promise.all(pedidosDoFornecedor.map(async ped => {
+      const [itens, nfData] = await Promise.all([
+        listarPedidoCompraItens(ped.id),
+        ped.fiscal ? listarNfEntradasPorPedido(ped.id) : Promise.resolve({ nfs: [], itens: [] }),
+      ]);
+      return buildPaginaPedidoHtml(ped, itens, nfData.nfs, nfData.itens);
+    }));
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(buildRelatorioPedidosHtml(dados, `${nomePessoa(fornecedorId)} — ${pedidosDoFornecedor.length} pedido(s) — RacTech`));
+    win.document.close();
+    win.focus();
+  };
 
   // ── Cálculos do pedido ────────────────────────────────────────
 
@@ -1216,6 +1440,8 @@ export default function ComprasPage() {
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroMoeda,  setFiltroMoeda]  = useState("");
   const [filtroAlerta, setFiltroAlerta] = useState<"" | "finalizando" | "ajuste">("");
+  const [relatorioFornecedorId, setRelatorioFornecedorId] = useState("");
+  const [gerandoRelatorioForn, setGerandoRelatorioForn] = useState(false);
 
   // ── Helpers de alerta ────────────────────────────────────────
   const estaFinalizando = (ped: PedidoCompra) =>
@@ -1376,6 +1602,29 @@ export default function ComprasPage() {
             )}
           </div>
 
+          {/* Relatório por Fornecedor — todos os pedidos daquele fornecedor, um por página */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 12px" }}>
+            <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>🖨 Relatório por Fornecedor:</span>
+            <select value={relatorioFornecedorId} onChange={e => setRelatorioFornecedorId(e.target.value)}
+              style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-page)", minWidth: 240 }}>
+              <option value="">Selecionar fornecedor...</option>
+              {Array.from(new Set(pedidos.map(p => p.fornecedor_id).filter((id): id is string => !!id)))
+                .map(id => ({ id, nome: nomePessoa(id), qtd: pedidos.filter(p => p.fornecedor_id === id).length }))
+                .sort((a, b) => a.nome.localeCompare(b.nome))
+                .map(f => <option key={f.id} value={f.id}>{f.nome} ({f.qtd} pedido{f.qtd > 1 ? "s" : ""})</option>)}
+            </select>
+            <button
+              disabled={!relatorioFornecedorId || gerandoRelatorioForn}
+              onClick={async () => {
+                setGerandoRelatorioForn(true);
+                try { await imprimirRelatorioFornecedor(relatorioFornecedorId); }
+                finally { setGerandoRelatorioForn(false); }
+              }}
+              style={{ padding: "7px 14px", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, background: relatorioFornecedorId ? "#2A2A2A" : "var(--border-table)", color: "#fff", cursor: relatorioFornecedorId ? "pointer" : "not-allowed" }}>
+              {gerandoRelatorioForn ? "Gerando..." : "Gerar Relatório"}
+            </button>
+          </div>
+
           {/* Tabela */}
           {loading ? (
             <div style={{ textAlign: "center", padding: 48, color: "var(--text-2)" }}>Carregando...</div>
@@ -1460,6 +1709,7 @@ export default function ComprasPage() {
                               {ped.fiscal ? "NFs Vinculadas" : "Entregas"}
                             </button>
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped)}>Abrir</button>
+                            <button title="Relatório do pedido" style={{ ...btnR, fontSize: 11, padding: "4px 8px" }} onClick={() => imprimirRelatorioPedido(ped)}>🖨</button>
                             <button style={btnX} onClick={async () => {
                               try {
                                 const { nfs } = await listarNfEntradasPorPedido(ped.id);

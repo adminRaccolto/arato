@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-e",
+    data: "01/10/2026",
+    titulo: "Novo: Relatório de Pedido de Compra (impresso) — por pedido ou por fornecedor",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "novo", texto: "Botão 🖨 em cada linha de Pedidos de Compra abre um relatório em layout de impressão (A4), diferente da tela: cabeçalho com dados do pedido (fornecedor, produtor, data, ano safra, operação, status), tabela de itens do pedido (qtd. pedida/entregue/saldo), grid das NF de entrada vinculadas com os produtos e valores de cada uma, e um resumo com Valor do Pedido, Valor de Entrada (soma das NFs processadas), Valor a Receber (saldo ainda não coberto por NF) e % Recebido." },
+      { tipo: "novo", texto: "Novo bloco \"Relatório por Fornecedor\" acima da lista: escolhe um fornecedor e gera um único documento com TODOS os pedidos dele, cada um em sua própria página A4 (quebra de página entre pedidos) — útil pra conferência ou envio de posição completa a um fornecedor." },
+    ],
+    onde: "Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.01-d",
     data: "01/10/2026",
     titulo: "Correção de dados: 45 funcionários vinculados à Empresa certa (Folha de Pagamento)",
