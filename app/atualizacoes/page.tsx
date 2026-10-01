@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-b",
+    data: "01/10/2026",
+    titulo: "Origem única para NF/NFS-e: view notas_pendentes_unificadas",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "novo", texto: "Criada a view notas_pendentes_unificadas no banco — une NF de Produtos e NF de Serviços numa única origem de consulta (CT-e entra depois), sem duplicar dado: ela só lê ao vivo das tabelas reais, nunca grava. A seção \"NF de Serviços pendentes\" passou a usar essa view como fonte, primeiro uso real dela, pra testar em localhost antes de estender também pra NF de Produtos. Requer a Seção 309 de migration." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.10.01-a",
     data: "01/10/2026",
     titulo: "NF de Serviços pendentes: agora segue os mesmos filtros de data/busca da tela",

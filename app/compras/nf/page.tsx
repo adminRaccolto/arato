@@ -661,15 +661,21 @@ export default function NfCompraPage() {
     // nenhum aviso indicava o motivo (mesmo padrão já corrigido em vários outros pontos hoje).
     // Achado real 01/10/2026: sem paginação, o limite padrão do banco (1.000 linhas) cortava a
     // lista — a conta tem 3.303 NFS-e pendentes, o badge mostrava sempre "1000" fixo.
+    // 01/10/2026 — origem passa a ser a view notas_pendentes_unificadas (Seção 309), não mais
+    // a tabela nf_servicos direto: é o primeiro uso real dela, testado em localhost a pedido do
+    // dono, antes de estender pra NF-e e CT-e também. Os aliases no select mantêm os mesmos
+    // nomes de campo de antes (numero_nf, prestador_nome…) — só muda a origem, zero mudança no
+    // resto do código que já lê esses nomes (filtro, render).
     try {
       const PAGE = 1000;
       let nfse: typeof nfServicosPend = [];
       let from = 0;
       while (true) {
-        const { data, error: nfseErr } = await supabase.from("nf_servicos")
-          .select("id, numero_nf, serie, prestador_nome, prestador_cnpj, data_prestacao, competencia, codigo_servico, valor_servico, status")
+        const { data, error: nfseErr } = await supabase.from("notas_pendentes_unificadas")
+          .select("id, numero_nf:numero, serie, prestador_nome:nome, prestador_cnpj:cnpj, data_prestacao:data_doc, competencia, codigo_servico:operacao, valor_servico:valor_total, status")
+          .eq("tipo_doc", "nfse")
           .in("fazenda_id", idsParaNf).in("status", ["pendente", "digitando"])
-          .order("data_prestacao", { ascending: false }).range(from, from + PAGE - 1);
+          .order("data_doc", { ascending: false }).range(from, from + PAGE - 1);
         if (nfseErr) throw nfseErr;
         nfse = [...nfse, ...(data ?? [])];
         if (!data || data.length < PAGE) break;

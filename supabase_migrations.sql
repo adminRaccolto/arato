@@ -13994,3 +13994,34 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE nf_entradas
   ADD COLUMN IF NOT EXISTS duplicatas_xml JSONB;   -- [{numero,data_vencimento,valor}], ordenado por vencimento
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 309 — view notas_pendentes_unificadas: origem única (NF-e + NFS-e,
+-- CT-e quando entrar) pra listar e filtrar junto na tela de Entrada de NF,
+-- sem duplicar dado — só leitura, nunca grava. Pedido do dono 01/10/2026.
+--
+-- security_invoker = true: a view roda com a permissão de QUEM CONSULTA, não
+-- de quem criou — sem isso, ela furaria a regra "só vê sua conta" das tabelas
+-- originais (nf_entradas/nf_servicos), que já têm RLS própria.
+-- ═══════════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE VIEW notas_pendentes_unificadas
+WITH (security_invoker = true) AS
+SELECT
+  id, fazenda_id, 'nfe'::text AS tipo_doc,
+  numero, serie, chave_acesso,
+  emitente_nome AS nome, emitente_cnpj AS cnpj,
+  data_emissao AS data_doc, natureza AS operacao, NULL::text AS competencia,
+  valor_total, status, duplicatas_xml,
+  processado_por, created_at
+FROM nf_entradas
+UNION ALL
+SELECT
+  id, fazenda_id, 'nfse'::text AS tipo_doc,
+  numero_nf AS numero, serie, chave_nfse AS chave_acesso,
+  prestador_nome AS nome, prestador_cnpj AS cnpj,
+  data_prestacao AS data_doc, codigo_servico AS operacao, competencia,
+  valor_servico AS valor_total, status, NULL::jsonb AS duplicatas_xml,
+  processado_por, created_at
+FROM nf_servicos;
+
+NOTIFY pgrst, 'reload schema';
