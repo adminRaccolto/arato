@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-o",
+    data: "01/10/2026",
+    titulo: "Correção da Seção 313: conta_bancaria é uuid em empresa_lancamentos, não texto",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao rodar a Seção 313 (colunas novas da rel_lancamentos), erro \"operator does not exist: uuid ~ unknown\" — a checagem de formato assumia conta_bancaria como texto nas duas tabelas de origem, mas em empresa_lancamentos a coluna já é uuid de verdade no banco. Seção 314: cast explícito pra texto antes de qualquer comparação, funciona nos dois casos." },
+    ],
+    onde: "Migration (Supabase SQL Editor) — Seção 314",
+  },
+  {
     versao: "2026.10.01-n",
     data: "01/10/2026",
     titulo: "Pilotos 3/4: grid com a mesma riqueza de colunas do CP/CR real do produtor",
