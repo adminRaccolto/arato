@@ -15278,3 +15278,176 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 319 — rel_contratos: tabela de leitura física da Comercialização de
+-- Grãos (trigger-sync) — 4º domínio do padrão validado em Pedido de Compra
+-- (310/311), Lançamentos CP/CR (312+317) e Estoque (318). Pedido do dono
+-- 01/10/2026: continuar aplicando o padrão.
+--
+-- Achado real ao investigar: `contratos` já é bastante desnormalizada
+-- (produtor_nome e comprador gravados direto na tabela, sem exigir join na
+-- maioria dos casos) e já existe listarContratosDaConta() pra buscar por
+-- conta inteira — o problema aqui não é "montar query sob demanda" como foi
+-- em Pedido de Compra/Financeiro/Estoque. O problema real, confirmado com
+-- dados de produção: produtor_nome vem NULL em vários contratos reais mesmo
+-- com produtor_id preenchido (o campo denormalizado nunca foi sincronizado
+-- de volta quando o produtor_id foi setado depois) — e não existe conta_id
+-- na tabela, obrigando toda consulta multi-fazenda a resolver fazenda_ids
+-- via resolverFazendaIds() antes de filtrar.
+--
+-- rel_contratos resolve os dois pontos: conta_id denormalizado (filtro
+-- direto, sem resolver IDs antes) + produtor_nome/comprador_nome sempre
+-- corretos (COALESCE com produtores/pessoas quando o campo gravado está
+-- nulo) + ano_safra/ciclo resolvidos. saldo_sc calculado
+-- (quantidade_sc - entregue_sc) poupa esse cálculo repetido em todo relatório
+-- de posição.
+--
+-- Deliberadamente FORA do escopo desta versão: agregação de romaneios
+-- (peso romaneado, nº de entregas) — a tabela `romaneios` tem só 1 linha em
+-- todo o banco hoje (confirmado em produção), a rota real de expedição usa
+-- `cargas_expedicao`. Agregar uma tabela quase vazia não traria valor agora;
+-- registrado aqui pra reconsiderar se/quando `romaneios` passar a ser usada.
+--
+-- IMPORTANTE — a ESCRITA não muda em nada: criarContrato/atualizarContrato/
+-- confirmarContrato/etc. continuam batendo direto em `contratos`, exatamente
+-- como hoje. O trigger só REFLETE depois.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS rel_contratos (
+  id                  uuid PRIMARY KEY,
+  fazenda_id          uuid,
+  conta_id            uuid,
+  numero              text,
+  tipo                text,     -- venda | compra | barter | troca
+  modalidade          text,     -- fixo | a_fixar | barter
+  status              text,     -- aberto | parcial | encerrado | cancelado
+  moeda               text,
+  produto             text,
+  produto_agricola_id uuid,
+  produtor_id         uuid,
+  produtor_nome       text,     -- COALESCE(contratos.produtor_nome, produtores.nome)
+  pessoa_id           uuid,
+  comprador_nome      text,     -- COALESCE(pessoas.nome, contratos.comprador)
+  ano_safra_id        uuid,
+  ano_safra_descricao text,
+  ciclo_id            uuid,
+  ciclo_descricao     text,
+  ciclo_cultura       text,
+  preco               numeric,
+  quantidade_sc       numeric,
+  entregue_sc         numeric,
+  saldo_sc            numeric,  -- quantidade_sc - entregue_sc
+  data_contrato       date,
+  data_entrega        date,
+  data_pagamento      date,
+  confirmado          boolean,
+  a_fixar             boolean,
+  autorizacao         text,
+  is_arrendamento     boolean,
+  is_compra_terra     boolean,
+  is_barter           boolean,
+  is_triangulacao     boolean,
+  observacao          text,
+  updated_at          timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_conta       ON rel_contratos(conta_id);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_fazenda      ON rel_contratos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_pessoa       ON rel_contratos(pessoa_id);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_produtor     ON rel_contratos(produtor_id);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_ano_safra    ON rel_contratos(ano_safra_id);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_status       ON rel_contratos(status);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_produto      ON rel_contratos(produto);
+CREATE INDEX IF NOT EXISTS idx_rel_contratos_data         ON rel_contratos(data_contrato);
+
+ALTER TABLE rel_contratos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_rel_contratos" ON rel_contratos;
+CREATE POLICY "allow_all_rel_contratos" ON rel_contratos
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT ON rel_contratos TO authenticated, anon;
+
+CREATE OR REPLACE FUNCTION fn_recalc_rel_contrato(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v              contratos%ROWTYPE;
+  v_conta_id     uuid;
+  v_prod_nome    text;
+  v_pes_nome     text;
+  v_ciclo_desc   text;
+  v_ciclo_cult   text;
+  v_safra_desc   text;
+BEGIN
+  SELECT * INTO v FROM contratos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_contratos WHERE id = p_id;
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  IF v.produtor_id IS NOT NULL THEN
+    SELECT nome INTO v_prod_nome FROM produtores WHERE id = v.produtor_id;
+  END IF;
+  IF v.pessoa_id IS NOT NULL THEN
+    SELECT nome INTO v_pes_nome FROM pessoas WHERE id = v.pessoa_id;
+  END IF;
+  SELECT descricao, cultura INTO v_ciclo_desc, v_ciclo_cult FROM ciclos WHERE id = v.ciclo_id;
+  SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v.ano_safra_id;
+
+  INSERT INTO rel_contratos (
+    id, fazenda_id, conta_id, numero, tipo, modalidade, status, moeda, produto, produto_agricola_id,
+    produtor_id, produtor_nome, pessoa_id, comprador_nome, ano_safra_id, ano_safra_descricao,
+    ciclo_id, ciclo_descricao, ciclo_cultura, preco, quantidade_sc, entregue_sc, saldo_sc,
+    data_contrato, data_entrega, data_pagamento, confirmado, a_fixar, autorizacao,
+    is_arrendamento, is_compra_terra, is_barter, is_triangulacao, observacao, updated_at
+  ) VALUES (
+    v.id, v.fazenda_id, v_conta_id, v.numero, v.tipo, v.modalidade, v.status, v.moeda, v.produto, v.produto_agricola_id,
+    v.produtor_id, COALESCE(v.produtor_nome, v_prod_nome), v.pessoa_id, COALESCE(v_pes_nome, v.comprador),
+    v.ano_safra_id, v_safra_desc, v.ciclo_id, v_ciclo_desc, v_ciclo_cult,
+    v.preco, v.quantidade_sc, v.entregue_sc, COALESCE(v.quantidade_sc, 0) - COALESCE(v.entregue_sc, 0),
+    v.data_contrato, v.data_entrega, v.data_pagamento, v.confirmado, v.a_fixar, v.autorizacao,
+    v.is_arrendamento, v.is_compra_terra, v.is_barter, v.is_triangulacao, v.observacao, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero,
+    tipo = EXCLUDED.tipo, modalidade = EXCLUDED.modalidade, status = EXCLUDED.status, moeda = EXCLUDED.moeda,
+    produto = EXCLUDED.produto, produto_agricola_id = EXCLUDED.produto_agricola_id,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome,
+    pessoa_id = EXCLUDED.pessoa_id, comprador_nome = EXCLUDED.comprador_nome,
+    ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    ciclo_id = EXCLUDED.ciclo_id, ciclo_descricao = EXCLUDED.ciclo_descricao, ciclo_cultura = EXCLUDED.ciclo_cultura,
+    preco = EXCLUDED.preco, quantidade_sc = EXCLUDED.quantidade_sc, entregue_sc = EXCLUDED.entregue_sc,
+    saldo_sc = EXCLUDED.saldo_sc, data_contrato = EXCLUDED.data_contrato, data_entrega = EXCLUDED.data_entrega,
+    data_pagamento = EXCLUDED.data_pagamento, confirmado = EXCLUDED.confirmado, a_fixar = EXCLUDED.a_fixar,
+    autorizacao = EXCLUDED.autorizacao, is_arrendamento = EXCLUDED.is_arrendamento,
+    is_compra_terra = EXCLUDED.is_compra_terra, is_barter = EXCLUDED.is_barter,
+    is_triangulacao = EXCLUDED.is_triangulacao, observacao = EXCLUDED.observacao, updated_at = now();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_contrato() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_contratos WHERE id = OLD.id;
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_contrato(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_contrato ON contratos;
+CREATE TRIGGER trg_rel_contrato
+AFTER INSERT OR UPDATE OR DELETE ON contratos
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_contrato();
+
+-- Backfill — ~500 linhas hoje, loop linha a linha é seguro e rápido (mesmo
+-- padrão já usado em rel_pedidos_compra/rel_lancamentos/rel_movimentacoes_estoque).
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM contratos LOOP
+    PERFORM fn_recalc_rel_contrato(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
