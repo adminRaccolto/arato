@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-f",
+    data: "01/10/2026",
+    titulo: "Pedido de Compra: entrega por NF não atualizava quando o pedido não foi marcado \"Fiscal\"",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Processar uma NF de Produtos vinculada a um Pedido de Compra só atualizava a quantidade entregue e o status do pedido (aprovado → parc. entregue → entregue) se o pedido tivesse sido marcado \"Fiscal\" na criação. Um pedido criado sem essa marcação, mas que recebeu uma NF de verdade depois, ficava com a tela de Entregas mostrando o formulário de entrega manual (errado) e \"0,00 entregue\" pra sempre, mesmo com a NF processada. Corrigido: o sistema agora reconhece pelo vínculo real (a NF aponta pro pedido), não só pela marcação feita na criação — e marca o pedido como Fiscal automaticamente na primeira vez que uma NF é processada vinculada a ele, pra não depender de lembrar de marcar isso de antemão." },
+      { tipo: "correcao", texto: "Corrigido em 3 lugares (processamento de NF, estorno de NF e exclusão de NF) — os três recalculam a entrega do pedido depois de qualquer mudança na NF." },
+    ],
+    onde: "Compras → Pedidos de Compra · Compras → NF de Produtos",
+  },
+  {
     versao: "2026.10.01-e",
     data: "01/10/2026",
     titulo: "Novo: Relatório de Pedido de Compra (impresso) — por pedido ou por fornecedor",

@@ -61,16 +61,19 @@ function alocarEntregaPorLinha(
 // depois do estorno reverter a entrega.
 async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: string | null | undefined): Promise<void> {
   if (!pedido_id) return;
-  const { data: ped } = await sb.from("pedidos_compra").select("fiscal, status").eq("id", pedido_id).maybeSingle();
-  if (!ped?.fiscal) return;
+  const { data: ped } = await sb.from("pedidos_compra").select("status").eq("id", pedido_id).maybeSingle();
+  if (!ped) return;
   // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado.
   if (ped.status === "rascunho" || ped.status === "cancelado") return;
 
   const { data: itens } = await sb.from("pedidos_compra_itens").select("id, insumo_id, quantidade, qtd_cancelada, qtd_entregue").eq("pedido_id", pedido_id);
   if (!itens?.length) return;
 
-  const { data: nfs } = await sb.from("nf_entradas").select("id").eq("pedido_compra_id", pedido_id).eq("status", "processada");
-  const nfIds = (nfs ?? []).map(n => n.id);
+  // Gate por NF de verdade vinculada, não pela flag `fiscal` (pode estar
+  // desatualizada — ver lib/db.ts recalcularEntregaPedidoFiscal, achado 01/10/2026).
+  const { data: nfsVinculadas } = await sb.from("nf_entradas").select("id, status").eq("pedido_compra_id", pedido_id);
+  if (!nfsVinculadas?.length) return;
+  const nfIds = nfsVinculadas.filter(n => n.status === "processada").map(n => n.id);
 
   let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number }[] = [];
   if (nfIds.length) {

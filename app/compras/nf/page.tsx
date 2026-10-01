@@ -1903,6 +1903,21 @@ export default function NfCompraPage() {
       // 3. Marcar como processada
       await atualizarNfEntrada(nfEdit.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
 
+      // 3b. Pedido vinculado que ainda não estava marcado "Fiscal" — achado real
+      // 01/10/2026: um pedido criado sem marcar essa flag, mas que recebe uma NF
+      // de verdade aqui, ficava com a tela de Entregas mostrando o formulário
+      // manual errado e a quantidade entregue nunca batia (recalcularEntregaPedidoFiscal
+      // já foi corrigido pra não depender só dessa flag, mas a tela de Entregas/
+      // NFs Vinculadas ainda escolhe o layout certo por ela). Marca automaticamente
+      // pra não precisar o usuário lembrar de ter marcado isso na criação do pedido.
+      const pedidoVinculadoId = cab.pedido_compra_id || nfEdit.pedido_compra_id;
+      if (pedidoVinculadoId) {
+        const { data: pedAtual } = await supabase.from("pedidos_compra").select("fiscal").eq("id", pedidoVinculadoId).maybeSingle();
+        if (pedAtual && !pedAtual.fiscal) {
+          await supabase.from("pedidos_compra").update({ fiscal: true }).eq("id", pedidoVinculadoId);
+        }
+      }
+
       await carregar();
       setWizard(false);
     } catch (e: unknown) {

@@ -1414,4 +1414,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Folha de Pagamento -- Empresa aparece sem funcionarios | A tela filtra por Empresa vinculada no cadastro do funcionario (campo Empresa), nao pelo produtor | Vincular o funcionario a Empresa certa em Cadastros -> Funcionarios; backfill feito 01/10/2026 pra quem ja apontava pro produtor PJ equivalente |
 | Como imprimir o relatorio de um Pedido de Compra | Compras -> Pedidos de Compra -> botao impressora (icone) na linha do pedido | Abre em nova aba, layout A4 pronto pra Imprimir / Salvar PDF |
 | Como gerar relatorio de todos os pedidos de um fornecedor | Compras -> Pedidos de Compra -> bloco "Relatorio por Fornecedor" acima da lista -> escolher fornecedor -> Gerar Relatorio | Um documento so, 1 pedido por pagina A4, com quebra de pagina entre eles |
+| Processei a NF do pedido mas a tela de Entregas continua em 0,00 / formulario manual | Bug corrigido 01/10/2026 -- dependia da flag "Fiscal" marcada na criacao do pedido, nao do vinculo real da NF | Reabrir a tela do pedido; a partir de agora marca Fiscal sozinho ao processar a 1a NF vinculada |
 `;

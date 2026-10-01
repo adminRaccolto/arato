@@ -4974,8 +4974,8 @@ export function alocarEntregaPorLinha(
 // reprocessar a mesma NF ou linkar uma NF nova nunca deve contar em dobro.
 export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | undefined): Promise<void> {
   if (!pedido_id) return;
-  const { data: ped } = await supabase.from("pedidos_compra").select("fiscal, status").eq("id", pedido_id).maybeSingle();
-  if (!ped?.fiscal) return; // pedido manual (não-fiscal) usa registrarEntrega — não mexe aqui
+  const { data: ped } = await supabase.from("pedidos_compra").select("status").eq("id", pedido_id).maybeSingle();
+  if (!ped) return;
   // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado — só
   // recalcula pedidos que já passaram por aprovação.
   if (ped.status === "rascunho" || ped.status === "cancelado") return;
@@ -4983,9 +4983,20 @@ export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | u
   const itens = await listarPedidoCompraItens(pedido_id);
   if (!itens.length) return;
 
-  const { data: nfs } = await supabase.from("nf_entradas")
-    .select("id").eq("pedido_compra_id", pedido_id).eq("status", "processada");
-  const nfIds = (nfs ?? []).map(n => n.id);
+  // Achado real 01/10/2026: o gate era `pedido.fiscal` (flag marcada só na criação
+  // do pedido) — um pedido criado sem marcar "Fiscal" mas que depois recebeu uma
+  // NF de verdade vinculada (campo "Pedido de Compra" no wizard de NF) nunca
+  // atualizava qtd_entregue nem status, porque essa função retornava aqui direto.
+  // Achado em produção: 4 pedidos reais (1 deles com 20 NFs já processadas) presos
+  // em "aprovado"/0% entregue apesar das NFs. O sinal confiável é "o pedido tem
+  // alguma NF de verdade vinculada" — não a flag, que pode estar desatualizada ou
+  // nunca ter sido marcada. Pedido genuinamente manual nunca tem nf_entradas
+  // apontando pra ele, então esse gate continua protegendo registrarEntrega/
+  // pedidos_compra_entregas de ser pisado por este recálculo.
+  const { data: nfsVinculadas } = await supabase.from("nf_entradas")
+    .select("id, status").eq("pedido_compra_id", pedido_id);
+  if (!nfsVinculadas?.length) return; // pedido manual de verdade — nunca recebeu NF
+  const nfIds = nfsVinculadas.filter(n => n.status === "processada").map(n => n.id);
 
   let nfItens: { insumo_id: string | null; pedido_item_id: string | null; quantidade: number }[] = [];
   if (nfIds.length) {
