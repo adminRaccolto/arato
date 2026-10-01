@@ -8,11 +8,14 @@
 //
 // Fase 2 (em andamento): o processamento de cada tipo entra como MODAL
 // dentro desta mesma tela, sem redirecionar — "tudo acontece na tela de
-// Documentos Fiscais" (instrução do dono). Primeiro tipo ligado: NF de
-// Serviço (ModalNfServico, extraído de app/compras/nf-servico/page.tsx —
-// que continua existindo e funcionando sozinho, intocado). NF de Produtos
-// e CT-e ainda não têm modal extraído — linhas desses tipos ainda não
-// abrem nada (ver próximos passos).
+// Documentos Fiscais" (instrução do dono). Núcleo ligado até aqui:
+//   NF de Serviço — ModalNfServico, extraído de app/compras/nf-servico/page.tsx
+//   NF de Produtos — ModalNf, extraído (núcleo: wizard+salvar/processar/
+//     excluir/estornar — devolução, remessa logística, reclassificação e
+//     ações em lote NÃO migradas, continuam só em app/compras/nf/page.tsx)
+// Ambas as páginas originais continuam existindo e funcionando sozinhas,
+// intocadas. CT-e (deixado de fora por decisão do dono) continua só na
+// tela própria (app/transporte/cte) — sem modal unificado por enquanto.
 //
 // Essa tela é só pra validar o padrão em localhost — fora do menu (TopNav),
 // ninguém chega nela sem digitar a URL direto.
@@ -22,6 +25,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import ModalNfServico from "../../../components/fiscal/ModalNfServico";
+import ModalNf from "../../../components/fiscal/ModalNf";
 
 type RelDocFiscal = {
   id: string;
@@ -114,8 +118,9 @@ export default function DocumentosFiscaisRelPilotoPage() {
 
   useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Modal NFS — único tipo com processamento ligado nesta fase ──
+  // ── Modais por tipo ligados nesta fase ──
   const [modalNfs, setModalNfs] = useState<{ id: string | null } | null>(null);
+  const [modalNf,  setModalNf]  = useState<{ id: string | null } | null>(null);
 
   const linhas = (resultado ?? []).filter(d => {
     if (fTipo.size > 0 && !fTipo.has(d.tipo_doc)) return false;
@@ -140,9 +145,14 @@ export default function DocumentosFiscaisRelPilotoPage() {
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais — piloto (query em tabela)</h1>
-          <button onClick={() => setModalNfs({ id: null })} style={{ ...inp, background: "#5B21B6", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
-            + Nova NF de Serviço
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setModalNf({ id: null })} style={{ ...inp, background: "#0C447C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+              + Nova NF de Produtos
+            </button>
+            <button onClick={() => setModalNfs({ id: null })} style={{ ...inp, background: "#5B21B6", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+              + Nova NF de Serviço
+            </button>
+          </div>
         </div>
 
         {/* ── Barra de filtros sempre visível ── */}
@@ -213,11 +223,15 @@ export default function DocumentosFiscaisRelPilotoPage() {
               {!carregando && linhas.map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
                 const sm = STATUS_OPCOES.find(s => s.v === d.status_normalizado);
-                const clicavel = d.tipo_doc === "NFS";
+                const clicavel = d.tipo_doc === "NFS" || d.tipo_doc === "NF";
+                const abrir = () => {
+                  if (d.tipo_doc === "NFS") setModalNfs({ id: d.id });
+                  else if (d.tipo_doc === "NF") setModalNf({ id: d.id });
+                };
                 return (
-                  <tr key={d.id} onClick={() => clicavel && setModalNfs({ id: d.id })}
+                  <tr key={d.id} onClick={() => clicavel && abrir()}
                     style={{ borderBottom: "0.5px solid #F0F2F7", cursor: clicavel ? "pointer" : "default" }}
-                    title={clicavel ? "Abrir NFS-e" : "Processamento deste tipo ainda não ligado nesta fase"}>
+                    title={clicavel ? "Abrir documento" : "Processamento deste tipo ainda não ligado nesta fase"}>
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 8px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
                     </td>
@@ -248,6 +262,14 @@ export default function DocumentosFiscaisRelPilotoPage() {
           id={modalNfs.id}
           fazendaIdPadrao={fazendaId}
           onClose={() => setModalNfs(null)}
+          onSaved={carregar}
+        />
+      )}
+
+      {modalNf && fazendaId && (
+        <ModalNf
+          id={modalNf.id}
+          onClose={() => setModalNf(null)}
           onSaved={carregar}
         />
       )}
