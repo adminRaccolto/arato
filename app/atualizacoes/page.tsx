@@ -6,7 +6,7 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
-    versao: "2026.10.01-c",
+    versao: "2026.10.01-a",
     data: "01/10/2026",
     titulo: "Padrões do Sistema: \"Carregar Plano Padrão\" não apaga mais o template inteiro",
     modulos: ["Configurações"],
@@ -14,26 +14,6 @@ const RELEASES = [
       { tipo: "correcao", texto: "O botão \"↺ Carregar Plano Padrão\" apagava todos os 308 templates e recriava do zero, cada um com ID novo. 2.600 lançamentos reais (CP/CR) apontam para esses IDs pela Operação Gerencial — clicar no botão quebraria a classificação de todos eles de uma vez, em silêncio. Nunca tinha sido clicado desde que o arquivo de padrões cresceu de 308 para 343 operações, por isso o problema não tinha aparecido (é a causa de operações como \"COMPRA MAT. USO/CONSUMO\" aparecerem no Contas a Pagar mas sumirem do template). Corrigido: agora atualiza quem já existe (mesmo ID) e só adiciona os códigos novos — nunca apaga, nunca troca ID." },
     ],
     onde: "Configurações → Admin → Padrões do Sistema",
-  },
-  {
-    versao: "2026.10.01-b",
-    data: "01/10/2026",
-    titulo: "Origem única para NF/NFS-e: view notas_pendentes_unificadas",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "novo", texto: "Criada a view notas_pendentes_unificadas no banco — une NF de Produtos e NF de Serviços numa única origem de consulta (CT-e entra depois), sem duplicar dado: ela só lê ao vivo das tabelas reais, nunca grava. A seção \"NF de Serviços pendentes\" passou a usar essa view como fonte, primeiro uso real dela, pra testar em localhost antes de estender também pra NF de Produtos. Requer a Seção 309 de migration." },
-    ],
-    onde: "Compras → NF de Produtos",
-  },
-  {
-    versao: "2026.10.01-a",
-    data: "01/10/2026",
-    titulo: "NF de Serviços pendentes: agora segue os mesmos filtros de data/busca da tela",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "correcao", texto: "A seção \"NF de Serviços pendentes\" ignorava completamente o filtro de Emissão (data) e a busca da tela — filtrar um dia sem NF de Produtos \"sumia\" a tabela de cima e deixava só a de Serviços, de qualquer data, parecendo duas telas soltas. Agora os dois filtros (data e busca por texto) valem para as duas listas juntas. Corrigido também o limite de 1.000 linhas do banco, que cortava a contagem de NFS-e pendentes sempre em \"1000\" (a conta tem 3.303)." },
-    ],
-    onde: "Compras → NF de Produtos",
   },
   {
     versao: "2026.09.29-k",
@@ -55,16 +35,6 @@ const RELEASES = [
       { tipo: "melhoria", texto: "Na Apropriação Direta com item de combustível, o veículo que abasteceu não é mais obrigatório para processar a NF — passam a ser obrigatórios o Centro de Custo e o Ano Safra do topo da NF (os mesmos campos que já existiam ali). O veículo continua disponível pra quem quer registrar no histórico de abastecimento do veículo; se for informado, o hodômetro/horímetro continua sendo pedido." },
     ],
     onde: "Compras → NF de Produtos → Apropriação Direta",
-  },
-  {
-    versao: "2026.09.29-i",
-    data: "29/09/2026",
-    titulo: "NF de Serviços pendentes: erro ao carregar agora aparece na tela",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "correcao", texto: "A seção \"NF de Serviços pendentes\" em Compras → NF de Produtos podia ficar vazia sem nenhum aviso quando a consulta falhasse — o erro do banco não era conferido. Agora, se a consulta falhar, aparece uma faixa explicando o motivo em vez de a seção simplesmente sumir." },
-    ],
-    onde: "Compras → NF de Produtos",
   },
   {
     versao: "2026.09.29-h",
@@ -95,56 +65,6 @@ const RELEASES = [
       { tipo: "correcao", texto: "Mesmo bug já corrigido no Contas a Pagar/Receber do produtor: ao digitar Multa, Juros ou Desconto na baixa de um CP/CR de Empresa, o campo \"Valor pago agora\" não recalculava sozinho — pagar o saldo mais alguns centavos de juros sempre virava \"baixa parcial\", com os centavos ficando em aberto pra sempre. Agora o valor pago é recalculado automaticamente a cada encargo digitado, do mesmo jeito que já funciona no financeiro do produtor." },
     ],
     onde: "Financeiro → Empresas → Contas a Pagar / Contas a Receber",
-  },
-  {
-    versao: "2026.09.29-e",
-    data: "29/09/2026",
-    titulo: "Coluna Parcelamento diferencia à vista, à prazo e parcelado",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "melhoria", texto: "A coluna Parcelamento da lista de NF de Produtos agora mostra três situações: \"à vista\" (sem duplicata, ou 1 única vencendo na própria emissão), \"À prazo\" (1 duplicata só, com a data de vencimento) e \"Nx parcelado\" (2 ou mais duplicatas, mostrando a quantidade e o 1º vencimento — o resto aparece passando o mouse). Só preenchida em NFs sincronizadas com o Sieg a partir de ontem (29/09-a); notas importadas antes continuam sem essa informação até serem ressincronizadas." },
-    ],
-    onde: "Compras → NF de Produtos",
-  },
-  {
-    versao: "2026.09.29-d",
-    data: "29/09/2026",
-    titulo: "NF de Produtos: coluna Parcelamento, com as duplicatas do XML",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "novo", texto: "Nova coluna \"Parcelamento\" na lista de NF de Produtos: mostra quantas duplicatas (parcelas) o emitente declarou no XML e a data da 1ª — passe o mouse pra ver todas com valor e vencimento. NFs sem duplicata aparecem como \"à vista\". Preenchida automaticamente nas NFs importadas do Sieg a partir de agora — NFs já importadas antes ficam em branco até serem reimportadas. Requer a Seção 307 de migration." },
-    ],
-    onde: "Compras → NF de Produtos",
-  },
-  {
-    versao: "2026.09.29-c",
-    data: "29/09/2026",
-    titulo: "Nova coluna \"Doc.\" identifica o tipo de documento (NFE/NFSE)",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "correcao", texto: "A coluna \"Tipo\" da lista de NF de Produtos mostra a apropriação interna (Insumos, Peças…), não o tipo de documento fiscal — por isso não dava pra saber se a linha era NF-e, NFS-e ou (no futuro) CT-e só de olhar. Adicionada a coluna \"Doc.\" no início da linha, com uma etiqueta clara: NFE na tabela de NF de Produtos, NFSE na tabela de NF de Serviços." },
-    ],
-    onde: "Compras → NF de Produtos",
-  },
-  {
-    versao: "2026.09.29-b",
-    data: "29/09/2026",
-    titulo: "NF de Serviços pendentes agora aparecem em Compras → NF de Produtos",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "melhoria", texto: "Etapa 2 da unificação das telas de nota: a lista de Compras → NF de Produtos agora mostra também uma seção com as NF de Serviços pendentes (número/série, prestador, data de prestação, competência, código do serviço LC 116, valor, status). Clicar numa linha leva para Compras → NF de Serviços, onde o processamento continua — os dois documentos continuam sendo formulários diferentes por baixo (retenções, ISS, CNAE não têm equivalente em NF de produto), só a visão de \"o que está pendente\" ficou num lugar só." },
-    ],
-    onde: "Compras → NF de Produtos",
-  },
-  {
-    versao: "2026.09.29-a",
-    data: "29/09/2026",
-    titulo: "NF de Produtos: removidos os cards de resumo, nova coluna Operação NF",
-    modulos: ["Compras"],
-    itens: [
-      { tipo: "melhoria", texto: "Primeira etapa da unificação da tela de processamento de notas (NF, NFS-e, CT-e), a pedido do dono, inspirada no sistema de referência. Removidos os 4 cards de resumo do topo (Total no mês / Pendentes / Processadas / Canceladas). Nova coluna \"Operação NF\" mostrando a natureza da operação declarada pelo emitente no XML da nota. Próximas etapas: unir a lista com NF de Serviços (clique abre o wizard certo de cada tipo), mostrar parcelamento/vencimento das duplicatas, e desenhar o fluxo de CT-e recebido de terceiro (não existe hoje — hoje só emitimos CT-e)." },
-    ],
-    onde: "Compras → NF de Produtos",
   },
   {
     versao: "2026.09.28-p",

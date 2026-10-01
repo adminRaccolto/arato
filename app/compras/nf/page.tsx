@@ -296,11 +296,6 @@ export default function NfCompraPage() {
 
   // Dados mestre
   const [nfs, setNfs]             = useState<NfEntrada[]>([]);
-  // Etapa 1 da unificação das telas de nota (NF/NFS-e/CT-e, a pedido do dono) — mostra as NFS-e
-  // pendentes nesta mesma tela; clicar leva para o wizard de NF de Serviços (documento diferente,
-  // continua processado lá — nunca misturar os dois formulários, ver histórico do projeto).
-  const [nfServicosPend, setNfServicosPend] = useState<{ id: string; numero_nf: string; serie: string; prestador_nome: string; prestador_cnpj?: string; data_prestacao: string; competencia?: string; codigo_servico?: string; valor_servico: number; status: string }[]>([]);
-  const [nfServicosErro, setNfServicosErro] = useState("");
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
   const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
@@ -654,35 +649,6 @@ export default function NfCompraPage() {
     setInsumos(insData);
     setDepositos(depData);
     setPessoas(pesData);
-
-    // NFS-e pendentes/digitando — mesma conta, exibidas junto nesta tela (etapa 1 da unificação).
-    // Achado real 29/09/2026: a query anterior só lia `{ data }`, nunca conferia `{ error }` — uma
-    // falha (sessão, RLS) voltava data=null em silêncio, sem lançar exceção, então nada aparecia e
-    // nenhum aviso indicava o motivo (mesmo padrão já corrigido em vários outros pontos hoje).
-    // Achado real 01/10/2026: sem paginação, o limite padrão do banco (1.000 linhas) cortava a
-    // lista — a conta tem 3.303 NFS-e pendentes, o badge mostrava sempre "1000" fixo.
-    // 01/10/2026 — origem passa a ser a view notas_pendentes_unificadas (Seção 309), não mais
-    // a tabela nf_servicos direto: é o primeiro uso real dela, testado em localhost a pedido do
-    // dono, antes de estender pra NF-e e CT-e também. Os aliases no select mantêm os mesmos
-    // nomes de campo de antes (numero_nf, prestador_nome…) — só muda a origem, zero mudança no
-    // resto do código que já lê esses nomes (filtro, render).
-    try {
-      const PAGE = 1000;
-      let nfse: typeof nfServicosPend = [];
-      let from = 0;
-      while (true) {
-        const { data, error: nfseErr } = await supabase.from("notas_pendentes_unificadas")
-          .select("id, numero_nf:numero, serie, prestador_nome:nome, prestador_cnpj:cnpj, data_prestacao:data_doc, competencia, codigo_servico:operacao, valor_servico:valor_total, status")
-          .eq("tipo_doc", "nfse")
-          .in("fazenda_id", idsParaNf).in("status", ["pendente", "digitando"])
-          .order("data_doc", { ascending: false }).range(from, from + PAGE - 1);
-        if (nfseErr) throw nfseErr;
-        nfse = [...nfse, ...(data ?? [])];
-        if (!data || data.length < PAGE) break;
-        from += PAGE;
-      }
-      setNfServicosErro(""); setNfServicosPend(nfse);
-    } catch (e) { setNfServicosErro(e instanceof Error ? e.message : String(e)); setNfServicosPend([]); }
 
     // Centros de custo — usa da conta para abranger todas as fazendas do produtor
     try {
@@ -2696,24 +2662,6 @@ export default function NfCompraPage() {
     return true;
   });
 
-  // Mesmos filtros de Emissão/Data e busca aplicados à lista de NF de Produtos valem também
-  // pra NF de Serviços pendentes — achado real 01/10/2026: antes a seção de NFS-e ignorava
-  // completamente o filtro de data, então filtrar um dia sem NF de Produtos "sumia" a tabela de
-  // cima e deixava só os de serviço (de QUALQUER data) por baixo, parecendo duas telas soltas.
-  const nfServicosFiltrados = nfServicosPend.filter(ns => {
-    if (filtroDataDe  && ns.data_prestacao < filtroDataDe)  return false;
-    if (filtroDataAte && ns.data_prestacao > filtroDataAte) return false;
-    if (busca) {
-      const b = busca.toLowerCase();
-      const bDigits = busca.replace(/\D/g, "");
-      const cnpjPrest = (ns.prestador_cnpj ?? "").replace(/\D/g, "");
-      const bateTexto = ns.numero_nf.includes(busca) || ns.prestador_nome.toLowerCase().includes(b);
-      const bateDoc = bDigits.length >= 3 && cnpjPrest.includes(bDigits);
-      if (!bateTexto && !bateDoc) return false;
-    }
-    return true;
-  });
-
   // ─────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────
@@ -2793,6 +2741,21 @@ export default function NfCompraPage() {
               <span style={{ fontSize: 12, fontWeight: 600, color: siegSyncMsg.startsWith("✗") ? "#E24B4A" : "#16A34A" }}>{siegSyncMsg}</span>
             )}
           </div>
+        </div>
+
+        {/* ── Cards de resumo ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+          {[
+            { label: "Total no mês",   value: fmtBRL(nfs.filter(n => n.data_emissao?.startsWith(new Date().toISOString().substring(0,7)) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_total,0)), bg: "var(--bg-card)" },
+            { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente").length),   bg: "#FBF3E0" },
+            { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
+            { label: "Canceladas",     value: String(nfs.filter(n=>n.status==="cancelada").length),  bg: "#FCEBEB" },
+          ].map(({ label, value, bg }) => (
+            <div key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
+              <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
+            </div>
+          ))}
         </div>
 
         {/* ── Filtros ── */}
@@ -2962,7 +2925,6 @@ export default function NfCompraPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1100 }}>
               <colgroup>
                 <col style={{ width: 36 }} />     {/* checkbox */}
-                <col style={{ width: 56 }} />     {/* Doc. — NFE/NFSE/CTE */}
                 <col style={{ width: 90 }} />     {/* Nº/Série */}
                 <col style={{ width: "22%" }} />  {/* Emitente — flex */}
                 <col style={{ width: "18%" }} />  {/* Destinatário — flex */}
@@ -2970,8 +2932,6 @@ export default function NfCompraPage() {
                 <col style={{ width: 82 }} />     {/* Entrada */}
                 <col style={{ width: 80 }} />     {/* Tipo */}
                 <col style={{ width: 60 }} />     {/* Origem */}
-                <col style={{ width: "16%" }} />  {/* Operação NF — natureza declarada no XML */}
-                <col style={{ width: 100 }} />    {/* Parcelamento — duplicatas do XML */}
                 <col style={{ width: 110 }} />    {/* Valor Total */}
                 <col style={{ width: 90 }} />     {/* Status */}
                 <col style={{ width: 100 }} />    {/* Manifest. */}
@@ -2979,7 +2939,7 @@ export default function NfCompraPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["", "Doc.", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
+                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "6px 8px", textAlign: i >= 8 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -3005,7 +2965,6 @@ export default function NfCompraPage() {
                           style={{ cursor: "pointer" }}
                         />
                       </td>
-                      <td style={{ padding: "7px 8px" }}>{badge("NFE", "#E6F1FB", "#0C447C")}</td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
@@ -3026,32 +2985,6 @@ export default function NfCompraPage() {
                       <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
                       <td style={{ padding: "7px 8px" }}>{tm ? badge(tm.label, tm.bg, "#333") : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
                       <td style={{ padding: "7px 8px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
-                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.natureza ?? undefined}>
-                        {nf.natureza || <span style={{ color: "var(--text-muted)" }}>—</span>}
-                      </td>
-                      <td style={{ padding: "7px 8px" }}>
-                        {(() => {
-                          const dups = nf.duplicatas_xml ?? [];
-                          // à vista: sem duplicata, ou 1 única com vencimento na própria emissão.
-                          // à prazo: 1 duplicata só, vencendo depois da emissão.
-                          // parcelado: 2+ duplicatas — mostra só a quantidade e o 1º vencimento.
-                          const aVista = dups.length === 0 || (dups.length === 1 && dups[0].data_vencimento === nf.data_emissao);
-                          if (aVista) return <span style={{ fontSize: 11, color: "var(--text-muted)" }}>à vista</span>;
-                          const tooltip = dups.map(d => `${d.numero || "—"}: ${fmtBRL(d.valor)} em ${fmtData(d.data_vencimento)}`).join("\n");
-                          if (dups.length === 1) return (
-                            <div title={tooltip}>
-                              {badge("À prazo", "#FBF3E0", "#7B4A00")}
-                              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>{fmtData(dups[0].data_vencimento)}</div>
-                            </div>
-                          );
-                          return (
-                            <div title={tooltip}>
-                              {badge(`${dups.length}x parcelado`, "#EDF4FB", "#0B3A6B")}
-                              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>1ª {fmtData(dups[0].data_vencimento)}</div>
-                            </div>
-                          );
-                        })()}
-                      </td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>
                         {fmtBRL(nf.valor_total)}
                         {nf.observacao?.includes("WhatsApp") && (
@@ -3193,76 +3126,6 @@ export default function NfCompraPage() {
             </div>
           )}
         </div>
-
-        {/* ── NFS-e pendentes — etapa 1 da unificação: mostradas nesta mesma tela, clique leva
-            pro wizard de NF de Serviços (documento diferente, processado lá) ── */}
-        {nfServicosErro && (
-          <div style={{ ...card, marginTop: 20, background: "#FEE2E2", border: "0.5px solid #E24B4A50", color: "#791F1F", fontSize: 12, padding: "10px 16px" }}>
-            Não foi possível carregar as NF de Serviços pendentes: {nfServicosErro}
-          </div>
-        )}
-        {!nfServicosErro && (
-          <div style={{ ...card, padding: "0", overflow: "hidden", marginTop: 20 }}>
-            <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>NF de Serviços pendentes</div>
-                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                  Clique numa linha para processar em Compras → NF de Serviços
-                  {(filtroDataDe || filtroDataAte || busca) && " — filtrada pelos mesmos filtros de cima (data/busca)"}
-                </div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, background: "#FBF3E0", color: "#7B4A00", padding: "3px 10px", borderRadius: 10 }}>
-                {nfServicosFiltrados.length}{nfServicosFiltrados.length !== nfServicosPend.length ? ` de ${nfServicosPend.length}` : ""}
-              </span>
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
-                <colgroup>
-                  <col style={{ width: 56 }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: "24%" }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: "18%" }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 90 }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ background: "var(--bg-page)" }}>
-                    {["Doc.", "Nº / Série", "Prestador", "Prestação", "Competência", "Serviço (código LC 116)", "Valor", "Status"].map((c, i) => (
-                      <th key={i} style={{ padding: "6px 8px", textAlign: i === 6 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {nfServicosFiltrados.length === 0 && (
-                    <tr><td colSpan={7} style={{ padding: "16px 8px", textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhuma NF de Serviço pendente nesse filtro.</td></tr>
-                  )}
-                  {nfServicosFiltrados.map(ns => (
-                    <tr key={ns.id} onClick={() => router.push("/compras/nf-servico")}
-                      style={{ borderBottom: "0.5px solid var(--bg-tag)", cursor: "pointer" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                      <td style={{ padding: "7px 8px" }}>{badge("NFSE", "#F5F3FF", "#5B21B6")}</td>
-                      <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
-                        {ns.numero_nf}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{ns.serie}</span>
-                      </td>
-                      <td style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)", overflow: "hidden" }}>
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ns.prestador_nome}</div>
-                        {ns.prestador_cnpj && <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{ns.prestador_cnpj}</div>}
-                      </td>
-                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(ns.data_prestacao)}</td>
-                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{ns.competencia || "—"}</td>
-                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ns.codigo_servico || "—"}</td>
-                      <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>{fmtBRL(ns.valor_servico)}</td>
-                      <td style={{ padding: "7px 8px" }}>{badge(ns.status === "pendente" ? "Pendente" : "Digitando", ns.status === "pendente" ? "#FBF3E0" : "#EEEEEE", ns.status === "pendente" ? "#7B4A00" : "#555")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* ══════════════════════════════════════════════════════

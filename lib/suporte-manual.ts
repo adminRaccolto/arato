@@ -1405,7 +1405,6 @@ Campo que classifica o lançamento para fins fiscais:
 | NF de combustivel pede veiculo e nao mostra catalogo | Apropriacao Direta e so pra abastecimento direto de veiculo; reposicao de tanque usa Compra Normal + E Combustivel | Usar o botao "E reposicao de tanque -> Mudar para Compra Normal" que aparece na tela |
 | Como excluir uma folha de pagamento | Financeiro -> Folha de Pagamento -> abrir a folha -> Excluir Folha | Reverte CPs de salario/FGTS/INSS e adiantamentos antes de apagar; bloqueia se algum CP ja foi baixado em bordero |
 | Serie/numero de NF-e de uma IE "sumiu" depois de editar o produtor | Bug corrigido 28/09/2026 -- salvar o produtor recriava as IEs, orfando a config fiscal (Secao 304 nao relacionada) | Reconfigurar a serie/numero dessa IE em Parametros -> Fiscal; a partir do deploy nao acontece mais |
-| Onde ver NF de Servicos pendentes | Aparecem tambem em Compras -> NF de Produtos, numa secao abaixo da lista principal; clicar leva pro processamento em NF de Servicos |
 | Baixa de CP/CR de Empresa vira parcial so por causa de juros/multa pequenos | Bug corrigido 29/09/2026 -- o valor pago agora recalcula sozinho ao digitar multa/juros/desconto |
 | "SyntaxError: The string did not match the expected pattern" ao sincronizar SIEG | Tempo esgotado -- "Forcar re-importacao" com muitas notas demora demais | Sincronizar um periodo menor, ou sem marcar "Forcar re-importacao" |
 | Entrada de NF de combustivel pede veiculo obrigatorio | Corrigido 29/09/2026 -- veiculo virou opcional, obrigatorio e Centro de Custo + Ano Safra do topo da NF |
