@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-k",
+    data: "01/10/2026",
+    titulo: "Pilotos 3 e 4: Contas a Pagar e a Receber unificados (Produtor + Empresa)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Pedido do dono: reunificar os lançamentos de PF (produtor) e PJ (empresa) no Financeiro, tratando só o Fluxo de Caixa separadamente — esse continua intocado. Dois pilotos novos, fora do menu, telas completas com motor unificado: Baixar (com multa/juros/desconto, recalculando o valor pago ao vivo), Reprogramar Vencimento e Reabrir — todos routeando pra Produtor ou Empresa automaticamente conforme a origem do lançamento, chamando exatamente as mesmas rotinas que as telas reais de Contas a Pagar/Receber já usam hoje (nenhuma lógica financeira nova). Pagamento em lote/borderô fica de fora por enquanto — escopo pra validar primeiro é baixa individual completa." },
+    ],
+    onde: "Financeiro (pilotos, fora do menu): /financeiro/pagar-unificado-piloto e /financeiro/receber-unificado-piloto",
+  },
+  {
     versao: "2026.10.01-j",
     data: "01/10/2026",
     titulo: "Piloto 2 (fase 2): Baixar/Reabrir no piloto do CP/CR unificado",
