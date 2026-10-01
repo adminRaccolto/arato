@@ -12,13 +12,15 @@
 //
 // AINDA EM CONSTRUÇÃO — o que esta tela NÃO cobre ainda:
 //   • CT-e: não tem modal aqui — continua só em Fretes e Transporte → CT-e.
-//   • NF de Produtos: remessa logística (emissão de NF-e), reclassificação
-//     pós-processamento e ações em lote NÃO foram migradas — só existem na
-//     tela antiga /compras/nf, que não tem mais atalho no menu (01/10/2026,
-//     a reorganização do menu removeu "NF de Produtos"/"NF de Serviços"
-//     como itens próprios). Acessar direto pela URL se precisar.
+//   • NF de Produtos: remessa logística (emissão de NF-e) e ações em lote
+//     NÃO foram migradas — só existem na tela antiga /compras/nf, que não
+//     tem mais atalho no menu (01/10/2026, a reorganização do menu removeu
+//     "NF de Produtos"/"NF de Serviços" como itens próprios). Acessar direto
+//     pela URL se precisar.
 //   • Devolução de Compra JÁ FOI migrada (01/10/2026) — botão "↩ Devolver"
 //     dentro do modal, quando a NF está processada e é do tipo Insumos.
+//   • Reclassificação pós-processamento JÁ FOI migrada (01/10/2026) — botão
+//     "🏷 Reclassificar" dentro do modal, quando a NF está processada.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -135,9 +137,9 @@ export default function DocumentosFiscaisPage() {
         <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 12, display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 16 }}>🚧</span>
           <div>
-            <strong style={{ color: "#7A5200" }}>Em construção — ainda faltam 3 funções</strong>
+            <strong style={{ color: "#7A5200" }}>Em construção — ainda faltam 2 funções</strong>
             <div style={{ color: "#7A5200", marginTop: 2 }}>
-              NF de Produtos aqui ainda não tem remessa logística, reclassificação nem ações em lote (devolução já tem, no botão "↩ Devolver" dentro da NF). Essas 3 só existem na tela antiga, sem atalho no menu — acesse direto por <code>/compras/nf</code> se precisar. CT-e ainda não está nesta tela — continua em <strong>Fretes e Transporte → CT-e</strong>.
+              NF de Produtos aqui ainda não tem remessa logística nem ações em lote (devolução e reclassificação já têm, nos botões "↩ Devolver" e "🏷 Reclassificar" dentro da NF). Essas 2 só existem na tela antiga, sem atalho no menu — acesse direto por <code>/compras/nf</code> se precisar. CT-e ainda não está nesta tela — continua em <strong>Fretes e Transporte → CT-e</strong>.
             </div>
           </div>
         </div>

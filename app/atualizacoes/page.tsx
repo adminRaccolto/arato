@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-a",
+    data: "02/10/2026",
+    titulo: "Reclassificação de NF agora também na tela nova de Documentos Fiscais",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "novo", texto: "Abrindo qualquer NF de Produtos processada em Documentos Fiscais → Notas de Terceiro, aparece o botão \"🏷 Reclassificar\" — troca a Operação Gerencial e/ou o Centro de Custo da nota sem mexer em estoque nem nos lançamentos financeiros já gerados, igual já funcionava na tela antiga. Falta ainda remessa logística e ações em lote — essas continuam só na tela antiga por enquanto." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.01-z",
     data: "01/10/2026",
     titulo: "Devolução de Compra agora também na tela nova de Documentos Fiscais",

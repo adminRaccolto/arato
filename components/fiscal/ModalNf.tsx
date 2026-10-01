@@ -446,6 +446,14 @@ export default function ModalNf({
   const [devSaving,  setDevSaving]  = useState(false);
   const [devErr,     setDevErr]     = useState("");
 
+  // ── Reclassificação pós-processamento — só muda OG/CC, não mexe em
+  // estoque/financeiro já lançado.
+  const [modalReclass,  setModalReclass]  = useState<NfEntrada | null>(null);
+  const [reclassOpId,   setReclassOpId]   = useState("");
+  const [reclassCC,     setReclassCC]     = useState("");
+  const [reclassSaving, setReclassSaving] = useState(false);
+  const [reclassErr,    setReclassErr]    = useState("");
+
   const xmlInputRef = useRef<HTMLInputElement>(null);
 
   // ── Carregar cadastros de apoio (uma vez, ao montar) — substitui o
@@ -1693,6 +1701,32 @@ export default function ModalNf({
       setDevErr(e instanceof Error ? e.message : "Erro ao processar devolução");
     } finally {
       setDevSaving(false);
+    }
+  }
+
+  // ── Reclassificação pós-processamento ───────────────────────────────────
+  function abrirReclassificar(nf: NfEntrada) {
+    setModalReclass(nf);
+    setReclassOpId(nf.operacao_gerencial_id ?? "");
+    setReclassCC(nf.centro_custo_id ?? "");
+    setReclassErr("");
+  }
+
+  async function salvarReclassificacao() {
+    if (!modalReclass) return;
+    setReclassSaving(true);
+    setReclassErr("");
+    try {
+      await atualizarNfEntrada(modalReclass.id, {
+        operacao_gerencial_id: reclassOpId || undefined,
+        centro_custo_id:       reclassCC   || undefined,
+      });
+      onSaved();
+      setModalReclass(null);
+    } catch (e: unknown) {
+      setReclassErr(e instanceof Error ? e.message : "Erro ao salvar.");
+    } finally {
+      setReclassSaving(false);
     }
   }
 
@@ -3543,6 +3577,9 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
                         <button onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
+                      {nfEdit && nfEdit.status === "processada" && (
+                        <button onClick={() => abrirReclassificar(nfEdit)} style={{ ...btnR, borderColor: "#C9921B50", color: "#7A5200" }}>🏷 Reclassificar</button>
+                      )}
                       {nfEdit && nfEdit.status !== "cancelada" && (
                         <button onClick={() => iniciarExclusaoNf(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
                       )}
@@ -3857,6 +3894,65 @@ export default function ModalNf({
                   {devSaving ? "Processando…" : "↩ Emitir Devolução"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalReclass && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            {/* Cabeçalho */}
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Reclassificar NF</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                  NF {modalReclass.numero}/{modalReclass.serie} — {modalReclass.emitente_nome}
+                </div>
+                <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4, background: "#FBF3E0", display: "inline-block", padding: "2px 8px", borderRadius: 6 }}>
+                  Altera apenas a classificação. Os lançamentos financeiros gerados não são afetados.
+                </div>
+              </div>
+              <button onClick={() => setModalReclass(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 12 }}>×</button>
+            </div>
+            <div style={{ padding: "20px 22px" }}>
+              {reclassErr && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>
+                  {reclassErr}
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <label style={lbl}>Operação Gerencial</label>
+                  <SelectBusca
+                    value={reclassOpId}
+                    onChange={setReclassOpId}
+                    options={reclassOps.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                    placeholder="— sem operação —"
+                    style={inp}
+                  />
+                </div>
+                <div>
+                  <label style={lbl}>Centro de Custo</label>
+                  <select value={reclassCC} onChange={e => setReclassCC(e.target.value)} style={inp}>
+                    <option value="">— sem centro de custo —</option>
+                    {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(cc => (
+                      <option key={cc.id} value={cc.id}>{cc.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            {/* Rodapé */}
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button style={btnR} onClick={() => setModalReclass(null)}>Cancelar</button>
+              <button
+                onClick={salvarReclassificacao}
+                disabled={reclassSaving}
+                style={{ ...btnV, background: reclassSaving ? "var(--text-muted)" : "#C9921B", cursor: reclassSaving ? "default" : "pointer" }}
+              >
+                {reclassSaving ? "Salvando…" : "Salvar Reclassificação"}
+              </button>
             </div>
           </div>
         </div>
