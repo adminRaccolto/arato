@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-r",
+    data: "01/10/2026",
+    titulo: "Contas a Pagar e Contas a Receber agora mostram Produtor e Empresa juntos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Financeiro → Contas a Pagar e Financeiro → Contas a Receber passam a trazer os lançamentos de Produtor (PF) e de Empresa (PJ) na mesma lista, com uma coluna Origem indicando de onde veio cada um — em vez de precisar ir em duas telas separadas. Grid bem mais completo: Nº, Operação, Safra, Ciclo, Dias até o vencimento, Venc. Original, Saldo, Moeda, Conta Bancária, Nº NF, Lançado via e Observação, além dos filtros de sempre (Status, período, busca) agora como barra sempre visível, sem popup bloqueando a tela. Baixar, Reprogramar, Reabrir e Novo Lançamento continuam funcionando exatamente como antes — só a lista ficou unificada." },
+      { tipo: "aviso", texto: "Pagamento em lote/borderô (que a tela antiga de Contas a Pagar do produtor tinha) não está nesta versão ainda — fica para uma próxima etapa. Os links \"Contas a Pagar — Empresa\" e \"Contas a Receber — Empresa\" saíram do menu (o dado delas já aparece na tela unificada); as telas em si continuam existindo, só não têm mais atalho no menu." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.01-q",
     data: "01/10/2026",
     titulo: "Novo: Entrada de Nota Própria (Fiscal)",

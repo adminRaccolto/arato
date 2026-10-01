@@ -1,0 +1,3702 @@
+"use client";
+export const dynamic = "force-dynamic";
+import React, { useState, useEffect, useMemo, Suspense, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
+import { useAuth } from "../../../components/AuthProvider";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
+import ContextMenuColunas from "../../../components/ContextMenuColunas";
+import { useColunasGrid } from "../../../hooks/useColunasGrid";
+import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
+import SelectBusca from "../../../components/SelectBusca";
+import AnexoDocumentos from "../../../components/AnexoDocumentos";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta, atualizarLancamento, listarVeiculosUnificados, listarEmpresasDaConta, listarCartoesDaConta, vincularLancamentoFatura, buscarLancamentoDuplicado, listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, type VeiculoUnificado } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada, PagamentoLote, Empresa, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
+import ConciliacaoOfxInfo from "../../../components/ConciliacaoOfxInfo";
+
+interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
+
+// ── Tipos ────────────────────────────────────────────────────
+type Moeda  = "BRL" | "USD" | "barter";
+type Filtro = "aberto" | "vencido" | "vencendo" | "baixado" | "parcial" | "barter" | "previsao" | "contrato_financeiro" | "compra_terra" | "todos";
+
+// ── Constantes ────────────────────────────────────────────────
+const TODAY       = new Date().toISOString().split("T")[0];
+const COTACAO_USD = 5.12;
+
+const FORMAS_PAGAMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
+
+const CATS_CP = [
+  "Insumos — Sementes", "Insumos — Fertilizantes", "Insumos — Defensivos",
+  "Insumos — Inoculantes", "Combustível — Compra para Estoque", "Combustível — Consumo Direto",
+  "Serviços Agrícolas", "Fretes e Transportes", "Arrendamento de Terra",
+  "Manutenção de Máquinas", "Impostos", "Juros e IOF", "Pagamento de Custeio",
+  "Pagamento de Financiamento", "Pagamento de Empréstimo", "Prêmio de Seguro",
+  "Consórcio — A Contemplar", "Consórcio — Contemplado", "Despesas Administrativas", "Outros",
+];
+
+// Deriva a categoria legada a partir do código da Operação Gerencial
+function derivarCategoriaDespesa(classificacao: string): string {
+  const c = classificacao ?? "";
+  if (c.startsWith("2.01.01.01"))    return "Insumos";
+  if (c.startsWith("2.01.01.02.099")) return "Combustível — Consumo Direto";
+  if (c.startsWith("2.01.01.02"))    return "Combustível — Compra para Estoque";
+  if (c.startsWith("2.01.01.03.002")) return "Manutenção de Veículos";
+  if (c.startsWith("2.01.01.03"))    return "Manutenção de Máquinas";
+  if (c.startsWith("2.01.01.04.001")) return "Arrendamento de Terra";
+  if (c.startsWith("2.01.01.04"))    return "Serviços Agrícolas";
+  if (c.startsWith("2.01.01.05"))    return "Serviços Agrícolas";
+  if (c.startsWith("2.01.01.07"))    return "Fretes e Transportes";
+  if (c.startsWith("2.01.01.08"))    return "Serviços Agrícolas";
+  if (c.startsWith("2.01.01.10"))    return "Mão de Obra";
+  if (c.startsWith("2.01.02.01.04")) return "Impostos";
+  if (c.startsWith("2.01.02"))       return "Despesas Administrativas";
+  if (c.startsWith("2.02.01.02"))    return "Pagamento de Custeio";
+  if (c.startsWith("2.02.01.01"))    return "Tarifas Bancárias";
+  if (c.startsWith("2.02.01.03"))    return "Juros e IOF";
+  if (c.startsWith("2.03.03"))       return "Prêmio de Seguro";
+  if (c.startsWith("2.03."))         return "Patrimônio / Imobilizado";
+  if (c.startsWith("1.01.01.05"))    return "Impostos";
+  return "Outros";
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+const fmtBRL   = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtUSD   = (v: number) => `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+const fmtData  = (iso?: string | null) => { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
+
+const paraBRL = (l: Lancamento) =>
+  l.moeda === "USD" ? l.valor * (l.cotacao_usd || COTACAO_USD) : l.valor;
+
+const exibirValor = (l: Lancamento) => {
+  if (l.moeda === "USD")    return fmtUSD(l.valor);
+  if (l.moeda === "barter") return `${(l.sacas ?? 0).toLocaleString("pt-BR")} sc ${l.cultura_barter ?? "soja"}`;
+  return fmtBRL(l.valor);
+};
+
+type OrigemLanc = "nf_entrada" | "nf_saida" | "nf_servico" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "compra_terra" | "manual";
+
+// Tipo unificado para o modal de vínculo de NF na baixa (NF-e + NFS-e)
+type NfVinculo = {
+  id: string;
+  tipo: "nf" | "nfse";
+  numero: string;
+  serie?: string;
+  emitente_nome?: string;
+  data_emissao?: string;
+  data_vencimento_cp?: string;
+  valor_total: number;
+  status?: string;
+};
+const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
+  nf_entrada:          { label: "NF Entrada",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
+  nf_saida:            { label: "NF Saída",        bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
+  nf_servico:          { label: "NFS-e",           bg: "#EDF2FB", cl: "#1A3A6B",  border: "#3B6FCC" },
+  pedido_compra:       { label: "Pedido Compra",   bg: "#FBF3E0", cl: "#7A4300",  border: "#C9921B" },
+  arrendamento:        { label: "Arrendamento",    bg: "#FEF3E2", cl: "#7A4800",  border: "#EF9F27" },
+  tesouraria:          { label: "Tesouraria",      bg: "#EEE6F8", cl: "#4A1A7A",  border: "#8B5CF6" },
+  plantio:             { label: "Plantio",         bg: "#DCFCE7", cl: "#166534",  border: "#16A34A" },
+  contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#444444" },
+  compra_terra:        { label: "Compra de Terra", bg: "#F3EDE0", cl: "#5D3A1A",  border: "#8B6914" },
+  manual:              { label: "Manual",          bg: "#F1EFE8", cl: "var(--text-2)",     border: "var(--border)" },
+  auto:                { label: "Automático",      bg: "#E8E8E8", cl: "#0D0D0D",  border: "#111111" },
+};
+const origemMeta = (l: { origem_lancamento?: string; auto?: boolean }) => {
+  const k = (l.origem_lancamento as OrigemLanc | undefined) ?? (l.auto ? "auto" : "manual");
+  return ORIGEM_META[k] ?? ORIGEM_META.manual;
+};
+
+// Extrai somente o nome do fornecedor, removendo prefixo "Arrendamento Soja/Milho — "
+const exibirFornecedor = (descricao: string) => {
+  const m = descricao.match(/^Arrendamento(?:\s+\w+)?\s*—\s*(.+?)(?:\s*\([^)]*\))?\s*$/);
+  return m ? m[1].trim() : descricao;
+};
+
+// Para lançamentos de arrendamento, gera "Parcela soja safra 25/26" na coluna Observação
+const obsArrendamento = (l: Lancamento, safraLabel: string) => {
+  if (l.categoria !== "Arrendamento de Terra") return l.observacao ?? "—";
+  const isSoja  = /Arrendamento Soja/i.test(l.descricao);
+  const isMilho = /Arrendamento Milho/i.test(l.descricao);
+  const commodity = isSoja ? "soja" : isMilho ? "milho" : null;
+  if (commodity && l.ano_safra_id) return `Parcela ${commodity} safra ${safraLabel}`;
+  if (l.ano_safra_id)              return `Parcela arrendamento safra ${safraLabel}`;
+  return l.observacao ?? "—";
+};
+
+const aplicarMascara = (raw: string) => {
+  const nums = raw.replace(/\D/g, "");
+  if (!nums) return "";
+  return (Number(nums) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+const desmascarar = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")) || 0;
+const numParaMascara = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const dotStatus = (s: string) => ({
+  em_aberto: { cor: "#444444", title: "Em aberto"  },
+  vencido:   { cor: "#E24B4A", title: "Vencido"    },
+  vencendo:  { cor: "#EF9F27", title: "Vencendo"   },
+  parcial:   { cor: "#C9921B", title: "Parcial"     },
+  baixado:   { cor: "#16A34A", title: "Pago"        },
+}[s] ?? { cor: "var(--text-3)", title: s });
+
+// ── Estilos ───────────────────────────────────────────────────
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box", outline: "none", color: "var(--text-1)" };
+const inpF: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "var(--border-row)", boxSizing: "border-box", outline: "none", color: "var(--text-2)" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
+
+// ═══════════════════════════════════════════════════════════════
+function ContasPagarInner() {
+  const { fazendaId, contaId, fazendaIds = [], anoSafraVigenteId, emailUsuario } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // modoEmpresa removido — empresa usa /empresas/pagar com empresa_lancamentos
+  const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  // Guarda o último cascade usado para pré-preencher o próximo modal novo
+  const lastCascadeRef = useRef<Partial<CascadeValues>>({});
+  const fid = cascade.fazendaId || fazendaId || "";
+
+  // ── Aba principal: Lançamentos ou Faturas ──
+  const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
+  const [anosSafra,     setAnosSafra]     = useState<AnoSafra[]>([]);
+  const [produtores,    setProdutores]    = useState<Produtor[]>([]);
+  const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
+  const [ciclos,        setCiclos]        = useState<Ciclo[]>([]);
+  const [talhoes,       setTalhoes]       = useState<Talhao[]>([]);
+  const [funcionarios,  setFuncionarios]  = useState<Funcionario[]>([]);
+  const [veiculos,      setVeiculos]      = useState<VeiculoUnificado[]>([]);
+  const [contas,        setContas]        = useState<ContaBancariaMin[]>([]);
+  const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
+  const [allOgs,        setAllOgs]        = useState<OperacaoGerencial[]>([]);
+  const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
+  const [empresas,      setEmpresas]      = useState<Empresa[]>([]);
+  const [opGerBusca,    setOpGerBusca]    = useState("");
+  const [arquivoNF,     setArquivoNF]     = useState<File | null>(null);
+  const [errosForm,     setErrosForm]     = useState<string[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [atualizando,  setAtualizando]  = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [erro,     setErro]     = useState<string | null>(null);
+  const [filtro,   setFiltro]   = useState<Filtro>(() => {
+    const f = searchParams.get("filtro") as Filtro | null;
+    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","parcial","barter","previsao","contrato_financeiro","todos"];
+    return f && valid.includes(f) ? f : "aberto";
+  });
+
+  // ── Janela padrão — se filtro=vencido, volta 6 meses para mostrar todos os vencidos ──
+  const [periodoInicio, setPeriodoInicio] = useState(() => {
+    const sp = searchParams.get("periodoInicio");
+    if (sp) return sp;
+    const f = searchParams.get("filtro");
+    if (f === "vencido") {
+      const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split("T")[0];
+    }
+    return new Date().toISOString().split("T")[0];
+  });
+  const [periodoFim, setPeriodoFim] = useState(() => {
+    const sp = searchParams.get("periodoFim");
+    if (sp) return sp;
+    const f = searchParams.get("filtro");
+    if (f === "vencido") return new Date().toISOString().split("T")[0];
+    const d = new Date(); d.setMonth(d.getMonth() + 3); d.setDate(0);
+    return d.toISOString().split("T")[0];
+  });
+
+  const [popover,     setPopover]     = useState<{ l: Lancamento; x: number; y: number } | null>(null);
+  const [modalBaixa,  setModalBaixa]  = useState<Lancamento | null>(null);
+  // Adiantamentos do fornecedor disponíveis pra abater direto na baixa deste CP
+  const [adiantamentosDisp, setAdiantamentosDisp] = useState<AdiantamentoFornecedor[]>([]);
+  const [valorAdiantAplicar, setValorAdiantAplicar] = useState<Record<string, number>>({});
+  const [aplicandoAdiant, setAplicandoAdiant] = useState<string | null>(null);
+  const [modalReprog, setModalReprog] = useState<Lancamento | null>(null);
+  const [reprogForm,  setReprogForm]  = useState({ nova_data: "", novo_valor: "", obs: "" });
+  const [modalNovo,   setModalNovo]   = useState(false);
+  const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
+  const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
+  const [nfsVinculo, setNfsVinculo] = useState<NfVinculo[]>([]);
+  // Mesmo emissor (pessoa_id) + mesmo nº de documento já lançado — bloqueia
+  // duplicação de título antes de salvar (só no lançamento manual).
+  const [duplicataEncontrada, setDuplicataEncontrada] = useState<Lancamento | null>(null);
+  const [nfsVinculoLoading, setNfsVinculoLoading] = useState(false);
+  const [nfVinculoBusca, setNfVinculoBusca] = useState("");
+  const [nfVinculoSelecionada, setNfVinculoSelecionada] = useState<NfVinculo | null>(null);
+
+  useEffect(() => {
+    if (!alertaNF || !fid) return;
+    setNfVinculoSelecionada(null);
+    setNfVinculoBusca("");
+    setNfsVinculoLoading(true);
+    Promise.all([
+      supabase.from("nf_entradas")
+        .select("id,numero,serie,emitente_nome,valor_total,data_emissao,data_vencimento_cp,status")
+        .eq("fazenda_id", fid).in("status", ["pendente"])
+        .order("data_emissao", { ascending: false }).limit(150),
+      supabase.from("nf_servicos")
+        .select("id,numero_nf,prestador_nome,valor_liquido,data_prestacao,data_vencimento_cp,status")
+        .eq("fazenda_id", fid).in("status", ["pendente"])
+        .order("data_prestacao", { ascending: false }).limit(50),
+    ]).then(([{ data: nfs }, { data: svcs }]) => {
+      const lista: NfVinculo[] = [
+        ...(nfs ?? []).map(n => ({
+          id: n.id as string,
+          tipo: "nf" as const,
+          numero: (n.numero ?? "") as string,
+          serie: n.serie as string | undefined,
+          emitente_nome: n.emitente_nome as string | undefined,
+          data_emissao: n.data_emissao as string | undefined,
+          data_vencimento_cp: n.data_vencimento_cp as string | undefined,
+          valor_total: (n.valor_total ?? 0) as number,
+          status: n.status as string | undefined,
+        })),
+        ...(svcs ?? []).map(s => ({
+          id: s.id as string,
+          tipo: "nfse" as const,
+          numero: (s.numero_nf ?? "") as string,
+          emitente_nome: s.prestador_nome as string | undefined,
+          data_emissao: s.data_prestacao as string | undefined,
+          data_vencimento_cp: s.data_vencimento_cp as string | undefined,
+          valor_total: (s.valor_liquido ?? 0) as number,
+          status: s.status as string | undefined,
+        })),
+      ];
+      lista.sort((a, b) => (b.data_emissao ?? "").localeCompare(a.data_emissao ?? ""));
+      setNfsVinculo(lista);
+      setNfsVinculoLoading(false);
+    });
+  }, [alertaNF, fid]);
+
+  // Fechar popover com Escape
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPopover(null); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, []);
+
+  // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [isNfOrigin, setIsNfOrigin] = useState(false);  // CP originado de NF — campos bloqueados
+  const [salvarComoRegra, setSalvarComoRegra] = useState(false);
+
+  function fecharModal(salvo = false) {
+    // Ao salvar, guarda o cascade atual para pré-preencher o próximo modal novo
+    if (salvo) lastCascadeRef.current = cascade;
+    setModalNovo(false);
+    setEditandoId(null);
+    setIsNfOrigin(false);
+    setParcelas([]);
+    setErrosForm([]);
+    setOpGerBusca("");
+    setCascade({});
+    setArquivoNF(null);
+    setSalvarComoRegra(false);
+  }
+
+  async function criarRegraClassificacao() {
+    if (!fid || !form.pessoa_id || !form.operacao_gerencial_id) return;
+    const pessoa = pessoas.find(p => p.id === form.pessoa_id);
+    if (!pessoa?.cpf_cnpj) return;
+    const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+    await supabase.from("regras_classificacao_nf").insert({
+      fazenda_id:            fid,
+      nome_regra:            pessoa.nome,
+      cnpj_emitente:         pessoa.cpf_cnpj.replace(/\D/g, ""),
+      operacao_gerencial_id: form.operacao_gerencial_id,
+      categoria:             form.categoria || null,
+      ativo:                 true,
+      criada_por:            "CP — manual",
+    });
+    // feedback discreto no console — o modal já fecha
+    console.log("[CP] regra automática criada:", pessoa.nome, "→", og?.descricao);
+  }
+
+  function abrirEditar(l: Lancamento) {
+    setEditandoId(l.id);
+    setIsNfOrigin(l.origem_lancamento === "nf_entrada");
+    setModalTab("principal");
+    setErrosForm([]);
+    setOpGerBusca("");
+    setArquivoNF(null);
+    setParcelas([]);
+    // Quando CC foi salvo por UUID (nf_entrada), deriva o nome para o select que usa texto
+    const ccNomeDeriv = l.centro_custo || centrosCusto.find(c => c.id === l.centro_custo_id)?.nome || "";
+    setForm({
+      moeda:                 (l.moeda as Moeda) ?? "BRL",
+      pessoa_id:             l.pessoa_id             ?? "",
+      descricao:             l.descricao             ?? "",
+      categoria:             l.categoria             ?? CATS_CP[0],
+      vencimento:            l.data_vencimento       ?? "",
+      valorMask:             l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
+      cotacaoMask:           l.cotacao_usd ? l.cotacao_usd.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "",
+      sacasMask:             l.sacas?.toString()     ?? "",
+      culturaBarter:         l.cultura_barter        ?? "soja",
+      precoSacaMask:         l.preco_saca_barter?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "120,00",
+      obs:                   l.observacao            ?? "",
+      condicao:              "avista",
+      qtdParcelas:           "2",
+      frequencia:            "1",
+      tipo_documento_lcdpr:  (l.tipo_documento_lcdpr as typeof form.tipo_documento_lcdpr) ?? "RECIBO",
+      juros_pct:             l.juros_pct             ?? 0,
+      multa_pct:             l.multa_pct             ?? 0,
+      desconto_pct:          l.desconto_pontualidade_pct ?? 0,
+      meses_diferido:        "0",
+      chave_xml:             l.chave_xml             ?? "",
+      centro_custo:          ccNomeDeriv,
+      ano_safra_id:          l.ano_safra_id          ?? "",
+      produtor_id:           l.produtor_id           ?? "",
+      ciclo_id:              l.ciclo_id              ?? "",
+      talhao_id:             l.talhao_id             ?? "",
+      operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+      natureza:              (l.natureza as "real" | "previsao") ?? "real",
+      forma_pagamento:       l.forma_pagamento       ?? "PIX",
+      conta_pagamento:       l.conta_bancaria        ?? "",
+      data_emissao:          l.data_lancamento       ?? TODAY,
+      numero_documento:      l.numero_documento      ?? "",
+      serie:                 "",
+      funcionario_id:        l.funcionario_id        ?? "",
+      tipo_mao_obra:         l.tipo_mao_obra         ?? "",
+      unidade_mao_obra:      l.unidade_mao_obra      ?? "Dia",
+      quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
+      veiculo_sel:           l.maquina_id ? `m:${l.maquina_id}` : l.veiculo_id ? `v:${l.veiculo_id}` : "",
+      empresa_id:            l.empresa_id            ?? "",
+      entidade_contabil:     (l.entidade_contabil as "pf" | "pj" | undefined) ?? "",
+    });
+    setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
+    carregarOps();
+    setModalNovo(true);
+  }
+
+  // ── Seleção para borderô ──────────────────────────────────
+  const [selecionados,      setSelecionados]      = useState<Set<string>>(new Set());
+  const [modalLote,         setModalLote]         = useState(false);
+  const [loteDesc,          setLoteDesc]          = useState("");
+  const [loteSalvando,      setLoteSalvando]      = useState(false);
+  const [loteErro,          setLoteErro]          = useState("");
+  const [modalBaixaLote,    setModalBaixaLote]    = useState(false);
+  const [baixaLoteData,     setBaixaLoteData]     = useState(new Date().toISOString().slice(0, 10));
+  const [baixaLoteConta,    setBaixaLoteConta]    = useState("");
+  const [baixaLoteSalvando, setBaixaLoteSalvando] = useState(false);
+  const [baixaLoteErro,     setBaixaLoteErro]     = useState("");
+  // Multa/juros de atraso e desconto de antecipação por título, na baixa em
+  // lote — chave é o lancamento_id. Valores em dot-decimal (mesmo formato
+  // que InputNumerico devolve), "" = sem encargo naquele título.
+  const [encargosLote, setEncargosLote] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
+  // Borderôs pendentes
+  const [borderosPendentes,  setBorderosPendentes]  = useState<PagamentoLote[]>([]);
+  const [expandedBorderos,   setExpandedBorderos]   = useState<Set<string>>(new Set());
+  // Borderôs pagos (aba Baixados)
+  const [borderosPagos,      setBorderosPagos]      = useState<PagamentoLote[]>([]);
+  const [expandedBordPagos,  setExpandedBordPagos]  = useState<Set<string>>(new Set());
+  const [modalConfirmar,     setModalConfirmar]     = useState<PagamentoLote | null>(null);
+  const [modalVerBordero,    setModalVerBordero]    = useState<PagamentoLote | null>(null);
+  const [confirmData,       setConfirmData]       = useState(TODAY);
+  const [confirmConta,      setConfirmConta]      = useState("");
+  const [confirmSalvando,   setConfirmSalvando]   = useState(false);
+  const [confirmErro,       setConfirmErro]       = useState("");
+
+  const [baixa, setBaixa] = useState({
+    valorMask: "", data: TODAY, conta: "", obs: "",
+    multa_valor: "", juros_valor: "", desconto_valor: "",
+    pessoa_id: "", operacao_gerencial_id: "", og_busca: "",
+    salvar_class: false,
+    ano_safra_id: "", ciclo_id: "",
+    nova_data_vencimento: "",   // reprogramação do saldo em pagamento parcial
+    forma_pagamento: "PIX",     // forma de pagamento na baixa
+    cartao_id: "",              // quando forma_pagamento = Cartão de Crédito
+  });
+  const [cartoes, setCartoes] = useState<CartaoCredito[]>([]);
+  const [form, setForm] = useState({
+    moeda: "BRL" as Moeda,
+    pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "",
+    valorMask: "", cotacaoMask: "5,12",
+    sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "",
+    condicao: "avista" as "avista" | "prazo" | "recorrencia",
+    qtdParcelas: "2", frequencia: "1",
+    tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
+    juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0",
+    chave_xml: "", centro_custo: "",
+    ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "",
+    operacao_gerencial_id: "",
+    natureza: "real" as "real" | "previsao",
+    forma_pagamento: "PIX",
+    conta_pagamento: "",
+    data_emissao: TODAY,
+    numero_documento: "",
+    serie: "",
+    // "" = herda o padrão da fazenda (comportamento de sempre, via trigger no
+    // banco). Editável aqui pra cobrir o caso de uma CP de origem PF paga
+    // pela conta/fluxo de uma fazenda PJ (ou vice-versa) — o LCDPR filtra por
+    // este campo, nunca pela conta bancária usada na baixa.
+    entidade_contabil: "" as "" | "pf" | "pj",
+    // Mão de Obra
+    funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "",
+    // Veículo vinculado
+    veiculo_sel: "",  // "m:uuid" | "v:uuid" | ""
+    // Empresa não-rural
+    empresa_id: "",
+  });
+
+  // grid editável de parcelas (prazo) — cada parcela tem safra/ciclo próprio para rateio
+  type ParcelaGrid = { data: string; valorMask: string; ano_safra_id?: string; ciclo_id?: string; };
+  const [parcelas, setParcelas] = useState<ParcelaGrid[]>([]);
+
+  // ── Filtros de coluna ─────────────────────────────────────
+  const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
+  const COLS_CP = useMemo(() => [
+    { key: "fornecedor", label: "Fornecedor / Cliente", fixo: true },
+    { key: "operacao",   label: "Operação" },
+    { key: "safra",      label: "Safra" },
+    { key: "ciclo",      label: "Ciclo" },
+    { key: "vencimento", label: "Vencimento", fixo: true },
+    { key: "venc_orig",  label: "Venc. Original" },
+    { key: "valor",      label: "Valor", fixo: true },
+    { key: "dt_pgto",    label: "Dt. Pgto" },
+    { key: "valor_pago",    label: "Valor Pago" },
+    { key: "saldo_devedor", label: "Saldo Devedor" },
+    { key: "moeda",         label: "Moeda" },
+    { key: "conta",      label: "Conta" },
+    { key: "produtor",   label: "Produtor" },
+    { key: "num_nf",     label: "Nº NF" },
+    { key: "origem",     label: "Origem" },
+    { key: "obs",        label: "Observação" },
+  ], []);
+  const colKey = `cp_colunas_${emailUsuario ?? "default"}`;
+  const { col, toggle: toggleCol, visiveis: visCols, ordemTodas, moverColuna, resetar: resetarCols } = useColunasGrid(colKey, COLS_CP);
+  // Chaves das colunas opcionais (não fixas) — reordenáveis pelo usuário
+  const OPTIONAL_KEYS = useMemo(() => COLS_CP.filter(c => !c.fixo).map(c => c.key), [COLS_CP]);
+  const colWKey = `cp_col_widths_${emailUsuario ?? "default"}`;
+  const { w: cw, startResize } = useColumnResize({
+    fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
+    vencimento: 90, venc_orig: 90, valor: 110, dt_pgto: 85, valor_pago: 100, saldo_devedor: 110,
+    moeda: 65, conta: 110, produtor: 110, num_nf: 90, origem: 90, obs: 160,
+  }, colWKey);
+  const [fFornecedor, setFFornecedor] = useState("");
+  const [fOperacao,   setFOperacao]   = useState("");
+  const [fSafra,      setFSafra]      = useState("");
+  const [fVencDe,     setFVencDe]     = useState(() => searchParams.get("vencDe") ?? "");
+  const [fVencAte,    setFVencAte]    = useState(() => searchParams.get("vencAte") ?? "");
+  const [fMoedaOrig,  setFMoedaOrig]  = useState(() => searchParams.get("moeda") ?? "");
+  const [fConta,      setFConta]      = useState("");
+  const [fProdutor,   setFProdutor]   = useState("");
+  const [fObs,        setFObs]        = useState("");
+  const [fValor,      setFValor]      = useState("");
+  const [fEmpresa,    setFEmpresa]    = useState("");
+
+  // Gera/atualiza grid quando os parâmetros de prazo mudam
+  const gerarParcelas = (vencimento: string, qtd: number, freqMeses: number, valorTotal: number) => {
+    if (!vencimento || qtd < 2) { setParcelas([]); return; }
+    const valorParcela = valorTotal > 0 ? valorTotal / qtd : 0;
+    const novas: ParcelaGrid[] = Array.from({ length: qtd }, (_, i) => {
+      const d = new Date(vencimento + "T12:00:00");
+      d.setMonth(d.getMonth() + i * freqMeses);
+      return { data: d.toISOString().split("T")[0], valorMask: numParaMascara(valorParcela) };
+    });
+    setParcelas(novas);
+  };
+
+  // ── Carga ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (contaId || fazendaId) {
+      carregar();
+    }
+  }, [contaId, fazendaId, periodoInicio, periodoFim]);
+
+  const carregarOps = () => {
+    if (!contaId && !fazendaId) return;
+    // Lista dedup para o SELECT do modal
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).then(ops =>
+      setOpGerenciais(ops.filter(o => {
+        const cls = o.classificacao ?? "";
+        if (cls.startsWith("3.") || cls.startsWith("4.")) return false;
+        if (o.gerar_financeiro === false) return false;
+        return true;
+      }))
+    ).catch(() => {});
+    // Lista sem dedup para lookup no grid (preserva todos os UUIDs)
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", semDedup: true }, fazendaId)
+      .then(setAllOgs).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!contaId && !fazendaId) return;
+    listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
+    carregarOps();
+    listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
+    if (contaId) listarCartoesDaConta(contaId).then(setCartoes).catch(() => {});
+    listarProdutoresDaConta(contaId ?? "", fazendaId ?? undefined).then(setProdutores).catch(() => {});
+    if (fazendaId) {
+      // Carrega anos safra de TODAS as fazendas da conta para que o lookup no grid funcione
+      const fids = fazendaIds?.length ? fazendaIds : [fazendaId];
+      Promise.all(fids.map(fid => listarAnosSafra(fid)))
+        .then(results => {
+          const merged = results.flat();
+          const seen = new Set<string>();
+          setAnosSafra(merged.filter(a => seen.has(a.id) ? false : (seen.add(a.id), true)));
+        }).catch(() => {});
+      listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
+    }
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (fids.length) listarEmpresasDaConta(fids).then(setEmpresas).catch(() => {});
+  }, [contaId, fazendaId, fazendaIds?.join(",")]);
+
+  // Recarrega ciclos e talhões quando a fazenda selecionada no form muda
+  useEffect(() => {
+    if (!fid) return;
+    supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, fazenda_id").eq("fazenda_id", fid).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
+    listarTalhoes(fid).then(setTalhoes).catch(() => {});
+    listarFuncionarios(fazendaIds.length ? fazendaIds : [fid]).then(setFuncionarios).catch(() => {});
+    listarVeiculosUnificados(fazendaIds.length ? fazendaIds : [fid], "todos").then(setVeiculos).catch(() => {});
+  }, [fid, fazendaIds.join(",")]);
+
+  async function carregar(isPrimeiro?: boolean) {
+    const semDados = isPrimeiro ?? (lancamentos.length === 0);
+    if (semDados) setLoading(true); else setAtualizando(true);
+    setErro(null);
+    try {
+      const fids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+      const [dados, borderos, bordPagos] = await Promise.all([
+        listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar", fazendaId),
+        fids.length ? listarBorderosPendentes(fids, "pagar") : Promise.resolve([]),
+        fids.length ? listarBorderosPagos(fids, "pagar") : Promise.resolve([]),
+      ]);
+      setLancamentos(dados);
+      setBorderosPendentes(borderos);
+      setBorderosPagos(bordPagos);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message
+        : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message)
+        : String(e);
+      setErro(msg || "Erro ao carregar");
+    } finally {
+      setLoading(false);
+      setAtualizando(false);
+    }
+  }
+
+  // ── Confirmar previsão → real ──────────────────────────────
+  async function confirmarPrevisao(l: Lancamento) {
+    if (!confirm(`Confirmar "${l.descricao}" como Conta a Pagar real?`)) return;
+    await supabase.from("lancamentos").update({ natureza: "real" }).eq("id", l.id);
+    setLancamentos(prev => prev.map(x => x.id === l.id ? { ...x, natureza: "real" } : x));
+  }
+
+  // ── Status efetivo: corrige registros em_aberto com data passada que nunca tiveram status atualizado ──
+  const statusEfetivo = (l: Lancamento): string => {
+    if (l.status === "baixado" || l.status === "parcial") return l.status;
+    if (l.natureza === "previsao") return l.status;
+    const venc = l.data_vencimento ?? "";
+    if (venc && venc < TODAY) return "vencido";
+    if (venc && venc === TODAY) return "vencendo";
+    return l.status;  // em_aberto futuro ou qualquer outro
+  };
+
+  // ── Métricas ───────────────────────────────────────────────
+
+  const lancOper     = lancamentos.filter(l => l.moeda !== "barter" && (l.natureza ?? "real") === "real");
+  // "Em aberto" KPI — apenas itens DENTRO do período selecionado (>= periodoInicio)
+  const lancOperPeriodo = lancOper.filter(l => (l.data_vencimento ?? periodoInicio) >= periodoInicio);
+  const totalAberto  = lancOperPeriodo.filter(l => statusEfetivo(l) !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
+  const qAberto      = lancOperPeriodo.filter(l => statusEfetivo(l) !== "baixado").length;
+  // Vencidos — itens antes de hoje, não pagos (inclui extras pré-período carregados pela API)
+  const qVencido     = lancamentos.filter(l => statusEfetivo(l) === "vencido").length;
+  const qVencendo    = lancamentos.filter(l => statusEfetivo(l) === "vencendo").length;
+  const mesAtual     = TODAY.slice(0, 7);
+  const pagosNoMes   = lancamentos.filter(l => l.status === "baixado" && (l.data_baixa ?? "").startsWith(mesAtual))
+                         .reduce((a, l) => a + (l.valor_pago ?? paraBRL(l)), 0);
+
+  // Mapa id → descrição da OG para exibição rápida no grid
+  const ogMap = useMemo(() => new Map(allOgs.map(o => [o.id, o.descricao])), [allOgs]);
+
+  // ── Filtragem e ordenação ──────────────────────────────────
+
+  const filtradosBase = useMemo(() => {
+    let arr = lancamentos.filter(l => {
+      const isReal = (l.natureza ?? "real") === "real";
+      const sEfet  = statusEfetivo(l);
+      // "Em aberto": só itens dentro do período (>= periodoInicio). Extras vencidos pré-período ficam em "Vencidos".
+      if (filtro === "aberto")   return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter" && (l.data_vencimento ?? periodoInicio) >= periodoInicio;
+      if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
+      if (filtro === "vencendo") return isReal && sEfet === "vencendo";
+      if (filtro === "baixado")  return isReal && (sEfet === "baixado" || sEfet === "parcial") && !l.lote_id;
+      if (filtro === "parcial")  return isReal && l.status === "parcial";
+      if (filtro === "barter")              return isReal && l.moeda === "barter";
+      if (filtro === "previsao")            return l.natureza === "previsao";
+      if (filtro === "contrato_financeiro") return isReal && l.origem_lancamento === "contrato_financeiro";
+      if (filtro === "compra_terra")        return isReal && l.origem_lancamento === "compra_terra";
+      return true;
+    });
+    // Baixados: ordenar por data de baixa. Demais: por vencimento.
+    arr = arr.sort((a, b) => {
+      const ka = filtro === "baixado" ? (a.data_baixa ?? a.data_vencimento ?? "") : (a.data_vencimento ?? "");
+      const kb = filtro === "baixado" ? (b.data_baixa ?? b.data_vencimento ?? "") : (b.data_vencimento ?? "");
+      return ka < kb ? -1 : 1;
+    });
+    return arr;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lancamentos, filtro, TODAY, periodoInicio]);
+
+  const filtrados = useMemo(() => {
+    return filtradosBase.filter(l => {
+      const prodLabel    = produtores.find(p => p.id === l.produtor_id)?.nome ?? "";
+      const pessoaNomeForn = l.pessoa_id ? (pessoas.find(p => p.id === l.pessoa_id)?.nome ?? "") : "";
+      if (fFornecedor) {
+        const haystack = [pessoaNomeForn, l.descricao].join(" ").toLowerCase();
+        if (!haystack.includes(fFornecedor.toLowerCase())) return false;
+      }
+      const ogDesc = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria ?? "") : (l.categoria ?? "");
+      if (fOperacao   && !ogDesc.toLowerCase().includes(fOperacao.toLowerCase()))               return false;
+      if (fSafra      && l.ano_safra_id !== fSafra)                                            return false;
+      // Baixados: filtrar por data de baixa; demais: por vencimento
+      const dataRef = filtro === "baixado" ? (l.data_baixa ?? l.data_vencimento ?? "") : (l.data_vencimento ?? "");
+      if (fVencDe     && dataRef < fVencDe)                                                     return false;
+      if (fVencAte    && dataRef > fVencAte)                                                    return false;
+      if (fMoedaOrig  && l.moeda !== fMoedaOrig)                                               return false;
+      const contaNomeRes = contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "";
+      if (fConta      && !contaNomeRes.toLowerCase().includes(fConta.toLowerCase())) return false;
+      if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))            return false;
+      if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
+      if (fValor) { const v = desmascarar(fValor); if (v > 0 && Math.abs(paraBRL(l) - v) > 0.005) return false; }
+      if (l.empresa_id) return false; // lançamentos empresa → /empresas/pagar
+      return true;
+    });
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, fValor, fEmpresa, anosSafra, produtores, ogMap, pessoas, contas]);
+
+  // ── Contagens de lançamentos ocultos (para avisos) ─────────
+  const ocultosEmpresa = useMemo(() =>
+    lancamentos.filter(l => !!l.empresa_id).length,
+  [lancamentos]);
+
+  const ocultosForaPeriodo = useMemo(() =>
+    filtro !== "aberto" ? 0 :
+    lancamentos.filter(l => {
+      const sEfet = statusEfetivo(l);
+      const isReal = (l.natureza ?? "real") === "real";
+      return (isReal || l.natureza === "previsao") && sEfet !== "baixado" && l.moeda !== "barter"
+        && (l.data_vencimento ?? periodoInicio) < periodoInicio && !l.empresa_id;
+    }).length,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [lancamentos, filtro, periodoInicio]);
+
+  const ocultosLoteId = useMemo(() =>
+    filtro !== "baixado" ? 0 :
+    lancamentos.filter(l => (l.natureza ?? "real") === "real" && (l.status === "baixado" || l.status === "parcial") && !!l.lote_id).length,
+  [lancamentos, filtro]);
+
+  // ── Baixar ─────────────────────────────────────────────────
+
+  const abrirBaixa = (l: Lancamento) => {
+    // Intercepta se não tem NF vinculada (exceto barter e lançamentos de arrendamento/financiamento)
+    const categoriasSemNF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto"];
+    const precisaNF = l.moeda !== "barter"
+      && !l.nfe_numero
+      && l.origem_lancamento !== "nf_entrada"    // CP originado de NF já tem vínculo implícito
+      && l.origem_lancamento !== "nf_servico"   // NFS-e é a própria NF
+      && l.origem_lancamento !== "compra_terra"  // Compra de terra não emite NF
+      && !categoriasSemNF.includes(l.categoria ?? "");
+    if (precisaNF) { setAlertaNF(l); return; }
+    // Recarrega contas para incluir qualquer conta criada após o mount
+    listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
+    setModalBaixa(l);
+    setValorAdiantAplicar({});
+    setAdiantamentosDisp([]);
+    if (l.moeda !== "barter" && l.pessoa_id && fazendaId) {
+      // Exclui o próprio lançamento do adiantamento da lista — não faz sentido
+      // aplicar um adiantamento nele mesmo (o CP "Adiantamento — ..." que o
+      // registro de adiantamento gerou automaticamente).
+      listarAdiantamentosDisponiveis(l.fazenda_id ?? fazendaId, l.pessoa_id, l.moeda)
+        .then(list => setAdiantamentosDisp(list.filter(a => a.lancamento_id !== l.id)))
+        .catch(() => setAdiantamentosDisp([]));
+    }
+    const saldoRestante = paraBRL(l) - (l.valor_pago ?? 0);
+    setBaixa({
+      valorMask: l.moeda === "barter" ? "" : numParaMascara(Math.max(0, saldoRestante)),
+      data: TODAY,
+      conta: l.conta_bancaria ?? "",
+      obs: l.observacao ?? "",
+      multa_valor: "", juros_valor: "", desconto_valor: "",
+      forma_pagamento: "conta", cartao_id: "",
+      pessoa_id: l.pessoa_id ?? "",
+      operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+      og_busca: "",
+      salvar_class: false,
+      ano_safra_id: l.ano_safra_id ?? "",
+      ciclo_id: l.ciclo_id ?? "",
+      nova_data_vencimento: "",
+    });
+  };
+
+  const confirmarBaixa = async () => {
+    if (!modalBaixa) return;
+    if (modalBaixa.moeda !== "barter" && !baixa.valorMask) return;
+    const isCartao = baixa.forma_pagamento === "Cartão de Crédito";
+    if (modalBaixa.moeda !== "barter" && !isCartao && !baixa.conta) { alert("Selecione a conta bancária de pagamento."); return; }
+    if (isCartao && !baixa.cartao_id) { alert("Selecione o cartão de crédito."); return; }
+    const valorPago = modalBaixa.moeda === "barter" ? 0 : desmascarar(baixa.valorMask);
+    try {
+      setSalvando(true);
+      // Cartão de crédito: baixa sem débitar conta bancária (conta vazia)
+      await baixarLancamento(
+        modalBaixa.id, valorPago, baixa.data, isCartao ? "" : baixa.conta,
+        {
+          pessoa_id:               baixa.pessoa_id || undefined,
+          operacao_gerencial_id:   baixa.operacao_gerencial_id || undefined,
+          ano_safra_id:            baixa.ano_safra_id || undefined,
+          ciclo_id:                baixa.ciclo_id || undefined,
+          observacao:              baixa.obs || undefined,
+          multa_valor:             desmascarar(baixa.multa_valor) || undefined,
+          juros_valor:             desmascarar(baixa.juros_valor) || undefined,
+          desconto_valor:          desmascarar(baixa.desconto_valor) || undefined,
+          nova_data_vencimento:    baixa.nova_data_vencimento || undefined,
+        }
+      );
+      // Se cartão de crédito: vincula à fatura do mês
+      if (isCartao && baixa.cartao_id && fazendaId && contaId) {
+        const cartaoSel = cartoes.find(c => c.id === baixa.cartao_id);
+        if (cartaoSel) {
+          await vincularLancamentoFatura(modalBaixa.id, cartaoSel, baixa.data, valorPago, contaId, fazendaId);
+        }
+      }
+      // Salvar classificação automática para o fornecedor
+      if (baixa.salvar_class && baixa.pessoa_id && baixa.operacao_gerencial_id) {
+        await supabase.from("pessoas")
+          .update({ og_padrao_id: baixa.operacao_gerencial_id })
+          .eq("id", baixa.pessoa_id);
+      }
+      const novoTotalPago = (modalBaixa.valor_pago ?? 0) + valorPago;
+      const valorOriginal = paraBRL(modalBaixa);
+      const descV_save    = desmascarar(baixa.desconto_valor);
+      const novoStatus = novoTotalPago + descV_save >= valorOriginal - 0.01 ? "baixado" : "parcial";
+
+      // Se parcial e nova data informada → reprograma vencimento do saldo restante
+      const novaDataVenc = novoStatus === "parcial" && baixa.nova_data_vencimento
+        ? baixa.nova_data_vencimento : null;
+      if (novaDataVenc) {
+        await supabase.from("lancamentos")
+          .update({ data_vencimento: novaDataVenc })
+          .eq("id", modalBaixa.id);
+      }
+
+      setLancamentos(prev => prev.map(l =>
+        l.id !== modalBaixa.id ? l : {
+          ...l, status: novoStatus as Lancamento["status"], data_baixa: baixa.data,
+          valor_pago: novoTotalPago, conta_bancaria: baixa.conta,
+          pessoa_id: baixa.pessoa_id || l.pessoa_id,
+          operacao_gerencial_id: baixa.operacao_gerencial_id || l.operacao_gerencial_id,
+          ...(novaDataVenc ? { data_vencimento: novaDataVenc } : {}),
+        }
+      ));
+      setModalBaixa(null);
+    } catch (e: unknown) {
+      const msgBaixa = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+      alert("Erro: " + msgBaixa);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // ── Aplicar adiantamento na baixa do CP ─────────────────────
+  // Achado real 23/09/2026: o campo mostra um valor sugerido calculado na hora (valorAtual, na
+  // linha que renderiza o botão) enquanto valorAdiantAplicar[adiant.id] continua undefined até o
+  // usuário editar o campo manualmente — clicar em "Aplicar" sem tocar no campo lia direto do
+  // estado (0/undefined), caía no guard abaixo e saía em silêncio, sem alerta nenhum: "clica e não
+  // acontece nada". Corrigido: recebe o valor que está REALMENTE na tela (já com o fallback do
+  // sugerido aplicado), não só o que foi digitado.
+  const aplicarAdiantNoModal = async (adiant: AdiantamentoFornecedor, valorExibido: number) => {
+    if (!modalBaixa) return;
+    const saldoAdiant = adiant.valor - (adiant.valor_aplicado ?? 0);
+    const saldoCp     = Math.max(0, paraBRL(modalBaixa) - (modalBaixa.valor_pago ?? 0));
+    const valor       = valorExibido || 0;
+    if (!valor || valor <= 0) return;
+    if (valor > saldoAdiant + 0.01) { alert(`Valor maior que o saldo do adiantamento (${fmtBRL(saldoAdiant)}).`); return; }
+    if (valor > saldoCp + 0.01)     { alert(`Valor maior que o saldo devedor do CP (${fmtBRL(saldoCp)}).`); return; }
+    setAplicandoAdiant(adiant.id);
+    try {
+      const r = await aplicarAdiantamentoEmCP(adiant.id, modalBaixa.id, valor, baixa.data, `Adiantamento aplicado — ${modalBaixa.descricao}`);
+      setModalBaixa(prev => prev ? { ...prev, status: r.novoStatusCp as Lancamento["status"], valor_pago: r.novoTotalCp } : prev);
+      setLancamentos(prev => prev.map(l => l.id !== modalBaixa.id ? l : { ...l, status: r.novoStatusCp as Lancamento["status"], valor_pago: r.novoTotalCp, data_baixa: baixa.data }));
+      setAdiantamentosDisp(prev => prev
+        .map(a => a.id === adiant.id ? { ...a, valor_aplicado: (a.valor_aplicado ?? 0) + valor } : a)
+        .filter(a => (a.valor - (a.valor_aplicado ?? 0)) > 0.01));
+      setValorAdiantAplicar(prev => { const p = { ...prev }; delete p[adiant.id]; return p; });
+      // Novo saldo devedor do CP recalculado — ajusta o valor sugerido de pagamento (banco) pro que ainda falta
+      const novoSaldo = Math.max(0, paraBRL(modalBaixa) - r.novoTotalCp);
+      setBaixa(p => ({ ...p, valorMask: numParaMascara(novoSaldo) }));
+      if (r.novoStatusCp === "baixado") {
+        alert("CP totalmente coberto pelo adiantamento — nada a pagar via banco.");
+        setModalBaixa(null);
+      }
+    } catch (e: unknown) {
+      alert("Erro ao aplicar adiantamento: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAplicandoAdiant(null);
+    }
+  };
+
+  // ── Reabrir títulos ────────────────────────────────────────
+
+  const reabrirUm = async (l: Lancamento) => {
+    if (!confirm(`Reabrir "${l.descricao}"?\n\nO status voltará para em aberto e os dados de pagamento serão apagados.`)) return;
+    try {
+      setSalvando(true);
+      await reabrirLancamento(l.id);
+      const hoje = new Date().toISOString().slice(0, 10);
+      const novoStatus = l.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
+      setLancamentos(prev => prev.map(x =>
+        x.id !== l.id ? x : { ...x, status: novoStatus as Lancamento["status"], data_baixa: undefined, valor_pago: undefined, lote_id: undefined }
+      ));
+    } catch (e: unknown) {
+      alert("Erro: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const abrirReprog = (l: Lancamento) => {
+    setReprogForm({
+      nova_data:   l.data_vencimento ?? "",
+      novo_valor:  l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
+      obs:         "",
+    });
+    setModalReprog(l);
+  };
+
+  const salvarReprog = async () => {
+    if (!modalReprog) return;
+    const novaData = reprogForm.nova_data;
+    if (!novaData) { alert("Informe a nova data de vencimento."); return; }
+    try {
+      setSalvando(true);
+      const hoje = new Date().toISOString().slice(0, 10);
+      const novoStatus: Lancamento["status"] = novaData < hoje ? "vencido" : "em_aberto";
+      const novoValor = reprogForm.novo_valor
+        ? Number(reprogForm.novo_valor.replace(/\./g, "").replace(",", "."))
+        : modalReprog.valor;
+      const novaObs = reprogForm.obs.trim()
+        ? `[Reprogramado para ${new Date(novaData + "T12:00:00").toLocaleDateString("pt-BR")}] ${reprogForm.obs.trim()}`
+        : `[Reprogramado para ${new Date(novaData + "T12:00:00").toLocaleDateString("pt-BR")}]`;
+      // Preserva a data original em data_prorrogacao (sinalizador de renegociação)
+      const dataOriginal = modalReprog.data_prorrogacao ?? modalReprog.data_vencimento;
+      await atualizarLancamento(modalReprog.id, {
+        data_vencimento:  novaData,
+        data_prorrogacao: dataOriginal,
+        valor:            novoValor,
+        status:           novoStatus,
+        observacao:       novaObs,
+      });
+      setLancamentos(prev => prev.map(x =>
+        x.id !== modalReprog.id ? x : { ...x, data_vencimento: novaData, data_prorrogacao: dataOriginal, valor: novoValor!, status: novoStatus, observacao: novaObs }
+      ));
+      setModalReprog(null);
+    } catch (e: unknown) {
+      alert("Erro ao reprogramar: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const reabrirLote = async () => {
+    const ids = filtrados.filter(l => selecionados.has(l.id) && (l.status === "baixado" || l.status === "parcial")).map(l => l.id);
+    if (!ids.length) return;
+    if (!confirm(`Reabrir ${ids.length} título${ids.length > 1 ? "s" : ""} pago${ids.length > 1 ? "s" : ""}?\n\nOs dados de pagamento serão apagados.`)) return;
+    try {
+      setSalvando(true);
+      await reabrirLancamentos(ids);
+      const hoje = new Date().toISOString().slice(0, 10);
+      setLancamentos(prev => prev.map(l => {
+        if (!ids.includes(l.id)) return l;
+        const novoStatus = l.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
+        return { ...l, status: novoStatus as Lancamento["status"], data_baixa: undefined, valor_pago: undefined, lote_id: undefined };
+      }));
+      setSelecionados(new Set());
+    } catch (e: unknown) {
+      alert("Erro: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // ── Pagamento em Lote (Borderô) ───────────────────────────
+
+  // Usa lancamentos (lista completa) para que títulos de fornecedores diferentes
+  // possam ser agrupados num mesmo borderô, mesmo com filtro de coluna ativo.
+  const itensLote = lancamentos.filter(l => selecionados.has(l.id) && l.status !== "baixado" && !l.lote_id);
+  const totalLote = itensLote.reduce((s, l) => s + paraBRL(l), 0);
+
+  // Saldo restante do título (considera baixa parcial anterior) + encargos
+  // editados na baixa em lote — mesma lógica da baixa individual (abrirBaixa/
+  // confirmarBaixa), só que por linha dentro do modal de lote.
+  const saldoRestanteLote = (l: Lancamento) => Math.max(0, paraBRL(l) - (l.valor_pago ?? 0));
+  const encargoLoteDe = (id: string) => encargosLote[id] ?? { multa: "", juros: "", desconto: "" };
+  const valorFinalLote = (l: Lancamento) => {
+    const e = encargoLoteDe(l.id);
+    return saldoRestanteLote(l) + (Number(e.multa) || 0) + (Number(e.juros) || 0) - (Number(e.desconto) || 0);
+  };
+  const setEncargoLote = (id: string, campo: "multa" | "juros" | "desconto", valor: string) =>
+    setEncargosLote(prev => ({ ...prev, [id]: { ...encargoLoteDe(id), [campo]: valor } }));
+
+  const toggleSel = (id: string) =>
+    setSelecionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const toggleTodos = () => {
+    const todos = filtrados.map(l => l.id);
+    const todosSel = todos.length > 0 && todos.every(id => selecionados.has(id));
+    setSelecionados(todosSel ? new Set() : new Set(todos));
+  };
+
+  const criarBordero = async () => {
+    if (!fazendaId || itensLote.length === 0) return;
+    setLoteSalvando(true); setLoteErro("");
+    try {
+      const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, valor_pago: paraBRL(l) }));
+      const desc = loteDesc || `Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`;
+      await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente");
+      setSelecionados(new Set());
+      setModalLote(false);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e);
+      setLoteErro(msg || "Erro ao criar borderô");
+      console.error("criarBordero:", e);
+    } finally {
+      setLoteSalvando(false);
+    }
+  };
+
+  const baixarEmLote = async () => {
+    if (!fazendaId || itensLote.length === 0 || !baixaLoteData) return;
+    setBaixaLoteSalvando(true); setBaixaLoteErro("");
+    try {
+      // Por título (não mais UPDATE direto): baixarLancamento já acumula
+      // sobre o valor_pago anterior (título "parcial" não perde o que já
+      // tinha sido pago) e calcula baixado/parcial com a mesma regra da
+      // baixa individual — além de persistir multa/juros/desconto por item.
+      await Promise.all(itensLote.map(l => {
+        const e = encargoLoteDe(l.id);
+        return baixarLancamento(l.id, valorFinalLote(l), baixaLoteData, baixaLoteConta || l.conta_bancaria || "", {
+          multa_valor:    Number(e.multa) || undefined,
+          juros_valor:    Number(e.juros) || undefined,
+          desconto_valor: Number(e.desconto) || undefined,
+        });
+      }));
+      setSelecionados(new Set());
+      setEncargosLote({});
+      setModalBaixaLote(false);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBaixaLoteErro(msg || "Erro ao baixar títulos");
+    } finally {
+      setBaixaLoteSalvando(false);
+    }
+  };
+
+  const confirmarBordero = async () => {
+    if (!modalConfirmar || !confirmData || !confirmConta) return;
+    setConfirmSalvando(true); setConfirmErro("");
+    try {
+      await confirmarPagamentoBordero(modalConfirmar.id, confirmData, confirmConta);
+      setModalConfirmar(null);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e);
+      setConfirmErro(msg || "Erro ao confirmar pagamento");
+    } finally {
+      setConfirmSalvando(false);
+    }
+  };
+
+  const verBordero = async (loteId: string) => {
+    const found = borderosPendentes.find(b => b.id === loteId);
+    if (found) { setModalVerBordero(found); return; }
+    // borderô já pago — buscar no banco
+    const { data } = await supabase
+      .from("pagamento_lotes")
+      .select("*, itens:pagamento_lote_itens(*, lancamento:lancamentos(numero, descricao, pessoa_id))")
+      .eq("id", loteId)
+      .single();
+    if (data) setModalVerBordero(data as PagamentoLote);
+  };
+
+  const excluirBordero = async (b: PagamentoLote) => {
+    if (!confirm(`Cancelar borderô "${b.descricao}"? Os títulos voltam ao estado em aberto.`)) return;
+    try {
+      await cancelarBordero(b.id);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message) : JSON.stringify(e);
+      alert("Erro ao cancelar borderô: " + msg);
+    }
+  };
+
+  const estornarBorderoPago = async (b: PagamentoLote) => {
+    if (!confirm(`Estornar borderô "${b.descricao}"?\n\nTodos os títulos voltarão para "Em aberto" e o borderô será excluído.\nPara alterar um título, estorne o borderô, faça a correção e crie um novo borderô.`)) return;
+    try {
+      await estornarBordero(b.id);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message) : JSON.stringify(e);
+      alert("Erro ao estornar borderô: " + msg);
+    }
+  };
+
+  // ── Novo lançamento ────────────────────────────────────────
+
+  const adicionarLancamento = async () => {
+    // Validação de campos obrigatórios
+    const erros: string[] = [];
+    if (!form.pessoa_id && !form.descricao.trim()) erros.push("Fornecedor ou Descrição é obrigatório (aba Principal).");
+    if (!form.vencimento) erros.push("1º Vencimento é obrigatório (aba Principal).");
+    if (form.moeda !== "barter" && !form.valorMask) erros.push("Valor é obrigatório (aba Principal).");
+    if (form.moeda === "barter" && !form.sacasMask) erros.push("Quantidade de sacas é obrigatória (aba Principal).");
+    if (!form.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória (aba Principal).");
+    if (!editandoId && form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar.");
+    if (!editandoId && form.condicao === "recorrencia" && !form.vencimento) erros.push("1º Vencimento é obrigatório para recorrência (aba Principal).");
+    if (erros.length > 0) { setErrosForm(erros); return; }
+    setErrosForm([]);
+
+    // Mesmo emissor + mesmo nº de documento já lançado — checa uma vez contra
+    // o banco antes de qualquer criação (evita falso positivo entre as
+    // parcelas de um parcelamento/recorrência que estão sendo criadas agora).
+    if (fid) {
+      const dup = await buscarLancamentoDuplicado(fid, "pagar", form.pessoa_id, form.numero_documento, editandoId ?? undefined);
+      if (dup) { setDuplicataEncontrada(dup); return; }
+    }
+
+    const sacas      = Number(form.sacasMask);
+    const precoSaca  = desmascarar(form.precoSacaMask);
+    const valorFinal = form.moeda === "barter" ? sacas * precoSaca : desmascarar(form.valorMask);
+
+    // Upload arquivo NF se selecionado
+    let chaveXmlFinal = form.chave_xml || undefined;
+    if (arquivoNF) {
+      try {
+        const fd2 = new FormData();
+        fd2.append("file",          arquivoNF);
+        fd2.append("entidade_tipo", "lancamento_cp_nf");
+        fd2.append("entidade_id",   editandoId ?? `novo_${Date.now()}`);
+        fd2.append("fazenda_id",    fid ?? "");
+        const resp = await fetch("/api/storage/upload", { method: "POST", body: fd2 });
+        const rj = await resp.json();
+        if (rj.path) {
+          const { data: urlData } = supabase.storage.from("arquivos").getPublicUrl(rj.path);
+          chaveXmlFinal = urlData.publicUrl;
+        } else if (!resp.ok) {
+          setErrosForm([`Erro no upload do arquivo: ${rj.erro ?? "Tente novamente"}`]);
+          setSalvando(false);
+          return;
+        }
+      } catch (_e) { /* upload opcional — prossegue sem o arquivo */ }
+    }
+
+    // ── MODO EDIÇÃO: UPDATE ─────────────────────────────────────
+    if (editandoId) {
+      try {
+        setSalvando(true);
+        const patch = {
+          moeda:                 form.moeda,
+          pessoa_id:             form.pessoa_id             || null,
+          descricao:             form.descricao || (pessoas.find(p => p.id === form.pessoa_id)?.nome ?? ""),
+          categoria:             form.categoria,
+          data_vencimento:       form.vencimento,
+          valor:                 valorFinal,
+          cotacao_usd:           form.moeda === "USD" ? desmascarar(form.cotacaoMask) : null,
+          sacas:                 form.moeda === "barter" ? sacas : null,
+          cultura_barter:        form.moeda === "barter" ? form.culturaBarter : null,
+          preco_saca_barter:     form.moeda === "barter" ? precoSaca : null,
+          tipo_documento_lcdpr:  form.tipo_documento_lcdpr || null,
+          conta_bancaria:        form.conta_pagamento      || null,
+          juros_pct:             form.juros_pct     ? Number(form.juros_pct)   : null,
+          multa_pct:             form.multa_pct     ? Number(form.multa_pct)   : null,
+          desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : null,
+          chave_xml:             chaveXmlFinal ?? null,
+          numero_documento:      form.numero_documento      || null,
+          centro_custo:          form.centro_custo          || null,
+          observacao:            form.obs                   || null,
+          ano_safra_id:          form.ano_safra_id          || null,
+          ciclo_id:              form.ciclo_id              || null,
+          talhao_id:             form.talhao_id             || null,
+          produtor_id:           form.produtor_id           || null,
+          operacao_gerencial_id: form.operacao_gerencial_id || null,
+          natureza:              form.natureza,
+          forma_pagamento:       form.forma_pagamento       || null,
+          ...(form.funcionario_id ? {
+            funcionario_id:      form.funcionario_id,
+            tipo_mao_obra:       form.tipo_mao_obra       || null,
+            unidade_mao_obra:    form.unidade_mao_obra    || null,
+            quantidade_mao_obra: form.quantidade_mao_obra ? Number(form.quantidade_mao_obra) : null,
+          } : {}),
+          maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : null,
+          veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : null,
+          empresa_id:  form.empresa_id || null,
+          entidade_contabil: form.entidade_contabil || null,
+        };
+        // Se mudou para recorrência, converte: atualiza lançamento existente como parcela 1 e cria as demais
+        if (form.condicao === "recorrencia") {
+          const qtd  = Math.max(2, Number(form.qtdParcelas) || 2);
+          const freq = Math.max(1, Number(form.frequencia)  || 1);
+          const agrupador = crypto.randomUUID();
+          const patchComRecorr = { ...patch, agrupador, num_parcela: 1, total_parcelas: qtd };
+          const res1 = await fetch("/api/financeiro/lancamentos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: editandoId, patch: patchComRecorr }),
+          });
+          const j1 = await res1.json() as { ok: boolean; error?: string };
+          if (!j1.ok) { alert("Erro ao salvar: " + (j1.error ?? "Tente novamente")); return; }
+          setLancamentos(prev => prev.map(x =>
+            x.id === editandoId ? { ...x, ...patchComRecorr, data_vencimento: form.vencimento } as Lancamento : x
+          ));
+          // Cria parcelas 2…qtd
+          const novas: Lancamento[] = [];
+          for (let i = 1; i < qtd; i++) {
+            const dataVenc = new Date(form.vencimento);
+            dataVenc.setMonth(dataVenc.getMonth() + i * freq);
+            const criado = await criarLancamento({
+              ...patch,
+              fazenda_id:       fid!,
+              tipo:             "pagar",
+              status:           "em_aberto",
+              auto:             false,
+              data_lancamento:  TODAY,
+              data_vencimento:  dataVenc.toISOString().slice(0, 10),
+              agrupador,
+              num_parcela:      i + 1,
+              total_parcelas:   qtd,
+            } as Omit<Lancamento, "id" | "created_at">);
+            novas.push(criado);
+          }
+          setLancamentos(prev => [...novas, ...prev]);
+        } else if (form.condicao === "prazo" && parcelas.length > 0) {
+          // Usuário converteu o título para parcelamento: exclui o lançamento original e cria as novas parcelas
+          await excluirLancamento(editandoId);
+          const agrupador = Date.now().toString(36);
+          const total = parcelas.length;
+          const novas: Lancamento[] = [];
+          for (let i = 0; i < total; i++) {
+            const p = parcelas[i];
+            const criado = await criarLancamento({
+              ...patch,
+              fazenda_id:      fid!,
+              tipo:            "pagar",
+              status:          "em_aberto",
+              auto:            false,
+              data_lancamento: TODAY,
+              data_vencimento: p.data,
+              valor:           desmascarar(p.valorMask),
+              ano_safra_id:    p.ano_safra_id ?? (patch.ano_safra_id ?? undefined),
+              ciclo_id:        p.ciclo_id    ?? (patch.ciclo_id    ?? undefined),
+              num_parcela:     i + 1,
+              total_parcelas:  total,
+              agrupador,
+            } as Omit<Lancamento, "id" | "created_at">);
+            novas.push(criado);
+          }
+          setLancamentos(prev => [...novas, ...prev.filter(x => x.id !== editandoId)]);
+        } else {
+          const res = await fetch("/api/financeiro/lancamentos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: editandoId, patch }),
+          });
+          const json = await res.json() as { ok: boolean; error?: string };
+          if (!json.ok) { alert("Erro ao salvar: " + (json.error ?? "Tente novamente")); return; }
+          setLancamentos(prev => prev.map(x =>
+            x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
+          ));
+        }
+        if (salvarComoRegra) await criarRegraClassificacao();
+        fecharModal(true);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+        alert("Erro ao salvar: " + msg);
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
+
+    // ── MODO CRIAÇÃO: INSERT ────────────────────────────────────
+    const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
+      fazenda_id:    fid!,
+      tipo:          "pagar",
+      moeda:         form.moeda,
+      pessoa_id:     form.pessoa_id     || undefined,
+      descricao:     form.descricao || (pessoas.find(p => p.id === form.pessoa_id)?.nome ?? ""),
+      categoria:     form.categoria,
+      data_lancamento: TODAY,
+      data_vencimento: form.vencimento,
+      valor:         valorFinal,
+      status:        "em_aberto",
+      auto:          false,
+      cotacao_usd:   form.moeda === "USD" ? desmascarar(form.cotacaoMask) : undefined,
+      sacas:         form.moeda === "barter" ? sacas : undefined,
+      cultura_barter: form.moeda === "barter" ? form.culturaBarter : undefined,
+      preco_saca_barter: form.moeda === "barter" ? precoSaca : undefined,
+      tipo_documento_lcdpr: form.tipo_documento_lcdpr || undefined,
+      conta_bancaria: form.conta_pagamento || undefined,
+      juros_pct:     form.juros_pct     ? Number(form.juros_pct)   : undefined,
+      multa_pct:     form.multa_pct     ? Number(form.multa_pct)   : undefined,
+      desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : undefined,
+      chave_xml:     chaveXmlFinal,
+      numero_documento:      form.numero_documento      || undefined,
+      centro_custo:          form.centro_custo          || undefined,
+      observacao:            form.obs                   || undefined,
+      ano_safra_id:          form.ano_safra_id          || undefined,
+      ciclo_id:              form.ciclo_id              || undefined,
+      talhao_id:             form.talhao_id             || undefined,
+      produtor_id:           form.produtor_id           || undefined,
+      operacao_gerencial_id: form.operacao_gerencial_id || undefined,
+      natureza:              form.natureza,
+      ...(form.funcionario_id ? {
+        funcionario_id:      form.funcionario_id,
+        tipo_mao_obra:       form.tipo_mao_obra       || undefined,
+        unidade_mao_obra:    form.unidade_mao_obra    || undefined,
+        quantidade_mao_obra: form.quantidade_mao_obra ? Number(form.quantidade_mao_obra) : undefined,
+      } : {}),
+      ...(form.veiculo_sel ? {
+        maquina_id: form.veiculo_sel.startsWith("m:") ? form.veiculo_sel.slice(2) : undefined,
+        veiculo_id:  form.veiculo_sel.startsWith("v:") ? form.veiculo_sel.slice(2) : undefined,
+      } : {}),
+      empresa_id: form.empresa_id || undefined,
+      entidade_contabil: form.entidade_contabil || undefined,
+    };
+
+    try {
+      setSalvando(true);
+      let criados: Lancamento[];
+      if (form.condicao === "prazo" && parcelas.length > 0) {
+        const agrupador = Date.now().toString(36);
+        const total = parcelas.length;
+        const arr: Lancamento[] = [];
+        for (let i = 0; i < total; i++) {
+          const p = parcelas[i];
+          const l = await criarLancamento({
+            ...base,
+            data_vencimento: p.data,
+            valor:           desmascarar(p.valorMask),
+            // Rateio por vencimento: safra/ciclo da parcela sobrepõe o do form (se informado)
+            ano_safra_id:    p.ano_safra_id ?? base.ano_safra_id,
+            ciclo_id:        p.ciclo_id    ?? base.ciclo_id,
+            num_parcela:  i + 1,
+            total_parcelas: total,
+            agrupador,
+          });
+          arr.push(l);
+        }
+        criados = arr;
+      } else if (form.condicao === "prazo") {
+        const qtd   = Math.max(2, Number(form.qtdParcelas) || 2);
+        const freq  = Math.max(1, Number(form.frequencia) || 1);
+        criados = await criarParcelamento(base, qtd, freq);
+      } else if (form.condicao === "recorrencia") {
+        const qtd   = Math.max(2, Number(form.qtdParcelas) || 2);
+        const freq  = Math.max(1, Number(form.frequencia) || 1);
+        // Recorrência: mesmo valor em cada entrada (não divide — criarParcelamento preserva base.valor)
+        criados = await criarParcelamento(base, qtd, freq);
+      } else {
+        criados = [await criarLancamento(base)];
+      }
+      setLancamentos(prev => [...criados, ...prev]);
+      if (salvarComoRegra) await criarRegraClassificacao();
+      fecharModal(true);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+      alert("Erro ao salvar: " + msg);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const hasColFilter = fFornecedor || fOperacao || fSafra || fVencDe || fVencAte || fMoedaOrig || fConta || fProdutor || fObs || fValor;
+
+  const limparFiltrosColunas = () => {
+    setFFornecedor(""); setFOperacao(""); setFSafra(""); setFVencDe(""); setFVencAte("");
+    setFMoedaOrig(""); setFConta(""); setFProdutor(""); setFObs(""); setFEmpresa(""); setFValor("");
+  };
+
+  const borderosFiltrados = useMemo(() =>
+    !fFornecedor
+      ? borderosPendentes
+      : borderosPendentes.filter(b =>
+          (b.descricao ?? "").toLowerCase().includes(fFornecedor.toLowerCase()) ||
+          (b.itens ?? []).some(item => {
+            const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+            const pessoaNome = lanc?.pessoa_id ? (pessoas.find(p => p.id === lanc.pessoa_id)?.nome ?? "") : "";
+            const desc = lanc?.descricao ?? (item as any).lancamento?.descricao ?? "";
+            return [pessoaNome, desc].join(" ").toLowerCase().includes(fFornecedor.toLowerCase());
+          })
+        ),
+  [borderosPendentes, fFornecedor, lancamentos, pessoas]);
+
+  const borderosPagosFiltrados = useMemo(() =>
+    !fFornecedor
+      ? borderosPagos
+      : borderosPagos.filter(b =>
+          (b.descricao ?? "").toLowerCase().includes(fFornecedor.toLowerCase()) ||
+          (b.itens ?? []).some(item => {
+            const lanc = item.lancamento as { descricao?: string; pessoa_id?: string } | undefined;
+            const pessoaNome = lanc?.pessoa_id ? (pessoas.find(p => p.id === lanc.pessoa_id)?.nome ?? "") : "";
+            return [pessoaNome, lanc?.descricao ?? ""].join(" ").toLowerCase().includes(fFornecedor.toLowerCase());
+          })
+        ),
+  [borderosPagos, fFornecedor, pessoas]);
+
+  const disabled = salvando || (!form.pessoa_id && !form.descricao.trim()) || !form.vencimento
+    || (form.moeda !== "barter" && !form.valorMask)
+    || (form.moeda === "barter" && !form.sacasMask)
+    || !form.operacao_gerencial_id;
+
+  // ── Helpers de data relativa ────────────────────────────────
+  const diasAteVenc = (iso?: string | null) => {
+    if (!iso) return null;
+    const [y, m, d] = iso.split("-").map(Number);
+    const alvo = new Date(y, m - 1, d);
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
+  };
+  const labelRelativo = (dias: number | null, status: string) => {
+    if (status === "baixado") return null;
+    if (dias === null) return null;
+    if (dias < 0)  return { txt: `${Math.abs(dias)}d atraso`, cor: "#EF4444" };
+    if (dias === 0) return { txt: "Hoje",           cor: "#F59E0B" };
+    if (dias === 1) return { txt: "Amanhã",         cor: "#F59E0B" };
+    if (dias <= 7)  return { txt: `${dias}d`,        cor: "#F59E0B" };
+    return null;
+  };
+  // Sinalizador de 3 cores (verde a vencer / amarelo próx. 7 dias / vermelho vencido) —
+  // substitui os textos coloridos em negrito ("Xd atraso" etc.) que ocupavam espaço na linha.
+  const corSinalizador = (dias: number | null, status: string): string | null => {
+    if (status === "baixado") return null;
+    if (dias === null) return null;
+    if (dias < 0) return "#E24B4A";
+    if (dias <= 7) return "#EF9F27";
+    return "#16A34A";
+  };
+
+  // ── Render ─────────────────────────────────────────────────
+
+  const totalVencido  = lancamentos.filter(l => statusEfetivo(l) === "vencido").reduce((a, l) => a + paraBRL(l), 0);
+  const totalVencendo = lancamentos.filter(l => statusEfetivo(l) === "vencendo").reduce((a, l) => a + paraBRL(l), 0);
+
+  const PAGE_CSS = `
+    @keyframes cpFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .cp-row { transition: background .1s }
+    .cp-row:hover { background: rgba(255,255,255,0.04) !important }
+    .cp-tab { transition: background .12s, color .12s, border-color .12s }
+    .cp-tab:hover { border-color: var(--border) !important }
+    .cp-btn { transition: opacity .12s }
+    .cp-btn:hover { opacity: .8 }
+    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.6) }
+  `;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+      {/* eslint-disable-next-line react/no-danger */}
+      <style dangerouslySetInnerHTML={{ __html: PAGE_CSS }} />
+      <TopNav />
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+
+        {/* ═══ HEADER ═══ */}
+        <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid var(--border)", padding: "16px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>
+                Contas a Pagar
+                {atualizando && <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginLeft: 10 }}>Atualizando…</span>}
+              </h1>
+              <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-3)" }}>Compromissos financeiros, parcelas e pagamentos</p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>Período:</span>
+              <input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)}
+                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>até</span>
+              <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)}
+                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
+              <a href="/compras/nf" className="cp-btn"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", border: "0.5px solid rgba(96,165,250,0.3)", borderRadius: 8, background: "rgba(96,165,250,0.1)", color: "#60A5FA", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                📄 NFs Importadas
+              </a>
+              <button className="cp-btn"
+                onClick={() => {
+                  // Pré-preenche com o último cascade salvo (produtor/fazenda/safra da previsão anterior)
+                  const lc = lastCascadeRef.current;
+                  // Garante que fazendaId sempre esteja definido para que o CascadeSelector
+                  // carregue os anos safra imediatamente sem exigir seleção manual
+                  setCascade({ ...lc, fazendaId: lc.fazendaId || fazendaId || "", anoSafraId: lc.anoSafraId || anoSafraVigenteId || "" });
+                  setModalTab("principal");
+                  setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: lc.anoSafraId || anoSafraVigenteId || "", produtor_id: lc.produtorId ?? "", ciclo_id: lc.cicloId ?? "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "", empresa_id: "", entidade_contabil: "" });
+                  setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true);
+                }}
+                style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                + Nova CP
+              </button>
+            </div>
+          </div>
+
+          {/* KPI Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+            {[
+              { label: "EM ABERTO",   value: fmtBRL(totalAberto),   count: qAberto,              bg: "rgba(59,130,246,0.08)",  border: "rgba(59,130,246,0.25)",  cor: "#60A5FA" },
+              { label: "VENCIDO",     value: fmtBRL(totalVencido),  count: qVencido,             bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.25)",   cor: "#EF4444" },
+              { label: "VENCE HOJE",  value: fmtBRL(totalVencendo), count: qVencendo,            bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.25)",  cor: "#F59E0B" },
+              { label: "PAGO NO MÊS", value: fmtBRL(pagosNoMes),   count: null,                 bg: "rgba(34,197,94,0.08)",   border: "rgba(34,197,94,0.25)",   cor: "#22C55E" },
+            ].map((k, i) => (
+              <div key={i} style={{ background: k.bg, border: `0.5px solid ${k.border}`, borderRadius: 10, padding: "12px 16px" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-3)", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>{k.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{k.value}</div>
+                {k.count !== null && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>{k.count} lançamento{k.count !== 1 ? "s" : ""}</div>}
+              </div>
+            ))}
+          </div>
+        </header>
+
+        <div style={{ padding: "16px 24px", flex: 1, overflowY: "auto" }}>
+
+          {erro && (
+            <div style={{ background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#EF4444", display: "flex", gap: 8 }}>
+              <span>✕</span><span>{erro}</span>
+              <button onClick={() => carregar()} style={{ marginLeft: "auto", fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
+            </div>
+          )}
+
+          {loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando…</div>}
+
+          {!loading && (
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+
+              {/* Tabs de status */}
+              <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", background: "var(--bg-nav)" }}>
+                {([
+                  { key: "aberto",   label: "Em aberto",  count: lancamentos.filter(l => l.moeda !== "barter" && (l.natureza === "previsao" || (l.natureza ?? "real") === "real") && statusEfetivo(l) !== "baixado" && (l.data_vencimento ?? periodoInicio) >= periodoInicio).length, cor: "#60A5FA", activeBg: "rgba(59,130,246,0.15)",  activeBorder: "rgba(59,130,246,0.4)"  },
+                  { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                 cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",   activeBorder: "rgba(239,68,68,0.4)"   },
+                  { key: "baixado",  label: "Baixados",   count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && (l.status === "baixado" || l.status === "parcial")).length + borderosPagos.length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
+                  { key: "parcial",  label: "Parcial",    count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "parcial").length, cor: "#F59E0B", activeBg: "rgba(245,158,11,0.12)", activeBorder: "rgba(245,158,11,0.4)" },
+                  { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#555555", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
+                  { key: "previsao",            label: "Previsões",           count: lancamentos.filter(l => l.natureza === "previsao").length,                                                                           cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
+                  { key: "contrato_financeiro", label: "Contratos Financeiros", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "contrato_financeiro").length, cor: "#444444", activeBg: "rgba(55,138,221,0.12)", activeBorder: "rgba(55,138,221,0.4)"   },
+                  { key: "compra_terra",        label: "Compra de Terra",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.origem_lancamento === "compra_terra").length,          cor: "#8B6914", activeBg: "rgba(139,105,20,0.12)", activeBorder: "rgba(139,105,20,0.4)"   },
+                  { key: "todos",               label: "Todos",                count: lancamentos.length,                                                                                                    cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
+                ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
+                  <button key={f.key} className="cp-tab" onClick={() => {
+                    setFiltro(f.key);
+                    // Vencidos: busca 2 anos atrás para capturar CPs de consórcio e outras CPs antigas
+                    if (f.key === "vencido") {
+                      const d2a = new Date(); d2a.setFullYear(d2a.getFullYear() - 2);
+                      setPeriodoInicio(d2a.toISOString().split("T")[0]);
+                      setPeriodoFim(new Date().toISOString().split("T")[0]);
+                    } else if (f.key === "compra_terra" || f.key === "contrato_financeiro") {
+                      // Compra de terra e contratos financeiros podem ter parcelas em anos futuros
+                      const dInicio = new Date(); dInicio.setFullYear(dInicio.getFullYear() - 2);
+                      const dFim    = new Date(); dFim.setFullYear(dFim.getFullYear() + 30);
+                      setPeriodoInicio(dInicio.toISOString().split("T")[0]);
+                      setPeriodoFim(dFim.toISOString().split("T")[0]);
+                    } else if (filtro === "vencido" || filtro === "compra_terra" || filtro === "contrato_financeiro") {
+                      // Voltou de Vencidos → restaura janela padrão
+                      setPeriodoInicio(new Date().toISOString().split("T")[0]);
+                      const df = new Date(); df.setMonth(df.getMonth() + 3); df.setDate(0);
+                      setPeriodoFim(df.toISOString().split("T")[0]);
+                    }
+                  }}
+                    style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
+                    {f.label}
+                    <span style={{ marginLeft: 6, fontSize: 10, background: filtro === f.key ? f.cor : "var(--border)", color: filtro === f.key ? "#000" : "var(--text-3)", padding: "1px 5px", borderRadius: 8, fontWeight: 700 }}>
+                      {f.count}
+                    </span>
+                  </button>
+                ))}
+                <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                  {/* Filtro por empresa */}
+                  {empresas.length > 0 && (
+                    <select value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}
+                      style={{ fontSize: 11, padding: "4px 8px", borderRadius: 7, border: `0.5px solid ${fEmpresa ? "#1A4870" : "var(--border)"}`, background: fEmpresa ? "#D5E8F5" : "var(--bg-card)", color: fEmpresa ? "#0B2D50" : "var(--text-2)", cursor: "pointer" }}>
+                      <option value="">Todas as entidades</option>
+                      <option value="__fazenda__">Fazenda (sem empresa)</option>
+                      {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                    </select>
+                  )}
+                  {hasColFilter && (
+                    <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
+                      ✕ Limpar filtros
+                    </button>
+                  )}
+                  {selecionados.size > 0 && (
+                    <button onClick={async () => { const manuais = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado"); if (manuais.length === 0) { alert("Nenhum lançamento em aberto selecionado para excluir."); return; } if (!confirm(`Excluir ${manuais.length} lançamento${manuais.length !== 1 ? "s" : ""}?\nEsta ação não pode ser desfeita.`)) return; const ids = manuais.map(l => l.id); const { error } = await supabase.from("lancamentos").delete().in("id", ids); if (error) { alert("Erro ao excluir: " + error.message); return; } setLancamentos(prev => prev.filter(x => !ids.includes(x.id))); setSelecionados(new Set()); }}
+                      style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.1)", color: "#EF4444", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+                      🗑 Excluir ({selecionados.size})
+                    </button>
+                  )}
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{filtrados.length}/{filtradosBase.length}</span>
+                </div>
+              </div>
+
+              {/* Tabela */}
+              <div style={{ overflow: "auto", maxHeight: "calc(100vh - 340px)" }}>
+                {filtradosBase.length === 0 ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada para este filtro.</div>
+                ) : (
+                  <table style={{ tableLayout: "fixed", width: Math.max(20 + 32 + 52 + 44 + cw("fornecedor") + cw("vencimento") + 56 + cw("valor") + 36 + 36 + 36 + ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).reduce((s, k) => s + cw(k), 0), 600), borderCollapse: "collapse" }}>
+                    <thead style={{ position: "sticky", top: 0, zIndex: 3 }}
+                      onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
+                      title="Clique com botão direito para configurar colunas">
+                      <tr style={{ background: "var(--bg-nav)" }}>
+                        <th style={{ ...thS(20), width: 20 }} title="Verde: a vencer · Amarelo: vence em até 7 dias · Vermelho: vencido"></th>
+                        <th style={{ ...thS(32), width: 32 }}>
+                          <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
+                            checked={filtrados.length > 0 && filtrados.every(l => selecionados.has(l.id))}
+                            onChange={toggleTodos} title="Selecionar todos" />
+                        </th>
+                        <th style={{ ...thS(52, "center"), width: 52 }}>Nº</th>
+                        <th style={{ ...thS(cw("fornecedor"), "left"), width: cw("fornecedor"), position: "relative", userSelect: "none" }}>Fornecedor / Cliente<ResizeHandle onMouseDown={startResize("fornecedor")} /></th>
+                        <th style={{ ...thS(44, "center"), width: 44 }}>Parc.</th>
+                        <th style={{ ...thS(cw("vencimento"), "center"), width: cw("vencimento"), position: "relative", userSelect: "none" }}>Vencimento ↑<ResizeHandle onMouseDown={startResize("vencimento")} /></th>
+                        <th style={{ ...thS(56, "center"), width: 56 }}>Dias</th>
+                        <th style={{ ...thS(cw("valor"), "right"), width: cw("valor"), position: "relative", userSelect: "none" }}>Valor<ResizeHandle onMouseDown={startResize("valor")} /></th>
+                        {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
+                          const TH_LABELS: Record<string, string> = { operacao: "Operação", safra: "Safra", ciclo: "Ciclo", venc_orig: "Venc. Original", dt_pgto: "Dt. Pgto", valor_pago: "Valor Pago", saldo_devedor: "Saldo Devedor", moeda: "Moeda", conta: "Conta", produtor: "Produtor", num_nf: "Nº NF", origem: "Origem", obs: "Observação" };
+                          const TH_ALIGN: Record<string, "left"|"center"|"right"> = { venc_orig: "center", dt_pgto: "center", valor_pago: "right", saldo_devedor: "right", moeda: "center", num_nf: "center", origem: "center" };
+                          const align = TH_ALIGN[k] ?? "left";
+                          return <th key={k} style={{ ...thS(cw(k), align), width: cw(k), position: "relative", userSelect: "none" }}>{TH_LABELS[k]}<ResizeHandle onMouseDown={startResize(k)} /></th>;
+                        })}
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Baixar</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Reprog.</th>
+                        <th style={{ ...thS(36, "center"), width: 36 }}>Editar</th>
+                      </tr>
+                      {/* Linha de filtros */}
+                      <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border-table)" }}>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} /></td>
+                        <td></td>
+                        <td style={{ padding: "3px 6px" }}>
+                          <div style={{ display: "flex", gap: 2 }}>
+                            <input type="date" style={{ ...inpF, width: "50%" }} value={fVencDe} onChange={e => setFVencDe(e.target.value)} title="Vencimento de" />
+                            <input type="date" style={{ ...inpF, width: "50%" }} value={fVencAte} onChange={e => setFVencAte(e.target.value)} title="Vencimento até" />
+                          </div>
+                        </td>
+                        <td></td>
+                        <td style={{ padding: "3px 6px" }}>
+                          <div style={{ display: "flex", gap: 2 }}>
+                            <input style={{ ...inpF, width: "100%" }} placeholder="Valor exato" value={fValor} onChange={e => setFValor(e.target.value.replace(/[^\d,]/g, ""))} title="Filtrar por valor exato" />
+                          </div>
+                        </td>
+                        {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
+                          let content: React.ReactNode = null;
+                          if (k === "operacao") content = <input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} />;
+                          if (k === "safra")    content = <select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}><option value="">Todas</option>{anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}</select>;
+                          if (k === "moeda")    content = <select style={inpF} value={fMoedaOrig} onChange={e => setFMoedaOrig(e.target.value)}><option value="">Todas</option><option value="BRL">BRL</option><option value="USD">USD</option><option value="barter">Barter</option></select>;
+                          if (k === "conta")    content = <input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} />;
+                          if (k === "produtor") content = <input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} />;
+                          if (k === "obs")      content = <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />;
+                          return <td key={k} style={content ? { padding: "3px 6px" } : {}}>{content}</td>;
+                        })}
+                        <td></td><td></td><td></td>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* ── Borderôs pendentes no topo da grid ── */}
+                      {borderosFiltrados.map(b => {
+                        const itensB   = b.itens ?? [];
+                        const totalB   = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
+                        const dtCriac  = b.created_at ? new Date(b.created_at).toLocaleDateString("pt-BR") : "—";
+                        const expanded = expandedBorderos.has(b.id);
+                        const toggleExpand = () => setExpandedBorderos(prev => {
+                          const next = new Set(prev);
+                          expanded ? next.delete(b.id) : next.add(b.id);
+                          return next;
+                        });
+                        return (
+                          <>
+                            {/* Linha cabeçalho do borderô */}
+                            <tr key={`bdr-hdr-${b.id}`} style={{ background: "#FBF3E0", borderLeft: "3px solid #C9921B", borderBottom: "0.5px solid #C9921B30", cursor: "pointer" }} onClick={toggleExpand}>
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                <span style={{ fontSize: 10, background: "#C9921B", color: "#fff", borderRadius: 4, padding: "2px 5px", fontWeight: 700 }}>BDR</span>
+                              </td>
+                              <td colSpan={3} style={{ padding: "10px 8px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#7A5C00" }}>{b.descricao || "Borderô"}</span>
+                                  <span style={{ fontSize: 11, color: "#7A5C00" }}>Criado em {dtCriac}</span>
+                                  <span style={{ fontSize: 11, background: "#fff", color: "#7A5C00", border: "0.5px solid #C9921B60", borderRadius: 20, padding: "1px 8px", fontWeight: 600 }}>
+                                    {itensB.length} título{itensB.length !== 1 ? "s" : ""}
+                                  </span>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", marginLeft: 4 }}>
+                                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "#7A5C00", marginLeft: 4 }}>{expanded ? "▲ ocultar" : "▼ ver títulos"}</span>
+                                </div>
+                              </td>
+                              <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => { setModalConfirmar(b); setConfirmData(TODAY); setConfirmConta(""); setConfirmErro(""); }}
+                                    style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 7, padding: "5px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                                    Confirmar Pagamento
+                                  </button>
+                                  <button
+                                    onClick={() => excluirBordero(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {/* Sub-linhas dos títulos quando expandido */}
+                            {expanded && itensB.map((item, idx) => {
+                              const lanc = lancamentos.find(l => l.id === item.lancamento_id);
+                              const desc = lanc?.descricao ?? item.lancamento?.descricao ?? "—";
+                              const num  = lanc?.numero    ?? item.lancamento?.numero    ?? null;
+                              return (
+                                <tr key={`bdr-item-${item.id}`} style={{ background: idx % 2 === 0 ? "#FDFAF2" : "#FAF5E4", borderLeft: "3px solid #C9921B40", borderBottom: "0.5px solid #C9921B20" }}>
+                                  <td style={{ padding: "7px 6px", textAlign: "center" }}>
+                                    <span style={{ fontSize: 9, color: "#C9921B" }}>└</span>
+                                  </td>
+                                  <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{num ?? "—"}</td>
+                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)" }}>{desc}</td>
+                                  <td colSpan={99} style={{ padding: "7px 8px" }}>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                        {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                                      </span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "#EF4444" }}>
+                                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
+                                      </span>
+                                      {lanc?.categoria && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{lanc.categoria}</span>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </>
+                        );
+                      })}
+                      {/* ── Borderôs pagos — só na aba Baixados ── */}
+                      {filtro === "baixado" && borderosPagosFiltrados.map(b => {
+                        const itensB    = b.itens ?? [];
+                        const totalB    = itensB.reduce((s, i) => s + (i.valor_pago ?? 0), 0);
+                        const dtPago    = b.data_pagamento ? new Date(b.data_pagamento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+                        const isSingle  = itensB.length === 1;
+                        const expanded  = expandedBordPagos.has(b.id);
+                        const toggleExp = () => setExpandedBordPagos(prev => {
+                          const next = new Set(prev);
+                          expanded ? next.delete(b.id) : next.add(b.id);
+                          return next;
+                        });
+
+                        // Descrição no cabeçalho: se 1 título, usa a descrição do lançamento
+                        const lancSingle = isSingle
+                          ? (itensB[0].lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string } | undefined)
+                          : null;
+                        const headerDesc = isSingle
+                          ? (lancSingle?.descricao ?? b.descricao ?? "Borderô")
+                          : (b.descricao || "Borderô");
+
+                        // Nomes dos fornecedores/clientes dos títulos do borderô — pra dar
+                        // um nome de verdade ao borderô em vez da descrição genérica
+                        // "Borderô DD/MM — N títulos" (que não diz do que se trata).
+                        const nomesFornecedores = !isSingle
+                          ? [...new Set(itensB.map(item => {
+                              const pid = (item.lancamento as { pessoa_id?: string } | undefined)?.pessoa_id;
+                              return pid ? pessoas.find(p => p.id === pid)?.nome : undefined;
+                            }).filter((n): n is string => !!n))]
+                          : [];
+                        const nomesResumo =
+                          nomesFornecedores.length === 0 ? null :
+                          nomesFornecedores.length <= 2 ? nomesFornecedores.join(" · ") :
+                          `${nomesFornecedores.slice(0, 2).join(" · ")} +${nomesFornecedores.length - 2}`;
+
+                        // Borderô de 1 título → linha normal com botão Estornar (sem bloco verde)
+                        // Borderô de N títulos → bloco verde expansível com todos os títulos
+                        if (isSingle) {
+                          const vencOrig = lancSingle?.data_vencimento
+                            ? new Date(lancSingle.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+                          return (
+                            <tr key={`bdr-${b.id}`} style={{ borderBottom: "0.5px solid var(--border-table)" }}>
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                {/* sem checkbox — é borderô */}
+                              </td>
+                              <td style={{ padding: "10px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>
+                                {lancSingle?.numero ?? "—"}
+                              </td>
+                              <td colSpan={2} style={{ padding: "10px 8px" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{headerDesc}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                                  {b.conta_bancaria ?? ""}
+                                </div>
+                              </td>
+                              <td style={{ padding: "10px 8px" }}>
+                                <div style={{ fontSize: 12, color: "var(--text-2)" }}>{lancSingle?.categoria ?? "—"}</div>
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)" }}>—</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{vencOrig}</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{dtPago}</td>
+                              <td style={{ padding: "10px 8px", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 11, color: "var(--text-3)" }}>BRL</td>
+                              <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                                  <span style={{ fontSize: 9, background: "#DCFCE7", color: "#166534", borderRadius: 4, padding: "2px 5px", fontWeight: 700, border: "0.5px solid #22C55E60" }}>BDR</span>
+                                  <button
+                                    onClick={() => estornarBorderoPago(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>
+                                    ↩ Estornar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        // Multi-título: uma linha só, sem fundo colorido, só o prefixo BDR
+                        return (
+                          <React.Fragment key={`bdr-${b.id}`}>
+                            <tr style={{ borderBottom: "0.5px solid var(--border-table)", cursor: "pointer" }} onClick={toggleExp}>
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                <span style={{ fontSize: 9, background: "#DCFCE7", color: "#166534", borderRadius: 4, padding: "2px 5px", fontWeight: 700, border: "0.5px solid #22C55E60" }}>BDR</span>
+                              </td>
+                              <td style={{ padding: "10px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>—</td>
+                              <td colSpan={2} style={{ padding: "10px 8px", overflow: "hidden" }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {nomesResumo ?? headerDesc}
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {itensB.length} títulos{b.conta_bancaria ? ` · ${b.conta_bancaria}` : ""}
+                                </div>
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)" }}>—</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-3)" }}>—</td>
+                              <td style={{ padding: "10px 8px", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{dtPago}</td>
+                              <td style={{ padding: "10px 8px", fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--text-1)" }}>
+                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalB)}
+                              </td>
+                              <td style={{ padding: "10px 8px", fontSize: 11, color: "var(--text-3)" }}>BRL</td>
+                              <td colSpan={99} style={{ padding: "10px 8px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                                  <span onClick={toggleExp} style={{ fontSize: 11, color: "#16A34A", cursor: "pointer", whiteSpace: "nowrap" }}>{expanded ? "▲ recolher" : "▼ ver títulos"}</span>
+                                  <button
+                                    onClick={() => estornarBorderoPago(b)}
+                                    style={{ background: "transparent", border: "0.5px solid #E24B4A60", color: "#E24B4A", borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer" }}>
+                                    ↩ Estornar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {expanded && itensB.map((item, idx) => {
+                              const lanc = item.lancamento as { numero?: number; descricao?: string; valor?: number; data_vencimento?: string; categoria?: string; pessoa_id?: string } | undefined;
+                              const nomeItem = lanc?.pessoa_id ? pessoas.find(p => p.id === lanc.pessoa_id)?.nome : undefined;
+                              return (
+                                <tr key={`bdp-item-${item.id}`} style={{ background: idx % 2 === 0 ? "var(--bg-page)" : "transparent", borderBottom: "0.5px solid var(--border-table)" }}>
+                                  <td style={{ padding: "7px 6px", textAlign: "center" }}>
+                                    <span style={{ fontSize: 9, color: "var(--text-3)" }}>└</span>
+                                  </td>
+                                  <td style={{ padding: "7px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{lanc?.numero ?? "—"}</td>
+                                  <td colSpan={2} style={{ padding: "7px 8px", fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {nomeItem ? <strong>{nomeItem}</strong> : null}{nomeItem && lanc?.descricao ? " — " : ""}{lanc?.descricao ?? (nomeItem ? "" : "—")}
+                                  </td>
+                                  <td colSpan={99} style={{ padding: "7px 8px" }}>
+                                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                                        {lanc?.data_vencimento ? new Date(lanc.data_vencimento + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
+                                      </span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>
+                                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago ?? 0)}
+                                      </span>
+                                      {lanc?.categoria && <span style={{ fontSize: 10, color: "var(--text-3)" }}>{lanc.categoria}</span>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {filtrados.length === 0 && (filtro !== "baixado" || borderosPagosFiltrados.length === 0) ? (
+                        <tr><td colSpan={21} style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para os filtros aplicados.</td></tr>
+                      ) : filtrados.map((l, li) => {
+                        const isPrevisao = l.natureza === "previsao";
+                        const sEfet      = statusEfetivo(l);
+                        const dot        = dotStatus(sEfet);
+                        const semCotacao = l.moeda === "USD" && !l.cotacao_usd;
+                        const conv       = l.moeda === "USD" ? (l.cotacao_usd ? fmtBRL(l.valor * l.cotacao_usd) : "⚠ Abra e informe a cotação") : null;
+                        const safra      = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? "—";
+                        const cicloDesc  = ciclos.find(c => c.id === l.ciclo_id)?.descricao ?? "—";
+                        const prod       = produtores.find(p => p.id === l.produtor_id)?.nome ?? "—";
+                        const pessoaNome = pessoas.find(p => p.id === l.pessoa_id)?.nome;
+                        const fornNome   = pessoaNome ?? (l.descricao.includes(" - ") ? l.descricao.split(" - ")[0].trim() : l.descricao);
+                        const fornDetalhe = pessoaNome
+                          ? (l.descricao.toLowerCase().startsWith(pessoaNome.toLowerCase()) ? l.descricao.slice(pessoaNome.length).replace(/^\s*-\s*/, "").trim() : l.descricao)
+                          : (l.descricao.includes(" - ") ? l.descricao.split(" - ").slice(1).join(" - ").trim() : "");
+                        const obsExibir  = obsArrendamento(l, safra);
+                        const om         = origemMeta(l);
+                        const inicial    = (fornNome[0] ?? "?").toUpperCase();
+                        const dias       = diasAteVenc(l.data_vencimento);
+                        const sinal      = corSinalizador(dias, sEfet);
+                        // borda esquerda por status
+                        const statusBorder = sEfet === "vencido" ? "#EF4444" : sEfet === "vencendo" ? "#F59E0B" : sEfet === "baixado" ? "#22C55E" : isPrevisao ? "#818CF8" : "#3B82F6";
+                        // progresso de parcelas
+                        const parcPct = l.total_parcelas && l.total_parcelas > 1 ? Math.round(((l.num_parcela ?? 1) / l.total_parcelas) * 100) : null;
+                        return (
+                          <tr key={l.id} className="cp-row"
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest('button,input,select,a')) return;
+                              setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
+                            }}
+                            style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none", background: "transparent", borderLeft: `3px solid ${statusBorder}`, cursor: "pointer" }}>
+                            {/* Sinalizador: verde a vencer / amarelo próx. 7 dias / vermelho vencido */}
+                            <td style={{ padding: "8px 4px", textAlign: "center" }}>
+                              {sinal && <span title={dias! < 0 ? "Vencido" : dias! <= 7 ? "Vence em até 7 dias" : "A vencer"} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: sinal }} />}
+                            </td>
+                            {/* Checkbox */}
+                            <td style={{ padding: "8px 4px", textAlign: "center" }}>
+                              {l.lote_id && l.status !== "baixado" ? (
+                                <span title="Em borderô pendente" style={{ fontSize: 9, background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B60", borderRadius: 4, padding: "2px 5px", fontWeight: 700, whiteSpace: "nowrap" }}>BDR</span>
+                              ) : (
+                                <input type="checkbox" style={{ cursor: "pointer", accentColor: "#60A5FA" }}
+                                  checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />
+                              )}
+                            </td>
+                            {/* Nº */}
+                            <td style={{ padding: "8px 4px", textAlign: "center", fontSize: 11, color: "var(--text-3)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                              {l.numero ?? "—"}
+                            </td>
+                            {/* Fornecedor / Cliente */}
+                            <td style={{ padding: "8px 10px", maxWidth: cw("fornecedor"), overflow: "hidden" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                    <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{fornNome}</span>
+                                    {isPrevisao && <span style={{ fontSize: 9, background: "rgba(129,140,248,0.2)", color: "#818CF8", padding: "1px 5px", borderRadius: 4, fontWeight: 700, flexShrink: 0, border: "0.5px solid rgba(129,140,248,0.3)" }}>PREV</span>}
+                                    {l.conciliado && <span title="Conciliado com extrato OFX" style={{ fontSize: 9, background: "rgba(22,163,74,0.15)", color: "#16A34A", padding: "1px 5px", borderRadius: 4, fontWeight: 700, flexShrink: 0, border: "0.5px solid rgba(22,163,74,0.35)" }}>OFX</span>}
+                                  </div>
+                                  {fornDetalhe && <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fornDetalhe}</div>}
+                                </div>
+                              </div>
+                            </td>
+                            {/* Parcela + barra de progresso */}
+                            <td style={{ padding: "8px 6px", textAlign: "center", width: 44 }}>
+                              {parcPct !== null ? (
+                                <div>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: "#60A5FA" }}>{l.num_parcela}/{l.total_parcelas}</span>
+                                  <div style={{ height: 3, borderRadius: 2, background: "var(--border-table)", marginTop: 3 }}>
+                                    <div style={{ height: 3, borderRadius: 2, background: "#3B82F6", width: `${parcPct}%` }} />
+                                  </div>
+                                </div>
+                              ) : <span style={{ color: "#1E3A5F", fontSize: 11 }}>—</span>}
+                            </td>
+                            {/* Data de vencimento original — data_baixa fica na coluna opcional DT.PGTO */}
+                            <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 400 }}>
+                                {sEfet !== "baixado" && sEfet !== "parcial" && l.data_prorrogacao && <span style={{ fontSize: 9, fontStyle: "italic", color: "var(--text-3)", marginRight: 3 }}>↻</span>}
+                                {fmtData(l.data_vencimento)}
+                              </div>
+                              {(sEfet === "baixado" || sEfet === "parcial") &&
+                                <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 1 }}>{sEfet === "parcial" ? "Parcial" : "Pago"}</div>
+                              }
+                            </td>
+                            {/* Dias até o vencimento (negativo se vencido) — sempre preto, sem negrito */}
+                            <td style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 11, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>
+                              {sEfet === "baixado" ? "—" : dias ?? "—"}
+                            </td>
+                            {/* Valor */}
+                            <td style={{ padding: "8px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                              <div style={{ fontWeight: 700, color: l.moeda === "barter" ? "#8B5E14" : "var(--text-1)", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>{exibirValor(l)}</div>
+                              {conv && <div style={{ fontSize: 9, color: semCotacao ? "#EF9F27" : "var(--text-muted)", marginTop: 1 }}>{conv}</div>}
+                            </td>
+                            {/* Colunas opcionais em ordem personalizada */}
+                            {ordemTodas.filter(k => OPTIONAL_KEYS.includes(k) && col(k)).map(k => {
+                              if (k === "operacao") return <td key={k} style={{ padding: "8px 8px" }}><span style={{ fontSize: 11, color: "var(--text-1)", whiteSpace: "nowrap" }}>{l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}</span></td>;
+                              if (k === "safra") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ano_safra_id ? safra : "—"}</td>;
+                              if (k === "ciclo") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.ciclo_id ? cicloDesc : "—"}</td>;
+                              if (k === "venc_orig") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", whiteSpace: "nowrap", fontSize: 10, fontStyle: "italic", color: "var(--text-3)" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>;
+                              if (k === "dt_pgto") return <td key={k} style={{ padding: "8px 8px", textAlign: "center", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{fmtData(l.data_baixa)}</td>;
+                              if (k === "valor_pago") return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{l.valor_pago != null && l.valor_pago > 0 ? <span style={{ color: "#22C55E", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span> : <span style={{ color: "#1E3A5F" }}>—</span>}</td>;
+              if (k === "saldo_devedor") {
+                if (l.status === "parcial" && l.valor_pago != null) {
+                  const saldo = paraBRL(l) - l.valor_pago;
+                  return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", fontWeight: 600, color: "#C9921B" }}>{fmtBRL(saldo)}</td>;
+                }
+                return <td key={k} style={{ padding: "8px 8px", textAlign: "right", fontSize: 11, color: "#1E3A5F" }}>—</td>;
+              }
+                              if (k === "moeda") return <td key={k} style={{ padding: "8px 8px", textAlign: "center" }}><span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 5, background: l.moeda === "USD" ? "#F0F0F0" : l.moeda === "barter" ? "#F0F0F0" : "var(--bg-input)", color: l.moeda === "USD" ? "#555555" : l.moeda === "barter" ? "#555555" : "var(--text-2)", fontWeight: 600, border: "0.5px solid var(--border-table)" }}>{l.moeda === "barter" ? "Barter" : (l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `${l.moeda}→${l.moeda_pagamento}` : l.moeda)}</span></td>;
+                              if (k === "conta") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria ?? "—"}</td>;
+                              if (k === "produtor") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.produtor_id ? prod : "—"}</td>;
+                              if (k === "num_nf") return <td key={k} style={{ padding: "8px 6px", textAlign: "center", fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{l.nfe_numero ?? "—"}</td>;
+                              if (k === "origem") return <td key={k} style={{ padding: "8px 8px", textAlign: "center" }}><div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}><span style={{ fontSize: 9, background: "var(--bg-input)", color: "var(--text-2)", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{om.label}</span>{(l as Lancamento & { fatura_id?: string }).fatura_id && <span style={{ fontSize: 9, background: "#FBF3E0", color: "#7A4300", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #C9921B", whiteSpace: "nowrap" }}>Fatura</span>}</div></td>;
+                              if (k === "obs") return <td key={k} style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>{obsExibir}</td>;
+                              return null;
+                            })}
+                            {/* Baixar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {isPrevisao ? (
+                                <button onClick={() => confirmarPrevisao(l)} title="Confirmar previsão"
+                                  style={btnAcao("#2A2A2A", "#fff")}>✓</button>
+                              ) : l.moeda === "barter" ? (
+                                <span title="Liquidar no fechamento da safra" style={{ ...btnAcao("#F5F5F5", "#7A5200"), border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center" }}>🌾</span>
+                              ) : l.lote_id && l.status !== "baixado" ? (
+                                <span title="Em borderô pendente — use 'Confirmar Pagamento' no lote"
+                                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:28, height:26, fontSize:9, fontWeight:700, borderRadius:6, background:"#FBF3E0", color:"#7A5200", border:"0.5px solid #C9921B80", cursor:"default" }}>BDR</span>
+                              ) : l.status !== "baixado" ? (
+                                <button onClick={() => abrirBaixa(l)} title="Baixar / Registrar pagamento"
+                                  style={btnAcao("#C9921B", "#fff")}>↓</button>
+                              ) : l.lote_id ? (
+                                <span title="Baixado em borderô — use o borderô para reabrir"
+                                  style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:28, height:26, fontSize:9, fontWeight:700, borderRadius:6, background:"#E8F0FF", color:"#1A4870", border:"0.5px solid #1A487080", cursor:"default" }}>BDR</span>
+                              ) : (
+                                <button onClick={() => reabrirUm(l)} title="Reabrir — apaga dados de pagamento"
+                                  style={btnAcao("#F5F5F5", "#7A5C00", "0.5px solid #C9921B")}>↺</button>
+                              )}
+                            </td>
+                            {/* Reprogramar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.status !== "baixado" && (
+                                <button onClick={() => abrirReprog(l)} title="Reprogramar vencimento"
+                                  style={btnAcao("#F2F2F2", "#333", "0.5px solid #D0D0D0")}>↕</button>
+                              )}
+                            </td>
+                            {/* Editar */}
+                            <td style={{ padding: "5px 4px", textAlign: "center" }}>
+                              {l.status !== "baixado" && (
+                                <button onClick={() => abrirEditar(l)} title="Editar lançamento"
+                                  style={btnAcao("var(--bg-input)", "var(--text-2)", "0.5px solid var(--border)")}>✎</button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* ── Banners de lançamentos ocultos ── */}
+              {(ocultosEmpresa > 0 || ocultosForaPeriodo > 0 || ocultosLoteId > 0) && (
+                <div style={{ padding: "6px 16px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 10, flexWrap: "wrap", background: "#FFFBEB" }}>
+                  {ocultosEmpresa > 0 && (
+                    <a href="/empresas/pagar" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#92400E", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "4px 10px", textDecoration: "none", fontWeight: 600 }}>
+                      ⚠ {ocultosEmpresa} lançamento{ocultosEmpresa > 1 ? "s" : ""} de empresa oculto{ocultosEmpresa > 1 ? "s" : ""} — ver em Empresas → CP
+                    </a>
+                  )}
+                  {ocultosForaPeriodo > 0 && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#92400E", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "4px 10px", fontWeight: 600 }}>
+                      ⚠ {ocultosForaPeriodo} lançamento{ocultosForaPeriodo > 1 ? "s" : ""} em aberto anterior{ocultosForaPeriodo > 1 ? "es" : ""} ao período — ver aba Vencidos
+                    </span>
+                  )}
+                  {ocultosLoteId > 0 && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#92400E", background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "4px 10px", fontWeight: 600 }}>
+                      ⚠ {ocultosLoteId} pagamento{ocultosLoteId > 1 ? "s" : ""} dentro de borderô{ocultosLoteId > 1 ? "s" : ""} — expanda o borderô acima para ver
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-3)", background: "var(--bg-nav)" }}>
+                <span>CP automáticas: <strong style={{ color: "#555555" }}>{lancamentos.filter(l => l.auto).length}</strong></span>
+                <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                  <span>Exibindo {filtrados.length} de {filtradosBase.length} registros</span>
+                  {filtrados.length > 0 && (
+                    <>
+                      <span style={{ color: "var(--text-3)" }}>|</span>
+                      <span>Total filtrado: <strong style={{ color: "#E24B4A", fontSize: 13 }}>{fmtBRL(filtrados.filter(l => l.status !== "baixado").reduce((s, l) => s + paraBRL(l), 0))}</strong> em aberto</span>
+                      {filtrados.some(l => l.status === "baixado") && (
+                        <span>Pago: <strong style={{ color: "var(--text-1)", fontSize: 13 }}>{fmtBRL(filtrados.filter(l => l.status === "baixado").reduce((s, l) => s + (l.valor_pago ?? paraBRL(l)), 0))}</strong></span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* ── Popover de lançamento ─────────────────────────────────── */}
+      {popover && (() => {
+        const l = popover.l;
+        const sEfet     = statusEfetivo(l);
+        const dias      = diasAteVenc(l.data_vencimento);
+        const relativo  = labelRelativo(dias, sEfet);
+        const om        = origemMeta(l);
+        const pessoaNome = pessoas.find(p => p.id === l.pessoa_id)?.nome;
+        const fornNome   = pessoaNome ?? (l.descricao.includes(" - ") ? l.descricao.split(" - ")[0].trim() : l.descricao);
+        const fornDetalhe = pessoaNome
+          ? (l.descricao.toLowerCase().startsWith(pessoaNome.toLowerCase()) ? l.descricao.slice(pessoaNome.length).replace(/^\s*-\s*/, "").trim() : l.descricao)
+          : (l.descricao.includes(" - ") ? l.descricao.split(" - ").slice(1).join(" - ").trim() : "");
+        const safraDesc = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao;
+        const cicloDesc = ciclos.find(c => c.id === l.ciclo_id)?.descricao;
+        const prodNome  = produtores.find(p => p.id === l.produtor_id)?.nome;
+        const ogNome    = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria;
+        const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? l.conta_bancaria;
+        const valorBRL  = paraBRL(l);
+        const parcPct   = l.total_parcelas && l.total_parcelas > 1 ? Math.round(((l.num_parcela ?? 1) / l.total_parcelas) * 100) : null;
+        const isPrevisao = l.natureza === "previsao";
+        const W = 388, H = 380;
+        const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+
+        const statusColors: Record<string, { bg: string; color: string; label: string }> = {
+          baixado:  { bg: "#DCFCE7", color: "#15803D", label: "Baixado" },
+          vencido:  { bg: "#FEE2E2", color: "#B91C1C", label: "Vencido" },
+          vencendo: { bg: "#FEF3C7", color: "#92400E", label: "Vencendo" },
+          aberto:   { bg: "#DBEAFE", color: "#1D4ED8", label: "Em aberto" },
+          previsao: { bg: "#EDE9FE", color: "#5B21B6", label: "Previsão" },
+          parcial:  { bg: "#FEF3C7", color: "#92400E", label: "Parcial" },
+        };
+        const sc = statusColors[isPrevisao ? "previsao" : sEfet] ?? statusColors.aberto;
+
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid var(--border)", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid var(--border-table)", background: "var(--bg-nav)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fornNome}</div>
+                    {fornDetalhe && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fornDetalhe}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sc.bg, color: sc.color }}>{sc.label}</span>
+                    <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Valor */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Valor</div>
+                    <div style={{ fontWeight: 700, fontSize: 18, color: l.moeda === "barter" ? "#8B5E14" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>
+                      {l.moeda === "barter" ? `${(l.valor ?? 0).toLocaleString("pt-BR")} sc` : fmtBRL(valorBRL)}
+                    </div>
+                    {l.moeda === "USD" && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{(l.valor ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "USD" })} · cotação {l.cotacao_usd ? fmtBRL(l.cotacao_usd) : "não informada"}</div>}
+                  </div>
+                  {/* Parcela */}
+                  {parcPct !== null && (
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Parcela</div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#60A5FA" }}>{l.num_parcela}/{l.total_parcelas}</span>
+                      <div style={{ height: 4, borderRadius: 2, background: "var(--border-table)", marginTop: 3, width: 60 }}>
+                        <div style={{ height: 4, borderRadius: 2, background: "#3B82F6", width: `${parcPct}%` }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Valor pago / saldo remanescente (se parcial) */}
+                {l.status === "parcial" && l.valor_pago != null && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Pago</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#22C55E" }}>{fmtBRL(l.valor_pago)}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-3)" }}>de {fmtBRL(valorBRL)}</div>
+                      <div style={{ height: 4, borderRadius: 2, background: "var(--border-table)", marginTop: 4 }}>
+                        <div style={{ height: 4, borderRadius: 2, background: "#22C55E", width: `${Math.min(100, (l.valor_pago / valorBRL) * 100)}%` }} />
+                      </div>
+                    </div>
+                    <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#8B5E14", marginBottom: 2, fontWeight: 600 }}>Saldo devedor</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#C9921B" }}>{fmtBRL(valorBRL - l.valor_pago)}</div>
+                      <div style={{ fontSize: 10, color: "#8B5E14", marginTop: 2 }}>{Math.round(((valorBRL - l.valor_pago) / valorBRL) * 100)}% em aberto</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Grid de detalhes */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 11 }}>
+                  <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Vencimento</div>
+                    <div style={{ fontWeight: 600, color: relativo ? relativo.cor : "var(--text-1)" }}>{fmtData(l.data_vencimento)}</div>
+                    {relativo && <div style={{ fontSize: 10, color: relativo.cor, fontWeight: 700 }}>{relativo.txt}</div>}
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Origem</div>
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)" }}>{om.label}</span>
+                  </div>
+                  {ogNome && <div style={{ gridColumn: "1/-1" }}>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Operação Gerencial</div>
+                    <div style={{ color: "var(--text-1)", fontWeight: 500 }}>{ogNome}</div>
+                  </div>}
+                  {safraDesc && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Safra</div>
+                    <div style={{ color: "var(--text-1)" }}>{safraDesc}</div>
+                  </div>}
+                  {cicloDesc && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Ciclo</div>
+                    <div style={{ color: "var(--text-1)" }}>{cicloDesc}</div>
+                  </div>}
+                  {prodNome && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Produtor</div>
+                    <div style={{ color: "var(--text-1)" }}>{prodNome}</div>
+                  </div>}
+                  {contaNome && l.status === "baixado" && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Conta bancária</div>
+                    <div style={{ color: "var(--text-1)" }}>{contaNome}</div>
+                  </div>}
+                  {l.data_baixa && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Pago em</div>
+                    <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
+                  </div>}
+                  {l.numero && <div>
+                    <div style={{ color: "var(--text-3)", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
+                    <div style={{ color: "var(--text-1)" }}>{l.numero}</div>
+                  </div>}
+                </div>
+
+                {/* Observação */}
+                {l.observacao && (
+                  <div style={{ background: "var(--bg-input)", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "var(--text-2)", borderLeft: "3px solid var(--border-table)" }}>
+                    {l.observacao}
+                  </div>
+                )}
+              </div>
+
+              {/* Ações rápidas */}
+              <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {!isPrevisao && l.moeda !== "barter" && l.status !== "baixado" && !l.lote_id && (
+                  <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#C9921B", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>↓ Baixar</button>
+                )}
+                {(l.status === "baixado" || l.status === "parcial") && !l.lote_id && (
+                  <button onClick={() => { setPopover(null); reabrirUm(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↺ Reabrir</button>
+                )}
+                {l.lote_id && (
+                  <button onClick={() => { setPopover(null); verBordero(l.lote_id!); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#E8F0FF", color: "#1A4870", border: "0.5px solid #1A487080", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>📋 Ver Borderô</button>
+                )}
+                {isPrevisao && (
+                  <button onClick={() => { setPopover(null); confirmarPrevisao(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#2A2A2A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>✓ Confirmar</button>
+                )}
+                {l.status !== "baixado" && (
+                  <button onClick={() => { setPopover(null); abrirReprog(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↕ Reprogramar</button>
+                )}
+                {l.status !== "baixado" && (
+                  <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>✎ Editar</button>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* ── Vínculo de NF na baixa ──────────────────────────────── */}
+      {duplicataEncontrada && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 460, maxWidth: "92vw", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "20px 24px 8px", textAlign: "center" }}>
+              <div style={{ fontSize: 30, marginBottom: 6 }}>⚠️</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Título já lançado</div>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 8, lineHeight: 1.5 }}>
+                Já existe um lançamento com o documento nº <strong>{duplicataEncontrada.numero_documento}</strong> para este fornecedor:
+              </div>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "10px 14px", margin: "12px 0", textAlign: "left", fontSize: 12 }}>
+                <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{duplicataEncontrada.descricao}</div>
+                <div style={{ color: "var(--text-3)", marginTop: 2 }}>Vencimento {fmtData(duplicataEncontrada.data_vencimento)} · {duplicataEncontrada.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} · {duplicataEncontrada.status}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, padding: "8px 24px 20px" }}>
+              <button onClick={() => setDuplicataEncontrada(null)} style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+                OK
+              </button>
+              <button
+                onClick={() => { const l = duplicataEncontrada; setDuplicataEncontrada(null); setModalNovo(false); abrirEditar(l); }}
+                style={{ flex: 1, padding: "9px", border: "none", borderRadius: 8, background: "#1A5CB8", color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+              >
+                Ver documento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alertaNF && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 680, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+
+            {/* Header */}
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Vincular Nota Fiscal à Baixa</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>{alertaNF.descricao} — {alertaNF.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+              </div>
+              <button onClick={() => setAlertaNF(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+            </div>
+
+            {/* Busca */}
+            <div style={{ padding: "12px 22px 8px" }}>
+              <input
+                type="text"
+                placeholder="Buscar por nº NF, emitente ou valor…"
+                value={nfVinculoBusca}
+                onChange={e => setNfVinculoBusca(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-input)", color: "var(--text-1)" }}
+                autoFocus
+              />
+            </div>
+
+            {/* Lista de NFs */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 22px 8px" }}>
+              {nfsVinculoLoading ? (
+                <div style={{ textAlign: "center", padding: 24, color: "var(--text-3)", fontSize: 13 }}>Carregando NFs…</div>
+              ) : (() => {
+                const busca = nfVinculoBusca.toLowerCase();
+                const filtradas = nfsVinculo.filter(nf =>
+                  !busca ||
+                  (nf.numero ?? "").includes(busca) ||
+                  (nf.emitente_nome ?? "").toLowerCase().includes(busca) ||
+                  (nf.valor_total ?? 0).toFixed(2).includes(busca)
+                );
+                if (filtradas.length === 0) return (
+                  <div style={{ textAlign: "center", padding: "24px 16px" }}>
+                    {nfsVinculo.length === 0 ? (
+                      <>
+                        <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 12 }}>
+                          Nenhuma NF pendente de processamento encontrada.
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>
+                          Importe NFs via SIEG ou cadastre manualmente em <strong>Compras &gt; NF de Produtos</strong>,<br/>
+                          depois clique em <strong>Processar</strong> — o financeiro é gerado automaticamente.
+                        </div>
+                        <a href="/compras/nf" style={{ display: "inline-block", padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                          Ir para NFs de Produtos →
+                        </a>
+                      </>
+                    ) : "Nenhuma NF corresponde à busca."}
+                  </div>
+                );
+                return (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-page)" }}>
+                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Nº NF</th>
+                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Emitente</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Emissão</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Vencimento</th>
+                        <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Valor</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtradas.map(nf => {
+                        const sel = nfVinculoSelecionada?.id === nf.id;
+                        const fmtD = (s?: string | null) => { if (!s) return "—"; const [y,m,d] = s.split("-"); return `${d}/${m}/${y}`; };
+                        return (
+                          <tr key={nf.id}
+                            onClick={() => setNfVinculoSelecionada(sel ? null : nf)}
+                            style={{ cursor: "pointer", background: sel ? "#E8E8E8" : "transparent", borderBottom: "0.5px solid #F0F2F7" }}>
+                            <td style={{ padding: "8px 10px", fontWeight: 700, color: sel ? "#0D0D0D" : "#111111" }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4, marginRight: 5,
+                                background: nf.tipo === "nfse" ? "#EDF2FB" : "#E8F5E9",
+                                color:      nf.tipo === "nfse" ? "#1A3A6B" : "#1A6B3C" }}>
+                                {nf.tipo === "nfse" ? "NFS-e" : "NF-e"}
+                              </span>
+                              {nf.numero}{nf.serie ? `/${nf.serie}` : ""}
+                            </td>
+                            <td style={{ padding: "8px 10px", color: "var(--text-1)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome || "—"}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "center", color: "var(--text-2)" }}>{fmtD(nf.data_emissao)}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "center", color: nf.data_vencimento_cp ? "#7A4300" : "var(--text-3)", fontWeight: nf.data_vencimento_cp ? 600 : 400 }}>{fmtD(nf.data_vencimento_cp)}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-1)" }}>{(nf.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, fontWeight: 700,
+                                background: nf.status === "processada" ? "#E8F5E9" : "#FBF3E0",
+                                color: nf.status === "processada" ? "#1A6B3C" : "#C9921B" }}>
+                                {nf.status === "processada" ? "Processada" : "Pendente"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+              {nfVinculoSelecionada && (
+                <span style={{ fontSize: 12, color: "#0D0D0D", background: "#E8E8E8", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }}>
+                  NF {nfVinculoSelecionada.numero} selecionada
+                </span>
+              )}
+              <button onClick={() => setAlertaNF(null)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #CCC", background: "var(--bg-page)", cursor: "pointer", fontSize: 13 }}>
+                Cancelar
+              </button>
+              <button onClick={() => {
+                const l = alertaNF;
+                setAlertaNF(null);
+                setModalBaixa(l);
+                setBaixa({
+                  valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
+                  data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
+                  multa_valor: "", juros_valor: "", desconto_valor: "",
+                  forma_pagamento: "conta", cartao_id: "",
+                  pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+                  og_busca: "", salvar_class: false,
+                  ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+                  nova_data_vencimento: "",
+                });
+              }} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #888", background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
+                Baixar sem NF
+              </button>
+              <button
+                disabled={!nfVinculoSelecionada}
+                onClick={async () => {
+                  if (!nfVinculoSelecionada) return;
+                  const l = alertaNF;
+                  // Vincula o número da NF ao lançamento
+                  await supabase.from("lancamentos").update({ nfe_numero: nfVinculoSelecionada.numero }).eq("id", l.id);
+                  // Atualiza localmente
+                  setLancamentos(prev => prev.map(x => x.id === l.id ? { ...x, nfe_numero: nfVinculoSelecionada.numero } : x));
+                  const lAtualizado = { ...l, nfe_numero: nfVinculoSelecionada.numero };
+                  setAlertaNF(null);
+                  // Abre o modal de baixa
+                  setModalBaixa(lAtualizado);
+                  setBaixa({
+                    valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
+                    data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
+                    multa_valor: "", juros_valor: "", desconto_valor: "",
+                    forma_pagamento: "conta", cartao_id: "",
+                    pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+                    og_busca: "", salvar_class: false,
+                    ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+                    nova_data_vencimento: "",
+                  });
+                }}
+                style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: nfVinculoSelecionada ? "#111111" : "#CCC", color: "#fff", cursor: nfVinculoSelecionada ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>
+                Vincular e Baixar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Barra flutuante de seleção (borderô) ─────────────── */}
+      {selecionados.size > 0 && (() => {
+        const qtdBaixados = filtrados.filter(l => selecionados.has(l.id) && l.status === "baixado").length;
+        return (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: "#111111", color: "#fff", borderRadius: 14,
+          padding: "12px 22px", display: "flex", alignItems: "center", gap: 18,
+          boxShadow: "0 2px 8px rgba(11,45,80,0.07)", zIndex: 90, whiteSpace: "nowrap",
+          maxWidth: "calc(100vw - 32px)",
+        }}>
+          <span style={{ fontSize: 13 }}>
+            <strong>{selecionados.size}</strong> título{selecionados.size !== 1 ? "s" : ""} selecionado{selecionados.size !== 1 ? "s" : ""}
+            {itensLote.length > 0 && <>&nbsp;·&nbsp;<strong>{fmtBRL(totalLote)}</strong></>}
+          </span>
+          {itensLote.length > 0 && (
+          <>
+            <button
+              onClick={() => { setBaixaLoteData(new Date().toISOString().slice(0, 10)); setBaixaLoteConta(""); setBaixaLoteErro(""); setEncargosLote({}); setModalBaixaLote(true); }}
+              style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              ✓ Baixar ({itensLote.length})
+            </button>
+            <button
+              onClick={() => { setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
+              style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              Criar Borderô ›
+            </button>
+          </>
+          )}
+          {qtdBaixados > 0 && (
+            <button
+              onClick={reabrirLote}
+              style={{ background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              ↺ Reabrir {qtdBaixados} pago{qtdBaixados !== 1 ? "s" : ""}
+            </button>
+          )}
+          <button
+            onClick={() => setSelecionados(new Set())}
+            style={{ background: "none", border: "0.5px solid var(--border)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
+          >
+            Cancelar
+          </button>
+        </div>
+        );
+      })()}
+
+      {/* ── Modal Reprogramar ───────────────────────────────────── */}
+      {modalReprog && (
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: "24px 28px", width: 420, boxShadow: "var(--shadow-modal)", border: "0.5px solid var(--border)" }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 2 }}>📅 Reprogramar Vencimento</div>
+              <div style={{ fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{modalReprog.descricao}</div>
+            </div>
+
+            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", gap: 16, fontSize: 11, color: "var(--text-2)" }}>
+              <div><span style={{ color: "var(--text-3)" }}>Data atual:</span> <strong style={{ color: "#E24B4A" }}>{modalReprog.data_vencimento ? new Date(modalReprog.data_vencimento + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</strong></div>
+              <div><span style={{ color: "var(--text-3)" }}>Valor atual:</span> <strong>{modalReprog.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>Nova data de vencimento *</label>
+                <input
+                  type="date"
+                  value={reprogForm.nova_data}
+                  onChange={e => setReprogForm(p => ({ ...p, nova_data: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>Novo valor (deixe em branco para manter)</label>
+                <input
+                  type="text"
+                  placeholder={modalReprog.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? ""}
+                  value={reprogForm.novo_valor}
+                  onChange={e => setReprogForm(p => ({ ...p, novo_valor: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>Motivo / Observação</label>
+                <input
+                  type="text"
+                  placeholder="Ex.: Acordado com fornecedor em 28/07/2026"
+                  value={reprogForm.obs}
+                  onChange={e => setReprogForm(p => ({ ...p, obs: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+              <button onClick={() => setModalReprog(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-input)", color: "var(--text-2)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={salvarReprog} disabled={salvando || !reprogForm.nova_data} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#2A2A2A", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando || !reprogForm.nova_data ? "not-allowed" : "pointer", opacity: salvando || !reprogForm.nova_data ? 0.5 : 1 }}>
+                {salvando ? "Salvando..." : "Confirmar Reprogramação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Baixa ─────────────────────────────────────────── */}
+      {modalBaixa && (() => {
+        const valorTotal = paraBRL(modalBaixa);
+        const jaPago     = modalBaixa.valor_pago ?? 0;
+        const valorOrig  = Math.max(0, valorTotal - jaPago);  // saldo restante — base para encargos
+        const multaV   = desmascarar(baixa.multa_valor);
+        const jurosV   = desmascarar(baixa.juros_valor);
+        const descV    = desmascarar(baixa.desconto_valor);
+        const valorCom = valorOrig + multaV + jurosV - descV;
+        const temEncargo = multaV + jurosV + descV !== 0;
+        return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+         >
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)", padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
+                {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : modalBaixa.status === "parcial" ? "Registrar pagamento parcial" : "Registrar pagamento"}
+              </div>
+              <button onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>{modalBaixa.descricao}</div>
+            <div style={{ background: "var(--border-row)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap", border: "0.5px solid var(--border)" }}>
+              <span>Valor original: <strong style={{ color: "#EF4444" }}>{fmtBRL(valorTotal)}</strong></span>
+              {jaPago > 0 && <span>Já pago: <strong style={{ color: "#22C55E" }}>{fmtBRL(jaPago)}</strong></span>}
+              {jaPago > 0 && <span style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "2px 8px" }}>Saldo devedor: <strong style={{ color: "#C9921B", fontSize: 13 }}>{fmtBRL(valorOrig)}</strong></span>}
+              <span>Vencimento: <strong style={{ color: "var(--text-1)" }}>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
+            </div>
+
+            {/* ── Usar adiantamento do fornecedor como parte (ou todo) do pagamento ── */}
+            {adiantamentosDisp.length > 0 && (
+              <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>💰 Adiantamento disponível deste fornecedor</div>
+                {adiantamentosDisp.map(a => {
+                  const saldoAdiant = a.valor - (a.valor_aplicado ?? 0);
+                  const saldoCpAtual = Math.max(0, paraBRL(modalBaixa) - (modalBaixa.valor_pago ?? 0));
+                  const valorSugerido = Math.min(saldoAdiant, saldoCpAtual);
+                  const valorAtual = valorAdiantAplicar[a.id] ?? valorSugerido;
+                  return (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <div style={{ flex: 1, fontSize: 12, color: "var(--text-1)" }}>
+                        {a.descricao} <span style={{ color: "var(--text-3)" }}>— saldo {fmtBRL(saldoAdiant)}</span>
+                      </div>
+                      <InputMonetario value={valorAtual} onChange={v => setValorAdiantAplicar(p => ({ ...p, [a.id]: v }))} style={{ ...inp, width: 130, fontSize: 12, padding: "5px 8px" }} />
+                      <button
+                        disabled={aplicandoAdiant === a.id}
+                        onClick={() => aplicarAdiantNoModal(a, valorAtual)}
+                        style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 600, cursor: aplicandoAdiant === a.id ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                        {aplicandoAdiant === a.id ? "Aplicando…" : "Aplicar"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {modalBaixa.moeda === "barter" ? (
+              <div style={{ display: "grid", gap: 14 }}>
+                <div style={{ background: "#FBF3E0", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#8B5E14" }}>
+                  <strong>⇄ {modalBaixa.sacas?.toLocaleString("pt-BR")} sc {modalBaixa.cultura_barter} @ R$ {modalBaixa.preco_saca_barter?.toLocaleString("pt-BR")}/sc</strong>
+                  <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 3 }}>Sem movimentação bancária</div>
+                </div>
+                <div>
+                  <label style={lbl}>Data de confirmação</label>
+                  <input style={inp} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                {/* ── Classificação — colapsada quando OG já está preenchida no CP ── */}
+                {(() => {
+                  const ogJaSet = !!modalBaixa.operacao_gerencial_id;
+                  const ogNome  = ogJaSet ? (opGerenciais.find(o => o.id === modalBaixa.operacao_gerencial_id)?.descricao ?? allOgs.find(o => o.id === modalBaixa.operacao_gerencial_id)?.descricao ?? "Operação vinculada") : "";
+                  return ogJaSet && baixa.operacao_gerencial_id ? (
+                    <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>CLASSIFICAÇÃO</span>
+                        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>{ogNome}</div>
+                      </div>
+                      <button onClick={() => setBaixa(p => ({ ...p, operacao_gerencial_id: "" }))}
+                        style={{ fontSize: 11, color: "#C9921B", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap", padding: 0 }}>
+                        Alterar
+                      </button>
+                    </div>
+                  ) : null;
+                })()}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px", display: modalBaixa.operacao_gerencial_id && baixa.operacao_gerencial_id ? "none" : undefined }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação{modalBaixa.operacao_gerencial_id ? " (alterar)" : ""}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={lbl}>Fornecedor / Credor</label>
+                      <select style={inp} value={baixa.pessoa_id} onChange={e => setBaixa(p => ({ ...p, pessoa_id: e.target.value }))}>
+                        <option value="">— Não informado —</option>
+                        {pessoas.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Ano Safra</label>
+                      <select style={inp} value={baixa.ano_safra_id} onChange={e => setBaixa(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                        <option value="">— Sem safra —</option>
+                        {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Operação Gerencial</label>
+                      <SelectBusca
+                        value={baixa.operacao_gerencial_id}
+                        onChange={id => setBaixa(p => ({ ...p, operacao_gerencial_id: id }))}
+                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        placeholder="— Sem operação gerencial —"
+                        style={inp}
+                      />
+                    </div>
+                    <div>
+                      <label style={lbl}>Ciclo / Empreendimento</label>
+                      <select style={inp} value={baixa.ciclo_id} onChange={e => setBaixa(p => ({ ...p, ciclo_id: e.target.value }))}>
+                        <option value="">— Sem ciclo —</option>
+                        {ciclos.filter(c => !baixa.ano_safra_id || c.ano_safra_id === baixa.ano_safra_id)
+                          .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 20 }}>
+                      <input type="checkbox" id="salvar_class_cp" checked={baixa.salvar_class}
+                        onChange={e => setBaixa(p => ({ ...p, salvar_class: e.target.checked }))}
+                        disabled={!baixa.pessoa_id || !baixa.operacao_gerencial_id}
+                        style={{ cursor: "pointer", width: 14, height: 14 }} />
+                      <label htmlFor="salvar_class_cp" style={{ fontSize: 12, color: "var(--text-2)", cursor: "pointer", lineHeight: 1.3 }}>
+                        Salvar como classificação padrão deste fornecedor
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Encargos ── */}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={lbl}>Multa (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.multa_valor}
+                        onChange={e => {
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + desmascarar(v) + jurosV - descV;
+                          setBaixa(p => ({ ...p, multa_valor: v, valorMask: numParaMascara(com) }));
+                        }} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Juros (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.juros_valor}
+                        onChange={e => {
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + multaV + desmascarar(v) - descV;
+                          setBaixa(p => ({ ...p, juros_valor: v, valorMask: numParaMascara(com) }));
+                        }} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Desconto (R$)</label>
+                      <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.desconto_valor}
+                        onChange={e => {
+                          const v = aplicarMascara(e.target.value);
+                          const com = valorOrig + multaV + jurosV - desmascarar(v);
+                          setBaixa(p => ({ ...p, desconto_valor: v, valorMask: numParaMascara(Math.max(0, com)) }));
+                        }} />
+                    </div>
+                  </div>
+                  {temEncargo && (
+                    <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0D0D0D", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                      {multaV > 0 && <span>Multa: +{fmtBRL(multaV)}</span>}
+                      {jurosV > 0 && <span>Juros: +{fmtBRL(jurosV)}</span>}
+                      {descV  > 0 && <span>Desconto: -{fmtBRL(descV)}</span>}
+                      <span style={{ fontWeight: 700 }}>Total com encargos: {fmtBRL(valorCom)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Pagamento ── */}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Pagamento</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Valor pago (R$) <span style={{ color: "#E24B4A" }}>*</span></label>
+                      <input style={{ ...inp, fontWeight: 600 }} type="text" inputMode="numeric" placeholder="0,00" value={baixa.valorMask}
+                        onChange={e => setBaixa(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                      {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) + descV < valorOrig - 0.01 && (
+                        <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 4 }}>
+                          Pagamento parcial — saldo restante: <strong>{fmtBRL(valorCom - desmascarar(baixa.valorMask))}</strong>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label style={lbl}>Data do pagamento</label>
+                      <input style={inp} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Forma de pagamento</label>
+                      <select style={inp} value={baixa.forma_pagamento} onChange={e => setBaixa(p => ({ ...p, forma_pagamento: e.target.value, cartao_id: "" }))}>
+                        {["PIX","TED","DOC","Boleto","Dinheiro","Cheque","Cartão de Crédito","Débito Automático","Outros"].map(f => <option key={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    {baixa.forma_pagamento === "Cartão de Crédito" ? (
+                      <div>
+                        <label style={lbl}>Cartão de crédito <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <select style={{ ...inp, borderColor: !baixa.cartao_id ? "#E24B4A" : undefined }} value={baixa.cartao_id} onChange={e => setBaixa(p => ({ ...p, cartao_id: e.target.value }))}>
+                          <option value="">— Selecionar cartão —</option>
+                          {cartoes.map(c => <option key={c.id} value={c.id}>{c.titular} — {c.bandeira.toUpperCase()} {c.numero_final ? `••••${c.numero_final}` : ""}{c.banco ? ` (${c.banco})` : ""}</option>)}
+                          {cartoes.length === 0 && <option disabled>Cadastre cartões em Financeiro › Cartões de Crédito</option>}
+                        </select>
+                        {baixa.cartao_id && (() => {
+                          const c = cartoes.find(x => x.id === baixa.cartao_id);
+                          if (!c) return null;
+                          return <div style={{ fontSize: 10, color: "#1A5C38", marginTop: 4 }}>💳 Fatura fecha dia {c.dia_fechamento} · vence dia {c.dia_vencimento} do mês seguinte</div>;
+                        })()}
+                      </div>
+                    ) : (
+                      <div>
+                        <label style={lbl}>Conta bancária <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <select style={{ ...inp, borderColor: !baixa.conta ? "#E24B4A" : undefined }} value={baixa.conta} onChange={e => setBaixa(p => ({ ...p, conta: e.target.value }))}>
+                          <option value="">— Selecionar conta —</option>
+                          {contas.map(c => {
+                            const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                            return <option key={c.id} value={c.id}>{label}</option>;
+                          })}
+                          {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
+                        </select>
+                      </div>
+                    )}
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Observação</label>
+                      <input style={inp} placeholder="Opcional" value={baixa.obs} onChange={e => setBaixa(p => ({ ...p, obs: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  {/* Nova data de vencimento — aparece somente em pagamento parcial (não quando há desconto que cobre o restante) */}
+                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) + descV < valorOrig - 0.01 && (
+                    <div style={{ marginTop: 12, padding: "12px 14px", background: "#FFF8EC", borderRadius: 8, border: "0.5px solid #F0C060" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#8B5E14", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+                        Reprogramação do saldo — {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}
+                      </div>
+                      <label style={{ ...lbl, color: "#8B5E14" }}>
+                        Nova data de vencimento do saldo restante <span style={{ color: "#E24B4A" }}>*</span>
+                      </label>
+                      <input
+                        style={{ ...inp, borderColor: !baixa.nova_data_vencimento ? "#F0C060" : undefined, maxWidth: 200 }}
+                        type="date"
+                        value={baixa.nova_data_vencimento}
+                        min={baixa.data || TODAY}
+                        onChange={e => setBaixa(p => ({ ...p, nova_data_vencimento: e.target.value }))}
+                      />
+                      {!baixa.nova_data_vencimento && (
+                        <div style={{ fontSize: 10, color: "#C9921B", marginTop: 4 }}>
+                          Informe quando o saldo restante vence para reprogramar o título.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginTop: 14, background: "#FBF0D8", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#7A5A12" }}>
+              ◈ Ação manual — você confirma que o pagamento foi efetuado.
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+              <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              {(() => {
+                const vPago = desmascarar(baixa.valorMask);
+                // Desconto (ex: por antecipação) conta como quitação: pago + desconto cobre o saldo → NÃO é parcial.
+                // Antes comparava só o valor pago com o saldo, então baixa com desconto exigia nova data de
+                // vencimento como se sobrasse saldo. Achado real 24/09/2026 (Agroquima, desconto R$ 36,34).
+                const eParcial = modalBaixa.moeda !== "barter" && vPago > 0 && vPago + descV < valorOrig - 0.01;
+                const semNovaData = eParcial && !baixa.nova_data_vencimento;
+                return (
+                  <button onClick={confirmarBaixa}
+                    disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta)) || semNovaData}
+                    title={semNovaData ? "Informe a nova data de vencimento do saldo restante" : undefined}
+                    style={{ padding: "8px 18px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: semNovaData ? "not-allowed" : "pointer", fontSize: 13, opacity: semNovaData ? 0.6 : 1 }}>
+                    {salvando ? "Salvando…" : "◈ Confirmar baixa"}
+                  </button>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ── Modal Baixar em Lote ─────────────────────────────── */}
+      {modalBaixaLote && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 920, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>✓ Baixar em Lote</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total original {fmtBRL(totalLote)}</div>
+              </div>
+              <button onClick={() => setModalBaixaLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do pagamento *</label>
+                  <input type="date" style={{ ...inp }} value={baixaLoteData} onChange={e => setBaixaLoteData(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta bancária</label>
+                  <select style={{ ...inp }} value={baixaLoteConta} onChange={e => setBaixaLoteConta(e.target.value)}>
+                    <option value="">— Manter conta do título —</option>
+                    {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-stripe)", padding: "6px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", display: "grid", gridTemplateColumns: "1.5fr 68px 80px 80px 80px 80px 90px", gap: 6 }}>
+                  <span>Título</span><span>Venc.</span><span style={{ textAlign: "right" }}>Original</span>
+                  <span style={{ textAlign: "center" }}>Multa</span><span style={{ textAlign: "center" }}>Juros</span>
+                  <span style={{ textAlign: "center" }}>Desconto</span><span style={{ textAlign: "right" }}>A pagar</span>
+                </div>
+                {itensLote.map((l, i) => {
+                  const e = encargoLoteDe(l.id);
+                  const inpMini: React.CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid var(--border)", borderRadius: 5, fontSize: 11, textAlign: "right", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+                  return (
+                    <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1.5fr 68px 80px 80px 80px 80px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid var(--bg-input)" : "none", fontSize: 12, alignItems: "center" }}>
+                      <span style={{ color: "var(--text-1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exibirFornecedor(l.descricao)}</span>
+                      <span style={{ color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
+                      <span style={{ color: "var(--text-2)", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }}>{exibirValor(l)}</span>
+                      <InputNumerico style={inpMini} value={e.multa} onChange={v => setEncargoLote(l.id, "multa", v)} placeholder="0,00" />
+                      <InputNumerico style={inpMini} value={e.juros} onChange={v => setEncargoLote(l.id, "juros", v)} placeholder="0,00" />
+                      <InputNumerico style={inpMini} value={e.desconto} onChange={v => setEncargoLote(l.id, "desconto", v)} placeholder="0,00" />
+                      <span style={{ fontWeight: 700, color: "#EF4444", textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(valorFinalLote(l))}</span>
+                    </div>
+                  );
+                })}
+                <div style={{ background: "var(--bg-stripe)", padding: "8px 10px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total a pagar (já com encargos)</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#EF4444" }}>{fmtBRL(itensLote.reduce((s, l) => s + valorFinalLote(l), 0))}</span>
+                </div>
+              </div>
+
+              {baixaLoteErro && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", fontSize: 12, color: "#791F1F" }}>
+                  {baixaLoteErro}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModalBaixaLote(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button
+                  onClick={baixarEmLote}
+                  disabled={baixaLoteSalvando || !baixaLoteData}
+                  style={{ padding: "8px 22px", background: baixaLoteSalvando ? "#999" : "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: baixaLoteSalvando ? "default" : "pointer" }}
+                >
+                  {baixaLoteSalvando ? "Baixando…" : `✓ Confirmar Baixa (${itensLote.length} título${itensLote.length !== 1 ? "s" : ""})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Criar Borderô ──────────────────────────────── */}
+      {modalLote && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 540, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Criar Borderô</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)} · aguarda confirmação de pagamento</div>
+              </div>
+              <button onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 22px" }}>
+
+              {/* Descrição */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Descrição do Borderô (opcional)</label>
+                <input style={{ ...inp }} value={loteDesc} onChange={e => setLoteDesc(e.target.value)} placeholder={`Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`} />
+              </div>
+
+              {/* Lista dos títulos selecionados */}
+              <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+                <div style={{ background: "var(--bg-stripe)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" as const, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
+                  <span>Título</span><span>Vencimento</span><span style={{ textAlign: "right" }}>Valor</span>
+                </div>
+                {itensLote.map((l, i) => (
+                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "8px 12px", borderTop: i > 0 ? "0.5px solid var(--bg-input)" : "none", fontSize: 12, alignItems: "center" }}>
+                    <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{exibirFornecedor(l.descricao)}</span>
+                    <span style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
+                    <span style={{ fontWeight: 600, color: "#EF4444", textAlign: "right", whiteSpace: "nowrap" }}>{exibirValor(l)}</span>
+                  </div>
+                ))}
+                <div style={{ background: "var(--bg-stripe)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#EF4444" }}>{fmtBRL(totalLote)}</span>
+                </div>
+              </div>
+
+              {/* Aviso fluxo de dois passos */}
+              <div style={{ background: "rgba(201,146,27,0.08)", border: "0.5px solid rgba(201,146,27,0.3)", borderRadius: 7, padding: "8px 12px", fontSize: 11, color: "#7A5C00", marginBottom: 14 }}>
+                O borderô <strong>não baixa os títulos</strong>. Ele fica pendente na lista abaixo até que outra pessoa confirme o pagamento informando a data e a conta bancária.
+              </div>
+
+              {loteErro && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 12 }}>
+                  {loteErro}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModalLote(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button
+                  onClick={criarBordero}
+                  disabled={loteSalvando}
+                  style={{ padding: "8px 20px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: loteSalvando ? 0.6 : 1 }}
+                >
+                  {loteSalvando ? "Criando…" : `Criar Borderô (${itensLote.length} título${itensLote.length !== 1 ? "s" : ""})`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Confirmar Pagamento de Borderô ─────────────── */}
+      {modalConfirmar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 480, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Confirmar Pagamento</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{modalConfirmar.descricao}</div>
+              </div>
+              <button onClick={() => setModalConfirmar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "18px 22px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do Pagamento *</label>
+                  <input type="date" style={{ ...inp }} value={confirmData} onChange={e => setConfirmData(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
+                  <select style={{ ...inp }} value={confirmConta} onChange={e => setConfirmConta(e.target.value)}>
+                    <option value="">— Selecionar conta —</option>
+                    {contas.map(c => {
+                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                      return <option key={c.id} value={label}>{label}</option>;
+                    })}
+                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros</option>}
+                  </select>
+                </div>
+              </div>
+
+              {/* Resumo do borderô */}
+              <div style={{ background: "var(--bg-stripe)", borderRadius: 8, padding: "10px 14px", fontSize: 12, marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ color: "var(--text-2)" }}>Títulos no borderô</span>
+                  <span style={{ fontWeight: 600 }}>{(modalConfirmar.itens ?? []).length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--text-2)" }}>Total a pagar</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#EF4444" }}>
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(modalConfirmar.valor_total)}
+                  </span>
+                </div>
+              </div>
+
+              {confirmErro && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 12 }}>
+                  {confirmErro}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModalConfirmar(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button
+                  onClick={confirmarBordero}
+                  disabled={confirmSalvando || !confirmData || !confirmConta}
+                  style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: confirmSalvando ? 0.6 : 1 }}
+                >
+                  {confirmSalvando ? "Baixando…" : "Confirmar e Baixar Todos"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Ver Borderô ────────────────────────────────── */}
+      {modalVerBordero && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 560, maxWidth: "95vw", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
+            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Borderô — {modalVerBordero.descricao}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                  {modalVerBordero.status === "pago" ? "✅ Pago" : "⏳ Pendente"} · {modalVerBordero.data_pagamento ? `Pago em ${new Date(modalVerBordero.data_pagamento + "T00:00").toLocaleDateString("pt-BR")}` : "Sem data"} · Total: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(modalVerBordero.valor_total)}
+                </div>
+              </div>
+              <button onClick={() => setModalVerBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "12px 20px 16px" }}>
+              {(modalVerBordero.itens ?? []).length === 0 ? (
+                <div style={{ textAlign: "center", padding: 24, color: "var(--text-3)", fontSize: 13 }}>Nenhum título encontrado neste borderô.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-nav)" }}>
+                      <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--text-3)", fontWeight: 600, borderBottom: "0.5px solid var(--border-table)" }}>Nº</th>
+                      <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--text-3)", fontWeight: 600, borderBottom: "0.5px solid var(--border-table)" }}>Descrição</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-3)", fontWeight: 600, borderBottom: "0.5px solid var(--border-table)" }}>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(modalVerBordero.itens ?? []).map((item, idx) => (
+                      <tr key={item.id} style={{ background: idx % 2 === 0 ? "transparent" : "var(--bg-nav)" }}>
+                        <td style={{ padding: "6px 8px", color: "var(--text-3)", whiteSpace: "nowrap" }}>{item.lancamento?.numero ?? "—"}</td>
+                        <td style={{ padding: "6px 8px", color: "var(--text-1)" }}>{item.lancamento?.descricao ?? "—"}</td>
+                        <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--text-1)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor_pago)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} style={{ padding: "8px 8px", fontWeight: 700, color: "var(--text-2)", borderTop: "0.5px solid var(--border-table)", fontSize: 12 }}>Total</td>
+                      <td style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, color: "var(--text-1)", borderTop: "0.5px solid var(--border-table)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(modalVerBordero.valor_total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+            <div style={{ padding: "10px 20px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => setModalVerBordero(null)} style={{ padding: "8px 18px", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Novo CP ──────────────────────────────────────── */}
+      {modalNovo && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+         >
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)", display: "flex", flexDirection: "column" }}>
+
+            {/* ── Cabeçalho ── */}
+            <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
+                    {editandoId ? "✏ Editar Conta a Pagar" : "Nova Conta a Pagar"}
+                  </span>
+                  <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                    {(["real", "previsao"] as const).map(n => (
+                      <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
+                        style={{ padding: "4px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
+                          background: form.natureza === n ? (n === "previsao" ? "#2A2A2A" : "#C9921B") : "var(--border-row)",
+                          color: form.natureza === n ? "#fff" : "var(--text-2)" }}>
+                        {n === "real" ? "Real" : "Previsão"}
+                      </button>
+                    ))}
+                  </div>
+                  {editandoId && form.natureza === "previsao" && (
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: "rgba(96,165,250,0.1)", color: "#60A5FA", border: "0.5px solid rgba(96,165,250,0.25)" }}>
+                      Troque para "Real" para efetivar
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Abas */}
+              <div style={{ display: "flex", gap: 0 }}>
+                {([
+                  { id: "principal",  label: "Principal"  },
+                  { id: "adicionais", label: "Adicionais" },
+                ] as const).map(t => (
+                  <button key={t.id} onClick={() => setModalTab(t.id)}
+                    style={{ padding: "7px 20px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
+                      fontWeight: modalTab === t.id ? 700 : 400,
+                      color: modalTab === t.id ? "#60A5FA" : "var(--text-3)",
+                      borderBottom: modalTab === t.id ? "2px solid #3B82F6" : "2px solid transparent" }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Corpo das abas ── */}
+            <div style={{ padding: "20px 24px", flex: 1, overflowY: "auto" as const }}>
+
+              {/* ─── Aba Principal ─── */}
+              {editandoId && (() => { const le = lancamentos.find(x => x.id === editandoId); return le?.conciliado ? <ConciliacaoOfxInfo lancamentoId={editandoId} conciliado /> : null; })()}
+              {modalTab === "principal" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                  {/* Banner — campos originados de NF */}
+                  {isNfOrigin && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8 }}>
+                      <span style={{ fontSize: 16 }}>🔒</span>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8" }}>Lançamento originado de NF processada</span>
+                        <span style={{ fontSize: 11, color: "#3B82F6", marginLeft: 8 }}>Fornecedor, N° Doc, Tipo Doc, CC e Máquina são bloqueados. Para alterar, estorne e reprocesse a NF.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo (sem Talhão em CP direto) */}
+                  <CascadeSelector
+                    contaId={contaId}
+                    fazendaIdFallback={fazendaId}
+                    fazendaRequired={false}
+                    levels={["produtor", "fazenda", "anoSafra", "ciclo"]}
+                    values={cascade}
+                    onChange={next => {
+                      setCascade(next);
+                      setForm(p => ({ ...p, produtor_id: next.produtorId ?? "", ano_safra_id: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "" }));
+                    }}
+                  />
+
+                  {/* Linha 1: Moeda | OG (3) | Data Emissão */}
+                  <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 140px", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Moeda</label>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
+                        <option value="BRL">Real (R$)</option>
+                        <option value="USD">Dólar (US$)</option>
+                        <option value="barter">Barter</option>
+                      </select>
+                    </div>
+                    <div style={{ gridColumn: "2 / 4" }}>
+                      <label style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span> <span style={{ color: "var(--text-3)", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
+                      <SelectBusca
+                        value={form.operacao_gerencial_id}
+                        onChange={id => {
+                          const op = [...opGerenciais, ...allOgs].find(o => o.id === id);
+                          setForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria }));
+                        }}
+                        options={(() => {
+                          const base = opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }));
+                          if (form.operacao_gerencial_id && !opGerenciais.find(o => o.id === form.operacao_gerencial_id)) {
+                            const missing = allOgs.find(o => o.id === form.operacao_gerencial_id);
+                            if (missing) base.unshift({ value: missing.id, label: `${missing.classificacao} — ${missing.descricao}`, group: (missing.classificacao ?? "").split(".").slice(0, 3).join(".") });
+                          }
+                          return base;
+                        })()}
+                        placeholder="— Selecionar operação —"
+                        style={inp}
+                      />
+                    </div>
+                    <div>
+                      <label style={lbl}>Data Emissão</label>
+                      <input style={inp} type="date" value={form.data_emissao} onChange={e => setForm(p => ({ ...p, data_emissao: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  {/* Badge débito/crédito da OG */}
+                  {form.operacao_gerencial_id && (() => {
+                    const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!op?.conta_debito && !op?.conta_credito) return null;
+                    return (
+                      <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
+                        <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
+                        <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Linha 2: Fornecedor (2) | Nº Documento | Série | Tipo Doc LCDPR */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px 90px 160px", gap: 12 }}>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label style={lbl}>Fornecedor / Credor</label>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
+                        <option value="">— Selecionar do cadastro —</option>
+                        {pessoas.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Nº Documento</label>
+                      <input style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed", background: "var(--bg-page)" } : {}) }} readOnly={isNfOrigin} placeholder="Ex: 001234" value={form.numero_documento} onChange={e => setForm(p => ({ ...p, numero_documento: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Série</label>
+                      <input style={inp} placeholder="1" value={form.serie} onChange={e => setForm(p => ({ ...p, serie: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Tipo de Documento</label>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
+                        <option value="NF">Nota Fiscal (NF-e)</option>
+                        <option value="FATURA">Fatura</option>
+                        <option value="BOLETO">Boleto</option>
+                        <option value="RECIBO">Recibo</option>
+                        <option value="DUPLICATA">Duplicata</option>
+                        <option value="OUTROS">Outros</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Entidade Contábil — decide o LCDPR/SPED, independe da conta bancária usada na baixa */}
+                  <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 12, marginTop: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Entidade Contábil (LCDPR/SPED)</label>
+                      <select style={inp} value={form.entidade_contabil} onChange={e => setForm(p => ({ ...p, entidade_contabil: e.target.value as typeof form.entidade_contabil }))}>
+                        <option value="">— Padrão da fazenda —</option>
+                        <option value="pf">Pessoa Física</option>
+                        <option value="pj">Pessoa Jurídica</option>
+                      </select>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                      Decide se esta CP entra no LCDPR (PF) ou no SPED ECD (PJ) — pela origem do título, não pela conta bancária usada na baixa. Use quando um título de origem PF for pago por conta/fluxo de uma fazenda PJ (ou vice-versa).
+                    </div>
+                  </div>
+
+                  {/* Classificação automática — aparece quando Fornecedor + OG preenchidos */}
+                  {form.pessoa_id && form.operacao_gerencial_id && (() => {
+                    const pessoa = pessoas.find(p => p.id === form.pessoa_id);
+                    const og     = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!pessoa?.cpf_cnpj) return null;
+                    return (
+                      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", background: salvarComoRegra ? "#EBF5EB" : "var(--bg-page)", border: `0.5px solid ${salvarComoRegra ? "#86C78A" : "var(--border)"}`, borderRadius: 8, cursor: "pointer", userSelect: "none" }}>
+                        <input
+                          type="checkbox"
+                          checked={salvarComoRegra}
+                          onChange={e => setSalvarComoRegra(e.target.checked)}
+                          style={{ marginTop: 1, flexShrink: 0, accentColor: "#16A34A" }}
+                        />
+                        <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+                          <span style={{ fontWeight: 600, color: salvarComoRegra ? "#166534" : "var(--text-1)" }}>
+                            Salvar como regra de classificação automática
+                          </span>
+                          <span style={{ color: "var(--text-3)", display: "block", fontSize: 11, marginTop: 2 }}>
+                            Próximas NFs de <strong>{pessoa.nome}</strong> serão classificadas automaticamente como <strong>{og?.descricao ?? "—"}</strong>
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })()}
+
+                  {/* Linha 3: Descrição (2) | 1º Vencimento | Forma Pgto | Conta Pgto */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 160px 160px 1fr", gap: 12 }}>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label style={lbl}>Descrição {!form.pessoa_id && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                      <input style={inp} placeholder="Ex: Compra de herbicida — Talhão 3" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>1º Vencimento *</label>
+                      <input style={inp} type="date" value={form.vencimento} onChange={e => setForm(p => ({ ...p, vencimento: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Forma de Pagamento</label>
+                      <select style={inp} value={form.forma_pagamento} onChange={e => setForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                        {FORMAS_PAGAMENTO.map(f => <option key={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Conta de Pagamento</label>
+                      <select style={inp} value={form.conta_pagamento} onChange={e => setForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                        <option value="">— Selecionar —</option>
+                        {contas.map(c => {
+                          const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                          return <option key={c.id} value={label}>{label}</option>;
+                        })}
+                        {contas.length === 0 && <option disabled>Cadastre contas em Cadastros</option>}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Linha 4: Valor (por moeda) */}
+                  {form.moeda === "BRL" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Valor Total (R$) *</label>
+                        <input style={{ ...inp, fontWeight: 600 }} type="text" inputMode="numeric" placeholder="0,00" value={form.valorMask} onChange={e => setForm(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                    </div>
+                  )}
+                  {form.moeda === "USD" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "200px 200px 1fr", gap: 12, alignItems: "end" }}>
+                      <div>
+                        <label style={lbl}>Valor (US$) *</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={form.valorMask} onChange={e => setForm(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Cotação R$/US$</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="5,12" value={form.cotacaoMask} onChange={e => setForm(p => ({ ...p, cotacaoMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                      {form.valorMask && form.cotacaoMask && (
+                        <div style={{ background: "#FEF3E2", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#7A4300" }}>
+                          Equivalente: <strong>{fmtBRL(desmascarar(form.valorMask) * desmascarar(form.cotacaoMask))}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {form.moeda === "barter" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "160px 160px 200px 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Quantidade (sacas) *</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="0" value={form.sacasMask} onChange={e => setForm(p => ({ ...p, sacasMask: e.target.value.replace(/\D/g, "") }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Cultura</label>
+                        <select style={inp} value={form.culturaBarter} onChange={e => setForm(p => ({ ...p, culturaBarter: e.target.value }))}>
+                          <option value="soja">Soja</option><option value="milho">Milho</option><option value="algodão">Algodão</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Preço referência (R$/sc)</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="120,00" value={form.precoSacaMask} onChange={e => setForm(p => ({ ...p, precoSacaMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                    </div>
+                  )}
+                  {/* Condição de Pagamento */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Condição de Pagamento</label>
+                      <div style={{ display: "flex", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
+                        {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
+                          <button key={v} type="button"
+                            onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelas([]); }}
+                            style={{
+                              padding: "7px 14px", fontSize: 12, fontWeight: form.condicao === v ? 600 : 400,
+                              cursor: "pointer", border: "none",
+                              borderRight: idx < 2 ? "0.5px solid var(--border)" : "none",
+                              background: form.condicao === v ? "#111111" : "var(--border-row)",
+                              color: form.condicao === v ? "#fff" : "var(--text-2)",
+                              whiteSpace: "nowrap",
+                            }}>
+                            {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {(form.condicao === "prazo" || form.condicao === "recorrencia") && (
+                      <>
+                        <div>
+                          <label style={lbl}>{form.condicao === "prazo" ? "Nº de parcelas" : "Nº de repetições"}</label>
+                          <InputNumerico style={{ ...inp, width: 80 }} decimais={0} min="2" max="120" value={form.qtdParcelas} onChange={v => setForm(p => ({ ...p, qtdParcelas: v }))} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={lbl}>Frequência</label>
+                            <select style={inp} value={form.frequencia} onChange={e => setForm(p => ({ ...p, frequencia: e.target.value }))}>
+                              <option value="1">Mensal</option>
+                              <option value="2">Bimestral</option>
+                              <option value="3">Trimestral</option>
+                              <option value="6">Semestral</option>
+                              <option value="12">Anual</option>
+                            </select>
+                          </div>
+                          {form.condicao === "prazo" && (
+                            <button type="button"
+                              onClick={() => gerarParcelas(form.vencimento, Number(form.qtdParcelas), Number(form.frequencia), desmascarar(form.valorMask))}
+                              disabled={!form.vencimento || !form.valorMask}
+                              style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid rgba(96,165,250,0.3)", background: "rgba(96,165,250,0.1)", color: "#60A5FA", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !form.vencimento || !form.valorMask ? 0.4 : 1 }}>
+                              Gerar
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Grid de parcelas */}
+                  {form.condicao === "prazo" && parcelas.length === 0 && (
+                    <div style={{ fontSize: 11, color: "var(--text-3)", padding: "10px 14px", background: "var(--bg-stripe)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
+                      Preencha o Vencimento e Valor, depois clique em "Gerar".
+                    </div>
+                  )}
+                  {form.condicao === "prazo" && parcelas.length > 0 && (
+                    <div style={{ overflowX: "auto" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
+                        Rateio por vencimento: cada parcela pode ter safra e ciclo diferentes.
+                      </div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-stripe)" }}>
+                            {["#", "Vencimento", "Valor (R$)", "Safra", "Ciclo"].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parcelas.map((p, i) => (
+                            <tr key={i} style={{ borderBottom: "0.5px solid var(--bg-input)" }}>
+                              <td style={{ padding: "4px 10px", textAlign: "center", color: "var(--text-3)", fontSize: 11, width: 40 }}>{i + 1}/{parcelas.length}</td>
+                              <td style={{ padding: "4px 8px" }}>
+                                <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
+                              </td>
+                              <td style={{ padding: "4px 8px" }}>
+                                <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
+                              </td>
+                              <td style={{ padding: "4px 8px" }}>
+                                <select style={{ ...inp, fontSize: 11 }}
+                                  value={p.ano_safra_id ?? form.ano_safra_id}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, ano_safra_id: e.target.value, ciclo_id: "" } : x))}>
+                                  <option value="">— Padrão —</option>
+                                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                                </select>
+                              </td>
+                              <td style={{ padding: "4px 8px" }}>
+                                <select style={{ ...inp, fontSize: 11 }}
+                                  value={p.ciclo_id ?? form.ciclo_id}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}>
+                                  <option value="">— Padrão —</option>
+                                  {ciclos.filter(c => !p.ano_safra_id || c.ano_safra_id === p.ano_safra_id).map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: "var(--bg-stripe)" }}>
+                            <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>Total:</td>
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#60A5FA" }}>
+                              {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
+                            </td>
+                            <td colSpan={2}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Preview recorrência */}
+                  {form.condicao === "recorrencia" && (() => {
+                    const qtdRecorr  = Math.max(2, Number(form.qtdParcelas) || 2);
+                    const freqRecorr = Math.max(1, Number(form.frequencia)  || 1);
+                    const valorRec   = desmascarar(form.valorMask);
+                    const freqLabel  = ({ "1": "mensal", "2": "bimestral", "3": "trimestral", "6": "semestral", "12": "anual" } as Record<string, string>)[form.frequencia] ?? "mensal";
+                    return (
+                      <div>
+                        <div style={{ background: "rgba(251,191,36,0.08)", border: "0.5px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#555555" }}>
+                          O mesmo valor é lançado <strong>{qtdRecorr}×</strong> com frequência <strong>{freqLabel}</strong>. Ideal para custos fixos.
+                          {valorRec > 0 && <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(valorRec * qtdRecorr)}</span>}
+                        </div>
+                        {form.vencimento && valorRec > 0 && (
+                          <div style={{ overflowX: "auto", maxHeight: 220, overflowY: "auto", borderRadius: 8, border: "0.5px solid var(--border)" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead style={{ position: "sticky", top: 0, background: "var(--bg-stripe)" }}>
+                                <tr>
+                                  {["#", "Vencimento", "Valor"].map((h, i) => (
+                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Array.from({ length: qtdRecorr }, (_, i) => {
+                                  const d = new Date(form.vencimento + "T12:00:00");
+                                  d.setMonth(d.getMonth() + i * freqRecorr);
+                                  return (
+                                    <tr key={i} style={{ borderBottom: i < qtdRecorr - 1 ? "0.5px solid var(--bg-input)" : "none" }}>
+                                      <td style={{ padding: "4px 10px", textAlign: "center", color: "var(--text-3)", fontSize: 11, width: 50 }}>{i + 1}/{qtdRecorr}</td>
+                                      <td style={{ padding: "4px 10px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(d.toISOString().split("T")[0])}</td>
+                                      <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "#60A5FA", fontWeight: 600 }}>{fmtBRL(valorRec)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {!form.vencimento && (
+                          <div style={{ fontSize: 11, color: "var(--text-3)", padding: "10px 14px", background: "var(--bg-stripe)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
+                            Defina o 1º Vencimento para visualizar as datas.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Centro de Custo */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Centro de Custo</label>
+                      <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
+                        <option value="">— Sem vínculo —</option>
+                        {centrosCusto.map(c => {
+                          const isLeaf = !centrosCusto.some(x => x.parent_id === c.id);
+                          const prefix = c.parent_id ? "   " : "";
+                          return (
+                            <option key={c.id} value={c.nome} disabled={!isLeaf} style={{ color: isLeaf ? undefined : "#888" }}>
+                              {prefix}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Veículo vinculado — aparece quando OG é Manutenção ou há veículos */}
+                  {veiculos.length > 0 && (() => {
+                    const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    const isManu = og && (og.classificacao ?? "").startsWith("2.01.01.03");
+                    // Para manutenção: todos os veículos. Para outros contextos: só emplacados
+                    const lista = isManu ? veiculos : veiculos.filter(v => v.emplacado);
+                    if (!lista.length) return null;
+                    return (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Veículo / Máquina (opcional)</label>
+                          <select style={{ ...inp, ...(isNfOrigin ? { opacity: 0.7, cursor: "not-allowed" } : {}) }} disabled={isNfOrigin} value={form.veiculo_sel} onChange={e => setForm(p => ({ ...p, veiculo_sel: e.target.value }))}>
+                            <option value="">— Sem vínculo —</option>
+                            <optgroup label="Fazenda">
+                              {lista.filter(v => v.origem === "fazenda").map(v => (
+                                <option key={v.ref} value={v.ref}>{v.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Transportadora">
+                              {lista.filter(v => v.origem === "transportadora").map(v => (
+                                <option key={v.ref} value={v.ref}>{v.label}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Mão de Obra — aparece quando OG é Mão de Obra */}
+                  {form.operacao_gerencial_id && (() => {
+                    const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!og || !(og.classificacao ?? "").startsWith("2.01.01.10")) return null;
+                    return (
+                      <div style={{ background: "#F0F7FF", border: "0.5px solid #11111140", borderRadius: 8, padding: 14 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Mão de Obra</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 140px 120px", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Funcionário / Prestador</label>
+                            <select style={inp} value={form.funcionario_id} onChange={e => setForm(p => ({ ...p, funcionario_id: e.target.value }))}>
+                              <option value="">— Sem vínculo —</option>
+                              {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Tipo</label>
+                            <select style={inp} value={form.tipo_mao_obra} onChange={e => setForm(p => ({ ...p, tipo_mao_obra: e.target.value }))}>
+                              <option value="">— Selecionar —</option>
+                              {["CLT","Temporário","Empreitada","Terceirizado"].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Unidade</label>
+                            <select style={inp} value={form.unidade_mao_obra} onChange={e => setForm(p => ({ ...p, unidade_mao_obra: e.target.value }))}>
+                              {["Hora","Dia","Ha","Sc","Tarefa","Empreitada"].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Quantidade</label>
+                            <InputNumerico style={inp} min="0" placeholder="0"
+                              value={form.quantidade_mao_obra}
+                              onChange={v => setForm(p => ({ ...p, quantidade_mao_obra: v }))} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ─── Aba Adicionais ─── */}
+              {modalTab === "adicionais" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Empresa não-rural — transportadora, trading, etc. */}
+                  {empresas.length > 0 && (
+                    <div>
+                      <label style={lbl}>Empresa (não-rural)</label>
+                      <select style={inp} value={form.empresa_id} onChange={e => setForm(p => ({ ...p, empresa_id: e.target.value }))}>
+                        <option value="">— Fazenda (padrão) —</option>
+                        {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}{e.razao_social && e.razao_social !== e.nome ? ` — ${e.razao_social}` : ""}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>% Juros a.m.</label>
+                      <InputMonetario style={inp} placeholder="0,00" value={form.juros_pct} onChange={v => setForm(p => ({ ...p, juros_pct: v }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>% Multa por atraso</label>
+                      <InputMonetario style={inp} placeholder="0,00" value={form.multa_pct} onChange={v => setForm(p => ({ ...p, multa_pct: v }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>% Desc. Pontualidade</label>
+                      <InputMonetario style={inp} placeholder="0,00" value={form.desconto_pct} onChange={v => setForm(p => ({ ...p, desconto_pct: v }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Meses Diferido</label>
+                      <InputNumerico style={inp} decimais={0} min="0" placeholder="0" value={form.meses_diferido} onChange={v => setForm(p => ({ ...p, meses_diferido: v }))} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Chave XML / NF-e</label>
+                      <input style={inp} placeholder="Opcional — 44 dígitos ou URL" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
+                      {form.chave_xml?.startsWith("http") && (() => {
+                        const nome = form.chave_xml.split("/").pop()?.split("?")[0] ?? "arquivo";
+                        const decodedNome = decodeURIComponent(nome);
+                        return (
+                          <a
+                            href={form.chave_xml}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 11, color: "#111111", textDecoration: "none", background: "#E8E8E8", borderRadius: 5, padding: "3px 8px", border: "0.5px solid #97C3E0", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                          >
+                            📎 <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{decodedNome}</span> ↗
+                          </a>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                        <label style={lbl}>Observação</label>
+                        <span style={{ fontSize: 11, color: form.obs.length > 90 ? "#E24B4A" : "var(--text-muted)" }}>{form.obs.length}/100</span>
+                      </div>
+                      <input style={inp} placeholder="Opcional" maxLength={100} value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lbl}>Anexar NF (PDF ou XML)</label>
+                    <input type="file" accept=".pdf,.xml,.png,.jpg"
+                      onChange={e => setArquivoNF(e.target.files?.[0] ?? null)}
+                      style={{ ...inp, padding: "5px 8px", cursor: "pointer" }} />
+                    {arquivoNF && (
+                      <div style={{ fontSize: 10, color: "#16A34A", marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>📎 {arquivoNF.name}</span>
+                        <button type="button" onClick={() => setArquivoNF(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 11, padding: 0 }}>×</button>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Arquivo enviado ao Storage e URL salva na chave da NF</div>
+                  </div>
+                  {editandoId && fid && (
+                    <AnexoDocumentos
+                      entidade_tipo="lancamento_cp"
+                      entidade_id={editandoId}
+                      fazenda_id={fid}
+                      label="Documentos Anexos"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── Rodapé ── */}
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "var(--bg-nav)", borderRadius: "0 0 12px 12px" }}>
+              {errosForm.length > 0 && (
+                <div style={{ flex: 1, background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", borderRadius: 7, padding: "7px 12px", fontSize: 11, color: "#EF4444" }}>
+                  {errosForm.map((e, i) => <div key={i}>• {e}</div>)}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
+                {editandoId && form.natureza === "previsao" && (
+                  <button
+                    onClick={() => { setForm(p => ({ ...p, natureza: "real" })); }}
+                    style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+                    title="Muda para Real e abre para ajuste antes de salvar"
+                  >
+                    ⚡ Efetivar
+                  </button>
+                )}
+                <button onClick={() => fecharModal()} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--border-row)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={adicionarLancamento} disabled={disabled}
+                  style={{ padding: "8px 20px", background: disabled ? "var(--text-muted)" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", fontSize: 13 }}>
+                  {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : form.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} repetições` : "◈ Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Menu de colunas */}
+      {menuColunas && (
+        <ContextMenuColunas
+          x={menuColunas.x}
+          y={menuColunas.y}
+          colunas={COLS_CP}
+          ordemTodas={ordemTodas}
+          visiveis={visCols}
+          onToggle={toggleCol}
+          onMover={moverColuna}
+          onResetar={resetarCols}
+          onClose={() => setMenuColunas(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── th helper ───────────────────────────────────────────────
+function btnAcao(bg: string, color: string, border = "none"): React.CSSProperties {
+  return { width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: bg, color, border, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 };
+}
+
+function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.CSSProperties {
+  return {
+    padding: "6px 8px",
+    textAlign: align,
+    fontSize: 10,
+    fontWeight: 700,
+    color: "var(--text-2)",
+    borderBottom: "0.5px solid var(--border-table)",
+    whiteSpace: "nowrap",
+    textTransform: "uppercase",
+    letterSpacing: ".04em",
+  };
+}
+
+export default function ContasPagar() {
+  return (
+    <Suspense>
+      <ContasPagarInner />
+    </Suspense>
+  );
+}

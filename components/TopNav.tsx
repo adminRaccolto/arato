@@ -158,14 +158,12 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", panel: true, minStep: 6,
     children: [
-      { type: "divider", label: "Atividade Rural (Produtor)" },
+      { type: "divider", label: "Contas a Pagar / Receber (Produtor + Empresa)" },
       { id: "fin-pagar",           label: "Contas a Pagar",               path: "/financeiro/pagar",                moduleId: "fin_pagar"      },
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
       { id: "fin-adiantamentos",   label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos",        moduleId: "fin_pagar"      },
       { id: "fin-folha",           label: "Folha de Pagamento",           path: "/financeiro/folha"                                            },
       { type: "divider", label: "Empresa (CNPJ)" },
-      { id: "fin-emp-pagar",       label: "Contas a Pagar — Empresa",    path: "/empresas/pagar",                  moduleId: "fin_pagar"      },
-      { id: "fin-emp-receber",     label: "Contas a Receber — Empresa",  path: "/empresas/receber",                moduleId: "fin_receber"    },
       { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha"                                             },
       { id: "fin-emp-dre",        label: "DRE por Empresa",              path: "/financeiro/empresas"                                        },
       { type: "divider", label: "Tesouraria" },
