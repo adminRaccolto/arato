@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-z",
+    data: "01/10/2026",
+    titulo: "Devolução de Compra agora também na tela nova de Documentos Fiscais",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "novo", texto: "Abrindo uma NF de Produtos processada (tipo Insumos) em Documentos Fiscais → Notas de Terceiro, aparece o botão \"↩ Devolver\" — emite a NF-e de devolução de verdade na SEFAZ (volta ao fornecedor) e escritura tudo (estorna estoque, lança a devolução), exatamente como a tela antiga já fazia. Faltam ainda remessa logística, reclassificação e ações em lote — essas continuam só na tela antiga por enquanto." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.01-y",
     data: "01/10/2026",
     titulo: "Menu reorganizado: Documentos Fiscais e Compras",

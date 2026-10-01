@@ -39,7 +39,9 @@ import {
   listarCiclos,
   listarPedidoCompraItens,
   listarTransferenciasMaquinas, atualizarTransferenciaMaquina,
+  processarDevolucaoCompra,
 } from "../../lib/db";
+import type { ItemDevolucao } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
 import type { TransferenciaMaquina, NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
@@ -421,6 +423,28 @@ export default function ModalNf({
   }>({ nome: "", categoria: "outros", unidade: "un" });
   const [novoInsumoSaving, setNovoInsumoSaving] = useState(false);
   const [novoInsumoErr,    setNovoInsumoErr]    = useState("");
+
+  // ── Devolução de Compra — emite NF-e de devolução de verdade (saída,
+  // volta ao fornecedor) antes de escriturar qualquer coisa no sistema.
+  const [fiscalModulos, setFiscalModulos] = useState<Array<{ modulo: string; config: Record<string, string> }>>([]);
+  interface DevItem extends ItemDevolucao {
+    key: string;
+    qtdOriginal: number;
+    qtdOriginalNF?: number;
+    unidadeOriginalNF?: string;
+    ncm?: string;
+  }
+  const [devModal,   setDevModal]   = useState(false);
+  const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
+  const [devCpfHint, setDevCpfHint] = useState<string | undefined>(undefined);
+  const [devFatorDesconto, setDevFatorDesconto] = useState(1);
+  const [devItens,   setDevItens]   = useState<DevItem[]>([]);
+  const [devCfop,    setDevCfop]    = useState("5201");
+  const [devData,    setDevData]    = useState(new Date().toISOString().split("T")[0]);
+  const [devVenc,    setDevVenc]    = useState("");
+  const [devObs,     setDevObs]     = useState("");
+  const [devSaving,  setDevSaving]  = useState(false);
+  const [devErr,     setDevErr]     = useState("");
 
   const xmlInputRef = useRef<HTMLInputElement>(null);
 
@@ -1527,6 +1551,148 @@ export default function ModalNf({
       onClose();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Erro ao estornar NF");
+    }
+  }
+
+  // ── Abrir modal de devolução ──────────────────────────────
+  async function abrirDevolucao(nf: NfEntrada) {
+    setDevNfOrig(nf);
+    setDevErr("");
+    setDevObs("");
+    setDevData(new Date().toISOString().split("T")[0]);
+    setDevVenc("");
+    // CFOP padrão: 5201 (intraestadual) — ajustável pelo usuário
+    setDevCfop("5201");
+    // Configuração fiscal da fazenda de origem — a devolução emite uma NF-e de verdade (saída, de
+    // volta ao fornecedor), não só um registro interno. Sem ela, a devolução fica bloqueada.
+    supabase.from("configuracoes_modulo").select("modulo, config")
+      .eq("fazenda_id", nf.fazenda_id).or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%")
+      .then(r => setFiscalModulos((r.data ?? []) as Array<{ modulo: string; config: Record<string, string> }>));
+    // CPF/CNPJ do produtor dono da NF de origem — quem responde fiscalmente pela devolução;
+    // uma fazenda pode ter vários emitentes configurados, não vale pegar "o primeiro" ao acaso.
+    setDevCpfHint(undefined);
+    if (nf.produtor_id) {
+      supabase.from("produtores").select("cpf_cnpj").eq("id", nf.produtor_id).maybeSingle()
+        .then(r => setDevCpfHint(r.data?.cpf_cnpj ?? undefined));
+    }
+    // Carrega os itens da NF original
+    try {
+      const itensDB = await listarNfEntradaItens(nf.id);
+      // O valor de cada item na NF é o BRUTO (o que o fornecedor cobrou por aquele produto); o que
+      // deve ser devolvido/ressarcido é o LÍQUIDO — mesmo princípio já aplicado ao custo de estoque.
+      // Reconstrói o fator pela soma dos itens (sempre bruta) contra o valor líquido da NF — não
+      // confia em valor_produtos do cabeçalho, que pode estar desatualizado em NFs antigas/importadas.
+      const somaItensGross = itensDB.reduce((s, i) => s + (i.valor_total || 0), 0);
+      const fatorDesconto = somaItensGross > 0 && nf.valor_total > 0 ? nf.valor_total / somaItensGross : 1;
+      setDevFatorDesconto(fatorDesconto);
+      const devs: DevItem[] = itensDB
+        .filter(i => i.insumo_id && i.tipo_apropiacao === "estoque")
+        .map(i => ({
+          key:                 i.id,
+          insumo_id:           i.insumo_id!,
+          descricao_produto:   i.descricao_produto,
+          unidade:             i.unidade,
+          deposito_id:         i.deposito_id,
+          qtdOriginal:         i.quantidade,
+          qtdOriginalNF:       i.qtd_nf ?? undefined,
+          unidadeOriginalNF:   i.unidade_nf ?? undefined,
+          ncm:                 i.ncm ?? undefined,
+          quantidade_devolver: 0,
+          valor_unitario:      i.valor_unitario * fatorDesconto,
+          valor_total:         0,
+        }));
+      setDevItens(devs);
+    } catch {
+      setDevItens([]);
+    }
+    setDevModal(true);
+  }
+
+  // ── Confirmar devolução ───────────────────────────────────
+  // Emite a NF-e de devolução DE VERDADE na SEFAZ (saída, de volta ao fornecedor — CFOP 5201/6201)
+  // antes de gravar qualquer coisa no sistema: sem NF-e autorizada não há como o caminhão sair com a
+  // mercadoria de forma regular, então nada é escriturado se a SEFAZ rejeitar.
+  async function confirmarDevolucao() {
+    if (!fazendaId || !devNfOrig) return;
+    const itensParaDevolver = devItens.filter(i => i.quantidade_devolver > 0);
+    if (itensParaDevolver.length === 0) {
+      setDevErr("Informe a quantidade a devolver em ao menos um item.");
+      return;
+    }
+    for (const i of itensParaDevolver) {
+      if (i.quantidade_devolver > i.qtdOriginal) {
+        setDevErr(`Quantidade de "${i.descricao_produto}" excede o original (${i.qtdOriginal} ${i.unidade}).`);
+        return;
+      }
+      if (!i.ncm) {
+        setDevErr(`"${i.descricao_produto}" está sem NCM na NF original — corrija o cadastro do insumo antes de devolver.`);
+        return;
+      }
+    }
+    if (!fiscalModulos[0]) {
+      setDevErr("Nenhuma configuração fiscal encontrada para esta fazenda em Parâmetros → Fiscal. Configure o emitente antes de devolver.");
+      return;
+    }
+    setDevSaving(true);
+    setDevErr("");
+    try {
+      const itensNfe = itensParaDevolver.map(i => ({
+        descricao:      i.descricao_produto,
+        ncm:             i.ncm!,
+        cfop:            devCfop,
+        unidade:         i.unidade.toUpperCase(),
+        quantidade:      i.quantidade_devolver,
+        valor_unitario:  i.valor_unitario,
+      }));
+      const resp = await fetch("/api/fiscal/emitir-nfe", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // A NF de origem pode ser de qualquer fazenda do cliente — nunca a "fazendaId" ativa da
+          // sessão, senão o emissor busca config e cadastro de Pessoas na fazenda errada e falha.
+          fazenda_id:   devNfOrig.fazenda_id,
+          modulo_key:      fiscalModulos[0].modulo,
+          produtor_id_hint: devNfOrig.produtor_id,
+          cpf_cnpj_hint:   devCpfHint,
+          destinatario: {
+            nome:     devNfOrig.emitente_nome,
+            cpf_cnpj: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
+          },
+          itens:    itensNfe,
+          natureza: "Devolução de Compra",
+          inf_cpl:  `Devolução referente à NF ${devNfOrig.numero}/${devNfOrig.serie}${devNfOrig.chave_acesso ? ` — chave ${devNfOrig.chave_acesso}` : ""}.${devObs ? ` ${devObs}` : ""}`,
+          frete:    "9",
+          nfe_ref:  devNfOrig.chave_acesso || undefined,
+          tipo:     "1",
+          fin_nfe:  "4",   // devolução — SEFAZ rejeita (328) CFOP de devolução sem essa finalidade
+        }),
+      });
+      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
+      if (!res.sucesso || !res.chave) {
+        setDevErr(`SEFAZ ${res.cStat}: ${res.xMotivo}`);
+        return;
+      }
+      const serieReal = res.chave.substring(22, 25).replace(/^0+(?=\d)/, "") || "0";
+      await processarDevolucaoCompra(
+        devNfOrig.fazenda_id,
+        devNfOrig.id,
+        res.numero ?? "",
+        serieReal,
+        devCfop,
+        devNfOrig.emitente_nome,
+        devNfOrig.emitente_cnpj,
+        devNfOrig.pessoa_id,
+        devData,
+        devVenc || undefined,
+        itensParaDevolver,
+        { chave_acesso: res.chave, protocolo: res.protocolo },
+      );
+      onSaved();
+      setDevModal(false);
+    } catch (e: unknown) {
+      setDevErr(e instanceof Error ? e.message : "Erro ao processar devolução");
+    } finally {
+      setDevSaving(false);
     }
   }
 
@@ -3374,6 +3540,9 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && (
                         <button onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
+                      {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
+                        <button onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
+                      )}
                       {nfEdit && nfEdit.status !== "cancelada" && (
                         <button onClick={() => iniciarExclusaoNf(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
                       )}
@@ -3560,6 +3729,134 @@ export default function ModalNf({
               >
                 {novoInsumoSaving ? "Salvando…" : "◈ Cadastrar e vincular"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {devModal && devNfOrig && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+
+            {/* Cabeçalho */}
+            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Devolução de Compra</div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                  NF de origem: <strong>{devNfOrig.numero}/{devNfOrig.serie}</strong> · {devNfOrig.emitente_nome} · {fmtBRL(devNfOrig.valor_total)}
+                </div>
+                {Math.abs(devFatorDesconto - 1) > 0.001 && (
+                  <div style={{ fontSize: 11, color: "#7A4300", marginTop: 4 }} title="A NF original teve desconto/acréscimo no total em relação à soma dos itens — o valor devolvido por item já sai ajustado nessa mesma proporção.">
+                    Valor por item ajustado em {((devFatorDesconto - 1) * 100).toFixed(1)}% pro rata do {devFatorDesconto < 1 ? "desconto" : "acréscimo"} da NF original
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setDevModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 16 }}>×</button>
+            </div>
+
+            <div style={{ padding: 24 }}>
+              {devErr && (
+                <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{devErr}</div>
+              )}
+
+              {/* Cabeçalho da devolução */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <label style={lbl}>Data de Emissão</label>
+                  <input type="date" value={devData} onChange={e => setDevData(e.target.value)} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Vencimento da CR</label>
+                  <input type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>CFOP</label>
+                  <select value={devCfop} onChange={e => setDevCfop(e.target.value)} style={inp}>
+                    <option value="5201">5201 — Dev. compra intraestadual</option>
+                    <option value="6201">6201 — Dev. compra interestadual</option>
+                    <option value="5202">5202 — Dev. compra c/ substituição</option>
+                    <option value="6202">6202 — Dev. compra c/ substituição interestadual</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Observações</label>
+                  <input value={devObs} onChange={e => setDevObs(e.target.value)} placeholder="Opcional" style={inp} />
+                </div>
+              </div>
+
+              {/* Grid de itens */}
+              {devItens.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-3)", fontSize: 13 }}>
+                  Nenhum item de estoque encontrado na NF de origem.
+                </div>
+              ) : (
+                <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
+                    {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução"].map((h, i) => (
+                      <div key={i} style={{ padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</div>
+                    ))}
+                  </div>
+                  {devItens.map(it => (
+                    <div key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
+                      <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>
+                        {it.descricao_produto}
+                        {it.qtdOriginalNF != null && it.unidadeOriginalNF && it.unidadeOriginalNF !== it.unidade && (
+                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>
+                            NF original: {it.qtdOriginalNF.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {it.unidadeOriginalNF}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)" }}>{it.unidade}</div>
+                      <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>
+                        {it.qtdOriginal.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                      </div>
+                      <div style={{ padding: "6px 8px" }}>
+                        <InputNumerico
+                          decimais={3}
+                          min={0}
+                          max={it.qtdOriginal}
+                          value={it.quantidade_devolver || ""}
+                          onChange={v => {
+                            const qtd = Math.min(parseFloat(v) || 0, it.qtdOriginal);
+                            setDevItens(prev => prev.map(x =>
+                              x.key === it.key
+                                ? { ...x, quantidade_devolver: qtd, valor_total: qtd * x.valor_unitario }
+                                : x
+                            ));
+                          }}
+                          style={{ ...inp, padding: "5px 8px", fontSize: 12, border: it.quantidade_devolver > 0 ? "0.5px solid #E24B4A" : "0.5px solid var(--border-table)" }}
+                        />
+                      </div>
+                      <div style={{ padding: "8px 12px", fontSize: 13, fontWeight: 600, color: it.quantidade_devolver > 0 ? "#E24B4A" : "var(--text-muted)", textAlign: "right" }}>
+                        {it.quantidade_devolver > 0 ? fmtBRL(it.valor_total) : "—"}
+                      </div>
+                    </div>
+                  ))}
+                  {/* Rodapé total */}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 24, padding: "10px 16px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border-table)" }}>
+                    <span style={{ fontSize: 12, color: "var(--text-2)" }}>
+                      Itens selecionados: <strong>{devItens.filter(i => i.quantidade_devolver > 0).length}</strong>
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--text-2)" }}>
+                      Total da devolução: <strong style={{ color: "#E24B4A" }}>
+                        {fmtBRL(devItens.reduce((s, i) => s + i.valor_total, 0))}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Ações */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button style={btnR} onClick={() => setDevModal(false)}>Cancelar</button>
+                <button
+                  onClick={confirmarDevolucao}
+                  disabled={devSaving || devItens.filter(i => i.quantidade_devolver > 0).length === 0}
+                  style={{ ...btnV, background: devSaving ? "#ccc" : "#E24B4A", cursor: devSaving ? "default" : "pointer" }}
+                >
+                  {devSaving ? "Processando…" : "↩ Emitir Devolução"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
