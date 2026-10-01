@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-t",
+    data: "01/10/2026",
+    titulo: "Baixar em Lote agora também no Contas a Receber unificado",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "O mesmo \"Baixar em Lote\" do Contas a Pagar (release -s) chegou no Contas a Receber: marque as caixinhas dos títulos em aberto/vencidos/parciais (ou \"marcar todos\"), confirme data do recebimento + conta bancária únicas pro lote, ajuste multa/juros/desconto título a título se precisar. Funciona misturando Produtor e Empresa na mesma seleção, cada baixa indo pela rotina de sempre conforme a origem." },
+    ],
+    onde: "Financeiro → Contas a Receber",
+  },
+  {
     versao: "2026.10.01-s",
     data: "01/10/2026",
     titulo: "Baixar em Lote de volta no Contas a Pagar — agora cobrindo Produtor e Empresa juntos",

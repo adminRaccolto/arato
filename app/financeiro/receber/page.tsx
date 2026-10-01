@@ -22,6 +22,11 @@
 // dentro da tela de lançamento — isso tem ambiente próprio em Financeiro →
 // Relatórios. Esta tela é só grid de trabalho: carrega direto (período
 // padrão hoje até +3 meses), filtros como barra sempre visível.
+//
+// Baixar em Lote (01/10/2026): mesma lógica do Contas a Pagar (ver
+// app/financeiro/pagar/page.tsx) — seleção via checkbox, barra flutuante,
+// modal com data/conta únicas + multa/juros/desconto por título. Cada baixa
+// chama a mesma rotina de sempre conforme a origem (produtor/empresa).
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -371,6 +376,88 @@ export default function ContasAReceberPage() {
   const totalPagar = linhas.reduce((s, l) => s + (l.valor ?? 0), 0);
   const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0)), 0);
 
+  // ── Baixar em Lote ─────────────────────────────────────────
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [modalLote, setModalLote] = useState(false);
+  const [loteData, setLoteData] = useState("");
+  const [loteConta, setLoteConta] = useState("");
+  const [loteContasOpcoes, setLoteContasOpcoes] = useState<ContaBancaria[]>([]);
+  const [loteEncargos, setLoteEncargos] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
+  const [salvandoLote, setSalvandoLote] = useState(false);
+  const [erroLote, setErroLote] = useState("");
+
+  const podeSelecionar = (l: RelLancamento) =>
+    l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
+  const toggleSel = (id: string) => setSelecionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const idsSelecionaveis = linhas.filter(podeSelecionar).map(l => l.id);
+  const toggleTodos = () => {
+    const todosSel = idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id));
+    setSelecionados(todosSel ? new Set() : new Set(idsSelecionaveis));
+  };
+
+  const itensLote = linhas.filter(l => selecionados.has(l.id) && podeSelecionar(l));
+  const encargoLoteDe = (id: string) => loteEncargos[id] ?? { multa: "0,00", juros: "0,00", desconto: "0,00" };
+  const setEncargoLote = (id: string, campo: "multa" | "juros" | "desconto", v: string) =>
+    setLoteEncargos(prev => ({ ...prev, [id]: { ...encargoLoteDe(id), [campo]: v } }));
+  const saldoLote = (l: RelLancamento) => Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+  const valorFinalLote = (l: RelLancamento) => {
+    const e = encargoLoteDe(l.id);
+    return Math.max(0, saldoLote(l) + numBR(e.multa) + numBR(e.juros) - numBR(e.desconto));
+  };
+
+  async function abrirModalLote() {
+    setErroLote("");
+    setLoteData(hojeISO());
+    setLoteConta("");
+    setLoteEncargos({});
+    try {
+      const empresaIds = Array.from(new Set(
+        itensLote.filter(l => l.origem_tabela === "empresa_lancamentos" && l.empresa_id).map(l => l.empresa_id as string)
+      ));
+      const [contasProd, ...contasEmp] = await Promise.all([
+        fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[]),
+        ...empresaIds.map(id => listarContasPorEmpresa(id)),
+      ]);
+      const unicas = Array.from(new Map([contasProd, ...contasEmp].flat().map(c => [c.id, c])).values());
+      setLoteContasOpcoes(unicas);
+    } catch { setLoteContasOpcoes([]); }
+    setModalLote(true);
+  }
+
+  async function baixarUmItem(l: RelLancamento, valor: number, data: string, conta: string, e: { multa: string; juros: string; desconto: string }) {
+    if (l.origem_tabela === "lancamentos") {
+      await baixarLancamento(l.id, valor, data, conta, {
+        multa_valor: numBR(e.multa) || undefined, juros_valor: numBR(e.juros) || undefined, desconto_valor: numBR(e.desconto) || undefined,
+      });
+    } else {
+      const res = await fetch("/api/empresa-lancamentos/baixar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "baixar", lancamento_id: l.id,
+          valor_pago_agora: valor, data_baixa: data, conta_bancaria: conta,
+          multa_valor: numBR(e.multa), juros_valor: numBR(e.juros), desconto_valor: numBR(e.desconto),
+        }),
+      });
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao baixar");
+    }
+  }
+
+  async function confirmarLote() {
+    if (!loteData || !loteConta || itensLote.length === 0) { setErroLote("Informe data e conta bancária."); return; }
+    setSalvandoLote(true); setErroLote("");
+    try {
+      await Promise.all(itensLote.map(l => baixarUmItem(l, valorFinalLote(l), loteData, loteConta, encargoLoteDe(l.id))));
+      setSelecionados(new Set());
+      setModalLote(false);
+      await carregar();
+    } catch (e: unknown) {
+      setErroLote(e instanceof Error ? e.message : "Erro ao baixar em lote");
+    } finally {
+      setSalvandoLote(false);
+    }
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
@@ -439,6 +526,9 @@ export default function ContasAReceberPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA" }}>
+                <th style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE" }}>
+                  <input type="checkbox" checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))} onChange={toggleTodos} />
+                </th>
                 {["Origem", "Nº", "Cliente", "Descrição", "Operação", "Safra", "Ciclo", "Centro Custo", "Vencimento", "Dias", "Venc. Original", "Baixa", "Valor", "Pago", "Saldo", "Moeda", "Conta", "Nº NF", "Lançado via", "Observação", "Status", "Ações"].map(h => (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
@@ -446,7 +536,7 @@ export default function ContasAReceberPage() {
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={22} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={23} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhas.map(l => {
                 const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
@@ -454,7 +544,10 @@ export default function ContasAReceberPage() {
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
                 const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
                 return (
-                  <tr key={l.id} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
+                  <tr key={l.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined }}>
+                    <td style={{ padding: "7px 10px" }}>
+                      {aberto && <input type="checkbox" checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />}
+                    </td>
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
                         {l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}
@@ -498,12 +591,100 @@ export default function ContasAReceberPage() {
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={22} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
+                <tr><td colSpan={23} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ── Barra flutuante de seleção — Baixar em Lote ── */}
+      {selecionados.size > 0 && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: "#111111", color: "#fff", borderRadius: 12, padding: "10px 18px",
+          display: "flex", alignItems: "center", gap: 14, boxShadow: "0 4px 20px rgba(0,0,0,.25)",
+          zIndex: 900, whiteSpace: "nowrap", maxWidth: "calc(100vw - 32px)",
+        }}>
+          <span style={{ fontSize: 12 }}>
+            <strong>{itensLote.length}</strong> título{itensLote.length !== 1 ? "s" : ""} selecionado{itensLote.length !== 1 ? "s" : ""}
+            {itensLote.length > 0 && <>&nbsp;·&nbsp;<strong>{fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}</strong></>}
+          </span>
+          <button onClick={abrirModalLote} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            ✓ Baixar em Lote
+          </button>
+          <button onClick={() => setSelecionados(new Set())} style={{ background: "none", border: "0.5px solid #555", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {/* ══ MODAL — Baixar em Lote ══ */}
+      {modalLote && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setModalLote(false)}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(96vw, 900px)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>✓ Baixar em Lote</h2>
+              <button onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+            </div>
+            <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
+              {itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total original {fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={lbl}>Data do recebimento *</label>
+                <input type="date" value={loteData} onChange={e => setLoteData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={lbl}>Conta bancária *</label>
+                <select value={loteConta} onChange={e => setLoteConta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                  <option value="">Selecionar...</option>
+                  {loteContasOpcoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1.6fr 68px 80px 70px 70px 70px 90px", gap: 6 }}>
+                <span>Origem</span><span>Título</span><span>Venc.</span><span style={{ textAlign: "right" }}>Saldo</span>
+                <span style={{ textAlign: "center" }}>Multa</span><span style={{ textAlign: "center" }}>Juros</span>
+                <span style={{ textAlign: "center" }}>Desconto</span><span style={{ textAlign: "right" }}>A receber</span>
+              </div>
+              {itensLote.map((l, i) => {
+                const e = encargoLoteDe(l.id);
+                const inpMini: React.CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, textAlign: "right", background: "#fff", boxSizing: "border-box", outline: "none" };
+                return (
+                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 68px 80px 70px 70px 70px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}</span>
+                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                    <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
+                    <span style={{ color: "#888", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }}>{fmtBRL(saldoLote(l))}</span>
+                    <input value={e.multa} onChange={ev => setEncargoLote(l.id, "multa", ev.target.value)} style={inpMini} />
+                    <input value={e.juros} onChange={ev => setEncargoLote(l.id, "juros", ev.target.value)} style={inpMini} />
+                    <input value={e.desconto} onChange={ev => setEncargoLote(l.id, "desconto", ev.target.value)} style={inpMini} />
+                    <span style={{ fontWeight: 700, color: "#16A34A", textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(valorFinalLote(l))}</span>
+                  </div>
+                );
+              })}
+              <div style={{ background: "#F4F6FA", padding: "8px 10px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid #DDE2EE" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Total a receber (já com encargos)</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#16A34A" }}>{fmtBRL(itensLote.reduce((s, l) => s + valorFinalLote(l), 0))}</span>
+              </div>
+            </div>
+
+            {erroLote && <div style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6, marginBottom: 12 }}>{erroLote}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setModalLote(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={confirmarLote} disabled={salvandoLote || !loteData || !loteConta}
+                style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
+                {salvandoLote ? "Baixando..." : `✓ Confirmar Baixa (${itensLote.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ MODAL — Baixar ══ */}
       {modalBaixa && (
