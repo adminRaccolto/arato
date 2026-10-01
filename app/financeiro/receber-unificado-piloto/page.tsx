@@ -45,6 +45,8 @@ type RelLancamento = {
   origem_tabela: string;
   fazenda_id: string | null;
   empresa_id: string | null;
+  numero: number | null;
+  nfe_numero: string | null;
   descricao: string | null;
   categoria: string | null;
   valor: number | null;
@@ -62,8 +64,12 @@ type RelLancamento = {
   produtor_nome: string | null;
   centro_custo_nome: string | null;
   ano_safra_descricao: string | null;
+  ciclo_descricao: string | null;
   operacao_gerencial_nome: string | null;
+  origem_lancamento: string | null;
   conta_bancaria: string | null;
+  conta_bancaria_nome: string | null;
+  observacao: string | null;
 };
 
 const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
@@ -83,6 +89,20 @@ const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "�
 const numBR = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
 const hojeISO = () => new Date().toISOString().slice(0, 10);
 const maisMeses = (n: number) => { const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
+// Dias até o vencimento (negativo = dias em atraso) — só faz sentido pra quem
+// ainda não foi baixado/cancelado.
+const diasVencimento = (venc: string | null, status: string | null): number | null => {
+  if (!venc || status === "baixado" || status === "cancelado") return null;
+  const ms = new Date(venc + "T00:00:00").getTime() - new Date(hojeISO() + "T00:00:00").getTime();
+  return Math.round(ms / 86400000);
+};
+const ORIGEM_LANC_LABEL: Record<string, string> = {
+  nf_entrada: "NF de Entrada", nf_saida: "NF de Saída", pedido_compra: "Pedido de Compra",
+  arrendamento: "Arrendamento", tesouraria: "Tesouraria", plantio: "Plantio",
+  contrato_financeiro: "Contrato Financeiro", consorcio: "Consórcio", manual: "Manual",
+  compra_terra: "Compra de Terra", nf_servico: "NF de Serviço", seguro: "Seguro",
+  folha: "Folha de Pagamento", nf_entrada_empresa: "NF de Entrada",
+};
 
 const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff" };
 const lblMini: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.03em" };
@@ -431,18 +451,20 @@ export default function ReceberUnificadoPilotoPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA" }}>
-                {["Origem", "Cliente", "Descrição", "Centro Custo", "Vencimento", "Baixa", "Valor", "Pago", "Status", "Ações"].map(h => (
+                {["Origem", "Nº", "Cliente", "Descrição", "Operação", "Safra", "Ciclo", "Centro Custo", "Vencimento", "Dias", "Venc. Original", "Baixa", "Valor", "Pago", "Saldo", "Moeda", "Conta", "Nº NF", "Lançado via", "Observação", "Status", "Ações"].map(h => (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={22} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhas.map(l => {
                 const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
                 const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
+                const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
+                const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
                 return (
                   <tr key={l.id} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
                     <td style={{ padding: "7px 10px" }}>
@@ -450,13 +472,25 @@ export default function ReceberUnificadoPilotoPage() {
                         {l.origem_tabela === "lancamentos" ? "Produtor" : "Empresa"}
                       </span>
                     </td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{l.empresa_nome ?? l.pessoa_nome ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{l.descricao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.operacao_gerencial_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.ano_safra_descricao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.ciclo_descricao ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{l.centro_custo_nome ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{fmtData(l.data_vencimento)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "center", color: dias != null && dias < 0 ? "#E24B4A" : "#555" }}>{dias ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontStyle: "italic" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{fmtData(l.data_baixa)}</td>
                     <td style={{ padding: "7px 10px", fontWeight: 600, textAlign: "right", color: "#16A34A" }}>{fmtBRL(l.valor)}</td>
                     <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(l.valor_pago)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(saldo)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "center" }}>{l.moeda ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.conta_bancaria_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.observacao ?? undefined}>{l.observacao ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>
                     </td>
@@ -476,7 +510,7 @@ export default function ReceberUnificadoPilotoPage() {
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
+                <tr><td colSpan={22} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
           </table>

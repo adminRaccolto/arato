@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-n",
+    data: "01/10/2026",
+    titulo: "Pilotos 3/4: grid com a mesma riqueza de colunas do CP/CR real do produtor",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "O grid unificado estava mais pobre que a tela real de Contas a Pagar/Receber do produtor. Adicionadas as colunas que faltavam: Nº (sequencial do lançamento), Operação, Safra, Ciclo, Dias (até o vencimento, negativo = em atraso), Venc. Original (quando foi reprogramado), Saldo (valor − pago), Moeda, Conta Bancária (nome, não o código), Nº NF, Lançado via (NF de Entrada, Pedido de Compra, Manual, Folha, etc.) e Observação — 3 delas (Nº, Nº NF, Conta Bancária) exigiram ampliar a rel_lancamentos (Seção 313)." },
+    ],
+    onde: "Financeiro (pilotos, fora do menu): /financeiro/pagar-unificado-piloto e /financeiro/receber-unificado-piloto",
+  },
+  {
     versao: "2026.10.01-m",
     data: "01/10/2026",
     titulo: "Pilotos 3/4 (CP/CR unificado): tira o popup de filtro, vira grid sempre visível",
