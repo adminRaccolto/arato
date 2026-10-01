@@ -3,12 +3,16 @@
 // PILOTO — Fase 1 da unificação de NF de Produtos + NF de Serviços + CT-e
 // numa tela só (Seção 321 da migration), pedido do dono 01/10/2026.
 //
-// Esta é SÓ a validação da listagem unificada (lê rel_documentos_fiscais,
-// trigger-sync das 3 tabelas) — ordenada por data, filtro por tipo. A Fase 2
-// (ainda não iniciada) vai encaixar o processamento de cada tipo como modal
-// dentro da tela unificada final, sem perder nenhuma lógica das 3 telas que
-// já existem (app/compras/nf, app/compras/nf-servico, app/transporte/cte) —
-// que continuam 100% intocadas por enquanto.
+// Esta é a validação da listagem unificada (lê rel_documentos_fiscais,
+// trigger-sync das 3 tabelas) — ordenada por data, filtro por tipo.
+//
+// Fase 2 (em andamento): o processamento de cada tipo entra como MODAL
+// dentro desta mesma tela, sem redirecionar — "tudo acontece na tela de
+// Documentos Fiscais" (instrução do dono). Primeiro tipo ligado: NF de
+// Serviço (ModalNfServico, extraído de app/compras/nf-servico/page.tsx —
+// que continua existindo e funcionando sozinho, intocado). NF de Produtos
+// e CT-e ainda não têm modal extraído — linhas desses tipos ainda não
+// abrem nada (ver próximos passos).
 //
 // Essa tela é só pra validar o padrão em localhost — fora do menu (TopNav),
 // ninguém chega nela sem digitar a URL direto.
@@ -17,6 +21,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
+import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 
 type RelDocFiscal = {
   id: string;
@@ -109,6 +114,9 @@ export default function DocumentosFiscaisRelPilotoPage() {
 
   useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Modal NFS — único tipo com processamento ligado nesta fase ──
+  const [modalNfs, setModalNfs] = useState<{ id: string | null } | null>(null);
+
   const linhas = (resultado ?? []).filter(d => {
     if (fTipo.size > 0 && !fTipo.has(d.tipo_doc)) return false;
     if (fStatus.size > 0 && !fStatus.has(d.status_normalizado ?? "")) return false;
@@ -132,6 +140,9 @@ export default function DocumentosFiscaisRelPilotoPage() {
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais — piloto (query em tabela)</h1>
+          <button onClick={() => setModalNfs({ id: null })} style={{ ...inp, background: "#5B21B6", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+            + Nova NF de Serviço
+          </button>
         </div>
 
         {/* ── Barra de filtros sempre visível ── */}
@@ -202,8 +213,11 @@ export default function DocumentosFiscaisRelPilotoPage() {
               {!carregando && linhas.map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
                 const sm = STATUS_OPCOES.find(s => s.v === d.status_normalizado);
+                const clicavel = d.tipo_doc === "NFS";
                 return (
-                  <tr key={d.id} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
+                  <tr key={d.id} onClick={() => clicavel && setModalNfs({ id: d.id })}
+                    style={{ borderBottom: "0.5px solid #F0F2F7", cursor: clicavel ? "pointer" : "default" }}
+                    title={clicavel ? "Abrir NFS-e" : "Processamento deste tipo ainda não ligado nesta fase"}>
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 8px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
                     </td>
@@ -228,6 +242,15 @@ export default function DocumentosFiscaisRelPilotoPage() {
           </table>
         </div>
       </div>
+
+      {modalNfs && fazendaId && (
+        <ModalNfServico
+          id={modalNfs.id}
+          fazendaIdPadrao={fazendaId}
+          onClose={() => setModalNfs(null)}
+          onSaved={carregar}
+        />
+      )}
     </div>
   );
 }
