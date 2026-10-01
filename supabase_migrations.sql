@@ -14916,3 +14916,30 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 315 — fix: recria as colunas da Seção 313 (a transação foi revertida)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A Seção 313 falhou no meio (erro do uuid, corrigido na Seção 314) e o
+-- Supabase reverte a transação inteira quando um script dá erro — os
+-- ALTER TABLE que criavam numero/nfe_numero/conta_bancaria_nome nunca
+-- chegaram a existir de verdade. IF NOT EXISTS torna isso seguro de rodar
+-- de novo mesmo que alguma coluna já exista.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE rel_lancamentos ADD COLUMN IF NOT EXISTS numero integer;
+ALTER TABLE rel_lancamentos ADD COLUMN IF NOT EXISTS nfe_numero text;
+ALTER TABLE rel_lancamentos ADD COLUMN IF NOT EXISTS conta_bancaria_nome text;
+
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM lancamentos LOOP
+    PERFORM fn_recalc_rel_lancamento_produtor(r.id);
+  END LOOP;
+  FOR r IN SELECT id FROM empresa_lancamentos LOOP
+    PERFORM fn_recalc_rel_lancamento_empresa(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

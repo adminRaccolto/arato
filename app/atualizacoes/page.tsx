@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-p",
+    data: "01/10/2026",
+    titulo: "Correção da Seção 313 (parte 2): colunas nunca foram criadas — transação revertida",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A Seção 313 deu erro no meio da execução (o do uuid, corrigido na 314) — o Supabase reverte a transação inteira quando um script falha, então os ALTER TABLE que criavam numero/nfe_numero/conta_bancaria_nome nunca chegaram a existir, mesmo a função já corrigida rodando sem erro depois. Seção 315: recria as 3 colunas (IF NOT EXISTS, seguro repetir) e roda o backfill de novo." },
+    ],
+    onde: "Migration (Supabase SQL Editor) — Seção 315",
+  },
+  {
     versao: "2026.10.01-o",
     data: "01/10/2026",
     titulo: "Correção da Seção 313: conta_bancaria é uuid em empresa_lancamentos, não texto",
