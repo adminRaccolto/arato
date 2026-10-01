@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-w",
+    data: "01/10/2026",
+    titulo: "Novo: relatório de Posição de Comercialização",
+    modulos: ["Financeiro", "Comercial"],
+    itens: [
+      { tipo: "novo", texto: "Financeiro → Relatórios Financeiros → Posição de Comercialização: filtra contratos de grãos por produto, comprador, status, ano safra e período; mostra contratado, entregue e saldo a entregar por commodity. Também corrige um dado real: produtor aparecia em branco em alguns contratos antigos mesmo com o produtor vinculado — o relatório já traz o nome certo nesses casos." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Posição de Comercialização",
+  },
+  {
     versao: "2026.10.01-v",
     data: "01/10/2026",
     titulo: "Movimentações de Estoque mais rápidas (bastidor)",

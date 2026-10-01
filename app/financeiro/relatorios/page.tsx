@@ -10,8 +10,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import PedidosCompraRelatorioTab from "../../../components/relatorios/PedidosCompraRelatorioTab";
+import PosicaoComercializacaoRelatorioTab from "../../../components/relatorios/PosicaoComercializacaoRelatorioTab";
 
-type AbaFin = "fluxo" | "dfc" | "posicao" | "cpcr" | "pedidos_compra";
+type AbaFin = "fluxo" | "dfc" | "posicao" | "cpcr" | "pedidos_compra" | "comercializacao";
 
 interface SimEntry {
   id: string;
@@ -248,10 +249,11 @@ function FinanceiroRelatoriosInner() {
 
   useEffect(() => {
     if (!fazendaId) return;
-    // Aba Pedidos de Compra é autocontida (consulta rel_pedidos_compra sob
-    // demanda) — não precisa do carregamento pesado de lançamentos das
-    // outras abas (pode passar de 13 mil linhas numa conta grande).
-    if (aba === "pedidos_compra") { setCarregando(false); return; }
+    // Abas Pedidos de Compra e Posição de Comercialização são autocontidas
+    // (consultam rel_pedidos_compra/rel_contratos sob demanda) — não
+    // precisam do carregamento pesado de lançamentos das outras abas (pode
+    // passar de 13 mil linhas numa conta grande).
+    if (aba === "pedidos_compra" || aba === "comercializacao") { setCarregando(false); return; }
     const sb = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -409,11 +411,11 @@ function FinanceiroRelatoriosInner() {
         <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
-              {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", pedidos_compra: "Pedidos de Compra" }[aba]}
+              {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", pedidos_compra: "Pedidos de Compra", comercializacao: "Posição de Comercialização" }[aba]}
             </h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
           </div>
-          {aba !== "pedidos_compra" && <button onClick={() => {
+          {aba !== "pedidos_compra" && aba !== "comercializacao" && <button onClick={() => {
             const fazenda = nomeFazendaSelecionada ?? "";
             const opts = { orientation: "landscape" as const, fazenda };
 
@@ -625,7 +627,11 @@ function FinanceiroRelatoriosInner() {
               carregamento pesado de lançamentos das outras abas ═══════ */}
           {aba === "pedidos_compra" && <PedidosCompraRelatorioTab />}
 
-          {aba !== "pedidos_compra" && carregando && (
+          {/* ═══════ ABA: POSIÇÃO DE COMERCIALIZAÇÃO — autocontida, lê
+              rel_contratos (Seção 319) ═══════ */}
+          {aba === "comercializacao" && <PosicaoComercializacaoRelatorioTab />}
+
+          {aba !== "pedidos_compra" && aba !== "comercializacao" && carregando && (
             <div style={{ textAlign: "center", padding: 40, color: "#444" }}>Carregando dados financeiros…</div>
           )}
 
