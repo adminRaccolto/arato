@@ -659,13 +659,23 @@ export default function NfCompraPage() {
     // Achado real 29/09/2026: a query anterior só lia `{ data }`, nunca conferia `{ error }` — uma
     // falha (sessão, RLS) voltava data=null em silêncio, sem lançar exceção, então nada aparecia e
     // nenhum aviso indicava o motivo (mesmo padrão já corrigido em vários outros pontos hoje).
+    // Achado real 01/10/2026: sem paginação, o limite padrão do banco (1.000 linhas) cortava a
+    // lista — a conta tem 3.303 NFS-e pendentes, o badge mostrava sempre "1000" fixo.
     try {
-      const { data: nfse, error: nfseErr } = await supabase.from("nf_servicos")
-        .select("id, numero_nf, serie, prestador_nome, prestador_cnpj, data_prestacao, competencia, codigo_servico, valor_servico, status")
-        .in("fazenda_id", idsParaNf).in("status", ["pendente", "digitando"])
-        .order("data_prestacao", { ascending: false });
-      if (nfseErr) { console.error("[NFS-e pendentes]", nfseErr); setNfServicosErro(nfseErr.message); setNfServicosPend([]); }
-      else { setNfServicosErro(""); setNfServicosPend(nfse ?? []); }
+      const PAGE = 1000;
+      let nfse: typeof nfServicosPend = [];
+      let from = 0;
+      while (true) {
+        const { data, error: nfseErr } = await supabase.from("nf_servicos")
+          .select("id, numero_nf, serie, prestador_nome, prestador_cnpj, data_prestacao, competencia, codigo_servico, valor_servico, status")
+          .in("fazenda_id", idsParaNf).in("status", ["pendente", "digitando"])
+          .order("data_prestacao", { ascending: false }).range(from, from + PAGE - 1);
+        if (nfseErr) throw nfseErr;
+        nfse = [...nfse, ...(data ?? [])];
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
+      setNfServicosErro(""); setNfServicosPend(nfse);
     } catch (e) { setNfServicosErro(e instanceof Error ? e.message : String(e)); setNfServicosPend([]); }
 
     // Centros de custo — usa da conta para abranger todas as fazendas do produtor
@@ -2680,6 +2690,24 @@ export default function NfCompraPage() {
     return true;
   });
 
+  // Mesmos filtros de Emissão/Data e busca aplicados à lista de NF de Produtos valem também
+  // pra NF de Serviços pendentes — achado real 01/10/2026: antes a seção de NFS-e ignorava
+  // completamente o filtro de data, então filtrar um dia sem NF de Produtos "sumia" a tabela de
+  // cima e deixava só os de serviço (de QUALQUER data) por baixo, parecendo duas telas soltas.
+  const nfServicosFiltrados = nfServicosPend.filter(ns => {
+    if (filtroDataDe  && ns.data_prestacao < filtroDataDe)  return false;
+    if (filtroDataAte && ns.data_prestacao > filtroDataAte) return false;
+    if (busca) {
+      const b = busca.toLowerCase();
+      const bDigits = busca.replace(/\D/g, "");
+      const cnpjPrest = (ns.prestador_cnpj ?? "").replace(/\D/g, "");
+      const bateTexto = ns.numero_nf.includes(busca) || ns.prestador_nome.toLowerCase().includes(b);
+      const bateDoc = bDigits.length >= 3 && cnpjPrest.includes(bDigits);
+      if (!bateTexto && !bateDoc) return false;
+    }
+    return true;
+  });
+
   // ─────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────
@@ -3172,9 +3200,14 @@ export default function NfCompraPage() {
             <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>NF de Serviços pendentes</div>
-                <div style={{ fontSize: 11, color: "var(--text-3)" }}>Clique numa linha para processar em Compras → NF de Serviços</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                  Clique numa linha para processar em Compras → NF de Serviços
+                  {(filtroDataDe || filtroDataAte || busca) && " — filtrada pelos mesmos filtros de cima (data/busca)"}
+                </div>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, background: "#FBF3E0", color: "#7B4A00", padding: "3px 10px", borderRadius: 10 }}>{nfServicosPend.length}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, background: "#FBF3E0", color: "#7B4A00", padding: "3px 10px", borderRadius: 10 }}>
+                {nfServicosFiltrados.length}{nfServicosFiltrados.length !== nfServicosPend.length ? ` de ${nfServicosPend.length}` : ""}
+              </span>
             </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
@@ -3196,7 +3229,10 @@ export default function NfCompraPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {nfServicosPend.map(ns => (
+                  {nfServicosFiltrados.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: "16px 8px", textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhuma NF de Serviço pendente nesse filtro.</td></tr>
+                  )}
+                  {nfServicosFiltrados.map(ns => (
                     <tr key={ns.id} onClick={() => router.push("/compras/nf-servico")}
                       style={{ borderBottom: "0.5px solid var(--bg-tag)", cursor: "pointer" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}

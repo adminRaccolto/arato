@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-a",
+    data: "01/10/2026",
+    titulo: "NF de Serviços pendentes: agora segue os mesmos filtros de data/busca da tela",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A seção \"NF de Serviços pendentes\" ignorava completamente o filtro de Emissão (data) e a busca da tela — filtrar um dia sem NF de Produtos \"sumia\" a tabela de cima e deixava só a de Serviços, de qualquer data, parecendo duas telas soltas. Agora os dois filtros (data e busca por texto) valem para as duas listas juntas. Corrigido também o limite de 1.000 linhas do banco, que cortava a contagem de NFS-e pendentes sempre em \"1000\" (a conta tem 3.303)." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.09.29-k",
     data: "29/09/2026",
     titulo: "CP/CR das Empresas: erro ao editar e lista de Fornecedor cortada",
