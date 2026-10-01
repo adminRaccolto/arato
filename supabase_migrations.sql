@@ -15115,3 +15115,166 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 318 — rel_movimentacoes_estoque: tabela de leitura física do Estoque
+-- (trigger-sync) — 3º domínio do padrão validado em Pedido de Compra (310/311)
+-- e Lançamentos CP/CR (312+). Pedido do dono 01/10/2026: continuar aplicando
+-- o padrão em outro domínio depois de Pedido de Compra e Financeiro.
+--
+-- movimentacoes_estoque hoje é consultada com vários joins client-side
+-- (insumo, depósito, ciclo/ano safra, NF de origem) espalhados pelo código —
+-- rel_movimentacoes_estoque já entrega tudo resolvido numa linha só, pronta
+-- pra filtro/relatório rápido.
+--
+-- IMPORTANTE — a ESCRITA não muda em nada: toda a gravação de movimentação
+-- de estoque (dezenas de pontos em lib/db.ts: NF de entrada, consumo em
+-- operações de lavoura, romaneio, abastecimento, ajustes manuais, nota
+-- própria externa, etc.) continua batendo direto em movimentacoes_estoque,
+-- exatamente como hoje. O trigger só REFLETE depois — nenhuma rotina
+-- existente muda de comportamento.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS rel_movimentacoes_estoque (
+  id                      uuid PRIMARY KEY,
+  fazenda_id              uuid,
+  conta_id                uuid,
+  insumo_id               uuid,
+  insumo_nome             text,
+  insumo_categoria        text,
+  insumo_unidade          text,
+  deposito_id             uuid,
+  deposito_nome           text,
+  tipo                    text,     -- entrada | saida | ajuste
+  motivo                  text,
+  quantidade              numeric,
+  valor_unitario          numeric,
+  custo_unitario_na_baixa numeric,
+  valor_total             numeric,  -- quantidade * COALESCE(custo_unitario_na_baixa, valor_unitario, 0)
+  data                    date,
+  talhao                  text,     -- texto livre legado (a maioria das linhas usa ciclo_id hoje)
+  safra                   text,     -- texto livre legado
+  ciclo_id                uuid,
+  ciclo_descricao         text,
+  ciclo_cultura           text,
+  ano_safra_id            uuid,
+  ano_safra_descricao     text,
+  operacao                text,
+  origem                  text,
+  nf_entrada_id           uuid,
+  nf_entrada_numero       text,
+  nf_entrada_item_id      uuid,
+  romaneio_entrada_id     uuid,
+  nota_propria_externa_id uuid,
+  observacao              text,
+  usuario_nome            text,
+  variedade               text,
+  lote_semente            text,
+  auto                    boolean,
+  updated_at              timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_conta     ON rel_movimentacoes_estoque(conta_id);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_fazenda    ON rel_movimentacoes_estoque(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_insumo     ON rel_movimentacoes_estoque(insumo_id);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_deposito   ON rel_movimentacoes_estoque(deposito_id);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_data       ON rel_movimentacoes_estoque(data);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_tipo       ON rel_movimentacoes_estoque(tipo);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_ciclo      ON rel_movimentacoes_estoque(ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_rel_mov_estoque_nf_entrada ON rel_movimentacoes_estoque(nf_entrada_id);
+
+ALTER TABLE rel_movimentacoes_estoque ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_rel_movimentacoes_estoque" ON rel_movimentacoes_estoque;
+CREATE POLICY "allow_all_rel_movimentacoes_estoque" ON rel_movimentacoes_estoque
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT ON rel_movimentacoes_estoque TO authenticated, anon;
+
+CREATE OR REPLACE FUNCTION fn_recalc_rel_movimentacao_estoque(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v              movimentacoes_estoque%ROWTYPE;
+  v_conta_id     uuid;
+  v_ins_nome     text;
+  v_ins_cat      text;
+  v_ins_unid     text;
+  v_dep_nome     text;
+  v_ciclo_desc   text;
+  v_ciclo_cult   text;
+  v_ano_safra_id uuid;
+  v_safra_desc   text;
+  v_nf_numero    text;
+BEGIN
+  SELECT * INTO v FROM movimentacoes_estoque WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_movimentacoes_estoque WHERE id = p_id;
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  SELECT nome, categoria, unidade INTO v_ins_nome, v_ins_cat, v_ins_unid FROM insumos WHERE id = v.insumo_id;
+  SELECT nome INTO v_dep_nome FROM depositos WHERE id = v.deposito_id;
+  SELECT descricao, cultura, ano_safra_id INTO v_ciclo_desc, v_ciclo_cult, v_ano_safra_id FROM ciclos WHERE id = v.ciclo_id;
+  IF v_ano_safra_id IS NOT NULL THEN
+    SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v_ano_safra_id;
+  END IF;
+  SELECT numero INTO v_nf_numero FROM nf_entradas WHERE id = v.nf_entrada_id;
+
+  INSERT INTO rel_movimentacoes_estoque (
+    id, fazenda_id, conta_id, insumo_id, insumo_nome, insumo_categoria, insumo_unidade,
+    deposito_id, deposito_nome, tipo, motivo, quantidade, valor_unitario, custo_unitario_na_baixa,
+    valor_total, data, talhao, safra, ciclo_id, ciclo_descricao, ciclo_cultura,
+    ano_safra_id, ano_safra_descricao, operacao, origem, nf_entrada_id, nf_entrada_numero,
+    nf_entrada_item_id, romaneio_entrada_id, nota_propria_externa_id, observacao,
+    usuario_nome, variedade, lote_semente, auto, updated_at
+  ) VALUES (
+    v.id, v.fazenda_id, v_conta_id, v.insumo_id, v_ins_nome, v_ins_cat, v_ins_unid,
+    v.deposito_id, v_dep_nome, v.tipo, v.motivo, v.quantidade, v.valor_unitario, v.custo_unitario_na_baixa,
+    v.quantidade * COALESCE(v.custo_unitario_na_baixa, v.valor_unitario, 0), v.data, v.talhao, v.safra,
+    v.ciclo_id, v_ciclo_desc, v_ciclo_cult, v_ano_safra_id, v_safra_desc, v.operacao, v.origem,
+    v.nf_entrada_id, v_nf_numero, v.nf_entrada_item_id, v.romaneio_entrada_id, v.nota_propria_externa_id,
+    v.observacao, v.usuario_nome, v.variedade, v.lote_semente, v.auto, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id,
+    insumo_id = EXCLUDED.insumo_id, insumo_nome = EXCLUDED.insumo_nome, insumo_categoria = EXCLUDED.insumo_categoria, insumo_unidade = EXCLUDED.insumo_unidade,
+    deposito_id = EXCLUDED.deposito_id, deposito_nome = EXCLUDED.deposito_nome,
+    tipo = EXCLUDED.tipo, motivo = EXCLUDED.motivo, quantidade = EXCLUDED.quantidade,
+    valor_unitario = EXCLUDED.valor_unitario, custo_unitario_na_baixa = EXCLUDED.custo_unitario_na_baixa,
+    valor_total = EXCLUDED.valor_total, data = EXCLUDED.data, talhao = EXCLUDED.talhao, safra = EXCLUDED.safra,
+    ciclo_id = EXCLUDED.ciclo_id, ciclo_descricao = EXCLUDED.ciclo_descricao, ciclo_cultura = EXCLUDED.ciclo_cultura,
+    ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    operacao = EXCLUDED.operacao, origem = EXCLUDED.origem,
+    nf_entrada_id = EXCLUDED.nf_entrada_id, nf_entrada_numero = EXCLUDED.nf_entrada_numero,
+    nf_entrada_item_id = EXCLUDED.nf_entrada_item_id, romaneio_entrada_id = EXCLUDED.romaneio_entrada_id,
+    nota_propria_externa_id = EXCLUDED.nota_propria_externa_id, observacao = EXCLUDED.observacao,
+    usuario_nome = EXCLUDED.usuario_nome, variedade = EXCLUDED.variedade, lote_semente = EXCLUDED.lote_semente,
+    auto = EXCLUDED.auto, updated_at = now();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_movimentacao_estoque() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_movimentacoes_estoque WHERE id = OLD.id;
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_movimentacao_estoque(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_movimentacao_estoque ON movimentacoes_estoque;
+CREATE TRIGGER trg_rel_movimentacao_estoque
+AFTER INSERT OR UPDATE OR DELETE ON movimentacoes_estoque
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_movimentacao_estoque();
+
+-- Backfill — tabela pequena hoje (centenas de linhas), loop linha a linha é
+-- seguro e rápido (mesmo padrão já usado em rel_pedidos_compra/rel_lancamentos).
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM movimentacoes_estoque LOOP
+    PERFORM fn_recalc_rel_movimentacao_estoque(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
