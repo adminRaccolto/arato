@@ -14031,3 +14031,186 @@ FROM nf_servicos;
 GRANT SELECT ON notas_pendentes_unificadas TO authenticated, anon;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 310 — PILOTO: tabela de leitura rel_pedidos_compra (trigger-sync)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Pedido do dono 01/10/2026: mudança de padrão arquitetural — em vez de montar
+-- a query sob demanda (join/filtro no client, ou uma view como a Seção 309),
+-- ter uma TABELA FÍSICA de leitura, desnormalizada, alimentada por TRIGGERS nas
+-- tabelas de origem (não por escrita dupla na aplicação — nenhum caminho de
+-- código precisa lembrar de atualizar nada). Aceita duplicar dado (a mesma
+-- informação existe em pedidos_compra/pessoas/nf_entradas E aqui) em troca de
+-- poder fazer filtro múltiplo, paginação de verdade e popup de filtro
+-- pré-tela sem pagar o custo de montar o join toda vez.
+--
+-- Piloto isolado: NADA na tela de produção (/compras) lê esta tabela ainda —
+-- só uma tela nova em /compras/pedidos-rel-piloto, fora do menu, pra validar
+-- em localhost sem risco pro usuário real logado. Promoção pro resto do
+-- sistema é decisão separada, depois de validado.
+--
+-- Por que trigger (não escrita dupla): corre na MESMA transação de quem
+-- gravou a tabela de origem — nunca fica dessincronizado, e não depende de
+-- nenhuma função em lib/db.ts ou API route lembrar de atualizar a tabela de
+-- leitura. SECURITY DEFINER: o trigger dispara mesmo quando quem processa a
+-- NF é o usuário comum (authenticated), que não tem (e não deveria precisar
+-- ter) permissão de escrita direta nesta tabela — só o trigger escreve nela.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS rel_pedidos_compra (
+  id                    uuid PRIMARY KEY,
+  fazenda_id            uuid,
+  conta_id              uuid,
+  numero                integer,
+  nr_pedido             text,
+  fornecedor_id         uuid,
+  fornecedor_nome       text,
+  fornecedor_cpf_cnpj   text,
+  produtor_id           uuid,
+  produtor_nome         text,
+  ano_safra_id          uuid,
+  ano_safra_descricao   text,
+  operacao              text,          -- valor bruto (pode ser id de operacoes_gerenciais ou texto livre)
+  operacao_nome         text,          -- resolvido pra exibição
+  data_registro         date,
+  moeda                 text,          -- 'R$' | 'USD' | 'barter' (já resolvido — ver fmtMoeda no front)
+  meio_pagamento        text,
+  status                text,
+  fiscal                boolean,
+  total_financeiro      numeric,
+  valor_entrada         numeric,       -- soma valor_total das NFs processada vinculadas
+  valor_a_receber       numeric,       -- greatest(0, total_financeiro - valor_entrada)
+  qtd_nfs_vinculadas    integer,       -- qualquer status
+  qtd_nfs_processadas   integer,
+  pct_recebido          numeric,
+  updated_at            timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rel_pedidos_compra_conta    ON rel_pedidos_compra(conta_id);
+CREATE INDEX IF NOT EXISTS idx_rel_pedidos_compra_fazenda  ON rel_pedidos_compra(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_rel_pedidos_compra_status   ON rel_pedidos_compra(status);
+CREATE INDEX IF NOT EXISTS idx_rel_pedidos_compra_forn     ON rel_pedidos_compra(fornecedor_id);
+
+-- Mesma política emergencial já usada no resto do sistema (USING true) —
+-- consistência com as demais ~80 tabelas nesse mesmo padrão (ver
+-- project_rls_seguranca_multitenant na memória: dívida técnica conhecida,
+-- não piorada nem resolvida aqui).
+ALTER TABLE rel_pedidos_compra ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_rel_pedidos_compra" ON rel_pedidos_compra;
+CREATE POLICY "allow_all_rel_pedidos_compra" ON rel_pedidos_compra
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT ON rel_pedidos_compra TO authenticated, anon;
+
+-- ── Função que recalcula e grava 1 linha (chamada pelos triggers e pelo backfill) ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_pedido_compra(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_ped            pedidos_compra%ROWTYPE;
+  v_forn_nome      text;
+  v_forn_cnpj      text;
+  v_prod_nome      text;
+  v_safra_desc     text;
+  v_op_nome        text;
+  v_conta_id       uuid;
+  v_valor_entrada  numeric;
+  v_qtd_vinc       integer;
+  v_qtd_proc       integer;
+BEGIN
+  SELECT * INTO v_ped FROM pedidos_compra WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_pedidos_compra WHERE id = p_id;
+    RETURN;
+  END IF;
+
+  SELECT nome, cpf_cnpj INTO v_forn_nome, v_forn_cnpj FROM pessoas WHERE id = v_ped.fornecedor_id;
+  SELECT nome INTO v_prod_nome FROM produtores WHERE id = v_ped.produtor_id;
+  SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v_ped.ano_safra_id;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v_ped.fazenda_id;
+
+  v_op_nome := NULL;
+  IF v_ped.operacao ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    SELECT descricao INTO v_op_nome FROM operacoes_gerenciais WHERE id = v_ped.operacao::uuid;
+  END IF;
+  IF v_op_nome IS NULL THEN v_op_nome := v_ped.operacao; END IF;
+
+  SELECT COUNT(*) INTO v_qtd_vinc FROM nf_entradas WHERE pedido_compra_id = p_id;
+  SELECT COUNT(*), COALESCE(SUM(valor_total), 0) INTO v_qtd_proc, v_valor_entrada
+    FROM nf_entradas WHERE pedido_compra_id = p_id AND status = 'processada';
+
+  INSERT INTO rel_pedidos_compra (
+    id, fazenda_id, conta_id, numero, nr_pedido, fornecedor_id, fornecedor_nome, fornecedor_cpf_cnpj,
+    produtor_id, produtor_nome, ano_safra_id, ano_safra_descricao, operacao, operacao_nome,
+    data_registro, moeda, meio_pagamento, status, fiscal, total_financeiro,
+    valor_entrada, valor_a_receber, qtd_nfs_vinculadas, qtd_nfs_processadas, pct_recebido, updated_at
+  ) VALUES (
+    v_ped.id, v_ped.fazenda_id, v_conta_id, v_ped.numero, v_ped.nr_pedido, v_ped.fornecedor_id, v_forn_nome, v_forn_cnpj,
+    v_ped.produtor_id, v_prod_nome, v_ped.ano_safra_id, v_safra_desc, v_ped.operacao, v_op_nome,
+    v_ped.data_registro,
+    CASE WHEN v_ped.meio_pagamento = 'barter' THEN 'barter' ELSE COALESCE(v_ped.cotacao_moeda, 'R$') END,
+    v_ped.meio_pagamento, v_ped.status, v_ped.fiscal, COALESCE(v_ped.total_financeiro, 0),
+    v_valor_entrada, GREATEST(0, COALESCE(v_ped.total_financeiro, 0) - v_valor_entrada),
+    v_qtd_vinc, v_qtd_proc,
+    CASE WHEN COALESCE(v_ped.total_financeiro, 0) > 0
+      THEN LEAST(100, v_valor_entrada / v_ped.total_financeiro * 100) ELSE 0 END,
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, nr_pedido = EXCLUDED.nr_pedido,
+    fornecedor_id = EXCLUDED.fornecedor_id, fornecedor_nome = EXCLUDED.fornecedor_nome, fornecedor_cpf_cnpj = EXCLUDED.fornecedor_cpf_cnpj,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome, ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    operacao = EXCLUDED.operacao, operacao_nome = EXCLUDED.operacao_nome, data_registro = EXCLUDED.data_registro,
+    moeda = EXCLUDED.moeda, meio_pagamento = EXCLUDED.meio_pagamento, status = EXCLUDED.status, fiscal = EXCLUDED.fiscal,
+    total_financeiro = EXCLUDED.total_financeiro, valor_entrada = EXCLUDED.valor_entrada, valor_a_receber = EXCLUDED.valor_a_receber,
+    qtd_nfs_vinculadas = EXCLUDED.qtd_nfs_vinculadas, qtd_nfs_processadas = EXCLUDED.qtd_nfs_processadas, pct_recebido = EXCLUDED.pct_recebido,
+    updated_at = now();
+END;
+$$;
+
+-- ── Trigger em pedidos_compra: qualquer INSERT/UPDATE recalcula a própria linha; DELETE remove ──
+CREATE OR REPLACE FUNCTION trg_fn_rel_pedido_compra() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_pedidos_compra WHERE id = OLD.id;
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_pedido_compra(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_pedidos_compra ON pedidos_compra;
+CREATE TRIGGER trg_rel_pedidos_compra
+AFTER INSERT OR UPDATE OR DELETE ON pedidos_compra
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_pedido_compra();
+
+-- ── Trigger em nf_entradas: processar/estornar/excluir/trocar o pedido vinculado
+--    recalcula a linha do(s) pedido(s) afetado(s) — antigo e novo, se mudou ──
+CREATE OR REPLACE FUNCTION trg_fn_rel_pedido_from_nf() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.pedido_compra_id IS NOT NULL THEN PERFORM fn_recalc_rel_pedido_compra(OLD.pedido_compra_id); END IF;
+    RETURN OLD;
+  END IF;
+  IF NEW.pedido_compra_id IS NOT NULL THEN PERFORM fn_recalc_rel_pedido_compra(NEW.pedido_compra_id); END IF;
+  IF TG_OP = 'UPDATE' AND OLD.pedido_compra_id IS NOT NULL
+     AND OLD.pedido_compra_id IS DISTINCT FROM NEW.pedido_compra_id THEN
+    PERFORM fn_recalc_rel_pedido_compra(OLD.pedido_compra_id);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_pedido_from_nf ON nf_entradas;
+CREATE TRIGGER trg_rel_pedido_from_nf
+AFTER INSERT OR UPDATE OR DELETE ON nf_entradas
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_pedido_from_nf();
+
+-- ── Backfill: popula a tabela com todos os pedidos já existentes ──
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM pedidos_compra LOOP
+    PERFORM fn_recalc_rel_pedido_compra(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
