@@ -15,6 +15,7 @@
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
 import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   criarNfEntrada, atualizarNfEntrada,
@@ -307,6 +308,7 @@ export default function ModalNf({
   onSaved: () => void;
 }) {
   const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
+  const router = useRouter();
 
   // Dados mestre (apoio ao wizard — carregados pelo modal, não por uma lista)
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
@@ -3576,6 +3578,9 @@ export default function ModalNf({
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
                         <button onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
+                      )}
+                      {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
+                        <button onClick={() => router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nfEdit.id}`)} style={{ ...btnR, borderColor: "#1A487050", color: "#1A4870" }}>🚚 Emitir NF Remessa</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && (
                         <button onClick={() => abrirReclassificar(nfEdit)} style={{ ...btnR, borderColor: "#C9921B50", color: "#7A5200" }}>🏷 Reclassificar</button>

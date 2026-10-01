@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-b",
+    data: "02/10/2026",
+    titulo: "Remessa Logística agora também na tela nova de Documentos Fiscais",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "novo", texto: "Abrindo uma NF de Produtos processada (tipo Insumos) em Documentos Fiscais → Notas de Terceiro, aparece o botão \"🚚 Emitir NF Remessa\" — leva direto pro wizard de Notas de Venda já pré-preenchido com os itens e o CFOP de remessa (6.905/5.905), exatamente como a tela antiga fazia. Falta ainda ações em lote — essa continua só na tela antiga por enquanto." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.02-a",
     data: "02/10/2026",
     titulo: "Reclassificação de NF agora também na tela nova de Documentos Fiscais",
