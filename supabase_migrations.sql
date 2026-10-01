@@ -14943,3 +14943,76 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 316 — Notas Próprias de Outro Sistema (demanda nova, fora do fluxo
+-- de unificação de hoje). Pedido do dono 01/10/2026: "não estou encontrando
+-- local pra efetuar entrada de nota própria — como remessas emitidas em
+-- outros sistemas, por exemplo".
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Buraco real encontrado: todo o módulo Fiscal hoje só cobre EMISSÃO (Arato
+-- gera e transmite a NF-e) ou ENTRADA DE FORNECEDOR (NF onde o cliente é o
+-- destinatário). Não existe onde registrar um documento ONDE O CLIENTE É O
+-- EMITENTE mas que foi autorizado em outro sistema (ERP antigo, sistema
+-- paralelo) — ex: remessa própria emitida antes de migrar pro Arato.
+--
+-- Escopo definido com o dono: pode (a) só arquivar (XML/chave/DANFE, sem
+-- efeito automático) ou (b) também movimentar estoque (baixa de saída) —
+-- nunca gera financeiro (CP/CR), isso ficou fora do escopo. Entrada por
+-- XML, por chave de acesso (consulta SEFAZ) ou manual — as 3 formas.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS notas_proprias_externas (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          uuid NOT NULL,
+  conta_id            uuid,
+  numero              text,
+  serie               text,
+  chave_acesso        text,
+  natureza            text,
+  data_emissao        date,
+  cnpj_emitente       text,
+  nome_emitente       text,
+  cnpj_destinatario   text,
+  nome_destinatario   text,
+  valor_total         numeric DEFAULT 0,
+  origem_entrada      text,            -- 'xml' | 'chave' | 'manual'
+  movimenta_estoque   boolean DEFAULT false,
+  deposito_origem_id  uuid,
+  status              text DEFAULT 'registrada',  -- registrada | processada | estornada | cancelada
+  xml_content         text,
+  observacao          text,
+  processado_por      text,
+  created_at          timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_notas_proprias_ext_fazenda ON notas_proprias_externas(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_notas_proprias_ext_chave   ON notas_proprias_externas(chave_acesso);
+
+CREATE TABLE IF NOT EXISTS notas_proprias_externas_itens (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nota_id           uuid NOT NULL REFERENCES notas_proprias_externas(id) ON DELETE CASCADE,
+  insumo_id         uuid,
+  descricao_produto text NOT NULL,
+  unidade           text,
+  quantidade        numeric NOT NULL DEFAULT 0,
+  valor_unitario    numeric DEFAULT 0,
+  valor_total       numeric DEFAULT 0,
+  created_at        timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_notas_proprias_ext_itens_nota ON notas_proprias_externas_itens(nota_id);
+
+ALTER TABLE notas_proprias_externas       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notas_proprias_externas_itens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_notas_proprias_externas"       ON notas_proprias_externas;
+DROP POLICY IF EXISTS "allow_all_notas_proprias_externas_itens" ON notas_proprias_externas_itens;
+CREATE POLICY "allow_all_notas_proprias_externas" ON notas_proprias_externas
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all_notas_proprias_externas_itens" ON notas_proprias_externas_itens
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON notas_proprias_externas, notas_proprias_externas_itens TO authenticated;
+
+-- Rastreabilidade: liga a movimentação de saída de estoque à nota própria
+-- que a originou, mesmo padrão já usado pra nf_entrada_id/romaneio_entrada_id.
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS nota_propria_externa_id uuid;
+
+NOTIFY pgrst, 'reload schema';

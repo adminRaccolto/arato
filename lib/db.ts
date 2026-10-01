@@ -7390,3 +7390,104 @@ export async function reabrirFatura(faturaId: string): Promise<void> {
   const { error } = await supabase.from("faturas_cartao").update({ status: "aberta" }).eq("id", faturaId);
   if (error) throw error;
 }
+
+// ————————————————————————————————————————
+// NOTAS PRÓPRIAS DE OUTRO SISTEMA (Seção 316)
+// ————————————————————————————————————————
+import type { NotaPropriaExterna, NotaPropriaExternaItem } from "./supabase";
+
+export async function listarNotasPropriasExternas(fazenda_ids: string[]): Promise<NotaPropriaExterna[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase.from("notas_proprias_externas")
+    .select("*").in("fazenda_id", fazenda_ids).order("data_emissao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarItensNotaPropriaExterna(nota_id: string): Promise<NotaPropriaExternaItem[]> {
+  const { data, error } = await supabase.from("notas_proprias_externas_itens")
+    .select("*").eq("nota_id", nota_id).order("created_at");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarNotaPropriaExterna(
+  n: Omit<NotaPropriaExterna, "id" | "created_at">
+): Promise<NotaPropriaExterna> {
+  const { data, error } = await supabase.from("notas_proprias_externas").insert(n).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarNotaPropriaExterna(id: string, n: Partial<NotaPropriaExterna>): Promise<void> {
+  const { error } = await supabase.from("notas_proprias_externas").update(n).eq("id", id);
+  if (error) throw error;
+}
+
+export async function salvarItensNotaPropriaExterna(
+  nota_id: string,
+  itens: Omit<NotaPropriaExternaItem, "id" | "nota_id" | "created_at">[]
+): Promise<void> {
+  await supabase.from("notas_proprias_externas_itens").delete().eq("nota_id", nota_id);
+  if (!itens.length) return;
+  const { error } = await supabase.from("notas_proprias_externas_itens")
+    .insert(itens.map(it => ({ ...it, nota_id })));
+  if (error) throw error;
+}
+
+// Baixa o estoque (saída) de cada item com insumo associado — só roda quando
+// movimenta_estoque=true. Idempotente: se já processada, não roda de novo
+// (evita duplicar a baixa se clicar duas vezes).
+export async function processarNotaPropriaExterna(id: string, processado_por?: string): Promise<void> {
+  const { data: nota, error: errNota } = await supabase.from("notas_proprias_externas")
+    .select("*").eq("id", id).single();
+  if (errNota) throw errNota;
+  if (nota.status === "processada") return;
+
+  if (nota.movimenta_estoque) {
+    const itens = await listarItensNotaPropriaExterna(id);
+    for (const it of itens) {
+      if (!it.insumo_id || !it.quantidade) continue;
+      const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
+        insumo_id: it.insumo_id, fazenda_id: nota.fazenda_id, tipo: "saida",
+        quantidade: it.quantidade, data: nota.data_emissao || new Date().toISOString().slice(0, 10),
+        observacao: `Nota própria (outro sistema) ${nota.numero ?? ""}/${nota.serie ?? ""} — ${it.descricao_produto}`,
+        auto: true, deposito_id: nota.deposito_origem_id ?? null, nota_propria_externa_id: nota.id,
+      });
+      if (errMov) throw errMov;
+
+      const { data: ins, error: errIns } = await supabase.from("insumos").select("estoque").eq("id", it.insumo_id).single();
+      if (errIns) throw errIns;
+      if (ins) {
+        const { error: errUpd } = await supabase.from("insumos")
+          .update({ estoque: Math.max(0, (ins.estoque ?? 0) - it.quantidade) }).eq("id", it.insumo_id);
+        if (errUpd) throw errUpd;
+      }
+    }
+  }
+
+  const { error: errUpdNota } = await supabase.from("notas_proprias_externas")
+    .update({ status: "processada", processado_por: processado_por ?? undefined }).eq("id", id);
+  if (errUpdNota) throw errUpdNota;
+}
+
+// Reverte a baixa de estoque (se houve) e volta o status pra "registrada".
+export async function estornarNotaPropriaExterna(id: string): Promise<void> {
+  const { data: movs } = await supabase.from("movimentacoes_estoque")
+    .select("id, insumo_id, quantidade").eq("nota_propria_externa_id", id);
+  for (const mov of movs ?? []) {
+    if (!mov.insumo_id) continue;
+    const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", mov.insumo_id).single();
+    if (ins) {
+      await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + mov.quantidade }).eq("id", mov.insumo_id);
+    }
+  }
+  if (movs?.length) await supabase.from("movimentacoes_estoque").delete().eq("nota_propria_externa_id", id);
+  const { error } = await supabase.from("notas_proprias_externas").update({ status: "estornada" }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirNotaPropriaExterna(id: string): Promise<void> {
+  const { error } = await supabase.from("notas_proprias_externas").delete().eq("id", id);
+  if (error) throw error;
+}

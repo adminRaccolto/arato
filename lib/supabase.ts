@@ -2887,3 +2887,43 @@ export type FaturaCartao = {
   // joins
   cartao?: CartaoCredito;
 };
+
+// ── Notas Próprias de Outro Sistema (Seção 316) ────────────────
+// Documento onde o CLIENTE é o emitente, mas foi autorizado em outro
+// sistema (ERP antigo, sistema paralelo) — só registro/arquivo, nunca
+// gera financeiro; pode opcionalmente movimentar estoque (baixa de saída).
+export type NotaPropriaExterna = {
+  id: string;
+  fazenda_id: string;
+  conta_id?: string;
+  numero?: string;
+  serie?: string;
+  chave_acesso?: string;
+  natureza?: string;
+  data_emissao?: string;
+  cnpj_emitente?: string;
+  nome_emitente?: string;
+  cnpj_destinatario?: string;
+  nome_destinatario?: string;
+  valor_total?: number;
+  origem_entrada?: "xml" | "chave" | "manual";
+  movimenta_estoque: boolean;
+  deposito_origem_id?: string;
+  status: "registrada" | "processada" | "estornada" | "cancelada";
+  xml_content?: string;
+  observacao?: string;
+  processado_por?: string;
+  created_at?: string;
+};
+
+export type NotaPropriaExternaItem = {
+  id: string;
+  nota_id: string;
+  insumo_id?: string;
+  descricao_produto: string;
+  unidade?: string;
+  quantidade: number;
+  valor_unitario?: number;
+  valor_total?: number;
+  created_at?: string;
+};
