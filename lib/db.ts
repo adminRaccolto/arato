@@ -596,6 +596,23 @@ export async function listarMovimentacoes(fazenda_id: string | string[], insumo_
   return data ?? [];
 }
 
+/**
+ * Lista movimentações já com insumo/depósito/ciclo/ano-safra/NF resolvidos e
+ * valor_total calculado — lê direto rel_movimentacoes_estoque (Seção 318),
+ * tabela física sincronizada por trigger a partir de movimentacoes_estoque.
+ * Usada na aba Movimentações de /estoque no lugar do antigo listarMovimentacoes
+ * + joins client-side (insumos.find/depositos.find).
+ */
+export async function listarMovimentacoesRel(fazenda_id: string | string[], insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<import("./supabase").RelMovimentacaoEstoque[]> {
+  let qr = filtroFazenda(supabase.from("rel_movimentacoes_estoque").select("*"), fazenda_id).order("data", { ascending: false });
+  if (insumo_id) qr = qr.eq("insumo_id", insumo_id);
+  if (dataInicio) qr = qr.gte("data", dataInicio);
+  if (dataFim)    qr = qr.lte("data", dataFim);
+  const { data, error } = await qr;
+  if (error) throw error;
+  return (data ?? []) as import("./supabase").RelMovimentacaoEstoque[];
+}
+
 // Saldo de semente por lote — o saldo "de vitrine" do insumo é sempre o total
 // agregado (insumos.estoque); esta função calcula a composição por trás dele,
 // somando entradas e subtraindo saídas de movimentacoes_estoque agrupado por

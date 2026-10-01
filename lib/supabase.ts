@@ -230,6 +230,49 @@ export type MovimentacaoEstoque = {
   created_at?: string;
 };
 
+// ── rel_movimentacoes_estoque — tabela de leitura física (trigger-sync),
+// Seção 318. Mesmo padrão de rel_pedidos_compra/rel_lancamentos: já traz
+// insumo/depósito/ciclo/ano-safra/NF resolvidos + valor_total calculado.
+// Escrita continua 100% em movimentacoes_estoque — esta tabela é só leitura.
+export type RelMovimentacaoEstoque = {
+  id: string;
+  fazenda_id: string | null;
+  conta_id: string | null;
+  insumo_id: string | null;
+  insumo_nome: string | null;
+  insumo_categoria: string | null;
+  insumo_unidade: string | null;
+  deposito_id: string | null;
+  deposito_nome: string | null;
+  tipo: "entrada" | "saida" | "ajuste";
+  motivo?: MovimentacaoEstoque["motivo"];
+  quantidade: number;
+  valor_unitario: number | null;
+  custo_unitario_na_baixa: number | null;
+  valor_total: number | null;
+  data: string;
+  talhao: string | null;
+  safra: string | null;
+  ciclo_id: string | null;
+  ciclo_descricao: string | null;
+  ciclo_cultura: string | null;
+  ano_safra_id: string | null;
+  ano_safra_descricao: string | null;
+  operacao: string | null;
+  origem: string | null;
+  nf_entrada_id: string | null;
+  nf_entrada_numero: string | null;
+  nf_entrada_item_id: string | null;
+  romaneio_entrada_id: string | null;
+  nota_propria_externa_id: string | null;
+  observacao: string | null;
+  usuario_nome: string | null;
+  variedade: string | null;
+  lote_semente: string | null;
+  auto: boolean;
+  updated_at?: string;
+};
+
 export type LogSistema = {
   id: string;
   fazenda_id: string;

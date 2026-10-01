@@ -1424,4 +1424,5 @@ Campo que classifica o lançamento para fins fiscais:
 | Onde fico sabendo que tenho um bordero pendente | Painel mostarda "BORDERO PENDENTE" no topo da lista de Contas a Pagar/Receber | Mostra descricao, total e numero de titulos; botoes Ver Itens, Confirmar Pagamento/Recebimento e Cancelar |
 | Como confirmar o pagamento/recebimento de um bordero pendente | No painel do bordero -> "Confirmar Pagamento/Recebimento" -> informar data + conta bancaria -> confirmar | Baixa todos os titulos do bordero de uma vez, com a mesma data e conta; cada titulo e baixado pela rotina de sempre conforme sua origem (produtor/empresa) |
 | Cancelei um bordero sem querer, os titulos sumiram? | Nao -- "Cancelar" so desfaz o agrupamento (titulos voltam soltos, sem lote), nunca baixa nem apaga titulo nenhum | Reaparecem na lista normal, do jeito que estavam antes de entrar no bordero |
+| Estoque -> Movimentacoes ficou diferente? | Nao, mesma tela e mesmas colunas -- só a fonte dos dados mudou (01/10/2026), pra ficar mais rapida | Nenhuma acao do dia a dia muda; e so bastidor (tabela ja pronta em vez de montar tudo na hora) |
 `;

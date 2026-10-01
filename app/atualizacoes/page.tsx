@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-v",
+    data: "01/10/2026",
+    titulo: "Movimentações de Estoque mais rápidas (bastidor)",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "A aba Estoque → Movimentações passou a consultar uma tabela já pronta (nome do insumo, categoria, depósito, safra/ciclo e NF de origem resolvidos de antemão), em vez de montar tudo na hora a cada abertura da tela. Mesma informação, mesma aparência — só mais rápido, principalmente pra contas com muito histórico. Mudança só de bastidor; nenhuma ação do dia a dia muda." },
+    ],
+    onde: "Estoque → Movimentações",
+  },
+  {
     versao: "2026.10.01-u",
     data: "01/10/2026",
     titulo: "Criar Borderô de volta no CP/CR unificado — Produtor e Empresa no mesmo lote",

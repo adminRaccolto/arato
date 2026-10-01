@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
   listarMovimentacoes, criarMovimentacaoManual,
+  listarMovimentacoesRel,
   listarSaldoPorDeposito,
   listarDepositos, listarFazendasDaConta,
   listarBombas,
@@ -28,7 +29,7 @@ import {
 import type { DuplicadoRevisado } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type {
-  Insumo, MovimentacaoEstoque,
+  Insumo, MovimentacaoEstoque, RelMovimentacaoEstoque,
   Deposito, BombaCombustivel, Maquina,
   NfEntrada, NfEntradaItem, EstoqueTerceiro, Pessoa,
   PASaldo, MovimentacaoPA, CentroCusto,
@@ -288,7 +289,10 @@ export default function Estoque() {
   const [insumos, setInsumos]       = useState<Insumo[]>([]);
   const [duplicadosRevisados, setDuplicadosRevisados] = useState<DuplicadoRevisado[]>([]);
   const [duplicadosProcessando, setDuplicadosProcessando] = useState<string | null>(null);
-  const [movs, setMovs]             = useState<MovimentacaoEstoque[]>([]);
+  // Movimentações (aba) lê direto rel_movimentacoes_estoque (Seção 318) —
+  // já vem com insumo/depósito/ciclo/ano-safra/NF resolvidos, sem precisar
+  // de insumos.find()/depositos.find() client-side.
+  const [movsRel, setMovsRel]       = useState<RelMovimentacaoEstoque[]>([]);
   const [depositos, setDepositos]   = useState<Deposito[]>([]);
   const [centros, setCentros]       = useState<CentroCusto[]>([]);
   const [ogsNf, setOgsNf]           = useState<{ id: string; descricao: string; classificacao: string }[]>([]);
@@ -579,7 +583,7 @@ export default function Estoque() {
   useEffect(() => {
     if (!fazAtiva) return;
     if (aba === "movimentacoes") {
-      listarMovimentacoes(fazLeitura).then(setMovs).catch(e => setErro(e.message));
+      listarMovimentacoesRel(fazLeitura).then(setMovsRel).catch(e => setErro(e.message));
       listarMovimentacoesPA(fazLeitura).then(setMovsPA).catch(() => {});
     }
     if (aba === "nf_entrada")    listarNfEntradas(fazLeitura).then(setNfEntradas).catch(e => setErro(e.message));
@@ -624,8 +628,8 @@ export default function Estoque() {
       `${tipoLabel}: ${insNome} — ${fMov.tipo === "ajuste" ? `saldo ajustado para ${qtdNova}` : `${qtd} unid.`}`,
       { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: fMov.tipo, motivo: fMov.motivo, quantidade: qtd, observacao: fMov.observacao } }
     );
-    const [ins2, movs] = await Promise.all([listarInsumos(fazAtiva!), listarMovimentacoes(fazAtiva!)]);
-    setInsumos(ins2); setMovs(movs);
+    const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazAtiva!), listarMovimentacoesRel(fazAtiva!)]);
+    setInsumos(ins2); setMovsRel(movsRelNovo);
     setModalMov(false);
     setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
   });
@@ -1379,27 +1383,25 @@ export default function Estoque() {
                     <button key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#E8E8E8" : "var(--bg-card)", color: filtroMov === k ? "#0D0D0D" : "#666", borderColor: filtroMov === k ? "#11111140" : "var(--border-table)" }}>{l}</button>
                   ))}
                 </div>
-                <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-2)" }}>{movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-2)" }}>{movsRel.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
                 <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Nova Movimentação</button>
               </div>
               <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Safra / Ciclo", "Origem"]} />
                   <tbody>
-                    {movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length === 0 && (
+                    {movsRel.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length === 0 && (
                       <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma movimentação registrada</td></tr>
                     )}
-                    {movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).map((m, i, arr) => {
-                      const ins = insumos.find(x => x.id === m.insumo_id);
-                      const dep = depositos.find(x => x.id === m.deposito_id);
+                    {movsRel.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).map((m, i, arr) => {
                       const MOTIVO_LABEL: Record<string, string> = { compra: "Compra", ajuste_saldo: "Ajuste saldo", baixa_uso: "Baixa uso", baixa_perda: "Baixa perda", transferencia: "Transferência", inventario: "Inventário", outros: "Outros" };
                       const isAdj = m.tipo === "ajuste";
                       return (
                         <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-row)" : "none", background: isAdj ? "#FFFDF5" : undefined }}>
                           <td style={{ padding: "10px 14px", color: "var(--text-1)", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
                           <td style={{ padding: "10px 14px" }}>
-                            <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{ins?.nome ?? "—"}</div>
-                            {ins && <div style={{ fontSize: 11, color: "#444" }}>{CAT_META[ins.categoria]?.label ?? ins.categoria}</div>}
+                            <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{m.insumo_nome ?? "—"}</div>
+                            {m.insumo_categoria && <div style={{ fontSize: 11, color: "#444" }}>{CAT_META[m.insumo_categoria as Insumo["categoria"]]?.label ?? m.insumo_categoria}</div>}
                             {m.variedade && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Var.: {m.variedade}</div>}
                             {m.lote_semente && <div style={{ fontSize: 11, color: "var(--text-3)" }}>Lote: {m.lote_semente}</div>}
                           </td>
@@ -1411,18 +1413,18 @@ export default function Estoque() {
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.motivo ? MOTIVO_LABEL[m.motivo] ?? m.motivo : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>
                             {isAdj
-                              ? <span style={{ color: m.quantidade >= 0 ? "#111111" : "#E24B4A" }}>{m.quantidade >= 0 ? "+" : ""}{fmtNum(m.quantidade)} {ins?.unidade} <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 400 }}>(ajuste)</span></span>
-                              : <span style={{ color: m.tipo === "entrada" ? "#111111" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins?.unidade}</span>}
+                              ? <span style={{ color: m.quantidade >= 0 ? "#111111" : "#E24B4A" }}>{m.quantidade >= 0 ? "+" : ""}{fmtNum(m.quantidade)} {m.insumo_unidade} <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 400 }}>(ajuste)</span></span>
+                              : <span style={{ color: m.tipo === "entrada" ? "#111111" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {m.insumo_unidade}</span>}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.deposito_nome ?? "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
-                            {(m as MovimentacaoEstoque & { ciclos?: { descricao: string } | null }).ciclos?.descricao || m.safra || "—"}
+                            {m.ciclo_descricao || m.safra || "—"}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {m.auto ? badge("Auto","#E8E8E8","#0D0D0D") : badge("Manual","#FBF0D8","#7A5A12")}
-                            {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome && (
+                            {m.usuario_nome && (
                               <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
-                                {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome}
+                                {m.usuario_nome}
                               </div>
                             )}
                             {m.observacao && (
