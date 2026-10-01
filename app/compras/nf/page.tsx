@@ -3201,7 +3201,7 @@ export default function NfCompraPage() {
             Não foi possível carregar as NF de Serviços pendentes: {nfServicosErro}
           </div>
         )}
-        {nfServicosPend.length > 0 && (
+        {!nfServicosErro && (
           <div style={{ ...card, padding: "0", overflow: "hidden", marginTop: 20 }}>
             <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>

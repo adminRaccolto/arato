@@ -14024,4 +14024,10 @@ SELECT
   processado_por, created_at
 FROM nf_servicos;
 
+-- GRANT explícito: view nova em schema public — sem isso, dependendo de como os
+-- "default privileges" do projeto foram configurados, authenticated/anon podem não
+-- herdar SELECT automaticamente (diferente das tabelas, que já têm o grant desde a
+-- criação do projeto). Idempotente — reexecutar não tem efeito colateral.
+GRANT SELECT ON notas_pendentes_unificadas TO authenticated, anon;
+
 NOTIFY pgrst, 'reload schema';
