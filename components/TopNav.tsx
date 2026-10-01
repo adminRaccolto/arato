@@ -118,6 +118,7 @@ const NAV: NavItem[] = [
       { id: "docfis-proprias",   label: "Notas Próprias",                    path: "/fiscal/notas-proprias",         moduleId: "fiscal_nfe" },
       { id: "docfis-ret-insumo", label: "Retorno de Insumo",                 path: "/fiscal/remessas",               moduleId: "fiscal_nfe" },
       { id: "docfis-ret-maq",    label: "Retorno de Máquinas e Equipamentos", path: "/fiscal/transferencia-maquinas", moduleId: "fiscal_nfe" },
+      { id: "docfis-ret-agric",  label: "Retorno de Produto Agrícola",       path: "/comercial/faturamento",         moduleId: "contratos"  },
       { type: "divider", label: "Notas de Saída" },
       { id: "docfis-venda",      label: "Notas de Venda",                    path: "/comercial/faturamento",         moduleId: "contratos"  },
       { id: "docfis-transf",     label: "Notas de Transferência",            path: "/fiscal/transferencia-maquinas", moduleId: "fiscal_nfe" },
@@ -287,7 +288,7 @@ const NAV: NavItem[] = [
 // Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
 const NAV_MODULE_MAP: Record<string, string[]> = {
   "producao":      ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades", "lavoura", "lavoura_planejamento", "lavoura_relatorios"],
-  "documentos-fiscais": ["nf_entrada", "nf_servico", "fiscal_nfe", "transporte"],
+  "documentos-fiscais": ["nf_entrada", "nf_servico", "fiscal_nfe", "transporte", "contratos"],
   "comercial":     ["contratos", "expedicao", "arrendamento", "transporte", "compras", "fin_relatorios"],
   "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros", "apoio_financeiro", "fin_relatorios"],
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],

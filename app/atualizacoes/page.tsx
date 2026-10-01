@@ -13,6 +13,7 @@ const RELEASES = [
     itens: [
       { tipo: "novo", texto: "O menu Suprimentos virou Documentos Fiscais, organizado por direção: Notas de Entrada (Notas de Terceiro — a tela nova unificada de NF+NFS —, Notas Próprias, Retorno de Insumo, Retorno de Máquinas e Equipamentos), Notas de Saída (Notas de Venda, Notas de Transferência, Remessa) e Transporte (CT-e, MDF-e). \"NF de Produtos\" e \"NF de Serviços\" saíram do menu como itens próprios — moram agora dentro de Notas de Terceiro, que já é a tela nova unificada (NF + NFS juntas, numa linha de tempo só)." },
       { tipo: "novo", texto: "Pedidos de Compra, Estoque de Insumos, Estoque de Grãos e a integração com SIEG saíram de Suprimentos e foram para Comercial → Logística, dentro de um novo grupo Compras — junto com um novo espaço de Relatórios (Insumos, Compras, Pendências de Classificação). Nenhuma tela mudou de lugar de verdade, nenhuma funcionalidade sumiu — só o menu que ficou mais organizado." },
+      { tipo: "novo", texto: "Adicionado também \"Retorno de Produto Agrícola\" em Notas de Entrada — abre o Faturamento/NF-e de Saída, no botão \"Devolução/Retorno\" da NF-e Avulsa (específico pra grão voltando de armazém geral; diferente do retorno de insumo/máquinas, que já tinha entrada própria)." },
     ],
     onde: "Documentos Fiscais / Comercial & Logística",
   },
