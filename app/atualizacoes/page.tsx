@@ -6,12 +6,22 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-c",
+    data: "02/10/2026",
+    titulo: "Ações em lote agora também na tela nova de Documentos Fiscais — Notas de Terceiro completa",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "novo", texto: "Documentos Fiscais → Notas de Terceiro ganhou seleção por caixinha nas NFs de Produtos. Com uma ou mais marcadas, aparece a barra de ações: \"⚡ Processar em lote\" (aplica Centro de Custo, Operação Gerencial, Ano Safra/Ciclo, Depósito ou Pedido de Compra em várias NFs pendentes de uma vez, processando direto quando for Apropriação Direta) e \"🖨 Imprimir\" (lista impressa dos documentos marcados, de qualquer tipo, com total). Com essa entrega, a tela nova cobre 100% do que a NF de Produtos antiga fazia — só falta o CT-e, que é uma frente separada (ainda sem modal aqui, continua em Fretes e Transporte → CT-e)." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.02-b",
     data: "02/10/2026",
     titulo: "Remessa Logística agora também na tela nova de Documentos Fiscais",
     modulos: ["Fiscal", "Compras"],
     itens: [
-      { tipo: "novo", texto: "Abrindo uma NF de Produtos processada (tipo Insumos) em Documentos Fiscais → Notas de Terceiro, aparece o botão \"🚚 Emitir NF Remessa\" — leva direto pro wizard de Notas de Venda já pré-preenchido com os itens e o CFOP de remessa (6.905/5.905), exatamente como a tela antiga fazia. Falta ainda ações em lote — essa continua só na tela antiga por enquanto." },
+      { tipo: "novo", texto: "Abrindo uma NF de Produtos processada (tipo Insumos) em Documentos Fiscais → Notas de Terceiro, aparece o botão \"🚚 Emitir NF Remessa\" — leva direto pro wizard de Notas de Venda já pré-preenchido com os itens e o CFOP de remessa (6.905/5.905), exatamente como a tela antiga fazia." },
     ],
     onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
   },

@@ -10,21 +10,15 @@
 // clicar numa linha abre o modal certo (ModalNf / ModalNfServico — núcleo
 // de cada wizard extraído das telas antigas, lógica preservada).
 //
-// AINDA EM CONSTRUÇÃO — o que esta tela NÃO cobre ainda:
-//   • CT-e: não tem modal aqui — continua só em Fretes e Transporte → CT-e.
-//   • NF de Produtos: ações em lote NÃO foram migradas — só existem na tela
-//     antiga /compras/nf, que não tem mais atalho no menu (01/10/2026, a
-//     reorganização do menu removeu "NF de Produtos"/"NF de Serviços" como
-//     itens próprios). Acessar direto pela URL se precisar.
-//   • Devolução de Compra JÁ FOI migrada (01/10/2026) — botão "↩ Devolver"
-//     dentro do modal, quando a NF está processada e é do tipo Insumos.
-//   • Reclassificação pós-processamento JÁ FOI migrada (01/10/2026) — botão
-//     "🏷 Reclassificar" dentro do modal, quando a NF está processada.
-//   • Remessa Logística (emissão de NF-e de remessa) JÁ FOI migrada
-//     (02/10/2026) — botão "🚚 Emitir NF Remessa" dentro do modal, quando a
-//     NF está processada e é do tipo Insumos. Navega pro wizard de Notas de
-//     Venda já pré-preenchido (mesmo destino que a tela antiga usava), não
-//     reimplementa o wizard aqui dentro.
+// As 4 lacunas da Fase 2 (devolução, reclassificação, remessa logística e
+// ações em lote) foram todas fechadas entre 01/10 e 02/10/2026 — ver
+// histórico no CLAUDE.md. CT-e ainda não tem modal nesta tela — continua
+// só em Fretes e Transporte → CT-e (frente separada, modal a construir do
+// zero, não uma extração da tela antiga).
+//
+// Ações em lote (seleção por checkbox, restrita a linhas de tipo NF): Ver
+// condições de habilitação iguais à tela antiga — só NFs pendentes entram
+// no "Processar em Lote"; qualquer seleção permite Imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -32,11 +26,13 @@ import { supabase } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalNf from "../../../components/fiscal/ModalNf";
+import ModalProcessarLote from "../../../components/fiscal/ModalProcessarLote";
 
 type RelDocFiscal = {
   id: string;
   origem_tabela: string;
   tipo_doc: "NF" | "NFS" | "CTE";
+  fazenda_id: string | null;
   numero: string | null;
   serie: string | null;
   chave: string | null;
@@ -125,6 +121,11 @@ export default function DocumentosFiscaisPage() {
   const [modalNfs, setModalNfs] = useState<{ id: string | null } | null>(null);
   const [modalNf,  setModalNf]  = useState<{ id: string | null } | null>(null);
 
+  // ── Ações em lote — seleção restrita a linhas de tipo NF (a única com
+  // processamento em lote implementado; NFS/CT-e nunca tiveram essa ação) ──
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [modalLote, setModalLote] = useState(false);
+
   const linhas = (resultado ?? []).filter(d => {
     if (fTipo.size > 0 && !fTipo.has(d.tipo_doc)) return false;
     if (fStatus.size > 0 && !fStatus.has(d.status_normalizado ?? "")) return false;
@@ -139,12 +140,9 @@ export default function DocumentosFiscaisPage() {
       <div style={{ maxWidth: 1500, margin: "0 auto", padding: "22px 20px" }}>
 
         <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 12, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>🚧</span>
-          <div>
-            <strong style={{ color: "#7A5200" }}>Em construção — ainda falta 1 função</strong>
-            <div style={{ color: "#7A5200", marginTop: 2 }}>
-              NF de Produtos aqui ainda não tem ações em lote (devolução, reclassificação e remessa logística já têm, nos botões "↩ Devolver", "🏷 Reclassificar" e "🚚 Emitir NF Remessa" dentro da NF). Ações em lote só existem na tela antiga, sem atalho no menu — acesse direto por <code>/compras/nf</code> se precisar. CT-e ainda não está nesta tela — continua em <strong>Fretes e Transporte → CT-e</strong>.
-            </div>
+          <span style={{ fontSize: 16 }}>ℹ</span>
+          <div style={{ color: "#7A5200" }}>
+            CT-e ainda não tem modal nesta tela — continua em <strong>Fretes e Transporte → CT-e</strong>.
           </div>
         </div>
 
@@ -210,10 +208,88 @@ export default function DocumentosFiscaisPage() {
           ))}
         </div>
 
+        {/* ── Barra de ações em lote — só quando há seleção ── */}
+        {selecionados.size > 0 && (() => {
+          const sel = linhas.filter(l => selecionados.has(l.id));
+          const selPendentesNf = sel.filter(l => l.tipo_doc === "NF" && l.status_normalizado === "pendente");
+          return (
+            <div style={{ background: "#111111", borderRadius: 10, padding: "10px 18px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+                {sel.length} selecionada{sel.length > 1 ? "s" : ""}
+              </span>
+              <button
+                onClick={() => {
+                  if (!selPendentesNf.length) { alert("Nenhuma NF pendente selecionada para processar."); return; }
+                  setModalLote(true);
+                }}
+                style={{ padding: "6px 16px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+              >
+                ⚡ Processar em lote
+              </button>
+              <button
+                onClick={() => {
+                  const html = `
+                    <html><head><title>Documentos Fiscais Selecionados</title><style>
+                      body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+                      table{width:100%;border-collapse:collapse;margin-bottom:16px}
+                      th,td{padding:5px 8px;border:0.5px solid #ccc;text-align:left}
+                      th{background:#f5f5f5;font-weight:600}
+                      h2{margin:0 0 12px;font-size:14px}
+                      .rodape{margin-top:20px;font-size:10px;color:#999}
+                      @page{size:A4 landscape}
+                    </style></head><body>
+                    <h2>Documentos Fiscais — ${new Date().toLocaleDateString("pt-BR")}</h2>
+                    <table><thead><tr>
+                      <th>Tipo</th><th>Número</th><th>Série</th><th>Participante</th><th>Data</th><th>Valor</th><th>Status</th>
+                    </tr></thead><tbody>
+                    ${sel.map(n => `<tr>
+                      <td>${n.tipo_doc}</td>
+                      <td>${n.numero ?? "—"}</td>
+                      <td>${n.serie ?? "—"}</td>
+                      <td>${n.participante_nome ?? "—"}</td>
+                      <td>${fmtData(n.data_doc)}</td>
+                      <td>${fmtBRL(n.valor_total)}</td>
+                      <td>${n.status_normalizado ?? "—"}</td>
+                    </tr>`).join("")}
+                    </tbody><tfoot><tr>
+                      <td colspan="5" style="font-weight:600;text-align:right">Total (${sel.length}):</td>
+                      <td style="font-weight:600">${fmtBRL(sel.reduce((s, n) => s + (n.valor_total ?? 0), 0))}</td>
+                      <td></td>
+                    </tr></tfoot></table>
+                    <div class="rodape">Gerado em ${new Date().toLocaleString("pt-BR")}</div>
+                    </body></html>`;
+                  const win = window.open("", "_blank");
+                  if (win) { win.document.write(html); win.document.close(); win.print(); }
+                }}
+                style={{ padding: "6px 16px", background: "transparent", color: "#fff", border: "0.5px solid rgba(255,255,255,0.5)", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}
+              >
+                🖨 Imprimir
+              </button>
+              <button
+                onClick={() => setSelecionados(new Set())}
+                style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
+              >
+                Limpar seleção
+              </button>
+            </div>
+          );
+        })()}
+
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA" }}>
+                <th style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE", width: 32 }}>
+                  <input
+                    type="checkbox"
+                    checked={linhas.some(l => l.tipo_doc === "NF") && linhas.filter(l => l.tipo_doc === "NF").every(l => selecionados.has(l.id))}
+                    onChange={e => {
+                      const idsNf = linhas.filter(l => l.tipo_doc === "NF").map(l => l.id);
+                      setSelecionados(e.target.checked ? new Set(idsNf) : new Set());
+                    }}
+                    style={{ cursor: "pointer" }}
+                  />
+                </th>
                 {["Tipo", "Data", "Número", "Série", "Participante", "CNPJ", "CFOP", "Valor", "Status", "Observação"].map(h => (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
@@ -221,7 +297,7 @@ export default function DocumentosFiscaisPage() {
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhas.map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
@@ -232,33 +308,58 @@ export default function DocumentosFiscaisPage() {
                   else if (d.tipo_doc === "NF") setModalNf({ id: d.id });
                 };
                 return (
-                  <tr key={d.id} onClick={() => clicavel && abrir()}
-                    style={{ borderBottom: "0.5px solid #F0F2F7", cursor: clicavel ? "pointer" : "default" }}
-                    title={clicavel ? "Abrir documento" : "CT-e ainda não tem modal nesta tela — use Fretes e Transporte → CT-e"}>
-                    <td style={{ padding: "7px 10px" }}>
+                  <tr key={d.id}
+                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(d.id) ? "#F2F2F2" : undefined }}>
+                    <td style={{ padding: "7px 10px" }} onClick={e => e.stopPropagation()}>
+                      {d.tipo_doc === "NF" && (
+                        <input
+                          type="checkbox"
+                          checked={selecionados.has(d.id)}
+                          onChange={e => {
+                            setSelecionados(prev => {
+                              const next = new Set(prev);
+                              e.target.checked ? next.add(d.id) : next.delete(d.id);
+                              return next;
+                            });
+                          }}
+                          style={{ cursor: "pointer" }}
+                        />
+                      )}
+                    </td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }}
+                      onClick={() => clicavel && abrir()}
+                      title={clicavel ? "Abrir documento" : "CT-e ainda não tem modal nesta tela — use Fretes e Transporte → CT-e"}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 8px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
                     </td>
-                    <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{fmtData(d.data_doc)}</td>
-                    <td style={{ padding: "7px 10px" }}>{d.numero ?? "—"}</td>
-                    <td style={{ padding: "7px 10px" }}>{d.serie ?? "—"}</td>
-                    <td style={{ padding: "7px 10px" }}>{d.participante_nome ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", color: "#888", fontFamily: "monospace" }}>{d.participante_cnpj ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", color: "#888" }}>{d.cfop ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(d.valor_total)}</td>
-                    <td style={{ padding: "7px 10px" }}>
+                    <td style={{ padding: "7px 10px", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtData(d.data_doc)}</td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.numero ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.serie ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.participante_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontFamily: "monospace", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.participante_cnpj ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.cfop ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtBRL(d.valor_total)}</td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? d.status_normalizado}</span>
                     </td>
-                    <td style={{ padding: "7px 10px", color: "#888", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.observacao ?? undefined}>{d.observacao ?? d.natureza_operacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? d.natureza_operacao ?? "—"}</td>
                   </tr>
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
+                <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {modalLote && (
+        <ModalProcessarLote
+          nfs={linhas.filter(l => l.tipo_doc === "NF" && l.status_normalizado === "pendente" && selecionados.has(l.id)).map(l => ({ id: l.id, fazenda_id: l.fazenda_id, numero: l.numero }))}
+          onClose={() => setModalLote(false)}
+          onSaved={() => { carregar(); setSelecionados(new Set()); }}
+        />
+      )}
 
       {modalNfs && fazendaId && (
         <ModalNfServico

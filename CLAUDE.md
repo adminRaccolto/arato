@@ -1262,6 +1262,37 @@ raciocínio e histórico da decisão: `CLAUDE.md` do repo `arato-campo`, seção
 
 ---
 
+### Sessão de 02 de outubro de 2026 — Documentos Fiscais: as 4 lacunas da NF de Produtos fechadas
+
+Continuação direta da unificação de Documentos Fiscais (Suprimentos → Documentos Fiscais, sessão
+de 01/10/2026). O banner "em construção" da tela `/fiscal/documentos` listava 4 funções da NF de
+Produtos antiga (`app/compras/nf/page.tsx`) que não tinham sido extraídas pro `ModalNf.tsx` novo:
+Devolução de Compra, Reclassificação pós-processamento, Remessa Logística e Ações em Lote. As 4
+foram fechadas nesta sessão, uma de cada vez, sempre com a mesma disciplina: extrair a lógica
+EXATA da tela antiga (nunca reescrever do zero), rodar `tsc` + `eslint` (checando especificamente
+por função extraída mas nunca chamada — bug real encontrado 3x em sessões anteriores) antes de
+declarar pronto, e manter a tela antiga 100% intocada como fallback.
+
+- **Reclassificação** (`components/fiscal/ModalNf.tsx`): botão "🏷 Reclassificar" em qualquer NF
+  processada — troca Operação Gerencial/Centro de Custo sem tocar em estoque ou financeiro.
+- **Remessa Logística**: achado interessante — o código `remessaModal`/`emitirRemessaLogistica` na
+  tela antiga era código morto (`abrirRemessa` sem nenhum call site). O fluxo real sempre foi
+  `router.push("/fiscal?aba=venda&modo=remessa&nf_entrada_id=X")`, que pré-preenche o wizard de
+  Notas de Venda. Botão "🚚 Emitir NF Remessa" no `ModalNf` replica exatamente esse `router.push` —
+  não reimplementa o wizard de venda dentro do modal.
+- **Ações em Lote**: a única das 4 que não cabia dentro do `ModalNf` (é uma feature de GRID, não de
+  wizard de uma NF só). Criado `components/fiscal/ModalProcessarLote.tsx` — componente novo e
+  auto-contido que recebe a lista de NFs selecionadas e carrega seu próprio apoio (centros, OGs,
+  depósitos, ciclos, pedidos). `app/fiscal/documentos/page.tsx` ganhou checkbox por linha (restrito
+  a `tipo_doc === "NF"` — NFS/CT-e nunca tiveram essa ação) e a barra preta de ações (Processar em
+  Lote + Imprimir + Limpar seleção), mesmo padrão visual da tela antiga.
+
+Com isso, `/fiscal/documentos` → Notas de Terceiro cobre 100% do que a NF de Produtos antiga fazia.
+Única pendência restante da unificação: **CT-e** ainda não tem modal nesta tela (frente separada,
+a construir do zero — não é extração, continua em Fretes e Transporte → CT-e por ora).
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.
