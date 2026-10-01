@@ -6,6 +6,26 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-c",
+    data: "01/10/2026",
+    titulo: "NF de Produtos: mantidas as colunas Doc., Operação NF e Parcelamento; removida só a seção de NF de Serviços",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Ajuste pedido pelo dono depois do revert abaixo: a unificação das telas (a seção \"NF de Serviços pendentes\" embutida em Compras → NF de Produtos, e a origem via view notas_pendentes_unificadas) continua fora, mas as colunas Doc. (NFE), Operação NF (natureza do XML) e Parcelamento (duplicatas do XML) voltaram — não faziam parte do problema, são úteis no grid de NF de Produtos sozinho mesmo." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
+    versao: "2026.10.01-b",
+    data: "01/10/2026",
+    titulo: "Desfeita a unificação de NF de Produtos + NF de Serviços numa tela só",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A pedido do dono, revertida a experiência das últimas sessões de unir Compras → NF de Produtos e Compras → NF de Serviços numa única tela de triagem. A seção \"NF de Serviços pendentes\" embutida saiu, e a origem via view notas_pendentes_unificadas deixou de ser usada (a view continua existindo no banco, inerte, sem risco). As duas telas voltam a ser completamente independentes." },
+    ],
+    onde: "Compras → NF de Produtos",
+  },
+  {
     versao: "2026.10.01-a",
     data: "01/10/2026",
     titulo: "Padrões do Sistema: \"Carregar Plano Padrão\" não apaga mais o template inteiro",

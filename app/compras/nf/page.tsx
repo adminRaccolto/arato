@@ -2925,6 +2925,7 @@ export default function NfCompraPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1100 }}>
               <colgroup>
                 <col style={{ width: 36 }} />     {/* checkbox */}
+                <col style={{ width: 56 }} />     {/* Doc. — NFE/NFSE/CTE */}
                 <col style={{ width: 90 }} />     {/* Nº/Série */}
                 <col style={{ width: "22%" }} />  {/* Emitente — flex */}
                 <col style={{ width: "18%" }} />  {/* Destinatário — flex */}
@@ -2932,6 +2933,8 @@ export default function NfCompraPage() {
                 <col style={{ width: 82 }} />     {/* Entrada */}
                 <col style={{ width: 80 }} />     {/* Tipo */}
                 <col style={{ width: 60 }} />     {/* Origem */}
+                <col style={{ width: "14%" }} />  {/* Operação NF — natureza declarada no XML */}
+                <col style={{ width: 100 }} />    {/* Parcelamento — duplicatas do XML */}
                 <col style={{ width: 110 }} />    {/* Valor Total */}
                 <col style={{ width: 90 }} />     {/* Status */}
                 <col style={{ width: 100 }} />    {/* Manifest. */}
@@ -2939,8 +2942,8 @@ export default function NfCompraPage() {
               </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
-                  {["", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "6px 8px", textAlign: i >= 8 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
+                  {["", "Doc.", "Nº / Série", "Emitente", "Destinatário", "Emissão", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor Total", "Status", "Processado por", "Manifest.", "Ações"].map((c, i) => (
+                    <th key={i} style={{ padding: "6px 8px", textAlign: i >= 11 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -2965,6 +2968,7 @@ export default function NfCompraPage() {
                           style={{ cursor: "pointer" }}
                         />
                       </td>
+                      <td style={{ padding: "7px 8px" }}>{badge("NFE", "#E6F1FB", "#0C447C")}</td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero}<span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
@@ -2985,6 +2989,32 @@ export default function NfCompraPage() {
                       <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)" }}>{fmtData(nf.data_entrada)}</td>
                       <td style={{ padding: "7px 8px" }}>{tm ? badge(tm.label, tm.bg, "#333") : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
                       <td style={{ padding: "7px 8px" }}>{om ? badge(om.label) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}</td>
+                      <td style={{ padding: "7px 8px", fontSize: 11, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nf.natureza ?? undefined}>
+                        {nf.natureza || <span style={{ color: "var(--text-muted)" }}>—</span>}
+                      </td>
+                      <td style={{ padding: "7px 8px" }}>
+                        {(() => {
+                          const dups = nf.duplicatas_xml ?? [];
+                          // à vista: sem duplicata, ou 1 única com vencimento na própria emissão.
+                          // à prazo: 1 duplicata só, vencendo depois da emissão.
+                          // parcelado: 2+ duplicatas — mostra só a quantidade e o 1º vencimento.
+                          const aVista = dups.length === 0 || (dups.length === 1 && dups[0].data_vencimento === nf.data_emissao);
+                          if (aVista) return <span style={{ fontSize: 11, color: "var(--text-muted)" }}>à vista</span>;
+                          const tooltip = dups.map(d => `${d.numero || "—"}: ${fmtBRL(d.valor)} em ${fmtData(d.data_vencimento)}`).join("\n");
+                          if (dups.length === 1) return (
+                            <div title={tooltip}>
+                              {badge("À prazo", "#FBF3E0", "#7B4A00")}
+                              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>{fmtData(dups[0].data_vencimento)}</div>
+                            </div>
+                          );
+                          return (
+                            <div title={tooltip}>
+                              {badge(`${dups.length}x parcelado`, "#EDF4FB", "#0B3A6B")}
+                              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap" }}>1ª {fmtData(dups[0].data_vencimento)}</div>
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td style={{ padding: "7px 8px", fontSize: 12, fontWeight: 600, textAlign: "right" }}>
                         {fmtBRL(nf.valor_total)}
                         {nf.observacao?.includes("WhatsApp") && (
