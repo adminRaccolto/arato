@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-s",
+    data: "01/10/2026",
+    titulo: "Baixar em Lote de volta no Contas a Pagar — agora cobrindo Produtor e Empresa juntos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "O \"Baixar em Lote\" que existia na tela antiga de Contas a Pagar do produtor volta na tela unificada — e agora funciona misturando títulos de Produtor e de Empresa na mesma seleção, o que a versão antiga não fazia. Marque as caixinhas dos títulos em aberto/vencidos/parciais na lista (ou use \"marcar todos\"); uma barra aparece no rodapé com o total selecionado e o botão \"✓ Baixar em Lote\". No modal: data do pagamento e conta bancária únicas para o lote, com multa/juros/desconto ajustáveis título a título antes de confirmar. Cada baixa é processada pela mesma rotina de sempre (a de Produtor ou a de Empresa, conforme a origem de cada título) — nenhuma lógica financeira nova, só o disparo em lote." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.01-r",
     data: "01/10/2026",
     titulo: "Contas a Pagar e Contas a Receber agora mostram Produtor e Empresa juntos",
