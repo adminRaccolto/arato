@@ -792,77 +792,6 @@ export default function ComprasPage() {
     win.focus();
   };
 
-  // Gera o PDF (nova aba, pronta pra imprimir) a partir do filtro do popup — direto,
-  // sem tela intermediária de resultado.
-  const gerarRelatorioPdf = async (alvo: PedidoCompra[], tipo: "sintetico" | "analitico", titulo: string) => {
-    const dados = await Promise.all(alvo.map(dadosParaRelatorio));
-    const paginas = dados.map(d => buildPaginaPedidoHtml(d.ped, d.itens, d.nfs, d.nfItens, tipo));
-    const win = window.open("", "_blank");
-    if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-    win.document.write(buildRelatorioPedidosHtml(paginas, `${titulo} — RacTech`));
-    win.document.close();
-    win.focus();
-  };
-
-  // Gera o XLSX e baixa direto — aba Resumo (1 linha por pedido) sempre; aba
-  // Detalhado (1 linha por item de NF) só no tipo analítico.
-  const gerarRelatorioXlsx = async (alvo: PedidoCompra[], tipo: "sintetico" | "analitico", titulo: string) => {
-    const dados = await Promise.all(alvo.map(dadosParaRelatorio));
-    const XLSX = await import("xlsx");
-
-    const linhasResumo = dados.map(({ ped, nfs }) => {
-      const valorEntrada = nfs.filter(n => n.status === "processada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
-      const valorTotal   = ped.total_financeiro ?? 0;
-      return {
-        "Nº Pedido":            ped.nr_pedido || `#${ped.numero}`,
-        "Nº Pedido Fornecedor": ped.nr_pedido_fornecedor ?? "",
-        "Fornecedor":           nomePessoa(ped.fornecedor_id),
-        "Produtor":             produtores.find(p => p.id === ped.produtor_id)?.nome ?? "",
-        "Ano Safra":            nomeAnoSafra(ped.ano_safra_id),
-        "Operação":             nomeOp(ped.operacao),
-        "Data":                 fmtData(ped.data_registro),
-        "Moeda":                ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$"),
-        "Status":               STATUS_MAP[ped.status]?.label ?? ped.status,
-        "Valor do Pedido":      valorTotal,
-        "Valor de Entrada":     valorEntrada,
-        "Valor a Receber":      Math.max(0, valorTotal - valorEntrada),
-        "Qtd. NFs":             nfs.length,
-      };
-    });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasResumo), "Resumo");
-
-    if (tipo === "analitico") {
-      const linhasDetalhado: Record<string, string | number>[] = [];
-      for (const { ped, nfs, nfItens } of dados) {
-        for (const nf of nfs) {
-          const itensDaNf = nfItens.filter(it => it.nf_entrada_id === nf.id);
-          if (itensDaNf.length === 0) {
-            linhasDetalhado.push({
-              "Nº Pedido": ped.nr_pedido || `#${ped.numero}`, "Fornecedor": nomePessoa(ped.fornecedor_id),
-              "NF": `${nf.numero}/${nf.serie}`, "Data Emissão": fmtData(nf.data_emissao), "Status NF": nf.status,
-              "Produto": "", "Un.": "", "Qtd.": "", "Vlr. Unit.": "", "Vlr. Total": "",
-            });
-            continue;
-          }
-          for (const it of itensDaNf) {
-            linhasDetalhado.push({
-              "Nº Pedido": ped.nr_pedido || `#${ped.numero}`, "Fornecedor": nomePessoa(ped.fornecedor_id),
-              "NF": `${nf.numero}/${nf.serie}`, "Data Emissão": fmtData(nf.data_emissao), "Status NF": nf.status,
-              "Produto": it.descricao_produto, "Un.": it.unidade, "Qtd.": it.quantidade,
-              "Vlr. Unit.": it.valor_unitario, "Vlr. Total": it.valor_total,
-            });
-          }
-        }
-      }
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDetalhado), "Detalhado");
-    }
-
-    const nomeArquivo = `${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(wb, nomeArquivo);
-  };
-
   // ── Cálculos do pedido ────────────────────────────────────────
 
   const calcItem = (it: ItemForm) => {
@@ -1513,84 +1442,6 @@ export default function ComprasPage() {
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroMoeda,  setFiltroMoeda]  = useState("");
   const [filtroAlerta, setFiltroAlerta] = useState<"" | "finalizando" | "ajuste">("");
-  // ── Popup de filtro do Relatório de Pedidos ──────────────────
-  const [modalRelatorioFiltro, setModalRelatorioFiltro] = useState(false);
-  const [relFiltroForn,      setRelFiltroForn]      = useState("");
-  const [relFiltroNrPedForn, setRelFiltroNrPedForn] = useState("");
-  const [relFiltroStatus,    setRelFiltroStatus]    = useState<Set<PedidoCompra["status"]>>(new Set());
-  const [relFiltroAnoSafra,  setRelFiltroAnoSafra]  = useState("");
-  const [relFiltroDataDe,    setRelFiltroDataDe]    = useState("");
-  const [relFiltroDataAte,   setRelFiltroDataAte]   = useState("");
-  const [relFiltroTipo,      setRelFiltroTipo]      = useState<"sintetico" | "analitico">("analitico");
-  const [relFiltroFormato,   setRelFiltroFormato]   = useState<"pdf" | "xlsx">("pdf");
-  const [relGerando,         setRelGerando]         = useState(false);
-  const [relErro,            setRelErro]            = useState("");
-
-  // Filtro local (fallback) — filtra o array `pedidos` já carregado em memória.
-  const pedidosFiltradosParaRelatorioLocal = () => pedidos.filter(p => {
-    if (relFiltroForn && p.fornecedor_id !== relFiltroForn) return false;
-    if (relFiltroNrPedForn.trim() && !(p.nr_pedido_fornecedor ?? "").toLowerCase().includes(relFiltroNrPedForn.trim().toLowerCase())) return false;
-    if (relFiltroStatus.size > 0 && !relFiltroStatus.has(p.status)) return false;
-    if (relFiltroAnoSafra && p.ano_safra_id !== relFiltroAnoSafra) return false;
-    if (relFiltroDataDe  && p.data_registro < relFiltroDataDe)  return false;
-    if (relFiltroDataAte && p.data_registro > relFiltroDataAte) return false;
-    return true;
-  });
-
-  // Filtro via rel_pedidos_compra (tabela de leitura trigger-sync, piloto validado
-  // em /compras/pedidos-rel-piloto) — a consulta em si roda no banco, com os
-  // mesmos critérios; o resultado (ids) é cruzado com o array `pedidos` já
-  // carregado (mesma conta) pra obter os objetos completos usados no render.
-  // Se a tabela ainda não existir nesse ambiente (Seções 310/311 não rodadas)
-  // ou a consulta falhar por qualquer motivo, cai pro filtro local — o
-  // relatório nunca para de funcionar por causa do piloto.
-  const pedidosFiltradosParaRelatorio = async (): Promise<{ alvo: PedidoCompra[]; origem: "rel_table" | "local" }> => {
-    try {
-      const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
-      let q = supabase.from("rel_pedidos_compra").select("id");
-      q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
-      if (relFiltroForn) q = q.eq("fornecedor_id", relFiltroForn);
-      if (relFiltroNrPedForn.trim()) q = q.ilike("nr_pedido_fornecedor", `%${relFiltroNrPedForn.trim()}%`);
-      if (relFiltroStatus.size > 0) q = q.in("status", Array.from(relFiltroStatus));
-      if (relFiltroAnoSafra) q = q.eq("ano_safra_id", relFiltroAnoSafra);
-      if (relFiltroDataDe)  q = q.gte("data_registro", relFiltroDataDe);
-      if (relFiltroDataAte) q = q.lte("data_registro", relFiltroDataAte);
-      const { data, error } = await q;
-      if (error) throw error;
-      const ids = new Set((data ?? []).map(r => r.id as string));
-      return { alvo: pedidos.filter(p => ids.has(p.id)), origem: "rel_table" };
-    } catch {
-      return { alvo: pedidosFiltradosParaRelatorioLocal(), origem: "local" };
-    }
-  };
-
-  const tituloRelatorio = (qtd: number) => {
-    const partes: string[] = [];
-    if (relFiltroForn) partes.push(nomePessoa(relFiltroForn));
-    if (relFiltroNrPedForn.trim()) partes.push(`Pedido Fornecedor "${relFiltroNrPedForn.trim()}"`);
-    if (partes.length === 0) partes.push("Todos os fornecedores");
-    return `${partes.join(" · ")} — ${qtd} pedido${qtd > 1 ? "s" : ""}`;
-  };
-
-  // Gera direto (sem tela intermediária de resultado) — PDF abre em nova aba
-  // pronta pra imprimir; XLSX baixa o arquivo.
-  const gerarRelatorioPopup = async () => {
-    setRelErro("");
-    setRelGerando(true);
-    try {
-      const { alvo, origem } = await pedidosFiltradosParaRelatorio();
-      if (alvo.length === 0) { setRelErro("Nenhum pedido encontrado para esse filtro."); return; }
-      console.info(`[Relatório de Pedidos] filtro resolvido via ${origem === "rel_table" ? "rel_pedidos_compra (tabela de leitura)" : "filtro local (fallback)"} — ${alvo.length} pedido(s)`);
-      const titulo = tituloRelatorio(alvo.length);
-      if (relFiltroFormato === "pdf") await gerarRelatorioPdf(alvo, relFiltroTipo, titulo);
-      else await gerarRelatorioXlsx(alvo, relFiltroTipo, titulo);
-      setModalRelatorioFiltro(false);
-    } catch (e: unknown) {
-      setRelErro(e instanceof Error ? e.message : "Erro ao gerar relatório");
-    } finally {
-      setRelGerando(false);
-    }
-  };
 
   // ── Helpers de alerta ────────────────────────────────────────
   const estaFinalizando = (ped: PedidoCompra) =>
@@ -1751,13 +1602,10 @@ export default function ComprasPage() {
             )}
           </div>
 
-          {/* Relatório de Pedidos de Compra — popup de filtro, gera direto (PDF ou XLSX) */}
-          <div style={{ marginBottom: 14 }}>
-            <button onClick={() => { setRelErro(""); setModalRelatorioFiltro(true); }}
-              style={{ padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--bg-card)", color: "var(--text-1)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-              🖨 Relatório de Pedidos
-            </button>
-          </div>
+          {/* Relatório completo (com filtro, Sintético/Analítico, PDF/XLSX) agora
+              fica em Financeiro → Relatórios → Pedidos de Compra — essa tela é de
+              lançamento/trabalho, não de relatório. O botão 🖨 por linha continua
+              aqui como atalho rápido pra imprimir só o pedido que você está vendo. */}
 
           {/* Tabela */}
           {loading ? (
@@ -3140,112 +2988,6 @@ export default function ComprasPage() {
         </div>
       )}
 
-      {/* ══ MODAL — Relatório de Pedidos (popup de filtro, gera direto) ══ */}
-      {modalRelatorioFiltro && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={() => setModalRelatorioFiltro(false)}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>🖨 Relatório de Pedidos de Compra</h2>
-              <button onClick={() => setModalRelatorioFiltro(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Fornecedor</label>
-                <select value={relFiltroForn} onChange={e => setRelFiltroForn(e.target.value)} style={inp}>
-                  <option value="">Todos os fornecedores</option>
-                  {Array.from(new Set(pedidos.map(p => p.fornecedor_id).filter((id): id is string => !!id)))
-                    .map(id => ({ id, nome: nomePessoa(id) }))
-                    .sort((a, b) => a.nome.localeCompare(b.nome))
-                    .map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Nº Pedido do Fornecedor</label>
-                <input value={relFiltroNrPedForn} onChange={e => setRelFiltroNrPedForn(e.target.value)}
-                  placeholder="Vazio = todos os pedidos" style={inp} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Status — marque quantos quiser (vazio = todos)</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
-                {(Object.keys(STATUS_MAP) as PedidoCompra["status"][]).map(st => (
-                  <label key={st} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer" }}>
-                    <input type="checkbox" checked={relFiltroStatus.has(st)}
-                      onChange={() => setRelFiltroStatus(prev => {
-                        const next = new Set(prev);
-                        next.has(st) ? next.delete(st) : next.add(st);
-                        return next;
-                      })} />
-                    {STATUS_MAP[st].label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Ano Safra</label>
-                <select value={relFiltroAnoSafra} onChange={e => setRelFiltroAnoSafra(e.target.value)} style={inp}>
-                  <option value="">Todas as safras</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Data de</label>
-                <input type="date" value={relFiltroDataDe} onChange={e => setRelFiltroDataDe(e.target.value)} style={inp} />
-              </div>
-              <div>
-                <label style={lbl}>Data até</label>
-                <input type="date" value={relFiltroDataAte} onChange={e => setRelFiltroDataAte(e.target.value)} style={inp} />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-              <div>
-                <label style={lbl}>Tipo</label>
-                <div style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
-                  {([["sintetico", "Sintético (só as NFs)"], ["analitico", "Analítico (NFs abertas)"]] as const).map(([v, label]) => (
-                    <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input type="checkbox" checked={relFiltroTipo === v} onChange={() => setRelFiltroTipo(v)} />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={lbl}>Emissão</label>
-                <div style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
-                  {([["pdf", "PDF (imprimir)"], ["xlsx", "XLSX (baixar)"]] as const).map(([v, label]) => (
-                    <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input type="checkbox" checked={relFiltroFormato === v} onChange={() => setRelFiltroFormato(v)} />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {relErro && (
-              <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>
-                {relErro}
-              </div>
-            )}
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-              <span style={{ fontSize: 11, color: "var(--text-2)" }}>{pedidosFiltradosParaRelatorioLocal().length} pedido(s) no filtro atual</span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setModalRelatorioFiltro(false)} style={btnR}>Cancelar</button>
-                <button onClick={gerarRelatorioPopup} disabled={relGerando} style={{ ...btnV, opacity: relGerando ? 0.6 : 1 }}>
-                  {relGerando ? "Gerando..." : "Gerar Relatório"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

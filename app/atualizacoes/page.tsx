@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-l",
+    data: "01/10/2026",
+    titulo: "Novo espaço dedicado a Relatórios: Pedidos de Compra sai de Compras e vai pra Financeiro → Relatórios",
+    modulos: ["Financeiro", "Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Decisão de organização, a pedido do dono: relatório (consultar com filtro, gerar documento) é uma coisa; lançamento (tela de trabalho do dia a dia) é outra — não devem ficar misturados na mesma tela. O relatório completo de Pedidos de Compra (popup de filtro: Fornecedor, Nº Pedido do Fornecedor, Status múltiplo, Ano Safra, período, Sintético/Analítico, PDF/XLSX) saiu de Compras → Pedidos de Compra e passou a viver em Financeiro → Relatórios Financeiros → Pedidos de Compra, ao lado de Fluxo de Caixa, CP/CR e Posição Bancária — o espaço dedicado só pra relatórios da conta." },
+      { tipo: "melhoria", texto: "Compras → Pedidos de Compra volta a ser só a tela de trabalho: lista, cadastro, entregas. O botão 🖨 por linha continua ali como atalho rápido pra imprimir o pedido que você está vendo — só o relatório com filtro/exportação em massa que mudou de endereço." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.01-k",
     data: "01/10/2026",
     titulo: "Pilotos 3 e 4: Contas a Pagar e a Receber unificados (Produtor + Empresa)",

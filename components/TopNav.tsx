@@ -179,6 +179,7 @@ const NAV: NavItem[] = [
       { id: "fin-fluxo-real",      label: "Fluxo de Caixa Realizado",     path: "/financeiro/relatorios?aba=fluxo&tipo=realizado", moduleId: "fin_relatorios" },
       { id: "fin-cpcr",            label: "CP / CR — Contas",             path: "/financeiro/relatorios?aba=cpcr",                moduleId: "fin_relatorios" },
       { id: "fin-posicao-banc",    label: "Posição Bancária",             path: "/financeiro/relatorios?aba=posicao",             moduleId: "fin_relatorios" },
+      { id: "fin-pedidos-compra",  label: "Pedidos de Compra",            path: "/financeiro/relatorios?aba=pedidos_compra",      moduleId: "fin_relatorios" },
       { id: "fin-endividamento",   label: "Endividamento",                path: "/financeiro/endividamento",                     moduleId: "fin_relatorios" },
       { id: "fin-classificacao",   label: "Gastos por Classificação",     path: "/relatorios/financeiro-classificacao",          moduleId: "fin_relatorios" },
       { type: "divider", label: "Complemento Financeiro" },
