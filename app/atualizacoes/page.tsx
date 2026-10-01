@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-g",
+    data: "01/10/2026",
+    titulo: "Relatório de Pedidos: popup de filtro completo, Sintético/Analítico e emissão PDF ou XLSX",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O botão \"Relatório de Pedidos\" (Compras → Pedidos de Compra) agora abre um popup de filtro completo antes de gerar qualquer coisa — nada é buscado até você confirmar: Fornecedor, Nº do Pedido do Fornecedor (o número deles, não o interno do sistema — vazio traz todos), Status com caixa de seleção (pode marcar vários ao mesmo tempo, ex: Parc. Entregue + Entregue juntos), Ano Safra, intervalo de datas, Tipo (Sintético — só as NFs, sem abrir os produtos — ou Analítico — NFs abertas com cada produto e valor) e Emissão (PDF, abre pronto pra imprimir, ou XLSX, baixa direto com aba Resumo + aba Detalhado no analítico). Ao confirmar, já gera o documento final — sem tela de resultado no meio." },
+    ],
+    onde: "Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.01-f",
     data: "01/10/2026",
     titulo: "Pedido de Compra: entrega por NF não atualizava quando o pedido não foi marcado \"Fiscal\"",
