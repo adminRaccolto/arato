@@ -15451,3 +15451,107 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 320 — rel_pedidos_compra: colunas que faltavam pra promover a
+-- TELA DE LANÇAMENTO (app/compras/page.tsx), não só o relatório. Pedido do
+-- dono 01/10/2026: "não é só relatório, migrar também as telas de
+-- lançamento de Pedido de Compra e Contratos".
+--
+-- ciclo_id/ciclo_descricao: usados no filtro de busca da tela (nomeCiclo).
+-- lancamento_id: usado na exclusão de pedido (precisa excluir o lançamento
+-- financeiro vinculado junto) e na lógica de "já tem lançamento gerado?" ao
+-- salvar — evita um fetch extra só pra esse campo.
+--
+-- IMPORTANTE: a tela de EDIÇÃO (abrir um pedido existente pra editar) NÃO
+-- usa esses campos resolvidos — ela sempre busca o registro completo e
+-- fresco direto de pedidos_compra por id (buscarPedidoCompraPorId), porque
+-- rel_pedidos_compra é deliberadamente um subconjunto de exibição (24→27
+-- colunas), nunca vai ter os 50+ campos de escrita do pedido completo
+-- (desconto, barter, endereço de entrega, etc.) — e não deveria.
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE rel_pedidos_compra
+  ADD COLUMN IF NOT EXISTS ciclo_id uuid,
+  ADD COLUMN IF NOT EXISTS ciclo_descricao text,
+  ADD COLUMN IF NOT EXISTS lancamento_id uuid;
+
+CREATE OR REPLACE FUNCTION fn_recalc_rel_pedido_compra(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_ped            pedidos_compra%ROWTYPE;
+  v_forn_nome      text;
+  v_forn_cnpj      text;
+  v_prod_nome      text;
+  v_safra_desc     text;
+  v_ciclo_desc     text;
+  v_op_nome        text;
+  v_conta_id       uuid;
+  v_valor_entrada  numeric;
+  v_qtd_vinc       integer;
+  v_qtd_proc       integer;
+BEGIN
+  SELECT * INTO v_ped FROM pedidos_compra WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_pedidos_compra WHERE id = p_id;
+    RETURN;
+  END IF;
+
+  SELECT nome, cpf_cnpj INTO v_forn_nome, v_forn_cnpj FROM pessoas WHERE id = v_ped.fornecedor_id;
+  SELECT nome INTO v_prod_nome FROM produtores WHERE id = v_ped.produtor_id;
+  SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v_ped.ano_safra_id;
+  SELECT descricao INTO v_ciclo_desc FROM ciclos WHERE id = v_ped.ciclo_id;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v_ped.fazenda_id;
+
+  v_op_nome := NULL;
+  IF v_ped.operacao ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    SELECT descricao INTO v_op_nome FROM operacoes_gerenciais WHERE id = v_ped.operacao::uuid;
+  END IF;
+  IF v_op_nome IS NULL THEN v_op_nome := v_ped.operacao; END IF;
+
+  SELECT COUNT(*) INTO v_qtd_vinc FROM nf_entradas WHERE pedido_compra_id = p_id;
+  SELECT COUNT(*), COALESCE(SUM(valor_total), 0) INTO v_qtd_proc, v_valor_entrada
+    FROM nf_entradas WHERE pedido_compra_id = p_id AND status = 'processada';
+
+  INSERT INTO rel_pedidos_compra (
+    id, fazenda_id, conta_id, numero, nr_pedido, nr_pedido_fornecedor, fornecedor_id, fornecedor_nome, fornecedor_cpf_cnpj,
+    produtor_id, produtor_nome, ano_safra_id, ano_safra_descricao, ciclo_id, ciclo_descricao,
+    operacao, operacao_nome, data_registro, moeda, meio_pagamento, status, fiscal, total_financeiro,
+    valor_entrada, valor_a_receber, qtd_nfs_vinculadas, qtd_nfs_processadas, pct_recebido, lancamento_id, updated_at
+  ) VALUES (
+    v_ped.id, v_ped.fazenda_id, v_conta_id, v_ped.numero, v_ped.nr_pedido, v_ped.nr_pedido_fornecedor, v_ped.fornecedor_id, v_forn_nome, v_forn_cnpj,
+    v_ped.produtor_id, v_prod_nome, v_ped.ano_safra_id, v_safra_desc, v_ped.ciclo_id, v_ciclo_desc,
+    v_ped.operacao, v_op_nome, v_ped.data_registro,
+    CASE WHEN v_ped.meio_pagamento = 'barter' THEN 'barter' ELSE COALESCE(v_ped.cotacao_moeda, 'R$') END,
+    v_ped.meio_pagamento, v_ped.status, v_ped.fiscal, COALESCE(v_ped.total_financeiro, 0),
+    v_valor_entrada, GREATEST(0, COALESCE(v_ped.total_financeiro, 0) - v_valor_entrada),
+    v_qtd_vinc, v_qtd_proc,
+    CASE WHEN COALESCE(v_ped.total_financeiro, 0) > 0
+      THEN LEAST(100, v_valor_entrada / v_ped.total_financeiro * 100) ELSE 0 END,
+    v_ped.lancamento_id, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, nr_pedido = EXCLUDED.nr_pedido,
+    nr_pedido_fornecedor = EXCLUDED.nr_pedido_fornecedor,
+    fornecedor_id = EXCLUDED.fornecedor_id, fornecedor_nome = EXCLUDED.fornecedor_nome, fornecedor_cpf_cnpj = EXCLUDED.fornecedor_cpf_cnpj,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome, ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    ciclo_id = EXCLUDED.ciclo_id, ciclo_descricao = EXCLUDED.ciclo_descricao,
+    operacao = EXCLUDED.operacao, operacao_nome = EXCLUDED.operacao_nome, data_registro = EXCLUDED.data_registro,
+    moeda = EXCLUDED.moeda, meio_pagamento = EXCLUDED.meio_pagamento, status = EXCLUDED.status, fiscal = EXCLUDED.fiscal,
+    total_financeiro = EXCLUDED.total_financeiro, valor_entrada = EXCLUDED.valor_entrada, valor_a_receber = EXCLUDED.valor_a_receber,
+    qtd_nfs_vinculadas = EXCLUDED.qtd_nfs_vinculadas, qtd_nfs_processadas = EXCLUDED.qtd_nfs_processadas, pct_recebido = EXCLUDED.pct_recebido,
+    lancamento_id = EXCLUDED.lancamento_id,
+    updated_at = now();
+END;
+$$;
+
+-- Backfill — ~mesma escala de antes (Seção 310/311 já backfillaram a base;
+-- isso só repassa os 3 campos novos pros registros já existentes).
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM pedidos_compra LOOP
+    PERFORM fn_recalc_rel_pedido_compra(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

@@ -6928,6 +6928,32 @@ export async function listarPedidosCompraDaConta(fazenda_id_fallback?: string | 
   return data ?? [];
 }
 
+/**
+ * Lista pedidos de compra já com fornecedor/produtor/ano-safra/ciclo/operação
+ * resolvidos e totais de NF calculados — lê direto rel_pedidos_compra
+ * (Seções 310/311/320), tabela física sincronizada por trigger a partir de
+ * pedidos_compra. Usada na GRID/filtro de /compras no lugar do antigo
+ * listarPedidosCompraDaConta — editar um pedido específico sempre busca o
+ * registro completo fresco via buscarPedidoCompraPorId, nunca a partir
+ * desta lista (rel_pedidos_compra é só exibição, não tem os campos de
+ * escrita do pedido completo).
+ */
+export async function listarPedidosCompraRelDaConta(fazenda_id_fallback?: string | null): Promise<import("./supabase").RelPedidoCompra[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("rel_pedidos_compra").select("*").in("fazenda_id", ids).order("numero", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as import("./supabase").RelPedidoCompra[];
+}
+
+/** Busca o registro COMPLETO de um pedido de compra por id — usado ao abrir
+ * um pedido pra editar (nunca usa os campos reduzidos de rel_pedidos_compra). */
+export async function buscarPedidoCompraPorId(id: string): Promise<PedidoCompra | null> {
+  const { data, error } = await supabase.from("pedidos_compra").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function listarRomaneiosEntradaDaColheita(colheita_id: string): Promise<RomaneioEntrada[]> {
   const { data, error } = await supabase
     .from("romaneios_entrada")

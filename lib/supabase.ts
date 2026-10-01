@@ -2053,6 +2053,46 @@ export type PedidoCompra = {
   created_at?: string;
 };
 
+// ── rel_pedidos_compra — tabela de leitura física (trigger-sync),
+// Seções 310/311/320. Já traz fornecedor/produtor/ano-safra/ciclo/operação
+// resolvidos + totais de NF calculados. É um SUBCONJUNTO de exibição de
+// PedidoCompra (não tem os ~50 campos de escrita como desconto/barter/
+// endereço de entrega) — usado na listagem/filtro da tela; editar um
+// pedido sempre busca o registro completo fresco via
+// buscarPedidoCompraPorId, nunca a partir desta tabela.
+export type RelPedidoCompra = {
+  id: string;
+  fazenda_id: string | null;
+  conta_id: string | null;
+  numero: number | null;
+  nr_pedido: string | null;
+  nr_pedido_fornecedor: string | null;
+  fornecedor_id: string | null;
+  fornecedor_nome: string | null;
+  fornecedor_cpf_cnpj: string | null;
+  produtor_id: string | null;
+  produtor_nome: string | null;
+  ano_safra_id: string | null;
+  ano_safra_descricao: string | null;
+  ciclo_id: string | null;
+  ciclo_descricao: string | null;
+  operacao: string | null;
+  operacao_nome: string | null;
+  data_registro: string;
+  moeda: string | null;          // já resolvido: 'R$' | 'USD' | 'barter'
+  meio_pagamento: PedidoCompra["meio_pagamento"];
+  status: PedidoCompra["status"];
+  fiscal: boolean | null;
+  total_financeiro: number | null;
+  valor_entrada: number | null;
+  valor_a_receber: number | null;
+  qtd_nfs_vinculadas: number | null;
+  qtd_nfs_processadas: number | null;
+  pct_recebido: number | null;
+  lancamento_id: string | null;
+  updated_at?: string;
+};
+
 export type PedidoCompraItem = {
   id: string;
   pedido_id: string;

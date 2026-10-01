@@ -1,9 +1,25 @@
 "use client";
+// ═══════════════════════════════════════════════════════════════════════════
+// Pedidos de Compra. A GRID/FILTRO lê rel_pedidos_compra (Seções 310/311/320
+// — trigger-sync, fornecedor/produtor/ciclo/ano-safra/operação já resolvidos
+// + totais de NF calculados) no lugar do antigo listarPedidosCompraDaConta,
+// que montava tudo sob demanda. Promovido 01/10/2026, a pedido do dono:
+// "migrar também as telas de lançamento, não só relatório".
+//
+// IMPORTANTE — abrir um pedido pra EDITAR sempre busca o registro COMPLETO
+// e fresco direto de pedidos_compra via buscarPedidoCompraPorId (nunca usa
+// o objeto reduzido da grid) — rel_pedidos_compra é deliberadamente um
+// subconjunto de exibição (~27 colunas), nunca vai ter os ~50 campos de
+// escrita do pedido completo (desconto, barter, endereço de entrega, etc.).
+// A ESCRITA em si (criar/atualizar/excluir pedido, itens, entregas) continua
+// 100% em pedidos_compra/pedidos_compra_itens/pedidos_compra_entregas,
+// exatamente como antes — o trigger só reflete depois.
+// ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import {
-  listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
+  listarPedidosCompraRelDaConta, buscarPedidoCompraPorId, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens, encerrarPedidoCompra, alocarEntregaPorLinha,
   listarPedidoCompraEntregas, registrarEntrega, editarEntrega, excluirEntrega,
   listarPessoasDaConta, listarInsumosParaConta, criarInsumo, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta,
@@ -12,7 +28,7 @@ import {
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
   listarGruposInsumoDaConta, listarPrincipiosAtivos,
 } from "../../lib/db";
-import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
+import type { PedidoCompra, RelPedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
@@ -330,7 +346,10 @@ const PEDIDO_VAZIO: FormPedido = {
 export default function ComprasPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId, contaModulosOverrides, nomeUsuario } = useAuth();
 
-  const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
+  // Grid lê rel_pedidos_compra (fornecedor/produtor/ciclo/ano-safra/operação
+  // já resolvidos) — editar um pedido busca o registro completo fresco via
+  // buscarPedidoCompraPorId, nunca a partir deste array reduzido.
+  const [pedidos,         setPedidos]         = useState<RelPedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
   const [insumos,         setInsumos]         = useState<Insumo[]>([]);
   const [ciclos,          setCiclos]          = useState<Ciclo[]>([]);
@@ -361,7 +380,7 @@ export default function ComprasPage() {
   const [pedidoEdit,    setPedidoEdit]    = useState<string | null>(null);
 
   // Modal entregas
-  const [modalEntrega,  setModalEntrega]  = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[] } | null>(null);
+  const [modalEntrega,  setModalEntrega]  = useState<{ pedido: RelPedidoCompra; itens: PedidoCompraItem[] } | null>(null);
   const [entregas,      setEntregas]      = useState<PedidoCompraEntrega[]>([]);
   const [formEntrega,   setFormEntrega]   = useState({ item_id: "", data_entrega: hoje(), quantidade_entregue: "", observacao: "" });
   const [entregaEditId, setEntregaEditId] = useState<string | null>(null);
@@ -372,7 +391,7 @@ export default function ComprasPage() {
 
   // Modal encerramento (ajuste de divergência — peso de carga, casas decimais)
   const [modalEncerrar, setModalEncerrar] = useState<{
-    pedido: PedidoCompra;
+    pedido: RelPedidoCompra;
     itens: { item_id: string; nome_item: string; unidade: string; quantidade: number; entregue: number; saldo: number; cancelar: string }[];
   } | null>(null);
   const [obsEncerrar,    setObsEncerrar]    = useState("");
@@ -380,7 +399,7 @@ export default function ComprasPage() {
   const [erroEncerrar,   setErroEncerrar]   = useState("");
 
   // Modal relatório NFs
-  const [modalRelatorio, setModalRelatorio] = useState<{ pedido: PedidoCompra; itens: PedidoCompraItem[]; entregas: PedidoCompraEntrega[] } | null>(null);
+  const [modalRelatorio, setModalRelatorio] = useState<{ pedido: RelPedidoCompra; itens: PedidoCompraItem[]; entregas: PedidoCompraEntrega[] } | null>(null);
 
   // IA — Lançamento por PDF (add-on ia_pedido_compra)
   const [iaExtraindo, setIaExtraindo] = useState(false);
@@ -452,7 +471,7 @@ export default function ComprasPage() {
     setLoading(true);
     try {
       const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods, grupos, princAtivos] = await Promise.all([
-        listarPedidosCompraDaConta(fazendaId),
+        listarPedidosCompraRelDaConta(fazendaId),
         listarPessoasDaConta(fazendaId),
         listarInsumosParaConta(contaId, fazendaId),  // catálogo de TODA a conta — não só da fazenda ativa
         listarTodosCiclos(fazendaId),
@@ -543,9 +562,9 @@ export default function ComprasPage() {
 
   // ── Helpers de label ─────────────────────────────────────────
 
-  const nomePessoa = (id?: string) => id ? (pessoas.find(p => p.id === id)?.nome ?? "—") : "—";
-  const nomeAnoSafra = (id?: string) => id ? (anosSafra.find(a => a.id === id)?.descricao ?? "—") : "—";
-  const nomeCiclo = (id?: string) => {
+  const nomePessoa = (id?: string | null) => id ? (pessoas.find(p => p.id === id)?.nome ?? "—") : "—";
+  const nomeAnoSafra = (id?: string | null) => id ? (anosSafra.find(a => a.id === id)?.descricao ?? "—") : "—";
+  const nomeCiclo = (id?: string | null) => {
     if (!id) return "";
     const c = ciclos.find(x => x.id === id);
     if (!c) return "";
@@ -554,7 +573,7 @@ export default function ComprasPage() {
     return `${CULT[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
   };
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const nomeOp = (idOrText?: string) => {
+  const nomeOp = (idOrText?: string | null) => {
     if (!idOrText) return "—";
     const op = operacoes.find(o => o.id === idOrText);
     if (op) return op.descricao;
@@ -578,13 +597,13 @@ export default function ComprasPage() {
   // página A4 com quebra de página entre eles.
   // ══════════════════════════════════════════════════════════════
 
-  const logoFazendaSrc = (fzId?: string): string | null => {
+  const logoFazendaSrc = (fzId?: string | null): string | null => {
     if (!fzId) return null;
     try { return localStorage.getItem(`fazenda_logo_${fzId}`); } catch { return null; }
   };
 
   const buildPaginaPedidoHtml = (
-    ped: PedidoCompra,
+    ped: RelPedidoCompra,
     itens: PedidoCompraItem[],
     nfs: NfEntrada[],
     nfItens: NfEntradaItem[],
@@ -593,7 +612,7 @@ export default function ComprasPage() {
     const faz = fazendas.find(f => f.id === ped.fazenda_id);
     const fornecedor = pessoas.find(p => p.id === ped.fornecedor_id);
     const produtor = produtores.find(p => p.id === ped.produtor_id);
-    const moeda = ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$");
+    const moeda = ped.moeda ?? "R$";
     const logo = logoFazendaSrc(ped.fazenda_id);
 
     const ehFiscal = ped.fiscal ?? false;
@@ -773,7 +792,7 @@ export default function ComprasPage() {
 </body></html>`;
 
   // Busca itens/NFs de um pedido — reaproveitado pelo PDF e pelo XLSX.
-  const dadosParaRelatorio = async (ped: PedidoCompra) => {
+  const dadosParaRelatorio = async (ped: RelPedidoCompra) => {
     const [itens, nfData] = await Promise.all([
       listarPedidoCompraItens(ped.id),
       ped.fiscal ? listarNfEntradasPorPedido(ped.id) : Promise.resolve({ nfs: [], itens: [] }),
@@ -782,7 +801,7 @@ export default function ComprasPage() {
   };
 
   // Imprime 1 pedido só — atalho da linha da tabela (sempre analítico).
-  const imprimirRelatorioPedido = async (ped: PedidoCompra) => {
+  const imprimirRelatorioPedido = async (ped: RelPedidoCompra) => {
     const { itens, nfs, nfItens } = await dadosParaRelatorio(ped);
     const pagina = buildPaginaPedidoHtml(ped, itens, nfs, nfItens, "analitico");
     const win = window.open("", "_blank");
@@ -816,7 +835,13 @@ export default function ComprasPage() {
     setModal(true);
   };
 
-  const abrirEditar = async (ped: PedidoCompra) => {
+  // Recebe só o id (vindo da grid, que lê rel_pedidos_compra — um subconjunto
+  // de exibição) e busca o registro COMPLETO fresco direto de pedidos_compra,
+  // já que o formulário de edição precisa de ~50 campos que rel_pedidos_compra
+  // nunca teve (desconto, barter, endereço de entrega, etc.).
+  const abrirEditar = async (id: string) => {
+    const ped = await buscarPedidoCompraPorId(id);
+    if (!ped) { alert("Pedido não encontrado."); return; }
     setF({
       fazenda_id: ped.fazenda_id ?? "",
       data_registro: ped.data_registro, tipo: ped.tipo ?? "Pedido Compra",
@@ -1036,6 +1061,10 @@ export default function ComprasPage() {
     setErroModal(""); setSalvando(true); setErro(null);
     let barterContratoGerado: string | null = null;
     try {
+      // Snapshot "antes" do pedido (pra comparar status/lancamento_id depois
+      // do update) — precisa ser buscado AQUI, antes de atualizarPedidoCompra
+      // rodar logo abaixo, senão já vem com os valores novos.
+      const pedidoExistenteFull = pedidoEdit ? await buscarPedidoCompraPorId(pedidoEdit) : null;
       const fidPedido = f.fazenda_id || fazendaId;
       const payload: Omit<PedidoCompra, "id" | "created_at" | "numero"> = {
         fazenda_id: fidPedido, status: f.status,
@@ -1113,7 +1142,7 @@ export default function ComprasPage() {
       await salvarPedidoCompraItens(pedidoId, fidPedido, itensSalvar);
 
       // Gera lançamento quando pedido é aprovado
-      const pedidoExistente = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit) : null;
+      const pedidoExistente = pedidoExistenteFull;
       const isBarter = f.meio_pagamento === "barter";
 
       // Se havia lançamento em R$/USD e agora é barter → excluir o lançamento incorreto
@@ -1254,7 +1283,7 @@ export default function ComprasPage() {
       }
 
       // Gera saldo em Estoque de Terceiro quando pedido passa para "aprovado" pela 1ª vez
-      const statusAnterior = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit)?.status : undefined;
+      const statusAnterior = pedidoExistenteFull?.status;
       const statusMudouParaAprovado = f.status === "aprovado" && statusAnterior !== "aprovado";
       if (statusMudouParaAprovado && itensSalvar.length > 0 && !isBarter) {
         const fornecedorNomeEt = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
@@ -1298,7 +1327,7 @@ export default function ComprasPage() {
 
   // ── Abrir modal entregas ──────────────────────────────────────
 
-  const abrirEntregas = async (ped: PedidoCompra) => {
+  const abrirEntregas = async (ped: RelPedidoCompra) => {
     const its = await listarPedidoCompraItens(ped.id);
     setModalEntrega({ pedido: ped, itens: its });
     if (ped.fiscal) {
@@ -1444,17 +1473,16 @@ export default function ComprasPage() {
   const [filtroAlerta, setFiltroAlerta] = useState<"" | "finalizando" | "ajuste">("");
 
   // ── Helpers de alerta ────────────────────────────────────────
-  const estaFinalizando = (ped: PedidoCompra) =>
+  const estaFinalizando = (ped: RelPedidoCompra) =>
     ped.status === "parcialmente_entregue" && (itensSummary[ped.id]?.pct ?? 0) >= 80;
-  const temAjuste = (ped: PedidoCompra) =>
+  const temAjuste = (ped: RelPedidoCompra) =>
     itensSummary[ped.id]?.temAjuste === true;
 
   const pedidosFiltrados = pedidos.filter(p => {
     if (filtroSafra  && p.ano_safra_id !== filtroSafra) return false;
     if (filtroStatus && p.status !== filtroStatus) return false;
     if (filtroMoeda) {
-      const moedaPed = p.meio_pagamento === "barter" ? "barter" : (p.cotacao_moeda ?? "R$");
-      if (moedaPed !== filtroMoeda) return false;
+      if ((p.moeda ?? "R$") !== filtroMoeda) return false;
     }
     if (filtroAlerta === "finalizando" && !estaFinalizando(p)) return false;
     if (filtroAlerta === "ajuste"      && !temAjuste(p))       return false;
@@ -1661,14 +1689,11 @@ export default function ComprasPage() {
                         <td style={{ padding: "6px 10px", textAlign: "center" }}>
                           {ped.meio_pagamento === "barter"
                             ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5200", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Barter</span>
-                            : <span style={{ fontSize: 11, fontWeight: 600, color: ped.cotacao_moeda === "USD" ? "#0B5394" : "#111111" }}>{ped.cotacao_moeda ?? "R$"}</span>
+                            : <span style={{ fontSize: 11, fontWeight: 600, color: ped.moeda === "USD" ? "#0B5394" : "#111111" }}>{ped.moeda ?? "R$"}</span>
                           }
                         </td>
                         <td style={{ padding: "6px 10px", textAlign: "center", fontWeight: 600, color: "#111111", fontSize: 11 }}>
-                          {(() => {
-                            const moeda = ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$");
-                            return fmtMoeda(ped.total_financeiro, moeda);
-                          })()}
+                          {fmtMoeda(ped.total_financeiro, ped.moeda ?? "R$")}
                         </td>
                         <td style={{ padding: "6px 10px", textAlign: "center" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
@@ -1690,7 +1715,7 @@ export default function ComprasPage() {
                             <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>
                               {ped.fiscal ? "NFs Vinculadas" : "Entregas"}
                             </button>
-                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped)}>Abrir</button>
+                            <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped.id)}>Abrir</button>
                             <button title="Relatório do pedido" style={{ ...btnR, fontSize: 11, padding: "4px 8px" }} onClick={() => imprimirRelatorioPedido(ped)}>🖨</button>
                             <button style={btnX} onClick={async () => {
                               try {

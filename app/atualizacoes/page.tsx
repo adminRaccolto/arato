@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-x",
+    data: "01/10/2026",
+    titulo: "Pedidos de Compra mais rápido (bastidor) — grid na tabela já pronta",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "A tela de Pedidos de Compra passou a listar/filtrar a partir de uma tabela já pronta (fornecedor, produtor, ciclo, ano safra e operação resolvidos de antemão), em vez de montar tudo na hora a cada abertura da tela. Mesma informação, mesma aparência e mesmas ações — abrir, editar, entregas, encerrar, imprimir e excluir continuam idênticos. Mudança só de bastidor, pensada pra ficar mais rápida principalmente em contas com muitos pedidos." },
+    ],
+    onde: "Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.01-w",
     data: "01/10/2026",
     titulo: "Novo: relatório de Posição de Comercialização",
