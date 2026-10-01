@@ -229,7 +229,7 @@ export default function NotasPropriasExternasPage() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Nota Própria — Outro Sistema</h1>
+            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Entrada de Nota Própria</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Documentos onde você é o emitente, mas autorizados fora do Arato (ERP antigo, sistema paralelo). Só registro — nunca gera financeiro.</p>
           </div>
           <button style={btnV} onClick={abrirWizard}>+ Nova Nota Própria</button>
@@ -297,7 +297,7 @@ export default function NotasPropriasExternasPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 760px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>
-                Nota Própria — Outro Sistema {passo === 2 ? "— Itens / Estoque" : ""}
+                Entrada de Nota Própria {passo === 2 ? "— Itens / Estoque" : ""}
               </h2>
               <button onClick={() => setWizard(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>

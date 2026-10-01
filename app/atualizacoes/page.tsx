@@ -8,12 +8,12 @@ const RELEASES = [
   {
     versao: "2026.10.01-q",
     data: "01/10/2026",
-    titulo: "Novo: Nota Própria — Outro Sistema (Fiscal)",
+    titulo: "Novo: Entrada de Nota Própria (Fiscal)",
     modulos: ["Fiscal"],
     itens: [
-      { tipo: "novo", texto: "Buraco real encontrado: todo o módulo Fiscal só cobria emissão (Arato gera e transmite a NF-e) ou entrada de fornecedor (você como destinatário) — não existia onde registrar um documento ONDE VOCÊ É O EMITENTE, mas que foi autorizado em outro sistema (ERP antigo, sistema paralelo). Ex: remessa própria emitida antes de migrar pro Arato. Nova tela em Fiscal → Nota Própria — Outro Sistema: entrada por XML, por chave de acesso (consulta a SEFAZ e traz cabeçalho + itens completos) ou manual. Pode (a) só arquivar — sem efeito automático — ou (b) também movimentar estoque (baixa de saída, com associação de item ao catálogo e escolha do depósito). Nunca gera financeiro (CP/CR) — isso ficou fora do escopo por decisão do dono." },
+      { tipo: "novo", texto: "Buraco real encontrado: todo o módulo Fiscal só cobria emissão (Arato gera e transmite a NF-e) ou entrada de fornecedor (você como destinatário) — não existia onde registrar um documento ONDE VOCÊ É O EMITENTE, mas que foi autorizado em outro sistema (ERP antigo, sistema paralelo). Ex: remessa própria emitida antes de migrar pro Arato. Nova tela em Fiscal → Entrada de Nota Própria: entrada por XML, por chave de acesso (consulta a SEFAZ e traz cabeçalho + itens completos) ou manual. Pode (a) só arquivar — sem efeito automático — ou (b) também movimentar estoque (baixa de saída, com associação de item ao catálogo e escolha do depósito). Nunca gera financeiro (CP/CR) — isso ficou fora do escopo por decisão do dono." },
     ],
-    onde: "Fiscal → Nota Própria — Outro Sistema",
+    onde: "Fiscal → Entrada de Nota Própria",
   },
   {
     versao: "2026.10.01-p",
