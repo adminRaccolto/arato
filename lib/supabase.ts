@@ -388,6 +388,7 @@ export type PagamentoLoteItem = {
   id: string;
   lote_id: string;
   lancamento_id: string;
+  origem_tabela?: "lancamentos" | "empresa_lancamentos"; // default 'lancamentos' (compat com lotes antigos, produtor-only)
   valor_pago: number;
   valor_multa?: number;
   valor_juros?: number;

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-u",
+    data: "01/10/2026",
+    titulo: "Criar Borderô de volta no CP/CR unificado — Produtor e Empresa no mesmo lote",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "O \"Criar Borderô\" que existia na tela antiga de Contas a Pagar do produtor volta — agora em Contas a Pagar e Contas a Receber, e aceitando Produtor e Empresa no mesmo borderô (antes só funcionava com produtor). Selecione os títulos (mesma caixinha do Baixar em Lote), clique em \"📋 Criar Borderô\": agrupa tudo sem baixar nada ainda — fica como \"Borderô Pendente\" num painel no topo da lista. Quando for pagar/receber de verdade, clique em \"✅ Confirmar Pagamento/Recebimento\", informe data e conta bancária únicas, e todos os títulos do borderô são baixados de uma vez. \"Ver Itens\" mostra o conteúdo do borderô; \"✕ Cancelar\" desfaz (os títulos voltam soltos, sem baixar nada)." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.01-t",
     data: "01/10/2026",
     titulo: "Baixar em Lote agora também no Contas a Receber unificado",

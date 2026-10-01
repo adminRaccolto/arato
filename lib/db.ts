@@ -1042,6 +1042,10 @@ export async function reabrirLancamentos(ids: string[]): Promise<void> {
  * Cria um borderô pendente (agrupa títulos sem baixa) ou já pago (baixa imediata).
  * status='pendente' → só vincula lote_id nos lançamentos, sem baixar.
  * status='pago'     → comportamento original: baixa tudo de uma vez.
+ *
+ * Unificado 01/10/2026 pra aceitar itens de Produtor (lancamentos) e de
+ * Empresa (empresa_lancamentos) no mesmo borderô — cada item carrega sua
+ * origem_tabela e a baixa/vínculo é roteado pra tabela certa.
  */
 export async function criarPagamentoLote(
   fazenda_id: string,
@@ -1051,7 +1055,7 @@ export async function criarPagamentoLote(
   descricao: string,
   // valor_pago aqui é o valor DESTA baixa (será acumulado ao que já foi pago,
   // igual à baixa individual) — não o valor final do título.
-  itens: { lancamento_id: string; valor_pago: number; valor_multa?: number; valor_juros?: number; valor_desconto?: number }[],
+  itens: { lancamento_id: string; origem_tabela?: "lancamentos" | "empresa_lancamentos"; valor_pago: number; valor_multa?: number; valor_juros?: number; valor_desconto?: number }[],
   status: "pendente" | "pago" = "pago",
 ): Promise<import("./supabase").PagamentoLote> {
   const valor_total = itens.reduce((s, i) => s + i.valor_pago, 0);
@@ -1066,11 +1070,14 @@ export async function criarPagamentoLote(
 
   // 2. Cria os itens do lote
   const rows = itens.map(i => ({
-    lote_id: lote.id, lancamento_id: i.lancamento_id, valor_pago: i.valor_pago,
+    lote_id: lote.id, lancamento_id: i.lancamento_id, origem_tabela: i.origem_tabela ?? "lancamentos", valor_pago: i.valor_pago,
     valor_multa: i.valor_multa || null, valor_juros: i.valor_juros || null, valor_desconto: i.valor_desconto || null,
   }));
   const { error: ie } = await supabase.from("pagamento_lote_itens").insert(rows);
   if (ie) throw ie;
+
+  const itensProd = itens.filter(i => (i.origem_tabela ?? "lancamentos") === "lancamentos");
+  const itensEmp  = itens.filter(i => i.origem_tabela === "empresa_lancamentos");
 
   if (status === "pago") {
     // 3. Baixa cada lançamento — acumula sobre o que já tinha sido pago (um
@@ -1078,25 +1085,28 @@ export async function criarPagamentoLote(
     // anterior sobrescrito) e decide baixado/parcial com a mesma regra da
     // baixa individual (/api/financeiro/baixar), agora considerando também
     // o desconto informado por item.
-    const ids = itens.map(i => i.lancamento_id);
-    const { data: atuais } = await supabase
-      .from("lancamentos")
-      .select("id, valor, cotacao_usd, moeda, valor_pago")
-      .in("id", ids);
-    const mapaAtual = new Map((atuais ?? []).map(l => [l.id as string, l]));
+    const [atuaisProd, atuaisEmp] = await Promise.all([
+      itensProd.length ? supabase.from("lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago").in("id", itensProd.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      itensEmp.length  ? supabase.from("empresa_lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago").in("id", itensEmp.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    ]);
+    const mapaProd = new Map((atuaisProd.data ?? []).map(l => [l.id as string, l]));
+    const mapaEmp  = new Map((atuaisEmp.data ?? []).map(l => [l.id as string, l]));
 
     for (const item of itens) {
-      const at        = mapaAtual.get(item.lancamento_id);
+      const origem = item.origem_tabela ?? "lancamentos";
+      const at        = (origem === "lancamentos" ? mapaProd : mapaEmp).get(item.lancamento_id);
       const cotacao    = (at?.cotacao_usd as number | null) ?? 5.12;
-      const valorTotal = at?.moeda === "USD" ? (at.valor ?? 0) * cotacao : (at?.valor ?? 0);
+      const valorTotal = at?.moeda === "USD" ? ((at?.valor as number | null) ?? 0) * cotacao : ((at?.valor as number | null) ?? 0);
       const jaPago     = (at?.valor_pago as number | null) ?? 0;
       const novoTotal  = jaPago + item.valor_pago;
       const desconto   = item.valor_desconto ?? 0;
-      const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? "baixado" : "parcial";
+      const statusBaixado = origem === "lancamentos" ? "baixado" : "pago";
+      const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? statusBaixado : "parcial";
+      const campoData = origem === "lancamentos" ? "data_baixa" : "data_pagamento";
       const { error: be } = await supabase
-        .from("lancamentos")
+        .from(origem)
         .update({
-          status: novoStatus, valor_pago: novoTotal, data_baixa: data_pagamento, conta_bancaria, lote_id: lote.id,
+          status: novoStatus, valor_pago: novoTotal, [campoData]: data_pagamento, conta_bancaria, lote_id: lote.id,
           valor_multa: item.valor_multa || null, valor_juros: item.valor_juros || null, valor_desconto: item.valor_desconto || null,
         })
         .eq("id", item.lancamento_id);
@@ -1105,8 +1115,9 @@ export async function criarPagamentoLote(
   } else {
     // 3. Apenas vincula o lote_id sem mudar status
     for (const item of itens) {
+      const origem = item.origem_tabela ?? "lancamentos";
       const { error: be } = await supabase
-        .from("lancamentos")
+        .from(origem)
         .update({ lote_id: lote.id })
         .eq("id", item.lancamento_id);
       if (be) throw be;
@@ -1154,12 +1165,20 @@ export async function estornarBordero(lote_id: string): Promise<void> {
   await chamarBorderoAcao({ acao: "estornar", lote_id });
 }
 
-/** Lista borderôs já pagos/confirmados de um conjunto de fazendas. */
+/**
+ * Lista borderôs já pagos/confirmados de um conjunto de fazendas.
+ * O embed `lancamento:lancamentos(...)` saiu em 01/10/2026 — desde que o
+ * borderô passou a aceitar itens de empresa_lancamentos também, a FK rígida
+ * pagamento_lote_itens.lancamento_id → lancamentos(id) foi derrubada (um
+ * item de empresa não existe em lancamentos), então o embed não tem mais
+ * como resolver. Pra detalhe dos itens (descrição, pessoa, etc.) use
+ * rel_lancamentos filtrado por lote_id — já traz os dois casos.
+ */
 export async function listarBorderosPagos(fazenda_ids: string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
   if (!fazenda_ids.length) return [];
   const { data, error } = await supabase
     .from("pagamento_lotes")
-    .select("*, itens:pagamento_lote_itens(*, lancamento:lancamentos(numero, descricao, pessoa_id, valor, data_vencimento, categoria))")
+    .select("*, itens:pagamento_lote_itens(*)")
     .in("fazenda_id", fazenda_ids)
     .eq("tipo", tipo)
     .eq("status", "pago")
@@ -1179,12 +1198,12 @@ export async function listarPagamentoLotes(fazenda_id: string, tipo: "pagar" | "
   return data ?? [];
 }
 
-/** Lista borderôs pendentes de um conjunto de fazendas. */
+/** Lista borderôs pendentes de um conjunto de fazendas (ver nota de listarBorderosPagos sobre o embed removido). */
 export async function listarBorderosPendentes(fazenda_ids: string[], tipo: "pagar" | "receber"): Promise<import("./supabase").PagamentoLote[]> {
   if (!fazenda_ids.length) return [];
   const { data, error } = await supabase
     .from("pagamento_lotes")
-    .select("*, itens:pagamento_lote_itens(*, lancamento:lancamentos(numero, descricao, pessoa_id))")
+    .select("*, itens:pagamento_lote_itens(*)")
     .in("fazenda_id", fazenda_ids)
     .eq("tipo", tipo)
     .eq("status", "pendente")

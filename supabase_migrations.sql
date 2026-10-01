@@ -15016,3 +15016,102 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON notas_proprias_externas, notas_proprias_
 ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS nota_propria_externa_id uuid;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 317 — Borderô unificado: pagamento_lote_itens aceita também
+-- empresa_lancamentos. Pedido do dono 01/10/2026: "Criar Borderô" no CP/CR
+-- unificado, cobrindo Produtor e Empresa juntos.
+--
+-- pagamento_lote_itens.lancamento_id tinha FK rígida pra lancamentos(id) —
+-- impossível apontar pra empresa_lancamentos sem isso. Solução: derruba a FK
+-- (o vínculo passa a ser garantido só pela aplicação, igual já acontece em
+-- rel_lancamentos) e adiciona origem_tabela pra saber qual tabela consultar.
+-- empresa_lancamentos ganha lote_id (lancamentos já tinha, desde a Migration
+-- 51 original).
+-- ═══════════════════════════════════════════════════════════════════════════
+ALTER TABLE pagamento_lote_itens DROP CONSTRAINT IF EXISTS pagamento_lote_itens_lancamento_id_fkey;
+ALTER TABLE pagamento_lote_itens
+  ADD COLUMN IF NOT EXISTS origem_tabela text NOT NULL DEFAULT 'lancamentos'
+    CHECK (origem_tabela IN ('lancamentos','empresa_lancamentos'));
+
+ALTER TABLE empresa_lancamentos
+  ADD COLUMN IF NOT EXISTS lote_id uuid REFERENCES pagamento_lotes(id) ON DELETE SET NULL;
+
+-- fn_recalc_rel_lancamento_empresa recriada: antes gravava lote_id sempre
+-- NULL (empresa_lancamentos não tinha a coluna ainda) e o UPDATE do
+-- ON CONFLICT nem tentava atualizá-lo depois — agora lê e propaga de verdade,
+-- igual a função do produtor já fazia.
+CREATE OR REPLACE FUNCTION fn_recalc_rel_lancamento_empresa(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v            empresa_lancamentos%ROWTYPE;
+  v_conta_id   uuid;
+  v_emp_nome   text;
+  v_pes_nome   text;
+  v_cc_nome    text;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM empresa_lancamentos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_lancamentos WHERE id = p_id AND origem_tabela = 'empresa_lancamentos';
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  SELECT nome INTO v_emp_nome FROM empresas WHERE id = v.empresa_id;
+  SELECT nome INTO v_pes_nome FROM pessoas  WHERE id = v.pessoa_id;
+  v_cc_nome := v.centro_custo;
+
+  v_status_norm := CASE v.status
+    WHEN 'pago'      THEN 'baixado'
+    WHEN 'cancelado' THEN 'cancelado'
+    WHEN 'parcial'   THEN 'parcial'
+    ELSE 'em_aberto'
+  END;
+
+  INSERT INTO rel_lancamentos (
+    id, origem_tabela, fazenda_id, conta_id, empresa_id, empresa_nome, produtor_id, produtor_nome,
+    tipo, descricao, categoria, valor, valor_pago, valor_multa, valor_juros, valor_desconto, moeda,
+    status_origem, status_normalizado, data_lancamento, data_vencimento, data_baixa,
+    pessoa_id, pessoa_nome, conta_bancaria, centro_custo_id, centro_custo_nome,
+    ano_safra_id, ano_safra_descricao, ciclo_id, ciclo_descricao,
+    operacao_gerencial_id, operacao_gerencial_nome, vinculo_atividade, entidade_contabil,
+    origem_lancamento, numero_documento, observacao, conciliado, lote_id, updated_at
+  ) VALUES (
+    v.id, 'empresa_lancamentos', v.fazenda_id, v_conta_id, v.empresa_id, v_emp_nome, NULL, NULL,
+    v.tipo, v.descricao, v.categoria, v.valor, v.valor_pago, v.valor_multa, v.valor_juros, v.valor_desconto, v.moeda,
+    v.status, v_status_norm, NULL, v.data_vencimento, v.data_pagamento,
+    v.pessoa_id, v_pes_nome, v.conta_bancaria, NULL, v_cc_nome,
+    NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL,
+    v.origem, v.numero_documento, v.observacao, v.conciliado, v.lote_id, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id,
+    empresa_id = EXCLUDED.empresa_id, empresa_nome = EXCLUDED.empresa_nome,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome,
+    tipo = EXCLUDED.tipo, descricao = EXCLUDED.descricao, categoria = EXCLUDED.categoria,
+    valor = EXCLUDED.valor, valor_pago = EXCLUDED.valor_pago, valor_multa = EXCLUDED.valor_multa,
+    valor_juros = EXCLUDED.valor_juros, valor_desconto = EXCLUDED.valor_desconto, moeda = EXCLUDED.moeda,
+    status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    data_lancamento = EXCLUDED.data_lancamento, data_vencimento = EXCLUDED.data_vencimento, data_baixa = EXCLUDED.data_baixa,
+    pessoa_id = EXCLUDED.pessoa_id, pessoa_nome = EXCLUDED.pessoa_nome, conta_bancaria = EXCLUDED.conta_bancaria,
+    centro_custo_id = EXCLUDED.centro_custo_id, centro_custo_nome = EXCLUDED.centro_custo_nome,
+    origem_lancamento = EXCLUDED.origem_lancamento, numero_documento = EXCLUDED.numero_documento,
+    observacao = EXCLUDED.observacao, conciliado = EXCLUDED.conciliado, lote_id = EXCLUDED.lote_id,
+    updated_at = now();
+END;
+$$;
+
+-- Backfill: recalcula todas as linhas de empresa_lancamentos pra propagar o
+-- lote_id de quem já tinha sido baixado em borderô antes desta migration
+-- (não deveria existir nenhum caso real ainda, mas é seguro e barato repetir).
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM empresa_lancamentos LOOP
+    PERFORM fn_recalc_rel_lancamento_empresa(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
