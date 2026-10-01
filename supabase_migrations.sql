@@ -15555,3 +15555,224 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 321 — rel_documentos_fiscais: FASE 1 de unificar NF de Produtos +
+-- NF de Serviços + CT-e numa única tela. Pedido do dono 01/10/2026.
+--
+-- Fase 1 (esta seção) é só a tabela de LEITURA física (trigger-sync das 3
+-- tabelas), pra validar a listagem unificada (ordenada por data, filtro por
+-- tipo) como piloto antes de qualquer mudança de tela. As 3 telas de edição
+-- (NF de Produtos, NF de Serviços, CT-e) continuam 100% intocadas nesta
+-- fase — nada de escrita muda, nenhum fluxo de SEFAZ/estoque/financeiro é
+-- tocado. A Fase 2 (depois, por tipo) é que vai encaixar os wizards de cada
+-- tela como modal dentro da tela unificada, sem perder nenhuma lógica.
+--
+-- Normalização de vocabulário de status (cada tabela usa um conjunto
+-- diferente hoje):
+--   nf_entradas: pendente | processada | cancelada
+--   nf_servicos: pendente | processada
+--   ctes:        autorizado | cancelado
+-- → rel_documentos_fiscais.status_normalizado: pendente | processada | cancelada
+-- (status_origem guarda o valor cru original, sem perder nada)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS rel_documentos_fiscais (
+  id                  uuid PRIMARY KEY,
+  origem_tabela       text NOT NULL,  -- 'nf_entradas' | 'nf_servicos' | 'ctes'
+  tipo_doc            text NOT NULL,  -- 'NF' | 'NFS' | 'CTE' (rótulo de exibição)
+  fazenda_id          uuid,
+  conta_id            uuid,
+  numero              text,
+  serie               text,
+  chave               text,
+  data_doc            date,           -- data de emissão/prestação, normalizada p/ ordenação única
+  participante_nome   text,           -- emitente (NF) | prestador (NFS) | emitente (CT-e)
+  participante_cnpj   text,
+  valor_total         numeric,        -- valor_total (NF) | valor_servico (NFS) | valor_frete (CT-e)
+  status_origem       text,
+  status_normalizado  text,           -- pendente | processada | cancelada
+  cfop                text,
+  natureza_operacao   text,
+  observacao          text,
+  lancamento_id       uuid,
+  created_at          timestamptz,
+  updated_at          timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rel_doc_fiscais_conta    ON rel_documentos_fiscais(conta_id);
+CREATE INDEX IF NOT EXISTS idx_rel_doc_fiscais_fazenda   ON rel_documentos_fiscais(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_rel_doc_fiscais_tipo      ON rel_documentos_fiscais(tipo_doc);
+CREATE INDEX IF NOT EXISTS idx_rel_doc_fiscais_status    ON rel_documentos_fiscais(status_normalizado);
+CREATE INDEX IF NOT EXISTS idx_rel_doc_fiscais_data      ON rel_documentos_fiscais(data_doc);
+CREATE INDEX IF NOT EXISTS idx_rel_doc_fiscais_origem    ON rel_documentos_fiscais(origem_tabela);
+
+ALTER TABLE rel_documentos_fiscais ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "allow_all_rel_documentos_fiscais" ON rel_documentos_fiscais;
+CREATE POLICY "allow_all_rel_documentos_fiscais" ON rel_documentos_fiscais
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+GRANT SELECT ON rel_documentos_fiscais TO authenticated, anon;
+
+-- ── NF de Produtos (nf_entradas) ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_nf(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v          nf_entradas%ROWTYPE;
+  v_conta_id uuid;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM nf_entradas WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'nf_entradas';
+    RETURN;
+  END IF;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  v_status_norm := CASE v.status WHEN 'cancelada' THEN 'cancelada' WHEN 'processada' THEN 'processada' ELSE 'pendente' END;
+
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at
+  ) VALUES (
+    v.id, 'nf_entradas', 'NF', v.fazenda_id, v_conta_id, v.numero, v.serie, v.chave_acesso, v.data_emissao,
+    v.emitente_nome, v.emitente_cnpj, v.valor_total, v.status, v_status_norm,
+    v.cfop, v.natureza, v.observacao, v.lancamento_id, v.created_at, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_doc_fiscal_nf() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = OLD.id AND origem_tabela = 'nf_entradas';
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_doc_fiscal_nf(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_doc_fiscal_nf ON nf_entradas;
+CREATE TRIGGER trg_rel_doc_fiscal_nf
+AFTER INSERT OR UPDATE OR DELETE ON nf_entradas
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_doc_fiscal_nf();
+
+-- ── NF de Serviços (nf_servicos) ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_nfs(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v          nf_servicos%ROWTYPE;
+  v_conta_id uuid;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM nf_servicos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'nf_servicos';
+    RETURN;
+  END IF;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  v_status_norm := CASE v.status WHEN 'processada' THEN 'processada' ELSE 'pendente' END;
+
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at
+  ) VALUES (
+    v.id, 'nf_servicos', 'NFS', v.fazenda_id, v_conta_id, v.numero_nf, v.serie, v.chave_nfse, v.data_prestacao,
+    v.prestador_nome, v.prestador_cnpj, v.valor_servico, v.status, v_status_norm,
+    NULL, v.discriminacao, v.observacao, v.lancamento_id, v.created_at, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_doc_fiscal_nfs() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = OLD.id AND origem_tabela = 'nf_servicos';
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_doc_fiscal_nfs(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_doc_fiscal_nfs ON nf_servicos;
+CREATE TRIGGER trg_rel_doc_fiscal_nfs
+AFTER INSERT OR UPDATE OR DELETE ON nf_servicos
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_doc_fiscal_nfs();
+
+-- ── CT-e (ctes) ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_cte(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v          ctes%ROWTYPE;
+  v_conta_id uuid;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM ctes WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'ctes';
+    RETURN;
+  END IF;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  v_status_norm := CASE v.status WHEN 'cancelado' THEN 'cancelada' WHEN 'autorizado' THEN 'processada' ELSE 'pendente' END;
+
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at
+  ) VALUES (
+    v.id, 'ctes', 'CTE', v.fazenda_id, v_conta_id, v.numero_cte, v.serie, v.chave_acesso, v.data_emissao,
+    v.emitente_razao_social, v.emitente_cnpj, v.valor_frete, v.status, v_status_norm,
+    v.cfop, v.natureza_operacao, v.observacao, NULL, v.created_at, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION trg_fn_rel_doc_fiscal_cte() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = OLD.id AND origem_tabela = 'ctes';
+    RETURN OLD;
+  END IF;
+  PERFORM fn_recalc_rel_doc_fiscal_cte(NEW.id);
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_rel_doc_fiscal_cte ON ctes;
+CREATE TRIGGER trg_rel_doc_fiscal_cte
+AFTER INSERT OR UPDATE OR DELETE ON ctes
+FOR EACH ROW EXECUTE FUNCTION trg_fn_rel_doc_fiscal_cte();
+
+-- Backfill — ~7.660 linhas no total (4051+3590+17), loop linha a linha é o
+-- mesmo padrão já usado nos domínios anteriores.
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM nf_entradas LOOP PERFORM fn_recalc_rel_doc_fiscal_nf(r.id); END LOOP;
+  FOR r IN SELECT id FROM nf_servicos LOOP PERFORM fn_recalc_rel_doc_fiscal_nfs(r.id); END LOOP;
+  FOR r IN SELECT id FROM ctes        LOOP PERFORM fn_recalc_rel_doc_fiscal_cte(r.id); END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
