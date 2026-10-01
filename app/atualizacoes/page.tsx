@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.01-h",
+    data: "01/10/2026",
+    titulo: "Relatório de Pedidos: filtro agora consulta a tabela rel_pedidos_compra (trigger-sync)",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "O popup do \"Relatório de Pedidos\" passou a decidir quais pedidos entram no relatório consultando a tabela rel_pedidos_compra (a mesma validada no piloto) em vez de filtrar só em memória — primeiro uso real dessa tabela fora do piloto. Se por algum motivo a consulta falhar (ex: a conta ainda não rodou as migrations da tabela), cai automaticamente pro filtro local de antes, sem quebrar o relatório — o usuário nem percebe a diferença, só quem acompanha o console do navegador vê qual caminho foi usado." },
+    ],
+    onde: "Compras → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.01-g",
     data: "01/10/2026",
     titulo: "Relatório de Pedidos: popup de filtro completo, Sintético/Analítico e emissão PDF ou XLSX",

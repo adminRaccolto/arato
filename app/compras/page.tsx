@@ -1526,7 +1526,8 @@ export default function ComprasPage() {
   const [relGerando,         setRelGerando]         = useState(false);
   const [relErro,            setRelErro]            = useState("");
 
-  const pedidosFiltradosParaRelatorio = () => pedidos.filter(p => {
+  // Filtro local (fallback) — filtra o array `pedidos` já carregado em memória.
+  const pedidosFiltradosParaRelatorioLocal = () => pedidos.filter(p => {
     if (relFiltroForn && p.fornecedor_id !== relFiltroForn) return false;
     if (relFiltroNrPedForn.trim() && !(p.nr_pedido_fornecedor ?? "").toLowerCase().includes(relFiltroNrPedForn.trim().toLowerCase())) return false;
     if (relFiltroStatus.size > 0 && !relFiltroStatus.has(p.status)) return false;
@@ -1535,6 +1536,33 @@ export default function ComprasPage() {
     if (relFiltroDataAte && p.data_registro > relFiltroDataAte) return false;
     return true;
   });
+
+  // Filtro via rel_pedidos_compra (tabela de leitura trigger-sync, piloto validado
+  // em /compras/pedidos-rel-piloto) — a consulta em si roda no banco, com os
+  // mesmos critérios; o resultado (ids) é cruzado com o array `pedidos` já
+  // carregado (mesma conta) pra obter os objetos completos usados no render.
+  // Se a tabela ainda não existir nesse ambiente (Seções 310/311 não rodadas)
+  // ou a consulta falhar por qualquer motivo, cai pro filtro local — o
+  // relatório nunca para de funcionar por causa do piloto.
+  const pedidosFiltradosParaRelatorio = async (): Promise<{ alvo: PedidoCompra[]; origem: "rel_table" | "local" }> => {
+    try {
+      const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+      let q = supabase.from("rel_pedidos_compra").select("id");
+      q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
+      if (relFiltroForn) q = q.eq("fornecedor_id", relFiltroForn);
+      if (relFiltroNrPedForn.trim()) q = q.ilike("nr_pedido_fornecedor", `%${relFiltroNrPedForn.trim()}%`);
+      if (relFiltroStatus.size > 0) q = q.in("status", Array.from(relFiltroStatus));
+      if (relFiltroAnoSafra) q = q.eq("ano_safra_id", relFiltroAnoSafra);
+      if (relFiltroDataDe)  q = q.gte("data_registro", relFiltroDataDe);
+      if (relFiltroDataAte) q = q.lte("data_registro", relFiltroDataAte);
+      const { data, error } = await q;
+      if (error) throw error;
+      const ids = new Set((data ?? []).map(r => r.id as string));
+      return { alvo: pedidos.filter(p => ids.has(p.id)), origem: "rel_table" };
+    } catch {
+      return { alvo: pedidosFiltradosParaRelatorioLocal(), origem: "local" };
+    }
+  };
 
   const tituloRelatorio = (qtd: number) => {
     const partes: string[] = [];
@@ -1548,10 +1576,11 @@ export default function ComprasPage() {
   // pronta pra imprimir; XLSX baixa o arquivo.
   const gerarRelatorioPopup = async () => {
     setRelErro("");
-    const alvo = pedidosFiltradosParaRelatorio();
-    if (alvo.length === 0) { setRelErro("Nenhum pedido encontrado para esse filtro."); return; }
     setRelGerando(true);
     try {
+      const { alvo, origem } = await pedidosFiltradosParaRelatorio();
+      if (alvo.length === 0) { setRelErro("Nenhum pedido encontrado para esse filtro."); return; }
+      console.info(`[Relatório de Pedidos] filtro resolvido via ${origem === "rel_table" ? "rel_pedidos_compra (tabela de leitura)" : "filtro local (fallback)"} — ${alvo.length} pedido(s)`);
       const titulo = tituloRelatorio(alvo.length);
       if (relFiltroFormato === "pdf") await gerarRelatorioPdf(alvo, relFiltroTipo, titulo);
       else await gerarRelatorioXlsx(alvo, relFiltroTipo, titulo);
@@ -3206,7 +3235,7 @@ export default function ComprasPage() {
             )}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-              <span style={{ fontSize: 11, color: "var(--text-2)" }}>{pedidosFiltradosParaRelatorio().length} pedido(s) no filtro atual</span>
+              <span style={{ fontSize: 11, color: "var(--text-2)" }}>{pedidosFiltradosParaRelatorioLocal().length} pedido(s) no filtro atual</span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setModalRelatorioFiltro(false)} style={btnR}>Cancelar</button>
                 <button onClick={gerarRelatorioPopup} disabled={relGerando} style={{ ...btnV, opacity: relGerando ? 0.6 : 1 }}>
