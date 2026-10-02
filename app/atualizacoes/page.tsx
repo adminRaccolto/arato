@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-n",
+    data: "02/10/2026",
+    titulo: "Campo de NCM no cadastro de Itens Gerais",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "novo", texto: "Cadastros → Insumos → aba Itens Gerais (peças, materiais, uso/consumo, escritório, outros) ganhou o campo NCM — o cadastro de Insumos agrícolas já tinha esse campo desde antes, faltava só em Itens Gerais." },
+    ],
+    onde: "Cadastros → Insumos → Itens Gerais",
+  },
+  {
     versao: "2026.10.02-m",
     data: "02/10/2026",
     titulo: "Documentos Fiscais: grid reformulado e popup de detalhe + ações",

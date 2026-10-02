@@ -5503,7 +5503,7 @@ function CadastrosInner() {
               setEditIns(ins ?? null);
               setFIns(ins ? {
                 nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
-                cultura_id: "", ncm: "",
+                cultura_id: "", ncm: ins.ncm ?? "",
                 unidade: ins.unidade, fabricante: ins.fabricante ?? "",
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
@@ -5531,6 +5531,7 @@ function CadastrosInner() {
                   deposito_id: fIns.deposito_id || undefined,
                   numero_serie: fIns.numero_serie || undefined,
                   foto_url: fIns.foto_url || undefined,
+                  ncm: fIns.ncm.trim() || undefined,
                   tipo: "produto",
                 };
                 if (editIns) {
@@ -5670,6 +5671,10 @@ function CadastrosInner() {
                       <div>
                         <label style={lbl}>Fabricante / Marca</label>
                         <input style={inp} placeholder="Ex: Bosch, 3M" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>NCM</label>
+                        <input style={inp} value={fIns.ncm} onChange={e => setFIns(p => ({ ...p, ncm: e.target.value }))} placeholder="Ex: 8421.23.00" maxLength={12} />
                       </div>
                       <div>
                         <label style={lbl}>Estoque atual</label>
