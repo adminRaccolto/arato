@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-i",
+    data: "02/10/2026",
+    titulo: "Novo Lançamento de CP/CR reconstruído por completo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "O modal \"+ Novo Lançamento\" de Contas a Pagar e Contas a Receber foi reconstruído por completo, fiel ao modal antigo. Produtor ganhou de volta: Operação Gerencial obrigatória (com preview débito/crédito e opção de salvar como regra de classificação automática por fornecedor/cliente), seleção em cascata Produtor → Fazenda → Safra → Ciclo, Nº Documento/Série/Tipo de Documento (LCDPR), Entidade Contábil, Forma de Pagamento + Conta, moeda BRL/USD/Barter, Natureza Real/Previsão, Condição de Pagamento (À Vista, Parcelado com grade editável de vencimento e valor por parcela, ou Recorrência), abas Principal/Adicionais, e alerta ao detectar documento duplicado pro mesmo fornecedor. Empresa manteve os campos que sempre teve (Categoria, Competência, Forma de Pagamento, Conta, Nº Documento) — empresa_lancamentos nunca teve OG/safra/ciclo/parcelamento no banco." },
+      { tipo: "aviso", texto: "Ficaram de fora desta reconstrução (subsistemas próprios, maiores que o modal): Mão de Obra/Veículo vinculado, Cartão de Crédito, upload de NF pro Storage + anexos múltiplos, conciliação OFX no modal, vínculo manual de NF duplicada. Avise se algum fizer falta no dia a dia." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → + Novo Lançamento",
+  },
+  {
     versao: "2026.10.02-h",
     data: "02/10/2026",
     titulo: "DRE por Empresa mudou de menu",

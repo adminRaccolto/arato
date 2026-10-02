@@ -38,9 +38,14 @@ import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, listarContas, listarContasPorEmpresa,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
+  listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
 } from "../../../lib/db";
-import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote } from "../../../lib/supabase";
+import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
+import SelectBusca from "../../../components/SelectBusca";
+import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 
 type RelLancamento = {
   id: string;
@@ -105,6 +110,42 @@ const ORIGEM_LANC_LABEL: Record<string, string> = {
   compra_terra: "Compra de Terra", nf_servico: "NF de Serviço", seguro: "Seguro",
   folha: "Folha de Pagamento", nf_entrada_empresa: "NF de Entrada",
 };
+
+const FORMAS_PAGAMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
+const CATS_CP = [
+  "Insumos — Sementes", "Insumos — Fertilizantes", "Insumos — Defensivos",
+  "Insumos — Inoculantes", "Combustível — Compra para Estoque", "Combustível — Consumo Direto",
+  "Serviços Agrícolas", "Fretes e Transportes", "Arrendamento de Terra",
+  "Manutenção de Máquinas", "Impostos", "Juros e IOF", "Pagamento de Custeio",
+  "Pagamento de Financiamento", "Pagamento de Empréstimo", "Prêmio de Seguro",
+  "Consórcio — A Contemplar", "Consórcio — Contemplado", "Despesas Administrativas", "Outros",
+];
+// Deriva a categoria legada a partir do código da Operação Gerencial — mesma
+// lógica da tela antiga, pra manter o campo "categoria" (usado em telas
+// legadas/relatórios) coerente com a OG escolhida.
+function derivarCategoriaDespesa(classificacao: string): string {
+  const c = classificacao ?? "";
+  if (c.startsWith("2.01.01.01"))     return "Insumos";
+  if (c.startsWith("2.01.01.02.099")) return "Combustível — Consumo Direto";
+  if (c.startsWith("2.01.01.02"))     return "Combustível — Compra para Estoque";
+  if (c.startsWith("2.01.01.03.002")) return "Manutenção de Veículos";
+  if (c.startsWith("2.01.01.03"))     return "Manutenção de Máquinas";
+  if (c.startsWith("2.01.01.04.001")) return "Arrendamento de Terra";
+  if (c.startsWith("2.01.01.04"))     return "Serviços Agrícolas";
+  if (c.startsWith("2.01.01.05"))     return "Serviços Agrícolas";
+  if (c.startsWith("2.01.01.07"))     return "Fretes e Transportes";
+  if (c.startsWith("2.01.01.08"))     return "Serviços Agrícolas";
+  if (c.startsWith("2.01.01.10"))     return "Mão de Obra";
+  if (c.startsWith("2.01.02.01.04"))  return "Impostos";
+  if (c.startsWith("2.01.02"))        return "Despesas Administrativas";
+  if (c.startsWith("2.02.01.02"))     return "Pagamento de Custeio";
+  if (c.startsWith("2.02.01.01"))     return "Tarifas Bancárias";
+  if (c.startsWith("2.02.01.03"))     return "Juros e IOF";
+  if (c.startsWith("2.03.03"))        return "Prêmio de Seguro";
+  if (c.startsWith("2.03."))          return "Patrimônio / Imobilizado";
+  if (c.startsWith("1.01.01.05"))     return "Impostos";
+  return "Outros";
+}
 
 const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff" };
 const lblMini: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.03em" };
@@ -340,49 +381,185 @@ export default function ContasAPagarPage() {
   }
 
   // ── Novo Lançamento (criar) ───────────────────────────────────
+  // Reconstruído 02/10/2026 fiel ao modal antigo (page.legado.tsx), a pedido
+  // do dono: "a tela de Nova CP/CR deveria ser a mesma que tínhamos antes".
+  // Fiel pro lado Produtor (tabela lancamentos, que sempre teve esses campos
+  // todos): OG obrigatória com preview débito/crédito + regra de
+  // classificação automática, cascata Produtor/Fazenda/Safra/Ciclo, Nº
+  // Documento/Série/Tipo Doc LCDPR, Entidade Contábil, Forma de Pagamento +
+  // Conta, moeda BRL/USD/barter, Condição de Pagamento (À Vista/Parcelado
+  // com grade editável/Recorrência). Lado Empresa fica fiel ao que
+  // app/empresas/pagar/page.tsx (também legado, nunca teve esses campos —
+  // empresa_lancamentos não tem OG/safra/ciclo/parcelamento no schema):
+  // Empresa, Descrição, Categoria, Competência, Valor, Vencimento,
+  // Fornecedor, Centro de Custo (texto), Forma de Pagamento, Conta, Nº
+  // Documento, Observação.
+  // Deliberadamente fora desta reconstrução (subsistemas próprios, maiores
+  // que o modal em si): Mão de Obra/Veículo vinculado, Cartão de Crédito,
+  // upload de NF pro Storage + anexos múltiplos, conciliação OFX, alerta de
+  // NF duplicada com vínculo manual — avisar o dono se algum fizer falta.
   const NOVO_VAZIO = {
     origem: "lancamentos" as "lancamentos" | "empresa_lancamentos",
-    empresa_id: "", pessoa_id: "", descricao: "", categoria: "",
-    valor: "", moeda: "BRL" as "BRL" | "USD", data_vencimento: "",
+    natureza: "real" as "real" | "previsao",
+    moeda: "BRL" as "BRL" | "USD" | "barter",
+    empresa_id: "", pessoa_id: "", descricao: "", categoria: CATS_CP[0],
+    data_vencimento: "", valor: 0, cotacao_usd: 5.12,
+    sacas: 0, cultura_barter: "soja", preco_saca_barter: 120,
     centro_custo_id: "", centro_custo_texto: "", observacao: "",
+    condicao: "avista" as "avista" | "prazo" | "recorrencia",
+    qtd_parcelas: 2, frequencia: 1,
+    tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
+    numero_documento: "", serie: "",
+    entidade_contabil: "" as "" | "pf" | "pj",
+    operacao_gerencial_id: "",
+    forma_pagamento: "PIX",
+    conta_pagamento: "",
+    competencia: "",
   };
+  type ParcelaGrid = { data: string; valor: number };
   const [modalNovo, setModalNovo] = useState(false);
+  const [novoTab,   setNovoTab]   = useState<"principal" | "adicionais">("principal");
   const [novoForm,  setNovoForm]  = useState(NOVO_VAZIO);
   const [erroNovo,  setErroNovo]  = useState("");
+  const [cascadeNovo, setCascadeNovo] = useState<Partial<CascadeValues>>({});
+  const [parcelasNovo, setParcelasNovo] = useState<ParcelaGrid[]>([]);
+  const [salvarComoRegra, setSalvarComoRegra] = useState(false);
+  const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
+  const [contasNovo, setContasNovo] = useState<ContaBancaria[]>([]);
+
+  useEffect(() => {
+    if (!contaId && !fazendaId) return;
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId)
+      .then(ops => setOpGerenciais(ops.filter(o => {
+        const cls = o.classificacao ?? "";
+        if (cls.startsWith("3.") || cls.startsWith("4.")) return false;
+        if (o.gerar_financeiro === false) return false;
+        return true;
+      })))
+      .catch(() => {});
+  }, [contaId, fazendaId]);
+
+  // Conta de pagamento — por fazenda (produtor) ou por empresa, conforme a Origem
+  useEffect(() => {
+    if (!modalNovo) return;
+    (async () => {
+      try {
+        const contas = novoForm.origem === "empresa_lancamentos" && novoForm.empresa_id
+          ? await listarContasPorEmpresa(novoForm.empresa_id)
+          : fazendaId ? await listarContas(fazendaId) : [];
+        setContasNovo(contas);
+      } catch { setContasNovo([]); }
+    })();
+  }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId]);
+
+  function gerarParcelasNovo(vencimento: string, qtd: number, freqMeses: number, valorTotal: number) {
+    if (!vencimento || qtd < 2) { setParcelasNovo([]); return; }
+    const valorParcela = valorTotal > 0 ? valorTotal / qtd : 0;
+    const novas: ParcelaGrid[] = Array.from({ length: qtd }, (_, i) => {
+      const d = new Date(vencimento + "T12:00:00");
+      d.setMonth(d.getMonth() + i * freqMeses);
+      return { data: d.toISOString().split("T")[0], valor: Math.round(valorParcela * 100) / 100 };
+    });
+    setParcelasNovo(novas);
+  }
+
+  async function criarRegraClassificacaoNovo() {
+    if (!fazendaId || !novoForm.pessoa_id || !novoForm.operacao_gerencial_id) return;
+    const pessoa = pessoas.find(p => p.id === novoForm.pessoa_id);
+    if (!pessoa?.cpf_cnpj) return;
+    await supabase.from("regras_classificacao_nf").insert({
+      fazenda_id: fazendaId, nome_regra: pessoa.nome, cnpj_emitente: pessoa.cpf_cnpj.replace(/\D/g, ""),
+      operacao_gerencial_id: novoForm.operacao_gerencial_id, categoria: novoForm.categoria || null,
+      ativo: true, criada_por: "CP — manual",
+    });
+  }
 
   function abrirNovo() {
     setErroNovo("");
+    setNovoTab("principal");
     setNovoForm({ ...NOVO_VAZIO, data_vencimento: hojeISO() });
+    setCascadeNovo({});
+    setParcelasNovo([]);
+    setSalvarComoRegra(false);
     setModalNovo(true);
   }
 
   async function salvarNovo() {
     if (!fazendaId) return;
-    if (!novoForm.descricao.trim() || !novoForm.valor || !novoForm.data_vencimento) {
-      setErroNovo("Preencha descrição, valor e vencimento."); return;
+    const erros: string[] = [];
+    if (novoForm.origem === "empresa_lancamentos") {
+      if (!novoForm.empresa_id) erros.push("Selecione a empresa.");
+      if (!novoForm.descricao.trim()) erros.push("Descrição é obrigatória.");
+      if (!novoForm.valor) erros.push("Valor é obrigatório.");
+      if (!novoForm.data_vencimento) erros.push("Vencimento é obrigatório.");
+    } else {
+      if (!novoForm.pessoa_id && !novoForm.descricao.trim()) erros.push("Fornecedor ou Descrição é obrigatório.");
+      if (!novoForm.data_vencimento) erros.push("1º Vencimento é obrigatório.");
+      if (novoForm.moeda !== "barter" && !novoForm.valor) erros.push("Valor é obrigatório.");
+      if (novoForm.moeda === "barter" && !novoForm.sacas) erros.push("Quantidade de sacas é obrigatória.");
+      if (!novoForm.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória.");
+      if (novoForm.condicao === "prazo" && parcelasNovo.length === 0) erros.push("Gere as parcelas antes de salvar.");
     }
-    if (novoForm.origem === "empresa_lancamentos" && !novoForm.empresa_id) {
-      setErroNovo("Selecione a empresa."); return;
-    }
-    setSalvandoAcao(true);
+    if (erros.length > 0) { setErroNovo(erros.join(" ")); return; }
     setErroNovo("");
+
+    // Mesmo fornecedor + mesmo nº de documento já lançado
+    if (novoForm.origem === "lancamentos") {
+      const dup = await buscarLancamentoDuplicado(fazendaId, "pagar", novoForm.pessoa_id, novoForm.numero_documento);
+      if (dup) { setErroNovo(`Já existe um lançamento com este documento para este fornecedor (venc. ${fmtData(dup.data_vencimento)}, ${fmtBRL(dup.valor)}).`); return; }
+    }
+
+    setSalvandoAcao(true);
     try {
-      const valor = numBR(novoForm.valor);
       const hoje = hojeISO();
       if (novoForm.origem === "lancamentos") {
-        await criarLancamento({
-          fazenda_id: fazendaId, tipo: "pagar", moeda: novoForm.moeda, descricao: novoForm.descricao.trim(),
-          categoria: novoForm.categoria.trim() || "Outros", data_lancamento: hoje, data_vencimento: novoForm.data_vencimento,
-          valor, status: novoForm.data_vencimento < hoje ? "vencido" : "em_aberto", auto: false,
-          pessoa_id: novoForm.pessoa_id || undefined, centro_custo_id: novoForm.centro_custo_id || undefined,
+        const sacas = Number(novoForm.sacas);
+        const valorFinal = novoForm.moeda === "barter" ? sacas * novoForm.preco_saca_barter : novoForm.valor;
+        const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
+          fazenda_id: fazendaId, tipo: "pagar", moeda: novoForm.moeda,
+          pessoa_id: novoForm.pessoa_id || undefined,
+          descricao: novoForm.descricao.trim() || (pessoas.find(p => p.id === novoForm.pessoa_id)?.nome ?? ""),
+          categoria: novoForm.categoria, data_lancamento: hoje, data_vencimento: novoForm.data_vencimento,
+          valor: valorFinal, status: novoForm.data_vencimento < hoje ? "vencido" : "em_aberto", auto: false,
+          cotacao_usd: novoForm.moeda === "USD" ? novoForm.cotacao_usd : undefined,
+          sacas: novoForm.moeda === "barter" ? sacas : undefined,
+          cultura_barter: novoForm.moeda === "barter" ? novoForm.cultura_barter : undefined,
+          preco_saca_barter: novoForm.moeda === "barter" ? novoForm.preco_saca_barter : undefined,
+          tipo_documento_lcdpr: novoForm.tipo_documento_lcdpr || undefined,
+          conta_bancaria: novoForm.conta_pagamento || undefined,
+          numero_documento: novoForm.numero_documento || undefined,
+          centro_custo_id: novoForm.centro_custo_id || undefined,
           observacao: novoForm.observacao.trim() || undefined,
-        });
+          ano_safra_id: cascadeNovo.anoSafraId || undefined,
+          ciclo_id: cascadeNovo.cicloId || undefined,
+          produtor_id: cascadeNovo.produtorId || undefined,
+          operacao_gerencial_id: novoForm.operacao_gerencial_id || undefined,
+          natureza: novoForm.natureza,
+          forma_pagamento: novoForm.forma_pagamento || undefined,
+          entidade_contabil: novoForm.entidade_contabil || undefined,
+        };
+        if (novoForm.condicao === "prazo" && parcelasNovo.length > 0) {
+          const agrupador = Date.now().toString(36);
+          const total = parcelasNovo.length;
+          for (let i = 0; i < total; i++) {
+            await criarLancamento({ ...base, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
+          }
+        } else if (novoForm.condicao === "prazo") {
+          await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
+        } else if (novoForm.condicao === "recorrencia") {
+          await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
+        } else {
+          await criarLancamento(base);
+        }
+        if (salvarComoRegra) await criarRegraClassificacaoNovo();
       } else {
         await criarEmpresaLancamento({
           fazenda_id: fazendaId, empresa_id: novoForm.empresa_id, tipo: "pagar", descricao: novoForm.descricao.trim(),
-          categoria: novoForm.categoria.trim() || undefined, valor, moeda: novoForm.moeda, data_vencimento: novoForm.data_vencimento,
-          status: "pendente",
+          categoria: novoForm.categoria || undefined, valor: novoForm.valor, moeda: novoForm.moeda, data_vencimento: novoForm.data_vencimento,
+          status: "pendente", competencia: novoForm.competencia || undefined,
           pessoa_id: novoForm.pessoa_id || undefined, centro_custo: novoForm.centro_custo_texto.trim() || undefined,
+          forma_pagamento: novoForm.forma_pagamento || undefined, conta_bancaria: novoForm.conta_pagamento || undefined,
+          numero_documento: novoForm.numero_documento || undefined,
           observacao: novoForm.observacao.trim() || undefined,
         });
       }
@@ -1186,102 +1363,442 @@ export default function ContasAPagarPage() {
       )}
 
       {/* ══ MODAL — Novo Lançamento ══ */}
-      {modalNovo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
+      {modalNovo && (() => {
+        const ehEmpresa = novoForm.origem === "empresa_lancamentos";
+        const ogSelecionada = opGerenciais.find(o => o.id === novoForm.operacao_gerencial_id);
+        const pessoaSel = pessoas.find(p => p.id === novoForm.pessoa_id);
+        return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setModalNovo(false)}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 520px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>+ Novo Lançamento — Contas a Pagar</h2>
-              <button onClick={() => setModalNovo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
-            </div>
+          <div style={{ background: "#fff", borderRadius: 12, width: "min(95vw, 820px)", maxHeight: "92vh", overflowY: "auto", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "18px 24px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>+ Novo Lançamento — Contas a Pagar</h2>
+                  {!ehEmpresa && (
+                    <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
+                      {(["real", "previsao"] as const).map(n => (
+                        <button key={n} onClick={() => setNovoForm(p => ({ ...p, natureza: n }))}
+                          style={{ padding: "4px 12px", border: "none", cursor: "pointer", fontSize: 11, fontWeight: novoForm.natureza === n ? 700 : 400,
+                            background: novoForm.natureza === n ? (n === "previsao" ? "#2A2A2A" : "#C9921B") : "#F4F6FA",
+                            color: novoForm.natureza === n ? "#fff" : "#555" }}>
+                          {n === "real" ? "Real" : "Previsão"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setModalNovo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Origem</label>
-              <div style={{ display: "flex", gap: 14, border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 12px" }}>
-                {ORIGEM_OPCOES.map(o => (
-                  <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                    <input type="radio" checked={novoForm.origem === o.v} onChange={() => setNovoForm(p => ({ ...p, origem: o.v as typeof p.origem, empresa_id: "" }))} />
-                    {o.label}
-                  </label>
+              <div style={{ marginBottom: 12 }}>
+                <label style={lbl}>Origem</label>
+                <div style={{ display: "flex", gap: 14, border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 12px" }}>
+                  {ORIGEM_OPCOES.map(o => (
+                    <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                      <input type="radio" checked={novoForm.origem === o.v} onChange={() => setNovoForm(p => ({ ...p, origem: o.v as typeof p.origem, empresa_id: "" }))} />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 0 }}>
+                {(["principal", "adicionais"] as const).map(t => (
+                  <button key={t} onClick={() => setNovoTab(t)}
+                    style={{ padding: "7px 18px", border: "none", cursor: "pointer", fontSize: 12, background: "transparent",
+                      fontWeight: novoTab === t ? 700 : 400, color: novoTab === t ? "#1A4870" : "#888",
+                      borderBottom: novoTab === t ? "2px solid #1A4870" : "2px solid transparent" }}>
+                    {t === "principal" ? "Principal" : "Adicionais"}
+                  </button>
                 ))}
               </div>
             </div>
 
-            {novoForm.origem === "empresa_lancamentos" && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={lbl}>Empresa *</label>
-                <select value={novoForm.empresa_id} onChange={e => setNovoForm(p => ({ ...p, empresa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                  <option value="">Selecionar...</option>
-                  {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
-                </select>
-              </div>
-            )}
+            <div style={{ padding: "16px 24px", flex: 1, overflowY: "auto" }}>
+              {novoTab === "principal" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {ehEmpresa ? (
+                    <>
+                      <div>
+                        <label style={lbl}>Empresa *</label>
+                        <select value={novoForm.empresa_id} onChange={e => setNovoForm(p => ({ ...p, empresa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                          <option value="">Selecionar...</option>
+                          {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Descrição *</label>
+                        <input value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Frete Rancho Alegre → Cuiabá" />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Categoria *</label>
+                          <select value={novoForm.categoria} onChange={e => setNovoForm(p => ({ ...p, categoria: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            {CATS_CP.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Competência</label>
+                          <input type="month" value={novoForm.competencia} onChange={e => setNovoForm(p => ({ ...p, competencia: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Valor (R$) *</label>
+                          <InputMonetario value={novoForm.valor} onChange={v => setNovoForm(p => ({ ...p, valor: v }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="0,00" />
+                        </div>
+                        <div>
+                          <label style={lbl}>Vencimento *</label>
+                          <input type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Fornecedor</label>
+                          <select value={novoForm.pessoa_id} onChange={e => setNovoForm(p => ({ ...p, pessoa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Nenhum —</option>
+                            {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Centro de Custo</label>
+                          <input value={novoForm.centro_custo_texto} onChange={e => setNovoForm(p => ({ ...p, centro_custo_texto: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Operações, Adm..." />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Produtor → Fazenda → Safra → Ciclo */}
+                      <CascadeSelector
+                        contaId={contaId}
+                        fazendaIdFallback={fazendaId}
+                        fazendaRequired={false}
+                        levels={["produtor", "fazenda", "anoSafra", "ciclo"]}
+                        values={cascadeNovo}
+                        onChange={setCascadeNovo}
+                      />
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Descrição *</label>
-              <input value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Compra de adubo — NF 1234" />
-            </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 140px", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Moeda</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.moeda} onChange={e => setNovoForm(p => ({ ...p, moeda: e.target.value as typeof p.moeda }))}>
+                            <option value="BRL">Real (R$)</option>
+                            <option value="USD">Dólar (US$)</option>
+                            <option value="barter">Barter</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span></label>
+                          <SelectBusca
+                            value={novoForm.operacao_gerencial_id}
+                            onChange={id => {
+                              const op = opGerenciais.find(o => o.id === id);
+                              setNovoForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria }));
+                            }}
+                            options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                            placeholder="— Selecionar operação —"
+                            style={{ ...inp, width: "100%", boxSizing: "border-box" }}
+                          />
+                        </div>
+                        <div>
+                          <label style={lbl}>Entidade Contábil</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.entidade_contabil} onChange={e => setNovoForm(p => ({ ...p, entidade_contabil: e.target.value as typeof p.entidade_contabil }))}>
+                            <option value="">— Padrão da fazenda —</option>
+                            <option value="pf">Pessoa Física</option>
+                            <option value="pj">Pessoa Jurídica</option>
+                          </select>
+                        </div>
+                      </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Fornecedor</label>
-                <select value={novoForm.pessoa_id} onChange={e => setNovoForm(p => ({ ...p, pessoa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                  <option value="">Selecionar...</option>
-                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Categoria</label>
-                <input value={novoForm.categoria} onChange={e => setNovoForm(p => ({ ...p, categoria: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Insumos" />
-              </div>
-            </div>
+                      {ogSelecionada && (ogSelecionada.conta_debito || ogSelecionada.conta_credito) && (
+                        <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
+                          <span>Débito: <strong>{ogSelecionada.conta_debito || "—"}</strong></span>
+                          <span>Crédito: <strong>{ogSelecionada.conta_credito || "—"}</strong></span>
+                        </div>
+                      )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Valor *</label>
-                <input value={novoForm.valor} onChange={e => setNovoForm(p => ({ ...p, valor: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="0,00" />
-              </div>
-              <div>
-                <label style={lbl}>Moeda</label>
-                <select value={novoForm.moeda} onChange={e => setNovoForm(p => ({ ...p, moeda: e.target.value as "BRL" | "USD" }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                  <option value="BRL">R$ (Real)</option>
-                  <option value="USD">US$ (Dólar)</option>
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Vencimento *</label>
-                <input type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-              </div>
-            </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 90px 160px", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Fornecedor / Credor</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.pessoa_id} onChange={e => setNovoForm(p => ({ ...p, pessoa_id: e.target.value }))}>
+                            <option value="">— Selecionar do cadastro —</option>
+                            {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Nº Documento</label>
+                          <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: 001234" value={novoForm.numero_documento} onChange={e => setNovoForm(p => ({ ...p, numero_documento: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Série</label>
+                          <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="1" value={novoForm.serie} onChange={e => setNovoForm(p => ({ ...p, serie: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Tipo de Documento</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.tipo_documento_lcdpr} onChange={e => setNovoForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof p.tipo_documento_lcdpr }))}>
+                            <option value="NF">Nota Fiscal (NF-e)</option>
+                            <option value="FATURA">Fatura</option>
+                            <option value="BOLETO">Boleto</option>
+                            <option value="RECIBO">Recibo</option>
+                            <option value="DUPLICATA">Duplicata</option>
+                            <option value="OUTROS">Outros</option>
+                          </select>
+                        </div>
+                      </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Centro de Custo</label>
-              {novoForm.origem === "lancamentos" ? (
-                <select value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                  <option value="">Selecionar...</option>
-                  {centrosCusto.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              ) : (
-                <input value={novoForm.centro_custo_texto} onChange={e => setNovoForm(p => ({ ...p, centro_custo_texto: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Texto livre — empresa não tem CC cadastrado" />
+                      {pessoaSel && novoForm.operacao_gerencial_id && pessoaSel.cpf_cnpj && (
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", background: salvarComoRegra ? "#EBF5EB" : "#F4F6FA", border: `0.5px solid ${salvarComoRegra ? "#86C78A" : "#DDE2EE"}`, borderRadius: 8, cursor: "pointer", userSelect: "none" }}>
+                          <input type="checkbox" checked={salvarComoRegra} onChange={e => setSalvarComoRegra(e.target.checked)} style={{ marginTop: 1, flexShrink: 0, accentColor: "#16A34A" }} />
+                          <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+                            <span style={{ fontWeight: 600, color: salvarComoRegra ? "#166534" : "#1a1a1a" }}>Salvar como regra de classificação automática</span>
+                            <span style={{ color: "#888", display: "block", fontSize: 11, marginTop: 2 }}>
+                              Próximas NFs de <strong>{pessoaSel.nome}</strong> serão classificadas automaticamente como <strong>{ogSelecionada?.descricao ?? "—"}</strong>
+                            </span>
+                          </div>
+                        </label>
+                      )}
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 160px", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Descrição {!novoForm.pessoa_id && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                          <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Compra de herbicida — Talhão 3" value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>1º Vencimento *</label>
+                          <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Forma de Pagamento</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                            {FORMAS_PAGAMENTO.map(f => <option key={f}>{f}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Conta de Pagamento</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                            <option value="">— Selecionar —</option>
+                            {contasNovo.map(c => {
+                              const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                              return <option key={c.id} value={label}>{label}</option>;
+                            })}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Centro de Custo</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))}>
+                            <option value="">— Sem vínculo —</option>
+                            {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
+                              <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Valor — por moeda */}
+                      {novoForm.moeda === "BRL" && (
+                        <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Valor Total (R$) *</label>
+                            <InputMonetario style={{ ...inp, width: "100%", boxSizing: "border-box", fontWeight: 600 }} value={novoForm.valor} onChange={v => setNovoForm(p => ({ ...p, valor: v }))} placeholder="0,00" />
+                          </div>
+                        </div>
+                      )}
+                      {novoForm.moeda === "USD" && (
+                        <div style={{ display: "grid", gridTemplateColumns: "180px 160px 1fr", gap: 12, alignItems: "end" }}>
+                          <div>
+                            <label style={lbl}>Valor (US$) *</label>
+                            <InputMonetario style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.valor} onChange={v => setNovoForm(p => ({ ...p, valor: v }))} placeholder="0,00" />
+                          </div>
+                          <div>
+                            <label style={lbl}>Cotação R$/US$</label>
+                            <InputMonetario decimais={4} style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.cotacao_usd} onChange={v => setNovoForm(p => ({ ...p, cotacao_usd: v }))} placeholder="5,12" />
+                          </div>
+                          {novoForm.valor > 0 && novoForm.cotacao_usd > 0 && (
+                            <div style={{ background: "#FEF3E2", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#7A4300" }}>
+                              Equivalente: <strong>{fmtBRL(novoForm.valor * novoForm.cotacao_usd)}</strong>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {novoForm.moeda === "barter" && (
+                        <div style={{ display: "grid", gridTemplateColumns: "140px 140px 180px", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Quantidade (sacas) *</label>
+                            <InputNumerico style={{ ...inp, width: "100%", boxSizing: "border-box" }} decimais={0} min={0} value={novoForm.sacas} onChange={v => setNovoForm(p => ({ ...p, sacas: Number(v) || 0 }))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Cultura</label>
+                            <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.cultura_barter} onChange={e => setNovoForm(p => ({ ...p, cultura_barter: e.target.value }))}>
+                              <option value="soja">Soja</option><option value="milho">Milho</option><option value="algodão">Algodão</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Preço referência (R$/sc)</label>
+                            <InputMonetario style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.preco_saca_barter} onChange={v => setNovoForm(p => ({ ...p, preco_saca_barter: v }))} placeholder="120,00" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Condição de Pagamento */}
+                      <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
+                        <div>
+                          <label style={lbl}>Condição de Pagamento</label>
+                          <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
+                            {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
+                              <button key={v} type="button"
+                                onClick={() => { setNovoForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelasNovo([]); }}
+                                style={{ padding: "7px 14px", fontSize: 12, fontWeight: novoForm.condicao === v ? 600 : 400, cursor: "pointer", border: "none",
+                                  borderRight: idx < 2 ? "0.5px solid #DDE2EE" : "none",
+                                  background: novoForm.condicao === v ? "#111111" : "#F4F6FA", color: novoForm.condicao === v ? "#fff" : "#555", whiteSpace: "nowrap" }}>
+                                {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {(novoForm.condicao === "prazo" || novoForm.condicao === "recorrencia") && (
+                          <>
+                            <div>
+                              <label style={lbl}>{novoForm.condicao === "prazo" ? "Nº de parcelas" : "Nº de repetições"}</label>
+                              <InputNumerico style={{ ...inp, width: 80 }} decimais={0} min={2} max={120} value={novoForm.qtd_parcelas} onChange={v => setNovoForm(p => ({ ...p, qtd_parcelas: Number(v) || 2 }))} />
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={lbl}>Frequência</label>
+                                <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.frequencia} onChange={e => setNovoForm(p => ({ ...p, frequencia: Number(e.target.value) }))}>
+                                  <option value={1}>Mensal</option>
+                                  <option value={2}>Bimestral</option>
+                                  <option value={3}>Trimestral</option>
+                                  <option value={6}>Semestral</option>
+                                  <option value={12}>Anual</option>
+                                </select>
+                              </div>
+                              {novoForm.condicao === "prazo" && (
+                                <button type="button"
+                                  onClick={() => gerarParcelasNovo(novoForm.data_vencimento, novoForm.qtd_parcelas, novoForm.frequencia, novoForm.valor)}
+                                  disabled={!novoForm.data_vencimento || !novoForm.valor}
+                                  style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #93C5FD", background: "#EFF6FF", color: "#1D4ED8", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !novoForm.data_vencimento || !novoForm.valor ? 0.4 : 1 }}>
+                                  Gerar
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {novoForm.condicao === "prazo" && parcelasNovo.length === 0 && (
+                        <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
+                          Preencha o Vencimento e Valor, depois clique em &quot;Gerar&quot;.
+                        </div>
+                      )}
+                      {novoForm.condicao === "prazo" && parcelasNovo.length > 0 && (
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: "#F4F6FA" }}>
+                                {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                                  <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {parcelasNovo.map((p, i) => (
+                                <tr key={i} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
+                                  <td style={{ padding: "4px 10px", textAlign: "center", color: "#888", fontSize: 11, width: 40 }}>{i + 1}/{parcelasNovo.length}</td>
+                                  <td style={{ padding: "4px 8px" }}>
+                                    <input style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} type="date" value={p.data}
+                                      onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
+                                  </td>
+                                  <td style={{ padding: "4px 8px" }}>
+                                    <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right", width: "100%", boxSizing: "border-box" }} value={p.valor}
+                                      onChange={v => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, valor: v } : x))} />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: "#F4F6FA" }}>
+                                <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#888" }}>Total:</td>
+                                <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(parcelasNovo.reduce((s, p) => s + p.valor, 0))}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                      {novoForm.condicao === "recorrencia" && novoForm.valor > 0 && (
+                        <div style={{ background: "#FFFBEB", border: "0.5px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
+                          O mesmo valor é lançado <strong>{Math.max(2, novoForm.qtd_parcelas)}×</strong>.
+                          <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(novoForm.valor * Math.max(2, novoForm.qtd_parcelas))}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {novoTab === "adicionais" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {!ehEmpresa && (
+                    <div>
+                      <label style={lbl}>Empresa (não-rural)</label>
+                      <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.empresa_id} onChange={e => setNovoForm(p => ({ ...p, empresa_id: e.target.value }))}>
+                        <option value="">— Fazenda (padrão) —</option>
+                        {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}{e.razao_social && e.razao_social !== e.nome ? ` — ${e.razao_social}` : ""}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {ehEmpresa && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Forma de Pagamento</label>
+                        <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                          {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Conta Bancária</label>
+                        <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                          <option value="">— Nenhuma —</option>
+                          {contasNovo.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Nº Documento</label>
+                        <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.numero_documento} onChange={e => setNovoForm(p => ({ ...p, numero_documento: e.target.value }))} placeholder="NF, Boleto, Recibo..." />
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Observação</label>
+                      <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Opcional" value={novoForm.observacao} onChange={e => setNovoForm(p => ({ ...p, observacao: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
-            <div>
-              <label style={lbl}>Observação</label>
-              <input value={novoForm.observacao} onChange={e => setNovoForm(p => ({ ...p, observacao: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
-            </div>
-
-            {erroNovo && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroNovo}</div>}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-              <button onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarNovo} disabled={salvandoAcao}
-                style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
-                {salvandoAcao ? "Salvando..." : "Salvar Lançamento"}
-              </button>
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 8, alignItems: "center" }}>
+              {erroNovo && (
+                <div style={{ flex: 1, background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 7, padding: "7px 12px", fontSize: 11, color: "#791F1F" }}>
+                  {erroNovo}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                <button onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
+                <button onClick={salvarNovo} disabled={salvandoAcao}
+                  style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
+                  {salvandoAcao ? "Salvando…" : !ehEmpresa && novoForm.condicao === "prazo" && parcelasNovo.length > 0 ? `◈ Criar ${parcelasNovo.length} parcelas` : !ehEmpresa && novoForm.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, novoForm.qtd_parcelas)} repetições` : "Salvar Lançamento"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
