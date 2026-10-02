@@ -176,13 +176,19 @@ export default function ContasAReceberPage() {
     } finally {
       setCarregando(false);
     }
+  // Período/busca/origem/status entram nos deps pra "Atualizar" e Enter
+  // sempre lerem o valor atual dos campos (sem isso, carregar() ficava com
+  // uma closure velha — digitar na busca ou mudar a data não tinha efeito
+  // nenhum ao clicar Atualizar). O efeito abaixo NÃO depende de carregar —
+  // só de fazenda/conta — pra não disparar uma consulta nova a cada tecla.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds?.join(","), contaId]);
+  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca]);
 
   // Carrega automaticamente ao abrir a tela (período padrão) — nunca espera
   // o usuário escolher filtro primeiro. Refiltrar é sempre sobre o que já
   // está carregado; só período/busca disparam nova consulta (botão Atualizar).
-  useEffect(() => { carregar(); }, [carregar]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]);
 
   // ── Borderôs pendentes (ainda não confirmados/baixados) ───────
   const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
@@ -404,6 +410,18 @@ export default function ContasAReceberPage() {
   const [loteEncargos, setLoteEncargos] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
   const [salvandoLote, setSalvandoLote] = useState(false);
   const [erroLote, setErroLote] = useState("");
+
+  // ── Popover de detalhe/ações ao clicar na linha ─────────────
+  // Trazido de volta 02/10/2026 (existia na tela antiga, sumiu quando a
+  // tela virou a grid unificada Produtor+Empresa) — mesmo padrão: clique
+  // na linha (fora de botão/input/select/a) abre um popover posicionado
+  // no ponto do clique, com detalhe + ações rápidas; Escape fecha.
+  const [popover, setPopover] = useState<{ l: RelLancamento; x: number; y: number } | null>(null);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setPopover(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   const podeSelecionar = (l: RelLancamento) =>
     l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
@@ -681,7 +699,12 @@ export default function ContasAReceberPage() {
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
                 const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
                 return (
-                  <tr key={l.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined }}>
+                  <tr key={l.id}
+                    onClick={e => {
+                      if ((e.target as HTMLElement).closest("button,input,select,a")) return;
+                      setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
+                    }}
+                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined, cursor: "pointer" }}>
                     <td style={{ padding: "7px 10px" }}>
                       {aberto && <input type="checkbox" checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />}
                     </td>
@@ -734,6 +757,122 @@ export default function ContasAReceberPage() {
           </table>
         </div>
       </div>
+
+      {/* ── Popover de lançamento — detalhe + ações rápidas ── */}
+      {popover && (() => {
+        const l = popover.l;
+        const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
+        const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
+        const nome = l.empresa_nome ?? l.pessoa_nome ?? l.descricao ?? "—";
+        const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+        const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
+        const W = 380, H = 420;
+        const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nome}</div>
+                    {l.descricao && l.descricao !== nome && <div style={{ fontSize: 11, color: "#888", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
+                      {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
+                    </span>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
+                    <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Valor</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(l.valor)}</div>
+                </div>
+
+                {l.status_normalizado === "parcial" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Recebido</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#16A34A" }}>{fmtBRL(l.valor_pago)}</div>
+                    </div>
+                    <div style={{ background: "#FEF3C7", border: "0.5px solid #F0C060", borderRadius: 6, padding: "6px 10px" }}>
+                      <div style={{ fontSize: 10, color: "#8B5E14", marginBottom: 2, fontWeight: 600 }}>Saldo a receber</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#C9921B" }}>{fmtBRL(saldo)}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 11 }}>
+                  <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Vencimento</div>
+                    <div style={{ fontWeight: 600, color: dias != null && dias < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtData(l.data_vencimento)}</div>
+                    {dias != null && <div style={{ fontSize: 10, color: dias < 0 ? "#E24B4A" : "#888", fontWeight: 700 }}>{dias < 0 ? `${Math.abs(dias)} dia${Math.abs(dias) !== 1 ? "s" : ""} em atraso` : dias === 0 ? "Vence hoje" : `em ${dias} dia${dias !== 1 ? "s" : ""}`}</div>}
+                  </div>
+                  {l.operacao_gerencial_nome && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Operação Gerencial</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.operacao_gerencial_nome}</div>
+                  </div>}
+                  {l.ano_safra_descricao && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Safra</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.ano_safra_descricao}</div>
+                  </div>}
+                  {l.ciclo_descricao && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Ciclo</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.ciclo_descricao}</div>
+                  </div>}
+                  {l.centro_custo_nome && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Centro de Custo</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.centro_custo_nome}</div>
+                  </div>}
+                  {l.conta_bancaria_nome && l.status_normalizado === "baixado" && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Conta bancária</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.conta_bancaria_nome}</div>
+                  </div>}
+                  {l.data_baixa && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Recebido em</div>
+                    <div style={{ color: "#15803D", fontWeight: 600 }}>{fmtData(l.data_baixa)}</div>
+                  </div>}
+                  {(l.numero || l.nfe_numero) && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Nº documento</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.nfe_numero ?? l.numero}</div>
+                  </div>}
+                  {l.origem_lancamento && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Origem do lançamento</div>
+                    <div style={{ color: "#1a1a1a" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento] ?? l.origem_lancamento}</div>
+                  </div>}
+                </div>
+
+                {l.observacao && (
+                  <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#555", borderLeft: "3px solid #DDE2EE" }}>
+                    {l.observacao}
+                  </div>
+                )}
+              </div>
+
+              {/* Ações rápidas */}
+              <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {aberto && (
+                  <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>↓ Baixar</button>
+                )}
+                {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
+                  <button onClick={() => { setPopover(null); reabrir(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↺ Reabrir</button>
+                )}
+                {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
+                  <button onClick={() => { setPopover(null); abrirReprog(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↕ Reprogramar</button>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── Barra flutuante de seleção — Baixar em Lote ── */}
       {selecionados.size > 0 && (

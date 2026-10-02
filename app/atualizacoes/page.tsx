@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-g",
+    data: "02/10/2026",
+    titulo: "Correção importante: busca e filtro de data em Contas a Pagar/Receber não funcionavam",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Contas a Pagar e Contas a Receber: o campo de busca e o período (Vencimento De/Até) não filtravam nada — só Status e Origem funcionavam. Causa: a função que consulta o banco guardava uma versão desatualizada dos campos de busca/data. Agora digitar na busca ou trocar a data e clicar \"Atualizar\" (ou apertar Enter na busca) sempre usa o valor atual da tela." },
+      { tipo: "novo", texto: "Contas a Pagar e Contas a Receber: voltou o popover ao clicar numa linha — mostra valor, saldo devedor, vencimento (com dias em atraso/a vencer), Operação Gerencial, Safra, Ciclo, Centro de Custo, conta bancária e observação, além dos botões Baixar/Reabrir/Reprogramar. Esse popover existia antes da tela virar a grid unificada Produtor+Empresa e tinha ficado de fora." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.02-f",
     data: "02/10/2026",
     titulo: "Correção importante: NF processada não pode mais ser editada pela tela nova",
