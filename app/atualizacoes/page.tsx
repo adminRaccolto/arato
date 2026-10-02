@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-l",
+    data: "02/10/2026",
+    titulo: "Contas a Pagar/Receber: ordenação por Lançamento, borderô respeitando a ordem e grid mais espaçoso",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "O grid agora ordena por Data de Lançamento (mais recente primeiro) em vez de Vencimento. Nova coluna \"Lançamento\" adicionada; clicar no cabeçalho dela ou de \"Vencimento\" alterna o campo e a direção de ordenação (▲/▼), sem precisar recarregar a lista." },
+      { tipo: "correcao", texto: "O card de borderô pendente não fica mais fixo no topo da tela — agora entra como uma linha normal dentro do grid, na posição que corresponde à ordenação ativa." },
+      { tipo: "novo", texto: "\"Ver Itens\" do borderô ganhou a coluna Nº NF, mostrando o número da nota fiscal de cada título agrupado." },
+      { tipo: "novo", texto: "Grid mais compacto no topo da tela (menos espaço em branco) e mais alto — aproveitando o espaço que sobrou do borderô sair do painel fixo, mais linhas ficam visíveis sem precisar rolar." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.02-k",
     data: "02/10/2026",
     titulo: "Documentos Fiscais: grid de Notas de Terceiro ganhou as colunas que faltavam",

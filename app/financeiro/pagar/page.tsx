@@ -65,6 +65,8 @@ type RelLancamento = {
   moeda: string | null;
   status_normalizado: string | null;
   data_vencimento: string | null;
+  data_lancamento: string | null;
+  lote_id: string | null;
   data_baixa: string | null;
   data_prorrogacao: string | null;
   pessoa_nome: string | null;
@@ -172,6 +174,16 @@ export default function ContasAPagarPage() {
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
 
+  // Ordenação — padrão por data de lançamento (não vencimento), mais recente
+  // primeiro; clicar no cabeçalho da coluna alterna o campo e a direção, sem
+  // precisar de nova consulta (é só reordenar o que já está carregado).
+  const [ordenarPor, setOrdenarPor] = useState<"lancamento" | "vencimento">("lancamento");
+  const [ordemAsc,   setOrdemAsc]   = useState(false);
+  function clicarOrdenar(campo: "lancamento" | "vencimento") {
+    if (ordenarPor === campo) setOrdemAsc(a => !a);
+    else { setOrdenarPor(campo); setOrdemAsc(campo === "vencimento"); }
+  }
+
   const toggle = (set: Set<string>, setFn: (s: Set<string>) => void, v: string) => {
     const next = new Set(set);
     next.has(v) ? next.delete(v) : next.add(v);
@@ -205,7 +217,7 @@ export default function ContasAPagarPage() {
         const t = fBusca.trim();
         q = q.or(`descricao.ilike.%${t}%,pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%`);
       }
-      q = q.order("data_vencimento", { ascending: true }).limit(1000);
+      q = q.order("data_lancamento", { ascending: false }).limit(1000);
 
       const { data, error } = await q;
       if (error) throw error;
@@ -243,10 +255,36 @@ export default function ContasAPagarPage() {
 
   // Filtro client-side de Origem/Status (instantâneo, sem nova consulta) —
   // período e busca exigem nova consulta porque mudam o WHERE no banco.
+  // Ordenação também é client-side — reordena o que já está carregado.
   const linhas = (resultado ?? []).filter(l => {
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
     if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
     return true;
+  }).sort((a, b) => {
+    const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
+    const da = a[campo] ?? "";
+    const db = b[campo] ?? "";
+    return ordemAsc ? da.localeCompare(db) : db.localeCompare(da);
+  });
+
+  // Borderô pendente entra na ordem normal do grid (não fica mais fixo no
+  // topo) — a "data" dele pra ordenar é a mesma do título mais relevante que
+  // tem dentro (o mais recente lançamento/vencimento entre os itens
+  // agrupados, usando os próprios dados já carregados em `linhas`).
+  type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string };
+  const linhasComBordero: LinhaOuBordero[] = [
+    ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
+    ...borderosPendentes.map((b): LinhaOuBordero => {
+      const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
+      const itensDoLote = linhas.filter(l => l.lote_id === b.id);
+      const datas = itensDoLote.map(l => l[campo]).filter((d): d is string => !!d);
+      const data = datas.length ? datas.sort().slice(-1)[0] : (b.created_at ?? "");
+      return { kind: "bordero", b, data };
+    }),
+  ].sort((x, y) => {
+    const dx = x.kind === "lanc" ? (x.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : x.data;
+    const dy = y.kind === "lanc" ? (y.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : y.data;
+    return ordemAsc ? dx.localeCompare(dy) : dy.localeCompare(dx);
   });
 
   // ── Baixar (com encargos) ──────────────────────────────────
@@ -896,9 +934,9 @@ export default function ContasAPagarPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
-      <div style={{ maxWidth: "100%", margin: "0 auto", padding: "20px 24px" }}>
+      <div style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Contas a Pagar</h1>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>Produtor e Empresa juntos — veja a coluna Origem</p>
@@ -909,7 +947,7 @@ export default function ContasAPagarPage() {
         </div>
 
         {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ── */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 14px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
             <label style={lblMini}>Buscar</label>
             <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, fornecedor..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
@@ -949,27 +987,7 @@ export default function ContasAPagarPage() {
           </div>
         )}
 
-        {/* ── Borderôs pendentes (criados, aguardando confirmação de pagamento) ── */}
-        {borderosPendentes.length > 0 && (
-          <div style={{ marginBottom: 14, display: "grid", gap: 8 }}>
-            {borderosPendentes.map(b => (
-              <div key={b.id} style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
-                  <span style={{ fontSize: 12, color: "#555" }}>{(b.itens ?? []).length} título{(b.itens ?? []).length !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver Itens</button>
-                  <button onClick={() => abrirConfirmarBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>✅ Confirmar Pagamento</button>
-                  <button onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
           <span><strong>{linhas.length}</strong> lançamento(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
@@ -980,8 +998,9 @@ export default function ContasAPagarPage() {
         {/* maxHeight + overflow:auto (em vez de só overflowX no container inteiro) —
             a barra de rolagem horizontal fica logo abaixo da área visível, não depois
             dos 1000 registros. Cabeçalho sticky pra não perder o contexto das colunas
-            ao rolar verticalmente dentro do grid. */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 330px)" }}>
+            ao rolar verticalmente dentro do grid. Altura reaproveitando o espaço que
+            sobrou com paddings mais enxutos acima e o borderô saindo do painel fixo. */}
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 270px)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}>
@@ -990,16 +1009,48 @@ export default function ContasAPagarPage() {
                     checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))}
                     onChange={toggleTodos} />
                 </th>
-                {["Origem", "Nº", "Fornecedor", "Descrição", "Operação", "Safra", "Ciclo", "Centro Custo", "Vencimento", "Dias", "Venc. Original", "Baixa", "Valor", "Pago", "Saldo", "Moeda", "Conta", "Nº NF", "Lançado via", "Observação", "Status", "Ações"].map(h => (
-                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>{h}</th>
+                {["Origem", "Nº", "Fornecedor", "Descrição", "Operação", "Safra", "Ciclo", "Centro Custo", "Lançamento", "Vencimento", "Dias", "Venc. Original", "Baixa", "Valor", "Pago", "Saldo", "Moeda", "Conta", "Nº NF", "Lançado via", "Observação", "Status", "Ações"].map(h => (
+                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>
+                    {h === "Lançamento" || h === "Vencimento" ? (
+                      <button
+                        onClick={() => clicarOrdenar(h === "Lançamento" ? "lancamento" : "vencimento")}
+                        title="Ordenar por esta data"
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", fontWeight: 700, color: ordenarPor === (h === "Lançamento" ? "lancamento" : "vencimento") ? "#1A4870" : "#555", display: "flex", alignItems: "center", gap: 3 }}>
+                        {h}
+                        {ordenarPor === (h === "Lançamento" ? "lancamento" : "vencimento") && <span>{ordemAsc ? "▲" : "▼"}</span>}
+                      </button>
+                    ) : h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={23} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={24} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
-              {!carregando && linhas.map(l => {
+              {!carregando && linhasComBordero.map(entry => {
+                if (entry.kind === "bordero") {
+                  const b = entry.b;
+                  return (
+                    <tr key={`bdr-${b.id}`} style={{ background: "#FBF3E0", borderBottom: "0.5px solid #C9921B60" }}>
+                      <td colSpan={24} style={{ padding: "10px 14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
+                            <span style={{ fontSize: 12, color: "#555" }}>{(b.itens ?? []).length} título{(b.itens ?? []).length !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver Itens</button>
+                            <button onClick={() => abrirConfirmarBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>✅ Confirmar Pagamento</button>
+                            <button onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                const l = entry.l;
                 const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
                 const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
@@ -1026,6 +1077,7 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px" }}>{l.ano_safra_descricao ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{l.ciclo_descricao ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{l.centro_custo_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888" }}>{fmtData(l.data_lancamento)}</td>
                     <td style={{ padding: "7px 10px" }}>{fmtData(l.data_vencimento)}</td>
                     <td style={{ padding: "7px 10px", textAlign: "center", color: dias != null && dias < 0 ? "#E24B4A" : "#555" }}>{dias ?? "—"}</td>
                     <td style={{ padding: "7px 10px", color: "#888", fontStyle: "italic" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>
@@ -1057,7 +1109,7 @@ export default function ContasAPagarPage() {
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={23} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
+                <tr><td colSpan={24} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
           </table>
@@ -1310,13 +1362,14 @@ export default function ContasAPagarPage() {
               <div style={{ padding: 24, textAlign: "center", color: "#888" }}>Carregando...</div>
             ) : (
               <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
-                <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px", gap: 6 }}>
-                  <span>Origem</span><span>Título</span><span>Venc.</span><span style={{ textAlign: "right" }}>Valor</span>
+                <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px 90px", gap: 6 }}>
+                  <span>Origem</span><span>Título</span><span>Nº NF</span><span>Venc.</span><span style={{ textAlign: "right" }}>Valor</span>
                 </div>
                 {verBorderoItens.map((l, i) => (
-                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
+                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
                     <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                    <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.nfe_numero ?? "—"}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(l.valor)}</span>
                   </div>
