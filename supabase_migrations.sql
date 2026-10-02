@@ -15776,3 +15776,77 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 322 — rel_documentos_fiscais ganha as colunas que faltavam pro grid
+-- de Notas de Terceiro (Documentos Fiscais) cobrir tudo que a NF de Produtos
+-- antiga mostrava. Pedido do dono 02/10/2026: "no grid Notas, temos muito
+-- menos campos que tinhamos no grid de NF de Produtos".
+--
+-- Colunas antigas que faltavam: Destinatário (nome+CNPJ), Entrada (data de
+-- entrada, separada da emissão), Tipo (tipo_entrada: insumos/peças/
+-- combustível/etc), Origem (manual/xml/sieg/leitor), Parcelamento
+-- (duplicatas declaradas no XML) e Processado por. Só existem em nf_entradas
+-- — NFS e CT-e ficam NULL nessas colunas (natural: não se aplicam a eles).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE rel_documentos_fiscais
+  ADD COLUMN IF NOT EXISTS destinatario_nome text,
+  ADD COLUMN IF NOT EXISTS destinatario_cnpj text,
+  ADD COLUMN IF NOT EXISTS data_entrada      date,
+  ADD COLUMN IF NOT EXISTS tipo_entrada      text,
+  ADD COLUMN IF NOT EXISTS origem_doc        text,   -- manual | xml | sieg | leitor (nf_entradas.origem)
+  ADD COLUMN IF NOT EXISTS duplicatas_xml    jsonb,
+  ADD COLUMN IF NOT EXISTS processado_por    text;
+
+-- ── NF de Produtos (nf_entradas) — única origem que popula essas colunas ──
+CREATE OR REPLACE FUNCTION fn_recalc_rel_doc_fiscal_nf(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v          nf_entradas%ROWTYPE;
+  v_conta_id uuid;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM nf_entradas WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_documentos_fiscais WHERE id = p_id AND origem_tabela = 'nf_entradas';
+    RETURN;
+  END IF;
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  v_status_norm := CASE v.status WHEN 'cancelada' THEN 'cancelada' WHEN 'processada' THEN 'processada' ELSE 'pendente' END;
+
+  INSERT INTO rel_documentos_fiscais (
+    id, origem_tabela, tipo_doc, fazenda_id, conta_id, numero, serie, chave, data_doc,
+    participante_nome, participante_cnpj, valor_total, status_origem, status_normalizado,
+    cfop, natureza_operacao, observacao, lancamento_id, created_at, updated_at,
+    destinatario_nome, destinatario_cnpj, data_entrada, tipo_entrada, origem_doc,
+    duplicatas_xml, processado_por
+  ) VALUES (
+    v.id, 'nf_entradas', 'NF', v.fazenda_id, v_conta_id, v.numero, v.serie, v.chave_acesso, v.data_emissao,
+    v.emitente_nome, v.emitente_cnpj, v.valor_total, v.status, v_status_norm,
+    v.cfop, v.natureza, v.observacao, v.lancamento_id, v.created_at, now(),
+    v.nome_destinatario, v.cnpj_destino, v.data_entrada, v.tipo_entrada, v.origem,
+    to_jsonb(v.duplicatas_xml), v.processado_por
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, tipo_doc = EXCLUDED.tipo_doc, fazenda_id = EXCLUDED.fazenda_id,
+    conta_id = EXCLUDED.conta_id, numero = EXCLUDED.numero, serie = EXCLUDED.serie, chave = EXCLUDED.chave,
+    data_doc = EXCLUDED.data_doc, participante_nome = EXCLUDED.participante_nome, participante_cnpj = EXCLUDED.participante_cnpj,
+    valor_total = EXCLUDED.valor_total, status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    cfop = EXCLUDED.cfop, natureza_operacao = EXCLUDED.natureza_operacao, observacao = EXCLUDED.observacao,
+    lancamento_id = EXCLUDED.lancamento_id, created_at = EXCLUDED.created_at, updated_at = now(),
+    destinatario_nome = EXCLUDED.destinatario_nome, destinatario_cnpj = EXCLUDED.destinatario_cnpj,
+    data_entrada = EXCLUDED.data_entrada, tipo_entrada = EXCLUDED.tipo_entrada, origem_doc = EXCLUDED.origem_doc,
+    duplicatas_xml = EXCLUDED.duplicatas_xml, processado_por = EXCLUDED.processado_por;
+END;
+$$;
+
+-- Backfill só da nf_entradas (NFS/CT-e não têm essas colunas pra preencher,
+-- não precisam reprocessar)
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM nf_entradas LOOP PERFORM fn_recalc_rel_doc_fiscal_nf(r.id); END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

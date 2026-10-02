@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-k",
+    data: "02/10/2026",
+    titulo: "Documentos Fiscais: grid de Notas de Terceiro ganhou as colunas que faltavam",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "O grid de Notas de Terceiro (Documentos Fiscais) ganhou as colunas que existiam na NF de Produtos antiga e não tinham migrado: Destinatário, Entrada, Tipo (Insumos/Combustível/Peças/Apropriação Direta/VEF/Remessa/Devolução), Origem (Manual/XML/Sieg/Leitor), Operação NF, Parcelamento e Processado por. Só aparecem preenchidas pra NF de Produtos — NF de Serviços e CT-e mostram \"—\" porque não se aplicam a eles." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.02-j",
     data: "02/10/2026",
     titulo: "Editar lançamento e anexar comprovantes no Contas a Pagar/Receber",

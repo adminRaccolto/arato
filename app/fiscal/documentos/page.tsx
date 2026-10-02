@@ -45,7 +45,27 @@ type RelDocFiscal = {
   cfop: string | null;
   natureza_operacao: string | null;
   observacao: string | null;
+  // Seção 322 — só populado pra NF de Produtos (nf_entradas); NFS/CT-e ficam null
+  destinatario_nome: string | null;
+  destinatario_cnpj: string | null;
+  data_entrada: string | null;
+  tipo_entrada: string | null;
+  origem_doc: string | null;
+  duplicatas_xml: { numero: string; data_vencimento: string; valor: number }[] | null;
+  processado_por: string | null;
 };
+
+const TIPO_ENTRADA_META: Record<string, { bg: string; cl: string; label: string }> = {
+  consumo:          { bg: "#F3E8FF", cl: "#6B21A8", label: "Consumo"       },
+  insumos:          { bg: "#E8E8E8", cl: "#0D0D0D", label: "Insumos"       },
+  combustivel:      { bg: "#FFF0E0", cl: "#7C3A00", label: "Combustível"   },
+  pecas:            { bg: "#E0F0FF", cl: "#0A4B8C", label: "Peças / Manut." },
+  custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
+  vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"            },
+  remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"        },
+  devolucao_compra: { bg: "#FCEBEB", cl: "#791F1F", label: "Devolução"      },
+};
+const ORIGEM_DOC_META: Record<string, string> = { manual: "Manual", xml: "XML", sieg: "Sieg", leitor: "Leitor" };
 
 // Detalhe real da NF — buscado sob demanda (lazy, só ao abrir o "⋮" de uma
 // linha), porque rel_documentos_fiscais (Seção 321) não carrega esses campos
@@ -384,17 +404,24 @@ export default function DocumentosFiscaisPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: 32 }} />    {/* checkbox */}
-              <col style={{ width: 92 }} />    {/* Tipo */}
-              <col style={{ width: 76 }} />    {/* Data */}
-              <col style={{ width: 80 }} />    {/* Número */}
-              <col style={{ width: 48 }} />    {/* Série */}
-              <col style={{ width: "18%" }} /> {/* Participante — flex */}
-              <col style={{ width: 108 }} />   {/* CNPJ */}
+              <col style={{ width: 90 }} />    {/* Tipo */}
+              <col style={{ width: 76 }} />    {/* Emissão */}
+              <col style={{ width: 78 }} />    {/* Número */}
+              <col style={{ width: 46 }} />    {/* Série */}
+              <col style={{ width: "13%" }} /> {/* Emitente — flex */}
+              <col style={{ width: 104 }} />   {/* CNPJ emitente */}
+              <col style={{ width: "13%" }} /> {/* Destinatário — flex */}
               <col style={{ width: 56 }} />    {/* CFOP */}
+              <col style={{ width: 76 }} />    {/* Entrada */}
+              <col style={{ width: 96 }} />    {/* Tipo (entrada) */}
+              <col style={{ width: 64 }} />    {/* Origem */}
+              <col style={{ width: "11%" }} /> {/* Operação NF — flex */}
+              <col style={{ width: 96 }} />    {/* Parcelamento */}
               <col style={{ width: 104 }} />   {/* Valor */}
               <col style={{ width: 80 }} />    {/* Status */}
-              <col style={{ width: "14%" }} /> {/* Observação — flex, menor que antes */}
-              <col style={{ width: 230 }} />   {/* Ações — bem mais espaço */}
+              <col style={{ width: 90 }} />    {/* Processado por */}
+              <col style={{ width: "9%" }} />  {/* Observação — flex */}
+              <col style={{ width: 230 }} />   {/* Ações */}
             </colgroup>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}>
@@ -409,7 +436,7 @@ export default function DocumentosFiscaisPage() {
                     style={{ cursor: "pointer" }}
                   />
                 </th>
-                {["Tipo", "Data", "Número", "Série", "Participante", "CNPJ", "CFOP", "Valor", "Status", "Observação"].map(h => (
+                {["Tipo", "Emissão", "Número", "Série", "Emitente", "CNPJ", "Destinatário", "CFOP", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor", "Status", "Processado por", "Observação"].map(h => (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>{h}</th>
                 ))}
                 <th style={{ padding: "7px 10px", textAlign: "right", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>Ações</th>
@@ -417,7 +444,7 @@ export default function DocumentosFiscaisPage() {
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={19} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhas.map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
@@ -456,12 +483,45 @@ export default function DocumentosFiscaisPage() {
                     <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.serie ?? "—"}</td>
                     <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.participante_nome ?? undefined}>{d.participante_nome ?? "—"}</td>
                     <td style={{ padding: "7px 10px", color: "#888", fontFamily: "monospace", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.participante_cnpj ?? undefined}>{d.participante_cnpj ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", fontSize: 11, overflow: "hidden", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                      {d.destinatario_nome
+                        ? <>
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.destinatario_nome}</div>
+                            {d.destinatario_cnpj && <div style={{ fontSize: 10, color: "#888", fontFamily: "monospace" }}>{d.destinatario_cnpj}</div>}
+                          </>
+                        : <span style={{ color: "#888" }}>—</span>}
+                    </td>
                     <td style={{ padding: "7px 10px", color: "#888", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.cfop ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtData(d.data_entrada)}</td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                      {d.tipo_entrada
+                        ? (() => { const tem = TIPO_ENTRADA_META[d.tipo_entrada]; return <span style={{ fontSize: 10, fontWeight: 700, background: tem?.bg ?? "#eee", color: tem?.cl ?? "#555", padding: "2px 7px", borderRadius: 6 }}>{tem?.label ?? d.tipo_entrada}</span>; })()
+                        : <span style={{ color: "#888", fontSize: 11 }}>—</span>}
+                    </td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                      {d.origem_doc
+                        ? <span style={{ fontSize: 10, fontWeight: 700, background: "#F4F6FA", color: "#555", padding: "2px 7px", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>{ORIGEM_DOC_META[d.origem_doc] ?? d.origem_doc}</span>
+                        : <span style={{ color: "#888", fontSize: 11 }}>—</span>}
+                    </td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.natureza_operacao ?? undefined}>{d.natureza_operacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                      {(() => {
+                        const dups = d.duplicatas_xml ?? [];
+                        if (dups.length === 0) return <span style={{ fontSize: 11, color: "#888" }}>à vista</span>;
+                        if (dups.length === 1) return <span style={{ fontSize: 11, color: "#7B4A00" }}>à prazo</span>;
+                        return (
+                          <div title={dups.map(dp => `${dp.numero || "—"}: ${fmtBRL(dp.valor)} em ${fmtData(dp.data_vencimento)}`).join("\n")}>
+                            <span style={{ fontSize: 10, fontWeight: 700, background: "#EDF4FB", color: "#0B3A6B", padding: "2px 7px", borderRadius: 6 }}>{dups.length}x</span>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtBRL(d.valor_total)}</td>
                     <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? d.status_normalizado}</span>
                     </td>
-                    <td style={{ padding: "7px 10px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? d.natureza_operacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.processado_por ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? "—"}</td>
                     <td style={{ padding: "7px 10px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
                       {d.tipo_doc === "NF" && (() => {
                         const nf = acaoDetalhe[d.id];
@@ -569,7 +629,7 @@ export default function DocumentosFiscaisPage() {
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
+                <tr><td colSpan={19} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
               )}
             </tbody>
           </table>
