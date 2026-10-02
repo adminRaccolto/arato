@@ -175,7 +175,7 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", panel: true, minStep: 6,
     children: [
-      { type: "divider", label: "Contas a Pagar / Receber (Produtor + Empresa)" },
+      { type: "divider", label: "Contas a Pagar / Receber" },
       { id: "fin-pagar",           label: "Contas a Pagar",               path: "/financeiro/pagar",                moduleId: "fin_pagar"      },
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
       { id: "fin-adiantamentos",   label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos",        moduleId: "fin_pagar"      },

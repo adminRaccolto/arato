@@ -38,7 +38,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import {
-  baixarLancamento, reabrirLancamento, atualizarLancamento, listarContas, listarContasPorEmpresa,
+  baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
@@ -46,6 +46,7 @@ import {
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
+import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import SelectBusca from "../../../components/SelectBusca";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
@@ -395,7 +396,8 @@ export default function ContasAReceberPage() {
   };
   type ParcelaGrid = { data: string; valor: number };
   const [modalNovo, setModalNovo] = useState(false);
-  const [novoTab,   setNovoTab]   = useState<"principal" | "adicionais">("principal");
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [novoTab,   setNovoTab]   = useState<"principal" | "adicionais" | "documentos">("principal");
   const [novoForm,  setNovoForm]  = useState(NOVO_VAZIO);
   const [erroNovo,  setErroNovo]  = useState("");
   const [cascadeNovo, setCascadeNovo] = useState<Partial<CascadeValues>>({});
@@ -448,10 +450,74 @@ export default function ContasAReceberPage() {
   function abrirNovo() {
     setErroNovo("");
     setNovoTab("principal");
+    setEditandoId(null);
     setNovoForm({ ...NOVO_VAZIO, data_vencimento: hojeISO() });
     setCascadeNovo({});
     setParcelasNovo([]);
     setSalvarComoRegra(false);
+    setModalNovo(true);
+  }
+
+  // ── Editar lançamento existente — reaproveita o mesmo modal, sem a parte
+  // de Condição de Recebimento/parcelamento (converter parcelas de um título
+  // já lançado é um fluxo à parte, não entra aqui; editar muda só os campos).
+  async function abrirEditar(l: RelLancamento) {
+    setErroNovo("");
+    setNovoTab("principal");
+    setParcelasNovo([]);
+    setSalvarComoRegra(false);
+    setEditandoId(l.id);
+    if (l.origem_tabela === "lancamentos") {
+      const { data } = await supabase.from("lancamentos").select("*").eq("id", l.id).single();
+      const lanc = data as Lancamento | null;
+      if (!lanc) return;
+      setNovoForm({
+        ...NOVO_VAZIO,
+        origem: "lancamentos",
+        natureza: lanc.natureza ?? "real",
+        moeda: lanc.moeda,
+        pessoa_id: lanc.pessoa_id ?? "",
+        descricao: lanc.descricao ?? "",
+        categoria: lanc.categoria || CATS_CR[0],
+        data_vencimento: lanc.data_vencimento,
+        valor: lanc.valor,
+        cotacao_usd: lanc.cotacao_usd ?? 5.12,
+        sacas: lanc.sacas ?? 0,
+        cultura_barter: lanc.cultura_barter ?? "soja",
+        preco_saca_barter: lanc.preco_saca_barter ?? 120,
+        centro_custo_id: lanc.centro_custo_id ?? "",
+        observacao: lanc.observacao ?? "",
+        tipo_documento_lcdpr: lanc.tipo_documento_lcdpr ?? "RECIBO",
+        numero_documento: lanc.numero_documento ?? "",
+        entidade_contabil: lanc.entidade_contabil ?? "",
+        operacao_gerencial_id: lanc.operacao_gerencial_id ?? "",
+        forma_pagamento: lanc.forma_pagamento ?? "PIX",
+        conta_pagamento: lanc.conta_bancaria ?? "",
+        empresa_id: lanc.empresa_id ?? "",
+      });
+      setCascadeNovo({ produtorId: lanc.produtor_id || undefined, anoSafraId: lanc.ano_safra_id || undefined, cicloId: lanc.ciclo_id || undefined });
+    } else {
+      const { data } = await supabase.from("empresa_lancamentos").select("*").eq("id", l.id).single();
+      const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string } | null;
+      if (!emp) return;
+      setNovoForm({
+        ...NOVO_VAZIO,
+        origem: "empresa_lancamentos",
+        empresa_id: emp.empresa_id,
+        pessoa_id: emp.pessoa_id ?? "",
+        descricao: emp.descricao ?? "",
+        categoria: emp.categoria || CATS_CR[0],
+        data_vencimento: emp.data_vencimento,
+        valor: emp.valor,
+        centro_custo_texto: emp.centro_custo ?? "",
+        observacao: emp.observacao ?? "",
+        forma_pagamento: emp.forma_pagamento ?? "PIX",
+        conta_pagamento: emp.conta_bancaria ?? "",
+        numero_documento: emp.numero_documento ?? "",
+        competencia: emp.competencia ?? "",
+      });
+      setCascadeNovo({});
+    }
     setModalNovo(true);
   }
 
@@ -474,9 +540,69 @@ export default function ContasAReceberPage() {
     if (erros.length > 0) { setErroNovo(erros.join(" ")); return; }
     setErroNovo("");
 
-    if (novoForm.origem === "lancamentos") {
+    if (novoForm.origem === "lancamentos" && !editandoId) {
       const dup = await buscarLancamentoDuplicado(fazendaId, "receber", novoForm.pessoa_id, novoForm.numero_documento);
       if (dup) { setErroNovo(`Já existe um lançamento com este documento para este cliente (venc. ${fmtData(dup.data_vencimento)}, ${fmtBRL(dup.valor)}).`); return; }
+    }
+
+    // ── Edição: UPDATE no título existente — sem reconversão de parcelamento ──
+    if (editandoId) {
+      setSalvandoAcao(true);
+      try {
+        if (novoForm.origem === "lancamentos") {
+          const sacas = Number(novoForm.sacas);
+          const valorFinal = novoForm.moeda === "barter" ? sacas * novoForm.preco_saca_barter : novoForm.valor;
+          await atualizarLancamento(editandoId, {
+            moeda: novoForm.moeda,
+            pessoa_id: novoForm.pessoa_id || undefined,
+            descricao: novoForm.descricao.trim() || (pessoas.find(p => p.id === novoForm.pessoa_id)?.nome ?? ""),
+            categoria: novoForm.categoria,
+            data_vencimento: novoForm.data_vencimento,
+            valor: valorFinal,
+            cotacao_usd: novoForm.moeda === "USD" ? novoForm.cotacao_usd : undefined,
+            sacas: novoForm.moeda === "barter" ? sacas : undefined,
+            cultura_barter: novoForm.moeda === "barter" ? novoForm.cultura_barter : undefined,
+            preco_saca_barter: novoForm.moeda === "barter" ? novoForm.preco_saca_barter : undefined,
+            tipo_documento_lcdpr: novoForm.tipo_documento_lcdpr || undefined,
+            conta_bancaria: novoForm.conta_pagamento || undefined,
+            numero_documento: novoForm.numero_documento || undefined,
+            centro_custo_id: novoForm.centro_custo_id || undefined,
+            observacao: novoForm.observacao.trim() || undefined,
+            ano_safra_id: cascadeNovo.anoSafraId || undefined,
+            ciclo_id: cascadeNovo.cicloId || undefined,
+            produtor_id: cascadeNovo.produtorId || undefined,
+            operacao_gerencial_id: novoForm.operacao_gerencial_id || undefined,
+            natureza: novoForm.natureza,
+            forma_pagamento: novoForm.forma_pagamento || undefined,
+            entidade_contabil: novoForm.entidade_contabil || undefined,
+          });
+          if (salvarComoRegra) await criarRegraClassificacaoNovo();
+        } else {
+          await atualizarEmpresaLancamento(editandoId, {
+            empresa_id: novoForm.empresa_id,
+            descricao: novoForm.descricao.trim(),
+            categoria: novoForm.categoria || undefined,
+            valor: novoForm.valor,
+            moeda: novoForm.moeda,
+            data_vencimento: novoForm.data_vencimento,
+            competencia: novoForm.competencia || undefined,
+            pessoa_id: novoForm.pessoa_id || undefined,
+            centro_custo: novoForm.centro_custo_texto.trim() || undefined,
+            forma_pagamento: novoForm.forma_pagamento || undefined,
+            conta_bancaria: novoForm.conta_pagamento || undefined,
+            numero_documento: novoForm.numero_documento || undefined,
+            observacao: novoForm.observacao.trim() || undefined,
+          });
+        }
+        setModalNovo(false);
+        setEditandoId(null);
+        await carregar();
+      } catch (e: unknown) {
+        setErroNovo(e instanceof Error ? e.message : "Erro ao salvar alterações");
+      } finally {
+        setSalvandoAcao(false);
+      }
+      return;
     }
 
     setSalvandoAcao(true);
@@ -1012,6 +1138,9 @@ export default function ContasAReceberPage() {
                 {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
                   <button onClick={() => { setPopover(null); abrirReprog(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↕ Reprogramar</button>
                 )}
+                {l.status_normalizado !== "baixado" && (
+                  <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>✎ Editar</button>
+                )}
               </div>
             </div>
           </>
@@ -1275,6 +1404,10 @@ export default function ContasAReceberPage() {
                   {contasOpcoes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </div>
+              <div>
+                <label style={lbl}>📎 Anexar comprovante</label>
+                <AnexoDocumentos entidade_tipo="lancamento_cr_comprovante" entidade_id={modalBaixa.id} fazenda_id={modalBaixa.fazenda_id ?? fazendaId ?? ""} maxBytes={1024 * 1024} label="Comprovante" />
+              </div>
             </div>
             {erroAcao && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroAcao}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
@@ -1338,7 +1471,7 @@ export default function ContasAReceberPage() {
             <div style={{ padding: "18px 24px 0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>+ Novo Lançamento — Contas a Receber</h2>
+                  <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>{editandoId ? "✎ Editar Lançamento — Contas a Receber" : "+ Novo Lançamento — Contas a Receber"}</h2>
                   {!ehEmpresa && (
                     <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
                       {(["real", "previsao"] as const).map(n => (
@@ -1368,12 +1501,12 @@ export default function ContasAReceberPage() {
               </div>
 
               <div style={{ display: "flex", gap: 0 }}>
-                {(["principal", "adicionais"] as const).map(t => (
+                {(editandoId ? (["principal", "adicionais", "documentos"] as const) : (["principal", "adicionais"] as const)).map(t => (
                   <button key={t} onClick={() => setNovoTab(t)}
                     style={{ padding: "7px 18px", border: "none", cursor: "pointer", fontSize: 12, background: "transparent",
                       fontWeight: novoTab === t ? 700 : 400, color: novoTab === t ? "#1A4870" : "#888",
                       borderBottom: novoTab === t ? "2px solid #1A4870" : "2px solid transparent" }}>
-                    {t === "principal" ? "Principal" : "Adicionais"}
+                    {t === "principal" ? "Principal" : t === "adicionais" ? "Adicionais" : "📎 Documentos"}
                   </button>
                 ))}
               </div>
@@ -1743,6 +1876,25 @@ export default function ContasAReceberPage() {
                   </div>
                 </div>
               )}
+
+              {/* ── Documentos — só disponível editando um título já existente (precisa
+                  do id real pra vincular os anexos); 1 MB por arquivo em cada seção ── */}
+              {novoTab === "documentos" && editandoId && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>Nota Fiscal</div>
+                    <AnexoDocumentos entidade_tipo="lancamento_cr_nf" entidade_id={editandoId} fazenda_id={fazendaId ?? ""} maxBytes={1024 * 1024} label="Nota Fiscal" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>Documento de Cobrança (Boleto)</div>
+                    <AnexoDocumentos entidade_tipo="lancamento_cr_boleto" entidade_id={editandoId} fazenda_id={fazendaId ?? ""} maxBytes={1024 * 1024} label="Boleto" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>Comprovante de Recebimento</div>
+                    <AnexoDocumentos entidade_tipo="lancamento_cr_comprovante" entidade_id={editandoId} fazenda_id={fazendaId ?? ""} maxBytes={1024 * 1024} label="Comprovante" />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 8, alignItems: "center" }}>
@@ -1755,7 +1907,7 @@ export default function ContasAReceberPage() {
                 <button onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
                 <button onClick={salvarNovo} disabled={salvandoAcao}
                   style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
-                  {salvandoAcao ? "Salvando…" : !ehEmpresa && novoForm.condicao === "prazo" && parcelasNovo.length > 0 ? `◈ Criar ${parcelasNovo.length} parcelas` : !ehEmpresa && novoForm.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, novoForm.qtd_parcelas)} repetições` : "Salvar Lançamento"}
+                  {salvandoAcao ? "Salvando…" : editandoId ? "✓ Salvar alterações" : !ehEmpresa && novoForm.condicao === "prazo" && parcelasNovo.length > 0 ? `◈ Criar ${parcelasNovo.length} parcelas` : !ehEmpresa && novoForm.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, novoForm.qtd_parcelas)} repetições` : "Salvar Lançamento"}
                 </button>
               </div>
             </div>

@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-j",
+    data: "02/10/2026",
+    titulo: "Editar lançamento e anexar comprovantes no Contas a Pagar/Receber",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Voltou a opção \"✎ Editar\" no popover de ações de Contas a Pagar e Contas a Receber (clique na linha de um título ainda não baixado) — abre o mesmo modal de lançamento com os campos preenchidos e salva como atualização do título existente, sem criar um novo." },
+      { tipo: "novo", texto: "O modal \"Baixar Lançamento\" ganhou um campo \"📎 Anexar comprovante\" — sobe o comprovante de pagamento direto na hora de dar baixa, sem precisar sair da tela." },
+      { tipo: "novo", texto: "Abrindo um lançamento existente em \"✎ Editar\", nova aba \"📎 Documentos\" com 3 seções separadas: Nota Fiscal, Documento de Pagamento/Boleto e Comprovante — cada uma com upload, lista e exclusão independentes." },
+      { tipo: "aviso", texto: "Limite de 1 MB por arquivo nesses anexos (menor que o padrão de 5 MB usado no resto do sistema)." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.02-i",
     data: "02/10/2026",
     titulo: "Novo Lançamento de CP/CR reconstruído por completo",

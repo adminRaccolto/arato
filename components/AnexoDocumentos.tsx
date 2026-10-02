@@ -16,9 +16,11 @@ interface Props {
   entidade_id: string;
   fazenda_id: string;
   label?: string;
+  /** Teto de tamanho por arquivo, em bytes. Padrão: 5 MB. */
+  maxBytes?: number;
 }
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES_PADRAO = 5 * 1024 * 1024;
 
 function fmtSize(b: number) {
   if (b >= 1024 * 1024) return `${(b / 1024 / 1024).toFixed(1)} MB`;
@@ -40,7 +42,7 @@ function iconeMime(mime: string | null) {
   return "📄";
 }
 
-export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id, label = "Documentos" }: Props) {
+export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id, label = "Documentos", maxBytes = MAX_BYTES_PADRAO }: Props) {
   const [anexos, setAnexos]         = useState<Anexo[]>([]);
   const [loading, setLoading]       = useState(true);
   const [usadoBytes, setUsado]      = useState(0);
@@ -74,8 +76,8 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > MAX_BYTES) {
-      setErro(`Arquivo muito grande: ${fmtSize(file.size)}. Máximo: 5 MB.`);
+    if (file.size > maxBytes) {
+      setErro(`Arquivo muito grande: ${fmtSize(file.size)}. Máximo: ${fmtSize(maxBytes)}.`);
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
@@ -189,7 +191,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
             {uploading ? "Enviando…" : "↑ Anexar arquivo"}
           </button>
           <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 10 }}>
-            PDF, Word, Excel, imagens — máx. 5 MB por arquivo
+            PDF, Word, Excel, imagens — máx. {fmtSize(maxBytes)} por arquivo
           </span>
         </div>
       )}
