@@ -6,6 +6,20 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-m",
+    data: "02/10/2026",
+    titulo: "Documentos Fiscais: grid reformulado e popup de detalhe + ações",
+    modulos: ["Fiscal", "Sistema"],
+    itens: [
+      { tipo: "correcao", texto: "Corrigido: o menu \"Fiscal\" ficava destacado junto com \"Documentos Fiscais\" ao navegar nessa tela — cada grupo do menu agora só destaca pelas rotas que de fato são dele." },
+      { tipo: "correcao", texto: "A mensagem sobre CT-e estava enganosa — o CT-e de Fretes e Transporte é para EMISSÃO (você emitindo); Documentos Fiscais mostra documentos emitidos CONTRA você (recebidos). CT-e agora também abre um popup de visualização aqui (somente leitura) — emitir/editar continua exclusivamente em Fretes e Transporte → CT-e." },
+      { tipo: "novo", texto: "Grid reformulado: \"Processado por\", CNPJ do emitente e Observação saíram de coluna e foram para um popup de detalhe + ações (mesmo padrão do popup usado em Contas a Pagar/Receber) — clique em qualquer linha (NF, NFS ou CT-e) para abrir. Coluna Tipo abreviada (NF/NFS/CTe). Botão \"Processar\" saiu da linha e entrou dentro do popup." },
+      { tipo: "correcao", texto: "\"↗ DANFE\" agora aparece para qualquer NF de Produtos com chave de acesso, pendente ou processada (antes só aparecia processada)." },
+      { tipo: "novo", texto: "Grid com mais espaço de tela (altura maior, paddings mais enxutos no topo) e colunas redimensionadas." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.02-l",
     data: "02/10/2026",
     titulo: "Contas a Pagar/Receber: ordenação por Lançamento, borderô respeitando a ordem e grid mais espaçoso",

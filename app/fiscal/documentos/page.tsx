@@ -1,20 +1,30 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
-// Documentos Fiscais — NF de Produtos + NF de Serviços unificados numa tela
-// só, ordenados por data, filtro por tipo (Seção 321 da migration, trigger-
-// sync de nf_entradas + nf_servicos + ctes em rel_documentos_fiscais).
-// Promovida de piloto em 01/10/2026, a pedido do dono, pra teste real.
+// Documentos Fiscais — NF de Produtos + NF de Serviços + CT-e unificados
+// numa tela só, ordenados por data, filtro por tipo (Seções 321/322 da
+// migration, trigger-sync de nf_entradas + nf_servicos + ctes em
+// rel_documentos_fiscais). Promovida de piloto em 01/10/2026.
 //
-// Processamento de cada tipo acontece via MODAL dentro desta mesma tela,
-// sem redirecionar: "+ Nova NF de Produtos"/"+ Nova NF de Serviço" ou
-// clicar numa linha abre o modal certo (ModalNf / ModalNfServico — núcleo
-// de cada wizard extraído das telas antigas, lógica preservada).
+// IMPORTANTE — o que esta tela É e o que NÃO é (02/10/2026, esclarecido
+// pelo dono depois de uma mensagem que sugeria o contrário): esta tela é
+// "Notas de Terceiro" — documentos emitidos CONTRA o produtor/empresa
+// (NF/NFS recebidas de fornecedores, CT-e de frete contratado). NÃO é
+// onde o produtor/empresa EMITE seus próprios documentos — isso continua
+// nas telas de origem de cada tipo (Faturamento/NF-e de Saída, Fretes e
+// Transporte → CT-e para emissão própria). O CT-e que aparece aqui é
+// sempre VISUALIZAÇÃO (somente leitura) do que já foi emitido/recebido —
+// editar ou emitir CT-e continua exclusivamente em Fretes e Transporte.
+//
+// Processamento de NF/NFS acontece via MODAL dentro desta mesma tela, sem
+// redirecionar: "+ Nova NF de Produtos"/"+ Nova NF de Serviço" ou clicar
+// numa linha abre um POPUP de detalhe + ações (mesmo padrão do popover de
+// Contas a Pagar/Receber) — um dos botões do popup é que abre o modal de
+// edição de verdade (ModalNf / ModalNfServico). CT-e nunca abre modal de
+// edição — o popup já É a visualização completa.
 //
 // As 4 lacunas da Fase 2 (devolução, reclassificação, remessa logística e
 // ações em lote) foram todas fechadas entre 01/10 e 02/10/2026 — ver
-// histórico no CLAUDE.md. CT-e ainda não tem modal nesta tela — continua
-// só em Fretes e Transporte → CT-e (frente separada, modal a construir do
-// zero, não uma extração da tela antiga).
+// histórico no CLAUDE.md.
 //
 // Ações em lote (seleção por checkbox, restrita a linhas de tipo NF): Ver
 // condições de habilitação iguais à tela antiga — só NFs pendentes entram
@@ -67,8 +77,8 @@ const TIPO_ENTRADA_META: Record<string, { bg: string; cl: string; label: string 
 };
 const ORIGEM_DOC_META: Record<string, string> = { manual: "Manual", xml: "XML", sieg: "Sieg", leitor: "Leitor" };
 
-// Detalhe real da NF — buscado sob demanda (lazy, só ao abrir o "⋮" de uma
-// linha), porque rel_documentos_fiscais (Seção 321) não carrega esses campos
+// Detalhe real da NF — buscado sob demanda (lazy, só ao abrir o popover de
+// uma linha), porque rel_documentos_fiscais não carrega esses campos
 // específicos de nf_entradas (seriam só pra 1/3 dos tipos de documento).
 type NfDetalhe = {
   id: string;
@@ -78,6 +88,22 @@ type NfDetalhe = {
   cnpj_destino: string | null;
   chave_acesso: string | null;
   manifestacao_tipo: number | null;
+};
+
+// Detalhe do CT-e — mesmo princípio: lazy, só ao abrir o popover. CT-e
+// aqui é sempre visualização; a tela não tem (nem terá) edição própria.
+type CteDetalhe = {
+  id: string;
+  remetente_nome: string | null;
+  destinatario_nome: string | null;
+  municipio_origem: string | null;
+  uf_origem: string | null;
+  municipio_destino: string | null;
+  uf_destino: string | null;
+  veiculo_placa: string | null;
+  motorista_nome: string | null;
+  peso_bruto_kg: number | null;
+  valor_frete: number | null;
 };
 
 const MAN_CFG = [
@@ -100,6 +126,9 @@ const TIPO_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
   { v: "NFS", label: "NF de Serviços",  bg: "#F5F3FF", color: "#5B21B6" },
   { v: "CTE", label: "CT-e",            bg: "#FBF3E0", color: "#7A5200" },
 ];
+// Rótulo curto pra coluna Tipo do grid — o nome completo (TIPO_OPCOES.label)
+// fica só nos filtros/cards, onde há espaço de sobra.
+const TIPO_GRID_LABEL: Record<string, string> = { NF: "NF", NFS: "NFS", CTE: "CTe" };
 const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] = [
   { v: "pendente",   label: "Pendente",   bg: "#E8E8E8", color: "#0D0D0D" },
   { v: "processada", label: "Processada", bg: "#DCFCE7", color: "#166534" },
@@ -174,23 +203,38 @@ export default function DocumentosFiscaisPage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalLote, setModalLote] = useState(false);
 
-  // ── "⋮" de ações por linha (Processar/Estornar/Devolver/Manifestar) —
-  // o detalhe real da NF é buscado sob demanda, só quando o dropdown é
-  // aberto, pra não disparar 1 query por linha renderizada ──
-  const [acaoDropdown, setAcaoDropdown] = useState<string | null>(null);
-  const [acaoDetalhe,  setAcaoDetalhe]  = useState<Record<string, NfDetalhe>>({});
-  const [acaoCarregando, setAcaoCarregando] = useState<string | null>(null);
+  // ── Popover de detalhe + ações, aberto ao clicar na linha — mesmo padrão
+  // do popover de Contas a Pagar/Receber. O detalhe fino (NF/CT-e) é
+  // buscado sob demanda, só quando o popover abre, pra não disparar 1
+  // query por linha renderizada à toa. NFS não precisa de detalhe extra —
+  // tudo que o popup mostra já vem em rel_documentos_fiscais. ──
+  const [popover, setPopover] = useState<{ d: RelDocFiscal; x: number; y: number } | null>(null);
+  const [nfDetalhe,  setNfDetalhe]  = useState<Record<string, NfDetalhe>>({});
+  const [nfDetalheCarregando, setNfDetalheCarregando] = useState<string | null>(null);
+  const [cteDetalhe, setCteDetalhe] = useState<Record<string, CteDetalhe>>({});
+  const [cteDetalheCarregando, setCteDetalheCarregando] = useState<string | null>(null);
 
-  async function abrirAcaoDropdown(d: RelDocFiscal) {
-    if (acaoDropdown === d.id) { setAcaoDropdown(null); return; }
-    setAcaoDropdown(d.id);
-    if (!acaoDetalhe[d.id]) {
-      setAcaoCarregando(d.id);
-      const { data } = await supabase.from("nf_entradas")
+  function abrirPopover(d: RelDocFiscal, x: number, y: number) {
+    setPopover(p => p?.d.id === d.id ? null : { d, x, y });
+    if (d.tipo_doc === "NF" && !nfDetalhe[d.id]) {
+      setNfDetalheCarregando(d.id);
+      supabase.from("nf_entradas")
         .select("id, status, tipo_entrada, origem, cnpj_destino, chave_acesso, manifestacao_tipo")
-        .eq("id", d.id).maybeSingle();
-      if (data) setAcaoDetalhe(prev => ({ ...prev, [d.id]: data as NfDetalhe }));
-      setAcaoCarregando(null);
+        .eq("id", d.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) setNfDetalhe(prev => ({ ...prev, [d.id]: data as NfDetalhe }));
+          setNfDetalheCarregando(null);
+        });
+    }
+    if (d.tipo_doc === "CTE" && !cteDetalhe[d.id]) {
+      setCteDetalheCarregando(d.id);
+      supabase.from("ctes")
+        .select("id, remetente_nome, destinatario_nome, municipio_origem, uf_origem, municipio_destino, uf_destino, veiculo_placa, motorista_nome, peso_bruto_kg, valor_frete")
+        .eq("id", d.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) setCteDetalhe(prev => ({ ...prev, [d.id]: data as CteDetalhe }));
+          setCteDetalheCarregando(null);
+        });
     }
   }
 
@@ -212,14 +256,15 @@ export default function DocumentosFiscaisPage() {
         throw new Error((json as { error?: string }).error ?? `Erro HTTP ${res.status}`);
       }
       alert(`NF ${d.numero} estornada. O estoque foi revertido. Reabra a NF para corrigir os itens e reprocessar.`);
+      setPopover(null);
       carregar();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Erro ao estornar NF");
     }
   }
 
-  // ── Manifestação SIEG — inline, fora do modal (nunca foi parte do wizard
-  // na tela antiga; é um controle só de grid, por isso fica aqui direto) ──
+  // ── Manifestação SIEG — dentro do popover (nunca foi parte do wizard na
+  // tela antiga; é um controle só de grid/lista, não do modal de edição) ──
   const [manDropdown, setManDropdown] = useState<string | null>(null);
   const [siegBusy,  setSiegBusy]  = useState<Record<string, boolean>>({});
   const [siegErros, setSiegErros] = useState<Record<string, string>>({});
@@ -238,7 +283,7 @@ export default function DocumentosFiscaisPage() {
       if (j.erro) {
         setSiegErros(p => ({ ...p, [d.id]: String(j.erro) }));
       } else {
-        setAcaoDetalhe(prev => ({ ...prev, [d.id]: { ...nf, manifestacao_tipo: tipo } }));
+        setNfDetalhe(prev => ({ ...prev, [d.id]: { ...nf, manifestacao_tipo: tipo } }));
       }
     } catch (e) { setSiegErros(p => ({ ...p, [d.id]: String(e) })); }
     finally { setSiegBusy(p => ({ ...p, [d.id]: false })); }
@@ -262,19 +307,19 @@ export default function DocumentosFiscaisPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
-      <div style={{ maxWidth: 1500, margin: "0 auto", padding: "22px 20px" }}>
+      <div style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
 
-        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "10px 16px", marginBottom: 16, fontSize: 12, display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>ℹ</span>
+        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B60", borderRadius: 10, padding: "8px 14px", marginBottom: 10, fontSize: 11, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 14 }}>ℹ</span>
           <div style={{ color: "#7A5200" }}>
-            CT-e ainda não tem modal nesta tela — continua em <strong>Fretes e Transporte → CT-e</strong>.
+            Esta tela mostra documentos emitidos <strong>contra</strong> o produtor/empresa (NF, NFS e CT-e recebidos) — não é onde você emite os seus. CT-e aqui é só visualização; emissão/edição continua em <strong>Fretes e Transporte → CT-e</strong>.
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais</h1>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>NF de Produtos e NF de Serviços juntos, ordenados por data</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>NF de Produtos, NF de Serviços e CT-e recebidos, ordenados por data</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setModalNf({ id: null })} style={{ ...inp, background: "#0C447C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
@@ -287,7 +332,7 @@ export default function DocumentosFiscaisPage() {
         </div>
 
         {/* ── Barra de filtros sempre visível ── */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 14px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
             <label style={lblMini}>Buscar (número, participante, chave)</label>
             <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
@@ -318,12 +363,12 @@ export default function DocumentosFiscaisPage() {
         </div>
 
         {erro && (
-          <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#791F1F" }}>
+          <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 10, color: "#791F1F" }}>
             {erro}
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
           {porTipo.map(t => (
             <div key={t.v} style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "8px 14px", flex: "1 1 160px" }}>
               <span style={{ fontSize: 10, fontWeight: 700, background: t.bg, color: t.color, padding: "2px 8px", borderRadius: 6 }}>{t.label}</span>
@@ -400,28 +445,24 @@ export default function DocumentosFiscaisPage() {
           );
         })()}
 
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 420px)" }}>
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 290px)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: 32 }} />    {/* checkbox */}
-              <col style={{ width: 90 }} />    {/* Tipo */}
+              <col style={{ width: 54 }} />    {/* Tipo — abreviado */}
               <col style={{ width: 76 }} />    {/* Emissão */}
               <col style={{ width: 78 }} />    {/* Número */}
               <col style={{ width: 46 }} />    {/* Série */}
-              <col style={{ width: "13%" }} /> {/* Emitente — flex */}
-              <col style={{ width: 104 }} />   {/* CNPJ emitente */}
-              <col style={{ width: "13%" }} /> {/* Destinatário — flex */}
+              <col style={{ width: "16%" }} /> {/* Emitente — flex */}
+              <col style={{ width: "16%" }} /> {/* Destinatário — flex */}
               <col style={{ width: 56 }} />    {/* CFOP */}
               <col style={{ width: 76 }} />    {/* Entrada */}
-              <col style={{ width: 96 }} />    {/* Tipo (entrada) */}
+              <col style={{ width: 100 }} />   {/* Tipo (entrada) */}
               <col style={{ width: 64 }} />    {/* Origem */}
-              <col style={{ width: "11%" }} /> {/* Operação NF — flex */}
+              <col style={{ width: "14%" }} /> {/* Operação NF — flex */}
               <col style={{ width: 96 }} />    {/* Parcelamento */}
-              <col style={{ width: 104 }} />   {/* Valor */}
-              <col style={{ width: 80 }} />    {/* Status */}
-              <col style={{ width: 90 }} />    {/* Processado por */}
-              <col style={{ width: "9%" }} />  {/* Observação — flex */}
-              <col style={{ width: 230 }} />   {/* Ações */}
+              <col style={{ width: 110 }} />   {/* Valor */}
+              <col style={{ width: 90 }} />    {/* Status */}
             </colgroup>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}>
@@ -436,27 +477,25 @@ export default function DocumentosFiscaisPage() {
                     style={{ cursor: "pointer" }}
                   />
                 </th>
-                {["Tipo", "Emissão", "Número", "Série", "Emitente", "CNPJ", "Destinatário", "CFOP", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor", "Status", "Processado por", "Observação"].map(h => (
+                {["Tipo", "Emissão", "Número", "Série", "Emitente", "Destinatário", "CFOP", "Entrada", "Tipo", "Origem", "Operação NF", "Parcelamento", "Valor", "Status"].map(h => (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>{h}</th>
                 ))}
-                <th style={{ padding: "7px 10px", textAlign: "right", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={19} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={15} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhas.map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
                 const sm = STATUS_OPCOES.find(s => s.v === d.status_normalizado);
-                const clicavel = d.tipo_doc === "NFS" || d.tipo_doc === "NF";
-                const abrir = () => {
-                  if (d.tipo_doc === "NFS") setModalNfs({ id: d.id, viewOnly: d.status_normalizado === "processada" });
-                  else if (d.tipo_doc === "NF") setModalNf({ id: d.id });
-                };
                 return (
                   <tr key={d.id}
-                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(d.id) ? "#F2F2F2" : undefined }}>
+                    onClick={e => {
+                      if ((e.target as HTMLElement).closest("button,input,select,a")) return;
+                      abrirPopover(d, e.clientX, e.clientY);
+                    }}
+                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(d.id) ? "#F2F2F2" : undefined, cursor: "pointer" }}>
                     <td style={{ padding: "7px 10px" }} onClick={e => e.stopPropagation()}>
                       {d.tipo_doc === "NF" && (
                         <input
@@ -473,38 +512,32 @@ export default function DocumentosFiscaisPage() {
                         />
                       )}
                     </td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }}
-                      onClick={() => clicavel && abrir()}
-                      title={clicavel ? "Abrir documento" : "CT-e ainda não tem modal nesta tela — use Fretes e Transporte → CT-e"}>
-                      <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 8px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
+                    <td style={{ padding: "7px 10px" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 7px", borderRadius: 6 }}>{TIPO_GRID_LABEL[d.tipo_doc] ?? d.tipo_doc}</span>
                     </td>
-                    <td style={{ padding: "7px 10px", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtData(d.data_doc)}</td>
-                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.numero ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.serie ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.participante_nome ?? undefined}>{d.participante_nome ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", color: "#888", fontFamily: "monospace", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.participante_cnpj ?? undefined}>{d.participante_cnpj ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", fontSize: 11, overflow: "hidden", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                    <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{fmtData(d.data_doc)}</td>
+                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.numero ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{d.serie ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.participante_nome ?? undefined}>{d.participante_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", fontSize: 11, overflow: "hidden" }}>
                       {d.destinatario_nome
-                        ? <>
-                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.destinatario_nome}</div>
-                            {d.destinatario_cnpj && <div style={{ fontSize: 10, color: "#888", fontFamily: "monospace" }}>{d.destinatario_cnpj}</div>}
-                          </>
+                        ? <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.destinatario_nome}</div>
                         : <span style={{ color: "#888" }}>—</span>}
                     </td>
-                    <td style={{ padding: "7px 10px", color: "#888", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.cfop ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtData(d.data_entrada)}</td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                    <td style={{ padding: "7px 10px", color: "#888" }}>{d.cfop ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11 }}>{fmtData(d.data_entrada)}</td>
+                    <td style={{ padding: "7px 10px" }}>
                       {d.tipo_entrada
                         ? (() => { const tem = TIPO_ENTRADA_META[d.tipo_entrada]; return <span style={{ fontSize: 10, fontWeight: 700, background: tem?.bg ?? "#eee", color: tem?.cl ?? "#555", padding: "2px 7px", borderRadius: 6 }}>{tem?.label ?? d.tipo_entrada}</span>; })()
                         : <span style={{ color: "#888", fontSize: 11 }}>—</span>}
                     </td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                    <td style={{ padding: "7px 10px" }}>
                       {d.origem_doc
                         ? <span style={{ fontSize: 10, fontWeight: 700, background: "#F4F6FA", color: "#555", padding: "2px 7px", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>{ORIGEM_DOC_META[d.origem_doc] ?? d.origem_doc}</span>
                         : <span style={{ color: "#888", fontSize: 11 }}>—</span>}
                     </td>
-                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.natureza_operacao ?? undefined}>{d.natureza_operacao ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.natureza_operacao ?? undefined}>{d.natureza_operacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>
                       {(() => {
                         const dups = d.duplicatas_xml ?? [];
                         if (dups.length === 0) return <span style={{ fontSize: 11, color: "#888" }}>à vista</span>;
@@ -516,125 +549,247 @@ export default function DocumentosFiscaisPage() {
                         );
                       })()}
                     </td>
-                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtBRL(d.valor_total)}</td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
+                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(d.valor_total)}</td>
+                    <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? d.status_normalizado}</span>
-                    </td>
-                    <td style={{ padding: "7px 10px", color: "#888", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.processado_por ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
-                      {d.tipo_doc === "NF" && (() => {
-                        const nf = acaoDetalhe[d.id];
-                        const carregandoDetalhe = acaoCarregando === d.id;
-                        const aberto = acaoDropdown === d.id;
-                        const pendente = d.status_normalizado === "pendente";
-                        const processada = d.status_normalizado === "processada";
-                        return (
-                          <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
-                            {/* Processar — direto, sem precisar abrir o "⋮" (só precisa do status, já vem no row) */}
-                            {pendente && (
-                              <button onClick={() => setModalNf({ id: d.id })}
-                                style={{ padding: "3px 8px", border: "none", borderRadius: 6, background: "#1A5C38", color: "#fff", fontWeight: 700, fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                Processar
-                              </button>
-                            )}
-                            {/* DANFE — direto, sem precisar abrir o "⋮" (chave já vem no row) */}
-                            {processada && d.chave && (
-                              <a href={`/api/fiscal/danfe?chave=${d.chave}&fazenda_id=${d.fazenda_id ?? ""}`}
-                                target="_blank" rel="noopener noreferrer"
-                                style={{ padding: "3px 7px", border: "0.5px solid #86EFAC", borderRadius: 6, background: "#F0FDF4", color: "#15803D", fontWeight: 700, fontSize: 10, textDecoration: "none", whiteSpace: "nowrap" }}>
-                                ↗ DANFE
-                              </a>
-                            )}
-                            {/* Manifestação SIEG — só aparece depois do detalhe carregado e só pra NFs de origem SIEG */}
-                            {nf?.origem === "sieg" && (() => {
-                              const isBusy = siegBusy[d.id];
-                              const manTipo = nf.manifestacao_tipo ?? null;
-                              const manSt = manTipo !== null ? (MAN_CFG.find(m => m.tipo === manTipo)?.status ?? "pendente") : "pendente";
-                              const stCfg = MAN_ST[manSt as ManStatus] ?? MAN_ST.pendente;
-                              const manAberto = manDropdown === d.id;
-                              return (
-                                <div style={{ position: "relative" }}>
-                                  <button
-                                    disabled={isBusy}
-                                    onClick={() => setManDropdown(manAberto ? null : d.id)}
-                                    style={{ padding: "2px 6px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 10, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
-                                    {isBusy ? "⏳" : stCfg.short} {!isBusy && "▾"}
-                                  </button>
-                                  {manAberto && (
-                                    <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 400, minWidth: 150, overflow: "hidden" }}>
-                                      {MAN_CFG.map(m => (
-                                        <button key={m.tipo}
-                                          onClick={() => { setManDropdown(null); manifestar(d, nf, m.tipo); }}
-                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
-                                          {m.tipo === manTipo ? "✓ " : ""}{m.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {siegErros[d.id] && <div style={{ position: "absolute", right: 0, top: "100%", fontSize: 9, color: "#E24B4A", background: "#fff", border: "0.5px solid #F5C6C6", borderRadius: 6, padding: "3px 6px", whiteSpace: "nowrap", zIndex: 400 }}>{siegErros[d.id]}</div>}
-                                </div>
-                              );
-                            })()}
-                            <div style={{ position: "relative" }}>
-                              <button
-                                onClick={() => abrirAcaoDropdown(d)}
-                                style={{ padding: "3px 7px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: aberto ? "#F4F6FA" : "transparent", cursor: "pointer", fontSize: 13, color: "#555", fontWeight: 700, lineHeight: 1 }}>
-                                ⋮
-                              </button>
-                              {aberto && (
-                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 180, overflow: "hidden" }}>
-                                  {carregandoDetalhe && (
-                                    <div style={{ padding: "10px 12px", fontSize: 11, color: "#888" }}>Carregando…</div>
-                                  )}
-                                  {!carregandoDetalhe && nf && (
-                                    <>
-                                      {nf.status === "processada" && (
-                                        <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id }); }}
-                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
-                                          Abrir (somente leitura)
-                                        </button>
-                                      )}
-                                      {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
-                                        <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
-                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
-                                          ↩ Devolver (nota de devolução)
-                                        </button>
-                                      )}
-                                      {nf.status === "processada" && (
-                                        <button onClick={() => { setAcaoDropdown(null); estornarNfGrid(d); }}
-                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
-                                          ↺ Estornar
-                                        </button>
-                                      )}
-                                      {nf.status === "pendente" && (
-                                        <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id }); }}
-                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
-                                          Editar NF
-                                        </button>
-                                      )}
-                                      {nf.status !== "pendente" && nf.status !== "processada" && (
-                                        <div style={{ padding: "8px 12px", fontSize: 11, color: "#888" }}>Sem ações para o status atual.</div>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
                     </td>
                   </tr>
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={19} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
+                <tr><td colSpan={15} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ── Popover de detalhe + ações — mesmo padrão do popover de Contas a
+          Pagar/Receber. Campos que antes eram coluna do grid (CNPJ do
+          emitente, Processado por, Observação) ficam só aqui agora. ── */}
+      {popover && (() => {
+        const d = popover.d;
+        const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
+        const sm = STATUS_OPCOES.find(s => s.v === d.status_normalizado);
+        const nf = nfDetalhe[d.id];
+        const nfCarregando = nfDetalheCarregando === d.id;
+        const cte = cteDetalhe[d.id];
+        const cteCarregando = cteDetalheCarregando === d.id;
+        const pendente = d.status_normalizado === "pendente";
+        const processada = d.status_normalizado === "processada";
+        const W = 400, H = 480;
+        const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, maxHeight: "85vh", overflowY: "auto", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE" }}>
+              {/* Header */}
+              <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA", position: "sticky", top: 0 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.participante_nome ?? "—"}</div>
+                    {d.participante_cnpj && <div style={{ fontSize: 11, color: "#888", marginTop: 2, fontFamily: "monospace" }}>{d.participante_cnpj}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 7px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? d.status_normalizado}</span>
+                    <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Valor</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(d.valor_total)}</div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 11 }}>
+                  <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>{d.tipo_doc === "CTE" ? "Emissão" : "Nº / Série"}</div>
+                    <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{d.tipo_doc === "CTE" ? fmtData(d.data_doc) : `${d.numero ?? "—"} / ${d.serie ?? "—"}`}</div>
+                  </div>
+                  {d.cfop && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>CFOP</div>
+                    <div style={{ color: "#1a1a1a" }}>{d.cfop}</div>
+                  </div>}
+
+                  {d.tipo_doc === "NF" && (
+                    <>
+                      {d.destinatario_nome && <div style={{ gridColumn: "1/-1" }}>
+                        <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Destinatário</div>
+                        <div style={{ color: "#1a1a1a" }}>{d.destinatario_nome}{d.destinatario_cnpj && <span style={{ color: "#888", fontFamily: "monospace", marginLeft: 6 }}>{d.destinatario_cnpj}</span>}</div>
+                      </div>}
+                      {d.data_entrada && <div>
+                        <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Entrada</div>
+                        <div style={{ color: "#1a1a1a" }}>{fmtData(d.data_entrada)}</div>
+                      </div>}
+                      {d.tipo_entrada && <div>
+                        <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Tipo</div>
+                        <div style={{ color: "#1a1a1a" }}>{TIPO_ENTRADA_META[d.tipo_entrada]?.label ?? d.tipo_entrada}</div>
+                      </div>}
+                      {d.origem_doc && <div>
+                        <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Origem</div>
+                        <div style={{ color: "#1a1a1a" }}>{ORIGEM_DOC_META[d.origem_doc] ?? d.origem_doc}</div>
+                      </div>}
+                      {d.natureza_operacao && <div style={{ gridColumn: "1/-1" }}>
+                        <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Operação NF</div>
+                        <div style={{ color: "#1a1a1a" }}>{d.natureza_operacao}</div>
+                      </div>}
+                      {(d.duplicatas_xml?.length ?? 0) > 0 && (
+                        <div style={{ gridColumn: "1/-1" }}>
+                          <div style={{ color: "#888", marginBottom: 2, fontSize: 10 }}>Parcelamento</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            {d.duplicatas_xml!.map((dp, i) => (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#1a1a1a" }}>
+                                <span>{dp.numero || `#${i + 1}`} — {fmtData(dp.data_vencimento)}</span>
+                                <span style={{ fontWeight: 600 }}>{fmtBRL(dp.valor)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {d.processado_por && <div>
+                        <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Processado por</div>
+                        <div style={{ color: "#1a1a1a" }}>{d.processado_por}</div>
+                      </div>}
+                    </>
+                  )}
+
+                  {d.tipo_doc === "CTE" && (
+                    cteCarregando ? (
+                      <div style={{ gridColumn: "1/-1", color: "#888" }}>Carregando detalhe…</div>
+                    ) : cte ? (
+                      <>
+                        {cte.remetente_nome && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Remetente</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.remetente_nome}</div>
+                        </div>}
+                        {cte.destinatario_nome && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Destinatário</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.destinatario_nome}</div>
+                        </div>}
+                        {cte.municipio_origem && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Origem</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.municipio_origem}/{cte.uf_origem}</div>
+                        </div>}
+                        {cte.municipio_destino && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Destino</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.municipio_destino}/{cte.uf_destino}</div>
+                        </div>}
+                        {cte.veiculo_placa && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Veículo</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.veiculo_placa}</div>
+                        </div>}
+                        {cte.motorista_nome && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Motorista</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.motorista_nome}</div>
+                        </div>}
+                        {cte.peso_bruto_kg != null && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Peso Bruto</div>
+                          <div style={{ color: "#1a1a1a" }}>{cte.peso_bruto_kg.toLocaleString("pt-BR")} kg</div>
+                        </div>}
+                        {cte.valor_frete != null && <div>
+                          <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Valor do Frete</div>
+                          <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{fmtBRL(cte.valor_frete)}</div>
+                        </div>}
+                      </>
+                    ) : null
+                  )}
+                </div>
+
+                {d.observacao && (
+                  <div style={{ background: "#F4F6FA", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#555", borderLeft: "3px solid #DDE2EE" }}>
+                    {d.observacao}
+                  </div>
+                )}
+
+                {/* Manifestação SIEG — só pra NF de origem SIEG, depois do detalhe carregado */}
+                {d.tipo_doc === "NF" && nf?.origem === "sieg" && (() => {
+                  const isBusy = siegBusy[d.id];
+                  const manTipo = nf.manifestacao_tipo ?? null;
+                  const manSt = manTipo !== null ? (MAN_CFG.find(m => m.tipo === manTipo)?.status ?? "pendente") : "pendente";
+                  const stCfg = MAN_ST[manSt as ManStatus] ?? MAN_ST.pendente;
+                  const manAberto = manDropdown === d.id;
+                  return (
+                    <div>
+                      <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Manifestação (SIEG)</div>
+                      <div style={{ position: "relative", display: "inline-block" }}>
+                        <button
+                          disabled={isBusy}
+                          onClick={() => setManDropdown(manAberto ? null : d.id)}
+                          style={{ padding: "4px 10px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 11, cursor: isBusy ? "default" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                          {isBusy ? "⏳" : stCfg.label} {!isBusy && "▾"}
+                        </button>
+                        {manAberto && (
+                          <div style={{ position: "absolute", left: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 1495, minWidth: 160, overflow: "hidden" }}>
+                            {MAN_CFG.map(m => (
+                              <button key={m.tipo}
+                                onClick={() => { setManDropdown(null); manifestar(d, nf, m.tipo); }}
+                                style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
+                                {m.tipo === manTipo ? "✓ " : ""}{m.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {siegErros[d.id] && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 4 }}>{siegErros[d.id]}</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Ações */}
+              <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {d.tipo_doc === "NF" && pendente && (
+                  <button onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#1A5C38", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
+                    ▶ Processar
+                  </button>
+                )}
+                {d.tipo_doc === "NF" && processada && (
+                  <button onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                    Abrir NF
+                  </button>
+                )}
+                {/* DANFE — só NF de Produtos: /api/fiscal/danfe só busca XML em
+                    nf_importadas_sieg/nf_entradas, não em nf_servicos/ctes. */}
+                {d.tipo_doc === "NF" && d.chave && (
+                  <a href={`/api/fiscal/danfe?chave=${d.chave}&fazenda_id=${d.fazenda_id ?? ""}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#F0FDF4", color: "#15803D", border: "0.5px solid #86EFAC", cursor: "pointer", fontWeight: 700, fontSize: 12, textDecoration: "none", textAlign: "center" }}>
+                    ↗ DANFE
+                  </a>
+                )}
+                {d.tipo_doc === "NF" && processada && nf?.tipo_entrada === "insumos" && (
+                  <button onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #E24B4A50", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                    ↩ Devolver
+                  </button>
+                )}
+                {d.tipo_doc === "NF" && processada && (
+                  <button onClick={() => estornarNfGrid(d)}
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#FEF3E2", color: "#8A4A00", border: "0.5px solid #F6C87A", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                    ↺ Estornar
+                  </button>
+                )}
+                {d.tipo_doc === "NFS" && (
+                  <button onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                    Abrir NFS
+                  </button>
+                )}
+                {d.tipo_doc === "NF" && nfCarregando && (
+                  <div style={{ fontSize: 11, color: "#888", padding: "7px 0" }}>Carregando ações…</div>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {modalLote && (
         <ModalProcessarLote
@@ -681,7 +836,7 @@ export default function DocumentosFiscaisPage() {
                 disabled={siegJustText.trim().length < 15}
                 onClick={async () => {
                   const { d, tipo } = siegJustModal;
-                  const nf = acaoDetalhe[d.id];
+                  const nf = nfDetalhe[d.id];
                   setSiegJustModal(null);
                   if (nf) await executarManifestacao(d, nf, tipo, siegJustText);
                 }}

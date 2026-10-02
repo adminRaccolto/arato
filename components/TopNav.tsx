@@ -488,9 +488,12 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const grupoAtivo = (item: Extract<NavItem, { type: "group" }>) => {
     if (item.id === "producao")      return pathname.startsWith("/lavoura") || pathname.startsWith("/algodao") || pathname === "/estoque/romaneio-entrada" || pathname === "/mapa";
     if (item.id === "documentos-fiscais") return pathname.startsWith("/fiscal/documentos") || pathname === "/fiscal/notas-proprias" || pathname === "/fiscal/remessas" || pathname.startsWith("/fiscal/transferencia-maquinas") || pathname === "/fiscal/manifestacao" || pathname.startsWith("/transporte/cte") || pathname.startsWith("/transporte/mdfe");
-    if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte") || pathname.startsWith("/balanca") || pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/configuracoes/classificacao" || pathname === "/configuracoes/automacoes";
+    if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || (pathname.startsWith("/transporte") && !pathname.startsWith("/transporte/cte") && !pathname.startsWith("/transporte/mdfe")) || pathname.startsWith("/balanca") || pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/configuracoes/classificacao" || pathname === "/configuracoes/automacoes";
     if (item.id === "financeiro")    return (pathname.startsWith("/financeiro") && pathname !== "/financeiro/empresas") || pathname.startsWith("/empresas");
-    if (item.id === "fiscal")        return pathname === "/fiscal" || pathname.startsWith("/fiscal") || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
+    if (item.id === "fiscal") {
+      const ehRotaDeDocumentosFiscais = pathname.startsWith("/fiscal/documentos") || pathname === "/fiscal/notas-proprias" || pathname === "/fiscal/remessas" || pathname.startsWith("/fiscal/transferencia-maquinas") || pathname === "/fiscal/manifestacao";
+      return (pathname.startsWith("/fiscal") && !ehRotaDeDocumentosFiscais) || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
+    }
     if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios") || pathname === "/financeiro/empresas";
     if (item.id === "cadastros")     return pathname === "/cadastros" || pathname.startsWith("/cadastros");
     if (item.id === "configuracoes") return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
