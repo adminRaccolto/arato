@@ -39,6 +39,7 @@ import {
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
+  excluirLancamento, excluirEmpresaLancamento,
 } from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
@@ -416,6 +417,33 @@ export default function ContasAPagarPage() {
       await carregar();
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao reabrir lançamento");
+    }
+  }
+
+  // Só deixa excluir lançamento de origem manual — um lançamento gerado automaticamente
+  // (NF de entrada/saída, pedido de compra, arrendamento, contrato financeiro, etc.) tem
+  // contrapartida em outra tela (estoque, contrato, parcela) que ficaria órfã/dessincronizada
+  // se o lançamento sumisse por aqui; a exclusão desses só pode ser feita na tela de origem.
+  function podeExcluir(l: RelLancamento): boolean {
+    if (l.origem_tabela !== "lancamentos") return true; // empresa_lancamentos não tem outra origem ainda
+    return !l.origem_lancamento || l.origem_lancamento === "manual";
+  }
+
+  async function excluirLanc(l: RelLancamento) {
+    if (!podeExcluir(l)) {
+      setErro(`Este lançamento foi gerado automaticamente (${ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento}) — exclua pela tela de origem, não por aqui.`);
+      return;
+    }
+    if (!confirm(`Excluir "${l.descricao}" definitivamente? Essa ação não pode ser desfeita.`)) return;
+    try {
+      if (l.origem_tabela === "lancamentos") {
+        await excluirLancamento(l.id);
+      } else {
+        await excluirEmpresaLancamento(l.id);
+      }
+      await carregar();
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : "Erro ao excluir lançamento");
     }
   }
 
@@ -1228,6 +1256,9 @@ export default function ContasAPagarPage() {
                 )}
                 {l.status_normalizado !== "baixado" && (
                   <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>✎ Editar</button>
+                )}
+                {l.status_normalizado !== "baixado" && podeExcluir(l) && (
+                  <button onClick={() => { setPopover(null); excluirLanc(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>🗑 Excluir</button>
                 )}
               </div>
             </div>

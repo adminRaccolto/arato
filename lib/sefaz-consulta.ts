@@ -24,28 +24,18 @@ function getEndpoint(cuf: string, ambiente: "1" | "2"): string {
 }
 
 // ── SOAP envelope de consulta ──────────────────────────────────────────────
+// IMPORTANTE: a SEFAZ rejeita a mensagem ("Nao eh permitida a presenca de
+// caracteres de edicao no inicio/fim da mensagem ou entre as tags da
+// mensagem") se o XML de negócio (consSitNFe em diante) vier com quebra de
+// linha/indentação entre as tags — o schema validator trata esses espaços
+// como conteúdo inválido. Por isso o envelope é montado já compacto (sem
+// indentação), nunca como template literal "bonito" com espaços entre tags.
 function buildSoapEnvelope(chave: string, cuf: string, ambiente: "1" | "2"): string {
   const tpAmb = ambiente;
-  return `<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-  xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Header>
-    <nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4">
-      <cUF>${cuf}</cUF>
-      <versaoDados>4.00</versaoDados>
-    </nfeCabecMsg>
-  </soap12:Header>
-  <soap12:Body>
-    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4">
-      <consSitNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
-        <tpAmb>${tpAmb}</tpAmb>
-        <xServ>CONSULTAR</xServ>
-        <chNFe>${chave}</chNFe>
-      </consSitNFe>
-    </nfeDadosMsg>
-  </soap12:Body>
-</soap12:Envelope>`;
+  const xml = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Header><nfeCabecMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4"><cUF>${cuf}</cUF><versaoDados>4.00</versaoDados></nfeCabecMsg></soap12:Header><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4"><consSitNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${tpAmb}</tpAmb><xServ>CONSULTAR</xServ><chNFe>${chave}</chNFe></consSitNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
+  // Defesa extra: remove qualquer espaço/quebra de linha residual entre tags,
+  // mesmo que alguém reintroduza indentação aqui no futuro.
+  return xml.replace(/>\s+</g, "><");
 }
 
 // ── Carregar certificado(s) do Supabase Storage ────────────────────────────

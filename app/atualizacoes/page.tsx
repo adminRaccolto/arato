@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-p",
+    data: "02/10/2026",
+    titulo: "CP/CR ganha botão Excluir (só origem manual) + correção de consulta SEFAZ",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Contas a Pagar/Receber: popover da linha ganhou botão \"🗑 Excluir\" — só aparece para lançamento de origem manual e ainda não baixado. Lançamento gerado automaticamente (NF, pedido de compra, arrendamento, contrato financeiro, seguro, compra de terra) não pode ser excluído por aqui, pois tem contrapartida em outra tela; a exclusão desses continua sendo feita na tela de origem." },
+      { tipo: "correcao", texto: "Fiscal → Documentos Fiscais → Entrada de Nota Própria → aba Chave de Acesso: a consulta direto na SEFAZ era rejeitada com \"Nao eh permitida a presenca de caracteres de edicao... (Elemento: consSitNFe)\" — o XML da consulta era montado com indentação entre as tags, e a SEFAZ valida essa mensagem de forma estrita. Corrigido: XML agora é montado compacto, sem espaços entre tags." },
+    ],
+    onde: "Financeiro → Contas a Pagar/Receber · Fiscal → Documentos Fiscais → Entrada de Nota Própria",
+  },
+  {
     versao: "2026.10.02-o",
     data: "02/10/2026",
     titulo: "NF: conversão de unidade reconhece abreviações (Ton/Tn/T, Kg/Ql, Lt, Big Bag...)",
