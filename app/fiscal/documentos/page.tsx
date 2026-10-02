@@ -146,7 +146,7 @@ export default function DocumentosFiscaisPage() {
   useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Modais por tipo ligados nesta fase ──
-  const [modalNfs, setModalNfs] = useState<{ id: string | null } | null>(null);
+  const [modalNfs, setModalNfs] = useState<{ id: string | null; viewOnly?: boolean } | null>(null);
   const [modalNf,  setModalNf]  = useState<{ id: string | null; acaoInicial?: "devolver" | "estornar" } | null>(null);
 
   // ── Ações em lote — seleção restrita a linhas de tipo NF (a única com
@@ -380,11 +380,25 @@ export default function DocumentosFiscaisPage() {
           );
         })()}
 
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 420px)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: 32 }} />    {/* checkbox */}
+              <col style={{ width: 92 }} />    {/* Tipo */}
+              <col style={{ width: 76 }} />    {/* Data */}
+              <col style={{ width: 80 }} />    {/* Número */}
+              <col style={{ width: 48 }} />    {/* Série */}
+              <col style={{ width: "18%" }} /> {/* Participante — flex */}
+              <col style={{ width: 108 }} />   {/* CNPJ */}
+              <col style={{ width: 56 }} />    {/* CFOP */}
+              <col style={{ width: 104 }} />   {/* Valor */}
+              <col style={{ width: 80 }} />    {/* Status */}
+              <col style={{ width: "14%" }} /> {/* Observação — flex, menor que antes */}
+              <col style={{ width: 230 }} />   {/* Ações — bem mais espaço */}
+            </colgroup>
             <thead>
-              <tr style={{ background: "#F4F6FA" }}>
-                <th style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE", width: 32 }}>
+              <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}>
+                <th style={{ padding: "7px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
                   <input
                     type="checkbox"
                     checked={linhas.some(l => l.tipo_doc === "NF") && linhas.filter(l => l.tipo_doc === "NF").every(l => selecionados.has(l.id))}
@@ -396,9 +410,9 @@ export default function DocumentosFiscaisPage() {
                   />
                 </th>
                 {["Tipo", "Data", "Número", "Série", "Participante", "CNPJ", "CFOP", "Valor", "Status", "Observação"].map(h => (
-                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>{h}</th>
                 ))}
-                <th style={{ padding: "7px 10px", textAlign: "right", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Ações</th>
+                <th style={{ padding: "7px 10px", textAlign: "right", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -410,7 +424,7 @@ export default function DocumentosFiscaisPage() {
                 const sm = STATUS_OPCOES.find(s => s.v === d.status_normalizado);
                 const clicavel = d.tipo_doc === "NFS" || d.tipo_doc === "NF";
                 const abrir = () => {
-                  if (d.tipo_doc === "NFS") setModalNfs({ id: d.id });
+                  if (d.tipo_doc === "NFS") setModalNfs({ id: d.id, viewOnly: d.status_normalizado === "processada" });
                   else if (d.tipo_doc === "NF") setModalNf({ id: d.id });
                 };
                 return (
@@ -438,23 +452,40 @@ export default function DocumentosFiscaisPage() {
                       <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 8px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
                     </td>
                     <td style={{ padding: "7px 10px", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtData(d.data_doc)}</td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.numero ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.numero ?? "—"}</td>
                     <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.serie ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.participante_nome ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", color: "#888", fontFamily: "monospace", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.participante_cnpj ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.participante_nome ?? undefined}>{d.participante_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", fontFamily: "monospace", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.participante_cnpj ?? undefined}>{d.participante_cnpj ?? "—"}</td>
                     <td style={{ padding: "7px 10px", color: "#888", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{d.cfop ?? "—"}</td>
                     <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>{fmtBRL(d.valor_total)}</td>
                     <td style={{ padding: "7px 10px", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? d.status_normalizado}</span>
                     </td>
-                    <td style={{ padding: "7px 10px", color: "#888", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? d.natureza_operacao ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: clicavel ? "pointer" : "default" }} onClick={() => clicavel && abrir()} title={d.observacao ?? undefined}>{d.observacao ?? d.natureza_operacao ?? "—"}</td>
                     <td style={{ padding: "7px 10px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
                       {d.tipo_doc === "NF" && (() => {
                         const nf = acaoDetalhe[d.id];
                         const carregandoDetalhe = acaoCarregando === d.id;
                         const aberto = acaoDropdown === d.id;
+                        const pendente = d.status_normalizado === "pendente";
+                        const processada = d.status_normalizado === "processada";
                         return (
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                          <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
+                            {/* Processar — direto, sem precisar abrir o "⋮" (só precisa do status, já vem no row) */}
+                            {pendente && (
+                              <button onClick={() => setModalNf({ id: d.id })}
+                                style={{ padding: "3px 8px", border: "none", borderRadius: 6, background: "#1A5C38", color: "#fff", fontWeight: 700, fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                Processar
+                              </button>
+                            )}
+                            {/* DANFE — direto, sem precisar abrir o "⋮" (chave já vem no row) */}
+                            {processada && d.chave && (
+                              <a href={`/api/fiscal/danfe?chave=${d.chave}&fazenda_id=${d.fazenda_id ?? ""}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ padding: "3px 7px", border: "0.5px solid #86EFAC", borderRadius: 6, background: "#F0FDF4", color: "#15803D", fontWeight: 700, fontSize: 10, textDecoration: "none", whiteSpace: "nowrap" }}>
+                                ↗ DANFE
+                              </a>
+                            )}
                             {/* Manifestação SIEG — só aparece depois do detalhe carregado e só pra NFs de origem SIEG */}
                             {nf?.origem === "sieg" && (() => {
                               const isBusy = siegBusy[d.id];
@@ -492,28 +523,34 @@ export default function DocumentosFiscaisPage() {
                                 ⋮
                               </button>
                               {aberto && (
-                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 170, overflow: "hidden" }}>
+                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 180, overflow: "hidden" }}>
                                   {carregandoDetalhe && (
                                     <div style={{ padding: "10px 12px", fontSize: 11, color: "#888" }}>Carregando…</div>
                                   )}
                                   {!carregandoDetalhe && nf && (
                                     <>
-                                      {nf.status === "pendente" && (
+                                      {nf.status === "processada" && (
                                         <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id }); }}
                                           style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
-                                          Processar / Editar NF
+                                          Abrir (somente leitura)
                                         </button>
                                       )}
                                       {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
                                         <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
                                           style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
-                                          Devolver
+                                          ↩ Devolver (nota de devolução)
                                         </button>
                                       )}
                                       {nf.status === "processada" && (
                                         <button onClick={() => { setAcaoDropdown(null); estornarNfGrid(d); }}
                                           style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
-                                          Estornar
+                                          ↺ Estornar
+                                        </button>
+                                      )}
+                                      {nf.status === "pendente" && (
+                                        <button onClick={() => { setAcaoDropdown(null); setModalNf({ id: d.id }); }}
+                                          style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
+                                          Editar NF
                                         </button>
                                       )}
                                       {nf.status !== "pendente" && nf.status !== "processada" && (
@@ -551,6 +588,7 @@ export default function DocumentosFiscaisPage() {
         <ModalNfServico
           id={modalNfs.id}
           fazendaIdPadrao={fazendaId}
+          viewOnlyInicial={modalNfs.viewOnly}
           onClose={() => setModalNfs(null)}
           onSaved={carregar}
         />

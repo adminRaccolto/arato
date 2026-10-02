@@ -6,6 +6,30 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-f",
+    data: "02/10/2026",
+    titulo: "Correção importante: NF processada não pode mais ser editada pela tela nova",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Documentos Fiscais → Notas de Terceiro: ao abrir uma NF já processada (de Produtos ou de Serviços), os campos agora vêm travados (modo somente leitura, com aviso 🔒 no topo) — antes vinham abertos para edição livre, embora salvar já fosse bloqueado por trás. Só NF pendente continua totalmente editável. Estornar, Devolver, Reclassificar e Emitir Remessa continuam funcionando normalmente numa NF processada — essas são ações separadas, não edição direta de campo." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
+    versao: "2026.10.02-e",
+    data: "02/10/2026",
+    titulo: "Documentos Fiscais: ações da NF ficaram mais fáceis de achar",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Coluna \"Ações\" de Notas de Terceiro ficou bem mais larga e organizada — o menu \"⋮\" estava apertado demais e de difícil leitura." },
+      { tipo: "novo", texto: "Botão \"Processar\" (verde) voltou a aparecer direto na linha das NFs pendentes, sem precisar abrir o \"⋮\" — igual era na tela antiga." },
+      { tipo: "novo", texto: "Link \"↗ DANFE\" adicionado direto na linha das NFs processadas com chave de acesso — antes não existia nenhuma forma de abrir o DANFE pela tela nova." },
+      { tipo: "correcao", texto: "\"↩ Devolver (nota de devolução)\" confirmado no \"⋮\" das NFs processadas de Insumos — ficou mais visível com o menu redesenhado." },
+      { tipo: "novo", texto: "Grid com colunas de largura fixa (CNPJ e Observação truncados com \"...\", mostra completo ao passar o mouse) e altura limitada com cabeçalho fixo — mesmo ajuste feito em Contas a Pagar/Receber no mesmo dia." },
+    ],
+    onde: "Documentos Fiscais → Notas de Entrada → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.02-d",
     data: "02/10/2026",
     titulo: "Ajustes de usabilidade: grids mais compactos, menu reorganizado e ações direto da lista de Documentos Fiscais",

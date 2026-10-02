@@ -2056,6 +2056,14 @@ export default function ModalNf({
   }, [id, fazendaId]);
 
 
+  // NF processada não pode ser editada por aqui — só via Estornar (reverte
+  // estoque/financeiro) ou pelas ações dedicadas (Devolver/Reclassificar/
+  // Remessa), que continuam funcionando normalmente por serem overlays
+  // separados, fora da área travada abaixo. Sem toggle "Editar": editar de
+  // verdade exige Estornar primeiro, não é uma trava que se destrava sozinha.
+  const viewOnly = nfEdit?.status === "processada";
+  const lockStyle: React.CSSProperties = viewOnly ? { pointerEvents: "none", opacity: 0.6 } : {};
+
   // Apropriação Direta: a Operação Gerencial escolhida no cabeçalho decide como
   // cada item é lançado — nunca os dois ao mesmo tempo na mesma NF.
   const opSelecionada = reclassOps.find(o => o.id === cab.operacao_gerencial_id);
@@ -2102,10 +2110,16 @@ export default function ModalNf({
 
             <div style={{ padding: "16px 20px" }}>
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{err}</div>}
+              {viewOnly && (
+                <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
+                  🔒 NF já processada — somente leitura. Para editar cabeçalho/itens, use <strong>↺ Estornar</strong> primeiro (reverte estoque e financeiro); Devolver, Reclassificar e Emitir Remessa continuam disponíveis normalmente.
+                </div>
+              )}
 
               {/* ─── ETAPA 1: CABEÇALHO ──────────────────────── */}
               {etapa === "cabecalho" && (
-                <div>
+                <>
+                <div style={lockStyle}>
 
                   {/* ── Barra compacta: Como lançar + Tipo de entrada ── */}
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
@@ -2800,10 +2814,14 @@ export default function ModalNf({
                     <label style={lbl}>Observações</label>
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
+                </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                     <button style={btnR} onClick={onClose}>Cancelar</button>
                     <button style={btnV} onClick={async () => {
+                      // Em modo de visualização (NF processada), só navega — não tenta
+                      // salvar (salvarRascunho() bloquearia com o guard de "já processada").
+                      if (viewOnly) { setEtapa("itens"); return; }
                       // Apropriação Direta: a Operação Gerencial decide como cada item vai
                       // ser lançado (combustível → frota; manutenção → rateio por frota;
                       // outra → só CC) — sem ela escolhida ainda não dá pra montar a tela
@@ -2816,15 +2834,16 @@ export default function ModalNf({
                       const nf = await salvarRascunho();
                       if (nf) setEtapa("itens");
                     }}>
-                      Próximo: Itens →
+                      {viewOnly ? "Ver Itens →" : "Próximo: Itens →"}
                     </button>
                   </div>
-                </div>
+                </>
               )}
 
               {/* ─── ETAPA 3: ITENS ──────────────────────────── */}
               {etapa === "itens" && (
-                <div>
+                <>
+                <div style={lockStyle}>
                   {/* Banner de re-sync para NFs do SIEG sem itens */}
                   {itens.length === 0 && nfEdit?.origem === "sieg" && nfEdit?.chave_acesso && (
                     <div style={{ background: "#FFF8E6", border: "0.5px solid #F0C040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -3576,6 +3595,7 @@ export default function ModalNf({
                   )}
                     </div>
                   )}
+                </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", gap: 10 }}>
@@ -3599,27 +3619,29 @@ export default function ModalNf({
                         <button onClick={() => iniciarExclusaoNf(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
                       )}
                     </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={async () => {
-                        // Salvar como pendente sem processar
-                        if (nfEdit) {
-                          await atualizarNfEntrada(nfEdit.id, { status: "pendente" });
-                          onSaved();
-                          onClose();
-                        }
-                      }}>
-                        Salvar como Pendente
-                      </button>
-                      <button
-                        style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }}
-                        onClick={processarNF}
-                        disabled={saving}
-                      >
-                        {saving ? "Processando…" : "✓ Processar NF"}
-                      </button>
-                    </div>
+                    {!viewOnly && (
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button style={btnR} onClick={async () => {
+                          // Salvar como pendente sem processar
+                          if (nfEdit) {
+                            await atualizarNfEntrada(nfEdit.id, { status: "pendente" });
+                            onSaved();
+                            onClose();
+                          }
+                        }}>
+                          Salvar como Pendente
+                        </button>
+                        <button
+                          style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }}
+                          onClick={processarNF}
+                          disabled={saving}
+                        >
+                          {saving ? "Processando…" : "✓ Processar NF"}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
