@@ -15850,3 +15850,38 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 323 — Backfill: NF processada sem Data de Entrada (coluna "Entrada"
+-- aparecendo vazia em Documentos Fiscais). Achado 02/10/2026, reportado pelo
+-- dono num cliente real (Grupo Ogliari): a coluna "Entrada" vinha vazia em NFs
+-- já processadas.
+--
+-- Causa raiz: 3 call sites de processarNfEntrada() (ModalNf.tsx,
+-- ModalProcessarLote.tsx e app/compras/nf/page.tsx — este último legado,
+-- não corrigido) passavam `data_emissao ?? data_entrada` — como data_emissao
+-- é sempre preenchida (campo obrigatório), a "Data de Entrada" digitada pelo
+-- usuário no cabeçalho era sempre DESCARTADA e substituída pela emissão ao
+-- processar. Corrigido no código (ordem invertida pra `data_entrada ??
+-- data_emissao`). Esta seção só cobre o passado: 17 NFs já processadas antes
+-- da correção ficaram com data_entrada NULL de verdade (não é o bug acima —
+-- são de uma versão ainda mais antiga, antes de "Data de Entrada" existir
+-- no fluxo de processamento). Preenche com a data de emissão como melhor
+-- aproximação disponível (não há como recuperar a data real de entrada
+-- física que nunca foi registrada).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+UPDATE nf_entradas
+SET data_entrada = data_emissao
+WHERE status = 'processada' AND data_entrada IS NULL;
+
+-- Atualiza a tabela de leitura física com os dados corrigidos
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT id FROM nf_entradas WHERE status = 'processada' LOOP
+    PERFORM fn_recalc_rel_doc_fiscal_nf(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

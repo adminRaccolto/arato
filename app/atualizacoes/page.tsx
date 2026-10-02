@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-q",
+    data: "02/10/2026",
+    titulo: "Correção: coluna \"Entrada\" vazia em NF processada",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "NF de Produtos processada (individual ou em lote): a \"Data de Entrada\" digitada no cabeçalho era sempre descartada e substituída pela Data de Emissão ao processar, sem aviso — corrigido nos dois fluxos. 17 NFs já processadas antes da \"Data de Entrada\" existir no sistema, que ficaram com o campo vazio de verdade, foram corrigidas com a emissão como aproximação (não há como recuperar a data real que nunca foi registrada)." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → Processar NF",
+  },
+  {
     versao: "2026.10.02-p",
     data: "02/10/2026",
     titulo: "CP/CR ganha botão Excluir (só origem manual) + correção de consulta SEFAZ",

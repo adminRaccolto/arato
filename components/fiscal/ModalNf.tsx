@@ -1448,7 +1448,10 @@ export default function ModalNf({
         itensDB,
         totalLiquidoAgora,
         nfEdit.emitente_nome,
-        nfEdit.data_emissao ?? nfEdit.data_entrada,
+        // Bug real 02/10/2026: a ordem estava invertida (data_emissao primeiro) — como
+        // data_emissao é sempre preenchida, a "Data de Entrada" digitada pelo usuário no
+        // cabeçalho era sempre descartada e substituída pela emissão ao processar.
+        nfEdit.data_entrada ?? nfEdit.data_emissao,
         nfEdit.emitente_cnpj,
         {
           nfeNumero:           nfEdit.numero,
