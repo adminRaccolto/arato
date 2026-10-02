@@ -180,9 +180,7 @@ const NAV: NavItem[] = [
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
       { id: "fin-adiantamentos",   label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos",        moduleId: "fin_pagar"      },
       { id: "fin-folha",           label: "Folha de Pagamento",           path: "/financeiro/folha"                                            },
-      { type: "divider", label: "Empresa (CNPJ)" },
       { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha"                                             },
-      { id: "fin-emp-dre",        label: "DRE por Empresa",              path: "/financeiro/empresas"                                        },
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
       { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",      path: "/financeiro/tesouraria/operacoes", moduleId: "fin_tesouraria" },
@@ -236,6 +234,7 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Resultado Econômico" },
       { id: "res-dre",           label: "DRE Agrícola",            path: "/custos?aba=dre"                       },
       { id: "res-margens",       label: "Margens por Safra",       path: "/relatorios/dre"                       },
+      { id: "res-dre-empresa",   label: "DRE por Empresa",         path: "/financeiro/empresas"                  },
       { type: "divider", label: "Custos" },
       { id: "res-custos-totais", label: "Custos Totais",           path: "/custos?aba=custostotais"              },
       { id: "res-custo-ha",      label: "Custo / ha",              path: "/custos?aba=custoha"                   },
@@ -490,9 +489,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "producao")      return pathname.startsWith("/lavoura") || pathname.startsWith("/algodao") || pathname === "/estoque/romaneio-entrada" || pathname === "/mapa";
     if (item.id === "documentos-fiscais") return pathname.startsWith("/fiscal/documentos") || pathname === "/fiscal/notas-proprias" || pathname === "/fiscal/remessas" || pathname.startsWith("/fiscal/transferencia-maquinas") || pathname === "/fiscal/manifestacao" || pathname.startsWith("/transporte/cte") || pathname.startsWith("/transporte/mdfe");
     if (item.id === "comercial")     return pathname.startsWith("/contratos") || pathname.startsWith("/expedicao") || pathname.startsWith("/comercial") || pathname.startsWith("/transporte") || pathname.startsWith("/balanca") || pathname.startsWith("/compras") || (pathname.startsWith("/estoque") && pathname !== "/estoque/romaneio-entrada") || pathname === "/financeiro/pendencias-nf" || pathname === "/configuracoes/classificacao" || pathname === "/configuracoes/automacoes";
-    if (item.id === "financeiro")    return pathname.startsWith("/financeiro") || pathname.startsWith("/empresas");
+    if (item.id === "financeiro")    return (pathname.startsWith("/financeiro") && pathname !== "/financeiro/empresas") || pathname.startsWith("/empresas");
     if (item.id === "fiscal")        return pathname === "/fiscal" || pathname.startsWith("/fiscal") || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias";
-    if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios");
+    if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios") || pathname === "/financeiro/empresas";
     if (item.id === "cadastros")     return pathname === "/cadastros" || pathname.startsWith("/cadastros");
     if (item.id === "configuracoes") return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
     if (item.id === "ajuda")         return pathname === "/learning" || pathname === "/suporte";

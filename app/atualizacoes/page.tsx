@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-h",
+    data: "02/10/2026",
+    titulo: "DRE por Empresa mudou de menu",
+    modulos: ["Sistema", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "\"DRE por Empresa\" saiu de Financeiro → Empresa (CNPJ) e foi para Resultados → Resultado Econômico, junto com DRE Agrícola e Margens por Safra — mesma tela, só mudou de lugar no menu. Financeiro → Empresa (CNPJ) ficou só com Folha de Pagamento — Empresa." },
+    ],
+    onde: "Resultados → Resultado Econômico → DRE por Empresa",
+  },
+  {
     versao: "2026.10.02-g",
     data: "02/10/2026",
     titulo: "Correção importante: busca e filtro de data em Contas a Pagar/Receber não funcionavam",
