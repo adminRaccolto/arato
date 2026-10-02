@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-o",
+    data: "02/10/2026",
+    titulo: "NF: conversão de unidade reconhece abreviações (Ton/Tn/T, Kg/Ql, Lt, Big Bag...)",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Processamento de NF: a conversão de unidade só reconhecia a grafia exata vinda da NF (ex: \"TON\"); se o fornecedor emitisse \"TN\", \"T\", \"Ql\", \"Lt\", \"Big Bag\", \"Bg\", \"Gl\" ou com ponto/espaço, a conversão automática e o alerta de unidade divergente não reconheciam. Agora reconhece as variações mais comuns: Tonelada (Ton, Tn, T), Kilo (Kg, Ql, K), Litro (Lt, L), Galão (Gl, Drm), Bag (Bag, Big Bag, Bg, B), Grama e Mililitro — sem distinguir maiúscula/minúscula, acento, ponto ou espaço." },
+      { tipo: "novo", texto: "Novas conversões manuais: Unidade (Un, U) ↔ Litro, Unidade ↔ Kilo e Caixa (Cx) ↔ Kilo — sempre manuais, já que a relação depende do produto." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → Processar NF → Itens & Processamento",
+  },
+  {
     versao: "2026.10.02-n",
     data: "02/10/2026",
     titulo: "Campo de NCM no cadastro de Itens Gerais",

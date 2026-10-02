@@ -177,6 +177,13 @@ const TABELA_CONVERSAO: ConversaoConfig[] = [
   { key: "ml→l",      de: "ml",    para: "l",     fator: 0.001,   tipo: "auto",   labelSelect: "mL → L    (÷1000)",   labelPara: "L"    },
   { key: "galao→l",   de: "galao", para: "l",     fator: null,    tipo: "manual", labelSelect: "Galão → L (manual)",  labelPara: "L"    },
   { key: "l→galao",   de: "l",     para: "galao", fator: null,    tipo: "manual", labelSelect: "L → Galão (manual)",  labelPara: "galão"},
+  // Unidade (caixa/pacote/item) e Caixa não têm peso/volume fixo — sempre manual (depende do produto).
+  { key: "un→l",      de: "un",    para: "l",     fator: null,    tipo: "manual", labelSelect: "Un → L    (manual)",  labelPara: "L"    },
+  { key: "l→un",       de: "l",    para: "un",    fator: null,    tipo: "manual", labelSelect: "L → Un    (manual)",  labelPara: "un"   },
+  { key: "un→kg",     de: "un",    para: "kg",    fator: null,    tipo: "manual", labelSelect: "Un → Kg   (manual)",  labelPara: "kg"   },
+  { key: "kg→un",      de: "kg",   para: "un",    fator: null,    tipo: "manual", labelSelect: "Kg → Un   (manual)",  labelPara: "un"   },
+  { key: "cx→kg",     de: "cx",    para: "kg",    fator: null,    tipo: "manual", labelSelect: "Caixa → Kg (manual)", labelPara: "kg"   },
+  { key: "kg→cx",      de: "kg",   para: "cx",    fator: null,    tipo: "manual", labelSelect: "Kg → Caixa (manual)", labelPara: "cx"   },
 ];
 
 // Deriva Insumo.tipo ("insumo" | "produto") a partir da categoria — mesmo critério do
@@ -190,9 +197,43 @@ function tipoPorCategoria(categoria: string): "insumo" | "produto" {
   return CATEGORIAS_INSUMO_AGRICOLA.has(categoria) ? "insumo" : "produto";
 }
 
-function normUnidade(u: string) { return u.toLowerCase().trim(); }
-// "ton" e "t" são a mesma unidade (tonelada) — só variam no cadastro do insumo vs. na tabela de conversão.
-function canonUnidade(u: string) { const n = normUnidade(u || ""); return n === "ton" ? "t" : n; }
+// Normaliza antes de resolver alias: minúsculas, sem acento, sem espaço/ponto — assim
+// "Ton.", "TON", "Big Bag", "Kg." etc. caem todas na mesma chave de lookup.
+function normUnidade(u: string) {
+  return (u || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[\s.]/g, "");
+}
+
+// Variações reais encontradas em XML de NF-e / digitação manual → forma canônica usada
+// em TABELA_CONVERSAO.de/para. Cada unidade listada pelo usuário (e seus plurais/abreviações
+// mais comuns) aponta para a mesma chave.
+const UNIDADE_ALIASES: Record<string, string> = {
+  // Tonelada
+  ton: "ton", tn: "ton", t: "ton", tonelada: "ton", toneladas: "ton",
+  // Kilo
+  kg: "kg", ql: "kg", k: "kg", kilo: "kg", kilos: "kg", quilo: "kg", quilos: "kg",
+  // Grama
+  g: "g", grama: "g", gramas: "g",
+  // Litro
+  l: "l", lt: "l", litro: "l", litros: "l",
+  // Mililitro
+  ml: "ml", mililitro: "ml", mililitros: "ml",
+  // Galão
+  gl: "galao", drm: "galao", galao: "galao", galoes: "galao",
+  // Bag / Big Bag
+  bag: "bag", bigbag: "bag", bg: "bag", b: "bag",
+  // Unidade
+  un: "un", u: "un", unidade: "un", unidades: "un",
+  // Caixa
+  cx: "cx", caixa: "cx", caixas: "cx",
+};
+
+function canonUnidade(u: string) {
+  const n = normUnidade(u);
+  return UNIDADE_ALIASES[n] ?? n;
+}
 
 function getConversao(key: string): ConversaoConfig | undefined {
   return TABELA_CONVERSAO.find(c => c.key === key);
@@ -933,9 +974,9 @@ export default function ModalNf({
 
           // ── Detecção de conversão BAG → KG via campos da NF ─────────────────
           // Se uCom = BAG e uTrib tem o peso, pre-preenche conversão manual com o total.
-          const uComNorm  = uCom.toUpperCase().trim();
-          const uTribNorm = uTrib.toUpperCase().trim();
-          const isBag     = uComNorm === "BAG";
+          const uComCanon  = canonUnidade(uCom);
+          const uTribCanon = canonUnidade(uTrib);
+          const isBag      = uComCanon === "bag";
 
           let convKey    = "";
           let qtdCatalogo = qCom; // default = NF qty
@@ -943,10 +984,10 @@ export default function ModalNf({
 
           if (isBag) {
             convKey = "bag→kg";
-            if (uTribNorm === "KG" && qTrib > 0) {
+            if (uTribCanon === "kg" && qTrib > 0) {
               qtdCatalogo     = qTrib;
               qtdKgPreenchida = qTrib;
-            } else if (uTribNorm === "TON" && qTrib > 0) {
+            } else if (uTribCanon === "ton" && qTrib > 0) {
               qtdCatalogo     = qTrib * 1000;
               qtdKgPreenchida = qTrib * 1000;
             }
@@ -954,7 +995,7 @@ export default function ModalNf({
           } else {
             // Tenta auto-matching: unidade NF bate com alguma conversão conhecida "de"
             const autoMatch = TABELA_CONVERSAO.find(
-              c => c.tipo === "auto" && normUnidade(uCom) === c.de
+              c => c.tipo === "auto" && uComCanon === c.de
             );
             if (autoMatch && autoMatch.fator) {
               convKey     = autoMatch.key;
@@ -2986,7 +3027,7 @@ export default function ModalNf({
                       const manualConv = conv?.tipo === "manual";
                       // Conversões disponíveis para a unidade NF deste item
                       const convOptions = TABELA_CONVERSAO.filter(
-                        c => normUnidade(it.unidade_nf) === c.de
+                        c => canonUnidade(it.unidade_nf) === c.de
                       );
                       return (
                       <div key={it.key} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
