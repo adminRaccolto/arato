@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.02-r",
+    data: "02/10/2026",
+    titulo: "CP/CR: Excluir liberado pra qualquer título em aberto/atrasado",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "O botão \"🗑 Excluir\" (adicionado hoje cedo só para lançamento manual) agora aparece em qualquer título em aberto ou vencido, de qualquer origem — inclusive gerado automaticamente por NF, contrato, arrendamento, etc. Se for de origem automática, o popup de confirmação avisa que o documento de origem não é desvinculado nem desfeito. Título já baixado, parcial ou cancelado continua sem o botão." },
+    ],
+    onde: "Financeiro → Contas a Pagar/Receber",
+  },
+  {
     versao: "2026.10.02-q",
     data: "02/10/2026",
     titulo: "Correção: coluna \"Entrada\" vazia em NF processada",

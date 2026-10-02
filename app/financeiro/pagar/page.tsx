@@ -420,21 +420,21 @@ export default function ContasAPagarPage() {
     }
   }
 
-  // Só deixa excluir lançamento de origem manual — um lançamento gerado automaticamente
-  // (NF de entrada/saída, pedido de compra, arrendamento, contrato financeiro, etc.) tem
-  // contrapartida em outra tela (estoque, contrato, parcela) que ficaria órfã/dessincronizada
-  // se o lançamento sumisse por aqui; a exclusão desses só pode ser feita na tela de origem.
+  // Liberado 02/10/2026 a pedido do dono: excluir qualquer título em aberto ou atrasado
+  // (vencido), de qualquer origem. Baixado/parcial/cancelado continuam de fora — baixado e
+  // parcial já têm pagamento real registrado (excluir perderia o histórico sem reverter nada
+  // no banco), cancelado não precisa de exclusão (já está fora do fluxo).
   function podeExcluir(l: RelLancamento): boolean {
-    if (l.origem_tabela !== "lancamentos") return true; // empresa_lancamentos não tem outra origem ainda
-    return !l.origem_lancamento || l.origem_lancamento === "manual";
+    return l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido";
   }
 
   async function excluirLanc(l: RelLancamento) {
-    if (!podeExcluir(l)) {
-      setErro(`Este lançamento foi gerado automaticamente (${ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento}) — exclua pela tela de origem, não por aqui.`);
-      return;
-    }
-    if (!confirm(`Excluir "${l.descricao}" definitivamente? Essa ação não pode ser desfeita.`)) return;
+    if (!podeExcluir(l)) return;
+    const origemAutomatica = l.origem_tabela === "lancamentos" && l.origem_lancamento && l.origem_lancamento !== "manual";
+    const aviso = origemAutomatica
+      ? `\n\nAtenção: este lançamento foi gerado automaticamente (${ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento}) — excluir aqui NÃO desfaz nem desvincula o documento de origem (NF, contrato, parcela, etc.), que pode ficar referenciando um lançamento que não existe mais.`
+      : "";
+    if (!confirm(`Excluir "${l.descricao}" definitivamente? Essa ação não pode ser desfeita.${aviso}`)) return;
     try {
       if (l.origem_tabela === "lancamentos") {
         await excluirLancamento(l.id);
@@ -1257,7 +1257,7 @@ export default function ContasAPagarPage() {
                 {l.status_normalizado !== "baixado" && (
                   <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>✎ Editar</button>
                 )}
-                {l.status_normalizado !== "baixado" && podeExcluir(l) && (
+                {podeExcluir(l) && (
                   <button onClick={() => { setPopover(null); excluirLanc(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>🗑 Excluir</button>
                 )}
               </div>
