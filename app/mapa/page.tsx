@@ -358,6 +358,7 @@ export default function MapaPage() {
                 { l: "Variedade", v: selecionado.plantio?.variedade ?? "—" },
                 { l: "Plantio",   v: fmtData(selecionado.plantio?.data_plantio) },
                 { l: "Colheita prevista", v: fmtData(selecionado.plantio?.data_colheita_prevista) },
+                ...(selecionado.plantio?.status_campo === "pendente" ? [{ l: "Situação", v: "Pendente de aprovação" }] : []),
               ].map(({ l, v }) => (
                 <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 12 }}>
                   <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>{l}</span>

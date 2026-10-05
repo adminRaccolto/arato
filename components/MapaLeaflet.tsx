@@ -97,6 +97,7 @@ export default function MapaLeaflet({ talhoes, selecionado, onSelect, corCultura
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Variedade</td><td>${t.plantio?.variedade ?? "—"}</td></tr>
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Plantio</td><td>${fmtData(t.plantio?.data_plantio)}</td></tr>
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Colheita prev.</td><td>${fmtData(t.plantio?.data_colheita_prevista)}</td></tr>
+            ${t.plantio?.status_campo === "pendente" ? `<tr><td style="color:#888;padding:3px 0;padding-right:12px;">Situação</td><td style="color:#C9921B;font-weight:600;">Pendente de aprovação</td></tr>` : ""}
           </table>
         </div>`;
 
