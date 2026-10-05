@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-v",
+    data: "05/10/2026",
+    titulo: "CP e CR: barra de rolagem horizontal do grid",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A barra de rolagem horizontal do grid de CP e CR voltou a aparecer quando há muitas colunas visíveis." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.05-u",
     data: "05/10/2026",
     titulo: "CP e CR: colunas reordenadas com o conteúdo certo",

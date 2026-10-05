@@ -1186,7 +1186,7 @@ export default function ContasAReceberPage() {
             ao rolar verticalmente dentro do grid. Altura reaproveitando o espaço que
             sobrou com paddings mais enxutos acima e o borderô saindo do painel fixo. */}
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 270px)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
                 onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
