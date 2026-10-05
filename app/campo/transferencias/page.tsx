@@ -3,12 +3,15 @@ import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
 import type { Fazenda, Deposito, Insumo, Maquina } from "../../../lib/supabase";
+import { saldoPorLote } from "../../../lib/db";
 
 interface ItemSolicitacao {
   insumo_id: string;
   insumo_nome: string;
   quantidade: string;
   unidade_medida: string;
+  // Só preenchido para sementes — o lote de onde sai (rastreio por lote no estoque)
+  lote_semente: string;
 }
 
 const card: React.CSSProperties = {
@@ -54,8 +57,10 @@ export default function CampoTransferenciasPage() {
   const [dataTransf,       setDataTransf]       = useState(new Date().toISOString().slice(0, 10));
   const [observacao,       setObservacao]       = useState("");
   const [itens, setItens] = useState<ItemSolicitacao[]>([
-    { insumo_id: "", insumo_nome: "", quantidade: "", unidade_medida: "kg" },
+    { insumo_id: "", insumo_nome: "", quantidade: "", unidade_medida: "kg", lote_semente: "" },
   ]);
+  // Saldo por lote de semente — chave: insumo|fazenda|deposito de origem (mesmo padrão do desktop)
+  const [lotesPorInsumo, setLotesPorInsumo] = useState<Record<string, { lote: string; saldo: number }[]>>({});
 
   // ── Estado máquinas ──
   const [maquinasPorFazenda, setMaquinasPorFazenda] = useState<Record<string, Maquina[]>>({});
@@ -113,8 +118,28 @@ export default function CampoTransferenciasPage() {
   const insumosOrigem    = insumosPorFazenda[fazendaOrigemId] ?? [];
   const maquinasOrigem   = maquinasPorFazenda[fMaqOrigem] ?? [];
 
+  // Carrega o saldo por lote de cada semente do pedido, na fazenda/depósito de origem escolhidos
+  useEffect(() => {
+    if (!fazendaOrigemId || !depositoOrigemId) return;
+    const sementeIds = Array.from(new Set(
+      itens
+        .filter(it => it.insumo_id && insumosOrigem.find(x => x.id === it.insumo_id)?.categoria === "semente")
+        .map(it => it.insumo_id)
+    ));
+    const faltando = sementeIds.filter(id => !(`${id}|${fazendaOrigemId}|${depositoOrigemId}` in lotesPorInsumo));
+    if (faltando.length === 0) return;
+    (async () => {
+      const novos: Record<string, { lote: string; saldo: number }[]> = {};
+      for (const id of faltando) {
+        try { novos[`${id}|${fazendaOrigemId}|${depositoOrigemId}`] = await saldoPorLote(id, fazendaOrigemId, depositoOrigemId); }
+        catch { novos[`${id}|${fazendaOrigemId}|${depositoOrigemId}`] = []; }
+      }
+      setLotesPorInsumo(prev => ({ ...prev, ...novos }));
+    })();
+  }, [itens, fazendaOrigemId, depositoOrigemId, insumosOrigem, lotesPorInsumo]);
+
   function addItem() {
-    setItens(prev => [...prev, { insumo_id: "", insumo_nome: "", quantidade: "", unidade_medida: "kg" }]);
+    setItens(prev => [...prev, { insumo_id: "", insumo_nome: "", quantidade: "", unidade_medida: "kg", lote_semente: "" }]);
   }
   function removeItem(i: number) {
     setItens(prev => prev.filter((_, idx) => idx !== i));
@@ -126,6 +151,8 @@ export default function CampoTransferenciasPage() {
       if (field === "insumo_id") {
         const ins = insumosOrigem.find(x => x.id === value);
         if (ins) { updated.insumo_nome = ins.nome; updated.unidade_medida = ins.unidade ?? "kg"; }
+        // Trocou de insumo → o lote anterior não vale mais pro novo produto
+        updated.lote_semente = "";
       }
       return updated;
     }));
@@ -137,6 +164,15 @@ export default function CampoTransferenciasPage() {
     if (!depositoDestinoId) { setErro("Selecione o depósito de destino."); return; }
     if (itens.some(it => !it.insumo_id || !it.quantidade)) { setErro("Preencha todos os itens com insumo e quantidade."); return; }
     if (fazendaOrigemId === fazendaDestinoId && depositoOrigemId === depositoDestinoId) { setErro("Origem e destino não podem ser iguais."); return; }
+    // Semente sempre sai de um lote específico — sem lote não dá pra saber de qual fazenda/lote saiu
+    const itemSemLote = itens.find(it => it.insumo_id && insumosOrigem.find(x => x.id === it.insumo_id)?.categoria === "semente" && !it.lote_semente.trim());
+    if (itemSemLote) { setErro(`Informe o lote da semente "${itemSemLote.insumo_nome}".`); return; }
+    const itemLoteExcede = itens.find(it => {
+      if (!it.lote_semente) return false;
+      const lote = (lotesPorInsumo[`${it.insumo_id}|${fazendaOrigemId}|${depositoOrigemId}`] ?? []).find(l => l.lote === it.lote_semente);
+      return !!lote && parseFloat(it.quantidade.replace(",", ".")) > lote.saldo + 0.01;
+    });
+    if (itemLoteExcede) { setErro(`A quantidade de "${itemLoteExcede.insumo_nome}" excede o saldo do lote ${itemLoteExcede.lote_semente}.`); return; }
 
     setEnviando(true); setErro(null);
     try {
@@ -145,7 +181,7 @@ export default function CampoTransferenciasPage() {
       const fazDestino    = todasFazendas.find(f => f.id === fazendaDestinoId);
       const ieDiferentes  = fazOrigem?.estado !== fazDestino?.estado;
       const cfop          = ieDiferentes ? "6409" : "5409";
-      const itensParsed   = itens.map(it => ({ insumo_id: it.insumo_id, quantidade: parseFloat(it.quantidade.replace(",", ".")), unidade_medida: it.unidade_medida }));
+      const itensParsed   = itens.map(it => ({ insumo_id: it.insumo_id, quantidade: parseFloat(it.quantidade.replace(",", ".")), unidade_medida: it.unidade_medida, lote_semente: it.lote_semente.trim() || null }));
 
       const res  = await fetch("/api/campo/transferencia", {
         method: "POST",
@@ -195,7 +231,7 @@ export default function CampoTransferenciasPage() {
     setSucesso(false); setErro(null);
     setFazendaOrigemId(fazendaId ?? ""); setDepositoOrigemId(""); setFazendaDestinoId(""); setDepositoDestinoId("");
     setUrgencia("programado"); setDataTransf(new Date().toISOString().slice(0, 10)); setObservacao("");
-    setItens([{ insumo_id: "", insumo_nome: "", quantidade: "", unidade_medida: "kg" }]);
+    setItens([{ insumo_id: "", insumo_nome: "", quantidade: "", unidade_medida: "kg", lote_semente: "" }]);
     setFMaqOrigem(fazendaId ?? ""); setFMaqDestino(""); setMaquinaId(""); setMotivoTransf(""); setDataNecessidade(""); setUrgenciaMaq("programado"); setObsMaq("");
   }
 
@@ -323,6 +359,34 @@ export default function CampoTransferenciasPage() {
                     <input type="text" value={it.unidade_medida} onChange={e => updateItem(i, "unidade_medida", e.target.value)} style={inp} />
                   </div>
                 </div>
+                {/* Lote — só para sementes (rastreio por lote no estoque) */}
+                {(() => {
+                  const isSemente = insumosOrigem.find(x => x.id === it.insumo_id)?.categoria === "semente";
+                  if (!isSemente) return null;
+                  const lotes = lotesPorInsumo[`${it.insumo_id}|${fazendaOrigemId}|${depositoOrigemId}`];
+                  const qtd = parseFloat(it.quantidade.replace(",", ".")) || 0;
+                  // Sem histórico de lote na origem (ou ainda carregando) → digitação livre
+                  if (!lotes || lotes.length === 0) {
+                    return (
+                      <div style={{ marginTop: 10 }}>
+                        <label style={lbl}>Lote da semente</label>
+                        <input type="text" placeholder="Ex: L2025-001" value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={inp} />
+                      </div>
+                    );
+                  }
+                  const loteSel = lotes.find(l => l.lote === it.lote_semente);
+                  const excede = !!loteSel && qtd > loteSel.saldo + 0.01;
+                  return (
+                    <div style={{ marginTop: 10 }}>
+                      <label style={lbl}>Lote da semente</label>
+                      <select value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={{ ...inp, borderColor: excede ? "#E24B4A" : "#DDE2EE" }}>
+                        <option value="">— Selecione o lote —</option>
+                        {lotes.map(l => <option key={l.lote} value={l.lote}>{l.lote} — {l.saldo.toLocaleString("pt-BR")} {it.unidade_medida}</option>)}
+                      </select>
+                      {excede && <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 4 }}>Excede o saldo do lote ({loteSel!.saldo.toLocaleString("pt-BR")} {it.unidade_medida})</div>}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

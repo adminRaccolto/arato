@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-a",
+    data: "05/10/2026",
+    titulo: "Transferência de semente pelo App Campo: lote obrigatório",
+    modulos: ["Estoque", "Campo"],
+    itens: [
+      { tipo: "novo", texto: "Campo → Transferência → Insumos: ao escolher uma semente, aparece o campo \"Lote da semente\" com os lotes que têm saldo na fazenda/depósito de origem. Sem lote não envia, e a quantidade não pode passar do saldo do lote." },
+      { tipo: "correcao", texto: "Antes a solicitação de transferência do App Campo não tinha campo de lote, então a semente transferida ficava sem rastreio por lote no Saldo por Lote. Agora o lote segue para a saída da origem e a entrada no destino quando a solicitação é processada no desktop." },
+    ],
+    onde: "Campo → Transferência · Estoque → Transferências",
+  },
+  {
     versao: "2026.10.02-r",
     data: "02/10/2026",
     titulo: "CP/CR: Excluir liberado pra qualquer título em aberto/atrasado",
