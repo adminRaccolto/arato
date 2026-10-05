@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-o",
+    data: "05/10/2026",
+    titulo: "Tesouraria: edição de lançamento",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Financeiro → Tesouraria: cada lançamento ganhou o botão ✎ para editar descrição, valor, data, conta bancária e observação. Em transferência, aporte e resgate (dois lançamentos), a edição muda só a linha escolhida." },
+    ],
+    onde: "Financeiro → Tesouraria",
+  },
+  {
     versao: "2026.10.05-n",
     data: "05/10/2026",
     titulo: "Agente Implantador: configuração fiscal e acesso completos",

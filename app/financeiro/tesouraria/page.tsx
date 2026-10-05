@@ -29,6 +29,8 @@ interface LancTesoura {
   status: string; conta_bancaria?: string; observacao?: string;
   origem_lancamento?: string; auto: boolean;
 }
+// Rótulo de conta bancária — mesmo critério do modal de novo lançamento (valor gravado em conta_bancaria)
+const contaLabelTesoura = (c: ContaBancariaMin) => c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.id;
 interface OgMin { id: string; classificacao: string; descricao: string; tipo: string; }
 
 interface OpTesoura {
@@ -88,6 +90,40 @@ export default function TesourariaPage() {
     og_id: "",
   });
   const [lSaving, setLSaving] = useState(false);
+  // ── Editar lançamento de tesouraria (linha única). Transferência, aporte e resgate são
+  // dois lançamentos (um de cada lado): editar um não muda o outro — o aviso aparece no modal.
+  const CATS_PAR_TESOURA = ["Transferência entre Contas", "Aporte em Aplicação Financeira", "Resgate de Aplicação Financeira"];
+  const [editLanc, setEditLanc] = useState<{ id: string; categoria: string; tipo: "pagar" | "receber"; descricao: string; valor: number; data: string; conta: string; observacao: string } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editErr, setEditErr] = useState("");
+
+  function abrirEditarTesoura(l: LancTesoura) {
+    setEditErr("");
+    setEditLanc({ id: l.id, categoria: l.categoria, tipo: l.tipo, descricao: l.descricao ?? "", valor: l.valor ?? 0, data: l.data_lancamento ?? hoje(), conta: l.conta_bancaria ?? "", observacao: l.observacao ?? "" });
+  }
+
+  async function salvarEditarTesoura() {
+    if (!editLanc) return;
+    if (!editLanc.descricao.trim() || !(editLanc.valor > 0)) { setEditErr("Informe descrição e valor."); return; }
+    setEditSaving(true); setEditErr("");
+    try {
+      const { error } = await supabase.from("lancamentos").update({
+        descricao: editLanc.descricao.trim(),
+        valor: editLanc.valor,
+        data_lancamento: editLanc.data,
+        data_vencimento: editLanc.data,
+        conta_bancaria: editLanc.conta || null,
+        observacao: editLanc.observacao.trim() || null,
+      }).eq("id", editLanc.id);
+      if (error) throw error;
+      setEditLanc(null);
+      await carregar();
+    } catch (e: unknown) {
+      setEditErr(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally {
+      setEditSaving(false);
+    }
+  }
   const [lErr, setLErr]       = useState("");
 
   // ── Carregar ───────────────────────────────────────────────
@@ -280,6 +316,7 @@ export default function TesourariaPage() {
                       </span>
                     </td>
                     <td style={{ padding: "9px 8px", textAlign: "center" }}>
+                      <button onClick={() => abrirEditarTesoura(l)} title="Editar" style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>✎</button>
                       <button onClick={async () => { if (confirm("Excluir este lançamento?")) { await supabase.from("lancamentos").delete().eq("id", l.id); await carregar(); } }} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>✕</button>
                     </td>
                   </tr>
@@ -293,6 +330,54 @@ export default function TesourariaPage() {
       {/* ══════════════════════════════════════════════════════
           MODAL NOVO LANÇAMENTO
       ══════════════════════════════════════════════════════ */}
+      {editLanc && (
+        <div onClick={() => !editSaving && setEditLanc(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
+            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Editar lançamento</div>
+              <button onClick={() => setEditLanc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+            </div>
+            <div style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
+              {CATS_PAR_TESOURA.includes(editLanc.categoria) && (
+                <div style={{ fontSize: 11, color: "#7A5200", background: "#FBF3E0", padding: "6px 10px", borderRadius: 6 }}>
+                  Este lançamento faz parte de um par ({editLanc.categoria}). Ao salvar, só esta linha muda — ajuste a outra linha também, ou exclua e lance de novo.
+                </div>
+              )}
+              {editErr && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F" }}>{editErr}</div>}
+              <div>
+                <label style={lbl}>Descrição *</label>
+                <input style={inp} value={editLanc.descricao} onChange={e => setEditLanc({ ...editLanc, descricao: e.target.value })} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>Valor (R$) *</label>
+                  <InputMonetario style={inp} value={editLanc.valor} onChange={v => setEditLanc({ ...editLanc, valor: v })} />
+                </div>
+                <div>
+                  <label style={lbl}>Data *</label>
+                  <input type="date" style={inp} value={editLanc.data} onChange={e => setEditLanc({ ...editLanc, data: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Conta bancária</label>
+                <select style={inp} value={editLanc.conta} onChange={e => setEditLanc({ ...editLanc, conta: e.target.value })}>
+                  <option value="">— Nenhuma —</option>
+                  {contas.map(c => <option key={c.id} value={contaLabelTesoura(c)}>{contaLabelTesoura(c)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Observação</label>
+                <input style={inp} value={editLanc.observacao} onChange={e => setEditLanc({ ...editLanc, observacao: e.target.value })} />
+              </div>
+            </div>
+            <div style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button style={btnR} onClick={() => setEditLanc(null)} disabled={editSaving}>Cancelar</button>
+              <button style={btnV} onClick={salvarEditarTesoura} disabled={editSaving}>{editSaving ? "Salvando…" : "Salvar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalLanc && (() => {
         const isAjuste    = lForm.tipo_op === "__ajuste__";
         const isTransf    = lForm.tipo_op === "__transferencia__";
