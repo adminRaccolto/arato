@@ -402,6 +402,13 @@ export type EmpresaLancamento = {
   pessoa_nome?: string;           // join
   conta_bancaria?: string;
   forma_pagamento?: string;
+  ano_safra_id?: string | null;          // safra — custo de empresa pode ser de lavoura
+  ciclo_id?: string | null;              // ciclo — idem
+  operacao_gerencial_id?: string | null; // OG — define débito/crédito
+  centro_custo_id?: string | null;       // centro de custo cadastrado (FK)
+  agrupador?: string | null;             // parcelamento: mesmo agrupador = mesmo título parcelado
+  parcela_num?: number | null;
+  parcelas_total?: number | null;
   numero_documento?: string;
   observacao?: string;
   origem?: "manual" | "folha" | "nf_servico" | "tesouraria" | "nf_entrada";

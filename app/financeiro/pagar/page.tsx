@@ -38,10 +38,10 @@ import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
-  listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
+  listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
   excluirLancamento, excluirEmpresaLancamento,
 } from "../../../lib/db";
-import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial } from "../../../lib/supabase";
+import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -319,9 +319,14 @@ export default function ContasAPagarPage() {
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
     try {
-      const contas = l.origem_tabela === "empresa_lancamentos" && l.empresa_id
-        ? await listarContasPorEmpresa(l.empresa_id)
-        : l.fazenda_id ? await listarContas(l.fazenda_id) : [];
+      // Empresa: contas da própria empresa + contas do produtor da conta (empresas pagam/recebem
+      // também por contas da fazenda, que não têm empresa_id). Produtor: contas de todas as fazendas da conta.
+      const contas = l.origem_tabela === "empresa_lancamentos"
+        ? Array.from(new Map([
+            ...(l.empresa_id ? await listarContasPorEmpresa(l.empresa_id) : []),
+            ...(contaId ? await listarContasProdutorDaConta(contaId) : []),
+          ].map(c => [c.id, c])).values())
+        : contaId ? await listarContasProdutorDaConta(contaId) : [];
       setContasOpcoes(contas);
     } catch { setContasOpcoes([]); }
   }
@@ -479,6 +484,7 @@ export default function ContasAPagarPage() {
     data_vencimento: "", valor: 0, cotacao_usd: 5.12,
     sacas: 0, cultura_barter: "soja", preco_saca_barter: 120,
     centro_custo_id: "", centro_custo_texto: "", observacao: "",
+    emp_ano_safra_id: "", emp_ciclo_id: "",
     condicao: "avista" as "avista" | "prazo" | "recorrencia",
     qtd_parcelas: 2, frequencia: 1,
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
@@ -500,6 +506,10 @@ export default function ContasAPagarPage() {
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   const [contasNovo, setContasNovo] = useState<ContaBancaria[]>([]);
+  // Lançamento de empresa: safra/ciclo/centro de custo (mesmos vínculos do produtor)
+  const [empSafras, setEmpSafras] = useState<AnoSafra[]>([]);
+  const [empCiclos, setEmpCiclos] = useState<Ciclo[]>([]);
+  const [centrosNovo, setCentrosNovo] = useState<CentroCusto[]>([]);
 
   useEffect(() => {
     if (!contaId && !fazendaId) return;
@@ -514,6 +524,21 @@ export default function ContasAPagarPage() {
   }, [contaId, fazendaId]);
 
   // Conta de pagamento — por fazenda (produtor) ou por empresa, conforme a Origem
+  useEffect(() => {
+    if (!modalNovo || !fazendaId) return;
+    (async () => {
+      try {
+        const [safras, centros] = await Promise.all([listarAnosSafra(fazendaId), listarCentrosCustoGeralDaConta(fazendaId)]);
+        setEmpSafras(safras); setCentrosNovo(centros);
+      } catch { setEmpSafras([]); setCentrosNovo([]); }
+    })();
+  }, [modalNovo, fazendaId]);
+
+  useEffect(() => {
+    if (!novoForm.emp_ano_safra_id || !fazendaId) { setEmpCiclos([]); return; }
+    listarCiclos(novoForm.emp_ano_safra_id, fazendaId).then(setEmpCiclos).catch(() => setEmpCiclos([]));
+  }, [novoForm.emp_ano_safra_id, fazendaId]);
+
   useEffect(() => {
     if (!modalNovo) return;
     (async () => {
@@ -599,7 +624,7 @@ export default function ContasAPagarPage() {
       setCascadeNovo({ produtorId: lanc.produtor_id || undefined, anoSafraId: lanc.ano_safra_id || undefined, cicloId: lanc.ciclo_id || undefined });
     } else {
       const { data } = await supabase.from("empresa_lancamentos").select("*").eq("id", l.id).single();
-      const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string } | null;
+      const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string; centro_custo_id?: string | null; operacao_gerencial_id?: string | null; ano_safra_id?: string | null; ciclo_id?: string | null } | null;
       if (!emp) return;
       setNovoForm({
         ...NOVO_VAZIO,
@@ -607,10 +632,14 @@ export default function ContasAPagarPage() {
         empresa_id: emp.empresa_id,
         pessoa_id: emp.pessoa_id ?? "",
         descricao: emp.descricao ?? "",
-        categoria: emp.categoria || CATS_CP[0],
+        categoria: emp.categoria || CATS_CP_EMPRESA[0],
         data_vencimento: emp.data_vencimento,
         valor: emp.valor,
         centro_custo_texto: emp.centro_custo ?? "",
+        centro_custo_id: emp.centro_custo_id ?? "",
+        operacao_gerencial_id: emp.operacao_gerencial_id ?? "",
+        emp_ano_safra_id: emp.ano_safra_id ?? "",
+        emp_ciclo_id: emp.ciclo_id ?? "",
         observacao: emp.observacao ?? "",
         forma_pagamento: emp.forma_pagamento ?? "PIX",
         conta_pagamento: emp.conta_bancaria ?? "",
@@ -689,7 +718,10 @@ export default function ContasAPagarPage() {
             data_vencimento: novoForm.data_vencimento,
             competencia: novoForm.competencia || undefined,
             pessoa_id: novoForm.pessoa_id || undefined,
-            centro_custo: novoForm.centro_custo_texto.trim() || undefined,
+            centro_custo_id: novoForm.centro_custo_id || null,
+            ano_safra_id: novoForm.emp_ano_safra_id || null,
+            ciclo_id: novoForm.emp_ciclo_id || null,
+            operacao_gerencial_id: novoForm.operacao_gerencial_id || null,
             forma_pagamento: novoForm.forma_pagamento || undefined,
             conta_bancaria: novoForm.conta_pagamento || undefined,
             numero_documento: novoForm.numero_documento || undefined,
@@ -755,7 +787,9 @@ export default function ContasAPagarPage() {
           fazenda_id: fazendaId, empresa_id: novoForm.empresa_id, tipo: "pagar", descricao: novoForm.descricao.trim(),
           categoria: novoForm.categoria || undefined, valor: novoForm.valor, moeda: novoForm.moeda, data_vencimento: novoForm.data_vencimento,
           status: "pendente", competencia: novoForm.competencia || undefined,
-          pessoa_id: novoForm.pessoa_id || undefined, centro_custo: novoForm.centro_custo_texto.trim() || undefined,
+          pessoa_id: novoForm.pessoa_id || undefined, centro_custo_id: novoForm.centro_custo_id || null,
+          ano_safra_id: novoForm.emp_ano_safra_id || null, ciclo_id: novoForm.emp_ciclo_id || null,
+          operacao_gerencial_id: novoForm.operacao_gerencial_id || null,
           forma_pagamento: novoForm.forma_pagamento || undefined, conta_bancaria: novoForm.conta_pagamento || undefined,
           numero_documento: novoForm.numero_documento || undefined,
           observacao: novoForm.observacao.trim() || undefined,
@@ -1686,7 +1720,33 @@ export default function ContasAPagarPage() {
                         </div>
                         <div>
                           <label style={lbl}>Centro de Custo</label>
-                          <input value={novoForm.centro_custo_texto} onChange={e => setNovoForm(p => ({ ...p, centro_custo_texto: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Operações, Adm..." />
+                          <select value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem vínculo —</option>
+                            {centrosNovo.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ${c.nome}` : c.nome}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Safra</label>
+                          <select value={novoForm.emp_ano_safra_id} onChange={e => setNovoForm(p => ({ ...p, emp_ano_safra_id: e.target.value, emp_ciclo_id: "" }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem safra —</option>
+                            {empSafras.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Ciclo / Cultura</label>
+                          <select value={novoForm.emp_ciclo_id} onChange={e => setNovoForm(p => ({ ...p, emp_ciclo_id: e.target.value }))} disabled={!novoForm.emp_ano_safra_id} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem ciclo —</option>
+                            {empCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao ?? c.cultura}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Operação Gerencial</label>
+                          <select value={novoForm.operacao_gerencial_id} onChange={e => setNovoForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem OG —</option>
+                            {opGerenciais.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                          </select>
                         </div>
                       </div>
                     </>

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-h",
+    data: "05/10/2026",
+    titulo: "CP de empresa: safra, ciclo, OG e centro de custo · baixa com conta bancária",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Novo Lançamento de CP (origem Empresa) ganhou Safra, Ciclo/Cultura e Operação Gerencial, e o Centro de Custo passou a ser escolhido do cadastro. Assim, um custo de empresa da lavoura entra na safra certa." },
+      { tipo: "correcao", texto: "A baixa de CP de empresa mostra as contas bancárias (antes ficava vazia)." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Novo Lançamento / Baixar",
+  },
+  {
     versao: "2026.10.05-g",
     data: "05/10/2026",
     titulo: "Novo Lançamento CP/CR: contas de todas as fazendas e categorias de empresa",

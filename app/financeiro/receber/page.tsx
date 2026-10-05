@@ -309,9 +309,14 @@ export default function ContasAReceberPage() {
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
     try {
-      const contas = l.origem_tabela === "empresa_lancamentos" && l.empresa_id
-        ? await listarContasPorEmpresa(l.empresa_id)
-        : l.fazenda_id ? await listarContas(l.fazenda_id) : [];
+      // Empresa: contas da própria empresa + contas do produtor da conta (empresas pagam/recebem
+      // também por contas da fazenda, que não têm empresa_id). Produtor: contas de todas as fazendas da conta.
+      const contas = l.origem_tabela === "empresa_lancamentos"
+        ? Array.from(new Map([
+            ...(l.empresa_id ? await listarContasPorEmpresa(l.empresa_id) : []),
+            ...(contaId ? await listarContasProdutorDaConta(contaId) : []),
+          ].map(c => [c.id, c])).values())
+        : contaId ? await listarContasProdutorDaConta(contaId) : [];
       setContasOpcoes(contas);
     } catch { setContasOpcoes([]); }
   }

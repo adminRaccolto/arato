@@ -15885,3 +15885,26 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 324 — empresa_lancamentos ganha os mesmos vínculos do CP de produtor
+-- (safra, ciclo, operação gerencial, centro de custo como FK e parcelamento).
+-- Pedido do dono 05/10/2026: custo de empresa pode ser de lavoura, então precisa
+-- de safra/ciclo; e parcelamento é condição de pagamento, não característica do
+-- produtor. Todas as colunas são opcionais — folha, NFS de serviço e lançamentos
+-- antigos continuam funcionando sem preenchimento.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE empresa_lancamentos
+  ADD COLUMN IF NOT EXISTS ano_safra_id          uuid REFERENCES anos_safra(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ciclo_id              uuid REFERENCES ciclos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS operacao_gerencial_id uuid REFERENCES operacoes_gerenciais(id),
+  ADD COLUMN IF NOT EXISTS centro_custo_id       uuid REFERENCES centros_custo(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS agrupador             uuid,
+  ADD COLUMN IF NOT EXISTS parcela_num           integer,
+  ADD COLUMN IF NOT EXISTS parcelas_total        integer;
+
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_ciclo     ON empresa_lancamentos(ciclo_id) WHERE ciclo_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_emp_lanc_agrupador ON empresa_lancamentos(agrupador) WHERE agrupador IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
