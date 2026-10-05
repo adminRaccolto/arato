@@ -41,10 +41,10 @@ import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
-  listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
+  listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
   excluirLancamento, excluirEmpresaLancamento,
 } from "../../../lib/db";
-import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial } from "../../../lib/supabase";
+import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -456,6 +456,7 @@ export default function ContasAReceberPage() {
     natureza: "real" as "real" | "previsao",
     moeda: "BRL" as "BRL" | "USD" | "barter",
     empresa_id: "", pessoa_id: "", descricao: "", categoria: CATS_CR[0],
+    emp_ano_safra_id: "", emp_ciclo_id: "",
     data_vencimento: "", valor: 0, cotacao_usd: 5.12,
     sacas: 0, cultura_barter: "soja", preco_saca_barter: 120,
     centro_custo_id: "", centro_custo_texto: "", observacao: "",
@@ -480,6 +481,10 @@ export default function ContasAReceberPage() {
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   const [contasNovo, setContasNovo] = useState<ContaBancaria[]>([]);
+  // Lançamento de empresa: safra/ciclo/centro de custo (mesmos vínculos do produtor)
+  const [empSafras, setEmpSafras] = useState<AnoSafra[]>([]);
+  const [empCiclos, setEmpCiclos] = useState<Ciclo[]>([]);
+  const [centrosNovo, setCentrosNovo] = useState<CentroCusto[]>([]);
 
   useEffect(() => {
     if (!contaId && !fazendaId) return;
@@ -488,6 +493,21 @@ export default function ContasAReceberPage() {
   }, [contaId, fazendaId]);
 
   // Conta de recebimento — por fazenda (produtor) ou por empresa, conforme a Origem
+  useEffect(() => {
+    if (!modalNovo || !fazendaId) return;
+    (async () => {
+      try {
+        const [safras, centros] = await Promise.all([listarAnosSafra(fazendaId), listarCentrosCustoGeralDaConta(fazendaId)]);
+        setEmpSafras(safras); setCentrosNovo(centros);
+      } catch { setEmpSafras([]); setCentrosNovo([]); }
+    })();
+  }, [modalNovo, fazendaId]);
+
+  useEffect(() => {
+    if (!novoForm.emp_ano_safra_id || !fazendaId) { setEmpCiclos([]); return; }
+    listarCiclos(novoForm.emp_ano_safra_id, fazendaId).then(setEmpCiclos).catch(() => setEmpCiclos([]));
+  }, [novoForm.emp_ano_safra_id, fazendaId]);
+
   useEffect(() => {
     if (!modalNovo) return;
     (async () => {
@@ -573,7 +593,7 @@ export default function ContasAReceberPage() {
       setCascadeNovo({ produtorId: lanc.produtor_id || undefined, anoSafraId: lanc.ano_safra_id || undefined, cicloId: lanc.ciclo_id || undefined });
     } else {
       const { data } = await supabase.from("empresa_lancamentos").select("*").eq("id", l.id).single();
-      const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string } | null;
+      const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; centro_custo_id?: string | null; operacao_gerencial_id?: string | null; ano_safra_id?: string | null; ciclo_id?: string | null; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string } | null;
       if (!emp) return;
       setNovoForm({
         ...NOVO_VAZIO,
@@ -581,10 +601,14 @@ export default function ContasAReceberPage() {
         empresa_id: emp.empresa_id,
         pessoa_id: emp.pessoa_id ?? "",
         descricao: emp.descricao ?? "",
-        categoria: emp.categoria || CATS_CR[0],
+        categoria: emp.categoria || CATS_CR_EMPRESA[0],
         data_vencimento: emp.data_vencimento,
         valor: emp.valor,
         centro_custo_texto: emp.centro_custo ?? "",
+        centro_custo_id: emp.centro_custo_id ?? "",
+        operacao_gerencial_id: emp.operacao_gerencial_id ?? "",
+        emp_ano_safra_id: emp.ano_safra_id ?? "",
+        emp_ciclo_id: emp.ciclo_id ?? "",
         observacao: emp.observacao ?? "",
         forma_pagamento: emp.forma_pagamento ?? "PIX",
         conta_pagamento: emp.conta_bancaria ?? "",
@@ -662,7 +686,10 @@ export default function ContasAReceberPage() {
             data_vencimento: novoForm.data_vencimento,
             competencia: novoForm.competencia || undefined,
             pessoa_id: novoForm.pessoa_id || undefined,
-            centro_custo: novoForm.centro_custo_texto.trim() || undefined,
+            centro_custo_id: novoForm.centro_custo_id || null,
+            ano_safra_id: novoForm.emp_ano_safra_id || null,
+            ciclo_id: novoForm.emp_ciclo_id || null,
+            operacao_gerencial_id: novoForm.operacao_gerencial_id || null,
             forma_pagamento: novoForm.forma_pagamento || undefined,
             conta_bancaria: novoForm.conta_pagamento || undefined,
             numero_documento: novoForm.numero_documento || undefined,
@@ -724,15 +751,38 @@ export default function ContasAReceberPage() {
         }
         if (salvarComoRegra) await criarRegraClassificacaoNovo();
       } else {
-        await criarEmpresaLancamento({
-          fazenda_id: fazendaId, empresa_id: novoForm.empresa_id, tipo: "receber", descricao: novoForm.descricao.trim(),
-          categoria: novoForm.categoria || undefined, valor: novoForm.valor, moeda: novoForm.moeda, data_vencimento: novoForm.data_vencimento,
-          status: "pendente", competencia: novoForm.competencia || undefined,
-          pessoa_id: novoForm.pessoa_id || undefined, centro_custo: novoForm.centro_custo_texto.trim() || undefined,
+        // Uma linha por parcela, todas com o mesmo agrupador (mesmo título parcelado).
+        // Avulso = uma linha só. Parcelado = parcelasNovo (datas/valores editáveis na grade).
+        // Recorrência = mesmo valor repetido, espaçado pela frequência.
+        const baseEmp = {
+          fazenda_id: fazendaId, empresa_id: novoForm.empresa_id, tipo: "receber" as const, descricao: novoForm.descricao.trim(),
+          categoria: novoForm.categoria || undefined, moeda: novoForm.moeda,
+          status: "pendente" as const, competencia: novoForm.competencia || undefined,
+          pessoa_id: novoForm.pessoa_id || undefined, centro_custo_id: novoForm.centro_custo_id || null,
+          ano_safra_id: novoForm.emp_ano_safra_id || null, ciclo_id: novoForm.emp_ciclo_id || null,
+          operacao_gerencial_id: novoForm.operacao_gerencial_id || null,
           forma_pagamento: novoForm.forma_pagamento || undefined, conta_bancaria: novoForm.conta_pagamento || undefined,
           numero_documento: novoForm.numero_documento || undefined,
           observacao: novoForm.observacao.trim() || undefined,
-        });
+        };
+        if (novoForm.condicao === "prazo" && parcelasNovo.length > 1) {
+          const agrupador = crypto.randomUUID();
+          const total = parcelasNovo.length;
+          for (let k = 0; k < total; k++) {
+            const p = parcelasNovo[k];
+            await criarEmpresaLancamento({ ...baseEmp, valor: p.valor, data_vencimento: p.data, agrupador, parcela_num: k + 1, parcelas_total: total });
+          }
+        } else if (novoForm.condicao === "recorrencia" && Math.max(2, novoForm.qtd_parcelas) >= 2) {
+          const agrupador = crypto.randomUUID();
+          const total = Math.max(2, novoForm.qtd_parcelas);
+          for (let k = 0; k < total; k++) {
+            const d = new Date(novoForm.data_vencimento + "T12:00:00");
+            d.setMonth(d.getMonth() + k * Math.max(1, novoForm.frequencia));
+            await criarEmpresaLancamento({ ...baseEmp, valor: novoForm.valor, data_vencimento: d.toISOString().split("T")[0], agrupador, parcela_num: k + 1, parcelas_total: total });
+          }
+        } else {
+          await criarEmpresaLancamento({ ...baseEmp, valor: novoForm.valor, data_vencimento: novoForm.data_vencimento });
+        }
       }
       setModalNovo(false);
       await carregar();
@@ -933,6 +983,104 @@ export default function ContasAReceberPage() {
     } catch { setVerBorderoItens([]); }
     finally { setCarregandoVerBordero(false); }
   }
+
+  // Bloco de Condição de Pagamento/Recebimento (À Vista / Parcelado / Recorrência) — compartilhado
+  // pelos dois lados (Produtor e Empresa), para o mesmo fluxo de parcelas valer nos dois.
+  const condicaoNovoJsx = (
+    <>
+                      {/* Condição de Recebimento */}
+                      <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
+                        <div>
+                          <label style={lbl}>Condição de Recebimento</label>
+                          <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
+                            {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
+                              <button key={v} type="button"
+                                onClick={() => { setNovoForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelasNovo([]); }}
+                                style={{ padding: "7px 14px", fontSize: 12, fontWeight: novoForm.condicao === v ? 600 : 400, cursor: "pointer", border: "none",
+                                  borderRight: idx < 2 ? "0.5px solid #DDE2EE" : "none",
+                                  background: novoForm.condicao === v ? "#111111" : "#F4F6FA", color: novoForm.condicao === v ? "#fff" : "#555", whiteSpace: "nowrap" }}>
+                                {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {(novoForm.condicao === "prazo" || novoForm.condicao === "recorrencia") && (
+                          <>
+                            <div>
+                              <label style={lbl}>{novoForm.condicao === "prazo" ? "Nº de parcelas" : "Nº de repetições"}</label>
+                              <InputNumerico style={{ ...inp, width: 80 }} decimais={0} min={2} max={120} value={novoForm.qtd_parcelas} onChange={v => setNovoForm(p => ({ ...p, qtd_parcelas: Number(v) || 2 }))} />
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={lbl}>Frequência</label>
+                                <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.frequencia} onChange={e => setNovoForm(p => ({ ...p, frequencia: Number(e.target.value) }))}>
+                                  <option value={1}>Mensal</option>
+                                  <option value={2}>Bimestral</option>
+                                  <option value={3}>Trimestral</option>
+                                  <option value={6}>Semestral</option>
+                                  <option value={12}>Anual</option>
+                                </select>
+                              </div>
+                              {novoForm.condicao === "prazo" && (
+                                <button type="button"
+                                  onClick={() => gerarParcelasNovo(novoForm.data_vencimento, novoForm.qtd_parcelas, novoForm.frequencia, novoForm.valor)}
+                                  disabled={!novoForm.data_vencimento || !novoForm.valor}
+                                  style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #93C5FD", background: "#EFF6FF", color: "#1D4ED8", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !novoForm.data_vencimento || !novoForm.valor ? 0.4 : 1 }}>
+                                  Gerar
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {novoForm.condicao === "prazo" && parcelasNovo.length === 0 && (
+                        <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
+                          Preencha o Vencimento e Valor, depois clique em &quot;Gerar&quot;.
+                        </div>
+                      )}
+                      {novoForm.condicao === "prazo" && parcelasNovo.length > 0 && (
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: "#F4F6FA" }}>
+                                {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                                  <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {parcelasNovo.map((p, i) => (
+                                <tr key={i} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
+                                  <td style={{ padding: "4px 10px", textAlign: "center", color: "#888", fontSize: 11, width: 40 }}>{i + 1}/{parcelasNovo.length}</td>
+                                  <td style={{ padding: "4px 8px" }}>
+                                    <input style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} type="date" value={p.data}
+                                      onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
+                                  </td>
+                                  <td style={{ padding: "4px 8px" }}>
+                                    <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right", width: "100%", boxSizing: "border-box" }} value={p.valor}
+                                      onChange={v => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, valor: v } : x))} />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: "#F4F6FA" }}>
+                                <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#888" }}>Total:</td>
+                                <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(parcelasNovo.reduce((s, p) => s + p.valor, 0))}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                      {novoForm.condicao === "recorrencia" && novoForm.valor > 0 && (
+                        <div style={{ background: "#FFFBEB", border: "0.5px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
+                          O mesmo valor é lançado <strong>{Math.max(2, novoForm.qtd_parcelas)}×</strong>.
+                          <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(novoForm.valor * Math.max(2, novoForm.qtd_parcelas))}</span>
+                        </div>
+                      )}
+    </>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
@@ -1653,9 +1801,36 @@ export default function ContasAReceberPage() {
                         </div>
                         <div>
                           <label style={lbl}>Centro de Custo</label>
-                          <input value={novoForm.centro_custo_texto} onChange={e => setNovoForm(p => ({ ...p, centro_custo_texto: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Operações, Adm..." />
+                          <select value={novoForm.centro_custo_id} onChange={e => setNovoForm(p => ({ ...p, centro_custo_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem vínculo —</option>
+                            {centrosNovo.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ${c.nome}` : c.nome}</option>)}
+                          </select>
                         </div>
                       </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Safra</label>
+                          <select value={novoForm.emp_ano_safra_id} onChange={e => setNovoForm(p => ({ ...p, emp_ano_safra_id: e.target.value, emp_ciclo_id: "" }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem safra —</option>
+                            {empSafras.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Ciclo / Cultura</label>
+                          <select value={novoForm.emp_ciclo_id} onChange={e => setNovoForm(p => ({ ...p, emp_ciclo_id: e.target.value }))} disabled={!novoForm.emp_ano_safra_id} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem ciclo —</option>
+                            {empCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao ?? c.cultura}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Operação Gerencial</label>
+                          <select value={novoForm.operacao_gerencial_id} onChange={e => setNovoForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
+                            <option value="">— Sem OG —</option>
+                            {opGerenciais.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      {condicaoNovoJsx}
                     </>
                   ) : (
                     <>
@@ -1833,97 +2008,7 @@ export default function ContasAReceberPage() {
                         </div>
                       )}
 
-                      {/* Condição de Recebimento */}
-                      <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
-                        <div>
-                          <label style={lbl}>Condição de Recebimento</label>
-                          <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
-                            {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
-                              <button key={v} type="button"
-                                onClick={() => { setNovoForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelasNovo([]); }}
-                                style={{ padding: "7px 14px", fontSize: 12, fontWeight: novoForm.condicao === v ? 600 : 400, cursor: "pointer", border: "none",
-                                  borderRight: idx < 2 ? "0.5px solid #DDE2EE" : "none",
-                                  background: novoForm.condicao === v ? "#111111" : "#F4F6FA", color: novoForm.condicao === v ? "#fff" : "#555", whiteSpace: "nowrap" }}>
-                                {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {(novoForm.condicao === "prazo" || novoForm.condicao === "recorrencia") && (
-                          <>
-                            <div>
-                              <label style={lbl}>{novoForm.condicao === "prazo" ? "Nº de parcelas" : "Nº de repetições"}</label>
-                              <InputNumerico style={{ ...inp, width: 80 }} decimais={0} min={2} max={120} value={novoForm.qtd_parcelas} onChange={v => setNovoForm(p => ({ ...p, qtd_parcelas: Number(v) || 2 }))} />
-                            </div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
-                              <div style={{ flex: 1 }}>
-                                <label style={lbl}>Frequência</label>
-                                <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.frequencia} onChange={e => setNovoForm(p => ({ ...p, frequencia: Number(e.target.value) }))}>
-                                  <option value={1}>Mensal</option>
-                                  <option value={2}>Bimestral</option>
-                                  <option value={3}>Trimestral</option>
-                                  <option value={6}>Semestral</option>
-                                  <option value={12}>Anual</option>
-                                </select>
-                              </div>
-                              {novoForm.condicao === "prazo" && (
-                                <button type="button"
-                                  onClick={() => gerarParcelasNovo(novoForm.data_vencimento, novoForm.qtd_parcelas, novoForm.frequencia, novoForm.valor)}
-                                  disabled={!novoForm.data_vencimento || !novoForm.valor}
-                                  style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #93C5FD", background: "#EFF6FF", color: "#1D4ED8", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !novoForm.data_vencimento || !novoForm.valor ? 0.4 : 1 }}>
-                                  Gerar
-                                </button>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {novoForm.condicao === "prazo" && parcelasNovo.length === 0 && (
-                        <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
-                          Preencha o Vencimento e Valor, depois clique em &quot;Gerar&quot;.
-                        </div>
-                      )}
-                      {novoForm.condicao === "prazo" && parcelasNovo.length > 0 && (
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                            <thead>
-                              <tr style={{ background: "#F4F6FA" }}>
-                                {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
-                                  <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {parcelasNovo.map((p, i) => (
-                                <tr key={i} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
-                                  <td style={{ padding: "4px 10px", textAlign: "center", color: "#888", fontSize: 11, width: 40 }}>{i + 1}/{parcelasNovo.length}</td>
-                                  <td style={{ padding: "4px 8px" }}>
-                                    <input style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} type="date" value={p.data}
-                                      onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
-                                  </td>
-                                  <td style={{ padding: "4px 8px" }}>
-                                    <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right", width: "100%", boxSizing: "border-box" }} value={p.valor}
-                                      onChange={v => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, valor: v } : x))} />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr style={{ background: "#F4F6FA" }}>
-                                <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#888" }}>Total:</td>
-                                <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(parcelasNovo.reduce((s, p) => s + p.valor, 0))}</td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      )}
-                      {novoForm.condicao === "recorrencia" && novoForm.valor > 0 && (
-                        <div style={{ background: "#FFFBEB", border: "0.5px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
-                          O mesmo valor é lançado <strong>{Math.max(2, novoForm.qtd_parcelas)}×</strong>.
-                          <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(novoForm.valor * Math.max(2, novoForm.qtd_parcelas))}</span>
-                        </div>
-                      )}
+                      {condicaoNovoJsx}
                     </>
                   )}
                 </div>

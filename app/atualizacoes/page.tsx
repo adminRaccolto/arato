@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-i",
+    data: "05/10/2026",
+    titulo: "Empresa: parcelamento, safra e ciclo no CP e no CR",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Lançamento de empresa (CP e CR) ganhou Condição de Pagamento: À Vista, Parcelado (com grade de datas e valores editável) ou Recorrência." },
+      { tipo: "novo", texto: "Lançamento de empresa ganhou Safra, Ciclo/Cultura e Operação Gerencial, e o Centro de Custo passou a ser escolhido do cadastro. Custo de empresa da lavoura entra na safra certa." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber → Novo Lançamento",
+  },
+  {
     versao: "2026.10.05-h",
     data: "05/10/2026",
     titulo: "CP de empresa: safra, ciclo, OG e centro de custo · baixa com conta bancária",
