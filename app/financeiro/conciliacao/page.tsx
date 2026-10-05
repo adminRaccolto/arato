@@ -64,6 +64,7 @@ interface Lancamento {
   conta_bancaria?: string;
   produtor_id?: string | null;
   conciliado?: boolean;
+  origem_tabela?: "lancamentos" | "empresa_lancamentos";
   moeda?: string;
   pessoa_id?: string | null;
   lote_id?: string | null;
@@ -510,7 +511,34 @@ function ConciliacaoInner() {
       if (!data || data.length < PAGE) break;
       from += PAGE;
     }
-    return all;
+    // Títulos de EMPRESA (empresa_lancamentos): entram na mesma lista, para baixa e conciliação.
+    // Empresa usa status pendente/pago; aqui vira em_aberto/baixado, o mesmo vocabulário da tela.
+    const emp: Lancamento[] = [];
+    for (let f = 0; ; f += PAGE) {
+      let q = supabase.from("empresa_lancamentos")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_pagamento,status,categoria,conciliado,moeda,pessoa_id")
+        .in("fazenda_id", fazIds)
+        .not("status", "eq", "cancelado")
+        .order("data_vencimento", { ascending: false })
+        .order("id", { ascending: true })
+        .range(f, f + PAGE - 1);
+      if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
+      const { data, error } = await q;
+      if (error) throw error;
+      for (const e of (data ?? []) as Array<Record<string, unknown>>) {
+        emp.push({
+          id: String(e.id), tipo: e.tipo as "pagar" | "receber", descricao: String(e.descricao ?? ""),
+          valor: Number(e.valor ?? 0), valor_pago: e.valor_pago != null ? Number(e.valor_pago) : undefined,
+          data_vencimento: String(e.data_vencimento), data_baixa: (e.data_pagamento as string) ?? undefined,
+          status: e.status === "pago" ? "baixado" : "em_aberto",
+          categoria: (e.categoria as string) ?? undefined, conciliado: !!e.conciliado,
+          moeda: (e.moeda as string) ?? "BRL", pessoa_id: (e.pessoa_id as string) ?? null,
+          origem_tabela: "empresa_lancamentos",
+        } as Lancamento);
+      }
+      if (!data || data.length < PAGE) break;
+    }
+    return [...all, ...emp];
   }
 
   // ── Carregar dados ──────────────────────────────────────────────────────────

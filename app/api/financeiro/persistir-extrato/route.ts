@@ -90,10 +90,32 @@ export async function POST(req: NextRequest) {
     // 2. Baixa lançamentos — antes os erros de cada update eram descartados e a rota
     // respondia ok:true mesmo com a baixa não gravada (tela "baixada", banco em aberto).
     // Também sincroniza parcelas_pagamento, como /api/financeiro/baixar já fazia.
+    // IDs de títulos de empresa entre as baixas: não estão em lancamentos (o produtor)
+    const idsEmpresa = new Set<string>();
+    if (body.baixar?.length) {
+      const idsBaixa = body.baixar.map(b => b.id);
+      const { data: naLanc } = await sb.from("lancamentos").select("id").in("id", idsBaixa);
+      const noProdutor = new Set((naLanc ?? []).map(l => l.id as string));
+      const restantes = idsBaixa.filter(id => !noProdutor.has(id));
+      if (restantes.length) {
+        const { data: naEmp } = await sb.from("empresa_lancamentos").select("id").in("id", restantes);
+        (naEmp ?? []).forEach(e => idsEmpresa.add(e.id as string));
+      }
+    }
     if (body.baixar?.length) {
       const resultados = await Promise.all(
         body.baixar.map(async item => {
-          const r = await sb.from("lancamentos").update({
+          // Título de EMPRESA (empresa_lancamentos): baixa na própria tabela. Status da empresa é
+        // pendente/pago — "parcial" vira pendente com valor_pago; conta bancária (uuid) não é gravada aqui.
+        if (idsEmpresa.has(item.id)) {
+          const r = await sb.from("empresa_lancamentos").update(
+            (item.status ?? "baixado") === "baixado"
+              ? { status: "pago", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
+              : { status: "pendente", valor_pago: item.valor_pago }
+          ).eq("id", item.id);
+          return r.error ? `baixa empresa ${item.id}: ${r.error.message}` : null;
+        }
+        const r = await sb.from("lancamentos").update({
             status:     item.status ?? "baixado",
             data_baixa: item.data_baixa,
             valor_pago: item.valor_pago,
@@ -143,6 +165,9 @@ export async function POST(req: NextRequest) {
         .update({ conciliado: true })
         .in("id", body.lancamento_ids_conciliados);
       if (r.error) falhas.push(`conciliado=true: ${r.error.message}`);
+      // Títulos de empresa: mesmos IDs, na tabela da empresa (só atualiza o que existir)
+      const rE = await sb.from("empresa_lancamentos").update({ conciliado: true }).in("id", body.lancamento_ids_conciliados);
+      if (rE.error) falhas.push(`conciliado empresa: ${rE.error.message}`);
     }
 
     // 3a. GARANTIA no servidor: todo lançamento BAIXADO/PARCIAL ligado a uma linha do extrato tem que
@@ -176,6 +201,8 @@ export async function POST(req: NextRequest) {
         .update({ conciliado: false })
         .in("id", body.lancamento_ids_desconciliados);
       if (r.error) falhas.push(`conciliado=false: ${r.error.message}`);
+      const rE = await sb.from("empresa_lancamentos").update({ conciliado: false }).in("id", body.lancamento_ids_desconciliados);
+      if (rE.error) falhas.push(`desconciliado empresa: ${rE.error.message}`);
     }
 
     if (body.lancamento_ids_desconciliados?.length) {

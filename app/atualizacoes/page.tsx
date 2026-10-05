@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-t",
+    data: "05/10/2026",
+    titulo: "Conciliação: títulos de empresa (CP e CR)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Os títulos de CP e CR de empresa entram na Conciliação Bancária. A baixa conciliada com uma linha do extrato é gravada no título da empresa." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.05-s",
     data: "05/10/2026",
     titulo: "CP e CR: escolher e reordenar colunas do grid",
