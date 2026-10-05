@@ -34,6 +34,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import ClipDocumentos from "../../../components/financeiro/ClipDocumentos";
 import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
@@ -1281,7 +1282,8 @@ export default function ContasAPagarPage() {
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>
                     </td>
                     <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cp" />
                         {l.status_normalizado === "baixado" ? (
                           <button onClick={() => reabrir(l)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Reabrir</button>
                         ) : aberto ? (

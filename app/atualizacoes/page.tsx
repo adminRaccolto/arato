@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-k",
+    data: "05/10/2026",
+    titulo: "CP/CR: clipe com DANFE, boleto e comprovante de cada lançamento",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Na coluna Ações de cada lançamento, o clipe 📎 abre os documentos vinculados: DANFE da NF (quando tem chave de acesso), NF anexada, boleto e comprovante. Clicando, o documento abre em nova aba." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber → coluna Ações",
+  },
+  {
     versao: "2026.10.05-j",
     data: "05/10/2026",
     titulo: "CP/CR: títulos atrasados aparecem como Vencido",
