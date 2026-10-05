@@ -31,9 +31,11 @@
 // (status fica igual, só ganham lote_id); "Confirmar Pagamento" depois é que
 // define data+conta e baixa todos de uma vez via /api/financeiro/bordero-acao.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import ContextMenuColunas from "../../../components/ContextMenuColunas";
+import { useColunasGrid, type ColDef } from "../../../hooks/useColunasGrid";
 import ClipDocumentos from "../../../components/financeiro/ClipDocumentos";
 import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
@@ -166,8 +168,39 @@ const chip = (ativo: boolean): React.CSSProperties => ({
   border: ativo ? "1.5px solid #2A2A2A" : "0.5px solid #DDE2EE", background: ativo ? "#2A2A2A" : "#fff", color: ativo ? "#fff" : "#555",
 });
 
+// Colunas do grid — ordem e visibilidade são escolhidas pelo usuário (botão direito no cabeçalho).
+const COLS_GRID_CP: ColDef[] = [
+  { key: "checkbox", label: "Selecionar", fixo: true },
+  { key: "origem", label: "Origem" },
+  { key: "numero", label: "Nº" },
+  { key: "pessoa", label: "Fornecedor" },
+  { key: "descricao", label: "Descrição" },
+  { key: "operacao", label: "Operação" },
+  { key: "safra", label: "Safra" },
+  { key: "ciclo", label: "Ciclo" },
+  { key: "cc", label: "Centro Custo" },
+  { key: "lancamento", label: "Lançamento" },
+  { key: "vencimento", label: "Vencimento" },
+  { key: "dias", label: "Dias" },
+  { key: "venc_orig", label: "Venc. Original" },
+  { key: "baixa", label: "Baixa" },
+  { key: "valor", label: "Valor" },
+  { key: "pago", label: "Pago" },
+  { key: "saldo", label: "Saldo" },
+  { key: "moeda", label: "Moeda" },
+  { key: "conta", label: "Conta" },
+  { key: "nf", label: "Nº NF" },
+  { key: "lancado", label: "Lançado via" },
+  { key: "observacao", label: "Observação" },
+  { key: "status", label: "Status" },
+  { key: "acoes", label: "Ações", fixo: true },
+];
+
 export default function ContasAPagarPage() {
-  const { fazendaId, fazendaIds, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, emailUsuario } = useAuth();
+  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols } = useColunasGrid(`cp_colunas_${emailUsuario ?? "default"}`, COLS_GRID_CP);
+  const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
+  const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => COLS_GRID_CP.find(c => c.key === k)).filter((c): c is ColDef => !!c);
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -1191,13 +1224,15 @@ export default function ContasAPagarPage() {
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 270px)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}>
+              <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
+                onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
+                title="Clique com botão direito para configurar colunas">
                 <th style={{ padding: "7px 8px", width: 30, background: "#F4F6FA" }}>
                   <input type="checkbox" style={{ cursor: "pointer" }}
                     checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))}
                     onChange={toggleTodos} />
                 </th>
-                {["Origem", "Nº", "Fornecedor", "Descrição", "Operação", "Safra", "Ciclo", "Centro Custo", "Lançamento", "Vencimento", "Dias", "Venc. Original", "Baixa", "Valor", "Pago", "Saldo", "Moeda", "Conta", "Nº NF", "Lançado via", "Observação", "Status", "Ações"].map(h => (
+                {colunasVisiveis.filter(c => c.key !== "checkbox").map(c => { const h = c.label; return (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>
                     {h === "Lançamento" || h === "Vencimento" ? (
                       <button
@@ -1209,19 +1244,19 @@ export default function ContasAPagarPage() {
                       </button>
                     ) : h}
                   </th>
-                ))}
+                ); })}
               </tr>
             </thead>
             <tbody>
               {carregando && (
-                <tr><td colSpan={24} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
+                <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
               {!carregando && linhasComBordero.map(entry => {
                 if (entry.kind === "bordero") {
                   const b = entry.b;
                   return (
                     <tr key={`bdr-${b.id}`} style={{ background: "#FBF3E0", borderBottom: "0.5px solid #C9921B60" }}>
-                      <td colSpan={24} style={{ padding: "10px 14px" }}>
+                      <td colSpan={colunasVisiveis.length} style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>
@@ -1243,44 +1278,85 @@ export default function ContasAPagarPage() {
                 const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
                 const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
-                return (
-                  <tr key={l.id}
-                    onClick={e => {
-                      if ((e.target as HTMLElement).closest("button,input,select,a")) return;
-                      setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
-                    }}
-                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined, cursor: "pointer" }}>
+                const celulasGrid: Record<string, ReactNode> = {
+                  checkbox: (
                     <td style={{ padding: "7px 8px", textAlign: "center" }}>
                       {aberto && <input type="checkbox" style={{ cursor: "pointer" }} checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />}
                     </td>
+                  ),
+                  origem: (
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: l.origem_tabela === "lancamentos" ? "#E6F1FB" : "#F5F3FF", color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6", padding: "2px 7px", borderRadius: 6 }}>
                         {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                       </span>
                     </td>
+                  ),
+                  numero: (
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
+                  ),
+                  pessoa: (
                     <td style={{ padding: "7px 10px" }}>{l.empresa_nome ?? l.pessoa_nome ?? "—"}</td>
+                  ),
+                  descricao: (
                     <td style={{ padding: "7px 10px" }}>{l.descricao ?? "—"}</td>
+                  ),
+                  operacao: (
                     <td style={{ padding: "7px 10px" }}>{l.operacao_gerencial_nome ?? "—"}</td>
+                  ),
+                  safra: (
                     <td style={{ padding: "7px 10px" }}>{l.ano_safra_descricao ?? "—"}</td>
+                  ),
+                  ciclo: (
                     <td style={{ padding: "7px 10px" }}>{l.ciclo_descricao ?? "—"}</td>
+                  ),
+                  cc: (
                     <td style={{ padding: "7px 10px" }}>{l.centro_custo_nome ?? "—"}</td>
+                  ),
+                  lancamento: (
                     <td style={{ padding: "7px 10px", color: "#888" }}>{fmtData(l.data_lancamento)}</td>
+                  ),
+                  vencimento: (
                     <td style={{ padding: "7px 10px" }}>{fmtData(l.data_vencimento)}</td>
+                  ),
+                  dias: (
                     <td style={{ padding: "7px 10px", textAlign: "center", color: dias != null && dias < 0 ? "#E24B4A" : "#555" }}>{dias ?? "—"}</td>
+                  ),
+                  venc_orig: (
                     <td style={{ padding: "7px 10px", color: "#888", fontStyle: "italic" }}>{l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "—"}</td>
+                  ),
+                  baixa: (
                     <td style={{ padding: "7px 10px" }}>{fmtData(l.data_baixa)}</td>
+                  ),
+                  valor: (
                     <td style={{ padding: "7px 10px", fontWeight: 600, textAlign: "right", color: "#E24B4A" }}>{fmtBRL(l.valor)}</td>
+                  ),
+                  pago: (
                     <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(l.valor_pago)}</td>
+                  ),
+                  saldo: (
                     <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(saldo)}</td>
+                  ),
+                  moeda: (
                     <td style={{ padding: "7px 10px", textAlign: "center" }}>{l.moeda ?? "—"}</td>
+                  ),
+                  conta: (
                     <td style={{ padding: "7px 10px" }}>{l.conta_bancaria_nome ?? "—"}</td>
+                  ),
+                  nf: (
                     <td style={{ padding: "7px 10px" }}>{l.nfe_numero ?? "—"}</td>
+                  ),
+                  lancado: (
                     <td style={{ padding: "7px 10px", color: "#888" }}>{ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "—"}</td>
+                  ),
+                  observacao: (
                     <td style={{ padding: "7px 10px", color: "#888", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.observacao ?? undefined}>{l.observacao ?? "—"}</td>
+                  ),
+                  status: (
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>
                     </td>
+                  ),
+                  acoes: (
                     <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cp" />
@@ -1294,11 +1370,21 @@ export default function ContasAPagarPage() {
                         ) : null}
                       </div>
                     </td>
+                  ),
+                };
+                return (
+                  <tr key={l.id}
+                    onClick={e => {
+                      if ((e.target as HTMLElement).closest("button,input,select,a")) return;
+                      setPopover(p => p?.l.id === l.id ? null : { l, x: e.clientX, y: e.clientY });
+                    }}
+                    style={{ borderBottom: "0.5px solid #F0F2F7", background: selecionados.has(l.id) ? "#F0F7FF" : undefined, cursor: "pointer" }}>
+                    {colunasVisiveis.map(c => <Fragment key={c.key}>{celulasGrid[c.key]}</Fragment>)}
                   </tr>
                 );
               })}
               {!carregando && linhas.length === 0 && (
-                <tr><td colSpan={24} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
+                <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
           </table>
@@ -1306,6 +1392,7 @@ export default function ContasAPagarPage() {
       </div>
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}
+      {menuColunas && <ContextMenuColunas x={menuColunas.x} y={menuColunas.y} colunas={COLS_GRID_CP} ordemTodas={ordemCols} visiveis={visCols} onToggle={toggleCol} onMover={moverColuna} onResetar={resetarCols} onClose={() => setMenuColunas(null)} />}
       {popover && (() => {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);

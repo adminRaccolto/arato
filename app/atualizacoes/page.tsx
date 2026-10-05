@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-s",
+    data: "05/10/2026",
+    titulo: "CP e CR: escolher e reordenar colunas do grid",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Botão direito no cabeçalho do grid de Contas a Pagar e Contas a Receber: mostrar ou ocultar colunas e arrastar para mudar a ordem. A escolha é guardada por usuário." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber → botão direito no cabeçalho",
+  },
+  {
     versao: "2026.10.05-r",
     data: "05/10/2026",
     titulo: "NF destinada a empresa: pede autorização e registra no log",
