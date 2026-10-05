@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-q",
+    data: "05/10/2026",
+    titulo: "NF de entrada: divergência com o pedido de compra bloqueia o processamento",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Com pedido de compra vinculado, o processamento confere cada item: o produto precisa estar no pedido e a quantidade não pode passar do saldo da linha. Se houver divergência, o sistema bloqueia e mostra o que corrigir." },
+      { tipo: "novo", texto: "Exceção real (produto trocado, quantidade a mais): escreva a justificativa no campo Observação do cabeçalho (mínimo 15 caracteres). Ela fica gravada na NF." },
+    ],
+    onde: "Estoque → NF de Entrada → Processar",
+  },
+  {
     versao: "2026.10.05-p",
     data: "05/10/2026",
     titulo: "Consórcios: taxa de administração, fundo de reserva e plano de parcelas editável",

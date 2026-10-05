@@ -1242,6 +1242,32 @@ export default function ModalNf({
         }
       }
     }
+    // Guard: NF com pedido vinculado — o item precisa ser o que foi pedido e não pode passar do
+    // saldo da linha. Exceção só com justificativa no campo Observação do cabeçalho (fica gravada na NF).
+    if (cab.pedido_compra_id) {
+      const excecoes: string[] = [];
+      for (const it of itens) {
+        if (!it.descricao_nf.trim() || !it.insumo_id) continue;
+        const linhas = linhasPedidoDoProduto(it.insumo_id);
+        if (linhas.length === 0) {
+          excecoes.push(`"${it.descricao_nf}" não consta no pedido vinculado`);
+          continue;
+        }
+        const linha = linhas.length === 1 ? linhas[0] : linhas.find(l => l.id === it.pedido_item_id);
+        if (!linha) continue; // o guard de "qual linha do pedido" já cobre este caso
+        const insumoItem = insumos.find(i => i.id === it.insumo_id);
+        // Só compara quantidade quando as unidades batem — senão a conversão ainda não é segura
+        if (canonUnidade(linha.unidade) !== canonUnidade(insumoItem?.unidade ?? "")) continue;
+        const saldo = linha.quantidade - (linha.qtd_cancelada ?? 0) - (linha.qtd_entregue ?? 0);
+        if (it.quantidade > saldo + 0.001) {
+          excecoes.push(`"${it.descricao_nf}": quantidade ${it.quantidade} acima do saldo do pedido (${Math.max(0, saldo)})`);
+        }
+      }
+      if (excecoes.length > 0 && (cab.observacao ?? "").trim().length < 15) {
+        setErr(`Divergência com o pedido de compra: ${excecoes.join("; ")}. Corrija o item, ou informe a justificativa da exceção (mínimo 15 caracteres) no campo Observação do cabeçalho.`);
+        return;
+      }
+    }
     // Guard: lotes de semente com número mas sem peso — bloqueia (peso é obrigatório por lote)
     for (const it of itens) {
       if (!it.lotes_semente?.length || it.lotes_semente.length < 2) continue;
