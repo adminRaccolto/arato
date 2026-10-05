@@ -15908,3 +15908,42 @@ CREATE INDEX IF NOT EXISTS idx_emp_lanc_ciclo     ON empresa_lancamentos(ciclo_i
 CREATE INDEX IF NOT EXISTS idx_emp_lanc_agrupador ON empresa_lancamentos(agrupador) WHERE agrupador IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 325 — "vencido" calculado por data na tabela física rel_lancamentos.
+-- A tabela só recalcula status quando a linha de origem muda; vencimento é
+-- função do tempo, então nada marcava "vencido" (produtor ou empresa). Esta
+-- função é chamada todo dia pelo cron /api/cron/marcar-vencidos:
+--   em_aberto com vencimento < hoje  → vencido
+--   vencido com vencimento >= hoje   → em_aberto (ex.: vencimento reprogramado)
+-- Não altera lancamentos/empresa_lancamentos: só a leitura.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION fn_marcar_vencidos() RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  n1 integer;
+  n2 integer;
+BEGIN
+  UPDATE rel_lancamentos
+     SET status_normalizado = 'vencido'
+   WHERE status_normalizado = 'em_aberto'
+     AND data_vencimento < current_date;
+  GET DIAGNOSTICS n1 = ROW_COUNT;
+
+  UPDATE rel_lancamentos
+     SET status_normalizado = 'em_aberto'
+   WHERE status_normalizado = 'vencido'
+     AND data_vencimento >= current_date;
+  GET DIAGNOSTICS n2 = ROW_COUNT;
+
+  RETURN n1 + n2;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION fn_marcar_vencidos() TO authenticated, anon, service_role;
+
+-- Primeira execução já na instalação, para não esperar o próximo cron
+SELECT fn_marcar_vencidos();
+
+NOTIFY pgrst, 'reload schema';

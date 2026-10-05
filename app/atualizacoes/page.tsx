@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-j",
+    data: "05/10/2026",
+    titulo: "CP/CR: títulos atrasados aparecem como Vencido",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Títulos em aberto com vencimento passado agora aparecem como Vencido no filtro e na lista — de produtor e de empresa. Um processo diário faz essa marcação; títulos baixados, parciais ou cancelados não mudam." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.05-i",
     data: "05/10/2026",
     titulo: "Empresa: parcelamento, safra e ciclo no CP e no CR",
