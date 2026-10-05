@@ -1127,7 +1127,7 @@ export default function TransferenciasEstoquePage() {
               {/* overflowX auto (e não hidden): a tabela tem 8 colunas de largura fixa — com hidden
                   a coluna Lote e o botão remover eram cortados e sumiam do modal */}
               <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflowX: "auto" }}>
-                <table style={{ width: "100%", minWidth: 960, borderCollapse: "collapse" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       {["Insumo *","Qtd *","Unidade","Custo Unit. (R$)","Valor Total","Variedade","Lote",""].map(h => (
@@ -1145,7 +1145,7 @@ export default function TransferenciasEstoquePage() {
                       return (
                         <tr key={i}>
                           <td style={td}>
-                            <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 220 }}>
+                            <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 190 }}>
                               <option value="">— Selecione —</option>
                               {todosInsumos.filter(ins => (ins.estoque ?? 0) > 0).map(ins => (
                                 <option key={ins.id} value={ins.id}>
@@ -1155,20 +1155,20 @@ export default function TransferenciasEstoquePage() {
                             </select>
                           </td>
                           <td style={td}>
-                            <input type="text" value={it.quantidade} onChange={e => updateItem(i, "quantidade", e.target.value)} placeholder="0,000" style={{ ...inp, width: 90 }} />
+                            <input type="text" value={it.quantidade} onChange={e => updateItem(i, "quantidade", e.target.value)} placeholder="0,000" style={{ ...inp, width: 78 }} />
                           </td>
                           <td style={td}>
-                            <input type="text" value={it.unidade_medida} onChange={e => updateItem(i, "unidade_medida", e.target.value)} style={{ ...inp, width: 70 }} />
+                            <input type="text" value={it.unidade_medida} onChange={e => updateItem(i, "unidade_medida", e.target.value)} style={{ ...inp, width: 56 }} />
                           </td>
                           <td style={td}>
-                            <input type="text" value={it.custo_unitario} onChange={e => updateItem(i, "custo_unitario", e.target.value)} placeholder={custo ? custo.toFixed(4) : "0,0000"} style={{ ...inp, width: 110 }} />
+                            <input type="text" value={it.custo_unitario} onChange={e => updateItem(i, "custo_unitario", e.target.value)} placeholder={custo ? custo.toFixed(4) : "0,0000"} style={{ ...inp, width: 92 }} />
                           </td>
                           <td style={{ ...td, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
                             {total > 0 ? fmtBRL(total) : "—"}
                           </td>
                           <td style={td}>
                             {isSemente
-                              ? <input type="text" value={it.variedade} onChange={e => updateItem(i, "variedade", e.target.value)} placeholder="Ex: TMG 7062" style={{ ...inp, width: 120 }} />
+                              ? <input type="text" value={it.variedade} onChange={e => updateItem(i, "variedade", e.target.value)} placeholder="Ex: TMG 7062" style={{ ...inp, width: 96 }} />
                               : <span style={{ color: "var(--text-3)", fontSize: 11 }}>—</span>}
                           </td>
                           <td style={td}>
@@ -1177,13 +1177,13 @@ export default function TransferenciasEstoquePage() {
                               const lotes = lotesPorInsumo[chave];
                               // Sem lote com saldo conhecido (dado legado sem rastreio, ou ainda carregando) → texto livre
                               if (!lotes || lotes.length === 0) {
-                                return <input type="text" value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} placeholder="Ex: L2025-001" style={{ ...inp, width: 130 }} />;
+                                return <input type="text" value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} placeholder="Ex: L2025-001" style={{ ...inp, width: 118 }} />;
                               }
                               const loteSel = lotes.find(l => l.lote === it.lote_semente);
                               const excedeSaldo = loteSel && qtd > loteSel.saldo + 0.01;
                               return (
                                 <div>
-                                  <select value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={{ ...inp, width: 160, borderColor: excedeSaldo ? "#E24B4A" : undefined }}>
+                                  <select value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={{ ...inp, width: 124, borderColor: excedeSaldo ? "#E24B4A" : undefined }}>
                                     <option value="">— Selecione o lote —</option>
                                     {lotes.map(l => (
                                       <option key={l.lote} value={l.lote}>{l.lote} — {l.saldo.toLocaleString("pt-BR")} kg</option>

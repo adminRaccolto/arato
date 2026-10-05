@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-d",
+    data: "05/10/2026",
+    titulo: "Transferência de insumos: Lote visível ao lado de Variedade",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "A coluna Lote da Nova Transferência de Insumos estava fora da área visível e o lote era digitado no campo Variedade. As colunas foram reduzidas para caber no modal — Lote aparece ao lado de Variedade, sem rolar." },
+    ],
+    onde: "Estoque → Transferências → Nova Transferência",
+  },
+  {
     versao: "2026.10.05-c",
     data: "05/10/2026",
     titulo: "NF de transferência: lote e peso nas informações complementares",
