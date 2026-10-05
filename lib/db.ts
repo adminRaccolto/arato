@@ -2290,6 +2290,18 @@ export async function listarContas(fazenda_id: string): Promise<ContaBancaria[]>
   return data ?? [];
 }
 
+// Contas bancárias do produtor de TODAS as fazendas da conta (não só da fazenda ativa) —
+// exclui contas de empresa. Usado nos selects de Conta de Pagamento/Recebimento do lado Produtor.
+export async function listarContasProdutorDaConta(conta_id: string): Promise<ContaBancaria[]> {
+  const { data: fzs, error: errFz } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
+  if (errFz) throw errFz;
+  const ids = (fzs ?? []).map(f => f.id as string);
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("contas_bancarias").select("*").in("fazenda_id", ids).is("empresa_id", null).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listarContasPorEmpresa(empresa_id: string): Promise<ContaBancaria[]> {
   const { data, error } = await supabase.from("contas_bancarias").select("*").eq("empresa_id", empresa_id).order("nome");
   if (error) throw error;

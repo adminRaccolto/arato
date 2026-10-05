@@ -35,7 +35,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import {
-  baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa,
+  baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
@@ -116,6 +116,12 @@ const ORIGEM_LANC_LABEL: Record<string, string> = {
 };
 
 const FORMAS_PAGAMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
+// Categorias do lado Empresa (lista própria — empresa não usa as categorias de produtor rural)
+const CATS_CP_EMPRESA = [
+  "Salários e Encargos", "Combustível e Lubrificantes", "Manutenção de Veículos", "Manutenção Predial",
+  "Seguros", "Aluguel / Leasing", "Impostos e Taxas", "Serviços de Terceiros", "Material de Escritório",
+  "Alimentação e Diárias", "Telefone e Internet", "Fretes Pagos", "Despesas Financeiras / Juros", "Outros",
+];
 const CATS_CP = [
   "Insumos — Sementes", "Insumos — Fertilizantes", "Insumos — Defensivos",
   "Insumos — Inoculantes", "Combustível — Compra para Estoque", "Combustível — Consumo Direto",
@@ -514,11 +520,11 @@ export default function ContasAPagarPage() {
       try {
         const contas = novoForm.origem === "empresa_lancamentos" && novoForm.empresa_id
           ? await listarContasPorEmpresa(novoForm.empresa_id)
-          : fazendaId ? await listarContas(fazendaId) : [];
+          : contaId ? await listarContasProdutorDaConta(contaId) : [];
         setContasNovo(contas);
       } catch { setContasNovo([]); }
     })();
-  }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId]);
+  }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId, contaId]);
 
   function gerarParcelasNovo(vencimento: string, qtd: number, freqMeses: number, valorTotal: number) {
     if (!vencimento || qtd < 2) { setParcelasNovo([]); return; }
@@ -1613,7 +1619,7 @@ export default function ContasAPagarPage() {
                 <div style={{ display: "flex", gap: 14, border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 12px" }}>
                   {ORIGEM_OPCOES.map(o => (
                     <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input type="radio" checked={novoForm.origem === o.v} onChange={() => setNovoForm(p => ({ ...p, origem: o.v as typeof p.origem, empresa_id: "" }))} />
+                      <input type="radio" checked={novoForm.origem === o.v} onChange={() => setNovoForm(p => ({ ...p, origem: o.v as typeof p.origem, empresa_id: "", categoria: o.v === "empresa_lancamentos" ? CATS_CP_EMPRESA[0] : CATS_CP[0] }))} />
                       {o.label}
                     </label>
                   ))}
@@ -1652,7 +1658,7 @@ export default function ContasAPagarPage() {
                         <div>
                           <label style={lbl}>Categoria *</label>
                           <select value={novoForm.categoria} onChange={e => setNovoForm(p => ({ ...p, categoria: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                            {CATS_CP.map(c => <option key={c} value={c}>{c}</option>)}
+                            {CATS_CP_EMPRESA.map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </div>
                         <div>

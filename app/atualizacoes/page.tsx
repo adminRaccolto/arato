@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-g",
+    data: "05/10/2026",
+    titulo: "Novo Lançamento CP/CR: contas de todas as fazendas e categorias de empresa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Conta de Pagamento/Recebimento (origem Produtor) mostra as contas bancárias de todas as fazendas da conta, e não só da fazenda ativa." },
+      { tipo: "correcao", texto: "Com origem Empresa, a categoria usa a lista de empresa, e não as categorias de produtor rural." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber → Novo Lançamento",
+  },
+  {
     versao: "2026.10.05-f",
     data: "05/10/2026",
     titulo: "Reclassificar NF processada volta ao popup de Documentos Fiscais",

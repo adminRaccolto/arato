@@ -38,7 +38,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import {
-  baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa,
+  baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado,
@@ -119,6 +119,10 @@ const ORIGEM_LANC_LABEL: Record<string, string> = {
 };
 
 const FORMAS_RECEBIMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
+// Categorias do lado Empresa (lista própria — espelha app/empresas/receber)
+const CATS_CR_EMPRESA = [
+  "Faturamento de Frete", "Prestação de Serviços", "Comissões", "Dividendos / Lucros", "Reembolso de Despesas", "Outros recebimentos",
+];
 const CATS_CR = [
   "Venda de grãos", "Venda de insumos", "Venda de animais", "Venda de imóveis",
   "Prestação de serviços", "Arrendamento recebido", "Captação de Custeio",
@@ -485,11 +489,11 @@ export default function ContasAReceberPage() {
       try {
         const contas = novoForm.origem === "empresa_lancamentos" && novoForm.empresa_id
           ? await listarContasPorEmpresa(novoForm.empresa_id)
-          : fazendaId ? await listarContas(fazendaId) : [];
+          : contaId ? await listarContasProdutorDaConta(contaId) : [];
         setContasNovo(contas);
       } catch { setContasNovo([]); }
     })();
-  }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId]);
+  }, [modalNovo, novoForm.origem, novoForm.empresa_id, fazendaId, contaId]);
 
   function gerarParcelasNovo(vencimento: string, qtd: number, freqMeses: number, valorTotal: number) {
     if (!vencimento || qtd < 2) { setParcelasNovo([]); return; }
@@ -1577,7 +1581,7 @@ export default function ContasAReceberPage() {
                 <div style={{ display: "flex", gap: 14, border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 12px" }}>
                   {ORIGEM_OPCOES.map(o => (
                     <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input type="radio" checked={novoForm.origem === o.v} onChange={() => setNovoForm(p => ({ ...p, origem: o.v as typeof p.origem, empresa_id: "" }))} />
+                      <input type="radio" checked={novoForm.origem === o.v} onChange={() => setNovoForm(p => ({ ...p, origem: o.v as typeof p.origem, empresa_id: "", categoria: o.v === "empresa_lancamentos" ? CATS_CR_EMPRESA[0] : CATS_CR[0] }))} />
                       {o.label}
                     </label>
                   ))}
@@ -1616,7 +1620,7 @@ export default function ContasAReceberPage() {
                         <div>
                           <label style={lbl}>Categoria *</label>
                           <select value={novoForm.categoria} onChange={e => setNovoForm(p => ({ ...p, categoria: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                            {CATS_CR.map(c => <option key={c} value={c}>{c}</option>)}
+                            {CATS_CR_EMPRESA.map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </div>
                         <div>
