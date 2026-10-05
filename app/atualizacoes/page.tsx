@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-u",
+    data: "05/10/2026",
+    titulo: "CP e CR: colunas reordenadas com o conteúdo certo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao mudar a ordem das colunas no grid de CP e CR, o cabeçalho e o conteúdo podiam ficar desalinhados. A coluna de seleção agora segue a mesma ordem das demais." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.05-t",
     data: "05/10/2026",
     titulo: "Conciliação: títulos de empresa (CP e CR)",

@@ -1227,12 +1227,13 @@ export default function ContasAPagarPage() {
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
                 onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
                 title="Clique com botão direito para configurar colunas">
-                <th style={{ padding: "7px 8px", width: 30, background: "#F4F6FA" }}>
-                  <input type="checkbox" style={{ cursor: "pointer" }}
-                    checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))}
-                    onChange={toggleTodos} />
-                </th>
-                {colunasVisiveis.filter(c => c.key !== "checkbox").map(c => { const h = c.label; return (
+                {colunasVisiveis.map(c => { const h = c.label; if (c.key === "checkbox") return (
+                  <th key="checkbox" style={{ padding: "7px 8px", width: 30, background: "#F4F6FA" }}>
+                    <input type="checkbox" style={{ cursor: "pointer" }}
+                      checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))}
+                      onChange={toggleTodos} />
+                  </th>
+                ); return (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>
                     {h === "Lançamento" || h === "Vencimento" ? (
                       <button
