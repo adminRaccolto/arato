@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { enviarTexto } from "../../../../lib/whatsapp-evolution";
+import { seedOperacoesGerenciais } from "../../../../lib/seedOperacoesGerenciais";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ const SYSTEM_PROMPT = `Você é o assistente de implantação do Arato, sistema 
 
 **ciclo**: cultura principal e ano safra (ex.: 2026/2027). Confirme e use salvar_ciclo.
 
-**fiscal**: CNPJ do emitente, inscrição estadual e série da NF-e (padrão 1). Diga que o sistema começa em homologação e que a troca para produção é feita depois. Confirme e use salvar_parametros_fiscais.
+**fiscal**: CPF (produtor) ou CNPJ (empresa) do emitente, inscrição estadual (se houver), série da NF-e (padrão 1) e regime tributário: pergunte se é Simples Nacional (1), Simples com excesso de sublimite (2), Regime Normal (3) ou MEI (4). O regime é obrigatório para emitir NF-e. Diga que o sistema começa em homologação e que a troca para produção é feita depois. Confirme e use salvar_parametros_fiscais.
 
 **usuario**: confirme o e-mail do primeiro produtor e use criar_usuario. Só crie depois da confirmação.
 
@@ -163,11 +164,13 @@ const TOOLS = [
     input_schema: {
       type: "object" as const,
       properties: {
-        cnpj_emitente: { type: "string" },
+        cnpj_emitente: { type: "string", description: "CPF (produtor) ou CNPJ (empresa) do emitente" },
+        razao_social: { type: "string" },
         inscricao_estadual: { type: "string" },
         serie_nfe: { type: "string" },
+        crt: { type: "string", enum: ["1", "2", "3", "4"], description: "Regime tributário: 1 Simples Nacional, 2 SN excesso de sublimite, 3 Regime Normal, 4 MEI" },
       },
-      required: ["cnpj_emitente"],
+      required: ["cnpj_emitente", "crt"],
     },
   },
   {
@@ -376,20 +379,32 @@ async function executeTool(
     case "salvar_parametros_fiscais": {
       if (!onboarding.fazenda_id) return { result: { erro: "Fazenda não cadastrada ainda" } };
 
+      // A emissão de NF-e lê a configuração do módulo fiscal_pf_<CPF> (produtor) ou
+      // fiscal_emp_<CNPJ> (empresa), com as chaves do formulário de Parâmetros do Sistema.
+      // Qualquer outro nome de módulo é ignorado pela emissão.
+      const digitos = String(input.cnpj_emitente ?? "").replace(/\D/g, "");
+      if (digitos.length !== 11 && digitos.length !== 14) {
+        return { result: { erro: "CPF ou CNPJ do emitente inválido — precisa ter 11 ou 14 dígitos" } };
+      }
+      const modulo = (digitos.length === 11 ? "fiscal_pf_" : "fiscal_emp_") + digitos;
       const config = {
-        cnpj_emitente: input.cnpj_emitente,
-        ie: input.inscricao_estadual ?? "",
-        serie: input.serie_nfe ?? "1",
+        cpf_cnpj_emitente: String(input.cnpj_emitente),
+        razao_social: String(input.razao_social ?? (dados.responsavel as { nome?: string } | undefined)?.nome ?? ""),
+        ie_emitente: String(input.inscricao_estadual ?? ""),
+        serie_nfe: String(input.serie_nfe ?? "1"),
+        numero_inicial: 1,
         ambiente: "homologacao",
+        ...(input.crt ? { crt: String(input.crt) } : {}),
       };
 
-      await db
+      const { error: cfgErr } = await db
         .from("configuracoes_modulo")
         .upsert({
           fazenda_id: onboarding.fazenda_id,
-          modulo: "fiscal",
+          modulo,
           config,
         }, { onConflict: "fazenda_id,modulo" });
+      if (cfgErr) return { result: { erro: "Falha ao salvar parâmetros fiscais: " + cfgErr.message } };
 
       return {
         result: { ok: true },
@@ -421,6 +436,28 @@ async function executeTool(
         }
         return { result: { erro: authErr?.message ?? "Falha ao criar usuário" } };
       }
+
+      // Registro em usuarios com o grupo "Gerente Geral" — sem ele o usuário entra sem permissões
+      // (mesma regra de lib/criarClienteCompleto.ts).
+      const { data: grupoGerente } = await db
+        .from("grupos_usuarios")
+        .select("id")
+        .ilike("nome", "%gerente%")
+        .or(`fazenda_id.is.null,fazenda_id.eq.${onboarding.fazenda_id}`)
+        .maybeSingle();
+      await db.from("usuarios").insert({
+        fazenda_id: onboarding.fazenda_id,
+        auth_user_id: authUser.user.id,
+        nome,
+        email,
+        ativo: true,
+        grupo_id: grupoGerente?.id ?? null,
+      });
+
+      // Operações gerenciais padrão — sem elas o lançamento de CP/CR não tem classificação para escolher
+      try {
+        await seedOperacoesGerenciais(onboarding.fazenda_id, db);
+      } catch { /* não bloqueia o acesso; pode ser semeado depois */ }
 
       // Cria perfil
       await db.from("perfis").upsert({

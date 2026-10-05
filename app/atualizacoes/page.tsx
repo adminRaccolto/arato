@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-n",
+    data: "05/10/2026",
+    titulo: "Agente Implantador: configuração fiscal e acesso completos",
+    modulos: ["Admin"],
+    itens: [
+      { tipo: "correcao", texto: "Os parâmetros fiscais do cliente são gravados onde a emissão de NF-e lê (por CPF/CNPJ do emitente), com regime tributário perguntado na conversa." },
+      { tipo: "correcao", texto: "O usuário criado entra no grupo Gerente Geral e a fazenda recebe as operações gerenciais padrão." },
+    ],
+    onde: "Admin → Agente Implantador",
+  },
+  {
     versao: "2026.10.05-m",
     data: "05/10/2026",
     titulo: "Documentos Fiscais: Imprimir gera os DANFEs selecionados",
