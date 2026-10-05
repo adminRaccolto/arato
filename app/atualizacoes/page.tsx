@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-p",
+    data: "05/10/2026",
+    titulo: "Consórcios: taxa de administração, fundo de reserva e plano de parcelas editável",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Consórcio ganhou Taxa de Administração (%), Fundo de Reserva (%) e Total a Pagar (crédito + taxa + fundo)." },
+      { tipo: "novo", texto: "Plano de parcelas: vencimentos e valores gerados do total e dos meses, editáveis. As parcelas só vão para o Contas a Pagar depois de confirmadas, e edições posteriores são refletidas nos CPs." },
+    ],
+    onde: "Financeiro → Consórcios",
+  },
+  {
     versao: "2026.10.05-o",
     data: "05/10/2026",
     titulo: "Tesouraria: edição de lançamento",

@@ -55,9 +55,89 @@ export async function GET(req: NextRequest) {
 // PATCH /api/financeiro/consorcios
 // action: "gerar_parcelas" — apaga e regenera parcelas + CPs de um consórcio existente.
 // Usa service_role_key — imune a JWT expirado e RLS.
+// PATCH action "grid" — grava o plano de parcelas confirmado no grid e sincroniza os CPs.
+// Usado tanto na confirmação (1ª vez) quanto nas edições posteriores: cada parcela não paga
+// vira (ou atualiza) uma CP com consorcio_id + numero_documento = nº da parcela; parcelas
+// removidas do grid cujo CP ainda está em aberto são apagadas. CP já baixado nunca muda.
+async function salvarGridConsorcio(body: {
+  consorcio_id: string; fazenda_id: string;
+  parcelas: { numero: number; data_vencimento: string; valor: number; pago: boolean }[];
+}) {
+  const sb = admin();
+  const { data: c, error: cErr } = await sb.from("consorcios").select("*").eq("id", body.consorcio_id).maybeSingle();
+  if (cErr || !c) return NextResponse.json({ error: "Consórcio não encontrado" }, { status: 404 });
+  if (body.parcelas.length === 0) return NextResponse.json({ error: "Plano sem parcelas" }, { status: 400 });
+
+  const { data: ogRow } = await sb.from("operacoes_gerenciais").select("id")
+    .eq("fazenda_id", c.fazenda_id).eq("classificacao", "2.03.01.006").maybeSingle();
+  const ogId: string | null = ogRow?.id ?? null;
+  const descBase = `Consórcio ${c.administradora} — Cota ${c.numero_cota}`;
+
+  // Parcelas: regrava o plano inteiro (pago vem do grid)
+  await sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id);
+  const { error: pErr } = await sb.from("parcelas_consorcio").insert(
+    body.parcelas.map(p => ({
+      consorcio_id: body.consorcio_id, numero_parcela: p.numero, data_vencimento: p.data_vencimento,
+      valor: p.valor, pago: p.pago, tipo_parcela: "mensalidade",
+    }))
+  );
+  if (pErr) return NextResponse.json({ error: pErr.message }, { status: 400 });
+
+  // CPs: cria/atualiza só as parcelas não pagas
+  const { data: cpsExistentes } = await sb.from("lancamentos")
+    .select("id, numero_documento, status")
+    .eq("consorcio_id", body.consorcio_id);
+  const cpPorNumero = new Map((cpsExistentes ?? []).map(l => [String(l.numero_documento), l]));
+  const numerosNoGrid = new Set(body.parcelas.map(p => String(p.numero)));
+  let criados = 0, atualizados = 0, removidos = 0;
+
+  for (const p of body.parcelas) {
+    if (p.pago) continue;
+    const existente = cpPorNumero.get(String(p.numero));
+    const campos = {
+      valor: p.valor, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+      descricao: `${descBase} — Parcela ${p.numero}/${body.parcelas.length}`,
+    };
+    if (existente) {
+      if (existente.status === "baixado") continue; // já pago no financeiro: não mexe
+      const { error } = await sb.from("lancamentos").update(campos).eq("id", existente.id);
+      if (!error) atualizados++;
+    } else {
+      const { error } = await sb.from("lancamentos").insert({
+        fazenda_id: c.fazenda_id, tipo: "pagar", categoria: c.status === "contemplado" ? "Consórcio — Contemplado" : "Consórcio — A Contemplar",
+        status: "em_aberto", consorcio_id: body.consorcio_id, numero_documento: String(p.numero),
+        origem_lancamento: "consorcio", ...campos,
+        ...(c.administradora_pessoa_id ? { pessoa_id: c.administradora_pessoa_id } : {}),
+        ...(ogId ? { operacao_gerencial_id: ogId } : {}),
+      });
+      if (!error) criados++;
+    }
+  }
+  // Parcela removida do plano: apaga o CP se ainda estiver em aberto
+  for (const l of cpsExistentes ?? []) {
+    if (numerosNoGrid.has(String(l.numero_documento))) continue;
+    if (l.status === "baixado") continue;
+    const { error } = await sb.from("lancamentos").delete().eq("id", l.id);
+    if (!error) removidos++;
+  }
+
+  const valorTotal = body.parcelas.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+  await sb.from("consorcios").update({
+    total_parcelas: body.parcelas.length,
+    valor_parcela_mensal: body.parcelas.length ? Math.round((valorTotal / body.parcelas.length) * 100) / 100 : 0,
+    valor_total_pagar: Math.round(valorTotal * 100) / 100,
+  }).eq("id", body.consorcio_id);
+
+  return NextResponse.json({ ok: true, parcelas: body.parcelas.length, cps_criadas: criados, cps_atualizadas: atualizados, cps_removidas: removidos });
+}
+
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json() as {
+    const raw = await req.json() as { action?: string } & Record<string, unknown>;
+    if (raw.action === "grid") {
+      return salvarGridConsorcio(raw as unknown as Parameters<typeof salvarGridConsorcio>[0]);
+    }
+    const body = raw as unknown as {
       consorcio_id: string;
       fazenda_id: string;
       administradora: string;
@@ -208,6 +288,9 @@ export async function POST(req: NextRequest) {
       status: string;
       observacao?: string | null;
       produtor_id?: string | null;
+      taxa_adm_pct?: number | null;
+      fundo_reserva_pct?: number | null;
+      valor_total_pagar?: number | null;
     };
 
     if (!body.fazenda_id) {
@@ -224,76 +307,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, id });
     }
 
-    // INSERT — cria consórcio e gera parcelas + CPs automaticamente
+    // INSERT — só cria o consórcio. O plano de parcelas é montado no grid da tela e só vai
+    // para o CP depois de confirmado (ação "grid" do PATCH).
     const { data: novo, error: insErr } = await sb
       .from("consorcios")
       .insert(body)
       .select("id")
       .single();
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 400 });
-
     const consorId = novo.id;
-
-    // Busca OG correta para consórcio (não contemplado = 2.03.01.006)
-    const { data: ogRow } = await sb
-      .from("operacoes_gerenciais")
-      .select("id")
-      .eq("fazenda_id", body.fazenda_id)
-      .eq("classificacao", "2.03.01.006")
-      .maybeSingle();
-    const ogId: string | null = ogRow?.id ?? null;
-
-    // Gera parcelas e CPs para parcelas futuras
-    if (body.total_parcelas > 0 && body.valor_parcela_mensal > 0) {
-      const novasParc: object[] = [];
-      const novasCPs:  object[] = [];
-      const base = new Date(body.data_inicio + "T12:00:00");
-      const descBase = `Consórcio ${body.administradora} — Cota ${body.numero_cota}`;
-
-      for (let i = 1; i <= body.total_parcelas; i++) {
-        const d = new Date(base);
-        d.setMonth(d.getMonth() + i - 1);
-        const dataVenc = d.toISOString().split("T")[0];
-        const pago = i <= body.parcelas_pagas;
-
-        novasParc.push({
-          consorcio_id:   consorId,
-          numero_parcela: i,
-          data_vencimento: dataVenc,
-          data_pagamento:  null,
-          valor:           body.valor_parcela_mensal,
-          pago,
-          tipo_parcela:   "mensalidade",
-        });
-
-        if (!pago) {
-          novasCPs.push({
-            fazenda_id:        body.fazenda_id,
-            tipo:              "pagar",
-            categoria:         body.status === "contemplado" ? "Consórcio — Contemplado" : "Consórcio — A Contemplar",
-            descricao:         `${descBase} — Parcela ${i}/${body.total_parcelas}`,
-            valor:             body.valor_parcela_mensal,
-            data_lancamento:   dataVenc,
-            data_vencimento:   dataVenc,
-            status:            "em_aberto",
-            consorcio_id:      consorId,
-            numero_documento:  String(i),
-            origem_lancamento: "consorcio",
-            ...(body.administradora_pessoa_id ? { pessoa_id: body.administradora_pessoa_id } : {}),
-            ...(ogId ? { operacao_gerencial_id: ogId } : {}),
-          });
-        }
-      }
-
-      if (novasParc.length > 0) {
-        const { error: parcErr } = await sb.from("parcelas_consorcio").insert(novasParc);
-        if (parcErr) console.error("[consorcios POST parcelas]", parcErr.message);
-      }
-      for (let k = 0; k < novasCPs.length; k += 100) {
-        const { error: cpErr } = await sb.from("lancamentos").insert(novasCPs.slice(k, k + 100));
-        if (cpErr) console.error("[consorcios POST CPs]", cpErr.message);
-      }
-    }
 
     return NextResponse.json({ ok: true, id: consorId });
   } catch (e) {

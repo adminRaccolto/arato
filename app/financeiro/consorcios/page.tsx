@@ -48,6 +48,9 @@ interface Consorcio {
   data_encerramento?: string | null;
   status: StatusConsorcio;
   produtor_id?: string | null;
+  taxa_adm_pct?: number | null;
+  fundo_reserva_pct?: number | null;
+  valor_total_pagar?: number | null;
   financiamento_id?: string | null;
   valor_lance?: number | null;
   bem_adquirido?: string | null;
@@ -116,6 +119,30 @@ async function buscarOgId(fazendaId: string, classificacao: string): Promise<str
 // ─────────────────────────────────────────────────────────────
 // Componente principal
 // ─────────────────────────────────────────────────────────────
+// Linha do grid de parcelas (plano do consórcio). Antes de confirmar, só existe na tela.
+type GridRow = { numero: number; data: string; valor: number; pago: boolean };
+
+// Total a pagar = crédito + taxa de administração + fundo de reserva (percentuais sobre o crédito)
+function totalAPagarCalc(credito: number, taxaPct: number, fundoPct: number): number {
+  return Math.round(credito * (1 + ((taxaPct || 0) + (fundoPct || 0)) / 100) * 100) / 100;
+}
+
+// Gera o plano: total ÷ nº de meses, vencimentos mensais a partir da data de início.
+// Centavos de arredondamento vão para a última parcela, para a soma bater com o total.
+function gerarLinhasGrid(total: number, n: number, dataInicio: string, pagas: number): GridRow[] {
+  if (n < 1 || total <= 0 || !dataInicio) return [];
+  const base = Math.floor((total / n) * 100) / 100;
+  const inicio = new Date(dataInicio + "T12:00:00");
+  const rows: GridRow[] = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(inicio);
+    d.setMonth(d.getMonth() + i);
+    const valor = i === n - 1 ? Math.round((total - base * (n - 1)) * 100) / 100 : base;
+    rows.push({ numero: i + 1, data: d.toISOString().split("T")[0], valor, pago: i < pagas });
+  }
+  return rows;
+}
+
 export default function ConsorciosPage() {
   const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
@@ -159,10 +186,14 @@ export default function ConsorciosPage() {
     total_parcelas: "60", parcelas_pagas: "0",
     data_inicio: hoje(), status: "a_contemplar" as StatusConsorcio,
     observacao: "", produtor_id: "",
+    taxa_adm_pct: "" as string | number, fundo_reserva_pct: "" as string | number, valor_total_pagar: 0,
   });
   const [cForm,   setCForm]   = useState(CONSOR_VAZIO());
   const [cSaving, setCSaving] = useState(false);
   const [cErr,    setCErr]    = useState("");
+
+  // Grid de parcelas (plano do consórcio) — só vai para o CP quando confirmado
+  const [gridModal, setGridModal] = useState<{ consorId: string; fazendaId: string; titulo: string; totalPagar: number; rows: GridRow[]; err: string; saving: boolean } | null>(null);
 
   // Modal contemplação
   const [modalContempl, setModalContempl] = useState<Consorcio | null>(null);
@@ -325,6 +356,7 @@ export default function ConsorciosPage() {
 
       setConsorEdit(null);
       setCForm({
+        taxa_adm_pct: "", fundo_reserva_pct: "", valor_total_pagar: 0,
         fazenda_id:               fazendaId ?? "",
         administradora:           d.administradora      ?? "",
         administradora_pessoa_id: pessoaAdmMatch?.id    ?? "",
@@ -361,6 +393,56 @@ export default function ConsorciosPage() {
     }
   }
 
+  // Parcela mensal = total a pagar ÷ nº de parcelas (derivada, não digitada)
+  function parcelaMensalCalc(): number {
+    const n = parseInt(String(cForm.total_parcelas)) || 0;
+    const total = Number(cForm.valor_total_pagar) || 0;
+    return n > 0 ? Math.round((total / n) * 100) / 100 : 0;
+  }
+
+  // ── Grid de parcelas ─────────────────────────────────────
+  function abrirGridConsorcio(c: Consorcio) {
+    const existentes = parcelas.filter(p => p.consorcio_id === c.id).sort((a, b) => a.numero_parcela - b.numero_parcela);
+    const totalPagar = c.valor_total_pagar ?? c.valor_parcela_mensal * c.total_parcelas;
+    const rows: GridRow[] = existentes.length > 0
+      ? existentes.map(p => ({ numero: p.numero_parcela, data: p.data_vencimento, valor: p.valor, pago: p.pago }))
+      : gerarLinhasGrid(totalPagar, c.total_parcelas, c.data_inicio, c.parcelas_pagas);
+    setGridModal({ consorId: c.id, fazendaId: c.fazenda_id ?? fazendaId ?? "", titulo: `${c.administradora} — Cota ${c.numero_cota}`, totalPagar, rows, err: "", saving: false });
+  }
+
+  function abrirGridNovo(consorId: string, fazId: string) {
+    const credito = Number(cForm.valor_credito) || 0;
+    const totalPagar = Number(cForm.valor_total_pagar) || totalAPagarCalc(credito, Number(cForm.taxa_adm_pct), Number(cForm.fundo_reserva_pct));
+    const n = parseInt(String(cForm.total_parcelas)) || 0;
+    const rows = gerarLinhasGrid(totalPagar, n, cForm.data_inicio, parseInt(String(cForm.parcelas_pagas)) || 0);
+    setGridModal({ consorId, fazendaId: fazId, titulo: `${cForm.administradora} — Cota ${cForm.numero_cota}`, totalPagar, rows, err: "", saving: false });
+  }
+
+  async function confirmarGrid() {
+    if (!gridModal) return;
+    if (gridModal.rows.length === 0) { setGridModal({ ...gridModal, err: "O plano está vazio." }); return; }
+    setGridModal({ ...gridModal, saving: true, err: "" });
+    try {
+      const res = await fetch("/api/financeiro/consorcios", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "grid",
+          consorcio_id: gridModal.consorId,
+          fazenda_id: gridModal.fazendaId,
+          parcelas: gridModal.rows.map(r => ({ numero: r.numero, data_vencimento: r.data, valor: r.valor, pago: r.pago })),
+        }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string; parcelas?: number; cps_criadas?: number; cps_atualizadas?: number; cps_removidas?: number };
+      if (!res.ok) throw new Error(json.error ?? "Erro ao salvar o plano.");
+      await carregar();
+      setGridModal(null);
+      alert(`✅ Plano salvo: ${json.parcelas ?? 0} parcelas — CPs: ${json.cps_criadas ?? 0} criadas, ${json.cps_atualizadas ?? 0} atualizadas, ${json.cps_removidas ?? 0} removidas.`);
+    } catch (e: unknown) {
+      setGridModal(g => g ? { ...g, saving: false, err: e instanceof Error ? e.message : "Erro ao salvar o plano." } : g);
+    }
+  }
+
   function abrirConsorcio(c?: Consorcio) {
     if (c) {
       setConsorEdit(c);
@@ -377,6 +459,9 @@ export default function ConsorciosPage() {
         data_inicio: c.data_inicio, status: c.status,
         observacao: c.observacao ?? "",
         produtor_id: c.produtor_id ?? "",
+        taxa_adm_pct: c.taxa_adm_pct ?? "",
+        fundo_reserva_pct: c.fundo_reserva_pct ?? "",
+        valor_total_pagar: c.valor_total_pagar ?? (c.valor_parcela_mensal * c.total_parcelas),
       });
     } else {
       setConsorEdit(null);
@@ -409,8 +494,11 @@ export default function ConsorciosPage() {
         tipo_bem: cForm.tipo_bem,
         descricao_bem: cForm.descricao_bem ?? "",
         valor_credito: Number(cForm.valor_credito) || 0,
-        valor_parcela_mensal: Number(cForm.valor_parcela_mensal) || 0,
+        valor_parcela_mensal: parcelaMensalCalc(),
         total_parcelas: parseInt(String(cForm.total_parcelas)) || 0,
+        taxa_adm_pct: Number(cForm.taxa_adm_pct) || null,
+        fundo_reserva_pct: Number(cForm.fundo_reserva_pct) || null,
+        valor_total_pagar: Number(cForm.valor_total_pagar) || null,
         parcelas_pagas: parseInt(String(cForm.parcelas_pagas)) || 0,
         data_inicio: cForm.data_inicio,
         status: cForm.status,
@@ -424,11 +512,13 @@ export default function ConsorciosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = await res.json() as { ok?: boolean; error?: string };
+      const json = await res.json() as { ok?: boolean; error?: string; id?: string };
       if (!res.ok) throw new Error(json.error ?? "Erro ao salvar.");
 
       await carregar();
       setModalConsor(false);
+      // Consórcio novo: abre o grid de parcelas. Nada vai para o CP até confirmar no grid.
+      if (!consorEdit && json.id) abrirGridNovo(json.id, (cForm.fazenda_id || fazendaId) as string);
     } catch (e: unknown) {
       setCErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -591,36 +681,8 @@ export default function ConsorciosPage() {
 
   // ── Gerar parcelas + CPs no financeiro ───────────────────
   // Usa API route (service_role_key) — imune a JWT expirado e RLS.
-  async function gerarParcelas(c: Consorcio) {
-    // Usa o fazenda_id do próprio consórcio — funciona mesmo sem fazenda ativa no contexto
-    const fId = c.fazenda_id || fazendaId;
-    if (!fId) return;
-    const existem = parcelas.filter(p => p.consorcio_id === c.id);
-    if (existem.length > 0) {
-      if (!confirm(`Este consórcio já tem ${existem.length} parcelas. Deseja apagar e regenerar?`)) return;
-    }
-    const res = await fetch("/api/financeiro/consorcios", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        consorcio_id:              c.id,
-        fazenda_id:                fId,
-        administradora:            c.administradora,
-        administradora_pessoa_id:  c.administradora_pessoa_id ?? null,
-        numero_cota:               c.numero_cota,
-        valor_parcela_mensal:      c.valor_parcela_mensal,
-        total_parcelas:            c.total_parcelas,
-        parcelas_pagas:            c.parcelas_pagas,
-        data_inicio:               c.data_inicio,
-        status:                    c.status,
-      }),
-    });
-    const json = await res.json() as { ok?: boolean; parcelas?: number; cps?: number; rateio?: boolean; ciclos?: number; error?: string };
-    if (!res.ok) { alert(json.error ?? "Erro ao gerar parcelas."); return; }
-    await carregar();
-    // Aguarda um frame para o React pintar as parcelas novas antes do alert bloquear o thread
-    await new Promise(r => setTimeout(r, 50));
-    alert(`✅ ${json.parcelas ?? 0} parcelas criadas — ${json.cps ?? 0} CPs lançadas no financeiro.${json.rateio ? `\nRateio ativo: ${json.ciclos ?? 0} ciclo(s) — uma CP por ciclo por parcela.` : ""}\n\nPara ver as CPs vencidas, clique na aba "Vencidos" em Contas a Pagar.`);
+  function gerarParcelas(c: Consorcio) {
+    abrirGridConsorcio(c);
   }
 
   // ── Parcelas visíveis ─────────────────────────────────────
@@ -806,7 +868,7 @@ export default function ConsorciosPage() {
                           )}
                           {parcelasC.length === 0 && (
                             <button onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
-                              Gerar Parcelas
+                              Plano de parcelas
                             </button>
                           )}
                           <button onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
@@ -829,7 +891,7 @@ export default function ConsorciosPage() {
                             )}
                           </div>
                           {parcelasC.length === 0 ? (
-                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Clique em "Gerar Parcelas" para criar o cronograma.</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Clique em "Plano de parcelas" para criar o cronograma.</div>
                           ) : (
                             <div style={{ maxHeight: 240, overflowY: "auto" }}>
                               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -943,6 +1005,66 @@ export default function ConsorciosPage() {
       {/* ══════════════════════════════════════════════════════
           MODAL CONSÓRCIO
       ══════════════════════════════════════════════════════ */}
+      {gridModal && (
+        <div onClick={() => !gridModal.saving && setGridModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
+            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Plano de parcelas — {gridModal.titulo}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
+                Edite vencimento e valor se precisar. Nada vai para o Contas a Pagar até você confirmar. Depois de confirmado, qualquer alteração aqui é refletida nos CPs.
+              </div>
+            </div>
+            <div style={{ padding: "12px 20px", overflowY: "auto", flex: 1 }}>
+              {gridModal.err && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 10 }}>{gridModal.err}</div>}
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "var(--bg-page)" }}>
+                    {["Nº", "Vencimento", "Valor (R$)", "Situação"].map((h, i) => (
+                      <th key={h} style={{ padding: "6px 8px", textAlign: i === 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {gridModal.rows.map((r, i) => (
+                    <tr key={r.numero} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                      <td style={{ padding: "5px 8px", color: "var(--text-3)" }}>{r.numero}/{gridModal.rows.length}</td>
+                      <td style={{ padding: "4px 6px" }}>
+                        <input type="date" value={r.data} disabled={r.pago} style={{ ...inp, width: 160 }}
+                          onChange={e => setGridModal(g => g && { ...g, rows: g.rows.map((x, j) => j === i ? { ...x, data: e.target.value } : x) })} />
+                      </td>
+                      <td style={{ padding: "4px 6px" }}>
+                        <InputMonetario style={{ ...inp, textAlign: "right", width: 130 }} value={r.valor} disabled={r.pago}
+                          onChange={v => setGridModal(g => g && { ...g, rows: g.rows.map((x, j) => j === i ? { ...x, valor: v } : x) })} />
+                      </td>
+                      <td style={{ padding: "5px 8px", fontSize: 11, color: r.pago ? "#166534" : "var(--text-2)" }}>{r.pago ? "Paga" : "A pagar"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {(() => {
+              const soma = Math.round(gridModal.rows.reduce((s, r) => s + (Number(r.valor) || 0), 0) * 100) / 100;
+              const dif = Math.round((soma - gridModal.totalPagar) * 100) / 100;
+              return (
+                <div style={{ padding: "10px 20px", borderTop: "0.5px solid var(--border-table)", fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <span style={{ color: "var(--text-3)" }}>Total a pagar: </span><strong>{fmtBRL(gridModal.totalPagar)}</strong>
+                    <span style={{ color: "var(--text-3)", marginLeft: 12 }}>Soma das parcelas: </span><strong>{fmtBRL(soma)}</strong>
+                    {Math.abs(dif) > 0.01 && <span style={{ color: "#B45309", marginLeft: 12 }}>diferença {fmtBRL(dif)}</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setGridModal(null)} disabled={gridModal.saving} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Fechar sem lançar</button>
+                    <button onClick={confirmarGrid} disabled={gridModal.saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                      {gridModal.saving ? "Salvando…" : "Confirmar e lançar no CP"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {modalConsor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
@@ -1037,11 +1159,27 @@ export default function ConsorciosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Valor do Crédito (R$)</label>
-                  <InputMonetario style={inp} value={cForm.valor_credito} onChange={v => setCForm(f => ({ ...f, valor_credito: v }))} />
+                  <InputMonetario style={inp} value={cForm.valor_credito} onChange={v => setCForm(f => ({ ...f, valor_credito: v, valor_total_pagar: totalAPagarCalc(v, Number(f.taxa_adm_pct), Number(f.fundo_reserva_pct)) }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Taxa de Administração (%)</label>
+                  <input type="text" inputMode="decimal" value={String(cForm.taxa_adm_pct)} placeholder="Ex.: 18" style={inp}
+                    onChange={e => setCForm(f => ({ ...f, taxa_adm_pct: e.target.value, valor_total_pagar: totalAPagarCalc(Number(f.valor_credito), Number(e.target.value.replace(",", ".")), Number(f.fundo_reserva_pct)) }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Fundo de Reserva (%)</label>
+                  <input type="text" inputMode="decimal" value={String(cForm.fundo_reserva_pct)} placeholder="Ex.: 2" style={inp}
+                    onChange={e => setCForm(f => ({ ...f, fundo_reserva_pct: e.target.value, valor_total_pagar: totalAPagarCalc(Number(f.valor_credito), Number(f.taxa_adm_pct), Number(e.target.value.replace(",", "."))) }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Total a Pagar (R$)</label>
+                  <InputMonetario style={inp} value={cForm.valor_total_pagar} onChange={v => setCForm(f => ({ ...f, valor_total_pagar: v }))} />
+                  <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Crédito + taxa de administração + fundo de reserva. Pode ajustar.</div>
                 </div>
                 <div>
                   <label style={lbl}>Parcela Mensal (R$)</label>
-                  <InputMonetario style={inp} value={cForm.valor_parcela_mensal} onChange={v => setCForm(f => ({ ...f, valor_parcela_mensal: v }))} />
+                  <input value={fmtBRL(parcelaMensalCalc())} disabled style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }} />
+                  <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Total a pagar ÷ parcelas</div>
                 </div>
                 <div>
                   <label style={lbl}>Total de Parcelas</label>

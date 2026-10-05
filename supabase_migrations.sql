@@ -15947,3 +15947,17 @@ GRANT EXECUTE ON FUNCTION fn_marcar_vencidos() TO authenticated, anon, service_r
 SELECT fn_marcar_vencidos();
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SEÇÃO 326 — Consórcio: taxa de administração, fundo de reserva e total a pagar.
+-- O plano de parcelas (grid) é montado a partir do total a pagar e do nº de meses.
+-- As parcelas só viram CP depois de confirmadas no grid; edições posteriores
+-- do grid são refletidas nos CPs (mesmo consorcio_id + numero_documento).
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE consorcios
+  ADD COLUMN IF NOT EXISTS taxa_adm_pct      numeric(7,4),
+  ADD COLUMN IF NOT EXISTS fundo_reserva_pct numeric(7,4),
+  ADD COLUMN IF NOT EXISTS valor_total_pagar numeric(15,2);
+
+NOTIFY pgrst, 'reload schema';
