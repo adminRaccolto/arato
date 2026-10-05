@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-e",
+    data: "05/10/2026",
+    titulo: "Documentos Fiscais: lista completa e ordenação por data de cadastro",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A tela trazia só as 1.000 notas mais recentes pela data da nota, por isso NFs manuais, de XML e NFS com data antiga podiam não aparecer. Agora carrega todas." },
+      { tipo: "novo", texto: "Novo seletor "Ordenar": data da nota (padrão) ou data de cadastro — para ver o que acabou de entrar no sistema." },
+    ],
+    onde: "Fiscal → Documentos Fiscais",
+  },
+  {
     versao: "2026.10.05-d",
     data: "05/10/2026",
     titulo: "Transferência de insumos: Lote visível ao lado de Variedade",

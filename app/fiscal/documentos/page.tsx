@@ -151,6 +151,8 @@ export default function DocumentosFiscaisPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<RelDocFiscal[] | null>(null);
+  // Ordenação da lista: pela data da nota (padrão) ou pela data de cadastro no sistema
+  const [ordenarPor, setOrdenarPor] = useState<"data_doc" | "created_at">("data_doc");
 
   const [fTipo,    setFTipo]    = useState<Set<string>>(new Set());
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
@@ -170,21 +172,28 @@ export default function DocumentosFiscaisPage() {
     setCarregando(true);
     setErro("");
     try {
-      let q = supabase.from("rel_documentos_fiscais").select("*");
-      q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
-      if (fTipo.size > 0) q = q.in("tipo_doc", Array.from(fTipo));
-      if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
-      if (fDataDe) q = q.gte("data_doc", fDataDe);
-      if (fDataAte) q = q.lte("data_doc", fDataAte);
-      if (fBusca.trim()) {
-        const t = fBusca.trim();
-        q = q.or(`numero.ilike.%${t}%,participante_nome.ilike.%${t}%,chave.ilike.%${t}%`);
+      // Paginação explícita: o PostgREST devolve no máximo 1.000 linhas por consulta — sem
+      // isso, notas mais antigas (por data) sumiam da tela quando a conta passava de 1.000.
+      const PAGE = 1000;
+      const todas: RelDocFiscal[] = [];
+      for (let from = 0; ; from += PAGE) {
+        let q = supabase.from("rel_documentos_fiscais").select("*");
+        q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
+        if (fTipo.size > 0) q = q.in("tipo_doc", Array.from(fTipo));
+        if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
+        if (fDataDe) q = q.gte("data_doc", fDataDe);
+        if (fDataAte) q = q.lte("data_doc", fDataAte);
+        if (fBusca.trim()) {
+          const t = fBusca.trim();
+          q = q.or(`numero.ilike.%${t}%,participante_nome.ilike.%${t}%,chave.ilike.%${t}%`);
+        }
+        q = q.order(ordenarPor, { ascending: false }).order("id", { ascending: true }).range(from, from + PAGE - 1);
+        const { data, error } = await q;
+        if (error) throw error;
+        todas.push(...((data ?? []) as RelDocFiscal[]));
+        if (!data || data.length < PAGE) break;
       }
-      q = q.order("data_doc", { ascending: false }).limit(1000);
-
-      const { data, error } = await q;
-      if (error) throw error;
-      setResultado((data ?? []) as RelDocFiscal[]);
+      setResultado(todas);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar documentos fiscais.");
     } finally {
@@ -357,6 +366,10 @@ export default function DocumentosFiscaisPage() {
             <label style={lblMini}>até</label>
             <input type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
+          <select value={ordenarPor} onChange={e => { setOrdenarPor(e.target.value as "data_doc" | "created_at"); }} style={{ ...inp, cursor: "pointer" }} title="Ordenar por">
+            <option value="data_doc">Ordenar: data da nota</option>
+            <option value="created_at">Ordenar: data de cadastro</option>
+          </select>
           <button onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </button>
