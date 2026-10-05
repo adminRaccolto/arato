@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-c",
+    data: "05/10/2026",
+    titulo: "NF de transferência: lote e peso nas informações complementares",
+    modulos: ["Estoque", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "A NF de transferência de insumos agora traz, nas informações complementares, uma linha por item com o lote da semente e a quantidade, além do peso total em kg." },
+    ],
+    onde: "Estoque → Transferências → Emitir NF",
+  },
+  {
     versao: "2026.10.05-b",
     data: "05/10/2026",
     titulo: "Transferência de insumos (desktop): coluna Lote visível",

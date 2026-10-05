@@ -333,11 +333,40 @@ export async function POST(request: NextRequest) {
         };
       }
 
+      // Lote e peso de cada item nas informações complementares (infCpl) — a pedido do dono:
+      // o destinatário precisa saber de qual lote de semente é a carga e quanto pesa.
+      // Peso em kg: kg direto, t/ton ×1000, g ÷1000; outras unidades ficam como vieram.
+      const pesoKg = (q: number, u: string) => {
+        const un = u.trim().toLowerCase();
+        if (un === "kg") return { v: q, ok: true };
+        if (un === "t" || un === "ton" || un === "tn") return { v: q * 1000, ok: true };
+        if (un === "g") return { v: q / 1000, ok: true };
+        return { v: q, ok: false };
+      };
+      let pesoTotalKg = 0;
+      let pesoTodoEmKg = true;
+      const linhasLoteInfCpl: string[] = [];
+      itensTransf.forEach((it, idx) => {
+        const q = Number(it.quantidade ?? 0);
+        const u = String(it.unidade_medida ?? "kg");
+        const p = pesoKg(q, u);
+        if (p.ok) pesoTotalKg += p.v; else pesoTodoEmKg = false;
+        const lote = (it.lote_semente as string | null)?.trim();
+        if (lote) {
+          const descr = String(insumoMap[it.insumo_id as string]?.nome ?? `Item ${idx + 1}`);
+          linhasLoteInfCpl.push(`Lote ${lote}: ${descr} — ${q.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${u}${p.ok ? ` (${p.v.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} kg)` : ""}`);
+        }
+      });
+      const blocoLoteInfCpl = [
+        ...linhasLoteInfCpl,
+        pesoTodoEmKg ? `Peso total: ${pesoTotalKg.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} kg` : null,
+      ].filter(Boolean).join(" | ");
+
       const resultado = await emitirNFe(fazId, moduloKey, {
         destinatario: destinatarioDados,
         itens: itenNfe,
         natureza: naturezaTransf,
-        infCpl:   `${textoLegalDiferido} | Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`,
+        infCpl:   [`${textoLegalDiferido} | Transferência interna nº ${t.numero ?? tid} — CFOP ${cfop}`, blocoLoteInfCpl].filter(Boolean).join(" | "),
         frete:    (t.frete_conta as "0"|"1"|"2"|"9" | null) ?? "9",
         tipo:     "1",
         transportadora: transportadoraNfe,
