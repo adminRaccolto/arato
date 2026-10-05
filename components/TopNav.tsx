@@ -434,7 +434,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   useEffect(() => {
     if (!showQr || qrDataUrl) return;
     import("qrcode").then(QRCode => {
-      QRCode.toDataURL("https://web.arato.agr.br/campo", {
+      QRCode.toDataURL("https://campo.arato.agr.br", {
         width: 240, margin: 2,
         color: { dark: "#111111", light: "#ffffff" },
       }).then(setQrDataUrl);
@@ -1136,9 +1136,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           }
 
           <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>web.arato.agr.br/campo</span>
+            <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>campo.arato.agr.br</span>
             <button
-              onClick={() => { navigator.clipboard.writeText("https://web.arato.agr.br/campo"); }}
+              onClick={() => { navigator.clipboard.writeText("https://campo.arato.agr.br"); }}
               style={{ fontSize: 11, fontWeight: 700, color: "#111111", background: "#E8E8E8", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
             >
               Copiar

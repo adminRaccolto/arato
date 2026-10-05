@@ -219,15 +219,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
       setUserRole(role);
 
-      // Operador de campo — acesso restrito a /campo/*
-      if (role === "campo") {
-        const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-        if (!pathname.startsWith("/campo")) {
-          router.push("/campo");
-        }
-        // Carrega fazenda e segue fluxo normal (sem return — precisa de fazenda_id)
-      }
-
       // raccotlo / raccotlo_gestor = acesso ao admin panel + seletor
       // raccotlo_seletor = apenas seletor de clientes
       const isRaccotloAny = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor";
@@ -356,13 +347,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           const perms = grupoData?.permissoes ?? {};
           setPermissoes(perms as Record<string, ModuloPermissao>);
 
-          // Se o grupo é "Operador de Campo", forçar role = campo independente do perfil.role
-          const nomeGrupo = (grupoData?.nome ?? "").toLowerCase();
-          if (nomeGrupo.includes("campo") && role !== "campo") {
-            setUserRole("campo");
-            const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-            if (!pathname.startsWith("/campo")) router.push("/campo");
-          }
         } catch {
           setPermissoes({});
         }
@@ -407,10 +391,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             ) as { nome?: string; permissoes?: Record<string, string> } | null;
             const perms = grupoRt?.permissoes ?? {};
             setPermissoes(perms as Record<string, ModuloPermissao>);
-            // Detecta mudança para grupo Operador de Campo em tempo real
-            if ((grupoRt?.nome ?? "").toLowerCase().includes("campo")) {
-              setUserRole("campo");
-            }
           } catch { /* silent */ }
         })
         .subscribe();
@@ -473,15 +453,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
   }, []);
-
-  // Guard permanente para operador de campo — bloqueia qualquer rota fora de /campo
-  useEffect(() => {
-    if (userRole !== "campo") return;
-    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-    if (!pathname.startsWith("/campo")) {
-      router.push("/campo");
-    }
-  }, [userRole, router]);
 
   // Re-executa só os steps (chamar após o usuário completar um passo do onboarding)
   const refetchOnboarding = useCallback(() => {
