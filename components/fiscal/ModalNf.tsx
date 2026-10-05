@@ -20,7 +20,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   criarNfEntrada, atualizarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem,
-  processarNfEntrada,
+  processarNfEntrada, verificarMovimentoEmpresaNf, registrarAutorizacaoMovimentoEmpresa,
   limparMovimentacoesEFinanceiroDaNf,
   listarInsumosParaConta,
   criarInsumo,
@@ -1467,6 +1467,17 @@ export default function ModalNf({
         + numBR(cab.valor_fcp_st) + numBR(cab.valor_difal) - numBR(cab.valor_desconto) - numBR(cab.valor_icms_deson);
       if (Math.abs(totalLiquidoAgora - nfEdit.valor_total) > 0.01) {
         await atualizarNfEntrada(nfEdit.id, { valor_total: totalLiquidoAgora });
+      }
+      const movEmp = await verificarMovimentoEmpresaNf(nfEdit.id);
+      if (movEmp) {
+        const nCps = movEmp.cps_produtor.length;
+        const valorCps = movEmp.cps_produtor.reduce((t, c) => t + (c.valor || 0), 0);
+        const aviso = nCps > 0
+          ? `\n\nHá ${nCps} CP(s) do produtor gerados por esta NF (R$ ${valorCps.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Eles serão cancelados e o pagamento passará para a empresa.`
+          : "";
+        const ok = window.confirm(`Esta NF está destinada à empresa ${movEmp.empresa} (CNPJ ${movEmp.cnpj}). O financeiro vai para o Contas a Pagar da EMPRESA, e não do produtor.${aviso}\n\nAutoriza esta movimentação? A decisão fica registrada no log.`);
+        if (!ok) { setSaving(false); return; }
+        registrarAutorizacaoMovimentoEmpresa(fazendaId, nfEdit.id, String(nfEdit.numero ?? ""), movEmp.empresa, movEmp.cps_produtor.map(c => c.id));
       }
       await processarNfEntrada(
         nfEdit.id,

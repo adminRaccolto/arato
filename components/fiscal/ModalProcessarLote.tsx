@@ -16,7 +16,7 @@ import { useState, useEffect } from "react";
 import {
   atualizarNfEntrada,
   listarNfEntradaItens,
-  processarNfEntrada,
+  processarNfEntrada, verificarMovimentoEmpresaNf, registrarAutorizacaoMovimentoEmpresa,
   listarCentrosCustoGeralDaConta,
   listarDepositosMulti,
   listarOperacoesGerenciaisAtivasDaConta,
@@ -146,6 +146,12 @@ export default function ModalProcessarLote({
             tipo_apropiacao: "direto" as NfEntradaItem["tipo_apropiacao"],
             centro_custo_id: ccId,
           }));
+          const movEmp = await verificarMovimentoEmpresaNf(nfTyped.id);
+          if (movEmp) {
+            const ok = window.confirm(`NF ${nfTyped.numero}: destinada à empresa ${movEmp.empresa} (CNPJ ${movEmp.cnpj}). O financeiro vai para o CP da EMPRESA e os CPs do produtor desta NF serão cancelados.\n\nAutoriza? Fica registrado no log.`);
+            if (!ok) { erros.push(`NF ${nfTyped.numero}: não processada (movimentação para empresa não autorizada)`); continue; }
+            registrarAutorizacaoMovimentoEmpresa(batchFazendaId, nfTyped.id, String(nfTyped.numero ?? ""), movEmp.empresa, movEmp.cps_produtor.map(c => c.id));
+          }
           await processarNfEntrada(
             nfTyped.id,
             nfTyped.fazenda_id ?? batchFazendaId,

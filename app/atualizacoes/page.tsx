@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-r",
+    data: "05/10/2026",
+    titulo: "NF destinada a empresa: pede autorização e registra no log",
+    modulos: ["Estoque", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao processar uma NF destinada a uma empresa transportadora, o sistema avisa que o financeiro vai para o CP da empresa e que os CPs do produtor serão cancelados. Só processa com autorização." },
+      { tipo: "novo", texto: "A autorização fica registrada no Log do Sistema, com a empresa e os CPs afetados, para auditoria." },
+    ],
+    onde: "Estoque → NF de Entrada → Processar",
+  },
+  {
     versao: "2026.10.05-q",
     data: "05/10/2026",
     titulo: "NF de entrada: divergência com o pedido de compra bloqueia o processamento",

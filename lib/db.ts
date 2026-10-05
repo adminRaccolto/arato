@@ -2639,6 +2639,36 @@ export async function limparMovimentacoesEFinanceiroDaNf(nfId: string): Promise<
 //   "vef"       → NF de Venda c/ Entrega Futura: credita depósito de terceiro (busca por CNPJ)
 //   "remessa"   → NF de Remessa/Entrega: debita estoque_terceiros + credita insumo_fazenda
 //   "direto"    → custo direto, sem movimentação de estoque
+// Checagem SEM efeitos colaterais: a NF está destinada a uma empresa (transportadora) cadastrada?
+// Se sim, processar muda o financeiro para o CP da empresa e cancela os CPs do produtor gerados
+// por esta NF. A tela pede autorização do usuário antes disso (e registra no log).
+export async function verificarMovimentoEmpresaNf(nfId: string): Promise<{ empresa: string; cnpj: string; cps_produtor: { id: string; valor: number; status: string }[] } | null> {
+  const { data: nf } = await supabase.from("nf_entradas").select("cnpj_destino, fazenda_id").eq("id", nfId).maybeSingle();
+  if (!nf?.cnpj_destino) return null;
+  const cd = nf.cnpj_destino.replace(/\D/g, "");
+  const cdFmt = cd.length === 14
+    ? cd.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+    : cd.length === 11 ? cd.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : cd;
+  const idsConta = await resolverFazendaIdsDaConta(nf.fazenda_id);
+  const { data: emps } = await supabase
+    .from("empresas").select("id, nome, razao_social, fazenda_id, finalidades")
+    .in("fazenda_id", idsConta.length ? idsConta : [nf.fazenda_id])
+    .or(`cpf_cnpj.eq.${cd},cpf_cnpj.eq.${cdFmt}`);
+  const ehTransportadora = (emps ?? []).some(e => Array.isArray(e.finalidades) && e.finalidades.includes("transportadora"));
+  if (!ehTransportadora) return null;
+  const emp = (emps ?? [])[0];
+  const { data: cps } = await supabase.from("lancamentos").select("id, valor, status")
+    .eq("nf_entrada_id", nfId).neq("status", "cancelado");
+  return { empresa: emp?.nome || emp?.razao_social || "", cnpj: cd, cps_produtor: (cps ?? []) as { id: string; valor: number; status: string }[] };
+}
+
+// Registro da autorização para o log do sistema (auditoria)
+export function registrarAutorizacaoMovimentoEmpresa(fazendaId: string, nfId: string, numeroNf: string, empresa: string, cpsIds: string[]) {
+  registrarLog(fazendaId, "update", "fiscal",
+    `NF ${numeroNf} destinada à empresa ${empresa} — financeiro movido para o CP da empresa. Autorizado pelo usuário. CPs do produtor cancelados: ${cpsIds.length}`,
+    { entidade: "nf_entradas", entidadeId: nfId, dadosDepois: { empresa, cps_produtor_cancelados: cpsIds } });
+}
+
 export async function processarNfEntrada(
   nfId: string,
   fazenda_id: string,
