@@ -1124,8 +1124,10 @@ export default function TransferenciasEstoquePage() {
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Itens da Transferência</span>
                 <button onClick={addItem} style={{ ...btn("#F4F6FA", "#111111"), border: "0.5px solid #111111" }}>+ Adicionar Item</button>
               </div>
-              <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              {/* overflowX auto (e não hidden): a tabela tem 8 colunas de largura fixa — com hidden
+                  a coluna Lote e o botão remover eram cortados e sumiam do modal */}
+              <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflowX: "auto" }}>
+                <table style={{ width: "100%", minWidth: 960, borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       {["Insumo *","Qtd *","Unidade","Custo Unit. (R$)","Valor Total","Variedade","Lote",""].map(h => (

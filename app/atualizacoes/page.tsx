@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-b",
+    data: "05/10/2026",
+    titulo: "Transferência de insumos (desktop): coluna Lote visível",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Na Nova Transferência de Insumos, a coluna Lote (seletor de lote para sementes) estava cortada pela largura do modal e não aparecia. A tabela de itens agora tem barra de rolagem horizontal." },
+    ],
+    onde: "Estoque → Transferências → Nova Transferência",
+  },
+  {
     versao: "2026.10.05-a",
     data: "05/10/2026",
     titulo: "Transferência de semente pelo App Campo: lote obrigatório",
