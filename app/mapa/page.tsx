@@ -43,7 +43,7 @@ interface PlantioAtivo {
   data_plantio: string;
   data_colheita_prevista?: string;
   area_ha?: number;
-  ciclo?: { descricao: string };
+  status_campo?: string;
 }
 
 export interface TalhaoComPlantio extends Talhao {
@@ -85,19 +85,45 @@ export default function MapaPage() {
     if (!fIdEfetivo) return;
     setLoading(true);
 
-    const [{ data: ts }, { data: ps }] = await Promise.all([
+    const hoje = new Date().toISOString().slice(0, 10);
+    const [{ data: ts }, { data: ciclosAtivos }] = await Promise.all([
       supabase.from("talhoes").select("id,nome,area_ha,tipo_solo,lat,lng,kml_url").eq("fazenda_id", fIdEfetivo).order("nome"),
-      supabase.from("plantios")
-        .select("id,talhao_id,cultura,variedade,data_plantio,data_colheita_prevista,area_ha,ciclo_id")
+      supabase.from("ciclos")
+        .select("id,cultura")
         .eq("fazenda_id", fIdEfetivo)
-        .eq("status", "em_andamento")
-        .order("data_plantio", { ascending: false }),
+        .lte("data_inicio", hoje)
+        .gte("data_fim", hoje),
     ]);
+
+    // "Plantio ativo" = lançamento de plantio no ciclo cuja safra está vigente
+    // hoje. Lançamento do campo ainda pendente conta também (aparece marcado).
+    const idsCiclos = (ciclosAtivos ?? []).map(c => c.id);
+    const culturaPorCiclo = new Map((ciclosAtivos ?? []).map(c => [c.id, c.cultura as string]));
+    const { data: ps } = idsCiclos.length === 0
+      ? { data: [] as Array<Record<string, unknown>> }
+      : await supabase.from("plantios")
+          .select("id,talhao_id,variedade,data_plantio,data_colheita_prev,area_ha,ciclo_id,status_campo")
+          .eq("fazenda_id", fIdEfetivo)
+          .in("ciclo_id", idsCiclos)
+          .neq("status_campo", "rejeitado")
+          .order("data_plantio", { ascending: false });
 
     // Para cada talhão, pega o plantio ativo mais recente
     const plantioMap: Record<string, PlantioAtivo> = {};
     for (const p of ps ?? []) {
-      if (!plantioMap[p.talhao_id]) plantioMap[p.talhao_id] = p as PlantioAtivo;
+      const talhaoId = p.talhao_id as string;
+      if (!plantioMap[talhaoId]) {
+        plantioMap[talhaoId] = {
+          id: p.id as string,
+          talhao_id: talhaoId,
+          cultura: culturaPorCiclo.get(p.ciclo_id as string) ?? "",
+          variedade: (p.variedade as string) ?? undefined,
+          data_plantio: p.data_plantio as string,
+          data_colheita_prevista: (p.data_colheita_prev as string) ?? undefined,
+          area_ha: (p.area_ha as number) ?? undefined,
+          status_campo: p.status_campo as string,
+        };
+      }
     }
 
     setTalhoes((ts ?? []).map(t => ({ ...t, plantio: plantioMap[t.id] })));
