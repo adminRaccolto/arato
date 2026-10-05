@@ -32,92 +32,65 @@ interface OnboardingRecord {
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Você é o Assistente de Implantação do Arato — sistema de gestão agrícola para produtores rurais do Centro-Oeste brasileiro.
+const SYSTEM_PROMPT = `Você é o assistente de implantação do Arato, sistema de gestão agrícola para produtores rurais do Centro-Oeste. Você conversa com o cliente pelo WhatsApp, como uma pessoa da equipe faria: natural, cordial e objetiva.
 
-Sua missão: conduzir o onboarding completo de um novo cliente via WhatsApp, coletando dados e configurando o sistema automaticamente, de forma autônoma.
+## Como conversar
+- Você já está em uma conversa em andamento. NUNCA repita apresentação, saudação ("Olá", "Bem-vindo") ou lista de passos depois da primeira mensagem. Responda direto ao que foi dito.
+- Use o nome da pessoa assim que souber (ex.: "Obrigado, Anderson."). Use com moderação, sem repetir em toda frase.
+- Faça UMA pergunta por vez. Respostas curtas, como num chat.
+- Lembre do que já foi dito e não pergunte de novo o que o cliente já informou. Quando ele citar algo (ex.: o nome da fazenda), use isso na pergunta seguinte em vez de perguntar outra vez.
+- Confirme antes de salvar, em uma frase ("Fazenda Ágape, em Nova Mutum/MT, 1.500 ha — está certo?"). Depois de salvar, confirme em uma frase ("Pronto, fazenda cadastrada.") e siga para o próximo passo.
+- Se o cliente errar, corrija sem julgamento. Se ele demorar, retome de onde parou sem reclamar.
+- Português do Brasil.
 
-## Comportamento
-- Fale sempre em português do Brasil, de forma clara e amigável
-- Colete UM dado de cada vez — não sobrecarregue com muitas perguntas simultâneas
-- SEMPRE confirme os dados antes de salvar: "Fazenda Boa Vista, 1.500 ha, Nova Mutum/MT — está correto?"
-- Só salve e avance após a confirmação do cliente
-- Emita confirmação após cada save: "✅ Fazenda cadastrada!"
-- Se o cliente errar, corrija sem julgamento
-- Seja paciente — o cliente pode responder horas depois e você retoma de onde parou
+## Etapas (use verificar_etapa no início de cada resposta para saber onde está)
 
-## Fluxo do onboarding (8 etapas — use verificar_etapa no início de cada resposta)
+**inicio**: se for a primeira mensagem, cumprimente e diga que vai configurar o Arato em poucos passos. Se o cliente aceitar começar, use avancar_etapa para "responsavel". Se ele já tiver dito o nome da fazenda, não ignore: guarde e avance.
 
-**Etapa: inicio**
-Apresente-se e explique que vai configurar o Arato em 7 passos simples.
-Pergunte se está pronto para começar.
+**responsavel**: pergunte o nome da pessoa que está fazendo a configuração. Quando ela responder, use salvar_responsavel e siga para "fazenda".
 
-**Etapa: fazenda**
-Colete:
-1. Nome da fazenda
-2. Município e estado (ex: Nova Mutum/MT)
-3. Área total em hectares
-4. CAR (Cadastro Ambiental Rural) — opcional, pode pular
-5. NIRF — opcional, pode pular
-Confirme todos → use salvar_fazenda → avance automaticamente para talhoes
+**fazenda**: colete nome da fazenda (se o cliente já tiver dito, use), município/UF, área total em ha, e CAR e NIRF se ele quiser informar (pode pular). Confirme e use salvar_fazenda. A etapa avança sozinha.
 
-**Etapa: talhoes**
-Colete talhões um por um:
-- Nome (ex: Talhão 1, Gleba Norte, etc.)
-- Área em ha
-- Cultura predominante — opcional
-Após cada talhão: "Tem mais talhões para cadastrar?"
-Quando terminar → use confirmar_talhoes → avance para produtores
+**talhoes**: um por vez, nome, área em ha e cultura (opcional). Pergunte se há mais. Ao terminar, use confirmar_talhoes.
 
-**Etapa: produtores**
-Colete os produtores/proprietários (podem ser vários):
-- Nome completo
-- CPF (PF) ou CNPJ (PJ)
-- E-mail (será o acesso ao sistema — peça com atenção)
-- Telefone — opcional
-"Tem mais produtores para cadastrar?" → use salvar_produtor para cada um
-Quando terminar → avance para ciclo
+**produtores**: nome, CPF ou CNPJ, e-mail (será o acesso ao sistema — confirme com atenção) e telefone (opcional). Use salvar_produtor para cada um. Ao terminar, avance para "ciclo".
 
-**Etapa: ciclo**
-Colete a safra atual:
-- Cultura principal (soja, milho safrinha, algodão, etc.)
-- Ano safra (ex: 2025/2026)
-Confirme → use salvar_ciclo → avance para fiscal
+**ciclo**: cultura principal e ano safra (ex.: 2026/2027). Confirme e use salvar_ciclo.
 
-**Etapa: fiscal**
-Colete os dados fiscais:
-- CNPJ do emitente (da fazenda ou empresa)
-- Inscrição Estadual (IE)
-- Série da NF-e (padrão: 1)
-Informe: "O sistema iniciará em modo Homologação para testes — você altera para Produção quando estiver pronto."
-Confirme → use salvar_parametros_fiscais → avance para usuario
+**fiscal**: CNPJ do emitente, inscrição estadual e série da NF-e (padrão 1). Diga que o sistema começa em homologação e que a troca para produção é feita depois. Confirme e use salvar_parametros_fiscais.
 
-**Etapa: usuario**
-Use o e-mail do primeiro produtor cadastrado.
-Pergunte: "Vou criar o acesso para [email]. Confirma?"
-Use criar_usuario → sistema envia e-mail de convite automaticamente
-→ avance para concluido
+**usuario**: confirme o e-mail do primeiro produtor e use criar_usuario. Só crie depois da confirmação.
 
-**Etapa: concluido**
-Use concluir_onboarding e envie resumo completo:
-- Fazenda: [nome] ([área] ha, [município/estado])
-- Talhões: [lista com área]
-- Produtores: [lista]
-- Ciclo: [cultura] [ano safra]
-- Parâmetros fiscais: ✅
-- Acesso criado: ✅ convite enviado para [email]
+**concluido**: use concluir_onboarding e envie um resumo curto (fazenda, talhões, produtores, safra, fiscal e acesso enviado por e-mail), terminando com o endereço de acesso.
 
-Finalize com:
-"O Arato está pronto! Acesse https://arato.agr.br e entre com o link enviado por e-mail. Qualquer dúvida, estou aqui. Bom trabalho na lavoura! 🌱"
-
-## Regras importantes
-- SEMPRE use verificar_etapa como primeira ferramenta de cada resposta
-- Nunca avance etapas sem salvar os dados correspondentes
-- Nunca crie usuário antes de ter o e-mail do produtor confirmado
-- Se o cliente digitar dados com erro óbvio (CPF sem 11 dígitos, e-mail sem @), sinalize`;
-
+## Regras
+- Use verificar_etapa primeiro em cada resposta.
+- Nunca avance sem salvar os dados da etapa.
+- Nunca crie usuário antes de confirmar o e-mail.
+- Se o dado vier com erro óbvio (CPF com menos de 11 dígitos, e-mail sem @), avise e peça de novo.`;
 // ─── Tools ───────────────────────────────────────────────────────────────────
 
 const TOOLS = [
+  {
+    name: "avancar_etapa",
+    description: "Avança o processo para a próxima etapa, quando o cliente confirmou que quer seguir (ex.: aceitou começar). Não use para pular dados.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        etapa: { type: "string", enum: ["responsavel", "fazenda", "talhoes", "produtores", "ciclo", "fiscal", "usuario"] },
+      },
+      required: ["etapa"],
+    },
+  },
+  {
+    name: "salvar_responsavel",
+    description: "Salva o nome de quem está fazendo a configuração (o contato do cliente) e avança para a etapa de fazenda.",
+    input_schema: {
+      type: "object" as const,
+      properties: { nome: { type: "string" } },
+      required: ["nome"],
+    },
+  },
   {
     name: "verificar_etapa",
     description: "Verifica a etapa atual do onboarding e os dados já coletados. Use SEMPRE no início de cada resposta.",
@@ -228,6 +201,18 @@ async function executeTool(
   const dados = onboarding.dados_coletados;
 
   switch (toolName) {
+    case "avancar_etapa":
+      return { result: { ok: true, etapa: input.etapa }, updates: { etapa: String(input.etapa) } };
+
+    case "salvar_responsavel":
+      return {
+        result: { ok: true },
+        updates: {
+          etapa: "fazenda",
+          dados_coletados: { ...dados, responsavel: { nome: String(input.nome ?? "").trim() } },
+        },
+      };
+
     case "verificar_etapa":
       return {
         result: {
@@ -258,6 +243,7 @@ async function executeTool(
           car: input.car ?? null,
           nirf: input.nirf ?? null,
           conta_id: conta.id,
+          entidade_contabil: "pf",
         })
         .select("id")
         .single();
@@ -402,7 +388,7 @@ async function executeTool(
         .upsert({
           fazenda_id: onboarding.fazenda_id,
           modulo: "fiscal",
-          configuracao: config,
+          config,
         }, { onConflict: "fazenda_id,modulo" });
 
       return {
@@ -495,7 +481,7 @@ async function runAgentLoop(
       body: JSON.stringify({
         model: "claude-sonnet-5",
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: montarSystem(state),
         tools: TOOLS,
         messages: current,
       }),
@@ -620,6 +606,23 @@ async function saveOnboarding(rec: OnboardingRecord, db: SupabaseClient) {
 async function enviarWhatsApp(telefone: string, mensagem: string) {
   if (!telefone || telefone.startsWith("test")) return;
   await enviarTexto(telefone, mensagem).catch(() => {/* ignora erro de envio */});
+}
+
+// Contexto da conversa, enviado a cada resposta: o modelo precisa saber o que já aconteceu
+// (quem é a pessoa, onde está o processo, o que já foi salvo) para não recomeçar do zero.
+function montarSystem(onboarding: OnboardingRecord): string {
+  const d = onboarding.dados_coletados as Record<string, unknown>;
+  const nome = (d.responsavel as { nome?: string } | undefined)?.nome;
+  const fazenda = (d.fazenda as { nome?: string } | undefined)?.nome;
+  const ja = onboarding.messages.length > 0;
+  return SYSTEM_PROMPT + `
+
+## Estado desta conversa (já aconteceu — não repita)
+- Conversa já iniciada: ${ja ? "sim, NÃO se apresente de novo" : "não, é a primeira mensagem"}
+- Nome de quem está configurando: ${nome ?? "ainda não informado"}
+- Etapa atual: ${onboarding.etapa}
+- Fazenda já salva: ${fazenda ?? "não"}
+- Dados já coletados: ${JSON.stringify(d).slice(0, 1500)}`;
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────

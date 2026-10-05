@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-l",
+    data: "05/10/2026",
+    titulo: "Agente Implantador: conversa contínua e parâmetros fiscais gravados",
+    modulos: ["Admin"],
+    itens: [
+      { tipo: "correcao", texto: "O agente não repete mais a apresentação em cada mensagem, pergunta o nome de quem está configurando e lembra o que já foi informado." },
+      { tipo: "correcao", texto: "Os parâmetros fiscais do cliente são gravados na configuração que o sistema lê, e a fazenda criada sai como pessoa física (base do LCDPR)." },
+    ],
+    onde: "Admin → Agente Implantador",
+  },
+  {
     versao: "2026.10.05-k",
     data: "05/10/2026",
     titulo: "CP/CR: clipe com DANFE, boleto e comprovante de cada lançamento",
