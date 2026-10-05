@@ -447,39 +447,33 @@ export default function DocumentosFiscaisPage() {
                 ⚡ Processar em lote
               </button>
               <button
-                onClick={() => {
-                  const html = `
-                    <html><head><title>Documentos Fiscais Selecionados</title><style>
-                      body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
-                      table{width:100%;border-collapse:collapse;margin-bottom:16px}
-                      th,td{padding:5px 8px;border:0.5px solid #ccc;text-align:left}
-                      th{background:#f5f5f5;font-weight:600}
-                      h2{margin:0 0 12px;font-size:14px}
-                      .rodape{margin-top:20px;font-size:10px;color:#999}
-                      @page{size:A4 landscape}
-                    </style></head><body>
-                    <h2>Documentos Fiscais — ${new Date().toLocaleDateString("pt-BR")}</h2>
-                    <table><thead><tr>
-                      <th>Tipo</th><th>Número</th><th>Série</th><th>Participante</th><th>Data</th><th>Valor</th><th>Status</th>
-                    </tr></thead><tbody>
-                    ${sel.map(n => `<tr>
-                      <td>${n.tipo_doc}</td>
-                      <td>${n.numero ?? "—"}</td>
-                      <td>${n.serie ?? "—"}</td>
-                      <td>${n.participante_nome ?? "—"}</td>
-                      <td>${fmtData(n.data_doc)}</td>
-                      <td>${fmtBRL(n.valor_total)}</td>
-                      <td>${n.status_normalizado ?? "—"}</td>
-                    </tr>`).join("")}
-                    </tbody><tfoot><tr>
-                      <td colspan="5" style="font-weight:600;text-align:right">Total (${sel.length}):</td>
-                      <td style="font-weight:600">${fmtBRL(sel.reduce((s, n) => s + (n.valor_total ?? 0), 0))}</td>
-                      <td></td>
-                    </tr></tfoot></table>
-                    <div class="rodape">Gerado em ${new Date().toLocaleString("pt-BR")}</div>
-                    </body></html>`;
+                onClick={async () => {
+                  // Imprime os DANFEs das NFs selecionadas (um PDF único, um diálogo de impressão).
+                  // A janela é aberta já no clique, senão o navegador bloqueia o pop-up.
+                  const comDanfe = sel.filter(n => n.tipo_doc === "NF" && n.chave);
+                  if (comDanfe.length === 0) { alert("Nenhuma NF selecionada tem DANFE (NFS e CT-e não têm DANFE)."); return; }
+                  const semDanfe = sel.length - comDanfe.length;
                   const win = window.open("", "_blank");
-                  if (win) { win.document.write(html); win.document.close(); win.print(); }
+                  if (!win) { alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este site."); return; }
+                  win.document.write("<p style=\"font-family:Arial;font-size:13px;margin:24px\">Gerando DANFEs…</p>");
+                  try {
+                    const res = await fetch("/api/fiscal/danfe-lote", {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ itens: comDanfe.map(n => ({ chave: n.chave as string, fazenda_id: n.fazenda_id })) }),
+                    });
+                    if (!res.ok) {
+                      const j = await res.json().catch(() => ({})) as { error?: string };
+                      throw new Error(j.error ?? "Erro ao gerar DANFEs");
+                    }
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    win.location.href = url;
+                    win.addEventListener?.("load", () => win.print());
+                    if (semDanfe > 0) alert(`${semDanfe} documento(s) da seleção não têm DANFE e ficaram de fora.`);
+                  } catch (e) {
+                    win.close();
+                    alert(e instanceof Error ? e.message : "Erro ao gerar DANFEs");
+                  }
                 }}
                 style={{ padding: "6px 16px", background: "transparent", color: "#fff", border: "0.5px solid rgba(255,255,255,0.5)", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}
               >

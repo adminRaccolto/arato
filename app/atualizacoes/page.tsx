@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-m",
+    data: "05/10/2026",
+    titulo: "Documentos Fiscais: Imprimir gera os DANFEs selecionados",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O botão Imprimir, com NFs selecionadas, passa a imprimir os DANFEs (antes imprimia um relatório-resumo). Todos saem em um único PDF. NFS e CT-e não têm DANFE e ficam de fora, com aviso." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → selecionar NFs → Imprimir",
+  },
+  {
     versao: "2026.10.05-l",
     data: "05/10/2026",
     titulo: "Agente Implantador: conversa contínua e parâmetros fiscais gravados",
