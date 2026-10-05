@@ -37,6 +37,9 @@ import TopNav from "../../../components/TopNav";
 import ModalNfServico from "../../../components/fiscal/ModalNfServico";
 import ModalNf from "../../../components/fiscal/ModalNf";
 import ModalProcessarLote from "../../../components/fiscal/ModalProcessarLote";
+import SelectBusca from "../../../components/SelectBusca";
+import { listarOperacoesGerenciaisAtivasDaConta, listarCentrosCustoGeralDaConta } from "../../../lib/db";
+import type { OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
 
 type RelDocFiscal = {
   id: string;
@@ -88,6 +91,8 @@ type NfDetalhe = {
   cnpj_destino: string | null;
   chave_acesso: string | null;
   manifestacao_tipo: number | null;
+  operacao_gerencial_id: string | null;
+  centro_custo_id: string | null;
 };
 
 // Detalhe do CT-e — mesmo princípio: lazy, só ao abrir o popover. CT-e
@@ -223,12 +228,44 @@ export default function DocumentosFiscaisPage() {
   const [cteDetalhe, setCteDetalhe] = useState<Record<string, CteDetalhe>>({});
   const [cteDetalheCarregando, setCteDetalheCarregando] = useState<string | null>(null);
 
+  // ── Reclassificar NF processada (volta do ModalNf antigo) — troca OG/CC da NF e dos
+  // lançamentos de CP gerados por ela. Feito pela rota /api/fiscal/reclassificar-nf.
+  const [reclass, setReclass] = useState<{ d: RelDocFiscal; op: string; cc: string; err: string; salvando: boolean; ops: OperacaoGerencial[]; ccs: CentroCusto[] } | null>(null);
+
+  async function abrirReclassificarGrid(d: RelDocFiscal) {
+    setPopover(null);
+    const nf = nfDetalhe[d.id];
+    const [ops, ccs] = await Promise.all([
+      listarOperacoesGerenciaisAtivasDaConta({ permite: "notas_fiscais" }, d.fazenda_id),
+      listarCentrosCustoGeralDaConta(d.fazenda_id),
+    ]);
+    setReclass({ d, op: nf?.operacao_gerencial_id ?? "", cc: nf?.centro_custo_id ?? "", err: "", salvando: false, ops, ccs });
+  }
+
+  async function salvarReclassificarGrid() {
+    if (!reclass) return;
+    setReclass({ ...reclass, salvando: true, err: "" });
+    try {
+      const res = await fetch("/api/fiscal/reclassificar-nf", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nf_id: reclass.d.id, fazenda_id: reclass.d.fazenda_id, operacao_gerencial_id: reclass.op || null, centro_custo_id: reclass.cc || null }),
+      });
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao reclassificar");
+      setNfDetalhe(prev => { const n = { ...prev }; delete n[reclass.d.id]; return n; });
+      setReclass(null);
+      await carregar();
+    } catch (e: unknown) {
+      setReclass(r => r ? { ...r, salvando: false, err: e instanceof Error ? e.message : "Erro ao reclassificar" } : r);
+    }
+  }
+
   function abrirPopover(d: RelDocFiscal, x: number, y: number) {
     setPopover(p => p?.d.id === d.id ? null : { d, x, y });
     if (d.tipo_doc === "NF" && !nfDetalhe[d.id]) {
       setNfDetalheCarregando(d.id);
       supabase.from("nf_entradas")
-        .select("id, status, tipo_entrada, origem, cnpj_destino, chave_acesso, manifestacao_tipo")
+        .select("id, status, tipo_entrada, origem, cnpj_destino, chave_acesso, manifestacao_tipo, operacao_gerencial_id, centro_custo_id")
         .eq("id", d.id).maybeSingle()
         .then(({ data }) => {
           if (data) setNfDetalhe(prev => ({ ...prev, [d.id]: data as NfDetalhe }));
@@ -789,6 +826,12 @@ export default function DocumentosFiscaisPage() {
                     ↺ Estornar
                   </button>
                 )}
+                {d.tipo_doc === "NF" && processada && (
+                  <button onClick={() => abrirReclassificarGrid(d)}
+                    style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
+                    🏷 Reclassificar
+                  </button>
+                )}
                 {d.tipo_doc === "NFS" && (
                   <button onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
                     style={{ flex: 1, minWidth: 90, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>
@@ -803,6 +846,41 @@ export default function DocumentosFiscaisPage() {
           </>
         );
       })()}
+
+      {reclass && (
+        <div onClick={() => !reclass.salvando && setReclass(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
+            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid #DDE2EE" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50" }}>Reclassificar NF</div>
+              <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>NF {reclass.d.numero}/{reclass.d.serie} — {reclass.d.participante_nome}</div>
+              <div style={{ fontSize: 11, color: "#7A5200", marginTop: 6, background: "#FBF3E0", padding: "4px 8px", borderRadius: 6 }}>
+                Troca a Operação Gerencial e o Centro de Custo da NF <strong>e também dos lançamentos de CP gerados por ela</strong> (inclusive os já baixados). Estoque, valores e datas não mudam.
+              </div>
+            </div>
+            <div style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
+              {reclass.err && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F" }}>{reclass.err}</div>}
+              <div>
+                <label style={{ fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4 }}>Operação Gerencial</label>
+                <SelectBusca value={reclass.op} onChange={v => setReclass({ ...reclass, op: v })}
+                  options={reclass.ops.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                  placeholder="— Selecionar —" style={{ width: "100%" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4 }}>Centro de Custo</label>
+                <SelectBusca value={reclass.cc} onChange={v => setReclass({ ...reclass, cc: v })}
+                  options={reclass.ccs.map(c => ({ value: c.id, label: c.codigo ? `${c.codigo} — ${c.nome}` : c.nome }))}
+                  placeholder="— Nenhum —" style={{ width: "100%" }} />
+              </div>
+            </div>
+            <div style={{ padding: "12px 20px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setReclass(null)} disabled={reclass.salvando} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", color: "#555", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>Cancelar</button>
+              <button onClick={salvarReclassificarGrid} disabled={reclass.salvando || !reclass.op} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: reclass.op ? "#C9921B" : "#D9C9A3", color: "#fff", cursor: reclass.op ? "pointer" : "default", fontWeight: 700, fontSize: 12 }}>
+                {reclass.salvando ? "Salvando…" : "Salvar Reclassificação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalLote && (
         <ModalProcessarLote

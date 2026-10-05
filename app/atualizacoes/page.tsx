@@ -6,13 +6,24 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.05-f",
+    data: "05/10/2026",
+    titulo: "Reclassificar NF processada volta ao popup de Documentos Fiscais",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Documentos Fiscais: a NF processada tem o botão \"🏷 Reclassificar\" no popup. Troca Operação Gerencial e Centro de Custo da NF e dos lançamentos de CP gerados por ela, inclusive os já baixados." },
+      { tipo: "correcao", texto: "Corrigido o changelog de 05/10 (e) que estava com aspas quebradas e impedia o build." },
+    ],
+    onde: "Fiscal → Documentos Fiscais",
+  },
+  {
     versao: "2026.10.05-e",
     data: "05/10/2026",
     titulo: "Documentos Fiscais: lista completa e ordenação por data de cadastro",
     modulos: ["Fiscal"],
     itens: [
       { tipo: "correcao", texto: "A tela trazia só as 1.000 notas mais recentes pela data da nota, por isso NFs manuais, de XML e NFS com data antiga podiam não aparecer. Agora carrega todas." },
-      { tipo: "novo", texto: "Novo seletor "Ordenar": data da nota (padrão) ou data de cadastro — para ver o que acabou de entrar no sistema." },
+      { tipo: "novo", texto: "Novo seletor \"Ordenar\": data da nota (padrão) ou data de cadastro — para ver o que acabou de entrar no sistema." },
     ],
     onde: "Fiscal → Documentos Fiscais",
   },
