@@ -2231,7 +2231,6 @@ export default function ComprasPage() {
                   <div style={{ display: "flex", gap: 4, marginBottom: 0 }}>
                     {tabItens("itens",    "Itens")}
                     {tabItens("servicos", "Serviços")}
-                    {tabItens("cc",       "Centro de Custo")}
                   </div>
                   <div style={{ border: "0.5px solid var(--border-table)", borderRadius: "0 8px 8px 8px", padding: 12 }}>
                     {(abaItens === "itens" || abaItens === "servicos") && (() => {
@@ -2335,26 +2334,6 @@ export default function ComprasPage() {
                         <button style={{ ...btnR, fontSize: 11, marginTop: 8 }} onClick={() => setItens(p => [...p, { ...ITEM_VAZIO, tipo_item: tipo }])}>+ Item</button>
                       </>);
                     })()}
-                    {abaItens === "cc" && (
-                      <div>
-                        <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 10 }}>Vincule cada item a um centro de custo:</div>
-                        {itens.filter(it => it.nome_item || it.insumo_id).map((it, idx) => (
-                          <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8, padding: "8px 10px", background: "var(--bg-card)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
-                            <div style={{ fontSize: 12, color: "var(--text-1)", display: "flex", alignItems: "center" }}>{it.nome_item || insumos.find(i => i.id === it.insumo_id)?.nome || "Item sem nome"}</div>
-                            <div>
-                              <label style={lbl}>Centro de Custo</label>
-                              <select style={inp} value={it.centro_custo_id} onChange={e => setItens(prev => prev.map((x, j) => j === idx ? { ...x, centro_custo_id: e.target.value } : x))}>
-                                <option value="">— Sem vínculo —</option>
-                                {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} — ` : ""}{cc.nome}</option>)}
-                              </select>
-                            </div>
-                          </div>
-                        ))}
-                        {itens.filter(it => it.nome_item || it.insumo_id).length === 0 && (
-                          <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 16 }}>Adicione itens na aba "Itens" primeiro.</div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </>)}

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-s",
+    data: "06/10/2026",
+    titulo: "Pedido de compra sem aba de centro de custo",
+    modulos: ["Comercial"],
+    itens: [
+      { tipo: "melhoria", texto: "Removida a aba Centro de Custo do pedido de compra." },
+    ],
+    onde: "Comercial & Logística → Compras → Pedido de Compras",
+  },
+  {
     versao: "2026.10.06-r",
     data: "06/10/2026",
     titulo: "Insumo: unidade de medida bloqueada após movimentação",
