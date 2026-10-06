@@ -1002,14 +1002,28 @@ export default function ContasAPagarPage() {
   const [confirmData, setConfirmData] = useState("");
   const [confirmConta, setConfirmConta] = useState("");
   const [confirmContasOpcoes, setConfirmContasOpcoes] = useState<ContaBancaria[]>([]);
+  // Juros, multa e desconto por título, informados na confirmação (mesma regra da baixa em lote)
+  const [confirmItens, setConfirmItens] = useState<RelLancamento[]>([]);
+  const [confirmEnc, setConfirmEnc] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
+  const confirmEncDe = (id: string) => confirmEnc[id] ?? { multa: "0,00", juros: "0,00", desconto: "0,00" };
+  const setConfirmEncCampo = (id: string, campo: "multa" | "juros" | "desconto", v: string) =>
+    setConfirmEnc(prev => ({ ...prev, [id]: { ...confirmEncDe(id), [campo]: v } }));
+  const valorFinalConfirm = (l: RelLancamento) => {
+    const e = confirmEncDe(l.id);
+    return Math.max(0, saldoLote(l) + numBR(e.multa) + numBR(e.juros) - numBR(e.desconto));
+  };
+  const totalConfirm = confirmItens.reduce((s, l) => s + valorFinalConfirm(l), 0);
 
   async function abrirConfirmarBordero(b: PagamentoLote) {
     setErroBordero("");
     setModalConfirmarBordero(b);
     setConfirmData(hojeISO());
     setConfirmConta("");
+    setConfirmEnc({});
+    setConfirmItens([]);
     try {
       const itens = await carregarItensBordero(b.id);
+      setConfirmItens(itens);
       const empresaIds = Array.from(new Set(itens.filter(i => i.origem_tabela === "empresa_lancamentos" && i.empresa_id).map(i => i.empresa_id as string)));
       const [contasProd, ...contasEmp] = await Promise.all([
         fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[]),
@@ -1023,7 +1037,11 @@ export default function ContasAPagarPage() {
     if (!modalConfirmarBordero || !confirmData || !confirmConta) { setErroBordero("Informe data e conta bancária."); return; }
     setSalvandoBordero(true); setErroBordero("");
     try {
-      await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta);
+      const ajustes = confirmItens.map(l => {
+        const e = confirmEncDe(l.id);
+        return { lancamento_id: l.id, valor_juros: numBR(e.juros), valor_multa: numBR(e.multa), valor_desconto: numBR(e.desconto) };
+      });
+      await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, ajustes);
       setModalConfirmarBordero(null);
       await Promise.all([carregar(), carregarBorderos()]);
     } catch (e: unknown) {
@@ -1595,13 +1613,13 @@ export default function ContasAPagarPage() {
       {modalConfirmarBordero && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => setModalConfirmarBordero(null)}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 440px)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 680px)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <h2 style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>✅ Confirmar Pagamento do Borderô</h2>
               <button onClick={() => setModalConfirmarBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
             </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
-              {modalConfirmarBordero.descricao} · Total: <strong>{fmtBRL(modalConfirmarBordero.valor_total)}</strong>
+              {modalConfirmarBordero.descricao} · Total: <strong>{fmtBRL(confirmItens.length ? totalConfirm : modalConfirmarBordero.valor_total)}</strong>
             </div>
             <div style={{ display: "grid", gap: 12 }}>
               <div>
@@ -1616,6 +1634,34 @@ export default function ContasAPagarPage() {
                 </select>
               </div>
             </div>
+            {confirmItens.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>Títulos do borderô — juros, multa e desconto</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 92px 92px 92px 110px", gap: 6, alignItems: "center", fontSize: 11 }}>
+                  <span style={{ color: "#888" }}>Título</span>
+                  <span style={{ textAlign: "center", color: "#888" }}>Multa</span>
+                  <span style={{ textAlign: "center", color: "#888" }}>Juros</span>
+                  <span style={{ textAlign: "center", color: "#888" }}>Desconto</span>
+                  <span style={{ textAlign: "right", color: "#888" }}>A pagar</span>
+                  {confirmItens.map(l => {
+                    const e = confirmEncDe(l.id);
+                    const inpMiniC: React.CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, textAlign: "right", background: "#fff", boxSizing: "border-box", outline: "none" };
+                    return (
+                      <div key={l.id} style={{ display: "contents" }}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? undefined}>{l.descricao}</span>
+                        <input value={e.multa} onChange={ev => setConfirmEncCampo(l.id, "multa", ev.target.value)} style={inpMiniC} />
+                        <input value={e.juros} onChange={ev => setConfirmEncCampo(l.id, "juros", ev.target.value)} style={inpMiniC} />
+                        <input value={e.desconto} onChange={ev => setConfirmEncCampo(l.id, "desconto", ev.target.value)} style={inpMiniC} />
+                        <span style={{ fontWeight: 700, color: "#E24B4A", textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(valorFinalConfirm(l))}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
+                  Desconto abate do principal. Juros e multa somam ao pagamento. O DRE mostra cada um em linha própria.
+                </div>
+              </div>
+            )}
             {erroBordero && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroBordero}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
               <button onClick={() => setModalConfirmarBordero(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>

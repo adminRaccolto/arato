@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
       lote_id: string;
       data_pagamento?: string;
       conta_bancaria?: string;
+      // Juros, multa e desconto informados na confirmação, por título do borderô
+      ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number }[];
     };
     const { acao, lote_id } = body;
     if (!lote_id) return NextResponse.json({ ok: false, error: "lote_id obrigatório" }, { status: 400 });
@@ -76,10 +78,10 @@ export async function POST(req: NextRequest) {
     if (acao === "estornar") {
       const [ue1, ue2] = await Promise.all([
         sb.from("lancamentos")
-          .update({ status: "em_aberto", lote_id: null, valor_pago: null, data_baixa: null, conta_bancaria: null })
+          .update({ status: "em_aberto", lote_id: null, valor_pago: null, data_baixa: null, conta_bancaria: null, valor_juros: null, valor_multa: null, valor_desconto: null })
           .eq("lote_id", lote_id).eq("status", "baixado"),
         sb.from("empresa_lancamentos")
-          .update({ status: "pendente", lote_id: null, valor_pago: null, data_pagamento: null, conta_bancaria: null })
+          .update({ status: "pendente", lote_id: null, valor_pago: null, data_pagamento: null, conta_bancaria: null, valor_juros: null, valor_multa: null, valor_desconto: null })
           .eq("lote_id", lote_id).eq("status", "pago"),
       ]);
       if (ue1.error) return NextResponse.json({ ok: false, error: ue1.error.message }, { status: 500 });
@@ -96,14 +98,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Data de pagamento e conta bancária são obrigatórios" }, { status: 400 });
       }
 
+      // Ajustes de juros/multa/desconto da tela de confirmação: gravados no item antes de baixar
+      for (const aj of body.ajustes ?? []) {
+        const { error: ae } = await sb.from("pagamento_lote_itens").update({
+          valor_juros: Math.max(0, Number(aj.valor_juros) || 0),
+          valor_multa: Math.max(0, Number(aj.valor_multa) || 0),
+          valor_desconto: Math.max(0, Number(aj.valor_desconto) || 0),
+        }).eq("lote_id", lote_id).eq("lancamento_id", aj.lancamento_id);
+        if (ae) return NextResponse.json({ ok: false, error: ae.message }, { status: 500 });
+      }
+
       const { data: itensRaw, error: ie } = await sb.from("pagamento_lote_itens")
         .select("lancamento_id, origem_tabela, valor_pago, valor_multa, valor_juros, valor_desconto")
         .eq("lote_id", lote_id);
       if (ie) return NextResponse.json({ ok: false, error: ie.message }, { status: 500 });
       const itens = (itensRaw ?? []) as ItemLote[];
+      // Dinheiro que sai da conta: principal menos desconto + juros + multa
+      const totalCaixa = itens.reduce((s, i) => s + Math.max(0, i.valor_pago - (i.valor_desconto ?? 0)) + (i.valor_juros ?? 0) + (i.valor_multa ?? 0), 0);
 
       const { error: le } = await sb.from("pagamento_lotes")
-        .update({ status: "pago", data_pagamento, conta_bancaria })
+        .update({ status: "pago", data_pagamento, conta_bancaria, valor_total: Math.round(totalCaixa * 100) / 100 })
         .eq("id", lote_id);
       if (le) return NextResponse.json({ ok: false, error: le.message }, { status: 500 });
 
@@ -114,8 +128,8 @@ export async function POST(req: NextRequest) {
       // que já tinha sido pago) e decide baixado/parcial com a mesma regra
       // da baixa individual — mesmo fix aplicado em criarPagamentoLote.
       const [atuaisProd, atuaisEmp] = await Promise.all([
-        itensProd.length ? sb.from("lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago").in("id", itensProd.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
-        itensEmp.length  ? sb.from("empresa_lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago").in("id", itensEmp.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+        itensProd.length ? sb.from("lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago, valor_juros, valor_multa, valor_desconto").in("id", itensProd.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+        itensEmp.length  ? sb.from("empresa_lancamentos").select("id, valor, cotacao_usd, moeda, valor_pago, valor_juros, valor_multa, valor_desconto").in("id", itensEmp.map(i => i.lancamento_id)) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
       ]);
       const mapaProd = new Map((atuaisProd.data ?? []).map(l => [l.id as string, l]));
       const mapaEmp  = new Map((atuaisEmp.data ?? []).map(l => [l.id as string, l]));
@@ -125,17 +139,26 @@ export async function POST(req: NextRequest) {
         const at        = (origem === "lancamentos" ? mapaProd : mapaEmp).get(item.lancamento_id);
         const cotacao    = (at?.cotacao_usd as number | null) ?? 5.12;
         const valorTotal = at?.moeda === "USD" ? ((at?.valor as number | null) ?? 0) * cotacao : ((at?.valor as number | null) ?? 0);
+        // valor_pago do título = caixa acumulado (principal + juros + multa). O desconto NÃO sai da
+        // conta: quita o principal junto com o caixa. Juros, multa e desconto são acumulados em colunas próprias.
         const jaPago     = (at?.valor_pago as number | null) ?? 0;
-        const novoTotal  = jaPago + item.valor_pago;
-        const desconto   = item.valor_desconto ?? 0;
+        const jaJuros    = (at?.valor_juros as number | null) ?? 0;
+        const jaMulta    = (at?.valor_multa as number | null) ?? 0;
+        const jaDesc     = (at?.valor_desconto as number | null) ?? 0;
+        const juros      = Math.max(0, item.valor_juros ?? 0);
+        const multa      = Math.max(0, item.valor_multa ?? 0);
+        const desconto   = Math.max(0, item.valor_desconto ?? 0);
+        const principalCaixa = Math.max(0, item.valor_pago - desconto);
+        const principalAcum  = (jaPago - jaJuros - jaMulta) + principalCaixa;
+        const novoTotal      = jaPago + principalCaixa + juros + multa;
         const statusBaixado = origem === "lancamentos" ? "baixado" : "pago";
-        const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? statusBaixado : "parcial";
+        const novoStatus = principalAcum + jaDesc + desconto >= valorTotal - 0.01 ? statusBaixado : "parcial";
         const campoData = origem === "lancamentos" ? "data_baixa" : "data_pagamento";
         const { error: be } = await sb
           .from(origem)
           .update({
             status: novoStatus, valor_pago: novoTotal, [campoData]: data_pagamento, conta_bancaria, lote_id,
-            valor_multa: item.valor_multa || null, valor_juros: item.valor_juros || null, valor_desconto: item.valor_desconto || null,
+            valor_juros: jaJuros + juros || null, valor_multa: jaMulta + multa || null, valor_desconto: jaDesc + desconto || null,
           })
           .eq("id", item.lancamento_id);
         if (be) return NextResponse.json({ ok: false, error: be.message }, { status: 500 });

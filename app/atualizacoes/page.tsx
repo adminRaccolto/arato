@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-d",
+    data: "06/10/2026",
+    titulo: "Borderô: juros, multa e desconto por título",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Na confirmação do pagamento do borderô, cada título tem campos de multa, juros e desconto (mesma regra da baixa em lote). O total a pagar é recalculado na hora." },
+      { tipo: "novo", texto: "A DRE mostra juros de mora, multas e descontos obtidos em linhas separadas. Descontos obtidos entram como redução de despesa." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Borderô → Confirmar Pagamento",
+  },
+  {
     versao: "2026.10.06-c",
     data: "06/10/2026",
     titulo: "Consórcios: remover parcela do plano",

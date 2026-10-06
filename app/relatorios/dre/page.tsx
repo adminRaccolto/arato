@@ -58,6 +58,10 @@ type DreData = {
   // Despesas Financeiras
   juros_custeio: number;
   juros_outros: number;
+  // Juros, multas e descontos de pagamento (borderô e baixa): cada um em linha própria
+  juros_mora: number;
+  multas_atraso: number;
+  descontos_obtidos: number;
   desp_financeiras_total: number;
   // Resultados
   lucro_bruto: number;
@@ -220,6 +224,7 @@ export default function DrePage() {
         { data: contratosData },
         { data: cpData },
         { data: apoioData },
+        { data: ajustesPagData },
       ] = await Promise.all([
         supabase.from("plantios").select("custo_sementes, area_ha").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("status_campo", "aprovado"),
         supabase.from("pulverizacoes").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("status_campo", "aprovado"),
@@ -230,7 +235,12 @@ export default function DrePage() {
         supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
         supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
         supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("tipo", "pagar"),
+        supabase.from("lancamentos").select("valor_juros, valor_multa, valor_desconto").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).in("status", ["baixado", "parcial"]),
       ]);
+      // Juros, multa e desconto gravados nos pagamentos (borderô ou baixa) deste ciclo
+      const juros_mora_pag      = (ajustesPagData ?? []).reduce((s, r) => s + ((r as { valor_juros?: number | null }).valor_juros ?? 0), 0);
+      const multas_atraso_pag   = (ajustesPagData ?? []).reduce((s, r) => s + ((r as { valor_multa?: number | null }).valor_multa ?? 0), 0);
+      const descontos_obtidos_pag = (ajustesPagData ?? []).reduce((s, r) => s + ((r as { valor_desconto?: number | null }).valor_desconto ?? 0), 0);
 
       // ── Mapear operacao_gerencial_id → classificacao (batch, inclui Apoio) ──
       const cpRows = cpData ?? [];
@@ -396,13 +406,17 @@ export default function DrePage() {
       // "patrimonial" removido: investimentos são CAPEX (fora do P&L) e depreciação foi para operacional
       const juros_custeio        = grp["juros_custeio"]       ?? 0;
       const juros_outros         = grp["desp_financeira"]     ?? 0;
-      const desp_financeiras_total = juros_custeio + juros_outros;
+      const juros_mora       = juros_mora_pag;
+      const multas_atraso    = multas_atraso_pag;
+      const descontos_obtidos = descontos_obtidos_pag;
+      const desp_financeiras_total = juros_custeio + juros_outros + juros_mora + multas_atraso;
 
       // ── Resultados ──
       const lucro_bruto = receita_liquida - cpv_total;
       const ebitda = lucro_bruto - desp_operacionais_total;
       const resultado_operacional = ebitda;
-      const resultado_liquido = resultado_operacional - desp_financeiras_total;
+      // Descontos obtidos reduzem a despesa (entram positivos no resultado líquido)
+      const resultado_liquido = resultado_operacional - desp_financeiras_total + descontos_obtidos;
 
       const custo_total = cpv_total + desp_operacionais_total + desp_financeiras_total;
       const area = totalAreaHa || 1;
@@ -438,6 +452,9 @@ export default function DrePage() {
         desp_operacionais_total,
         juros_custeio,
         juros_outros,
+        juros_mora,
+        multas_atraso,
+        descontos_obtidos,
         desp_financeiras_total,
         lucro_bruto,
         ebitda,
@@ -490,6 +507,9 @@ export default function DrePage() {
       desp_operacionais_total: sum("desp_operacionais_total"),
       juros_custeio: sum("juros_custeio"),
       juros_outros: sum("juros_outros"),
+      juros_mora: sum("juros_mora"),
+      multas_atraso: sum("multas_atraso"),
+      descontos_obtidos: sum("descontos_obtidos"),
       desp_financeiras_total: sum("desp_financeiras_total"),
       lucro_bruto: sum("lucro_bruto"),
       ebitda: sum("ebitda"),
@@ -535,6 +555,9 @@ export default function DrePage() {
       { codigo: "5",   label: "DESPESAS FINANCEIRAS",              valor: -d.desp_financeiras_total, percentual: pct(d.desp_financeiras_total, rl),  bold: true, tipo: "header" },
       { codigo: "5.1", label: "Juros de Custeio Agrícola",         valor: -d.juros_custeio,          percentual: pct(d.juros_custeio, rl),           indent: 1,  tipo: "custo" },
       { codigo: "5.2", label: "Outros Juros e Encargos",           valor: -d.juros_outros,           percentual: pct(d.juros_outros, rl),            indent: 1,  tipo: "custo" },
+      { codigo: "5.3", label: "Juros de Mora (pagamento em atraso)", valor: -d.juros_mora,           percentual: pct(d.juros_mora, rl),              indent: 1,  tipo: "custo" },
+      { codigo: "5.4", label: "Multas (pagamento em atraso)",      valor: -d.multas_atraso,          percentual: pct(d.multas_atraso, rl),           indent: 1,  tipo: "custo" },
+      { codigo: "6",   label: "DESCONTOS OBTIDOS",                 valor: d.descontos_obtidos,       percentual: pct(d.descontos_obtidos, rl),       bold: true, tipo: "header" },
       { codigo: "RL2", label: "RESULTADO LÍQUIDO",                 valor: d.resultado_liquido,       percentual: pct(d.resultado_liquido, rl),       bold: true, tipo: "resultado" },
     ];
   }
