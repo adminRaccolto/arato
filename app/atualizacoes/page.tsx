@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-k",
+    data: "06/10/2026",
+    titulo: "CP e CR: largura das colunas por usuário",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Arraste a borda do cabeçalho para mudar a largura de cada coluna do grid de CP e CR. A largura fica salva para cada usuário, junto com as colunas escolhidas." },
+      { tipo: "correcao", texto: "Um ajuste feito logo antes de sair da tela é gravado ao sair, e não se perde." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.06-j",
     data: "06/10/2026",
     titulo: "Borderô com popup de ações; anexos no popup de CP e CR",

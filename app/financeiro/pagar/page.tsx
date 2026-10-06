@@ -31,6 +31,7 @@
 // (status fica igual, só ganham lote_id); "Confirmar Pagamento" depois é que
 // define data+conta e baixa todos de uma vez via /api/financeiro/bordero-acao.
 // ═══════════════════════════════════════════════════════════════════════════
+import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -199,7 +200,7 @@ const COLS_GRID_CP: ColDef[] = [
 
 export default function ContasAPagarPage() {
   const { fazendaId, fazendaIds, contaId, emailUsuario } = useAuth();
-  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols } = useColunasGrid("cp", COLS_GRID_CP);
+  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cp", COLS_GRID_CP);
   const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
   const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => COLS_GRID_CP.find(c => c.key === k)).filter((c): c is ColDef => !!c);
 
@@ -1261,7 +1262,7 @@ export default function ContasAPagarPage() {
                       onChange={toggleTodos} />
                   </th>
                 ); return (
-                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>
+                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" , width: cw(c.key), position: "relative"}}>
                     {h === "Lançamento" || h === "Vencimento" ? (
                       <button
                         onClick={() => clicarOrdenar(h === "Lançamento" ? "lancamento" : "vencimento")}
@@ -1271,6 +1272,7 @@ export default function ContasAPagarPage() {
                         {ordenarPor === (h === "Lançamento" ? "lancamento" : "vencimento") && <span>{ordemAsc ? "▲" : "▼"}</span>}
                       </button>
                     ) : h}
+                    <ResizeHandle onMouseDown={startResize(c.key)} />
                   </th>
                 ); })}
               </tr>

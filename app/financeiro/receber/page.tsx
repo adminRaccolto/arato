@@ -34,6 +34,7 @@
 // Aceita Produtor e Empresa no mesmo borderô (Seção 317 — origem_tabela em
 // pagamento_lote_itens).
 // ═══════════════════════════════════════════════════════════════════════════
+import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -189,7 +190,7 @@ const COLS_GRID_CR: ColDef[] = [
 
 export default function ContasAReceberPage() {
   const { fazendaId, fazendaIds, contaId, emailUsuario } = useAuth();
-  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols } = useColunasGrid("cr", COLS_GRID_CR);
+  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cr", COLS_GRID_CR);
   const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
   const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => COLS_GRID_CR.find(c => c.key === k)).filter((c): c is ColDef => !!c);
 
@@ -1203,7 +1204,7 @@ export default function ContasAReceberPage() {
                     <input type="checkbox" checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))} onChange={toggleTodos} />
                   </th>
                 ); return (
-                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" }}>
+                  <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" , width: cw(c.key), position: "relative"}}>
                     {h === "Lançamento" || h === "Vencimento" ? (
                       <button
                         onClick={() => clicarOrdenar(h === "Lançamento" ? "lancamento" : "vencimento")}
@@ -1213,6 +1214,7 @@ export default function ContasAReceberPage() {
                         {ordenarPor === (h === "Lançamento" ? "lancamento" : "vencimento") && <span>{ordemAsc ? "▲" : "▼"}</span>}
                       </button>
                     ) : h}
+                    <ResizeHandle onMouseDown={startResize(c.key)} />
                   </th>
                 ); })}
               </tr>
