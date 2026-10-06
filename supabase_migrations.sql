@@ -15982,3 +15982,92 @@ CREATE POLICY pref_grid_own ON preferencias_grid FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 328 — Grid de CP/CR: OG, safra, ciclo e centro de custo dos títulos de EMPRESA.
+-- A sincronização de empresa_lancamentos gravava NULL nesses campos mesmo quando o título
+-- tinha OG/safra/ciclo (Seção 324). Resultado: a coluna Operação/Safra/Ciclo ficava "—".
+-- Esta versão lê os campos reais e recalcula todas as linhas existentes.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION fn_recalc_rel_lancamento_empresa(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v            empresa_lancamentos%ROWTYPE;
+  v_conta_id   uuid;
+  v_emp_nome   text;
+  v_pes_nome   text;
+  v_cc_nome    text;
+  v_safra_desc text;
+  v_ciclo_desc text;
+  v_og_nome    text;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM empresa_lancamentos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_lancamentos WHERE id = p_id AND origem_tabela = 'empresa_lancamentos';
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  SELECT nome INTO v_emp_nome FROM empresas WHERE id = v.empresa_id;
+  SELECT nome INTO v_pes_nome FROM pessoas  WHERE id = v.pessoa_id;
+  SELECT nome INTO v_cc_nome FROM centros_custo WHERE id = v.centro_custo_id;
+  IF v_cc_nome IS NULL THEN v_cc_nome := v.centro_custo; END IF;
+  SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v.ano_safra_id;
+  SELECT descricao INTO v_ciclo_desc FROM ciclos WHERE id = v.ciclo_id;
+  SELECT descricao INTO v_og_nome FROM operacoes_gerenciais WHERE id = v.operacao_gerencial_id;
+
+  v_status_norm := CASE v.status
+    WHEN 'pago'      THEN 'baixado'
+    WHEN 'cancelado' THEN 'cancelado'
+    WHEN 'parcial'   THEN 'parcial'
+    ELSE 'em_aberto'
+  END;
+
+  INSERT INTO rel_lancamentos (
+    id, origem_tabela, fazenda_id, conta_id, empresa_id, empresa_nome, produtor_id, produtor_nome,
+    tipo, descricao, categoria, valor, valor_pago, valor_multa, valor_juros, valor_desconto, moeda,
+    status_origem, status_normalizado, data_lancamento, data_vencimento, data_baixa,
+    pessoa_id, pessoa_nome, conta_bancaria, centro_custo_id, centro_custo_nome,
+    ano_safra_id, ano_safra_descricao, ciclo_id, ciclo_descricao,
+    operacao_gerencial_id, operacao_gerencial_nome, vinculo_atividade, entidade_contabil,
+    origem_lancamento, numero_documento, observacao, conciliado, lote_id, updated_at
+  ) VALUES (
+    v.id, 'empresa_lancamentos', v.fazenda_id, v_conta_id, v.empresa_id, v_emp_nome, NULL, NULL,
+    v.tipo, v.descricao, v.categoria, v.valor, v.valor_pago, v.valor_multa, v.valor_juros, v.valor_desconto, v.moeda,
+    v.status, v_status_norm, NULL, v.data_vencimento, v.data_pagamento,
+    v.pessoa_id, v_pes_nome, v.conta_bancaria, v.centro_custo_id, v_cc_nome,
+    v.ano_safra_id, v_safra_desc, v.ciclo_id, v_ciclo_desc,
+    v.operacao_gerencial_id, v_og_nome, NULL, NULL,
+    v.origem, v.numero_documento, v.observacao, v.conciliado, v.lote_id, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id,
+    empresa_id = EXCLUDED.empresa_id, empresa_nome = EXCLUDED.empresa_nome,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome,
+    tipo = EXCLUDED.tipo, descricao = EXCLUDED.descricao, categoria = EXCLUDED.categoria,
+    valor = EXCLUDED.valor, valor_pago = EXCLUDED.valor_pago, valor_multa = EXCLUDED.valor_multa,
+    valor_juros = EXCLUDED.valor_juros, valor_desconto = EXCLUDED.valor_desconto, moeda = EXCLUDED.moeda,
+    status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    data_lancamento = EXCLUDED.data_lancamento, data_vencimento = EXCLUDED.data_vencimento, data_baixa = EXCLUDED.data_baixa,
+    pessoa_id = EXCLUDED.pessoa_id, pessoa_nome = EXCLUDED.pessoa_nome, conta_bancaria = EXCLUDED.conta_bancaria,
+    centro_custo_id = EXCLUDED.centro_custo_id, centro_custo_nome = EXCLUDED.centro_custo_nome,
+    ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    ciclo_id = EXCLUDED.ciclo_id, ciclo_descricao = EXCLUDED.ciclo_descricao,
+    operacao_gerencial_id = EXCLUDED.operacao_gerencial_id, operacao_gerencial_nome = EXCLUDED.operacao_gerencial_nome,
+    origem_lancamento = EXCLUDED.origem_lancamento, numero_documento = EXCLUDED.numero_documento,
+    observacao = EXCLUDED.observacao, conciliado = EXCLUDED.conciliado, lote_id = EXCLUDED.lote_id,
+    updated_at = now();
+END;
+$$;
+
+-- Recalcula os títulos de empresa já existentes (OG/safra/ciclo/CC passam a aparecer)
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT id FROM empresa_lancamentos LOOP
+    PERFORM fn_recalc_rel_lancamento_empresa(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

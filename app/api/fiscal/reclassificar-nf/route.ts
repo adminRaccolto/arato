@@ -54,7 +54,15 @@ export async function POST(request: NextRequest) {
       .select("id");
     if (updLanc) return NextResponse.json({ ok: false, error: updLanc.message }, { status: 500 });
 
-    return NextResponse.json({ ok: true, lancamentos_atualizados: lancs?.length ?? 0 });
+    // Títulos de EMPRESA gerados pela mesma NF também recebem a nova OG / centro de custo
+    const { data: empLancs, error: updEmp } = await adm
+      .from("empresa_lancamentos")
+      .update(patch)
+      .eq("nf_entrada_id", body.nf_id)
+      .select("id");
+    if (updEmp) return NextResponse.json({ ok: false, error: updEmp.message }, { status: 500 });
+
+    return NextResponse.json({ ok: true, lancamentos_atualizados: lancs?.length ?? 0, empresa_lancamentos_atualizados: empLancs?.length ?? 0 });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

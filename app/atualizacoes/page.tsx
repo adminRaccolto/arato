@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-m",
+    data: "06/10/2026",
+    titulo: "CP e CR: operação, safra e ciclo de empresa aparecem no grid",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Títulos de empresa passam a mostrar a Operação Gerencial, a safra, o ciclo e o centro de custo no grid. Ao processar uma NF de empresa, esses campos são copiados para o CP." },
+      { tipo: "correcao", texto: "Reclassificar uma NF também atualiza os títulos de empresa gerados por ela." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.06-l",
     data: "06/10/2026",
     titulo: "CP e CR: ações só no popup",

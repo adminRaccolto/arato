@@ -3142,6 +3142,11 @@ export async function processarNfEntrada(
         forma_pagamento:  opts?.formaPagamento ?? undefined,
         origem:        "nf_entrada" as const,
         nf_entrada_id: nfId,
+        // Mesmos vínculos do CP de produtor (safra, ciclo, OG, centro de custo) — antes ficavam vazios
+        ano_safra_id:          opts?.anoSafraId ?? undefined,
+        ciclo_id:              opts?.cicloId ?? undefined,
+        operacao_gerencial_id: opts?.operacaoGerencialId ?? undefined,
+        centro_custo_id:       opts?.centroCustoId ?? undefined,
       };
 
       // Usa API route com service_role_key — evita 42501 por JWT expirado
