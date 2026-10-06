@@ -1390,6 +1390,7 @@ export default function ContasAReceberPage() {
                       {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                     </span>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
+                    <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cr" zIndex={1500} />
                     <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
                   </div>
                 </div>

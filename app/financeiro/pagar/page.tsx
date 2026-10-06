@@ -1004,6 +1004,8 @@ export default function ContasAPagarPage() {
   }
 
   const [modalConfirmarBordero, setModalConfirmarBordero] = useState<PagamentoLote | null>(null);
+  // Popup de ações do borderô (mesmo padrão do popup de CP/CR)
+  const [popBordero, setPopBordero] = useState<{ b: PagamentoLote; x: number; y: number } | null>(null);
   const [confirmData, setConfirmData] = useState("");
   const [confirmConta, setConfirmConta] = useState("");
   const [confirmContasOpcoes, setConfirmContasOpcoes] = useState<ContaBancaria[]>([]);
@@ -1281,7 +1283,7 @@ export default function ContasAPagarPage() {
                 if (entry.kind === "bordero") {
                   const b = entry.b;
                   return (
-                    <tr key={`bdr-${b.id}`} style={{ background: "#FBF3E0", borderBottom: "0.5px solid #C9921B60" }}>
+                    <tr key={`bdr-${b.id}`} onClick={e => setPopBordero({ b, x: e.clientX, y: e.clientY })} style={{ background: "#FBF3E0", borderBottom: "0.5px solid #C9921B60", cursor: "pointer" }}>
                       <td colSpan={colunasVisiveis.length} style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1289,11 +1291,7 @@ export default function ContasAPagarPage() {
                             <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
                             <span style={{ fontSize: 12, color: "#555" }}>{(b.itens ?? []).length} título{(b.itens ?? []).length !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
                           </div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => abrirVerBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Ver Itens</button>
-                            <button onClick={() => abrirConfirmarBordero(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>✅ Confirmar Pagamento</button>
-                            <button onClick={() => cancelarBorderoAction(b)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#791F1F" }}>✕ Cancelar</button>
-                          </div>
+                          <span style={{ fontSize: 11, color: "#7A5200" }}>clique para ver as ações ›</span>
                         </div>
                       </td>
                     </tr>
@@ -1419,6 +1417,37 @@ export default function ContasAPagarPage() {
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}
       {menuColunas && <ContextMenuColunas x={menuColunas.x} y={menuColunas.y} colunas={COLS_GRID_CP} ordemTodas={ordemCols} visiveis={visCols} onToggle={toggleCol} onMover={moverColuna} onResetar={resetarCols} onClose={() => setMenuColunas(null)} />}
+      {popBordero && (() => {
+        const b = popBordero.b;
+        const W = 560, H = 360;
+        const top  = Math.min(popBordero.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
+        const left = Math.max(8, Math.min(popBordero.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
+        const qtd = (b.itens ?? []).length;
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopBordero(null)} />
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
+                <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#FBF3E0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#7A5200" }}>📋 BORDERÔ PENDENTE</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}</div>
+                </div>
+                <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>Títulos</div><div style={{ color: "#1a1a1a" }}>{qtd} título{qtd !== 1 ? "s" : ""}</div></div>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>Total</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>Criado em</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.created_at)}</div></div>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>Situação</div><div style={{ color: "#1a1a1a" }}>Aguardando confirmação</div></div>
+                </div>
+              </div>
+              <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6 }}>
+                <button onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver Itens</button>
+                <button onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>✅ Confirmar Pagamento</button>
+                <button onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
       {popover && (() => {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
@@ -1446,6 +1475,7 @@ export default function ContasAPagarPage() {
                       {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                     </span>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
+                    <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cp" zIndex={1500} />
                     <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
                   </div>
                 </div>

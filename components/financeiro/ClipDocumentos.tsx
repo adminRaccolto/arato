@@ -7,10 +7,12 @@ import { supabase } from "../../lib/supabase";
 // DANFE (quando a NF do lançamento tem chave de acesso), NF, boleto e comprovante anexados.
 type Doc = { label: string; url: string };
 
-export default function ClipDocumentos({ origemTabela, lancamentoId, tipo }: {
+export default function ClipDocumentos({ origemTabela, lancamentoId, tipo, zIndex = 900 }: {
   origemTabela: "lancamentos" | "empresa_lancamentos";
   lancamentoId: string;
   tipo: "cp" | "cr";
+  /** Camada da lista de anexos. Dentro de um popup, passar acima dele (ex.: 1500). */
+  zIndex?: number;
 }) {
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -67,9 +69,9 @@ export default function ClipDocumentos({ origemTabela, lancamentoId, tipo }: {
       </button>
       {aberto && (
         <>
-          <div onClick={() => setAberto(false)} style={{ position: "fixed", inset: 0, zIndex: 900 }} />
+          <div onClick={() => setAberto(false)} style={{ position: "fixed", inset: 0, zIndex: zIndex }} />
           <div onClick={e => e.stopPropagation()}
-            style={{ position: "fixed", top: pos.top, left: pos.left, width: 260, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 901, padding: 8 }}>
+            style={{ position: "fixed", top: pos.top, left: pos.left, width: 260, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: zIndex + 1, padding: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#555", padding: "4px 6px 8px" }}>Documentos vinculados</div>
             {carregando && <div style={{ fontSize: 12, color: "#888", padding: "6px" }}>Carregando…</div>}
             {!carregando && docs.length === 0 && <div style={{ fontSize: 12, color: "#888", padding: "6px" }}>Nenhum documento vinculado.</div>}

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-j",
+    data: "06/10/2026",
+    titulo: "Borderô com popup de ações; anexos no popup de CP e CR",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "O borderô pendente abre um popup com Ver Itens, Confirmar Pagamento e Cancelar, no mesmo padrão do CP e do CR." },
+      { tipo: "melhoria", texto: "O ícone de anexo agora também aparece no popup de CP e CR, para abrir os documentos sem sair do popup." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.06-i",
     data: "06/10/2026",
     titulo: "Olívia: caminhos de menu corrigidos",
