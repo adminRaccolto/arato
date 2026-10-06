@@ -81,10 +81,28 @@ function envelopeConsCad(cuf: string, uf: string, ie?: string, cnpj?: string, cp
   );
 }
 
+export interface CadastroOpcao {
+  ie?: string;
+  cnpj?: string;
+  cpf?: string;
+  uf?: string;
+  situacao?: "habilitada" | "desabilitada";
+  nome?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  municipio?: string;
+  municipio_ibge?: string;
+  cep?: string;
+}
+
 export interface CadastroConsultado {
   cStat: string;
   xMotivo: string;
   encontrados: number;
+  // Todos os cadastros devolvidos pela SEFAZ (quando há mais de um, a tela deixa escolher)
+  opcoes?: CadastroOpcao[];
   ie?: string;
   cnpj?: string;
   cpf?: string;
@@ -115,28 +133,34 @@ function parseConsCad(soapResp: string): CadastroConsultado {
     return { cStat: cStat || "999", xMotivo: xMotivo || "SEFAZ não retornou dados cadastrais para essa consulta", encontrados: 0 };
   }
 
-  // cStat 112 = múltiplos contribuintes encontrados — usa o primeiro, mas avisa a quantidade
-  const first = infCadBlocks[0] ?? "";
-  const ender = blocoTag(first, "ender");
-  const cSit  = tagVal(first, "cSit");
+  // Cada infCad é um cadastro; cStat 112 = mais de um. Todos vão em "opcoes" para a tela escolher.
+  const opcoes = infCadBlocks.map(bloco => {
+    const ender = blocoTag(bloco, "ender");
+    const cSit  = tagVal(bloco, "cSit");
+    return {
+      ie:             tagVal(bloco, "IE")  || undefined,
+      cnpj:           tagVal(bloco, "CNPJ") || undefined,
+      cpf:            tagVal(bloco, "CPF")  || undefined,
+      uf:             tagVal(bloco, "UF")   || undefined,
+      situacao:       cSit === "1" ? "habilitada" as const : cSit === "0" ? "desabilitada" as const : undefined,
+      nome:           tagVal(bloco, "xNome") || undefined,
+      logradouro:     tagVal(ender, "xLgr")    || undefined,
+      numero:         tagVal(ender, "nro")     || undefined,
+      complemento:    tagVal(ender, "xCpl")    || undefined,
+      bairro:         tagVal(ender, "xBairro") || undefined,
+      municipio:      tagVal(ender, "xMun")    || undefined,
+      municipio_ibge: tagVal(ender, "cMun")    || undefined,
+      cep:            tagVal(ender, "CEP")     || undefined,
+    };
+  });
+  const primeiro = opcoes[0];
 
   return {
     cStat:      cStat || "111",
     xMotivo:    xMotivo || "Consulta realizada com sucesso",
     encontrados: infCadBlocks.length,
-    ie:             tagVal(first, "IE")  || undefined,
-    cnpj:           tagVal(first, "CNPJ") || undefined,
-    cpf:            tagVal(first, "CPF")  || undefined,
-    uf:             tagVal(first, "UF")   || undefined,
-    situacao:       cSit === "1" ? "habilitada" : cSit === "0" ? "desabilitada" : undefined,
-    nome:           tagVal(first, "xNome") || undefined,
-    logradouro:     tagVal(ender, "xLgr")    || undefined,
-    numero:         tagVal(ender, "nro")     || undefined,
-    complemento:    tagVal(ender, "xCpl")    || undefined,
-    bairro:         tagVal(ender, "xBairro") || undefined,
-    municipio:      tagVal(ender, "xMun")    || undefined,
-    municipio_ibge: tagVal(ender, "cMun")    || undefined,
-    cep:            tagVal(ender, "CEP")     || undefined,
+    opcoes,
+    ...primeiro,
   };
 }
 

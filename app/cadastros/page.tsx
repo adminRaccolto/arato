@@ -305,6 +305,7 @@ function CadastrosInner() {
   // Mapa produtor_id → empresa_id para Produtores PJ (preenchido ao salvar/carregar)
   const [prodEmpresaMap, setProdEmpresaMap] = useState<Record<string, string>>({});
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const [escolhaSintegra, setEscolhaSintegra] = useState<{ opcoes: OpcaoSintegra[]; aoEscolher: (o: OpcaoSintegra) => void } | null>(null);
   const [consultandoSintegra, setConsultandoSintegra] = useState<string | null>(null); // "new" | `existing-${idx}` | null
   const [tabProd, setTabProd]         = useState<"dados"|"ies">("dados");
   const [prodIEs, setProdIEs]         = useState<ProdutorIE[]>([]);
@@ -1092,6 +1093,7 @@ function CadastrosInner() {
       const d = await res.json().catch(() => ({ error: `Resposta inválida do servidor (HTTP ${res.status}).` }));
       if (!res.ok || d.error) { alert(d.error || "Falha ao consultar Sintegra"); return; }
       if (!d.encontrados) { alert(d.xMotivo || "Nenhum cadastro encontrado para essa IE."); return; }
+      const aplicar = (d: OpcaoSintegra) => {
       setNewIE(p => ({
         ...p,
         municipio:      d.municipio      || p.municipio,
@@ -1103,8 +1105,10 @@ function CadastrosInner() {
         bairro:         d.bairro         || p.bairro,
         cep:            d.cep ? formatCep(d.cep) : p.cep,
       }));
-      if (d.nome && !fProd.nome.trim()) setFProd(p => ({ ...p, nome: d.nome }));
-      if (d.encontrados > 1) alert(`Atenção: a SEFAZ retornou ${d.encontrados} cadastros para essa IE. Foi usado o primeiro — confira os dados antes de salvar.`);
+      if (d.nome && !fProd.nome.trim()) setFProd(p => ({ ...p, nome: d.nome ?? p.nome }));
+      };
+      if (d.opcoes && d.opcoes.length > 1) { setEscolhaSintegra({ opcoes: d.opcoes, aoEscolher: aplicar }); return; }
+      aplicar(d);
     } catch (e) {
       alert(`Falha ao consultar Sintegra: ${e}`);
     } finally {
@@ -1125,6 +1129,7 @@ function CadastrosInner() {
       const d = await res.json().catch(() => ({ error: `Resposta inválida do servidor (HTTP ${res.status}).` }));
       if (!res.ok || d.error) { alert(d.error || "Falha ao consultar Sintegra"); return; }
       if (!d.encontrados) { alert(d.xMotivo || "Nenhum cadastro encontrado para essa IE."); return; }
+      const aplicar = (d: OpcaoSintegra) => {
       setProdIEs(prev => prev.map((x, j) => j === idx ? {
         ...x,
         municipio:      d.municipio      || x.municipio,
@@ -1136,8 +1141,10 @@ function CadastrosInner() {
         bairro:         d.bairro         || x.bairro,
         cep:            d.cep ? formatCep(d.cep) : x.cep,
       } : x));
-      if (d.nome && !fProd.nome.trim()) setFProd(p => ({ ...p, nome: d.nome }));
-      if (d.encontrados > 1) alert(`Atenção: a SEFAZ retornou ${d.encontrados} cadastros para essa IE. Foi usado o primeiro — confira os dados antes de salvar.`);
+      if (d.nome && !fProd.nome.trim()) setFProd(p => ({ ...p, nome: d.nome ?? p.nome }));
+      };
+      if (d.opcoes && d.opcoes.length > 1) { setEscolhaSintegra({ opcoes: d.opcoes, aoEscolher: aplicar }); return; }
+      aplicar(d);
     } catch (e) {
       alert(`Falha ao consultar Sintegra: ${e}`);
     } finally {
@@ -7349,6 +7356,31 @@ function CadastrosInner() {
       )}
 
       {/* Modal Produtor */}
+      {escolhaSintegra && (
+        <div onClick={() => setEscolhaSintegra(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, padding: "18px 20px", boxShadow: "0 8px 32px rgba(11,45,80,0.25)" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", marginBottom: 4 }}>Escolha o cadastro</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>A SEFAZ devolveu {escolhaSintegra.opcoes.length} cadastros para esta IE. Escolha o que corresponde ao estabelecimento.</div>
+            <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflowY: "auto" }}>
+              {escolhaSintegra.opcoes.map((o, k) => (
+                <button key={k} onClick={() => { const f = escolhaSintegra.aoEscolher; setEscolhaSintegra(null); f(o); }}
+                  style={{ textAlign: "left", padding: "10px 12px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", cursor: "pointer" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{o.nome || "—"}</div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                    IE {o.ie || "—"} · {o.cnpj ? `CNPJ ${o.cnpj}` : o.cpf ? `CPF ${o.cpf}` : "sem CNPJ/CPF"} · {o.situacao ?? "situação não informada"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                    {[o.logradouro, o.numero, o.bairro, o.municipio && `${o.municipio}${o.uf ? `/${o.uf}` : ""}`, o.cep].filter(Boolean).join(" · ") || "endereço não informado"}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+              <button onClick={() => setEscolhaSintegra(null)} style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", cursor: "pointer", fontSize: 12 }}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
       {modalProd && (
         <Modal titulo={editProd ? "Editar Produtor" : "Novo Produtor"} onClose={() => setModalProd(false)} width={960}>
           {/* Abas */}
@@ -11272,6 +11304,13 @@ function CartoesCreditoCadastro({ contaId, fazendaId }: { contaId: string; fazen
     </div>
   );
 }
+
+// Cadastro devolvido pela SEFAZ (Sintegra) — uma IE pode ter mais de um cadastro
+type OpcaoSintegra = {
+  ie?: string; cnpj?: string; cpf?: string; uf?: string; situacao?: string; nome?: string;
+  logradouro?: string; numero?: string; complemento?: string; bairro?: string;
+  municipio?: string; municipio_ibge?: string; cep?: string;
+};
 
 export default function Cadastros() {
   return <Suspense><CadastrosInner /></Suspense>;

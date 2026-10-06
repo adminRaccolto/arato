@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-o",
+    data: "06/10/2026",
+    titulo: "Sintegra: escolher o cadastro quando a SEFAZ devolve mais de um",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Quando a SEFAZ devolve mais de um cadastro para a mesma IE, a tela mostra a lista (nome, CNPJ/CPF, situação e endereço) para escolher, em vez de usar o primeiro sem avisar." },
+    ],
+    onde: "Cadastros → Produtores → Inscrições Estaduais",
+  },
+  {
     versao: "2026.10.06-n",
     data: "06/10/2026",
     titulo: "Botão Hoje em todos os campos de data",
