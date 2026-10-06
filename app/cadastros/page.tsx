@@ -1089,7 +1089,7 @@ function CadastrosInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: newIE.fazenda_id || fazendaId, uf: newIE.estado, ie: newIE.inscricao_estadual }),
       });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({ error: `Resposta inválida do servidor (HTTP ${res.status}).` }));
       if (!res.ok || d.error) { alert(d.error || "Falha ao consultar Sintegra"); return; }
       if (!d.encontrados) { alert(d.xMotivo || "Nenhum cadastro encontrado para essa IE."); return; }
       setNewIE(p => ({
@@ -1122,7 +1122,7 @@ function CadastrosInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fazenda_id: ie.fazenda_id || fazendaId, uf: ie.estado, ie: ie.inscricao_estadual }),
       });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({ error: `Resposta inválida do servidor (HTTP ${res.status}).` }));
       if (!res.ok || d.error) { alert(d.error || "Falha ao consultar Sintegra"); return; }
       if (!d.encontrados) { alert(d.xMotivo || "Nenhum cadastro encontrado para essa IE."); return; }
       setProdIEs(prev => prev.map((x, j) => j === idx ? {

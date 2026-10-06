@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 // cadastro é um serviço de busca (qualquer certificado válido consulta
 // qualquer contribuinte daquela UF), não precisa ser o certificado do próprio
 // produtor consultado.
-export async function POST(req: NextRequest) {
+async function consultar(req: NextRequest) {
   const cookieStore = await cookies();
   const supabaseUser = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,5 +95,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(resultado);
   } catch (e) {
     return NextResponse.json({ error: `Falha ao consultar SEFAZ: ${e}` }, { status: 502 });
+  }
+}
+
+// Sempre responde JSON — se algo falhar antes do try interno, o cliente recebia uma página de erro
+// HTML e a tela mostrava "SyntaxError" em vez do motivo.
+export async function POST(req: NextRequest) {
+  try {
+    return await consultar(req);
+  } catch (e) {
+    console.error("[consultar-cadastro]", e);
+    return NextResponse.json({ error: `Falha no servidor ao consultar o Sintegra: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }
 }
