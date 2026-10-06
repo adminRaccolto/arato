@@ -1421,13 +1421,14 @@ export default function ContasAPagarPage() {
         const nome = l.empresa_nome ?? l.pessoa_nome ?? l.descricao ?? "—";
         const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
         const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
-        const W = 380, H = 420;
+        const W = 560, H = 420;
         const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
         const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
         return (
           <>
             <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
-            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
               {/* Header */}
               <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -1512,22 +1513,23 @@ export default function ContasAPagarPage() {
                 )}
               </div>
 
-              {/* Ações rápidas */}
-              <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 6, flexWrap: "wrap" }}>
+              </div>
+              {/* Ações — coluna vertical na margem direita */}
+              <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6, maxHeight: "85vh", overflowY: "auto" }}>
                 {aberto && (
-                  <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>↓ Baixar</button>
+                  <button onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</button>
                 )}
                 {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
-                  <button onClick={() => { setPopover(null); reabrir(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↺ Reabrir</button>
+                  <button onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↺ Reabrir</button>
                 )}
                 {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
-                  <button onClick={() => { setPopover(null); abrirReprog(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>↕ Reprogramar</button>
+                  <button onClick={() => { setPopover(null); abrirReprog(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↕ Reprogramar</button>
                 )}
                 {l.status_normalizado !== "baixado" && (
-                  <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>✎ Editar</button>
+                  <button onClick={() => { setPopover(null); abrirEditar(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✎ Editar</button>
                 )}
                 {podeExcluir(l) && (
-                  <button onClick={() => { setPopover(null); excluirLanc(l); }} style={{ flex: 1, minWidth: 80, padding: "7px 10px", borderRadius: 7, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>🗑 Excluir</button>
+                  <button onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</button>
                 )}
               </div>
             </div>

@@ -621,13 +621,15 @@ export default function DocumentosFiscaisPage() {
         const cteCarregando = cteDetalheCarregando === d.id;
         const pendente = d.status_normalizado === "pendente";
         const processada = d.status_normalizado === "processada";
-        const W = 440, H = 480;
+        const W = 640, H = 480;
         const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
         const left = Math.max(8, Math.min(popover.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
         return (
           <>
             <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
-            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, maxHeight: "85vh", overflowY: "auto", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE" }}>
+            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, maxHeight: "85vh", display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              {/* Conteúdo (rola sozinho; ações ficam na coluna da direita) */}
+              <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
               {/* Header */}
               <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA", position: "sticky", top: 0 }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -785,17 +787,18 @@ export default function DocumentosFiscaisPage() {
                 })()}
               </div>
 
-              {/* Ações — barra embaixo, mesmo modelo do popover de CP/CR */}
-              <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 6, flexWrap: "wrap" }}>
+              </div>
+              {/* Ações — coluna vertical na margem direita */}
+              <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6, maxHeight: "85vh", overflowY: "auto" }}>
                 {d.tipo_doc === "NF" && pendente && (
                   <button onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#1A5C38", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#1A5C38", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>
                     ▶ Processar
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (
                   <button onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     Abrir NF
                   </button>
                 )}
@@ -804,31 +807,31 @@ export default function DocumentosFiscaisPage() {
                 {d.tipo_doc === "NF" && d.chave && (
                   <a href={`/api/fiscal/danfe?chave=${d.chave}&fazenda_id=${d.fazenda_id ?? ""}`}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#F0FDF4", color: "#15803D", border: "0.5px solid #86EFAC", cursor: "pointer", fontWeight: 700, fontSize: 11, textDecoration: "none", textAlign: "center" }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F0FDF4", color: "#15803D", border: "0.5px solid #86EFAC", cursor: "pointer", fontWeight: 700, fontSize: 11, textDecoration: "none", textAlign: "center" }}>
                     ↗ DANFE
                   </a>
                 )}
                 {d.tipo_doc === "NF" && processada && nf?.tipo_entrada === "insumos" && (
                   <button onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #E24B4A50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #E24B4A50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     ↩ Devolver
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (
                   <button onClick={() => estornarNfGrid(d)}
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#FEF3E2", color: "#8A4A00", border: "0.5px solid #F6C87A", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF3E2", color: "#8A4A00", border: "0.5px solid #F6C87A", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     ↺ Estornar
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (
                   <button onClick={() => abrirReclassificarGrid(d)}
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     🏷 Reclassificar
                   </button>
                 )}
                 {d.tipo_doc === "NFS" && (
                   <button onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
-                    style={{ flex: 1, minWidth: 80, padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     Abrir NFS
                   </button>
                 )}
