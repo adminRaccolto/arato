@@ -7357,7 +7357,7 @@ function CadastrosInner() {
 
       {/* Modal Produtor */}
       {escolhaSintegra && (
-        <div onClick={() => setEscolhaSintegra(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div onClick={() => setEscolhaSintegra(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, padding: "18px 20px", boxShadow: "0 8px 32px rgba(11,45,80,0.25)" }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", marginBottom: 4 }}>Escolha o cadastro</div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>A SEFAZ devolveu {escolhaSintegra.opcoes.length} cadastros para esta IE. Escolha o que corresponde ao estabelecimento.</div>
