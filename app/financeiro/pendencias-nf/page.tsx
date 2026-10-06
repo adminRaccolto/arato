@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -135,6 +136,7 @@ export default function PendenciasNfPage() {
   // ── Salva classificação de um item ──────────────────────
 
   async function salvarItemClassif(item: NfImportadaItemSieg) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar item classif)", perigo: false }))) return;
     const c = classif[item.id];
     if (!c) return;
 
@@ -179,6 +181,7 @@ export default function PendenciasNfPage() {
   // ── Ignorar NF ────────────────────────────────────────
 
   async function ignorarNf(nfId: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (ignorarNf).", perigo: true }))) return;
     await supabase.from("nf_importadas_sieg").update({ status: "ignorada" }).eq("id", nfId);
     await supabase.from("nf_importada_itens_sieg").update({ status_item: "ignorado" }).eq("nf_id", nfId);
     setNfs(prev => prev.map(n => n.id === nfId ? { ...n, status: "ignorada" as NfImportadaSieg["status"] } : n));
@@ -188,6 +191,7 @@ export default function PendenciasNfPage() {
   // ── Criar regra ───────────────────────────────────────
 
   async function criarRegra() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar regra)", perigo: false }))) return;
     if (!modalRegra || !fazendaId) return;
     setCriandoRegra(true);
     const { item, cnpj } = modalRegra;

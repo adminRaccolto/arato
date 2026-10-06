@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
@@ -313,6 +314,7 @@ export default function ParceriasPage() {
 
   // ── Salvar parceria ───────────────────────────────────────
   const salvarParceria = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar parceria)", perigo: false }))) return;
     if (!parcForm) return;
     if (!parcForm.nome.trim()) { setErrMsg("Nome da parceria é obrigatório."); return; }
     const totalPct = participants.reduce((s, p) => s + Number(p.percentual || 0), 0);
@@ -423,6 +425,7 @@ export default function ParceriasPage() {
   };
 
   const salvarGrupo = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar grupo)", perigo: false }))) return;
     if (!grupoForm) return;
     if (!grupoForm.nome.trim()) return;
     try {
@@ -519,6 +522,7 @@ export default function ParceriasPage() {
   };
 
   const salvarApuracaoFinal = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar apuracao final)", perigo: false }))) return;
     if (!apurParcId || apurCotas.length === 0) return;
     const receita = Number(apurForm.receita_total || 0);
     const custoTotal = Object.values(apurForm.custos).reduce((s, v) => s + Number(v || 0), 0);

@@ -14,6 +14,7 @@
 // movimentar estoque (baixa de saída). Entrada por XML, por chave de
 // acesso (consulta SEFAZ) ou manual.
 // ═══════════════════════════════════════════════════════════════════════════
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -160,7 +161,8 @@ export default function NotasPropriasExternasPage() {
   function addItem() { setItens(p => [...p, ITEM_VAZIO()]); }
   function removerItem(key: string) { setItens(p => p.filter(it => it.key !== key)); }
 
-  function avancar() {
+  async function avancar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Avancar)", perigo: false }))) return;
     if (!cab.numero.trim() || !cab.data_emissao || !cab.valor_total) {
       setErroWiz("Preencha número, data de emissão e valor total."); return;
     }
@@ -170,6 +172,7 @@ export default function NotasPropriasExternasPage() {
   }
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     if (cab.movimenta_estoque) {
       if (!cab.deposito_origem_id) { setErroWiz("Selecione o depósito de origem da saída."); return; }

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -280,6 +281,7 @@ export default function TriangulacaoPage() {
   // ── Salvar ────────────────────────────────────────────────────────────────
 
   const salvar = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvando(true);
     try {
@@ -326,6 +328,7 @@ export default function TriangulacaoPage() {
   };
 
   const marcarConcluido = async (item: Triangulacao) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Marcar concluido)", perigo: false }))) return;
     await supabase.from("triangulacoes").update({ status: "concluido" }).eq("id", item.id);
     setLista(p => p.map(x => x.id === item.id ? { ...x, status: "concluido" } : x));
   };

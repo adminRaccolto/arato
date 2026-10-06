@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
@@ -516,6 +517,7 @@ export default function Estoque() {
   }
 
   async function aplicarReconciliacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Aplicar reconciliacao)", perigo: false }))) return;
     if (!reconcItens.length) return;
     setReconcAplicando(true);
     try {
@@ -599,6 +601,7 @@ export default function Estoque() {
 
   // ── Helpers ──
   async function salvar(fn: () => Promise<void>) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (exigeFazenda()) return;
     try { setSalvando(true); await fn(); } catch (e) {
       const err = e as { message?: string; details?: string; hint?: string; code?: string };
@@ -608,7 +611,8 @@ export default function Estoque() {
   }
 
   // ── Movimentação manual ──
-  const salvarMovimentacaoManual = () => salvar(async () => {
+  const salvarMovimentacaoManual = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar movimentacao manual)", perigo: false }))) return;
     if (!fMov.insumo_id || !fMov.data) { alert("Selecione o item e a data."); return; }
     const qtd = parseFloat(fMov.quantidade) || 0;
     const qtdNova = parseFloat(fMov.quantidade_nova) || 0;
@@ -674,7 +678,8 @@ export default function Estoque() {
   };
 
   // ── Novo insumo ──
-  const salvarInsumo = () => salvar(async () => {
+  const salvarInsumo = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar insumo)", perigo: false }))) return;
     if (!fIns.nome.trim()) return;
     const cat = fIns.categoria as Insumo["categoria"];
     // Lista completa dos "insumos agrícolas de verdade" (ver comentário do tipo Insumo em
@@ -867,7 +872,8 @@ export default function Estoque() {
     }));
   };
 
-  const processarNf = () => salvar(async () => {
+  const processarNf = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Processar nf)", perigo: false }))) return;
     if (!nfCriada) return;
 
     // ── Validação: bloqueia se há mismatch de unidade sem conversão confirmada ──

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/AuthProvider";
@@ -89,6 +90,7 @@ export default function MigrarNF() {
   );
 
   async function executarMigracao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Executar migracao)", perigo: false }))) return;
     if (!fazendaId || !romaneioSel || !contratoOrigem || !contratoDestino) return;
     setExecutando(true);
     try {

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -396,6 +397,7 @@ export default function SegurosPage() {
   }
 
   async function salvarSinistro() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar sinistro)", perigo: false }))) return;
     if (!modalSinistro) return;
     if (!sForm.descricao.trim()) { setSErr("Informe a descrição do sinistro."); return; }
     setSSaving(true); setSErr("");
@@ -416,6 +418,7 @@ export default function SegurosPage() {
 
   // ── Pagar prêmio — cria lançamento CP + baixa ─────────────────────────────
   async function pagarPremio() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (pagarPremio).", perigo: false }))) return;
     if (!modalPremio || !fazendaId) return;
     setPremioSaving(true);
     try {

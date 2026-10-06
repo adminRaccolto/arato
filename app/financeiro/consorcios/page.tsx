@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -502,6 +503,7 @@ export default function ConsorciosPage() {
   }
 
   async function salvarConsorcio() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar consorcio)", perigo: false }))) return;
     // setCSaving(true) PRIMEIRO — garante feedback visual imediato em qualquer cenário
     setCSaving(true);
     setCErr("");
@@ -655,6 +657,7 @@ export default function ConsorciosPage() {
 
   // ── Pagar parcela ─────────────────────────────────────────
   async function pagarParcela() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Pagar parcela)", perigo: false }))) return;
     if (!modalParcela) return;
     setParcelaSaving(true);
     try {
@@ -677,6 +680,7 @@ export default function ConsorciosPage() {
 
   // ── Salvar rateio por ciclo ───────────────────────────────
   async function salvarRateio() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar rateio)", perigo: false }))) return;
     if (!consorEdit) return;
     setRateioSaving(true);
     setRateioErr("");

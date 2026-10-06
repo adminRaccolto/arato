@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "@/components/TopNav";
 import { createBrowserClient } from "@supabase/ssr";
@@ -70,6 +71,7 @@ export default function TaxasVariaveisPage() {
   }
 
   async function salvarManual() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar manual)", perigo: false }))) return;
     if (!fManual.valor_pct) return;
     setSalvando(true);
     const { error } = await supabase.from("taxas_variaveis_historico").upsert(

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -72,6 +73,7 @@ function CadastroInner() {
   }
 
   async function enviar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Enviar)", perigo: false }))) return;
     const e = validarStep2();
     if (Object.keys(e).length) { setErros(e); return; }
     setLoading(true);

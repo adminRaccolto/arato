@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
@@ -270,6 +271,7 @@ export default function Expedicao() {
 
   // ── Salvar nova carga ─────────────────────────────────────────────────────
   async function salvarNovaCarga() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar nova carga)", perigo: false }))) return;
     if (!fazendaId || !contratoSel || !nova.rota || !nova.data_saida) return;
     setSaving(true);
     const numero = `EXP-${Date.now().toString().slice(-6)}`;
@@ -292,6 +294,7 @@ export default function Expedicao() {
 
   // ── Avançar status ────────────────────────────────────────────────────────
   async function avancarStatus(carga: Carga) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Avancar status)", perigo: false }))) return;
     const idx = PIPELINE.indexOf(carga.status);
     if (idx < 0 || idx >= PIPELINE.length - 1) return;
     const proximo = PIPELINE[idx + 1];
@@ -318,6 +321,7 @@ export default function Expedicao() {
 
   // ── Emitir MDF-e simulado ─────────────────────────────────────────────────
   async function emitirMdfe(carga: Carga) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir mdfe)", perigo: false }))) return;
     if (!carga.nfe_chave && carga.rota !== "transbordo_sem_nf") {
       alert("Gere a NF-e antes do MDF-e."); return;
     }
@@ -333,6 +337,7 @@ export default function Expedicao() {
 
   // ── Correção de peso ──────────────────────────────────────────────────────
   async function salvarCorrecaoPeso() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar correcao peso)", perigo: false }))) return;
     if (!modalPeso || !pesoDestino) return;
     const pdKg = Number(pesoDestino);
     const divKg = (modalPeso.peso_liquido_kg ?? 0) - pdKg;

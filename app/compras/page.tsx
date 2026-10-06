@@ -15,6 +15,7 @@
 // 100% em pedidos_compra/pedidos_compra_itens/pedidos_compra_entregas,
 // exatamente como antes — o trigger só reflete depois.
 // ═══════════════════════════════════════════════════════════════════════════
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
@@ -431,6 +432,7 @@ export default function ComprasPage() {
   }
 
   async function salvarNovoForn() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar novo forn)", perigo: false }))) return;
     if (!novoFornForm.nome.trim()) { setErrForn("Preencha o Nome."); return; }
     if (!fazendaId) return;
     setSalvandoForn(true);
@@ -1055,6 +1057,7 @@ export default function ComprasPage() {
   }
 
   const salvar = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     if (!f.operacao) { setErroModal("Operação Gerencial"); return; }
     if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErroModal("Fornecedor"); return; }

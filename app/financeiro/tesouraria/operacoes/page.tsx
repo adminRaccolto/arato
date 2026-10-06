@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
@@ -89,6 +90,7 @@ export default function OperacoesTesourariaPage() {
   }
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazAtiva || !form.nome.trim()) { setErr("Informe o nome da operação."); return; }
     setSaving(true); setErr("");
     try {

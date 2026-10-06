@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -117,6 +118,7 @@ export default function PlanoContasPage() {
     setModal(true);
   }
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId || !form.codigo || !form.nome) { setErro("Código e Nome são obrigatórios."); return; }
     setSalvando(true); setErro(null);
     try {
@@ -165,6 +167,7 @@ export default function PlanoContasPage() {
     setModalOg(true);
   }
   async function salvarOg() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar og)", perigo: false }))) return;
     if (!formOg.classificacao || !formOg.descricao) { setErroOg("Código e Descrição são obrigatórios."); return; }
     if (!contaId) { setErroOg("Conta não identificada."); return; }
     setSalvandoOg(true); setErroOg(null);

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
@@ -152,13 +153,15 @@ export default function PlanoAgricola() {
   }, [fazendaId]);
 
   async function salvar(fn: () => Promise<void>) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     try { setSalvando(true); await fn(); }
     catch (e) { alert((e as { message?: string })?.message || JSON.stringify(e)); }
     finally { setSalvando(false); }
   }
 
   // ── Concluir Operação ──
-  const concluirOp = () => salvar(async () => {
+  const concluirOp = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Concluir op)", perigo: false }))) return;
     if (!modalConcluir) return;
     const { cicloId, op } = modalConcluir;
     const upd: Partial<Operacao> = {
@@ -179,7 +182,8 @@ export default function PlanoAgricola() {
   });
 
   // ── Registrar Colheita ──
-  const registrarColheita = () => salvar(async () => {
+  const registrarColheita = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Registrar colheita)", perigo: false }))) return;
     if (!modalColheita) return;
     const prod = Number(fColh.produtividade_sc_ha.replace(",", ".")) || undefined;
     await atualizarSafra(modalColheita.id, {
@@ -194,7 +198,8 @@ export default function PlanoAgricola() {
   });
 
   // ── Adicionar Operação ──
-  const addOp = () => salvar(async () => {
+  const addOp = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (addOp).", perigo: false }))) return;
     if (!modalAddOp || !fOp.data_prev) return;
     const nova = await criarOperacao({
       safra_id: modalAddOp,
@@ -215,7 +220,8 @@ export default function PlanoAgricola() {
     ? cadastroCiclos.filter(c => c.ano_safra_id === fNP.ano_safra_id)
     : cadastroCiclos;
 
-  const addPlanejamento = () => salvar(async () => {
+  const addPlanejamento = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (addPlanejamento).", perigo: false }))) return;
     if (!fNP.area_ha || !fNP.data_plantio) return;
     const cicloSel = cadastroCiclos.find(c => c.id === fNP.ciclo_id);
     const anoSel   = anosSafra.find(a => a.id === fNP.ano_safra_id);

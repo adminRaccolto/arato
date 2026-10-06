@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -159,6 +160,7 @@ function ModalSieg({
   }
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     setSaving(true);
     await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: cfg });
     setSaving(false);
@@ -190,6 +192,7 @@ function ModalSieg({
   }
 
   async function registrarCnpj(cnpj: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Registrar cnpj)", perigo: false }))) return;
     setCertSaving(true);
     try {
       const res = await fetch("/api/integracoes/sieg-cert", {
@@ -869,7 +872,8 @@ export default function IntegracoesPage() {
     const salva = localStorage.getItem(lsKeyBalanca) as MarcaBalanca | null;
     if (salva && ["toledo","capital"].includes(salva)) setMarcaAtiva(salva);
   }, [lsKeyBalanca]);
-  function salvarMarcaAtiva(m: MarcaBalanca) {
+  async function salvarMarcaAtiva(m: MarcaBalanca) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar marca ativa)", perigo: false }))) return;
     setMarcaAtiva(m);
     localStorage.setItem(lsKeyBalanca, m);
   }
@@ -902,6 +906,7 @@ export default function IntegracoesPage() {
   function configDe(id: string) { return configs.find(c => c.integracao_id === id) ?? null; }
 
   async function salvarCatalog(integracaoId: string, config: Record<string, unknown>, ativo: boolean) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar catalog)", perigo: false }))) return;
     const ex = configDe(integracaoId);
     if (ex) {
       await supabase.from("integracoes_fazenda")

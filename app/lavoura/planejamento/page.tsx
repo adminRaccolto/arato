@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
@@ -161,6 +162,7 @@ async function atualizarTarefa(id: string, patch: Partial<Tarefa>): Promise<void
   if (error) throw error;
 }
 async function excluirTarefa(id: string): Promise<void> {
+  if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir tarefa)", perigo: true }))) return;
   const { error } = await supabase.from("planejamento_tarefas").delete().eq("id", id);
   if (error) throw error;
 }
@@ -177,6 +179,7 @@ async function atualizarRecomendacao(id: string, patch: Partial<Recomendacao>): 
   if (error) throw error;
 }
 async function excluirRecomendacao(id: string): Promise<void> {
+  if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir recomendacao)", perigo: true }))) return;
   const { error } = await supabase.from("recomendacoes_tecnicas").delete().eq("id", id);
   if (error) throw error;
 }
@@ -327,6 +330,7 @@ export default function Planejamento() {
 
   // ── criar / editar orçamento (header) ──────────────────
   async function salvarOrcamentoHeader() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar orcamento header)", perigo: false }))) return;
     if (!fazendaId || !cicloSelOrc) return;
     setSalvando(true);
     try {
@@ -353,6 +357,7 @@ export default function Planejamento() {
 
   // ── salvar item de orçamento ────────────────────────────
   async function salvarOrcItem() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar orc item)", perigo: false }))) return;
     if (!orcamento || !fazendaId) return;
     setSalvando(true);
     try {
@@ -387,6 +392,7 @@ export default function Planejamento() {
 
   // ── helpers tarefa / recomendação ──────────────────────
   async function salvarTarefa() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar tarefa)", perigo: false }))) return;
     if (!fazendaId || !fT.titulo.trim()) return;
     setSalvando(true);
     try {
@@ -416,6 +422,7 @@ export default function Planejamento() {
     setModalTarefa(true);
   }
   async function salvarRecomendacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar recomendacao)", perigo: false }))) return;
     if (!fazendaId || !fR.titulo.trim()) return;
     setSalvando(true);
     try {

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
@@ -94,6 +95,7 @@ export default function PlantioPage() {
   const talhoesFiltrados = talhoes;
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio) return;
     try {
       setSalvando(true);

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -180,6 +181,7 @@ export default function EsocialPage() {
 
   // ── Eventos CRUD ──────────────────────────────────────────
   async function salvarEvt() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar evt)", perigo: false }))) return;
     if (!fazendaId || !formEvt.codigo_evento) return;
     setSalvandoE(true);
     const cat = EVENTOS_CATALOGO.find(e => e.codigo === formEvt.codigo_evento);

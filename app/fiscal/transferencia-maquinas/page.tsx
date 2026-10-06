@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
@@ -156,6 +157,7 @@ export default function TransferenciaMaquinasPage() {
   }
 
   async function emitirRemessa() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir remessa)", perigo: false }))) return;
     if (!fazendaId) return;
     const motivoCfg = MOTIVOS[f.motivo];
     const ehEntrada = motivoCfg.direcao === "entrada";
@@ -290,6 +292,7 @@ export default function TransferenciaMaquinasPage() {
   }
 
   async function emitirRetorno() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir retorno)", perigo: false }))) return;
     if (!modalRet || !fazendaId) return;
     const motivoCfg = MOTIVOS[modalRet.motivo];
     if (!motivoCfg.temEtapa2) return;

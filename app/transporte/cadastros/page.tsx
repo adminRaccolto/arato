@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -170,6 +171,7 @@ export default function TransporteCadastrosPage() {
 
   // ── Salvar Veículo ──────────────────────────────────────────────────────────
   const salvarV = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar v)", perigo: false }))) return;
     if (!fazendaId || !modalV?.placa?.trim()) { alert("Placa é obrigatória."); return; }
     setSalvando(true);
     const pay = { ...modalV, fazenda_id: fazendaId, ativo: modalV.ativo ?? true, placa: (modalV.placa ?? "").toUpperCase() };
@@ -191,6 +193,7 @@ export default function TransporteCadastrosPage() {
   // aparece pra tipo='tac') nunca aparecia pra ninguém. Corrigido: deriva `tipo` automaticamente
   // do mesmo campo que já existe — sem transportadora selecionada = autônomo = TAC.
   const salvarM = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar m)", perigo: false }))) return;
     if (!fazendaId || !modalM?.nome?.trim()) { alert("Nome é obrigatório."); return; }
     setSalvando(true);
     const pay = { ...modalM, fazenda_id: fazendaId, ativo: modalM.ativo ?? true, tipo: modalM.transportadora_id ? "clt" as const : "tac" as const };

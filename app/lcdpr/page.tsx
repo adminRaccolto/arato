@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import InputNumerico from "../../components/InputNumerico";
@@ -435,6 +436,7 @@ export default function LCDPR() {
 
   // ── Persistência da configuração ──────────────────────────────────────────
   const salvarConfig = async (nova: ConfigLCDPR) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar config)", perigo: false }))) return;
     setConfig(nova); // optimistic
     if (!fazendaId) return;
     setSavingCfg(true);
@@ -449,6 +451,7 @@ export default function LCDPR() {
   };
 
   const salvarContador = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar contador)", perigo: false }))) return;
     if (!contaId) return;
     setSavingContador(true);
     try {
@@ -465,6 +468,7 @@ export default function LCDPR() {
     setFazEdit(prev => { const n = new Map(prev); n.set(id, { ...(n.get(id) ?? {}), ...patch }); return n; });
   };
   const salvarFaz = async (id: string) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar faz)", perigo: false }))) return;
     const patch = fazEdit.get(id);
     if (!patch) return;
     setSavingFazIds(prev => new Set(prev).add(id));

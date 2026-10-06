@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -60,6 +61,7 @@ export default function BackupPage() {
   useEffect(() => { carregarBackups(); }, [carregarBackups]);
 
   async function criarBackup() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar backup)", perigo: false }))) return;
     if (!fazendaId) return;
     setCriando(true);
     setResultado(null);

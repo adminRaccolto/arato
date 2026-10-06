@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -103,6 +104,7 @@ export default function TesourariaPage() {
   }
 
   async function salvarEditarTesoura() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar editar tesoura)", perigo: false }))) return;
     if (!editLanc) return;
     if (!editLanc.descricao.trim() || !(editLanc.valor > 0)) { setEditErr("Informe descrição e valor."); return; }
     setEditSaving(true); setEditErr("");
@@ -152,6 +154,7 @@ export default function TesourariaPage() {
 
   // ── Salvar Lançamento ─────────────────────────────────────
   async function salvarLancTesoura() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar lanc tesoura)", perigo: false }))) return;
     if (!fazAtiva) return;
     setLSaving(true); setLErr("");
     try {

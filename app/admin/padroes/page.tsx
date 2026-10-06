@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import type { OperacaoGerencial } from "../../../lib/supabase";
@@ -137,6 +138,7 @@ export default function PadroesPage() {
 
   // ── Salvar template ─────────────────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!form.classificacao?.trim()) { setFormErr("Código é obrigatório."); return; }
     if (!form.descricao?.trim())     { setFormErr("Descrição é obrigatória."); return; }
     setSaving(true); setFormErr("");

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop } from "../../lib/nfe/cst-por-cfop";
@@ -916,6 +917,7 @@ function FiscalInner() {
   };
 
   const enviarCartaCorrecao = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Enviar carta correcao)", perigo: false }))) return;
     if (!modalCorrecao || textoCorrecao.trim().length < 15) return;
     setEnviandoCorrecao(true);
     try {
@@ -987,6 +989,7 @@ function FiscalInner() {
   }
 
   async function salvarCertificado() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar certificado)", perigo: false }))) return;
     if (!certFile || !certSenha.trim()) return;
     const allCount = produtores.length + empresasCert.length;
     if (allCount > 1 && !certProdId) { alert("Selecione o titular do certificado."); return; }
@@ -1285,6 +1288,7 @@ function FiscalInner() {
 
   // Emitir NF-e de Venda — build → sign → transmit SEFAZ
   const emitirVenda = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir venda)", perigo: false }))) return;
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
     // Validação mínima no cliente — só bloqueia o que o servidor não consegue suprir com default
@@ -1662,6 +1666,7 @@ function FiscalInner() {
 
   // Emitir NF-e de Transferência (CFOP 5.152 / 6.152)
   const emitirTransferencia = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir transferencia)", perigo: false }))) return;
     if (!fazendaId) return;
     const fzDest = fazendasConta.find(f => f.id === fTransf.fazenda_destino_id);
     if (!fzDest) { alert("Selecione a fazenda de destino."); return; }

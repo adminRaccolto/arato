@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
@@ -325,6 +326,7 @@ export default function ApoioFinanceiroPage() {
 
   // ── Desfazer baixa Apoio (reverte lançamento para em_aberto) ─────────────
   async function desfazerBaixaApoio(l: Lancamento) {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Desfazer baixa apoio)", perigo: true }))) return;
     setAcaoId(l.id);
     const baixa = baixaApoioPorLancId.get(l.id);
     if (!baixa) { setAcaoId(null); return; }
@@ -347,6 +349,7 @@ export default function ApoioFinanceiroPage() {
 
   // ── Salvar novo lançamento exclusivo ──────────────────────────────────────
   async function salvarApoioLanc() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar apoio lanc)", perigo: false }))) return;
     if (!fazAtiva) return;
     const erros: string[] = [];
     if (!formApoio.descricao) erros.push("Descrição");
@@ -381,6 +384,7 @@ export default function ApoioFinanceiroPage() {
   }
 
   async function baixarApoioExclusivo(a: ApoioLancamento) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Baixar apoio exclusivo)", perigo: false }))) return;
     if (!fazAtiva) return;
     setAcaoId(a.id);
     await supabase.from("apoio_lancamentos")
@@ -390,6 +394,7 @@ export default function ApoioFinanceiroPage() {
   }
 
   async function desfazerBaixaExclusivo(a: ApoioLancamento) {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Desfazer baixa exclusivo)", perigo: true }))) return;
     setAcaoId(a.id);
     await supabase.from("apoio_lancamentos")
       .update({ baixado: false, data_baixa: null }).eq("id", a.id);
@@ -407,6 +412,7 @@ export default function ApoioFinanceiroPage() {
 
   // ── Baixa em lote (exclusivo) — via API para bypassar RLS multi-fazenda ──
   async function baixarEmLote() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Baixar em lote)", perigo: false }))) return;
     if (!selecionados.size) return;
     if (!baixaLoteData) { setErroModal("Preencha antes de salvar: Data da Baixa"); return; }
     setErroModal("");

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
@@ -424,6 +425,7 @@ export default function ContratosFinanceiros() {
   }, [contratoModal, abaModal, fazendaId]);
 
   async function salvar(fn: () => Promise<void>) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     setErroModal(null);
     try { setSalvando(true); await fn(); } catch (e) {
       const msg = (e as { message?: string })?.message ?? "";
@@ -608,7 +610,8 @@ export default function ContratosFinanceiros() {
   };
 
   // ── Salvar contrato (Principal) ──
-  const salvarContrato = () => salvar(async () => {
+  const salvarContrato = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar contrato)", perigo: false }))) return;
     if (!fazendaId) { alert("Fazenda não identificada. Recarregue a página."); return; }
     const credorNome = fC.pessoa_id ? (pessoas.find(p => p.id === fC.pessoa_id)?.nome ?? fC.credor) : fC.credor.trim();
     const erros: string[] = [];
@@ -679,7 +682,8 @@ export default function ContratosFinanceiros() {
   });
 
   // ── Liberação ──
-  const salvarLiberacao = () => salvar(async () => {
+  const salvarLiberacao = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar liberacao)", perigo: false }))) return;
     if (!contratoModal) return;
     const errosLib: string[] = [];
     if (!fLib.data_liberacao) errosLib.push("Data Liberação");
@@ -744,6 +748,7 @@ export default function ContratosFinanceiros() {
 
   // ── Aplicar cronograma extraído do PDF pela IA ──
   const aplicarCronogramaIAPdf = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (aplicarCronogramaIAPdf).", perigo: false }))) return;
     if (!contratoModal || !parcelasIAPdf || parcelasIAPdf.length === 0) return;
     setErroModal(null);
     setSalvando(true);
@@ -887,7 +892,8 @@ export default function ContratosFinanceiros() {
   // instante do cálculo, sem chance de revisar/ajustar antes de virar título
   // de verdade — recalcular/reprocessar aqui é seguro porque só afeta CP não
   // baixado (nunca reabre nem altera o que já foi pago).
-  const salvarParcelasELancarCP = () => salvar(async () => {
+  const salvarParcelasELancarCP = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar parcelas elancar cp)", perigo: false }))) return;
     if (!contratoModal || !fazendaId) return;
     const atualizadas = parcelasPagamento.map(p => {
       const ed = parcelasEditadas[p.id];
@@ -956,7 +962,8 @@ export default function ContratosFinanceiros() {
   });
 
   // ── Garantia ──
-  const salvarGarantia = () => salvar(async () => {
+  const salvarGarantia = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar garantia)", perigo: false }))) return;
     if (!contratoModal) return;
     let desc = fGar.descricao.trim();
     if (!desc) {
@@ -981,7 +988,8 @@ export default function ContratosFinanceiros() {
   });
 
   // ── Centro de custo ──
-  const salvarCentroCusto = () => salvar(async () => {
+  const salvarCentroCusto = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar centro custo)", perigo: false }))) return;
     if (!contratoModal) return;
     const itens: Omit<CentroCustoContrato, "id" | "created_at">[] = centrosForm
       .filter(c => c.ciclo_id || c.centro_custo_id)
@@ -1003,7 +1011,8 @@ export default function ContratosFinanceiros() {
   });
 
   // ── Aditivo ──
-  const salvarAditivo = () => salvar(async () => {
+  const salvarAditivo = async () => salvar(async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar aditivo)", perigo: false }))) return;
     if (!contratoModal) return;
     const errosAdit: string[] = [];
     if (!fAdit.data_aditivo) errosAdit.push("Data do Aditivo");

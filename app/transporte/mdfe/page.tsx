@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -550,6 +551,7 @@ function MdfePageInner() {
 
   // ── Gerar CIOT via ANTT ──────────────────────────────────
   async function gerarCiot() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar ciot)", perigo: false }))) return;
     const motorista = motoristas.find(m => m.id === form.motorista_id);
     const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
     // Contratante = transportadora emitente do CT-e vinculado (quem paga/declara o frete); só
@@ -773,6 +775,7 @@ function MdfePageInner() {
 
   // ── Salvar ───────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     if (!form.municipio_inicio.trim()) { setErr("Informe o município de início."); return; }
     setSaving(true); setErr("");
@@ -837,7 +840,7 @@ function MdfePageInner() {
       // Colunas adicionadas por migrations recentes (Seções 293, 297, 298). Se alguma ainda não
       // existe no banco, salva SEM elas (em vez de travar o salvamento) e avisa quais ficaram de fora.
       const COLUNAS_NOVAS = ["seguradora_nome", "seguradora_cnpj", "apolice_numero", "averbacao_numero", "pag_pix", "pag_cod_banco", "pag_agencia", "emitente_id", "emitente_cnpj", "emitente_razao_social"];
-      const gravar = (dados: Record<string, unknown>) => mdfeEdit
+      const gravar = async (dados: Record<string, unknown>) => mdfeEdit
         ? supabase.from("mdfes").update(dados).eq("id", mdfeEdit.id)
         : supabase.from("mdfes").insert(dados);
       let { error } = await gravar(payload as Record<string, unknown>);
@@ -904,6 +907,7 @@ function MdfePageInner() {
   // Encerramento REAL na SEFAZ (evento 110112). Antes era só um UPDATE local — nunca transmitia,
   // então o MDF-e seguia "aberto" na SEFAZ e bloqueava novos MDF-e da mesma placa. 23/09/2026.
   async function encerrar() {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Encerrar)", perigo: true }))) return;
     if (!modalEnc || !fazendaId) return;
     if (!encForm.municipio_encerramento.trim()) { alert("Informe o município de encerramento."); return; }
     setEncSaving(true);
@@ -930,6 +934,7 @@ function MdfePageInner() {
   const [chaveSaving, setChaveSaving] = useState(false);
   const [chaveMsg, setChaveMsg] = useState<{ ok: boolean; txt: string } | null>(null);
   async function encerrarPorChave() {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Encerrar por chave)", perigo: true }))) return;
     if (!fazendaId) return;
     setChaveSaving(true); setChaveMsg(null);
     try {

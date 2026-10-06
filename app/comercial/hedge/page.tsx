@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import PlanoGate from "@/components/PlanoGate";
@@ -370,6 +371,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
   // ─── Salvar fixação ───────────────────────────────────────────────────────
   async function salvarFixacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar fixacao)", perigo: false }))) return;
     if (!fFix.quantidade_sc || !fFix.valor) { setErro("Preencha quantidade e valor."); return; }
     setSalvando(true); setErro("");
     try {
@@ -391,6 +393,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
   // ─── Salvar curva ─────────────────────────────────────────────────────────
   async function salvarCurva() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar curva)", perigo: false }))) return;
     if (!fCurva.valor || !fCurva.data_referencia) { setErro("Preencha data e valor."); return; }
     setSalvando(true); setErro("");
     try {
@@ -410,6 +413,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
   // ─── Salvar despesa ───────────────────────────────────────────────────────
   async function salvarDespesa() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar despesa)", perigo: false }))) return;
     if (!fDesp.descricao || !fDesp.valor_brl_sc) { setErro("Preencha descrição e valor."); return; }
     setSalvando(true); setErro("");
     try {

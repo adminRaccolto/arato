@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import {
@@ -274,6 +275,7 @@ export default function TratamentoSementesPage() {
 
   // ── Salvar Ordem ─────────────────────────────────────────────────────────────
   async function salvarOrdem() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar ordem)", perigo: false }))) return;
     if (!fazAtiva) return;
     setSalvando(true);
     setErro(null);
@@ -502,6 +504,7 @@ export default function TratamentoSementesPage() {
 
   // ── Salvar Receita ────────────────────────────────────────────────────────────
   async function salvarReceitaHandler() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar receita handler)", perigo: false }))) return;
     if (!fazAtiva || !formReceita.nome.trim()) return;
     setSalvando(true);
     setErro(null);

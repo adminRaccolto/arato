@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -340,6 +341,7 @@ export default function CompraTerrPage() {
   };
 
   const salvar = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if ((!form.fazenda_id && !fazendaId) || !form.imovel_nome || !form.valor_total) return;
     setSalvando(true);
     try {
@@ -447,6 +449,7 @@ export default function CompraTerrPage() {
   };
 
   const avancarStatus = async (ct: ContratoCT) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Avancar status)", perigo: false }))) return;
     const prox = PIPELINE[PIPELINE.indexOf(ct.status) + 1];
     if (!prox) return;
     await supabase.from("contratos_compra_terra").update({ status: prox }).eq("id", ct.id);
@@ -471,6 +474,7 @@ export default function CompraTerrPage() {
   };
 
   const salvarAjustesPagamentos = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar ajustes pagamentos)", perigo: false }))) return;
     const ids = Object.keys(parcelasEditadas);
     if (!ids.length) return;
     setSalvandoParcelas(true);
@@ -499,6 +503,7 @@ export default function CompraTerrPage() {
   };
 
   const baixarPagamento = async (pg: Pagamento) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Baixar pagamento)", perigo: false }))) return;
     if (baixando) return;
     const dataStr = prompt("Data do pagamento (AAAA-MM-DD):", TODAY);
     if (!dataStr) return;

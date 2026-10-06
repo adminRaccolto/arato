@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -474,6 +475,7 @@ function FaturamentoInner() {
 
   // ── Emitir nota ───────────────────────────────────────────────────────────
   async function emitirNota() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir nota)", perigo: false }))) return;
     const fazEmissao = fazNFe || fazendaId || "";
     if (!fazEmissao) { setErroForm("Selecione a fazenda emitente."); return; }
     if (!fVenda.produtor_id) { setErroForm("Selecione o produtor."); return; }

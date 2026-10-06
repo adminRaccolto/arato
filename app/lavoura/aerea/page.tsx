@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -252,6 +253,7 @@ export default function AplicacaoAereaPage() {
 
   // ─── Salvar operação ─────────────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!form.ciclo_id || !form.data_aplicacao || talhoesSelec.length === 0) {
       alert("Preencha: Ciclo, Data e selecione ao menos 1 talhão.");
       return;
@@ -315,6 +317,7 @@ export default function AplicacaoAereaPage() {
 
   // ─── Salvar empresa ──────────────────────────────────────────────────────
   async function salvarEmpresa() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar empresa)", perigo: false }))) return;
     if (!formEmpresa.razao_social) { alert("Informe a Razão Social."); return; }
     setSalvando(true);
     try {

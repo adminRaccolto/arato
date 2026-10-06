@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import InputNumerico from "../../../components/InputNumerico";
@@ -134,6 +135,7 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
   const [erro, setErro] = useState("");
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!form.conta_id || !form.valor) { setErro("Preencha conta e valor."); return; }
     setSalvando(true); setErro("");
     try {
@@ -520,6 +522,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
   useEffect(() => { carregar(); }, [carregar]);
 
   async function cobrarAsaas(p: Pagamento) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Cobrar asaas)", perigo: false }))) return;
     setCobrando(p.id); setMsg(null);
     try {
       const res = await fetch("/api/asaas/cobrar", {

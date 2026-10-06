@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -217,6 +218,7 @@ export default function PendenciasFiscaisPage() {
 
   // ── Dispensar pendência ──────────────────────────────────────────────────
   async function dispensar(id: string, obs: string) {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Dispensar)", perigo: true }))) return;
     await supabase.from("pendencias_fiscais")
       .update({ status: "dispensada", observacoes: obs })
       .eq("id", id);

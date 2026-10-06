@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import {
@@ -124,6 +125,7 @@ export default function CorrecaoSoloPage() {
   function removeItem(i: number) { setItens(p => p.filter((_, idx) => idx !== i)); }
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!f.ciclo_id || !f.area_ha || !f.data_aplicacao) return;
     if (calcItens.length === 0) { alert("Adicione ao menos um produto."); return; }
     try {

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
@@ -120,6 +121,7 @@ function ConfiguracoesInner() {
   }, [fazendaId]);
 
   async function toggleRaccolto() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Toggle raccolto)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvandoRaccolto(true);
     const novo = !raccoltoAcesso;
@@ -168,6 +170,7 @@ function ConfiguracoesInner() {
   }
 
   async function salvarConta() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar conta)", perigo: false }))) return;
     if (!formConta.codigo.trim() || !formConta.nome.trim() || !fazendaId) return;
     const dados: ContaContabil = { ...formConta, lcdpr: formConta.lcdpr || null };
     if (contaEditCod === null && contas.some(c => c.codigo === dados.codigo)) { setErroConta("Já existe uma conta com este código."); return; }
@@ -187,7 +190,8 @@ function ConfiguracoesInner() {
     catch (e: unknown) { alert((e as Error).message ?? "Erro ao excluir"); }
   }
 
-  function salvarBasis() {
+  async function salvarBasis() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar basis)", perigo: false }))) return;
     try { localStorage.setItem("ractech_basis", JSON.stringify(basis)); setBasisSalvo(true); setTimeout(() => setBasisSalvo(false), 2000); } catch { /* ignore */ }
   }
 

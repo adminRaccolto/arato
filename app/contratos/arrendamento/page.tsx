@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -241,6 +242,7 @@ export default function Arrendamentos() {
 
   // ── salvar contrato ─────────────────────────────────────
   async function salvarContrato() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar contrato)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvando(true);
     try {
@@ -365,6 +367,7 @@ export default function Arrendamentos() {
 
   // ── gerador de parcelas (novo) ──────────────────────────
   async function gerarParcelas() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar parcelas)", perigo: false }))) return;
     if (!fazendaId || !selArrGerador) return;
     setSalvando(true);
     try {
@@ -611,6 +614,7 @@ export default function Arrendamentos() {
           const descContrato = `Comprometimento arrendamento — ${propNome} · ${fmtN(arr.area_ha)} ha · Safra ${cfg.descricao}`;
 
           const criarContrato = async (payload: Record<string, unknown>) => {
+            if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar contrato)", perigo: false }))) return;
             const { error } = await supabase.from("contratos").insert(payload);
             if (error) errosContrato.push(`${cfg.descricao}: ${error.message}`);
           };
@@ -708,6 +712,7 @@ export default function Arrendamentos() {
 
   // ── salvar pagamento manual ─────────────────────────────
   async function salvarPagamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar pagamento)", perigo: false }))) return;
     if (!fazendaId || !selArr) return;
     setSalvando(true);
     try {
@@ -778,6 +783,7 @@ export default function Arrendamentos() {
 
   // ── baixar pagamento ────────────────────────────────────
   async function baixarPagamento(p: Pagamento) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Baixar pagamento)", perigo: false }))) return;
     const dtPag = prompt("Data do pagamento (AAAA-MM-DD):", hoje());
     if (!dtPag) return;
     const arr = arrendamentos.find(a => a.id === p.arrendamento_id);
@@ -806,6 +812,7 @@ export default function Arrendamentos() {
 
   // ── excluir parcelas com verificação de embarque ────────────
   async function excluirParcelasComVerificacao(ids: string[]): Promise<boolean> {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir parcelas com verificacao)", perigo: true }))) return false;
     if (ids.length === 0) return true;
     const contratoIds: string[] = [];
     for (const id of ids) {
@@ -838,6 +845,7 @@ export default function Arrendamentos() {
 
   // ── excluir arrendamento com verificação de embarque ────────
   async function excluirArrendamentoComVerificacao(arr: Arrendamento): Promise<boolean> {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir arrendamento com verificacao)", perigo: true }))) return false;
     const { data: cts } = await supabase
       .from("contratos").select("id")
       .eq("arrendamento_id", arr.id).eq("is_arrendamento", true);

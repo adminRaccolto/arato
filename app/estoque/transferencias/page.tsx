@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
@@ -192,6 +193,7 @@ export default function TransferenciasEstoquePage() {
     transferencia?: Record<string, unknown>,
     itensList?: Array<Record<string, unknown>>,
   ): Promise<{ ok: boolean; error?: string; [k: string]: unknown }> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (acao).", perigo: false }))) return { ok: false, error: "Ação cancelada" };
     const res = await fetch("/api/campo/transferencia-acao", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -421,6 +423,7 @@ export default function TransferenciasEstoquePage() {
 
   // ── Salvar transferência ──────────────────────────────────────────────────
   async function salvar(status: "rascunho" | "emitida") {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!form.fazendaOrigemId || !form.fazendaDestinoId) {
       setErro("Selecione origem e destino."); return;
     }

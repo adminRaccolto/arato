@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -324,6 +325,7 @@ export default function AdminUsuarios() {
   }, [fazendaId]);
 
   const toggleRaccolto = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Toggle raccolto)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvandoRaccolto(true);
     const novoValor = !raccoltoAcesso;
@@ -374,6 +376,7 @@ export default function AdminUsuarios() {
   });
 
   async function criarNovoCliente() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar novo cliente)", perigo: false }))) return;
     const erros: string[] = [];
     if (!fCliente.nome.trim()) erros.push("Nome");
     if (!fCliente.fazenda_nome.trim()) erros.push("Nome da Fazenda");
@@ -439,6 +442,7 @@ export default function AdminUsuarios() {
 
   // ── Usuário — salvar (equipe Raccotlo — sem fazenda_id obrigatório) ──
   const salvarUser = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar user)", perigo: false }))) return;
     const erros: string[] = [];
     if (!fUser.nome.trim()) erros.push("Nome");
     if (!fUser.email.trim()) erros.push("E-mail");
@@ -521,6 +525,7 @@ export default function AdminUsuarios() {
   };
 
   const salvarClientes = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar clientes)", perigo: false }))) return;
     if (!modalClientes) return;
     setSalvandoClientes(true);
     const { data: { session } } = await supabase.auth.getSession();

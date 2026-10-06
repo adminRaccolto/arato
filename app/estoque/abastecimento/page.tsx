@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -191,6 +192,7 @@ export default function AbastecimentoPage() {
 
   // ─── Salvar abastecimento ────────────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     setErroModal("");
 
@@ -242,6 +244,7 @@ export default function AbastecimentoPage() {
   // security policy" mesmo com a policy certa (JWT expirado na sessão,
   // mesmo padrão já resolvido em outras telas — ver lib/db.ts pattern).
   async function salvarEdicao(ab: Abastecimento, qtdNova: number, vUnit: number, bomba: BombaCombustivel) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar edicao)", perigo: false }))) return;
     if (!fazendaId) return;
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
     const res = await fetch("/api/campo/abastecimento-acao", {
@@ -259,6 +262,7 @@ export default function AbastecimentoPage() {
   }
 
   async function inserirNovo(qtd: number, vUnit: number, bomba: BombaCombustivel) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Inserir novo)", perigo: false }))) return;
     if (!fazendaId) return;
     const fazBomba = bomba.fazenda_id || fazendaId;   // o abastecimento pertence à fazenda da bomba
     const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;

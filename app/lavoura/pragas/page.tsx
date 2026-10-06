@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -233,6 +234,7 @@ export default function PragasPage() {
 
   // ─── Salvar ──────────────────────────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     setErro("");
     const nomeFinal = fNome.startsWith("Outra") || fNome.startsWith("Outro") ? fNomeCustom.trim() : fNome;

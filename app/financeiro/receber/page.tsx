@@ -34,6 +34,7 @@
 // Aceita Produtor e Empresa no mesmo borderô (Seção 317 — origem_tabela em
 // pagamento_lote_itens).
 // ═══════════════════════════════════════════════════════════════════════════
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -356,6 +357,7 @@ export default function ContasAReceberPage() {
   }
 
   async function confirmarBaixa() {
+    if (!(await confirmarAcao({ titulo: "Confirmar baixa", mensagem: "Confira valor, data e conta antes de confirmar. A baixa movimenta o saldo bancário.", perigo: false }))) return;
     if (!modalBaixa || !bConta || !bValor) { setErroAcao("Preencha valor e conta bancária."); return; }
     setSalvandoAcao(true);
     setErroAcao("");
@@ -568,6 +570,7 @@ export default function ContasAReceberPage() {
   }
 
   async function criarRegraClassificacaoNovo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar regra classificacao novo)", perigo: false }))) return;
     if (!fazendaId || !novoForm.pessoa_id || !novoForm.operacao_gerencial_id) return;
     const pessoa = pessoas.find(p => p.id === novoForm.pessoa_id);
     if (!pessoa?.cpf_cnpj) return;
@@ -657,6 +660,7 @@ export default function ContasAReceberPage() {
   }
 
   async function salvarNovo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar novo)", perigo: false }))) return;
     if (!fazendaId) return;
     const erros: string[] = [];
     if (novoForm.origem === "empresa_lancamentos") {
@@ -912,6 +916,7 @@ export default function ContasAReceberPage() {
   }
 
   async function confirmarLote() {
+    if (!(await confirmarAcao({ titulo: "Confirmar baixa em lote", mensagem: "Confira os títulos, valores, data e conta. Todos serão baixados ao confirmar.", perigo: false }))) return;
     if (!loteData || !loteConta || itensLote.length === 0) { setErroLote("Informe data e conta bancária."); return; }
     setSalvandoLote(true); setErroLote("");
     try {

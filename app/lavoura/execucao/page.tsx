@@ -1,5 +1,6 @@
 "use client";
 // Página de execução de campo — mobile-first, offline-capable via localStorage
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -218,6 +219,7 @@ function TelaExecucao({
   const algumFeito    = ajustes.some(a => a.concluido);
 
   async function salvar(finalizar: boolean) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!algumFeito && finalizar) {
       alert("Marque pelo menos 1 talhão como concluído.");
       return;

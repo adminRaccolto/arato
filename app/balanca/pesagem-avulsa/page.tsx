@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -326,6 +327,7 @@ export default function PesagemAvulsa() {
   useEffect(() => { carregar(); }, [carregar]);
 
   const salvarTara = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar tara)", perigo: false }))) return;
     if (!fazendaId) return;
     const pesoNum = parseFloat(formTara.peso_tara_kg.replace(",", "."));
     if (isNaN(pesoNum) || pesoNum <= 0) { alert("Informe o peso válido."); return; }
@@ -356,6 +358,7 @@ export default function PesagemAvulsa() {
   };
 
   const salvarBruto = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar bruto)", perigo: false }))) return;
     if (!pesagemSel) return;
     const pesoNum = parseFloat(pesoBrutoStr.replace(",", "."));
     if (isNaN(pesoNum) || pesoNum <= 0) { alert("Informe o peso válido."); return; }
@@ -389,6 +392,7 @@ export default function PesagemAvulsa() {
   };
 
   const cancelar = async () => {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Cancelar)", perigo: true }))) return;
     if (!cancelId) return;
     await supabase.from("pesagens_avulsas").update({ status: "cancelado" }).eq("id", cancelId);
     setModalCancel(false); setCancelId(null); carregar();

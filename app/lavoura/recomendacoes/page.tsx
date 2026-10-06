@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { supabase } from "../../../lib/supabase";
@@ -189,6 +190,7 @@ function ModalNova({
   }
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     const tValidos = talhoesForm.filter(t => t.talhao_id && t.area);
     const pValidos = produtosForm.filter(p => p.nome && p.dose);
     if (!f.tipo || !f.data_recomendacao || tValidos.length === 0 || pValidos.length === 0) {
@@ -809,6 +811,7 @@ export default function RecomendacoesPage() {
   }
 
   async function concluirExecucao(ajustes: RecTalhao[], operador: string, obs: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Concluir execucao)", perigo: false }))) return;
     if (!modalExec) return;
     const { rec } = modalExec;
     // Status: "concluída" só quando TODOS os talhões estão marcados E área total ≥ 99% da recomendada

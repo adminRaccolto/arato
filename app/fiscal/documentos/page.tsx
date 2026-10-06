@@ -30,6 +30,7 @@
 // condições de habilitação iguais à tela antiga — só NFs pendentes entram
 // no "Processar em Lote"; qualquer seleção permite Imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -243,6 +244,7 @@ export default function DocumentosFiscaisPage() {
   }
 
   async function salvarReclassificarGrid() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar reclassificar grid)", perigo: false }))) return;
     if (!reclass) return;
     setReclass({ ...reclass, salvando: true, err: "" });
     try {
@@ -318,6 +320,7 @@ export default function DocumentosFiscaisPage() {
   const [siegJustText,  setSiegJustText]  = useState("");
 
   async function executarManifestacao(d: RelDocFiscal, nf: NfDetalhe, tipo: number, justificativa?: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Executar manifestacao)", perigo: false }))) return;
     setSiegBusy(p => ({ ...p, [d.id]: true }));
     setSiegErros(p => { const n = { ...p }; delete n[d.id]; return n; });
     try {

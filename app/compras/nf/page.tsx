@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../../lib/cfop-imobilizado";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -468,6 +469,7 @@ export default function NfCompraPage() {
   }
 
   async function emitirRemessaLogistica() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir remessa logistica)", perigo: false }))) return;
     if (!remessaModal || !remessaDestId) { setRemessaErro("Selecione o destinatário (condomínio)."); return; }
     setRemessaEmitindo(true);
     setRemessaErro("");
@@ -891,6 +893,7 @@ export default function NfCompraPage() {
   }
 
   async function reimportarNf(nf: NfEntrada) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Reimportar nf)", perigo: false }))) return;
     if (!fazendaId || !nf.chave_acesso) return;
     setSiegReimporting(p => ({ ...p, [nf.id]: true }));
     try {
@@ -913,6 +916,7 @@ export default function NfCompraPage() {
 
   // Re-sync de uma NF diretamente de dentro do wizard (sem fechar o modal)
   async function resyncWizard() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Resync wizard)", perigo: false }))) return;
     if (!nfEdit?.chave_acesso || !fazendaId) return;
     setWizardResyncando(true);
     try {
@@ -976,6 +980,7 @@ export default function NfCompraPage() {
   }
 
   async function executarManifestacao(nf: NfEntrada, tipo: number, justificativa?: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Executar manifestacao)", perigo: false }))) return;
     setSiegBusy(p => ({ ...p, [nf.id]: true }));
     setSiegErros(p => { const n={...p}; delete n[nf.id]; return n; });
     try {
@@ -1470,6 +1475,7 @@ export default function NfCompraPage() {
 
   // ── Salvar rascunho (etapa cabeçalho → itens) ────────────
   async function salvarRascunho(): Promise<NfEntrada | null> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar rascunho)", perigo: false }))) return null;
     if (!fazendaId) return null;
     setErr("");
     if (!cab.numero || !cab.emitente_nome || !cab.data_emissao) {
@@ -1597,6 +1603,7 @@ export default function NfCompraPage() {
 
   // ── Processar NF (finalizar) ──────────────────────────────
   async function processarNF() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Processar nf)", perigo: false }))) return;
     if (!fazendaId || !nfEdit) return;
     // Guard local: evita duplo clique com estado local desatualizado
     if (nfEdit.status === "processada") {
@@ -1936,6 +1943,7 @@ export default function NfCompraPage() {
 
   // ── Excluir NF — API route com service_role_key ──────────
   async function chamarApiExcluir(nfId: string): Promise<void> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Chamar api excluir)", perigo: false }))) return;
     const res = await fetch("/api/compras/excluir-nf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2009,6 +2017,7 @@ export default function NfCompraPage() {
 
   // ── Reparar NF: repopula destinatário + itens via XML da SEFAZ ─────────
   async function repararNf(nf: NfEntrada) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Reparar nf)", perigo: false }))) return;
     if (!nf.chave_acesso) { alert("NF sem chave de acesso — não é possível buscar XML."); return; }
     setReparando(p => new Set(p).add(nf.id));
     try {
@@ -2190,6 +2199,7 @@ export default function NfCompraPage() {
   }
 
   async function salvarReclassificacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar reclassificacao)", perigo: false }))) return;
     if (!modalReclass) return;
     setReclassSaving(true);
     setReclassErr("");
@@ -2292,6 +2302,7 @@ export default function NfCompraPage() {
   }
 
   async function salvarNovoInsumo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar novo insumo)", perigo: false }))) return;
     if (!fazendaId || !formNovoInsumo.nome.trim()) return;
     setNovoInsumoSaving(true);
     setNovoInsumoErr("");

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import BalancaSerial from "../../components/BalancaSerial";
@@ -719,6 +720,7 @@ export default function Contratos() {
   const [anexandoPdf, setAnexandoPdf] = useState(false);
 
   async function handleAnexarPdf(file: File) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira antes de confirmar. Os registros serão alterados ao confirmar (handleAnexarPdf).", perigo: false }))) return;
     if (!file) return;
     setAnexandoPdf(true);
     try {
@@ -994,6 +996,7 @@ export default function Contratos() {
 
   // ── salvar contrato ───────────────────────────────────────────
   const salvarContrato = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar contrato)", perigo: false }))) return;
     // Coleta todos os erros antes de mostrar — nunca um alert pontual
     const erros: string[] = [];
     if (!fC.data_entrega) erros.push("Prazo de Entrega");
@@ -1219,6 +1222,7 @@ export default function Contratos() {
   const difPct     = pesoClass > 0 && difKg !== 0 ? +(difKg / pesoClass * 100).toFixed(3) : 0;
 
   const gerarRomaneio = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar romaneio)", perigo: false }))) return;
     if (!contratoSel || !fRom.placa || plCalc <= 0) return;
     if (!fRom.pesoEstimado && (!fRom.pesoBruto || !fRom.tara)) { alert("Informe Peso Bruto e Tara."); return; }
     setSalvando(true);
@@ -1507,6 +1511,7 @@ export default function Contratos() {
 
   // ── registrar novo adiantamento ───────────────────────────────
   const registrarAdiantamento = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Registrar adiantamento)", perigo: false }))) return;
     if (!fazendaId || !adiantContratoId || !fAdiant.valor) return;
     setSalvandoAdiant(true);
     try {
@@ -1546,6 +1551,7 @@ export default function Contratos() {
         .eq("id", adiantContratoId);
       // 4. Estado local
       if (adiant) {
+        if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Novo rec)", perigo: false }))) return;
         setAdiantamentos(prev => ({
           ...prev,
           [adiantContratoId]: [...(prev[adiantContratoId] ?? []), adiant as AdiantamentoCliente],

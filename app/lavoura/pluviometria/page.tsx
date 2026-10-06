@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/AuthProvider";
@@ -129,6 +130,7 @@ export default function Pluviometria() {
   }, [fazendaId, carregarLeituras]);
 
   async function salvarLeitura() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar leitura)", perigo: false }))) return;
     if (!fazendaId || !lMm) return;
     setSalvando(true);
     const mm = parseFloat(lMm);

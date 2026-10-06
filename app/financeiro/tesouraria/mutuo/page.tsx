@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
@@ -121,6 +122,7 @@ export default function MutuoPage() {
   }
 
   async function salvarMutuo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar mutuo)", perigo: false }))) return;
     if (!fazAtiva) return;
     if (!mForm.contraparte.trim()) { setMErr("Informe a contraparte."); return; }
     if (!mForm.valor_principal || isNaN(parseFloat(mForm.valor_principal))) { setMErr("Valor inválido."); return; }
@@ -174,6 +176,7 @@ export default function MutuoPage() {
   }
 
   async function registrarPagamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Registrar pagamento)", perigo: false }))) return;
     if (!modalPag || !fazAtiva) return;
     const vp = parseFloat(pagForm.valor_principal) || 0;
     const vj = parseFloat(pagForm.valor_juros) || 0;

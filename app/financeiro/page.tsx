@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
@@ -306,6 +307,7 @@ export default function Financeiro() {
   };
 
   const confirmarBaixa = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Confirmar baixa)", perigo: false }))) return;
     if (!modalBaixa) return;
     if (modalBaixa.moeda !== "barter" && !baixa.valorMask) return;
     const valorPago = modalBaixa.moeda === "barter" ? 0 : desmascarar(baixa.valorMask);
@@ -517,6 +519,7 @@ export default function Financeiro() {
   };
 
   const handleExcluirSim = async (id: string) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Handle excluir sim)", perigo: false }))) return;
     try {
       await excluirSimulacao(id);
       setSimulacoes(prev => prev.filter(s => s.id !== id));

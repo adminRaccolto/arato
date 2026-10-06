@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { calcINSS, calcIRRF } from "../../../lib/folha-calculo";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -384,6 +385,7 @@ export default function FolhaPagamentoPage() {
   }
 
   async function salvarFolha() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar folha)", perigo: false }))) return;
     if (!fazendaId) return;
     setSaving(true);
     try {
@@ -444,6 +446,7 @@ export default function FolhaPagamentoPage() {
   }
 
   async function salvarFolhaMes(comp: string, funcs: FolhaFunc[], empresaId?: string | null, produtorId?: string | null, fazendaIdGrupo?: string) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar folha mes)", perigo: false }))) return;
     const fazendaAlvo = fazendaIdGrupo ?? funcs[0]?.fazenda_id ?? fazendaId!;
     const totalBruto   = funcs.reduce((s, f) => s + f.salario_bruto, 0);
     const totalLiq     = funcs.reduce((s, f) => s + liquido(f), 0);
@@ -596,6 +599,7 @@ export default function FolhaPagamentoPage() {
   }
 
   async function salvarAdiantamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
       setMsg("Preencha funcionário, data e valor."); return;
     }
@@ -650,6 +654,7 @@ export default function FolhaPagamentoPage() {
 
   // ─── Premiação — salvar ───────────────────────────────────────
   async function salvarPremiacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar premiacao)", perigo: false }))) return;
     if (!fazendaId || !premEdit.funcionario_id || !premEdit.valor || !premEdit.descricao || !premEdit.mes_referencia) {
       setMsg("Preencha todos os campos obrigatórios."); return;
     }

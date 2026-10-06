@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -1503,6 +1504,7 @@ function ImportacaoInner() {
   }
 
   async function importarApoioLancamentos(rows: LancRow[]) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar apoio lancamentos)", perigo: false }))) return;
     if ((!contaId && !fazendaId) || !rows.length) return;
     setLoadingApoio(true);
 
@@ -1693,6 +1695,7 @@ function ImportacaoInner() {
 
   // ─── Importar Pessoas ─────────────────────────────────────
   async function importarPessoas() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar pessoas)", perigo: false }))) return;
     if (!fazendaId || !pessoasRows.length) return;
     setLoadingPessoas(true);
     let ok = 0, erros = 0, duplicados = 0;
@@ -1726,6 +1729,7 @@ function ImportacaoInner() {
 
   // ─── Importar CP / CR ─────────────────────────────────────
   async function importarLancamentos(tipo: "pagar" | "receber", rows: LancRow[], setRows: (r: LancRow[]) => void, setResult: (r: { ok: number; erros: number; duplicados: number }) => void, setLoading: (v: boolean) => void) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar lancamentos)", perigo: false }))) return;
     if (!fazendaId || !rows.length) return;
     setLoading(true);
     let ok = 0, erros = 0, duplicados = 0;
@@ -1822,6 +1826,7 @@ function ImportacaoInner() {
 
   // ─── Importar Insumos ─────────────────────────────────────
   async function importarInsumos() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar insumos)", perigo: false }))) return;
     if (!insumosRows.length || !contaId) return;
     setLoadingInsumos(true);
     setResultInsumosErros([]);
@@ -1870,6 +1875,7 @@ function ImportacaoInner() {
 
   // ─── Importar Produtos ────────────────────────────────────
   async function importarProdutos() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar produtos)", perigo: false }))) return;
     if (!produtosRows.length) return;
     setLoadingProdutos(true);
     let ok = 0, erros = 0, duplicados = 0;
@@ -2024,6 +2030,7 @@ function ImportacaoInner() {
   }
 
   async function importarContratosFin() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar contratos fin)", perigo: false }))) return;
     if (!fazendaId || !contratoFinRows.length) return;
     setLoadingContratoFin(true);
     let ok = 0, erros = 0, duplicados = 0, atualizados = 0;
@@ -2313,6 +2320,7 @@ function ImportacaoInner() {
   }
 
   async function importarMaquinas() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar maquinas)", perigo: false }))) return;
     if (!fazendaId || !maquinasRows.length) return;
     setLoadingMaquinas(true);
     let ok = 0, erros = 0, duplicados = 0;
@@ -2377,6 +2385,7 @@ function ImportacaoInner() {
   }
 
   async function importarArrendamentos() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar arrendamentos)", perigo: false }))) return;
     if (!fazendaId || !arrendamentosRows.length) return;
     setLoadingArrendamentos(true);
     let ok = 0, erros = 0, duplicados = 0;
@@ -2444,6 +2453,7 @@ function ImportacaoInner() {
   }
 
   async function importarContratosVenda() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar contratos venda)", perigo: false }))) return;
     if (!fazendaId || !contratoVendaRows.length) return;
     setLoadingContratoVenda(true);
     let ok = 0, erros = 0, duplicados = 0, atualizados = 0;
@@ -2586,6 +2596,7 @@ function ImportacaoInner() {
   }
 
   async function importarProdutoresImp() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar produtores imp)", perigo: false }))) return;
     if (!fazendaId || !produtoresImpRows.length) return;
     setLoadingProdutoresImp(true);
     let ok = 0, erros = 0, duplicados = 0;
@@ -2686,6 +2697,7 @@ function ImportacaoInner() {
   }
 
   async function importarFazendasImp(rows?: FazendaImpRow[]): Promise<{ ok: number; erros: number; duplicados: number }> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar fazendas imp)", perigo: false }))) return { ok: 0, erros: 0, duplicados: 0 };
     const source = rows ?? fazendasImpRows;
     if (!source.length) return { ok: 0, erros: 0, duplicados: 0 };
     if (!rows) setLoadingFazendasImp(true);
@@ -2747,6 +2759,7 @@ function ImportacaoInner() {
   }
 
   async function importarMatriculasImp(rows?: MatriculaImpRow[]): Promise<{ ok: number; erros: number; duplicados: number }> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar matriculas imp)", perigo: false }))) return { ok: 0, erros: 0, duplicados: 0 };
     const source = rows ?? matriculasImpRows;
     if (!source.length) return { ok: 0, erros: 0, duplicados: 0 };
     if (!rows) setLoadingMatriculasImp(true);
@@ -2799,6 +2812,7 @@ function ImportacaoInner() {
   }
 
   async function importarTalhoesImp(rows?: TalhaoImpRow[]): Promise<{ ok: number; erros: number; duplicados: number }> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar talhoes imp)", perigo: false }))) return { ok: 0, erros: 0, duplicados: 0 };
     const source = rows ?? talhoesImpRows;
     if (!source.length) return { ok: 0, erros: 0, duplicados: 0 };
     if (!rows) setLoadingTalhoesImp(true);
@@ -2941,6 +2955,7 @@ function ImportacaoInner() {
   }
 
   async function importarFuncionarios() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar funcionarios)", perigo: false }))) return;
     if (!fazendaId || !funcionariosRows.length) return;
     setLoadingFuncionarios(true);
     let ok = 0, erros = 0, duplicados = 0;

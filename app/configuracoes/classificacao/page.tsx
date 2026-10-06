@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -150,6 +151,7 @@ export default function ClassificacaoPage() {
   }
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     setSaving(true);
     const ehProduto = form.tipo_nf !== "servico";
@@ -211,6 +213,7 @@ export default function ClassificacaoPage() {
   }
 
   async function toggleAtivo(r: RegraClassificacaoNf) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Toggle ativo)", perigo: false }))) return;
     await supabase.from("regras_classificacao_nf").update({ ativo: !r.ativo }).eq("id", r.id);
     setRegras(prev => prev.map(x => x.id === r.id ? { ...x, ativo: !x.ativo } : x));
   }

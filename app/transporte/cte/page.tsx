@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -916,6 +917,7 @@ function CtePageInner() {
   // essenciais só — cadastro completo (endereço, CNH detalhada etc.) continua em Cadastros →
   // Transportadoras/Veículos. Ao salvar, já entra na lista e fica selecionado no CT-e.
   async function salvarNovoVeiculo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar novo veiculo)", perigo: false }))) return;
     if (!fazendaId || !novoVeic.placa.trim()) { alert("Placa é obrigatória."); return; }
     setSalvandoVeic(true);
     try {
@@ -938,6 +940,7 @@ function CtePageInner() {
   }
 
   async function salvarNovoMotorista() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar novo motorista)", perigo: false }))) return;
     if (!fazendaId || !novoMot.nome.trim()) { alert("Nome é obrigatório."); return; }
     setSalvandoMot(true);
     try {
@@ -961,6 +964,7 @@ function CtePageInner() {
 
   // ── Salvar ───────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId) return;
     if (!form.remetente_nome.trim())   { setErr("Informe o remetente."); return; }
     if (form.tomador_tipo === "expedidor" && !form.exp.nome.trim()) { setErr("Tomador = Expedidor: informe os dados do Expedidor."); return; }
@@ -1054,6 +1058,7 @@ function CtePageInner() {
   }
 
   async function gerarCiotCte() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar ciot cte)", perigo: false }))) return;
     if (!fazendaId) return;
     const motorista = motoristas.find(m => m.id === form.motorista_id);
     const veiculo   = veiculos.find(v => v.id === form.veiculo_id);
@@ -1420,6 +1425,7 @@ function CtePageInner() {
   }
 
   async function cancelar(c: Cte) {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Cancelar o CT-e na SEFAZ. Esta ação não pode ser desfeita. Confirma?", perigo: true }))) return;
     if (cancelando) return;
     const justificativa = prompt(
       `Cancelar oficialmente o CT-e ${c.numero_cte}/${c.serie} na SEFAZ.\n\n` +

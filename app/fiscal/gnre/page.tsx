@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -122,6 +123,7 @@ export default function GnrePage() {
 
   // ── Salvar ────────────────────────────────────────────────
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!fazendaId || !form.tipo_receita || !form.uf_favorecida) return;
     setSalvando(true);
     const payload = {
@@ -141,11 +143,13 @@ export default function GnrePage() {
   }
 
   async function emitir(g: GnreGuia) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir)", perigo: false }))) return;
     await supabase.from("gnre_guias").update({ status: "emitida" }).eq("id", g.id);
     carregar();
   }
 
   async function registrarPagamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Registrar pagamento)", perigo: false }))) return;
     if (!pagarModal || !dataPgto) return;
     await supabase.from("gnre_guias").update({ status: "paga", data_pagamento: dataPgto }).eq("id", pagarModal.id);
     setPagarModal(null);

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -189,6 +190,7 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarNova() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar nova)", perigo: false }))) return;
     if (!fazAtiva) return;
     if (!nForm.nome.trim()) { setNErr("Informe o nome da aplicação."); return; }
     if (!editando && nForm.valor_inicial <= 0) { setNErr("Informe o valor inicial."); return; }
@@ -243,6 +245,7 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarAporte() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar aporte)", perigo: false }))) return;
     if (!modalAporte || !fazAtiva) return;
     if (aForm.valor <= 0) { setAErr("Informe o valor do aporte."); return; }
     setASaving(true); setAErr("");
@@ -281,6 +284,7 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarRendimento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar rendimento)", perigo: false }))) return;
     if (!modalRend || !fazAtiva) return;
     if (rForm.valor_bruto <= 0) { setRErr("Informe o valor do rendimento."); return; }
     setRSaving(true); setRErr("");
@@ -319,6 +323,7 @@ export default function AplicacoesFinanceirasPage() {
   }
 
   async function salvarResgate() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar resgate)", perigo: false }))) return;
     if (!modalResgate || !fazAtiva) return;
     if (rgForm.valor_bruto <= 0) { setRgErr("Informe o valor do resgate."); return; }
     if (rgForm.valor_bruto > modalResgate.valor_atual) { setRgErr(`Valor maior que o saldo atual (${fmtBRL(modalResgate.valor_atual)}).`); return; }

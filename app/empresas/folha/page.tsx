@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -216,6 +217,7 @@ export default function FolhaEmpresaPage() {
   }
 
   async function salvarFolha() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar folha)", perigo: false }))) return;
     if (!fazendaId || !empresaSel) return;
     setSaving(true);
     try {
@@ -282,6 +284,7 @@ export default function FolhaEmpresaPage() {
   }
 
   async function salvarAdiantamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
     setSaving(true);
     try {
@@ -310,6 +313,7 @@ export default function FolhaEmpresaPage() {
   }
 
   async function salvarPremiacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar premiacao)", perigo: false }))) return;
     if (!fazendaId || !premEdit.funcionario_id || !premEdit.valor || !premEdit.descricao || !premEdit.mes_referencia) { setMsg("Preencha todos os campos."); return; }
     setSaving(true);
     try {
@@ -325,6 +329,7 @@ export default function FolhaEmpresaPage() {
   }
 
   async function replicarFolha() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Replicar folha)", perigo: false }))) return;
     if (!repFolha || !fazendaId || !empresaSel) return;
     setSaving(true);
     try {

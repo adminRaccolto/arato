@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -467,6 +468,7 @@ function ParametrosSistemaContent() {
     setCertUploadState(prev => ({ ...prev, [key]: { ...getCertState(key), ...patch } }));
 
   async function fazerUploadCert(emitter: { id: string; moduloKey: string; cpf_cnpj?: string; nome: string }) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Fazer upload cert)", perigo: false }))) return;
     const st = getCertState(emitter.moduloKey);
     if (!st.file || !st.senha.trim() || !fazendaId) return;
     setCertField(emitter.moduloKey, { loading: true, erro: "" });
@@ -670,6 +672,7 @@ function ParametrosSistemaContent() {
 
   // ── Upload de logo via API route (usa service role key para bypass de RLS)
   const uploadLogo = async (file: File) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Upload logo)", perigo: false }))) return;
     if (!resolvedContaId) return;
     setLogoUploading(true);
     try {
@@ -708,6 +711,7 @@ function ParametrosSistemaContent() {
   // errada — a emissão da fazenda dona da IE nunca achava a config (mesma
   // classe do bug da Muriana Transportes, Seção 258).
   const salvar = async (modulo: string, fazendaIdAlvo?: string) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     const fazAlvo = fazendaIdAlvo ?? fazendaId;
     if (!fazAlvo) return;
     setSalvando(modulo);
@@ -726,6 +730,7 @@ function ParametrosSistemaContent() {
 
   // Salva com valor explícito (evita race condition de setState + save imediato)
   const salvarComValor = async (modulo: string, newCfg: CfgModulo) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar com valor)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvando(modulo);
     setCfgs(prev => ({ ...prev, [modulo]: newCfg }));
@@ -808,6 +813,7 @@ function ParametrosSistemaContent() {
   };
 
   const salvarNcm = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar ncm)", perigo: false }))) return;
     if (!modalNcm || !fazendaId) return;
     const payload = { ...NCM_MODAL_VAZIO, ...modalNcm, fazenda_id: fazendaId };
     if (modalNcm.id) {
@@ -841,6 +847,7 @@ function ParametrosSistemaContent() {
   };
 
   const salvarOp = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar op)", perigo: false }))) return;
     if (!modalOp || !fazendaId) return;
     const payload = { ...OP_MODAL_VAZIO, ...modalOp, fazenda_id: fazendaId };
     if (modalOp.id) await supabase.from("operacoes_fiscais").update(payload).eq("id", modalOp.id);
@@ -1930,6 +1937,7 @@ function ParametrosSistemaContent() {
     setModalT(null);
   };
   const salvarVeiculo = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar veiculo)", perigo: false }))) return;
     if (!modalV || !fazendaId) return;
     if (modalV.id) await supabase.from("veiculos").update({ ...modalV }).eq("id", modalV.id);
     else await supabase.from("veiculos").insert({ ...modalV, fazenda_id: fazendaId, ativo: true });
@@ -1938,6 +1946,7 @@ function ParametrosSistemaContent() {
     setModalV(null);
   };
   const salvarMotorista = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar motorista)", perigo: false }))) return;
     if (!modalM || !fazendaId) return;
     if (modalM.id) await supabase.from("motoristas").update({ ...modalM }).eq("id", modalM.id);
     else await supabase.from("motoristas").insert({ ...modalM, fazenda_id: fazendaId, ativo: true });

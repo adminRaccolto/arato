@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -118,6 +119,7 @@ export default function AcertoFretePage() {
 
   // ── Criar acerto para motorista ───────────────────────────────────────────
   const criarAcerto = async (motorista: Motorista) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar acerto)", perigo: false }))) return;
     if (!fazAtiva) return;
     const { data } = await supabase.from("acertos_frete").insert({
       fazenda_id: fazAtiva,
@@ -187,6 +189,7 @@ export default function AcertoFretePage() {
 
   // ── Importar CT-e para o acerto ──────────────────────────────────────────
   const importarCte = async (cte: CteResumo) => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Importar cte)", perigo: false }))) return;
     if (!modalData) return;
     const jaExiste = modalData.itens.find(i => i.referencia_id === cte.id);
     if (jaExiste) return;
@@ -204,6 +207,7 @@ export default function AcertoFretePage() {
 
   // ── Remover item ──────────────────────────────────────────────────────────
   const removerItem = async (itemId: string) => {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Remover item)", perigo: true }))) return;
     if (!modalData) return;
     await supabase.from("acerto_frete_itens").delete().eq("id", itemId);
     await recalcularTotais(modalData.acerto.id);
@@ -229,6 +233,7 @@ export default function AcertoFretePage() {
 
   // ── Fechar acerto + gerar CP ──────────────────────────────────────────────
   const fecharAcerto = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Fechar acerto)", perigo: false }))) return;
     if (!modalData || !fazAtiva) return;
     setSavingAcerto(true);
     const a = modalData.acerto;

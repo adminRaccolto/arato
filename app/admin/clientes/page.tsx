@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
@@ -131,6 +132,7 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
   const [aba, setAba] = useState<"geral" | "assinatura">("geral");
 
   async function salvar() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     setSalvando(true); setErro("");
     try {
       const campos = {
@@ -393,6 +395,7 @@ export default function ClientesPage() {
 
   // ── Criar conta admin para cliente sem conta ─────────────────────────────
   async function criarContaAdmin(c: ClienteAdmin) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar conta admin)", perigo: false }))) return;
     const pacote = window.prompt(
       `Criar conta admin para "${c.nome}".\n\nEscolha o pacote:\n  essencial / gestao / performance / pro_bono\n\nDigite o pacote:`,
       "pro_bono",
@@ -424,6 +427,7 @@ export default function ClientesPage() {
   }
 
   async function marcarProBono(c: ClienteAdmin) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Marcar pro bono)", perigo: false }))) return;
     const motivo = window.prompt(`Motivo do Pro Bono para "${c.nome}":\n(Ex: cliente da consultoria, parceiro estratégico...)`, c.pro_bono_motivo ?? "Cliente da consultoria Raccolto");
     if (motivo === null) return;
     const campos = { status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 };
@@ -448,6 +452,7 @@ export default function ClientesPage() {
 
   // ── Mudar plano inline ──────────────────────────────────────────────────────
   async function mudarPlano(c: ClienteAdmin, novoPacote: PacoteCliente) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Mudar plano)", perigo: false }))) return;
     setAcaoLoading(c.id);
     try {
       const valor = PACOTE_CFG[novoPacote].valor;
@@ -497,6 +502,7 @@ export default function ClientesPage() {
 
   // ── Excluir conta permanentemente ─────────────────────────────────────────
   async function excluirConta(c: ClienteAdmin) {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir conta)", perigo: true }))) return;
     const confirmacao = window.prompt(
       `ATENÇÃO — EXCLUSÃO PERMANENTE\n\nEsta ação APAGA TODOS os dados de "${c.nome}" (fazendas, lançamentos, contratos, etc.) e NÃO pode ser desfeita.\n\nDigite o nome do cliente para confirmar:`
     );

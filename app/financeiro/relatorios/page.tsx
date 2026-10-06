@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -817,6 +818,7 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 const excluirSim = async (id: string) => {
+                  if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir sim)", perigo: true }))) return;
                   setSimEntries(prev => prev.filter(x => x.id !== id));
                   try { await excluirSimulacao(id); }
                   catch { alert("Não foi possível excluir a simulação."); }

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
@@ -290,6 +291,7 @@ export default function AlgodaoPage() {
   // ─── Salvar operação especial ─────────────────────────────────────────────
 
   async function salvarOperacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar operacao)", perigo: false }))) return;
     if (!modalOp || !fazendaId || !cicloSel) return;
     if (!modalOp.tipo || !modalOp.data_aplicacao) { setMsg("Tipo e data são obrigatórios."); return; }
     setSalvando(true); setMsg(null);
@@ -305,6 +307,7 @@ export default function AlgodaoPage() {
   // ─── Salvar armadilha ────────────────────────────────────────────────────
 
   async function salvarArmadilha() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar armadilha)", perigo: false }))) return;
     if (!modalArm || !fazendaId || !cicloSel) return;
     if (!modalArm.nome) { setMsg("Nome é obrigatório."); return; }
     setSalvando(true); setMsg(null);
@@ -320,6 +323,7 @@ export default function AlgodaoPage() {
   // ─── Salvar captura ──────────────────────────────────────────────────────
 
   async function salvarCaptura(armId: string, data: string, qtd: number) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar captura)", perigo: false }))) return;
     setSalvando(true); setMsg(null);
     const { error } = await supabase.from("bicudo_capturas")
       .upsert({ armadilha_id: armId, data_leitura: data, capturas: qtd }, { onConflict: "armadilha_id,data_leitura" });
@@ -331,6 +335,7 @@ export default function AlgodaoPage() {
   // ─── Salvar módulo ───────────────────────────────────────────────────────
 
   async function salvarModulo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar modulo)", perigo: false }))) return;
     if (!modalMod || !fazendaId || !cicloSel) return;
     if (!modalMod.numero) { setMsg("Número do módulo é obrigatório."); return; }
     setSalvando(true); setMsg(null);
@@ -346,6 +351,7 @@ export default function AlgodaoPage() {
   // ─── Salvar beneficiamento ───────────────────────────────────────────────
 
   async function salvarBeneficiamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar beneficiamento)", perigo: false }))) return;
     if (!modalBenef || !fazendaId || !cicloSel) return;
     setSalvando(true); setMsg(null);
     const payload = { ...modalBenef, fazenda_id: fazendaId, ciclo_id: cicloSel, status: modalBenef.status ?? "em_processamento" };
@@ -360,6 +366,7 @@ export default function AlgodaoPage() {
   // ─── Salvar laudo HVI ────────────────────────────────────────────────────
 
   async function salvarHVI() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar hvi)", perigo: false }))) return;
     if (!modalHVI?.beneficiamento_id) { setMsg("Selecione o beneficiamento."); return; }
     setSalvando(true); setMsg(null);
     const payload = { ...modalHVI };

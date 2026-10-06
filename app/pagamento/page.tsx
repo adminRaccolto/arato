@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
@@ -79,6 +80,7 @@ function PagamentoInner() {
   }, [contaId]);
 
   async function gerarPagamento() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Gerar pagamento)", perigo: false }))) return;
     if (!assinatura?.asaas_customer_id) {
       setErro("Configure o método de pagamento entrando em contato com o suporte.");
       return;

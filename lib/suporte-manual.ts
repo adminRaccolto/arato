@@ -1003,6 +1003,8 @@ Ao cadastrar uma apólice nova com prêmio "Parcelado" ou "À Vista", o sistema 
 
 **Colunas do grid de CP e CR (06/10/2026):** cada usuário escolhe quais colunas aparecem e a ordem delas. O layout é salvo na conta de quem está logado, então vale em qualquer aparelho e não muda para os outros usuários.
 
+**Confirmações (06/10/2026):** em todo o sistema, salvar, editar, excluir, baixar, emitir e importar pedem confirmação antes de gravar. A janela mostra o que será feito; Cancelar (ou Esc) não altera nada. Exclusões e estornos aparecem em vermelho.
+
 **Excluir consórcio (06/10/2026):** no cadastro do consórcio, Excluir consórcio apaga o plano e os CPs em aberto, depois de confirmação. Se houver parcela paga, conciliada, em borderô ou contemplação, o sistema recusa: estorne antes. Editar plano abre o plano de parcelas para ajustar vencimentos e valores.
 
 **Juros, multa e desconto no borderô (06/10/2026):** na confirmação do pagamento do borderô, cada título tem campos de multa, juros e desconto. Juros e multa somam ao valor pago; o desconto abate o principal. Na DRE, juros de mora e multas aparecem como despesa financeira em linhas próprias, e os descontos obtidos como redução de despesa.

@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../components/TopNav";
@@ -925,6 +926,7 @@ function CadastrosInner() {
 
   // ── Helpers de save ──
   async function salvar(fn: () => Promise<void>) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     try {
       setSalvando(true);
       await fn();
@@ -1403,7 +1405,7 @@ function CadastrosInner() {
     setModalFaz(true);
   };
 
-  const salvarFaz = () => salvar(async () => {
+  const salvarFaz = async () => salvar(async () => {
     const erros: string[] = [];
     if (!fFaz.nome.trim()) erros.push("Nome da Fazenda");
     if (!fFaz.area) erros.push("Área (ha)");
@@ -1637,7 +1639,7 @@ function CadastrosInner() {
       car_ids: docIds.car_ids,
     });
   };
-  const salvarTalhao = () => salvar(async () => {
+  const salvarTalhao = async () => salvar(async () => {
     if (!modalTalhao) return;
     const erros: string[] = [];
     if (!fTalhao.nome.trim()) erros.push("Nome do Talhão");
@@ -1683,7 +1685,7 @@ function CadastrosInner() {
     setModalMatricula(fid); setEditMatricula(m ?? null);
     setFMat(m ? { produtor_id: m.produtor_id ?? "", numero: m.numero, cartorio: m.cartorio ?? "", area_ha: String(m.area_ha ?? ""), descricao: m.descricao ?? "", em_garantia: m.em_garantia, garantia_banco: m.garantia_banco ?? "", garantia_valor: String(m.garantia_valor ?? ""), garantia_vencimento: m.garantia_vencimento ?? "" } : { produtor_id: "", numero: "", cartorio: "", area_ha: "", descricao: "", em_garantia: false, garantia_banco: "", garantia_valor: "", garantia_vencimento: "" });
   };
-  const salvarMatricula = () => salvar(async () => {
+  const salvarMatricula = async () => salvar(async () => {
     if (!modalMatricula) return;
     const erros: string[] = [];
     if (!fMat.numero.trim()) erros.push("Número da Matrícula");
@@ -1732,7 +1734,7 @@ function CadastrosInner() {
       if (!d.erro) setFEmp(p => ({ ...p, logradouro: d.logradouro ?? p.logradouro, bairro: d.bairro ?? p.bairro, municipio: d.localidade ?? p.municipio, municipio_ibge: d.ibge ?? p.municipio_ibge, estado: d.uf ?? p.estado }));
     } catch { /* silencioso */ }
   };
-  const salvarEmp = () => salvar(async () => {
+  const salvarEmp = async () => salvar(async () => {
     if (!fEmp.nome.trim() && !fEmp.razao_social.trim()) { setErroModal("Preencha: Razão Social ou Nome"); return; }
     setErroModal("");
     const fazId = (fazIdEff)!;
@@ -1799,7 +1801,7 @@ function CadastrosInner() {
     });
     setModalPes(true);
   };
-  const salvarPes = () => salvar(async () => {
+  const salvarPes = async () => salvar(async () => {
     if (!fPes.nome.trim()) { setErroModal("Preencha: Nome"); return; }
     // Valida CPF/CNPJ duplicado
     if (fPes.cpf_cnpj.trim()) {
@@ -1962,7 +1964,7 @@ function CadastrosInner() {
     setFAno(a ? { descricao: a.descricao, data_inicio: a.data_inicio, data_fim: a.data_fim } : { descricao: "", data_inicio: "", data_fim: "" });
     setModalAno(true);
   };
-  const salvarAno = () => salvar(async () => {
+  const salvarAno = async () => salvar(async () => {
     const erros: string[] = [];
     if (!fAno.descricao.trim()) erros.push("Descrição");
     if (!fAno.data_inicio) erros.push("Data Início");
@@ -2052,7 +2054,7 @@ function CadastrosInner() {
     }
     setModalCiclo(true);
   };
-  const salvarCiclo = () => salvar(async () => {
+  const salvarCiclo = async () => salvar(async () => {
     const erros: string[] = [];
     if (!cicloFazendaId) erros.push("Fazenda");
     if (!fCiclo.descricao.trim()) erros.push("Descrição");
@@ -2129,7 +2131,7 @@ function CadastrosInner() {
     } : { fazenda_id: fazIdEff ?? "", nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "" });
     setModalMaq(true);
   };
-  const salvarMaq = () => salvar(async () => {
+  const salvarMaq = async () => salvar(async () => {
     if (!fMaq.nome.trim()) { setErroModal("Preencha: Nome"); return; }
     if (!fMaq.fazenda_id) { setErroModal("Selecione a fazenda"); return; }
     setErroModal("");
@@ -2168,7 +2170,7 @@ function CadastrosInner() {
     await carregarInsumosCombDaFazenda(fazId);
     setModalBomba(true);
   };
-  const salvarBomba = () => salvar(async () => {
+  const salvarBomba = async () => salvar(async () => {
     if (!fBomba.nome.trim()) { setErroModal("Preencha: Nome"); return; }
     if (!fBomba.fazenda_id) { setErroModal("Selecione a fazenda"); return; }
     setErroModal("");
@@ -2186,7 +2188,7 @@ function CadastrosInner() {
       : { fazenda_id: fazIdEff || "", nome: "", tipo: "insumo_fazenda", capacidade_sc: "", pessoa_id: "", ativo: true });
     setModalDep(true);
   };
-  const salvarDep = () => salvar(async () => {
+  const salvarDep = async () => salvar(async () => {
     const erros: string[] = [];
     if (!fDep.nome.trim()) erros.push("Nome");
     if (!fDep.fazenda_id) erros.push("Fazenda");
@@ -2261,7 +2263,7 @@ function CadastrosInner() {
     setModalFunc(true);
   };
 
-  const salvarFunc = () => salvar(async () => {
+  const salvarFunc = async () => salvar(async () => {
     if (!fFunc.nome.trim()) { setErroModal("Preencha: Nome do Funcionário"); return; }
     setErroModal("");
     const payload: Omit<Funcionario, "id" | "created_at"> = {
@@ -2312,7 +2314,7 @@ function CadastrosInner() {
     setModalFunc(false);
   });
 
-  const salvarPremiacao = () => salvar(async () => {
+  const salvarPremiacao = async () => salvar(async () => {
     if (!editFunc) return;
     const erros: string[] = [];
     if (!fPremiacao.descricao) erros.push("Descrição");
@@ -2355,7 +2357,7 @@ function CadastrosInner() {
     setFPremiacao({ mes_referencia: "", data_pagamento: "", descricao: "", valor: "" });
   });
 
-  const salvarGozo = () => salvar(async () => {
+  const salvarGozo = async () => salvar(async () => {
     if (!modalGozo) return;
     const dados: Partial<FuncionarioFerias> = {
       data_inicio_gozo: fGozo.data_inicio_gozo || undefined,
@@ -2389,7 +2391,7 @@ function CadastrosInner() {
     setFGrupo({ nome: g?.nome ?? "", descricao: g?.descricao ?? "", permissoes: perms });
     setModalGrupo(true);
   };
-  const salvarGrupo = () => salvar(async () => {
+  const salvarGrupo = async () => salvar(async () => {
     if (!fGrupo.nome.trim()) { setErroModal("Preencha: Nome"); return; }
     setErroModal("");
     if (editGrupo) { await atualizarGrupo(editGrupo.id, fGrupo); setGrupos(p => p.map(x => x.id === editGrupo.id ? { ...x, ...fGrupo } : x)); }
@@ -2406,7 +2408,7 @@ function CadastrosInner() {
     );
     setModalUser(true);
   };
-  const salvarUser = () => salvar(async () => {
+  const salvarUser = async () => salvar(async () => {
     const erros: string[] = [];
     if (!fUser.nome.trim()) erros.push("Nome");
     if (!fUser.email.trim()) erros.push("Email");
@@ -4797,6 +4799,7 @@ function CadastrosInner() {
             };
 
             const salvarIns = async () => {
+              if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar ins)", perigo: false }))) return;
               if (!fIns.nome.trim()) { setErroModal("Preencha: Nome"); return; }
               setErroModal("");
               setSalvando(true);
@@ -5237,6 +5240,7 @@ function CadastrosInner() {
             };
 
             const salvarProd = async () => {
+              if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados do insumo antes de salvar.", perigo: false }))) return;
               const erros: string[] = [];
               if (!fIns.nome.trim()) erros.push("Nome");
               if (!fIns.cultura_id) erros.push("Cultura");
@@ -6893,6 +6897,7 @@ function CadastrosInner() {
             };
 
             const salvar = async () => {
+              if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de salvar.", perigo: false }))) return;
               if (!fCultura.nome.trim()) { setErroModal("Preencha: Nome"); return; }
               setErroModal("");
               setSalvandoCultura(true);

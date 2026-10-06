@@ -1,5 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -1021,12 +1022,14 @@ function ConciliacaoInner() {
   // A lixeira só abre o pop-up com as 3 opções; a execução é em executarExclusao.
   const [modalExcluir, setModalExcluir] = useState<Extrato | null>(null);
   const [modoExcluir, setModoExcluir]   = useState<"registro" | "completa" | "completa_reabrir">("registro");
-  function excluirExtrato(ext: Extrato) {
+  async function excluirExtrato(ext: Extrato) {
+    if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Excluir extrato)", perigo: true }))) return;
     setModoExcluir("registro");
     setModalExcluir(ext);
   }
 
   async function executarExclusao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Executar exclusao)", perigo: false }))) return;
     const ext = modalExcluir;
     if (!ext) return;
     const soRegistro = modoExcluir === "registro";
@@ -1323,6 +1326,7 @@ function ConciliacaoInner() {
 
   // ── Salvar lançamento de tesouraria e conciliar ───────────────────────────
   async function salvarTesouraria() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar tesouraria)", perigo: false }))) return;
     if (!modalTes || !fazendaId || !extrato) return;
     setSavingTes(true);
 
@@ -1478,6 +1482,7 @@ function ConciliacaoInner() {
   // natureza — ex: vários pedágios) viram UM único CP/CR, já baixado, e todas
   // as linhas selecionadas ficam conciliadas contra esse mesmo lançamento.
   async function salvarLancamentoAgrupado() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar lancamento agrupado)", perigo: false }))) return;
     if (!extrato || !fazendaId || selecaoMultipla.size < 2) return;
     const linhasSel = extrato.linhas.filter(l => selecaoMultipla.has(l.id));
     if (linhasSel.length < 2) return;
@@ -1602,6 +1607,7 @@ function ConciliacaoInner() {
 
   // Cria a regra a partir de uma linha classificada à mão ("sempre fazer isso para textos como…")
   async function criarRegraDaLinha(linha: LinhaOFX, dados: { acao: "lancar" | "transferencia"; og_id?: string; conta_destino_id?: string }): Promise<string | null> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Criar regra da linha)", perigo: false }))) return null;
     if (!criarRegra.ativo) return null;
     const og = dados.og_id ? ogsDisponiveis.find(o => o.id === dados.og_id) : undefined;
     try {
@@ -1622,6 +1628,7 @@ function ConciliacaoInner() {
   }
 
   async function salvarRegraForm() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar regra form)", perigo: false }))) return;
     const og = ogsDisponiveis.find(o => o.id === fRegra.og_id);
     setSavingRegra(true);
     try {
@@ -1642,6 +1649,7 @@ function ConciliacaoInner() {
   }
 
   async function alternarRegra(r: RegraConc) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Alternar regra)", perigo: false }))) return;
     const res = await authFetch(`/api/financeiro/conciliacao-regras?id=${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ativa: !r.ativa }) }).then(x => x.json()).catch(() => null);
     if (!res?.ok) { alert("Não foi possível alterar a regra."); return; }
     setRegras(prev => prev.map(x => x.id === r.id ? { ...x, ativa: !r.ativa } : x));
@@ -1663,6 +1671,7 @@ function ConciliacaoInner() {
 
   // Aplica as regras às pendentes da conta aberta (o mesmo que roda no import)
   async function aplicarRegrasNaConta() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Aplicar regras na conta)", perigo: false }))) return;
     if (!extrato) return;
     setAplicandoRegras(true);
     try {
@@ -1683,6 +1692,7 @@ function ConciliacaoInner() {
   // Aceitar vários é feito numa única gravação: aceitar em sequência, cada um sobre o `extrato` do
   // momento, faria o 2º sobrescrever o 1º (a conciliação anterior voltava a pendente).
   async function aceitarPares(pares: { linha: LinhaOFX; ids: string[]; nivel: "alta" | "media" }[]) {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Aceitar pares)", perigo: false }))) return;
     if (!extrato || !fazendaId || pares.length === 0) return;
     setSalvando(true);
     const usados = new Set<string>();

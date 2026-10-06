@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -341,6 +342,7 @@ export default function UsuariosPermissoes() {
   }, [contaId]);
 
   const toggleRaccolto = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Toggle raccolto)", perigo: false }))) return;
     if (!fazendaId) return;
     setSalvandoRaccolto(true);
     const novoValor = !raccoltoAcesso;
@@ -384,6 +386,7 @@ export default function UsuariosPermissoes() {
   };
 
   const salvarGrupo = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar grupo)", perigo: false }))) return;
     if (!fGrupo.nome.trim() || !fazendaId) return;
     setSalvando(true);
     const payload = { fazenda_id: fazendaId, nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: permGrupo };
@@ -521,6 +524,7 @@ export default function UsuariosPermissoes() {
   };
 
   const salvarUser = async () => {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar user)", perigo: false }))) return;
     if (!fazendaId || !fUser.nome.trim() || !fUser.email.trim()) return;
     setSalvando(true);
     setResultadoCriacao(null);

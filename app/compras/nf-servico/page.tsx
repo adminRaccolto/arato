@@ -1,4 +1,5 @@
 "use client";
+import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -466,6 +467,7 @@ export default function NfServicoPage() {
 
   // ── Salvar NF ───────────────────────────────────────────────
   async function salvar(status: "digitando" | "pendente" | "processada") {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!cab.fazenda_id && !fazendaId) return;
     setErr("");
     if (!cab.numero_nf.trim()) { setErr("Informe o número da NF."); return; }

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-h",
+    data: "06/10/2026",
+    titulo: "Confirmação antes de salvar, editar e excluir",
+    modulos: ["Todos"],
+    itens: [
+      { tipo: "melhoria", texto: "Salvar, editar, excluir, baixar, emitir e importar agora pedem confirmação no próprio sistema antes de gravar. Ao cancelar, nada é alterado." },
+      { tipo: "melhoria", texto: "Exclusões e estornos aparecem em vermelho e avisam que não podem ser desfeitos." },
+    ],
+    onde: "Todo o sistema",
+  },
+  {
     versao: "2026.10.06-g",
     data: "06/10/2026",
     titulo: "Consórcios: excluir consórcio e editar plano",
