@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-t",
+    data: "06/10/2026",
+    titulo: "Olívia: abastecimento em posto como Apropriação Direta",
+    modulos: ["Suporte"],
+    itens: [
+      { tipo: "correcao", texto: "A Olívia orienta abastecimento em posto como Apropriação Direta, com a Operação Gerencial GASTO COMBUSTÍVEL - CUSTO FAZENDA, e deixa claro que não passa pelo estoque." },
+    ],
+    onde: "Ajuda → Suporte",
+  },
+  {
     versao: "2026.10.06-s",
     data: "06/10/2026",
     titulo: "Pedido de compra sem aba de centro de custo",
