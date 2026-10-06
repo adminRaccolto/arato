@@ -211,6 +211,9 @@ export default function DocumentosFiscaisPage() {
   async function sincronizarSieg() {
     const fazAlvo = fazendaId;
     if (!fazAlvo) return;
+    // Mesmo período do filtro de datas da tela; sem datas, últimos 30 dias
+    const siegDtIni = fDataDe || hoje30(30);
+    const siegDtFim = fDataAte || hoje30(0);
     setSiegSyncing(true); setSiegMsg("");
     try {
       const res = await fetch("/api/integracoes/sieg-sync", {
@@ -277,8 +280,6 @@ export default function DocumentosFiscaisPage() {
   const [popover, setPopover] = useState<{ d: RelDocFiscal; x: number; y: number } | null>(null);
   // ── SIEG: sincronização por período e re-importação de uma NF (tela unificada) ──
   const hoje30 = (dias: number) => new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
-  const [siegDtIni, setSiegDtIni] = useState(hoje30(30));
-  const [siegDtFim, setSiegDtFim] = useState(hoje30(0));
   const [siegForce, setSiegForce] = useState(false);
   const [siegSyncing, setSiegSyncing] = useState(false);
   const [siegMsg, setSiegMsg] = useState("");
@@ -553,9 +554,7 @@ export default function DocumentosFiscaisPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#555" }}>
           <span style={{ fontWeight: 600 }}>SIEG</span>
-          <InputData value={siegDtIni} onChange={e => setSiegDtIni(e.target.value)} style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12 }} />
-          <span>até</span>
-          <InputData value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)} style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12 }} />
+          <span style={{ color: "#888" }}>usa o período do filtro acima{!fDataDe && !fDataAte ? " (sem datas: últimos 30 dias)" : ""}</span>
           <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", userSelect: "none" }}>
             <input type="checkbox" checked={siegForce} onChange={e => setSiegForce(e.target.checked)} style={{ cursor: "pointer" }} />
             Forçar re-importação
