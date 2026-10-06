@@ -5087,16 +5087,17 @@ function CadastrosInner() {
                       {/* Unidade */}
                       <div>
                         <label style={lbl}>Unidade *</label>
-                        {isComb || fIns.categoria === "semente" ? (
+                        {isComb ? (
+                          <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }} value="L (litros)" readOnly />
+                        ) : fIns.categoria === "semente" ? (
                           <div>
-                            <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }}
-                              value={isComb ? "L (litros)" : "kg (quilogramas)"}
-                              readOnly />
-                            {fIns.categoria === "semente" && (
-                              <div style={{ fontSize: 10, color: "#111111", marginTop: 3 }}>
-                                Sementes são controladas em <strong>kg</strong>. Entradas em "bag" são convertidas automaticamente.
-                              </div>
-                            )}
+                            <select style={inp} value={fIns.unidade === "bag" ? "bag" : "kg"} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                              <option value="kg">kg (quilogramas)</option>
+                              <option value="bag">bag</option>
+                            </select>
+                            <div style={{ fontSize: 10, color: "#666", marginTop: 3 }}>
+                              Sementes podem ser controladas em <strong>kg</strong> ou <strong>bag</strong>. Entradas em bag pedem o peso do bag ao lançar a NF.
+                            </div>
                           </div>
                         ) : (
                           <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>

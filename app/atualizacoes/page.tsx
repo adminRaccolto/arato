@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-q",
+    data: "06/10/2026",
+    titulo: "Sementes: unidade kg ou bag",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "No cadastro de semente, a unidade de medida pode ser kg ou bag." },
+    ],
+    onde: "Cadastros → Cadastros — Agrícola → Catálogo de Insumos",
+  },
+  {
     versao: "2026.10.06-p",
     data: "06/10/2026",
     titulo: "Documentos Fiscais: sincronização SIEG e re-importação",
