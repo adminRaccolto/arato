@@ -12,12 +12,16 @@ const ENDPOINTS_PROD: Record<string, string> = {
   "29": "https://nfe.sefaz.ba.gov.br/webservices/NFeConsultaProtocolo4/NFeConsultaProtocolo4.asmx", // BA
   "26": "https://nfe.sefaz.pe.gov.br/nfe-service/services/NFeConsultaProtocolo4", // PE
   // SVRS (demais UFs incluindo MT=51, GO=52, MS=50)
+  // MT (51): a autorização normal é da própria SEFAZ-MT. O SVRS recusa a consulta dessas chaves
+  // com "tpEmis incompatível com a SVC-[AN/RS]" — mesmo endereço já usado em lib/nfe/transmitter.ts.
+  "51": "https://nfe.sefaz.mt.gov.br/nfews/v2/services/NfeConsulta4",
   "_svrs": "https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx",
 };
 
 function getEndpoint(cuf: string, ambiente: "1" | "2"): string {
   if (ambiente === "2") {
-    // Homologação — SVRS atende tudo em hom
+    // Homologação — MT tem endereço próprio; demais UFs usam o SVRS
+    if (cuf === "51") return "https://homologacao.sefaz.mt.gov.br/nfews/v2/services/NfeConsulta4";
     return "https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx";
   }
   return ENDPOINTS_PROD[cuf] ?? ENDPOINTS_PROD["_svrs"];
