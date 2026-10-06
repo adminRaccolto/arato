@@ -163,7 +163,7 @@ export default function NotasPropriasExternasPage() {
   function removerItem(key: string) { setItens(p => p.filter(it => it.key !== key)); }
 
   async function avancar() {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Avancar)", perigo: false }))) return;
+    // A confirmação fica em salvar(), que é onde a nota é gravada (sem pedir duas vezes)
     if (!cab.numero.trim() || !cab.data_emissao || !cab.valor_total) {
       setErroWiz("Preencha número, data de emissão e valor total."); return;
     }
