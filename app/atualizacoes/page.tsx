@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-g",
+    data: "06/10/2026",
+    titulo: "Consórcios: excluir consórcio e editar plano",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Botão Excluir consórcio no cadastro do consórcio, com confirmação. Apaga o plano e os CPs em aberto. Se houver parcela paga, conciliada, em borderô ou contemplação, a exclusão é recusada." },
+      { tipo: "melhoria", texto: "O botão Regenerar virou Editar plano: abre o plano para ajustar vencimentos e valores, sem apagar as parcelas." },
+    ],
+    onde: "Financeiro → Consórcios",
+  },
+  {
     versao: "2026.10.06-f",
     data: "06/10/2026",
     titulo: "Anexos: seguros e contratos financeiros",

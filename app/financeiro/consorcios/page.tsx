@@ -475,6 +475,32 @@ export default function ConsorciosPage() {
     setModalConsor(true);
   }
 
+  // Exclui o consórcio e seu plano (CPs em aberto junto). A API recusa se houver pagamento,
+  // conciliação, borderô ou contemplação ligados a ele.
+  async function excluirConsorcio() {
+    if (!consorEdit) return;
+    const qtd = parcelas.filter(p => p.consorcio_id === consorEdit.id).length;
+    if (!window.confirm(`Excluir o consórcio ${consorEdit.administradora} — Cota ${consorEdit.numero_cota}?\n\nSerão apagados o plano (${qtd} parcela(s)) e os CPs ainda em aberto.\n\nSe houver parcela paga, conciliada ou contemplação, a exclusão é recusada. Essa ação não pode ser desfeita.`)) return;
+    setCSaving(true);
+    setCErr("");
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const res = await fetch(`/api/financeiro/consorcios?id=${encodeURIComponent(consorEdit.id)}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Erro ao excluir consórcio.");
+      setModalConsor(false);
+      await carregar();
+    } catch (e: unknown) {
+      setCErr(e instanceof Error ? e.message : "Erro ao excluir consórcio.");
+    } finally {
+      setCSaving(false);
+    }
+  }
+
   async function salvarConsorcio() {
     // setCSaving(true) PRIMEIRO — garante feedback visual imediato em qualquer cenário
     setCSaving(true);
@@ -885,8 +911,8 @@ export default function ConsorciosPage() {
                               Parcelas ({parcelasC.length}) — mensalidade mensal {fmtBRL(c.valor_parcela_mensal)}
                             </div>
                             {parcelasC.length > 0 && (
-                              <button onClick={() => gerarParcelas(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
-                                Regenerar
+                              <button onClick={() => abrirGridConsorcio(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                                Editar plano
                               </button>
                             )}
                           </div>
@@ -1321,10 +1347,15 @@ export default function ConsorciosPage() {
               )}
               {tabConsor === "rateio" && rateioOk && (
                 <div style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#1A6B3C", marginBottom: 12 }}>
-                  ✅ Rateio salvo. Use &quot;Regenerar&quot; para aplicar às CPs existentes.
+                  ✅ Rateio salvo. Use &quot;Editar plano&quot; para aplicar às CPs existentes.
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                {consorEdit && tabConsor === "dados" && (
+                  <button onClick={excluirConsorcio} disabled={cSaving} style={{ ...btnR, color: "#B91C1C", borderColor: "#FCA5A5", background: "#FEF2F2", marginRight: "auto" }}>
+                    Excluir consórcio
+                  </button>
+                )}
                 <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
                 {tabConsor === "dados" && (
                   <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>

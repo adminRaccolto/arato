@@ -369,3 +369,43 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
+
+// DELETE /api/financeiro/consorcios?id=<consorcio_id>
+// Exclui o consórcio e seu plano. Trava: se alguma CP/CR ligada a ele já foi paga, baixada,
+// conciliada ou está em borderô (inclui a contemplação e os lances), recusa — o pagamento
+// precisa ser estornado antes. CPs em aberto são apagadas junto; o resto vai em cascata.
+export async function DELETE(req: NextRequest) {
+  try {
+    const id = req.nextUrl.searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
+    const sb = admin();
+    const { data: c } = await sb.from("consorcios").select("id, fazenda_id, administradora, numero_cota").eq("id", id).maybeSingle();
+    if (!c) return NextResponse.json({ error: "Consórcio não encontrado" }, { status: 404 });
+
+    const { validateFazendaAccess } = await import("../../../../lib/api-auth");
+    const acesso = await validateFazendaAccess(c.fazenda_id as string, req.headers.get("authorization") ?? undefined);
+    if (!acesso.ok) return NextResponse.json({ error: acesso.error }, { status: acesso.status });
+
+    const { data: lancs, error: le } = await sb.from("lancamentos")
+      .select("id, status, conciliado, lote_id, tipo, numero_documento")
+      .eq("consorcio_id", id);
+    if (le) return NextResponse.json({ error: le.message }, { status: 400 });
+    const travados = (lancs ?? []).filter(l => !["em_aberto", "vencido"].includes(String(l.status)) || l.conciliado || l.lote_id);
+    if (travados.length) {
+      const desc = travados.slice(0, 5).map(l => `${l.tipo === "receber" ? "CR" : "parcela"} ${l.numero_documento ?? ""}`.trim()).join(", ");
+      return NextResponse.json({ error: `Não dá para excluir ${c.administradora} — Cota ${c.numero_cota}: há lançamento já pago, conciliado, em borderô ou contemplação (${desc}${travados.length > 5 ? "…" : ""}). Estorne antes.` }, { status: 409 });
+    }
+
+    const abertos = (lancs ?? []).map(l => l.id as string);
+    if (abertos.length) {
+      const { error: de } = await sb.from("lancamentos").delete().in("id", abertos);
+      if (de) return NextResponse.json({ error: de.message }, { status: 400 });
+    }
+    const { error } = await sb.from("consorcios").delete().eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true, cps_removidas: abertos.length });
+  } catch (e) {
+    console.error("[api/financeiro/consorcios DELETE]", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
