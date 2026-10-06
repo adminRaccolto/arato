@@ -15961,3 +15961,24 @@ ALTER TABLE consorcios
   ADD COLUMN IF NOT EXISTS valor_total_pagar numeric(15,2);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 327 — Layout dos grids (colunas visíveis e ordem) guardado por usuário no banco.
+-- Antes ficava no localStorage do navegador, que é compartilhado por quem usa o mesmo
+-- aparelho/app instalado — o layout de um usuário aparecia para os outros.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS preferencias_grid (
+  user_id     uuid NOT NULL,
+  grid        text NOT NULL,
+  config      jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  timestamptz DEFAULT now(),
+  PRIMARY KEY (user_id, grid)
+);
+
+ALTER TABLE preferencias_grid ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS pref_grid_own ON preferencias_grid;
+CREATE POLICY pref_grid_own ON preferencias_grid FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+NOTIFY pgrst, 'reload schema';

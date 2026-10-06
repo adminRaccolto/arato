@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-e",
+    data: "06/10/2026",
+    titulo: "CP e CR: layout de colunas por usuário",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O layout de colunas do grid de CP e CR agora é salvo por usuário logado, no banco. Cada pessoa mantém o próprio layout, inclusive em outro aparelho, sem afetar quem usa o mesmo computador." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.06-d",
     data: "06/10/2026",
     titulo: "Borderô: juros, multa e desconto por título",

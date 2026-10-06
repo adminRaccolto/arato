@@ -188,7 +188,7 @@ const COLS_GRID_CR: ColDef[] = [
 
 export default function ContasAReceberPage() {
   const { fazendaId, fazendaIds, contaId, emailUsuario } = useAuth();
-  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols } = useColunasGrid(`cr_colunas_${emailUsuario ?? "default"}`, COLS_GRID_CR);
+  const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols } = useColunasGrid("cr", COLS_GRID_CR);
   const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
   const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => COLS_GRID_CR.find(c => c.key === k)).filter((c): c is ColDef => !!c);
 
