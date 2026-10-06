@@ -185,7 +185,6 @@ const COLS_GRID_CR: ColDef[] = [
   { key: "lancado", label: "Lançado via" },
   { key: "observacao", label: "Observação" },
   { key: "status", label: "Status" },
-  { key: "acoes", label: "Ações", fixo: true },
 ];
 
 export default function ContasAReceberPage() {
@@ -1326,21 +1325,6 @@ export default function ContasAReceberPage() {
                   status: (
                     <td style={{ padding: "7px 10px" }}>
                       <span style={{ fontSize: 10, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555", padding: "2px 8px", borderRadius: 8 }}>{sm?.label ?? l.status_normalizado}</span>
-                    </td>
-                  ),
-                  acoes: (
-                    <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cr" />
-                        {l.status_normalizado === "baixado" ? (
-                          <button onClick={() => reabrir(l)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Reabrir</button>
-                        ) : aberto ? (
-                          <>
-                            <button onClick={() => abrirBaixa(l)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer", background: "#16A34A", color: "#fff", border: "none" }}>Baixar</button>
-                            <button onClick={() => abrirReprog(l)} style={{ ...inp, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Reprogramar</button>
-                          </>
-                        ) : null}
-                      </div>
                     </td>
                   ),
                 };

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-l",
+    data: "06/10/2026",
+    titulo: "CP e CR: ações só no popup",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A linha do lançamento não tem mais botões. Baixar, reprogramar, editar, excluir, reabrir e os anexos ficam no popup, ao clicar na linha." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Receber",
+  },
+  {
     versao: "2026.10.06-k",
     data: "06/10/2026",
     titulo: "CP e CR: largura das colunas por usuário",
