@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -418,7 +419,7 @@ export default function GnrePage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
                   <label style={lbl}>Vencimento</label>
-                  <input type="date" value={form.vencimento} onChange={e => setForm(f => ({ ...f, vencimento: e.target.value }))} style={inp} />
+                  <InputData type="date" value={form.vencimento} onChange={e => setForm(f => ({ ...f, vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Status</label>
@@ -457,7 +458,7 @@ export default function GnrePage() {
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#111111", marginBottom: 20 }}>{fmt(pagarModal.valor_total)}</div>
             <label style={lbl}>Data do Pagamento</label>
-            <input type="date" value={dataPgto} onChange={e => setDataPgto(e.target.value)} style={{ ...inp, marginBottom: 20 }} />
+            <InputData type="date" value={dataPgto} onChange={e => setDataPgto(e.target.value)} style={{ ...inp, marginBottom: 20 }} />
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
               <button onClick={registrarPagamento} style={{ flex: 1, padding: "9px 0", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Confirmar</button>

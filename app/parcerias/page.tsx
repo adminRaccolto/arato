@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
@@ -994,11 +995,11 @@ export default function ParceriasPage() {
               </Campo>
               <Grid cols={3}>
                 <Campo label="Data de Início">
-                  <input type="date" style={inp()} value={parcForm.data_inicio}
+                  <InputData type="date" style={inp()} value={parcForm.data_inicio}
                     onChange={e => setParcForm(f => f && { ...f, data_inicio: e.target.value })} />
                 </Campo>
                 <Campo label="Data de Fim">
-                  <input type="date" style={inp()} value={parcForm.data_fim}
+                  <InputData type="date" style={inp()} value={parcForm.data_fim}
                     onChange={e => setParcForm(f => f && { ...f, data_fim: e.target.value })} />
                 </Campo>
                 <Campo label="Status">
@@ -1237,7 +1238,7 @@ export default function ParceriasPage() {
                 </select>
               </Campo>
               <Campo label="Data da Apuração">
-                <input type="date" style={inp()} value={apurForm.data_apuracao}
+                <InputData type="date" style={inp()} value={apurForm.data_apuracao}
                   onChange={e => setApurForm(f => ({ ...f, data_apuracao: e.target.value }))} />
               </Campo>
             </Grid>

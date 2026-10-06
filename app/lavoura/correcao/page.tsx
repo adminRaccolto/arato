@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -301,7 +302,7 @@ export default function CorrecaoSoloPage() {
               </div>
               <div>
                 <label style={lbl}>Data de Aplicação *</label>
-                <input style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
+                <InputData style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Observação</label>

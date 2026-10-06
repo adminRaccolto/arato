@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -2813,8 +2814,8 @@ function FiscalInner() {
                           <option value="65">65 — NFC-e</option>
                         </select>, "0 0 140px"),
                       field("Série", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.serie} onChange={e => fv({serie:e.target.value})} />, "0 0 60px"),
-                      field("Data Emissão", <input style={inSt} type="date" value={fVenda.data_emissao} onChange={e => fv({data_emissao:e.target.value})} />, "0 0 140px"),
-                      field("Data Ent./Saída", <input style={inSt} type="date" value={fVenda.data_saida} onChange={e => fv({data_saida:e.target.value})} />, "0 0 140px"),
+                      field("Data Emissão", <InputData style={inSt} type="date" value={fVenda.data_emissao} onChange={e => fv({data_emissao:e.target.value})} />, "0 0 140px"),
+                      field("Data Ent./Saída", <InputData style={inSt} type="date" value={fVenda.data_saida} onChange={e => fv({data_saida:e.target.value})} />, "0 0 140px"),
                       field("Hora Ent./Saída", <input style={inSt} type="time" step="1" value={fVenda.hora_saida} onChange={e => fv({hora_saida:e.target.value})} />, "0 0 110px"),
                     )}
                     <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
@@ -2885,7 +2886,7 @@ function FiscalInner() {
                       field("Chave de Acesso NF-e (44 dígitos)", <input style={inSt} value={""} readOnly placeholder="Gerada pela SEFAZ após transmissão" />),
                       field("Número NFP",  <input style={inSt} value={fVenda.num_nfp}  onChange={e => fv({num_nfp:e.target.value})}  />, "0 0 100px"),
                       field("Série NFP",   <input style={inSt} value={fVenda.serie_nfp} onChange={e => fv({serie_nfp:e.target.value})} />, "0 0 80px"),
-                      field("Data NFP",    <input style={inSt} type="date" value={fVenda.data_nfp} onChange={e => fv({data_nfp:e.target.value})} />, "0 0 140px"),
+                      field("Data NFP",    <InputData style={inSt} type="date" value={fVenda.data_nfp} onChange={e => fv({data_nfp:e.target.value})} />, "0 0 140px"),
                     )}
                     {row(
                       field("Retorno SEFAZ", <textarea style={{ ...inSt, height: 56, resize: "none", fontFamily: "monospace", fontSize: 11 }} readOnly placeholder="Preenchido após transmissão" value={""} />, "1 1 0"),
@@ -2906,7 +2907,7 @@ function FiscalInner() {
                     {row(
                       field("Grupo Vendedor",         <input style={inSt} value={fVenda.grupo_vendedor} onChange={e => fv({grupo_vendedor:e.target.value})} />),
                       field("Comprador",               <input style={inSt} value={fVenda.comprador}      onChange={e => fv({comprador:e.target.value})}      />),
-                      field("Data de Lançamento",      <input style={inSt} type="date" value={fVenda.data_lancamento} onChange={e => fv({data_lancamento:e.target.value})} />, "0 0 150px"),
+                      field("Data de Lançamento",      <InputData style={inSt} type="date" value={fVenda.data_lancamento} onChange={e => fv({data_lancamento:e.target.value})} />, "0 0 150px"),
                     )}
                     {row(
                       field("Propriedade",             <input style={inSt} value={fVenda.propriedade}   onChange={e => fv({propriedade:e.target.value})}   />),
@@ -3216,11 +3217,11 @@ function FiscalInner() {
               {/* Datas */}
               <div>
                 <label style={labelSt}>Data de Emissão *</label>
-                <input style={inputSt} type="date" value={fTransf.data_emissao} onChange={e => setFTransf(p => ({ ...p, data_emissao: e.target.value }))} />
+                <InputData style={inputSt} type="date" value={fTransf.data_emissao} onChange={e => setFTransf(p => ({ ...p, data_emissao: e.target.value }))} />
               </div>
               <div>
                 <label style={labelSt}>Data de Saída</label>
-                <input style={inputSt} type="date" value={fTransf.data_saida} onChange={e => setFTransf(p => ({ ...p, data_saida: e.target.value }))} />
+                <InputData style={inputSt} type="date" value={fTransf.data_saida} onChange={e => setFTransf(p => ({ ...p, data_saida: e.target.value }))} />
               </div>
 
               {/* Obs. */}

@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -178,7 +179,7 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
             </div>
             <div>
               <label style={lbl}>Data do pagamento</label>
-              <input style={inp} type="date" value={form.data_pagamento}
+              <InputData style={inp} type="date" value={form.data_pagamento}
                 onChange={e => setForm(f => ({ ...f, data_pagamento: e.target.value }))} />
             </div>
           </div>
@@ -427,9 +428,9 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
           ))}
         </select>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <input style={{ ...inp, width: 140 }} type="date" value={periodoIni} onChange={e => setPeriodoIni(e.target.value)} placeholder="De" />
+          <InputData style={{ ...inp, width: 140 }} type="date" value={periodoIni} onChange={e => setPeriodoIni(e.target.value)} placeholder="De" />
           <span style={{ color: "var(--text-muted)", fontSize: 12 }}>até</span>
-          <input style={{ ...inp, width: 140 }} type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} placeholder="Até" />
+          <InputData style={{ ...inp, width: 140 }} type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} placeholder="Até" />
         </div>
         <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
         <button style={{ ...btnPrimary, padding: "7px 14px", fontSize: 12, marginLeft: "auto" }} onClick={() => setShowModal(true)}>

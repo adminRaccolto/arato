@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
@@ -720,8 +721,8 @@ export default function SegurosPage() {
                       {Object.entries(STATUS_APOLICE_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                     </select>
                   </div>
-                  <div><label style={lbl}>Início Vigência *</label><input type="date" value={aForm.data_inicio_vigencia} onChange={e => setAForm(f => ({ ...f, data_inicio_vigencia: e.target.value }))} style={inp} /></div>
-                  <div><label style={lbl}>Fim Vigência *</label><input type="date" value={aForm.data_fim_vigencia} onChange={e => setAForm(f => ({ ...f, data_fim_vigencia: e.target.value }))} style={inp} /></div>
+                  <div><label style={lbl}>Início Vigência *</label><InputData type="date" value={aForm.data_inicio_vigencia} onChange={e => setAForm(f => ({ ...f, data_inicio_vigencia: e.target.value }))} style={inp} /></div>
+                  <div><label style={lbl}>Fim Vigência *</label><InputData type="date" value={aForm.data_fim_vigencia} onChange={e => setAForm(f => ({ ...f, data_fim_vigencia: e.target.value }))} style={inp} /></div>
                   <div></div>
                   <div style={{ gridColumn: "1/-1" }}>
                     <label style={lbl}>Objeto Segurado (descrição livre)</label>
@@ -904,7 +905,7 @@ export default function SegurosPage() {
                             {parcelasSeguro.map((p, i) => (
                               <div key={i} style={{ display: "grid", gridTemplateColumns: "32px 1fr 1fr", gap: 8, alignItems: "center", padding: "6px 10px", background: "var(--bg-page)", borderRadius: 6 }}>
                                 <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{i + 1}</span>
-                                <input type="date" value={p.data}
+                                <InputData type="date" value={p.data}
                                   onChange={e => setParcelasSeguro(ps => ps.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                   style={{ ...inp, margin: 0, fontSize: 12 }} />
                                 <InputMonetario value={p.valor}
@@ -990,8 +991,8 @@ export default function SegurosPage() {
             <div style={{ padding: "20px 22px" }}>
               {sErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{sErr}</div>}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label style={lbl}>Data da Ocorrência</label><input type="date" value={sForm.data_ocorrencia} onChange={e => setSForm(f => ({ ...f, data_ocorrencia: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Data de Comunicação</label><input type="date" value={sForm.data_comunicacao ?? ""} onChange={e => setSForm(f => ({ ...f, data_comunicacao: e.target.value }))} style={inp} /></div>
+                <div><label style={lbl}>Data da Ocorrência</label><InputData type="date" value={sForm.data_ocorrencia} onChange={e => setSForm(f => ({ ...f, data_ocorrencia: e.target.value }))} style={inp} /></div>
+                <div><label style={lbl}>Data de Comunicação</label><InputData type="date" value={sForm.data_comunicacao ?? ""} onChange={e => setSForm(f => ({ ...f, data_comunicacao: e.target.value }))} style={inp} /></div>
                 <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição</label><textarea value={sForm.descricao} onChange={e => setSForm(f => ({ ...f, descricao: e.target.value }))} rows={3} style={{ ...inp, resize: "vertical" }} /></div>
                 <div><label style={lbl}>Valor Reclamado (R$)</label><InputMonetario style={inp} value={sForm.valor_reclamado} onChange={v => setSForm(f => ({ ...f, valor_reclamado: v }))} /></div>
                 <div><label style={lbl}>Valor Indenizado (R$)</label><InputMonetario style={inp} value={sForm.valor_indenizado} onChange={v => setSForm(f => ({ ...f, valor_indenizado: v }))} /></div>
@@ -1030,7 +1031,7 @@ export default function SegurosPage() {
             </div>
             <div style={{ padding: "20px 22px" }}>
               <label style={lbl}>Data do Pagamento</label>
-              <input type="date" value={premioData} onChange={e => setPremioData(e.target.value)} style={inp} />
+              <InputData type="date" value={premioData} onChange={e => setPremioData(e.target.value)} style={inp} />
               <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
                 O pagamento será registrado em Contas a Pagar e o lançamento será baixado automaticamente.
               </div>

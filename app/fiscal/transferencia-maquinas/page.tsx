@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -564,7 +565,7 @@ export default function TransferenciaMaquinasPage() {
               {MOTIVOS[f.motivo].temEtapa2 && (
                 <div>
                   <label style={lbl}>{MOTIVOS[f.motivo].direcao === "entrada" ? "Devolução prevista" : "Retorno previsto"}</label>
-                  <input type="date" value={f.data_retorno_prevista} onChange={e => setF(p => ({ ...p, data_retorno_prevista: e.target.value }))} style={inp} />
+                  <InputData type="date" value={f.data_retorno_prevista} onChange={e => setF(p => ({ ...p, data_retorno_prevista: e.target.value }))} style={inp} />
                 </div>
               )}
 
@@ -579,7 +580,7 @@ export default function TransferenciaMaquinasPage() {
                   </div>
                   <div>
                     <label style={lbl}>Data da NF</label>
-                    <input type="date" value={f.nf_terceiro_data} onChange={e => setF(p => ({ ...p, nf_terceiro_data: e.target.value }))} style={inp} />
+                    <InputData type="date" value={f.nf_terceiro_data} onChange={e => setF(p => ({ ...p, nf_terceiro_data: e.target.value }))} style={inp} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label style={lbl}>Chave de acesso (44 dígitos)</label>

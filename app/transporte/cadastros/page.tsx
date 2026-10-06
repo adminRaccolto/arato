@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -691,7 +692,7 @@ export default function TransporteCadastrosPage() {
                   </select>
                 </Campo>
                 <Campo label="Validade">
-                  <input style={inp} type="date" value={modalM.cnh_validade ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_validade: e.target.value }))} />
+                  <InputData style={inp} type="date" value={modalM.cnh_validade ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_validade: e.target.value }))} />
                   {modalM.cnh_validade && (() => {
                     const a = alertaCnh(modalM.cnh_validade);
                     return a ? <div style={{ fontSize: 10, marginTop: 4, color: a.cor, fontWeight: 600 }}>{a.texto}</div> : null;

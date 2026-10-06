@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -246,11 +247,11 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
                 </div>
                 <div>
                   <label style={lbl}>Data início</label>
-                  <input style={inp} type="date" value={form.data_inicio ?? ""} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} />
+                  <InputData style={inp} type="date" value={form.data_inicio ?? ""} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} />
                 </div>
                 <div>
                   <label style={lbl}>Data vencimento</label>
-                  <input style={inp} type="date" value={form.data_vencimento ?? ""} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} />
+                  <InputData style={inp} type="date" value={form.data_vencimento ?? ""} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} />
                 </div>
               </div>
               {form.status === "pro_bono" && (

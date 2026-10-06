@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
@@ -1022,7 +1023,7 @@ export default function AlgodaoPage() {
                 </select>
               </div>
               <div><label style={lbl}>Data *</label>
-                <input type="date" style={inp} value={modalOp.data_aplicacao ?? ""} onChange={e => setModalOp(p => ({ ...p, data_aplicacao: e.target.value }))} />
+                <InputData type="date" style={inp} value={modalOp.data_aplicacao ?? ""} onChange={e => setModalOp(p => ({ ...p, data_aplicacao: e.target.value }))} />
               </div>
               <div><label style={lbl}>Talhão</label>
                 <select style={inp} value={modalOp.talhao_id ?? ""} onChange={e => setModalOp(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
@@ -1091,7 +1092,7 @@ export default function AlgodaoPage() {
                 </select>
               </div>
               <div><label style={lbl}>Data de Instalação</label>
-                <input type="date" style={inp} value={modalArm.data_instalacao ?? ""} onChange={e => setModalArm(p => ({ ...p, data_instalacao: e.target.value }))} />
+                <InputData type="date" style={inp} value={modalArm.data_instalacao ?? ""} onChange={e => setModalArm(p => ({ ...p, data_instalacao: e.target.value }))} />
               </div>
               <div><label style={lbl}>Latitude</label>
                 <input type="number" style={inp} step="0.000001" value={modalArm.latitude ?? ""} onChange={e => setModalArm(p => ({ ...p, latitude: parseFloat(e.target.value) || undefined }))} />
@@ -1145,7 +1146,7 @@ export default function AlgodaoPage() {
                 </select>
               </div>
               <div><label style={lbl}>Data da Colheita</label>
-                <input type="date" style={inp} value={modalMod.data_colheita ?? ""} onChange={e => setModalMod(p => ({ ...p, data_colheita: e.target.value }))} />
+                <InputData type="date" style={inp} value={modalMod.data_colheita ?? ""} onChange={e => setModalMod(p => ({ ...p, data_colheita: e.target.value }))} />
               </div>
               <div><label style={lbl}>Peso Estimado (kg)</label>
                 <input type="number" style={inp} value={modalMod.peso_estimado_kg ?? ""} onChange={e => setModalMod(p => ({ ...p, peso_estimado_kg: parseFloat(e.target.value) || undefined }))} />
@@ -1167,7 +1168,7 @@ export default function AlgodaoPage() {
                 </select>
               </div>
               <div><label style={lbl}>Data de Entrega</label>
-                <input type="date" style={inp} value={modalMod.data_entrega ?? ""} onChange={e => setModalMod(p => ({ ...p, data_entrega: e.target.value }))} />
+                <InputData type="date" style={inp} value={modalMod.data_entrega ?? ""} onChange={e => setModalMod(p => ({ ...p, data_entrega: e.target.value }))} />
               </div>
               <div><label style={lbl}>Romaneio Algodoeira</label>
                 <input type="text" style={inp} value={modalMod.romaneio_algodoeira ?? ""} onChange={e => setModalMod(p => ({ ...p, romaneio_algodoeira: e.target.value }))} />
@@ -1200,10 +1201,10 @@ export default function AlgodaoPage() {
                 </select>
               </div>
               <div><label style={lbl}>Data de Entrada</label>
-                <input type="date" style={inp} value={modalBenef.data_entrada ?? ""} onChange={e => setModalBenef(p => ({ ...p, data_entrada: e.target.value }))} />
+                <InputData type="date" style={inp} value={modalBenef.data_entrada ?? ""} onChange={e => setModalBenef(p => ({ ...p, data_entrada: e.target.value }))} />
               </div>
               <div><label style={lbl}>Data do Beneficiamento</label>
-                <input type="date" style={inp} value={modalBenef.data_beneficiamento ?? ""} onChange={e => setModalBenef(p => ({ ...p, data_beneficiamento: e.target.value }))} />
+                <InputData type="date" style={inp} value={modalBenef.data_beneficiamento ?? ""} onChange={e => setModalBenef(p => ({ ...p, data_beneficiamento: e.target.value }))} />
               </div>
               <div><label style={lbl}>Qtd. Módulos Entregues</label>
                 <input type="number" style={inp} value={modalBenef.num_modulos ?? ""} onChange={e => setModalBenef(p => ({ ...p, num_modulos: parseInt(e.target.value) || undefined }))} />
@@ -1337,7 +1338,7 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         <div><label style={lbl}>Data da Leitura *</label>
-          <input type="date" style={inp} value={data} onChange={e => setData(e.target.value)} />
+          <InputData type="date" style={inp} value={data} onChange={e => setData(e.target.value)} />
         </div>
         <div><label style={lbl}>Capturas *</label>
           <input type="number" style={inp} min={0} value={qtd} onChange={e => setQtd(parseInt(e.target.value) || 0)} />

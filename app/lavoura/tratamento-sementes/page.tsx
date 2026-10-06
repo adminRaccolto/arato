@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -998,7 +999,7 @@ export default function TratamentoSementesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data Prevista</label>
-                  <input type="date" value={form.data_planejada} onChange={e => setForm(f => ({ ...f, data_planejada: e.target.value }))} style={inp} />
+                  <InputData type="date" value={form.data_planejada} onChange={e => setForm(f => ({ ...f, data_planejada: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Cultura *</label>

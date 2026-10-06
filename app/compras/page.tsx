@@ -15,6 +15,7 @@
 // 100% em pedidos_compra/pedidos_compra_itens/pedidos_compra_entregas,
 // exatamente como antes — o trigger só reflete depois.
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../components/TopNav";
@@ -1912,11 +1913,11 @@ export default function ComprasPage() {
                   </div>
                   <div>
                     <label style={lbl}>Data Registro *</label>
-                    <input style={inp} type="date" value={f.data_registro} onChange={e => setF(p => ({ ...p, data_registro: e.target.value }))} />
+                    <InputData style={inp} type="date" value={f.data_registro} onChange={e => setF(p => ({ ...p, data_registro: e.target.value }))} />
                   </div>
                   <div>
                     <label style={lbl}>Data Vencimento</label>
-                    <input style={inp} type="date" value={f.data_vencimento} onChange={e => setF(p => ({ ...p, data_vencimento: e.target.value }))} />
+                    <InputData style={inp} type="date" value={f.data_vencimento} onChange={e => setF(p => ({ ...p, data_vencimento: e.target.value }))} />
                   </div>
                 </div>
 
@@ -2399,8 +2400,8 @@ export default function ComprasPage() {
                       Entrega Única
                     </label>
                   </div>
-                  <div><label style={lbl}>Previsão Entrega Única</label><input style={inp} type="date" value={f.previsao_entrega_unica} onChange={e => setF(p => ({ ...p, previsao_entrega_unica: e.target.value }))} /></div>
-                  <div><label style={lbl}>Data Entrega Total</label><input style={inp} type="date" value={f.data_entrega_total} onChange={e => setF(p => ({ ...p, data_entrega_total: e.target.value }))} /></div>
+                  <div><label style={lbl}>Previsão Entrega Única</label><InputData style={inp} type="date" value={f.previsao_entrega_unica} onChange={e => setF(p => ({ ...p, previsao_entrega_unica: e.target.value }))} /></div>
+                  <div><label style={lbl}>Data Entrega Total</label><InputData style={inp} type="date" value={f.data_entrega_total} onChange={e => setF(p => ({ ...p, data_entrega_total: e.target.value }))} /></div>
                 </div>
                 <div style={secTit}>Local de Entrega</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2645,7 +2646,7 @@ export default function ComprasPage() {
                     </div>
                     <div>
                       <label style={lbl}>Data Entrega</label>
-                      <input style={inp} type="date" value={formEntrega.data_entrega} onChange={e => setFormEntrega(p => ({ ...p, data_entrega: e.target.value }))} />
+                      <InputData style={inp} type="date" value={formEntrega.data_entrega} onChange={e => setFormEntrega(p => ({ ...p, data_entrega: e.target.value }))} />
                     </div>
                     <div>
                       <label style={lbl}>Qtd. Entregue</label>

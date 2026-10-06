@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
@@ -652,7 +653,7 @@ export default function PragasPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data *</label>
-                  <input type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
+                  <InputData type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
                 </div>
               </div>
 

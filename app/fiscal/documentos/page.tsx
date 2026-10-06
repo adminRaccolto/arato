@@ -30,6 +30,7 @@
 // condições de habilitação iguais à tela antiga — só NFs pendentes entram
 // no "Processar em Lote"; qualquer seleção permite Imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -400,11 +401,11 @@ export default function DocumentosFiscaisPage() {
           </div>
           <div>
             <label style={lblMini}>Data de</label>
-            <input type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lblMini}>até</label>
-            <input type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
           <select value={ordenarPor} onChange={e => { setOrdenarPor(e.target.value as "data_doc" | "created_at"); }} style={{ ...inp, cursor: "pointer" }} title="Ordenar por">
             <option value="data_doc">Ordenar: data da nota</option>

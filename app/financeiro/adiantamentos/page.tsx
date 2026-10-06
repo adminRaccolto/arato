@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
@@ -364,11 +365,11 @@ export default function AdiantamentosPage() {
             </div>
             <div>
               <label style={lbl}>Data de Emissão *</label>
-              <input style={inp} type="date" value={form.data_emissao} onChange={e => setForm(p => ({ ...p, data_emissao: e.target.value }))} />
+              <InputData style={inp} type="date" value={form.data_emissao} onChange={e => setForm(p => ({ ...p, data_emissao: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Previsão de Entrega</label>
-              <input style={inp} type="date" value={form.data_previsao} onChange={e => setForm(p => ({ ...p, data_previsao: e.target.value }))} />
+              <InputData style={inp} type="date" value={form.data_previsao} onChange={e => setForm(p => ({ ...p, data_previsao: e.target.value }))} />
             </div>
 
             <div>
@@ -443,7 +444,7 @@ export default function AdiantamentosPage() {
             </div>
             <div>
               <label style={lbl}>Data de Aplicação *</label>
-              <input style={inp} type="date" value={fApliq.data_aplicacao} onChange={e => setFApliq(p => ({ ...p, data_aplicacao: e.target.value }))} />
+              <InputData style={inp} type="date" value={fApliq.data_aplicacao} onChange={e => setFApliq(p => ({ ...p, data_aplicacao: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Descrição *</label>

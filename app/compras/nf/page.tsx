@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../../lib/cfop-imobilizado";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -2740,10 +2741,10 @@ export default function NfCompraPage() {
             {/* Intervalo de datas */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>De:</span>
-              <input type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
+              <InputData type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
                 style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)" }} />
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>Até:</span>
-              <input type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
+              <InputData type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
                 style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)" }} />
             </div>
 
@@ -2813,10 +2814,10 @@ export default function NfCompraPage() {
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>Emissão:</span>
-            <input type="date" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
+            <InputData type="date" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>–</span>
-            <input type="date" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
+            <InputData type="date" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             {(filtroDataDe || filtroDataAte) && (
               <button onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
@@ -3735,11 +3736,11 @@ export default function NfCompraPage() {
                     </div>
                     <div>
                       <label style={lbl}>Data de Emissão *</label>
-                      <input type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
+                      <InputData type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Data de Entrada</label>
-                      <input type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
+                      <InputData type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
                     </div>
                   </div>
 
@@ -3824,7 +3825,7 @@ export default function NfCompraPage() {
                       </div>
                       <div>
                         <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º vencimento)</span>}</label>
-                        <input type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
+                        <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                       </div>
                       {/* ── Parcelamento ── */}
                       <div style={{ gridColumn: "1 / -1" }}>
@@ -3870,7 +3871,7 @@ export default function NfCompraPage() {
                                 </div>
                                 {nfParcelas.map((p, i) => (
                                   <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
-                                    <input type="date" value={p.data}
+                                    <InputData type="date" value={p.data}
                                       onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                       style={{ ...inp, fontSize: 12 }} />
                                     <input type="text" value={p.valorMask}
@@ -4895,11 +4896,11 @@ export default function NfCompraPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
                 <div>
                   <label style={lbl}>Data de Emissão</label>
-                  <input type="date" value={devData} onChange={e => setDevData(e.target.value)} style={inp} />
+                  <InputData type="date" value={devData} onChange={e => setDevData(e.target.value)} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Vencimento da CR</label>
-                  <input type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
+                  <InputData type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>CFOP</label>
@@ -5420,7 +5421,7 @@ export default function NfCompraPage() {
               {/* ── Campos comuns ── */}
               <div>
                 <label style={lbl}>Vencimento da CP</label>
-                <input type="date" value={batchSettings.data_vencimento_cp} onChange={e => setBatchSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
+                <InputData type="date" value={batchSettings.data_vencimento_cp} onChange={e => setBatchSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Ano Safra</label>

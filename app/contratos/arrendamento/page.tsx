@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
@@ -1588,12 +1589,12 @@ export default function Arrendamentos() {
             {/* Vigência */}
             <div>
               <label style={lbl}>Início do Contrato</label>
-              <input style={inp} type="date" value={fC.inicio}
+              <InputData style={inp} type="date" value={fC.inicio}
                 onChange={e => setFC(f => ({ ...f, inicio: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Vencimento do Contrato</label>
-              <input style={inp} type="date" value={fC.vencimento}
+              <InputData style={inp} type="date" value={fC.vencimento}
                 onChange={e => setFC(f => ({ ...f, vencimento: e.target.value }))} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 20 }}>
@@ -1720,11 +1721,11 @@ export default function Arrendamentos() {
                 </div>
                 <div>
                   <label style={lbl}>Data de Vencimento *</label>
-                  <input style={inp} type="date" value={fP.data_vencimento} onChange={e => setFP(p => ({ ...p, data_vencimento: e.target.value }))} />
+                  <InputData style={inp} type="date" value={fP.data_vencimento} onChange={e => setFP(p => ({ ...p, data_vencimento: e.target.value }))} />
                 </div>
                 <div>
                   <label style={lbl}>Data de Pagamento</label>
-                  <input style={inp} type="date" value={fP.data_pagamento} onChange={e => setFP(p => ({ ...p, data_pagamento: e.target.value }))} />
+                  <InputData style={inp} type="date" value={fP.data_pagamento} onChange={e => setFP(p => ({ ...p, data_pagamento: e.target.value }))} />
                 </div>
                 {ehSc && <>
                   <div>
@@ -1868,7 +1869,7 @@ export default function Arrendamentos() {
                             onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_soja: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <input style={inpSm} type="date" value={cfg.dt_venc_soja}
+                          <InputData style={inpSm} type="date" value={cfg.dt_venc_soja}
                             onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, dt_venc_soja: e.target.value } : c))} />
                         </td>
                       </>}
@@ -1886,7 +1887,7 @@ export default function Arrendamentos() {
                             onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_milho: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#F0F6FE" }}>
-                          <input style={inpSm} type="date" value={cfg.dt_venc_milho}
+                          <InputData style={inpSm} type="date" value={cfg.dt_venc_milho}
                             onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, dt_venc_milho: e.target.value } : c))} />
                         </td>
                       </>}
@@ -1897,7 +1898,7 @@ export default function Arrendamentos() {
                             onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, valor_brl: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px" }}>
-                          <input style={inpSm} type="date" value={cfg.dt_venc_brl}
+                          <InputData style={inpSm} type="date" value={cfg.dt_venc_brl}
                             onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, dt_venc_brl: e.target.value } : c))} />
                         </td>
                       </>}

@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../../components/InputData";
 import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
@@ -385,11 +386,11 @@ export default function MutuoPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data de Início</label>
-                  <input type="date" value={mForm.data_inicio} onChange={e => setMForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
+                  <InputData type="date" value={mForm.data_inicio} onChange={e => setMForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Data de Vencimento</label>
-                  <input type="date" value={mForm.data_vencimento} onChange={e => setMForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
+                  <InputData type="date" value={mForm.data_vencimento} onChange={e => setMForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label style={lbl}>Observação</label>
@@ -426,7 +427,7 @@ export default function MutuoPage() {
               {pagErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{pagErr}</div>}
               <div>
                 <label style={lbl}>Data</label>
-                <input type="date" value={pagForm.data_pagamento} onChange={e => setPagForm(f => ({ ...f, data_pagamento: e.target.value }))} style={inp} />
+                <InputData type="date" value={pagForm.data_pagamento} onChange={e => setPagForm(f => ({ ...f, data_pagamento: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>{modalPag.tipo === "concessao" ? "Conta Entrada — onde o dinheiro retorna" : "Conta Saída — de onde o dinheiro sai"}</label>

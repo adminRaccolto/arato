@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import TopNav from "@/components/TopNav";
@@ -307,12 +308,12 @@ export default function AuditoriaPage() {
         <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: "0.5px solid #DDE2EE", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>DE</div>
-            <input type="date" value={fDe} onChange={e => setFDe(e.target.value)}
+            <InputData type="date" value={fDe} onChange={e => setFDe(e.target.value)}
               style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, color: "#333" }} />
           </div>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>ATÉ</div>
-            <input type="date" value={fAte} onChange={e => setFAte(e.target.value)}
+            <InputData type="date" value={fAte} onChange={e => setFAte(e.target.value)}
               style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, color: "#333" }} />
           </div>
           <div>

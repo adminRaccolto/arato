@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -931,11 +932,11 @@ function FaturamentoInner() {
           </div>
           <div>
             <label style={lbl}>Data Emissão</label>
-            <input style={inp} type="date" value={fVenda.data_emissao} onChange={e => fv({ data_emissao: e.target.value })} />
+            <InputData style={inp} type="date" value={fVenda.data_emissao} onChange={e => fv({ data_emissao: e.target.value })} />
           </div>
           <div>
             <label style={lbl}>Data Saída</label>
-            <input style={inp} type="date" value={fVenda.data_saida} onChange={e => fv({ data_saida: e.target.value })} />
+            <InputData style={inp} type="date" value={fVenda.data_saida} onChange={e => fv({ data_saida: e.target.value })} />
           </div>
           <div>
             <label style={lbl}>Hora Saída</label>
@@ -1074,7 +1075,7 @@ function FaturamentoInner() {
           </div>
           <div>
             <label style={lbl}>Data NF Produtor</label>
-            <input style={inp} type="date" value={fVenda.data_nfp} onChange={e => fv({ data_nfp: e.target.value })} />
+            <InputData style={inp} type="date" value={fVenda.data_nfp} onChange={e => fv({ data_nfp: e.target.value })} />
           </div>
           <div>
             <label style={lbl}>Nota Substituída</label>
@@ -1129,7 +1130,7 @@ function FaturamentoInner() {
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           <div>
             <label style={lbl}>Data do Lançamento</label>
-            <input style={inp} type="date" value={fVenda.data_lancamento} onChange={e => fv({ data_lancamento: e.target.value })} />
+            <InputData style={inp} type="date" value={fVenda.data_lancamento} onChange={e => fv({ data_lancamento: e.target.value })} />
           </div>
           <div>
             <label style={lbl}>Referência de Contrato</label>

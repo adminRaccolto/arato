@@ -34,6 +34,7 @@
 // Aceita Produtor e Empresa no mesmo borderô (Seção 317 — origem_tabela em
 // pagamento_lote_itens).
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../../components/InputData";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
@@ -1095,7 +1096,7 @@ export default function ContasAReceberPage() {
                                 <tr key={i} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
                                   <td style={{ padding: "4px 10px", textAlign: "center", color: "#888", fontSize: 11, width: 40 }}>{i + 1}/{parcelasNovo.length}</td>
                                   <td style={{ padding: "4px 8px" }}>
-                                    <input style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} type="date" value={p.data}
+                                    <InputData style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} type="date" value={p.data}
                                       onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
                                   </td>
                                   <td style={{ padding: "4px 8px" }}>
@@ -1162,11 +1163,11 @@ export default function ContasAReceberPage() {
           </div>
           <div>
             <label style={lblMini}>Vencimento de</label>
-            <input type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lblMini}>até</label>
-            <input type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
           <button onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
@@ -1562,7 +1563,7 @@ export default function ContasAReceberPage() {
             <div style={{ display: "grid", gap: 12 }}>
               <div>
                 <label style={lbl}>Data do recebimento *</label>
-                <input type="date" value={confirmData} onChange={e => setConfirmData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <InputData type="date" value={confirmData} onChange={e => setConfirmData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
                 <label style={lbl}>Conta bancária *</label>
@@ -1635,7 +1636,7 @@ export default function ContasAReceberPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
               <div>
                 <label style={lbl}>Data do recebimento *</label>
-                <input type="date" value={loteData} onChange={e => setLoteData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <InputData type="date" value={loteData} onChange={e => setLoteData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
                 <label style={lbl}>Conta bancária *</label>
@@ -1722,7 +1723,7 @@ export default function ContasAReceberPage() {
               </div>
               <div>
                 <label style={lbl}>Data da baixa</label>
-                <input type="date" value={bData} onChange={e => setBData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <InputData type="date" value={bData} onChange={e => setBData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
                 <label style={lbl}>Conta bancária</label>
@@ -1763,7 +1764,7 @@ export default function ContasAReceberPage() {
             <div style={{ display: "grid", gap: 12 }}>
               <div>
                 <label style={lbl}>Nova data de vencimento</label>
-                <input type="date" value={rData} onChange={e => setRData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <InputData type="date" value={rData} onChange={e => setRData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
                 <label style={lbl}>Novo valor (opcional)</label>
@@ -1874,7 +1875,7 @@ export default function ContasAReceberPage() {
                         </div>
                         <div>
                           <label style={lbl}>Vencimento *</label>
-                          <input type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                          <InputData type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2017,7 +2018,7 @@ export default function ContasAReceberPage() {
                         </div>
                         <div>
                           <label style={lbl}>1º Vencimento *</label>
-                          <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} />
+                          <InputData style={{ ...inp, width: "100%", boxSizing: "border-box" }} type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} />
                         </div>
                         <div>
                           <label style={lbl}>Forma de Recebimento</label>

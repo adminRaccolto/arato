@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import TopNav from "../../../components/TopNav";
@@ -867,7 +868,7 @@ export default function ColheitaPage() {
                 </label>
                 <label>
                   <div style={lbStyle}>Data de colheita</div>
-                  <input type="date" value={formColheita.data_colheita} onChange={e => setFormColheita(f => ({ ...f, data_colheita: e.target.value }))} style={inpStyle} />
+                  <InputData type="date" value={formColheita.data_colheita} onChange={e => setFormColheita(f => ({ ...f, data_colheita: e.target.value }))} style={inpStyle} />
                 </label>
               </div>
 
@@ -988,7 +989,7 @@ export default function ColheitaPage() {
                     </label>
                     <label>
                       <div style={lbStyle}>Data</div>
-                      <input type="date" value={formRomaneio.data} onChange={e => setFormRomaneio(f => ({ ...f, data: e.target.value }))} style={inpStyle} />
+                      <InputData type="date" value={formRomaneio.data} onChange={e => setFormRomaneio(f => ({ ...f, data: e.target.value }))} style={inpStyle} />
                     </label>
                   </div>
                 </div>

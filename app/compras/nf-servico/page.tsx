@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -874,10 +875,10 @@ export default function NfServicoPage() {
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>De:</span>
-              <input type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
+              <InputData type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
                 style={{ padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }} />
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>Até:</span>
-              <input type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
+              <InputData type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
                 style={{ padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }} />
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", userSelect: "none" }}>
@@ -1318,7 +1319,7 @@ export default function NfServicoPage() {
                     </div>
                     <div>
                       <label style={lbl}>Data da Prestação *</label>
-                      <input type="date" value={cab.data_prestacao} onChange={e => {
+                      <InputData type="date" value={cab.data_prestacao} onChange={e => {
                         const dt = e.target.value;
                         setCab(p => ({ ...p, data_prestacao: dt, competencia: dt.substring(0, 7) }));
                       }} style={inp} />
@@ -1523,7 +1524,7 @@ export default function NfServicoPage() {
                     </div>
                     <div>
                       <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º venc.)</span>}</label>
-                      <input type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
+                      <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                     </div>
                   </div>
 
@@ -1582,7 +1583,7 @@ export default function NfServicoPage() {
                             </div>
                             {nfParcelas.map((p, i) => (
                               <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
-                                <input type="date" value={p.data}
+                                <InputData type="date" value={p.data}
                                   onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                   style={{ ...inp, fontSize: 12 }} />
                                 <input type="text" value={p.valorMask}

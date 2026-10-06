@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../../components/InputData";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
@@ -733,11 +734,11 @@ export default function RelAplicacoesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data início</label>
-                  <input style={inp} type="date" value={fDtInicio} onChange={e => setFDtInicio(e.target.value)} />
+                  <InputData style={inp} type="date" value={fDtInicio} onChange={e => setFDtInicio(e.target.value)} />
                 </div>
                 <div>
                   <label style={lbl}>Data fim</label>
-                  <input style={inp} type="date" value={fDtFim} onChange={e => setFDtFim(e.target.value)} />
+                  <InputData style={inp} type="date" value={fDtFim} onChange={e => setFDtFim(e.target.value)} />
                 </div>
               </div>
 

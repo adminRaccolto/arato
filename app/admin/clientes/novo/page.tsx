@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../../components/InputData";
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -364,11 +365,11 @@ export default function NovoClientePage() {
             </div>
             <div style={{ gridColumn: "3 / 5" }}>
               <label style={lbl}>Data de início</label>
-              <input style={inp} type="date" value={form.data_inicio} onChange={e => set("data_inicio", e.target.value)} />
+              <InputData style={inp} type="date" value={form.data_inicio} onChange={e => set("data_inicio", e.target.value)} />
             </div>
             <div style={{ gridColumn: "5 / 7" }}>
               <label style={lbl}>Data de vencimento</label>
-              <input style={inp} type="date" value={form.data_vencimento} onChange={e => set("data_vencimento", e.target.value)} />
+              <InputData style={inp} type="date" value={form.data_vencimento} onChange={e => set("data_vencimento", e.target.value)} />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={lbl}>Observação interna</label>

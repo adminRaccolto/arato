@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -496,11 +497,11 @@ export default function AplicacoesFinanceirasPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data de Início</label>
-                  <input type="date" value={nForm.data_inicio} onChange={e => setNForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
+                  <InputData type="date" value={nForm.data_inicio} onChange={e => setNForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Data de Vencimento</label>
-                  <input type="date" value={nForm.data_vencimento} onChange={e => setNForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
+                  <InputData type="date" value={nForm.data_vencimento} onChange={e => setNForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label style={lbl}>Observação</label>
@@ -543,7 +544,7 @@ export default function AplicacoesFinanceirasPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data</label>
-                  <input type="date" value={aForm.data} onChange={e => setAForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                  <InputData type="date" value={aForm.data} onChange={e => setAForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                 </div>
               </div>
               <div>
@@ -594,7 +595,7 @@ export default function AplicacoesFinanceirasPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data</label>
-                  <input type="date" value={rForm.data} onChange={e => setRForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                  <InputData type="date" value={rForm.data} onChange={e => setRForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                 </div>
               </div>
               {rForm.tipo_registro === "recebido" && (
@@ -688,7 +689,7 @@ export default function AplicacoesFinanceirasPage() {
               </div>
               <div>
                 <label style={lbl}>Data do Resgate</label>
-                <input type="date" value={rgForm.data} onChange={e => setRgForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                <InputData type="date" value={rgForm.data} onChange={e => setRgForm(f => ({ ...f, data: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Observação</label>

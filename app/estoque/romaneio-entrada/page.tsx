@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import BalancaSerial from "../../../components/BalancaSerial";
@@ -422,8 +423,8 @@ const salvar = async (confirmar = false) => {
           <option value="em_pesagem">Em Pesagem</option>
           <option value="confirmado">Confirmado</option>
         </select>
-        <input type="date" style={{ ...inp, width: 150 }} value={fDe}  onChange={e => setFDe(e.target.value)}  placeholder="De" />
-        <input type="date" style={{ ...inp, width: 150 }} value={fAte} onChange={e => setFAte(e.target.value)} placeholder="Até" />
+        <InputData type="date" style={{ ...inp, width: 150 }} value={fDe}  onChange={e => setFDe(e.target.value)}  placeholder="De" />
+        <InputData type="date" style={{ ...inp, width: 150 }} value={fAte} onChange={e => setFAte(e.target.value)} placeholder="Até" />
         {(fBusca || fTipo || fStatus || fDe || fAte) && (
           <button style={btnR} onClick={() => { setFBusca(""); setFTipo(""); setFStatus(""); setFDe(""); setFAte(""); }}>Limpar</button>
         )}
@@ -611,7 +612,7 @@ const salvar = async (confirmar = false) => {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Data *</label>
-              <input style={inp} type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} disabled={editRom?.status === "confirmado"} />
+              <InputData style={inp} type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} disabled={editRom?.status === "confirmado"} />
             </div>
             <div>
               <label style={lbl}>{form.tipo === "proprio" && form.modo_pesagem === "balanca" ? "Nº Ticket da Balança" : "Ticket Interno"}</label>

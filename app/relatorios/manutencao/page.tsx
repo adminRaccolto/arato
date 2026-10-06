@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import React, { useState, useEffect, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
@@ -367,11 +368,11 @@ function RelManutInner() {
             <div style={{ display: "grid", gridTemplateColumns: "160px 160px", gap: 16, marginBottom: 20 }}>
               <div>
                 <label style={lbl}>Data Início</label>
-                <input type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
+                <InputData type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Data Fim</label>
-                <input type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
+                <InputData type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
               </div>
             </div>
           ) : (

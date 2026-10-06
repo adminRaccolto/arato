@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -664,7 +665,7 @@ export default function AbastecimentoPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={lbl}>Data *</label>
-                  <input type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
+                  <InputData type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Quantidade (L) *</label>
@@ -728,7 +729,7 @@ export default function AbastecimentoPage() {
                 {fGerarCP && (
                   <div>
                     <label style={lbl}>Vencimento do CP</label>
-                    <input type="date" value={fVencimento} onChange={e => setFVencimento(e.target.value)} style={{ ...inp, maxWidth: 200 }} />
+                    <InputData type="date" value={fVencimento} onChange={e => setFVencimento(e.target.value)} style={{ ...inp, maxWidth: 200 }} />
                   </div>
                 )}
               </div>

@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -600,7 +601,7 @@ export default function Pluviometria() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Data *</label>
-                  <input type="date" value={lData} onChange={e => setLData(e.target.value)} style={inp} />
+                  <InputData type="date" value={lData} onChange={e => setLData(e.target.value)} style={inp} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Hora da leitura</label>

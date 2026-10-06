@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -334,7 +335,7 @@ function ModalNova({
               </div>
               <div>
                 <label style={lbl}>Data da Recomendação *</label>
-                <input type="date" value={f.data_recomendacao} onChange={e => setF(v => ({...v, data_recomendacao: e.target.value}))} style={inp} />
+                <InputData type="date" value={f.data_recomendacao} onChange={e => setF(v => ({...v, data_recomendacao: e.target.value}))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Remonte / Transpasse (%)</label>
@@ -342,11 +343,11 @@ function ModalNova({
               </div>
               <div>
                 <label style={lbl}>Previsto Início</label>
-                <input type="date" value={f.data_prevista_inicio} onChange={e => setF(v => ({...v, data_prevista_inicio: e.target.value}))} style={inp} />
+                <InputData type="date" value={f.data_prevista_inicio} onChange={e => setF(v => ({...v, data_prevista_inicio: e.target.value}))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Previsto Fim</label>
-                <input type="date" value={f.data_prevista_fim} onChange={e => setF(v => ({...v, data_prevista_fim: e.target.value}))} style={inp} />
+                <InputData type="date" value={f.data_prevista_fim} onChange={e => setF(v => ({...v, data_prevista_fim: e.target.value}))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Agrônomo Responsável</label>

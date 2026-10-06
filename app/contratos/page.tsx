@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
@@ -2355,7 +2356,7 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={lbl}>Data do Contrato</label>
-                      <input style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p=>({...p,data_contrato:e.target.value}))} />
+                      <InputData style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p=>({...p,data_contrato:e.target.value}))} />
                     </div>
                   </div>
 
@@ -2470,11 +2471,11 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={lbl}>Prazo de Entrega *</label>
-                      <input style={inp} type="date" value={fC.data_entrega} onChange={e => { setFC(p=>({...p,data_entrega:e.target.value})); setErrosContrato([]); }} />
+                      <InputData style={inp} type="date" value={fC.data_entrega} onChange={e => { setFC(p=>({...p,data_entrega:e.target.value})); setErrosContrato([]); }} />
                     </div>
                     <div>
                       <label style={lbl}>Data de Pagamento</label>
-                      <input style={inp} type="date" value={fC.data_pagamento ?? ""} onChange={e => setFC(p=>({...p,data_pagamento:e.target.value||undefined}))} />
+                      <InputData style={inp} type="date" value={fC.data_pagamento ?? ""} onChange={e => setFC(p=>({...p,data_pagamento:e.target.value||undefined}))} />
                       <span style={{ fontSize:10, color:"var(--text-3)", marginTop:2, display:"block" }}>Gera CR ao confirmar</span>
                     </div>
                   </div>
@@ -2884,7 +2885,7 @@ export default function Contratos() {
                                 </div>
                                 <div>
                                   <label style={lbl}>Data da Cessão</label>
-                                  <input type="date" style={inp} value={benef.data} onChange={e => setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.map((b, i) => i===bi ? { ...b, data:e.target.value } : b) }))} />
+                                  <InputData type="date" style={inp} value={benef.data} onChange={e => setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.map((b, i) => i===bi ? { ...b, data:e.target.value } : b) }))} />
                                 </div>
                                 <button type="button" onClick={() => {
                                   setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.filter((_, i) => i !== bi) }));
@@ -3553,7 +3554,7 @@ export default function Contratos() {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
               <div>
                 <label style={lbl}>Data do recebimento *</label>
-                <input style={inp} type="date" value={fAdiant.data} onChange={e => setFAdiant(p=>({...p,data:e.target.value}))} />
+                <InputData style={inp} type="date" value={fAdiant.data} onChange={e => setFAdiant(p=>({...p,data:e.target.value}))} />
               </div>
               <div>
                 <label style={lbl}>Valor recebido (R$) *</label>

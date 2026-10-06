@@ -14,6 +14,7 @@
 // movimentar estoque (baixa de saída). Entrada por XML, por chave de
 // acesso (consulta SEFAZ) ou manual.
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useRef } from "react";
 import TopNav from "../../../components/TopNav";
@@ -349,7 +350,7 @@ export default function NotasPropriasExternasPage() {
                 <div><label style={lbl}>Chave de Acesso</label><input value={cab.chave_acesso} onChange={e => setCab(p => ({ ...p, chave_acesso: e.target.value }))} style={{ ...inp, fontFamily: "monospace", fontSize: 11 }} /></div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 10, marginBottom: 12 }}>
-                <div><label style={lbl}>Data de Emissão *</label><input type="date" value={cab.data_emissao} onChange={e => setCab(p => ({ ...p, data_emissao: e.target.value }))} style={inp} /></div>
+                <div><label style={lbl}>Data de Emissão *</label><InputData type="date" value={cab.data_emissao} onChange={e => setCab(p => ({ ...p, data_emissao: e.target.value }))} style={inp} /></div>
                 <div><label style={lbl}>Natureza da Operação</label><input value={cab.natureza} onChange={e => setCab(p => ({ ...p, natureza: e.target.value }))} placeholder="Ex: Remessa para armazenagem" style={inp} /></div>
                 <div><label style={lbl}>Valor Total *</label><input value={cab.valor_total} onChange={e => setCab(p => ({ ...p, valor_total: e.target.value }))} placeholder="0,00" style={inp} /></div>
               </div>

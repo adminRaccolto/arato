@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -1637,7 +1638,7 @@ export default function ContratosFinanceiros() {
                     ) : <div />}
                     <div>
                       <label style={lbl}>Data do Contrato *</label>
-                      <input style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p => ({ ...p, data_contrato: e.target.value }))} />
+                      <InputData style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p => ({ ...p, data_contrato: e.target.value }))} />
                     </div>
                     <div>
                       <label style={lbl}>Periodicidade</label>
@@ -1850,7 +1851,7 @@ export default function ContratosFinanceiros() {
                     ✦ Ao registrar uma liberação, um lançamento CR é criado automaticamente no financeiro{contratoModal.conta_liberacao_id ? ` · Conta: ${nomeConta(contratoModal.conta_liberacao_id)}` : ""}.
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
-                    <div><label style={lbl}>Data Liberação</label><input style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
+                    <div><label style={lbl}>Data Liberação</label><InputData style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
                     <div><label style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
                     <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fLib.parcelas_liberacao} onChange={v => setFLib(p => ({ ...p, parcelas_liberacao: v }))} /></div>
                     <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando}>+ Adicionar</button>
@@ -1917,7 +1918,7 @@ export default function ContratosFinanceiros() {
                         </label>
                         <InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} />
                       </div>
-                      <div><label style={lbl}>Data 1º Pagto.</label><input style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
+                      <div><label style={lbl}>Data 1º Pagto.</label><InputData style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
                       <div><label style={lbl}>Periodicidade</label><select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
                       <div><label style={lbl}>Acessórios/parc. ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
                     </div>
@@ -1980,7 +1981,7 @@ export default function ContratosFinanceiros() {
                                     <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
                                       <td style={{ padding: "5px 10px", textAlign: "center" }}>{p.num_parcela}</td>
                                       <td style={{ padding: "4px 8px" }}>
-                                        <input
+                                        <InputData
                                           type="date"
                                           value={ed?.data_vencimento ?? p.data_vencimento}
                                           onChange={e => editarParcela(p.id, "data_vencimento", e.target.value)}
@@ -2338,12 +2339,12 @@ export default function ContratosFinanceiros() {
                     <div style={{ background: "#F8F9FB", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 16, marginBottom: 18 }}>
                       <SecTitle>Novo Aditivo</SecTitle>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
-                        <div><label style={lbl}>Data do Aditivo *</label><input style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
+                        <div><label style={lbl}>Data do Aditivo *</label><InputData style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
                         <div><label style={lbl}>Tipo *</label><select style={inp} value={fAdit.tipo} onChange={e => setFAdit(p => ({ ...p, tipo: e.target.value as AditivoContrato["tipo"] }))}>{Object.entries(TIPO_ADIT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
                         <div><label style={lbl}>Descrição / Motivo *</label><input style={inp} placeholder="Motivo ou cláusula alterada" value={fAdit.descricao} onChange={e => setFAdit(p => ({ ...p, descricao: e.target.value }))} /></div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-                        <div><label style={lbl}>Nova Data Vencimento</label><input style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
+                        <div><label style={lbl}>Nova Data Vencimento</label><InputData style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
                         <div><label style={lbl}>Nova Taxa a.a. (%)</label><InputMonetario style={inp} value={fAdit.nova_taxa_aa} onChange={v => { const aa = Number(v) || 0; setFAdit(p => ({ ...p, nova_taxa_aa: String(v), nova_taxa_am: aa === 0 ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
                         <div><label style={lbl}>Nova Taxa a.m. (%)</label><InputNumerico style={inp} decimais={4} value={fAdit.nova_taxa_am} onChange={v => setFAdit(p => ({ ...p, nova_taxa_am: v }))} /></div>
                         <div><label style={lbl}>Novo Valor Financiado</label><InputMonetario style={inp} value={fAdit.novo_valor_financiado} onChange={v => setFAdit(p => ({ ...p, novo_valor_financiado: String(v) }))} /></div>
@@ -2462,7 +2463,7 @@ export default function ContratosFinanceiros() {
             <div style={{ display: "grid", gap: 14 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Data do Pagamento *</label>
-                <input
+                <InputData
                   type="date"
                   style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
                   value={baixaPData}

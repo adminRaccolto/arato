@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -1818,7 +1819,7 @@ function CtePageInner() {
               </div>
               <div>
                 <label style={lbl}>Data de Emissão</label>
-                <input type="date" value={form.data_emissao} onChange={e => setForm(f => ({ ...f, data_emissao: e.target.value }))} style={inp} />
+                <InputData type="date" value={form.data_emissao} onChange={e => setForm(f => ({ ...f, data_emissao: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Tomador do Serviço</label>
@@ -2191,7 +2192,7 @@ function CtePageInner() {
                   ) : (
                     <>
                       {ciotErro && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#791F1F" }}>{ciotErro}</div>}
-                      <div><label style={lbl}>Data fim da viagem</label><input type="date" style={inp} value={ciotForm.data_fim || form.data_emissao} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} /></div>
+                      <div><label style={lbl}>Data fim da viagem</label><InputData type="date" style={inp} value={ciotForm.data_fim || form.data_emissao} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} /></div>
                       <div><label style={lbl}>Distância (km) *</label><input style={inp} placeholder="850" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value.replace(/\D/g, "") }))} /></div>
                       <div><label style={lbl}>Natureza da carga</label>
                         <select style={inp} value={ciotForm.natureza === "2202" ? naturezaCiot(form.produto_descricao) : ciotForm.natureza} onChange={e => setCiotForm(f => ({ ...f, natureza: e.target.value }))}>

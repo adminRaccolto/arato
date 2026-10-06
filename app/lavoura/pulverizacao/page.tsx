@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -381,11 +382,11 @@ export default function PulverizacaoPage() {
               </div>
               <div>
                 <label style={lbl}>Data Início *</label>
-                <input style={inp} type="date" value={f.data_inicio} onChange={e => setF(p => ({ ...p, data_inicio: e.target.value }))} />
+                <InputData style={inp} type="date" value={f.data_inicio} onChange={e => setF(p => ({ ...p, data_inicio: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Data Término</label>
-                <input style={inp} type="date" value={f.data_fim} onChange={e => setF(p => ({ ...p, data_fim: e.target.value }))} />
+                <InputData style={inp} type="date" value={f.data_fim} onChange={e => setF(p => ({ ...p, data_fim: e.target.value }))} />
               </div>
             </div>
 

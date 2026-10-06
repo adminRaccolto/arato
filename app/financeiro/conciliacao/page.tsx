@@ -1,5 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -2423,7 +2424,7 @@ function ConciliacaoInner() {
 
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
-                <input type="date" value={fTes.data} onChange={e => setFTes(f => ({ ...f, data: e.target.value }))}
+                <InputData type="date" value={fTes.data} onChange={e => setFTes(f => ({ ...f, data: e.target.value }))}
                   style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
 
@@ -3140,10 +3141,10 @@ function ConciliacaoInner() {
                 {/* Intervalo, tipo e busca */}
                 {abaSistema !== "sugeridos" && abaSistema !== "inconsistencias" && <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Período</span>
-                  <input type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
+                  <InputData type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
                     style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>até</span>
-                  <input type="date" value={filtroLancAte} onChange={e => setFiltroLancAte(e.target.value)}
+                  <InputData type="date" value={filtroLancAte} onChange={e => setFiltroLancAte(e.target.value)}
                     style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <button onClick={() => { setFiltroLancDe(extrato.data_inicio); setFiltroLancAte(extrato.data_fim); }} title="Voltar ao intervalo do OFX aberto"
                     style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer" }}>Intervalo do OFX</button>

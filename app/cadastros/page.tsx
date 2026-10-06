@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -3577,7 +3578,7 @@ function CadastrosInner() {
 
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                             {fld("Valor de Aquisição (R$)", <InputMonetario style={inp} value={fBem.valor_aquisicao ? parseFloat(fBem.valor_aquisicao.replace(/[^0-9,.]/g,"").replace(",",".")) || 0 : 0} onChange={v => setFBem(p => ({ ...p, valor_aquisicao: String(v) }))} />)}
-                            {fld("Data de Aquisição", <input style={inp} type="date" value={fBem.data_aquisicao} onChange={e => setFBem(p => ({ ...p, data_aquisicao: e.target.value }))} />)}
+                            {fld("Data de Aquisição", <InputData style={inp} type="date" value={fBem.data_aquisicao} onChange={e => setFBem(p => ({ ...p, data_aquisicao: e.target.value }))} />)}
                             {fld("Valor de Mercado Estimado (R$)", <InputMonetario style={inp} value={fBem.valor_mercado ? parseFloat(fBem.valor_mercado.replace(/[^0-9,.]/g,"").replace(",",".")) || 0 : 0} onChange={v => setFBem(p => ({ ...p, valor_mercado: String(v) }))} />)}
                           </div>
 
@@ -5152,7 +5153,7 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Validade</label>
-                            <input style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} />
+                            <InputData style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} />
                           </div>
                         </>
                       )}
@@ -7825,7 +7826,7 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Vencimento</label>
-                            <input style={inp} type="date" value={c.vencimento} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,vencimento:e.target.value} : x))} />
+                            <InputData style={inp} type="date" value={c.vencimento} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,vencimento:e.target.value} : x))} />
                           </div>
                           <div style={{ gridColumn: "1/-1" }}>
                             <label style={lbl}>Matrículas vinculadas a este CAR</label>
@@ -7978,7 +7979,7 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Vencimento</label>
-                            <input style={inp} type="date" value={t.vencimento} onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,vencimento:e.target.value} : x))} />
+                            <InputData style={inp} type="date" value={t.vencimento} onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,vencimento:e.target.value} : x))} />
                           </div>
                           <div>
                             <label style={lbl}>Área tributável (ha)</label>
@@ -8067,7 +8068,7 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Vencimento</label>
-                            <input style={inp} type="date" value={c.vencimento} onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,vencimento:e.target.value} : x))} />
+                            <InputData style={inp} type="date" value={c.vencimento} onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,vencimento:e.target.value} : x))} />
                           </div>
                           <div>
                             <label style={lbl}>Situação</label>
@@ -8211,8 +8212,8 @@ function CadastrosInner() {
                                 {brlPorHa && <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>Equivale a R$ {Number(brlPorHa).toLocaleString("pt-BR",{minimumFractionDigits:2})}/ha · Impacta fluxo de caixa</div>}
                               </div>
                             )}
-                            <div><label style={lbl}>Início</label><input style={inp} type="date" value={a.inicio} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,inicio:e.target.value} : x))} /></div>
-                            <div><label style={lbl}>Vencimento</label><input style={inp} type="date" value={a.vencimento} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,vencimento:e.target.value} : x))} /></div>
+                            <div><label style={lbl}>Início</label><InputData style={inp} type="date" value={a.inicio} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,inicio:e.target.value} : x))} /></div>
+                            <div><label style={lbl}>Vencimento</label><InputData style={inp} type="date" value={a.vencimento} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,vencimento:e.target.value} : x))} /></div>
                             <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
                               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
                                 <input type="checkbox" checked={a.renovacao_auto} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,renovacao_auto:e.target.checked} : x))} />
@@ -8575,7 +8576,7 @@ function CadastrosInner() {
               <>
                 <div><label style={lbl}>Banco / Instituição</label><input style={inp} value={fMat.garantia_banco} onChange={e => setFMat(p => ({ ...p, garantia_banco: e.target.value }))} /></div>
                 <div><label style={lbl}>Valor da garantia (R$)</label><InputMonetario style={inp} value={fMat.garantia_valor} onChange={v => setFMat(p => ({ ...p, garantia_valor: String(v) }))} /></div>
-                <div><label style={lbl}>Vencimento da garantia</label><input style={inp} type="date" value={fMat.garantia_vencimento} onChange={e => setFMat(p => ({ ...p, garantia_vencimento: e.target.value }))} /></div>
+                <div><label style={lbl}>Vencimento da garantia</label><InputData style={inp} type="date" value={fMat.garantia_vencimento} onChange={e => setFMat(p => ({ ...p, garantia_vencimento: e.target.value }))} /></div>
               </>
             )}
           </div>
@@ -8800,8 +8801,8 @@ function CadastrosInner() {
           <div style={{ display: "grid", gap: 14 }}>
             <div><label style={lbl}>Descrição * (ex: 2026/2027)</label><input style={inp} placeholder="2026/2027" value={fAno.descricao} onChange={e => setFAno(p => ({ ...p, descricao: e.target.value }))} /></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fAno.data_inicio} onChange={e => setFAno(p => ({ ...p, data_inicio: e.target.value }))} /></div>
-              <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fAno.data_fim} onChange={e => setFAno(p => ({ ...p, data_fim: e.target.value }))} /></div>
+              <div><label style={lbl}>Início *</label><InputData style={inp} type="date" value={fAno.data_inicio} onChange={e => setFAno(p => ({ ...p, data_inicio: e.target.value }))} /></div>
+              <div><label style={lbl}>Fim *</label><InputData style={inp} type="date" value={fAno.data_fim} onChange={e => setFAno(p => ({ ...p, data_fim: e.target.value }))} /></div>
             </div>
             <div style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", padding: "8px 10px", borderRadius: 6 }}>Ex: Ano Safra 2026/2027 → início 01/08/2026, fim 31/07/2027</div>
           </div>
@@ -8907,13 +8908,13 @@ function CadastrosInner() {
             )}
             <div>
               <label style={lbl}>Início *</label>
-              <input style={{ ...inp, borderColor: !fCiclo.data_inicio ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_inicio}
+              <InputData style={{ ...inp, borderColor: !fCiclo.data_inicio ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_inicio}
                 onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId); }} />
               {!fCiclo.data_inicio && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>Data obrigatória</div>}
             </div>
             <div>
               <label style={lbl}>Fim *</label>
-              <input style={{ ...inp, borderColor: !fCiclo.data_fim ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_fim}
+              <InputData style={{ ...inp, borderColor: !fCiclo.data_fim ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_fim}
                 onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId); }} />
               {!fCiclo.data_fim && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>Data obrigatória</div>}
             </div>
@@ -9143,7 +9144,7 @@ function CadastrosInner() {
                   placeholder="— selecione —" options={pessoas.map(p => ({ value: p.id, label: `${p.nome}${p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}` }))} />
               </div>
               <div><label style={lbl}>Nº da NF de Aquisição</label><input style={inp} placeholder="Ex: 000.123456" value={fMaq.nr_nf_aquisicao} onChange={e => setFMaq(p => ({ ...p, nr_nf_aquisicao: e.target.value }))} /></div>
-              <div><label style={lbl}>Data de Aquisição</label><input style={inp} type="date" value={fMaq.data_aquisicao} onChange={e => setFMaq(p => ({ ...p, data_aquisicao: e.target.value }))} /></div>
+              <div><label style={lbl}>Data de Aquisição</label><InputData style={inp} type="date" value={fMaq.data_aquisicao} onChange={e => setFMaq(p => ({ ...p, data_aquisicao: e.target.value }))} /></div>
               <div>
                 <label style={lbl}>Valor de Aquisição (R$)</label>
                 <InputMonetario style={inp} min="0" placeholder="0,00" value={fMaq.valor_aquisicao} onChange={v => setFMaq(p => ({ ...p, valor_aquisicao: String(v) }))} />
@@ -9169,7 +9170,7 @@ function CadastrosInner() {
               {fMaq.status_financiamento === "quitado" && (
                 <div>
                   <label style={lbl}>Data de Quitação</label>
-                  <input style={inp} type="date" value={fMaq.data_quitacao} onChange={e => setFMaq(p => ({ ...p, data_quitacao: e.target.value }))} />
+                  <InputData style={inp} type="date" value={fMaq.data_quitacao} onChange={e => setFMaq(p => ({ ...p, data_quitacao: e.target.value }))} />
                 </div>
               )}
               {fMaq.status_financiamento === "financiado" && fMaq.contrato_financiamento_id && (
@@ -10166,7 +10167,7 @@ function CadastrosInner() {
                 <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome completo *</label><input style={inp} value={fFunc.nome} onChange={e => setFFunc(p => ({ ...p, nome: e.target.value }))} /></div>
                 <div><label style={lbl}>CPF</label><input style={inp} value={fFunc.cpf} onChange={e => setFFunc(p => ({ ...p, cpf: maskCpfCnpj(e.target.value, "pf") }))} placeholder="000.000.000-00" /></div>
                 <div><label style={lbl}>RG</label><input style={inp} value={fFunc.rg} onChange={e => setFFunc(p => ({ ...p, rg: e.target.value }))} placeholder="00.000.000-0" /></div>
-                <div><label style={lbl}>Data de nascimento</label><input style={inp} type="date" value={fFunc.data_nascimento} onChange={e => setFFunc(p => ({ ...p, data_nascimento: e.target.value }))} /></div>
+                <div><label style={lbl}>Data de nascimento</label><InputData style={inp} type="date" value={fFunc.data_nascimento} onChange={e => setFFunc(p => ({ ...p, data_nascimento: e.target.value }))} /></div>
                 <div><label style={lbl}>PIS / NIS</label><input style={inp} value={fFunc.pis_nis} onChange={e => setFFunc(p => ({ ...p, pis_nis: e.target.value }))} placeholder="000.00000.00-0" /></div>
                 <div><label style={lbl}>CTPS Número</label><input style={inp} value={fFunc.ctps_numero} onChange={e => setFFunc(p => ({ ...p, ctps_numero: e.target.value }))} /></div>
                 <div><label style={lbl}>CTPS Série</label><input style={inp} value={fFunc.ctps_serie} onChange={e => setFFunc(p => ({ ...p, ctps_serie: e.target.value }))} /></div>
@@ -10206,8 +10207,8 @@ function CadastrosInner() {
                     {fFunc.area_trabalho === "administrativo" ? "OG: 2.01.02.01.03 — DGA (Desp. Administrativas)" : "OG: 2.01.01.10 — CPV (Custo de Produção)"}
                   </div>
                 </div>
-                <div><label style={lbl}>Data de admissão</label><input style={inp} type="date" value={fFunc.data_admissao} onChange={e => setFFunc(p => ({ ...p, data_admissao: e.target.value }))} /></div>
-                <div><label style={lbl}>Data de demissão</label><input style={inp} type="date" value={fFunc.data_demissao} onChange={e => setFFunc(p => ({ ...p, data_demissao: e.target.value }))} /></div>
+                <div><label style={lbl}>Data de admissão</label><InputData style={inp} type="date" value={fFunc.data_admissao} onChange={e => setFFunc(p => ({ ...p, data_admissao: e.target.value }))} /></div>
+                <div><label style={lbl}>Data de demissão</label><InputData style={inp} type="date" value={fFunc.data_demissao} onChange={e => setFFunc(p => ({ ...p, data_demissao: e.target.value }))} /></div>
                 <div style={{ gridColumn: "1/-1" }}>
                   <label style={lbl}>Banco para pagamento</label>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 10 }}>
@@ -10509,7 +10510,7 @@ function CadastrosInner() {
             </div>
             <div><label style={lbl}>Descrição *</label><input style={inp} value={fPremiacao.descricao} onChange={e => setFPremiacao(p => ({ ...p, descricao: e.target.value }))} placeholder="Prêmio produtividade, gratificação safra…" /></div>
             <div><label style={lbl}>Valor (R$) *</label><InputMonetario style={inp} value={fPremiacao.valor} onChange={v => setFPremiacao(p => ({ ...p, valor: String(v) }))} /></div>
-            <div><label style={lbl}>Data de pagamento</label><input style={inp} type="date" value={fPremiacao.data_pagamento} onChange={e => setFPremiacao(p => ({ ...p, data_pagamento: e.target.value }))} /></div>
+            <div><label style={lbl}>Data de pagamento</label><InputData style={inp} type="date" value={fPremiacao.data_pagamento} onChange={e => setFPremiacao(p => ({ ...p, data_pagamento: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => { setModalPremiacao(false); setErroModal(""); }}>Cancelar</button>

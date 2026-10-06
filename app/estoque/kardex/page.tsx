@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
@@ -406,11 +407,11 @@ export default function Kardex() {
               {/* Período */}
               <div>
                 <label style={lbl}>Data Início</label>
-                <input type="date" value={dataIni} onChange={e => setDataIni(e.target.value)} style={inp} />
+                <InputData type="date" value={dataIni} onChange={e => setDataIni(e.target.value)} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Data Fim</label>
-                <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} style={inp} />
+                <InputData type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} style={inp} />
               </div>
 
               <button

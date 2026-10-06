@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -208,11 +209,11 @@ function RelatorioRomaneios() {
             </div>
             <div>
               <label style={lbl}>Data Início</label>
-              <input type="date" style={inp} value={filtDe} onChange={e => setFiltDe(e.target.value)} />
+              <InputData type="date" style={inp} value={filtDe} onChange={e => setFiltDe(e.target.value)} />
             </div>
             <div>
               <label style={lbl}>Data Fim</label>
-              <input type="date" style={inp} value={filtAte} onChange={e => setFiltAte(e.target.value)} />
+              <InputData type="date" style={inp} value={filtAte} onChange={e => setFiltAte(e.target.value)} />
             </div>
             {aba === "entrada" && (<>
               <div>

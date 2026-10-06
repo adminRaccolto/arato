@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
@@ -1559,11 +1560,11 @@ export default function Estoque() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
                         <div>
                           <label style={lbl}>Data início *</label>
-                          <input style={inp} type="date" value={kardexInicio} onChange={e => setKardexInicio(e.target.value)} />
+                          <InputData style={inp} type="date" value={kardexInicio} onChange={e => setKardexInicio(e.target.value)} />
                         </div>
                         <div>
                           <label style={lbl}>Data fim *</label>
-                          <input style={inp} type="date" value={kardexFim} onChange={e => setKardexFim(e.target.value)} />
+                          <InputData style={inp} type="date" value={kardexFim} onChange={e => setKardexFim(e.target.value)} />
                         </div>
                         <div>
                           <label style={lbl}>Categoria</label>
@@ -1767,7 +1768,7 @@ export default function Estoque() {
                     </div>
                     <div>
                       <label style={lbl}>A partir de</label>
-                      <input style={inp} type="date" value={relDataInicio} onChange={e => setRelDataInicio(e.target.value)} />
+                      <InputData style={inp} type="date" value={relDataInicio} onChange={e => setRelDataInicio(e.target.value)} />
                     </div>
                     <div style={{ display: "flex", alignItems: "flex-end" }}>
                       <button style={{ ...btnV, width: "100%" }} onClick={buscarHistorico}>Buscar</button>
@@ -2197,7 +2198,7 @@ export default function Estoque() {
                         {auditoriaDados.some(a => a.divergencia > 0) && (
                           <>
                             <span style={{ fontSize: 12, color: "var(--text-2)" }}>Data de abertura:</span>
-                            <input
+                            <InputData
                               type="date"
                               value={dataAbertura}
                               onChange={e => setDataAbertura(e.target.value)}
@@ -2499,7 +2500,7 @@ export default function Estoque() {
               </div>
               <div>
                 <label style={lbl}>Data *</label>
-                <input style={inp} type="date" value={fMov.data} onChange={e => setFMov(p => ({ ...p, data: e.target.value }))} />
+                <InputData style={inp} type="date" value={fMov.data} onChange={e => setFMov(p => ({ ...p, data: e.target.value }))} />
               </div>
               {/* Variedade + Lote — só para sementes */}
               {fMov.insumo_id && insumos.find(x => x.id === fMov.insumo_id)?.categoria === "semente" && (
@@ -2628,7 +2629,7 @@ export default function Estoque() {
               <div><label style={lbl}>Estoque mínimo</label><InputNumerico style={inp} decimais={3} value={fIns.estoque_minimo} onChange={v => setFIns(p => ({ ...p, estoque_minimo: v }))} /></div>
               <div />
               <div><label style={lbl}>Lote</label><input style={inp} value={fIns.lote} onChange={e => setFIns(p => ({ ...p, lote: e.target.value }))} /></div>
-              <div><label style={lbl}>Validade</label><input style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} /></div>
+              <div><label style={lbl}>Validade</label><InputData style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} /></div>
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
               <button style={btnR} onClick={() => setModalInsumo(false)}>Cancelar</button>
@@ -2773,7 +2774,7 @@ export default function Estoque() {
             <div><label style={lbl}>Série</label><input style={inp} value={fNf.serie} onChange={e => setFNf(p => ({ ...p, serie: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Emitente (Fornecedor) *</label><input style={inp} value={fNf.emitente_nome} onChange={e => setFNf(p => ({ ...p, emitente_nome: e.target.value }))} /></div>
             <div><label style={lbl}>CNPJ do Emitente</label><input style={inp} value={fNf.emitente_cnpj} onChange={e => setFNf(p => ({ ...p, emitente_cnpj: e.target.value }))} /></div>
-            <div><label style={lbl}>Data de Emissão *</label><input style={inp} type="date" value={fNf.data_emissao} onChange={e => setFNf(p => ({ ...p, data_emissao: e.target.value }))} /></div>
+            <div><label style={lbl}>Data de Emissão *</label><InputData style={inp} type="date" value={fNf.data_emissao} onChange={e => setFNf(p => ({ ...p, data_emissao: e.target.value }))} /></div>
             <div><label style={lbl}>Valor Total (R$)</label><InputMonetario style={inp} value={fNf.valor_total} onChange={v => setFNf(p => ({ ...p, valor_total: v }))} /></div>
             <div><label style={lbl}>Chave de Acesso</label><input style={inp} value={fNf.chave_acesso} onChange={e => setFNf(p => ({ ...p, chave_acesso: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Natureza da Operação</label><input style={inp} placeholder="Ex: Compra de defensivos" value={fNf.natureza} onChange={e => setFNf(p => ({ ...p, natureza: e.target.value }))} /></div>

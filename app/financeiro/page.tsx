@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
@@ -671,11 +672,11 @@ export default function Financeiro() {
           {/* Barra de período */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10, borderTop: "0.5px solid #F0F3F8", paddingTop: 8 }}>
             <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Período:</span>
-            <input type="date" value={periodoTemp.inicio || periodoInicio}
+            <InputData type="date" value={periodoTemp.inicio || periodoInicio}
               onChange={e => setPeriodoTemp(p => ({ ...p, inicio: e.target.value }))}
               style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, outline: "none", background: "var(--bg-input)" }} />
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>até</span>
-            <input type="date" value={periodoTemp.fim || periodoFim}
+            <InputData type="date" value={periodoTemp.fim || periodoFim}
               onChange={e => setPeriodoTemp(p => ({ ...p, fim: e.target.value }))}
               style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, outline: "none", background: "var(--bg-input)" }} />
             <button onClick={aplicarPeriodo}
@@ -1831,7 +1832,7 @@ export default function Financeiro() {
                 </div>
                 <div>
                   <label style={labelStyle}>Data de confirmação</label>
-                  <input style={inputStyle} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
+                  <InputData style={inputStyle} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
                 </div>
                 <div>
                   <label style={labelStyle}>Observação</label>
@@ -1860,7 +1861,7 @@ export default function Financeiro() {
                 </div>
                 <div>
                   <label style={labelStyle}>Data da {modalBaixa.tipo === "receber" ? "liquidação" : "baixa"}</label>
-                  <input style={inputStyle} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
+                  <InputData style={inputStyle} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
                 </div>
                 <div>
                   <label style={labelStyle}>Conta bancária</label>
@@ -1934,7 +1935,7 @@ export default function Financeiro() {
                 </div>
                 <div>
                   <label style={labelStyle}>1º Vencimento *</label>
-                  <input style={inputStyle} type="date" value={novoLanc.vencimento} onChange={e => setNovoLanc(p => ({ ...p, vencimento: e.target.value }))} />
+                  <InputData style={inputStyle} type="date" value={novoLanc.vencimento} onChange={e => setNovoLanc(p => ({ ...p, vencimento: e.target.value }))} />
                 </div>
                 <div style={{ gridColumn: "1/-1" }}>
                   <label style={labelStyle}>Descrição *</label>
@@ -2132,7 +2133,7 @@ export default function Financeiro() {
                 </div>
                 <div>
                   <label style={labelStyle}>Data prevista *</label>
-                  <input style={inputStyle} type="date" value={novaPrevisao.data} onChange={e => setNovaPrevisao(p => ({ ...p, data: e.target.value }))} />
+                  <InputData style={inputStyle} type="date" value={novaPrevisao.data} onChange={e => setNovaPrevisao(p => ({ ...p, data: e.target.value }))} />
                 </div>
                 <div>
                   <label style={labelStyle}>Categoria</label>
@@ -2281,7 +2282,7 @@ export default function Financeiro() {
             <div style={{ display: "grid", gap: 14 }}>
               <div>
                 <label style={labelStyle}>Data *</label>
-                <input style={inputStyle} type="date" value={novaSim.data} onChange={e => setNovaSim(p => ({ ...p, data: e.target.value }))} />
+                <InputData style={inputStyle} type="date" value={novaSim.data} onChange={e => setNovaSim(p => ({ ...p, data: e.target.value }))} />
               </div>
               <div>
                 <label style={labelStyle}>Tipo</label>

@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -1090,7 +1091,7 @@ export default function TransferenciasEstoquePage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Data de Transferência</label>
-                <input type="date" value={form.dataTransferencia} onChange={e => setForm(f => ({ ...f, dataTransferencia: e.target.value }))} style={inp} />
+                <InputData type="date" value={form.dataTransferencia} onChange={e => setForm(f => ({ ...f, dataTransferencia: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>CFOP — <span style={{ color: "#1A4870", fontWeight: 700 }}>{cfopCalculado}</span></label>
@@ -1302,7 +1303,7 @@ export default function TransferenciasEstoquePage() {
                       </div>
                       <div>
                         <label style={lbl}>Data de Emissão</label>
-                        <input type="date" value={form.dataEmissaoHistorica} onChange={e => setForm(f => ({ ...f, dataEmissaoHistorica: e.target.value }))} style={inp} />
+                        <InputData type="date" value={form.dataEmissaoHistorica} onChange={e => setForm(f => ({ ...f, dataEmissaoHistorica: e.target.value }))} style={inp} />
                       </div>
                     </div>
                   </>

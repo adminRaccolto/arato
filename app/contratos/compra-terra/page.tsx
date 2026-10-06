@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -784,7 +785,7 @@ export default function CompraTerrPage() {
                         <tr key={pg.id} style={{ background: pg.status === "pago" ? "#F0FDF4" : i % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #DDE2EE" }}>
                           <td style={{ padding: "7px 12px" }}>{ct?.imovel_nome ?? "—"}</td>
                           <td style={{ padding: "4px 8px", minWidth: 130 }}>
-                            <input type="date" value={ed?.data_vencimento ?? pg.data_vencimento} onChange={e => editarPagamento(pg.id, "data_vencimento", e.target.value)} style={ed?.data_vencimento ? inpEdit : inpBase} />
+                            <InputData type="date" value={ed?.data_vencimento ?? pg.data_vencimento} onChange={e => editarPagamento(pg.id, "data_vencimento", e.target.value)} style={ed?.data_vencimento ? inpEdit : inpBase} />
                           </td>
                           <td style={{ padding: "4px 8px", minWidth: 110 }}>
                             <input type="number" step="0.01" min="0" value={ed?.valor !== undefined ? ed.valor : pg.valor} onChange={e => editarPagamento(pg.id, "valor", e.target.value)} style={{ ...(ed?.valor !== undefined ? inpEdit : inpBase), textAlign: "right" }} />
@@ -924,9 +925,9 @@ export default function CompraTerrPage() {
                   )}
                   <div style={{ ...g2, maxWidth: 380 }}>
                     <div><label style={lbl}>Data do Contrato</label>
-                      <input style={inp} type="date" value={form.data_contrato} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_contrato: e.target.value }))} /></div>
+                      <InputData style={inp} type="date" value={form.data_contrato} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_contrato: e.target.value }))} /></div>
                     <div><label style={lbl}>Previsão Escritura</label>
-                      <input style={inp} type="date" value={form.data_previsao_escritura} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_previsao_escritura: e.target.value }))} /></div>
+                      <InputData style={inp} type="date" value={form.data_previsao_escritura} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_previsao_escritura: e.target.value }))} /></div>
                   </div>
                 </div>
               )}
@@ -973,7 +974,7 @@ export default function CompraTerrPage() {
                       <div><label style={lbl}>Entrada / Sinal (R$)</label>
                         <input style={inp} type="text" inputMode="numeric" value={displayBRL(form.valor_entrada)} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_entrada: parseBRLInput(e.target.value) }))} /></div>
                       <div><label style={lbl}>Data da Entrada</label>
-                        <input style={inp} type="date" value={form.data_entrada} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_entrada: e.target.value }))} /></div>
+                        <InputData style={inp} type="date" value={form.data_entrada} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_entrada: e.target.value }))} /></div>
                     </div>
                   )}
 
@@ -1013,7 +1014,7 @@ export default function CompraTerrPage() {
                           </div>
                           <div>
                             <label style={lbl}>Data da 1ª Parcela</label>
-                            <input style={inp} type="date" value={form.data_primeira_parcela} disabled={viewOnly}
+                            <InputData style={inp} type="date" value={form.data_primeira_parcela} disabled={viewOnly}
                               onChange={e => { setForm(p => ({ ...p, data_primeira_parcela: e.target.value })); setParcelasCustom(null); }} />
                           </div>
                         </div>
@@ -1119,7 +1120,7 @@ export default function CompraTerrPage() {
                                           <td style={{ padding: "5px 10px", color: "#888", width: 32, fontVariantNumeric: "tabular-nums" }}>{p.n}</td>
                                           <td style={{ padding: "4px 6px", minWidth: 120 }}>
                                             {isCustom && !viewOnly ? (
-                                              <input type="date" value={p.data} onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
+                                              <InputData type="date" value={p.data} onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "3px 6px", fontSize: 12, background: "#FBF3E0", width: "100%" }} />
                                             ) : new Date(p.data + "T00:00").toLocaleDateString("pt-BR")}
                                           </td>
@@ -1245,7 +1246,7 @@ export default function CompraTerrPage() {
                     <div><label style={lbl}>Nº da Escritura</label>
                       <input style={inp} value={form.escritura_numero} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, escritura_numero: e.target.value }))} /></div>
                     <div><label style={lbl}>Data da Escritura</label>
-                      <input style={inp} type="date" value={form.escritura_data} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, escritura_data: e.target.value }))} /></div>
+                      <InputData style={inp} type="date" value={form.escritura_data} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, escritura_data: e.target.value }))} /></div>
                     <div><label style={lbl}>Custo do Cartório (R$)</label>
                       <input style={inp} type="number" step="0.01" value={form.custo_cartorio} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, custo_cartorio: e.target.value }))} /></div>
                   </div>
@@ -1255,7 +1256,7 @@ export default function CompraTerrPage() {
                     <div><label style={lbl}>Nº do Registro</label>
                       <input style={inp} value={form.registro_numero} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, registro_numero: e.target.value }))} /></div>
                     <div><label style={lbl}>Data do Registro</label>
-                      <input style={inp} type="date" value={form.registro_data} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, registro_data: e.target.value }))} /></div>
+                      <InputData style={inp} type="date" value={form.registro_data} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, registro_data: e.target.value }))} /></div>
                   </div>
                   <div style={{ height: 1, background: "#DDE2EE" }} />
                   <div><label style={lbl}>Observações Gerais</label>

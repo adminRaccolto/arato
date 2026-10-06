@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
@@ -1261,7 +1262,7 @@ function MdfePageInner() {
               </div>
               <div>
                 <label style={lbl}>Data de Emissão</label>
-                <input type="date" value={form.data_emissao} onChange={e => setForm(f => ({ ...f, data_emissao: e.target.value }))} style={inp} />
+                <InputData type="date" value={form.data_emissao} onChange={e => setForm(f => ({ ...f, data_emissao: e.target.value }))} style={inp} />
               </div>
 
               {/* ── Percurso ── */}
@@ -1376,7 +1377,7 @@ function MdfePageInner() {
                       </div>
                       <div>
                         <label style={lbl}>Data Fim da Viagem *</label>
-                        <input type="date" style={inp} value={ciotForm.data_fim} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} />
+                        <InputData type="date" style={inp} value={ciotForm.data_fim} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} />
                       </div>
                       <div>
                         <label style={lbl}>Distância (km) *</label>
@@ -1534,7 +1535,7 @@ function MdfePageInner() {
             <label style={{ ...lbl, marginTop: 10 }}>Protocolo de Autorização (15 dígitos)</label>
             <input value={chaveForm.protocolo} onChange={e => setChaveForm(f => ({ ...f, protocolo: e.target.value }))} style={inp} placeholder="Ex: 951260021390502" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10, marginTop: 10 }}>
-              <div><label style={lbl}>Data</label><input type="date" value={chaveForm.data} onChange={e => setChaveForm(f => ({ ...f, data: e.target.value }))} style={inp} /></div>
+              <div><label style={lbl}>Data</label><InputData type="date" value={chaveForm.data} onChange={e => setChaveForm(f => ({ ...f, data: e.target.value }))} style={inp} /></div>
               <div><label style={lbl}>Município de encerramento</label><input value={chaveForm.municipio} onChange={e => setChaveForm(f => ({ ...f, municipio: e.target.value }))} style={inp} /></div>
               <div><label style={lbl}>UF</label><select value={chaveForm.uf} onChange={e => setChaveForm(f => ({ ...f, uf: e.target.value }))} style={inp}><option value="">UF</option>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
             </div>
@@ -1560,7 +1561,7 @@ function MdfePageInner() {
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={lbl}>Data de Encerramento</label>
-                <input type="date" value={encForm.data_encerramento} onChange={e => setEncForm(f => ({ ...f, data_encerramento: e.target.value }))} style={inp} />
+                <InputData type="date" value={encForm.data_encerramento} onChange={e => setEncForm(f => ({ ...f, data_encerramento: e.target.value }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>UF de Encerramento</label>

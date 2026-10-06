@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { calcINSS, calcIRRF } from "../../../lib/folha-calculo";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -1369,7 +1370,7 @@ export default function FolhaPagamentoPage() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <label style={S.label}>Data *</label>
-                  <input type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
+                  <InputData type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 </div>
                 <div>
                   <label style={S.label}>Valor (R$) *</label>

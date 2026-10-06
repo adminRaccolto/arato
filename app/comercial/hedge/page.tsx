@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -1188,7 +1189,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
             </div>
             <div>
               <label style={lbl}>Data da fixação *</label>
-              <input type="date" style={inp} value={fFix.data_fixacao} onChange={e => setFFix(p => ({ ...p, data_fixacao: e.target.value }))} />
+              <InputData type="date" style={inp} value={fFix.data_fixacao} onChange={e => setFFix(p => ({ ...p, data_fixacao: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Ref. de vencimento</label>
@@ -1229,7 +1230,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
             </div>
             <div>
               <label style={lbl}>Data de referência *</label>
-              <input type="date" style={inp} value={fCurva.data_referencia} onChange={e => setFCurva(p => ({ ...p, data_referencia: e.target.value }))} />
+              <InputData type="date" style={inp} value={fCurva.data_referencia} onChange={e => setFCurva(p => ({ ...p, data_referencia: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Valor *</label>
@@ -1238,7 +1239,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
             </div>
             <div>
               <label style={lbl}>Vencimento (se futuro)</label>
-              <input type="date" style={inp} value={fCurva.vencimento} onChange={e => setFCurva(p => ({ ...p, vencimento: e.target.value }))} />
+              <InputData type="date" style={inp} value={fCurva.vencimento} onChange={e => setFCurva(p => ({ ...p, vencimento: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Fonte</label>

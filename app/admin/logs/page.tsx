@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -202,11 +203,11 @@ export default function LogSistema() {
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <label style={{ fontSize: 10, color: "var(--text-2)" }}>Início</label>
-              <input type="date" value={filtro.inicio} onChange={e => setF({ inicio: e.target.value })} style={{ ...inputStyle, width: 130 }} />
+              <InputData type="date" value={filtro.inicio} onChange={e => setF({ inicio: e.target.value })} style={{ ...inputStyle, width: 130 }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <label style={{ fontSize: 10, color: "var(--text-2)" }}>Fim</label>
-              <input type="date" value={filtro.fim} onChange={e => setF({ fim: e.target.value })} style={{ ...inputStyle, width: 130 }} />
+              <InputData type="date" value={filtro.fim} onChange={e => setF({ fim: e.target.value })} style={{ ...inputStyle, width: 130 }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <label style={{ fontSize: 10, color: "var(--text-2)" }}>Módulo</label>

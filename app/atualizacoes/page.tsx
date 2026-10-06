@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-n",
+    data: "06/10/2026",
+    titulo: "Botão Hoje em todos os campos de data",
+    modulos: ["Todos"],
+    itens: [
+      { tipo: "melhoria", texto: "Todos os campos de data têm um botão Hoje ao lado, que preenche a data de hoje." },
+    ],
+    onde: "Todo o sistema",
+  },
+  {
     versao: "2026.10.06-m",
     data: "06/10/2026",
     titulo: "CP e CR: operação, safra e ciclo de empresa aparecem no grid",

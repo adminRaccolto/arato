@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -357,11 +358,11 @@ export default function PlantioPage() {
               </div>
               <div>
                 <label style={lbl}>Data de Plantio *</label>
-                <input style={inp} type="date" value={f.data_plantio} onChange={e => setF(p => ({ ...p, data_plantio: e.target.value }))} />
+                <InputData style={inp} type="date" value={f.data_plantio} onChange={e => setF(p => ({ ...p, data_plantio: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Colheita Prevista</label>
-                <input style={inp} type="date" value={f.data_colheita_prevista} onChange={e => setF(p => ({ ...p, data_colheita_prevista: e.target.value }))} />
+                <InputData style={inp} type="date" value={f.data_colheita_prevista} onChange={e => setF(p => ({ ...p, data_colheita_prevista: e.target.value }))} />
               </div>
               <div></div>
             </div>

@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -212,11 +213,11 @@ export default function EmpresaReceberPage() {
             </div>
             <div style={{ flex: "0 0 130px" }}>
               <label style={S.label}>De</label>
-              <input type="date" style={S.inp} value={fDe} onChange={e => setFDe(e.target.value)} />
+              <InputData type="date" style={S.inp} value={fDe} onChange={e => setFDe(e.target.value)} />
             </div>
             <div style={{ flex: "0 0 130px" }}>
               <label style={S.label}>Até</label>
-              <input type="date" style={S.inp} value={fAte} onChange={e => setFAte(e.target.value)} />
+              <InputData type="date" style={S.inp} value={fAte} onChange={e => setFAte(e.target.value)} />
             </div>
             <div style={{ flex: 1, minWidth: 140 }}>
               <label style={S.label}>Buscar</label>
@@ -336,7 +337,7 @@ export default function EmpresaReceberPage() {
               </div>
               <div>
                 <label style={S.label}>Vencimento *</label>
-                <input type="date" style={S.inp} value={form.data_vencimento ?? ""} onChange={e => setForm(p=>({...p, data_vencimento: e.target.value}))} />
+                <InputData type="date" style={S.inp} value={form.data_vencimento ?? ""} onChange={e => setForm(p=>({...p, data_vencimento: e.target.value}))} />
               </div>
               <div>
                 <label style={S.label}>Cliente</label>

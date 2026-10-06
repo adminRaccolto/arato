@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -616,9 +617,9 @@ export default function ApoioFinanceiroPage() {
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <label style={{ ...lbl, margin: 0 }}>De</label>
-              <input type="date" value={dataIni} onChange={(e) => setDataIni(e.target.value)} style={{ ...inp, width: 140 }} />
+              <InputData type="date" value={dataIni} onChange={(e) => setDataIni(e.target.value)} style={{ ...inp, width: 140 }} />
               <label style={{ ...lbl, margin: 0 }}>Até</label>
-              <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} style={{ ...inp, width: 140 }} />
+              <InputData type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} style={{ ...inp, width: 140 }} />
             </div>
             <button onClick={carregar} style={btn("#111111")} disabled={carregando}>
               {carregando ? "…" : "Atualizar"}
@@ -1040,7 +1041,7 @@ export default function ApoioFinanceiroPage() {
               <div style={{ display: "grid", gap: 14 }}>
                 <div>
                   <label style={lbl}>Data da Baixa *</label>
-                  <input
+                  <InputData
                     type="date"
                     value={baixarForm.data_baixa}
                     onChange={(e) => setBaixarForm({ ...baixarForm, data_baixa: e.target.value })}
@@ -1108,7 +1109,7 @@ export default function ApoioFinanceiroPage() {
 
               <div>
                 <label style={lbl}>Data da Baixa *</label>
-                <input
+                <InputData
                   type="date"
                   value={baixaLoteData}
                   onChange={(e) => setBaixaLoteData(e.target.value)}
@@ -1164,7 +1165,7 @@ export default function ApoioFinanceiroPage() {
                 {/* Vencimento */}
                 <div>
                   <label style={lbl}>Vencimento *</label>
-                  <input
+                  <InputData
                     type="date"
                     value={formApoio.data_vencimento}
                     onChange={(e) => setFormApoio({ ...formApoio, data_vencimento: e.target.value })}

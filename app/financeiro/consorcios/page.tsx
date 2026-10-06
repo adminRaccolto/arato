@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -1059,7 +1060,7 @@ export default function ConsorciosPage() {
                     <tr key={r.numero} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                       <td style={{ padding: "5px 8px", color: "var(--text-3)" }}>{r.numero}</td>
                       <td style={{ padding: "4px 6px" }}>
-                        <input type="date" value={r.data} disabled={r.pago} style={{ ...inp, width: 160 }}
+                        <InputData type="date" value={r.data} disabled={r.pago} style={{ ...inp, width: 160 }}
                           onChange={e => setGridModal(g => g && { ...g, rows: g.rows.map((x, j) => j === i ? { ...x, data: e.target.value } : x) })} />
                       </td>
                       <td style={{ padding: "4px 6px" }}>
@@ -1225,7 +1226,7 @@ export default function ConsorciosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data de Início</label>
-                  <input type="date" value={cForm.data_inicio} onChange={e => setCForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
+                  <InputData type="date" value={cForm.data_inicio} onChange={e => setCForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Parcelas Pagas</label>
@@ -1397,7 +1398,7 @@ export default function ConsorciosPage() {
 
               <div>
                 <label style={lbl}>Data de Contemplação</label>
-                <input type="date" value={contemplForm.data_contemplacao} onChange={e => setContemplForm(f => ({ ...f, data_contemplacao: e.target.value }))} style={inp} />
+                <InputData type="date" value={contemplForm.data_contemplacao} onChange={e => setContemplForm(f => ({ ...f, data_contemplacao: e.target.value }))} style={inp} />
               </div>
               <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1518,7 +1519,7 @@ export default function ConsorciosPage() {
             </div>
             <div style={{ padding: "20px 22px" }}>
               <label style={lbl}>Data do Pagamento</label>
-              <input type="date" value={parcelaData} onChange={e => setParcelaData(e.target.value)} style={inp} />
+              <InputData type="date" value={parcelaData} onChange={e => setParcelaData(e.target.value)} style={inp} />
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalParcela(null)}>Cancelar</button>

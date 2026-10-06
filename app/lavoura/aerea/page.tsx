@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -694,7 +695,7 @@ export default function AplicacaoAereaPage() {
                     </div>
                     <div>
                       <label style={lbl}>Data da Aplicação *</label>
-                      <input type="date" value={form.data_aplicacao} onChange={e => sf("data_aplicacao", e.target.value)} style={inp} />
+                      <InputData type="date" value={form.data_aplicacao} onChange={e => sf("data_aplicacao", e.target.value)} style={inp} />
                     </div>
                   </div>
 
@@ -929,7 +930,7 @@ export default function AplicacaoAereaPage() {
                 </div>
                 <div>
                   <label style={lbl}>Vencimento CLOA</label>
-                  <input type="date" value={formEmpresa.cloa_vencimento ?? ""} onChange={e => setFormEmpresa(p => ({ ...p, cloa_vencimento: e.target.value }))} style={inp} />
+                  <InputData type="date" value={formEmpresa.cloa_vencimento ?? ""} onChange={e => setFormEmpresa(p => ({ ...p, cloa_vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Responsável Técnico (RT)</label>

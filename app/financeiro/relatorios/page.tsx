@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -935,7 +936,7 @@ function FinanceiroRelatoriosInner() {
                               </div>
                               <div>
                                 <label style={{ ...labelStyle, fontSize: 12 }}>Data</label>
-                                <input type="date" value={simForm.data} onChange={e => setSimForm(f => ({ ...f, data: e.target.value }))} style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }} />
+                                <InputData type="date" value={simForm.data} onChange={e => setSimForm(f => ({ ...f, data: e.target.value }))} style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }} />
                               </div>
                               <div>
                                 <label style={{ ...labelStyle, fontSize: 12 }}>Tipo</label>
@@ -1037,11 +1038,11 @@ function FinanceiroRelatoriosInner() {
                       <div className="no-print" style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           <label style={labelStyle}>Início</label>
-                          <input type="date" value={filtro.inicio} onChange={e => setFiltro(f => ({ ...f, inicio: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
+                          <InputData type="date" value={filtro.inicio} onChange={e => setFiltro(f => ({ ...f, inicio: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           <label style={labelStyle}>Fim</label>
-                          <input type="date" value={filtro.fim} onChange={e => setFiltro(f => ({ ...f, fim: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
+                          <InputData type="date" value={filtro.fim} onChange={e => setFiltro(f => ({ ...f, fim: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end" }}>
                           <label style={labelStyle}>&nbsp;</label>
@@ -1426,10 +1427,10 @@ function FinanceiroRelatoriosInner() {
                               </button>
                               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>De</span>
-                                <input type="date" value={mensalInicio} onChange={e => setMensalInicio(e.target.value)}
+                                <InputData type="date" value={mensalInicio} onChange={e => setMensalInicio(e.target.value)}
                                   style={{ padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" }} />
                                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>até</span>
-                                <input type="date" value={mensalFim} onChange={e => setMensalFim(e.target.value)}
+                                <InputData type="date" value={mensalFim} onChange={e => setMensalFim(e.target.value)}
                                   style={{ padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" }} />
                               </div>
                             </div>
@@ -1533,9 +1534,9 @@ function FinanceiroRelatoriosInner() {
                           {/* Intervalo de vencimento */}
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Vencimento de</span>
-                            <input type="date" value={anualInicio} onChange={e => setAnualInicio(e.target.value)} style={inpA} />
+                            <InputData type="date" value={anualInicio} onChange={e => setAnualInicio(e.target.value)} style={inpA} />
                             <span style={{ fontSize: 11, color: "var(--text-2)" }}>até</span>
-                            <input type="date" value={anualFim} onChange={e => setAnualFim(e.target.value)} style={inpA} />
+                            <InputData type="date" value={anualFim} onChange={e => setAnualFim(e.target.value)} style={inpA} />
                             {(anualInicio || anualFim) && (
                               <button onClick={() => { setAnualInicio(""); setAnualFim(""); }}
                                 style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}>✕</button>
@@ -1962,11 +1963,11 @@ function FinanceiroRelatoriosInner() {
                       onClick={() => { setStatusDDOpen(false); setCatDDOpen(false); setProdDDOpen(false); setCpcrColDDOpen(false); }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Início</label>
-                        <input type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
+                        <InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Fim</label>
-                        <input type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
+                        <InputData type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Tipo</label>

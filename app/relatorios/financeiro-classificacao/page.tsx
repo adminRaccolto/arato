@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
@@ -577,13 +578,13 @@ function RelFinClassInner() {
             {/* Data Início */}
             <div>
               <label style={lbl}>Data Início (Vcto)</label>
-              <input type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
+              <InputData type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
             </div>
 
             {/* Data Fim */}
             <div>
               <label style={lbl}>Data Fim (Vcto)</label>
-              <input type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
+              <InputData type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
             </div>
 
             {/* Tipo — dropdown */}

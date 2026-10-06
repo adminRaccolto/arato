@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -358,7 +359,7 @@ export default function TesourariaPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data *</label>
-                  <input type="date" style={inp} value={editLanc.data} onChange={e => setEditLanc({ ...editLanc, data: e.target.value })} />
+                  <InputData type="date" style={inp} value={editLanc.data} onChange={e => setEditLanc({ ...editLanc, data: e.target.value })} />
                 </div>
               </div>
               <div>
@@ -466,7 +467,7 @@ export default function TesourariaPage() {
                     )}
                     <div>
                       <label style={lbl}>Data</label>
-                      <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                      <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                     </div>
                   </div>
                 )}
@@ -495,7 +496,7 @@ export default function TesourariaPage() {
                       </div>
                       <div>
                         <label style={lbl}>Data</label>
-                        <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                        <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                     </div>
                     <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
@@ -532,7 +533,7 @@ export default function TesourariaPage() {
                       </div>
                       <div>
                         <label style={lbl}>Data</label>
-                        <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                        <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                     </div>
                     <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
@@ -584,7 +585,7 @@ export default function TesourariaPage() {
                     </div>
                     <div>
                       <label style={lbl}>Data</label>
-                      <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                      <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                     </div>
                     <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
                       Lançamentos criados: saída bruta da conta investimento · entrada líquida na conta corrente{(lForm.iof || 0) > 0 ? " · saída IOF" : ""}{(lForm.ir || 0) > 0 ? " · saída IR" : ""} — todos Baixados.
@@ -619,11 +620,11 @@ export default function TesourariaPage() {
                       </div>
                       <div>
                         <label style={lbl}>Data</label>
-                        <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                        <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                       <div>
                         <label style={lbl}>Vencimento</label>
-                        <input type="date" value={lForm.data_vencimento} onChange={e => setLForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
+                        <InputData type="date" value={lForm.data_vencimento} onChange={e => setLForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
                       </div>
                       <div>
                         <label style={lbl}>Conta Bancária</label>

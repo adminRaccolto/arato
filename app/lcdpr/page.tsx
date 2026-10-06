@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo, useRef } from "react";
 import TopNav from "../../components/TopNav";
@@ -1693,7 +1694,7 @@ export default function LCDPR() {
                 <button onClick={() => setFManual(p => ({ ...p, tipo: "receita" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "receita" ? "#1A5C38" : "var(--border-table)"}`, background: fManual.tipo === "receita" ? "#EAF3DE" : "var(--bg-card)", color: fManual.tipo === "receita" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Receita</button>
                 <button onClick={() => setFManual(p => ({ ...p, tipo: "despesa" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "despesa" ? "#E24B4A" : "var(--border-table)"}`, background: fManual.tipo === "despesa" ? "#FCEBEB" : "var(--bg-card)", color: fManual.tipo === "despesa" ? "#E24B4A" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Despesa</button>
               </div>
-              <div><label style={lblS}>Data</label><input type="date" value={fManual.data} onChange={e => setFManual(p => ({ ...p, data: e.target.value }))} style={inpS} /></div>
+              <div><label style={lblS}>Data</label><InputData type="date" value={fManual.data} onChange={e => setFManual(p => ({ ...p, data: e.target.value }))} style={inpS} /></div>
               <div><label style={lblS}>Histórico</label><input value={fManual.historico} onChange={e => setFManual(p => ({ ...p, historico: e.target.value }))} style={inpS} placeholder="Ex: Venda de 100 sacas de milho" /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
