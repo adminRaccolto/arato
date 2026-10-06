@@ -49,7 +49,7 @@ async function consultar(req: NextRequest) {
   // certificado da fazenda ativa nem de um emitente específico.
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const moduloKeyReal = await resolverModuloKeyFiscal(fazenda_id, admin);
-  let confg = moduloKeyReal ? await buscarConfEmitente(fazenda_id, moduloKeyReal) : null;
+  let confg = moduloKeyReal ? await buscarConfEmitente(fazenda_id, moduloKeyReal, undefined, true) : null;
   let fazendaIdComCert = fazenda_id;
 
   // Certificado não achado nesse emitente padrão — procura em qualquer outro emitente cadastrado
@@ -64,7 +64,7 @@ async function consultar(req: NextRequest) {
         .not("modulo", "like", "%__ie_%");
       for (const m of modulosFiscais ?? []) {
         if (m.modulo === moduloKeyReal) continue; // já tentado acima
-        const tentativa = await buscarConfEmitente(m.fazenda_id as string, m.modulo as string);
+        const tentativa = await buscarConfEmitente(m.fazenda_id as string, m.modulo as string, undefined, true);
         if (tentativa?.cert_a1_path && tentativa?.cert_a1_senha) { confg = tentativa; fazendaIdComCert = m.fazenda_id as string; break; }
       }
     }

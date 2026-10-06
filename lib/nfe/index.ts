@@ -33,6 +33,8 @@ export async function buscarConfEmitente(
                         // sem isso, o endereço mesclado abaixo podia vir de uma IE DIFERENTE da
                         // impressa na nota (achado real 23/09/2026: NF saiu com a IE certa mas
                         // endereço de outro estabelecimento do mesmo produtor).
+  soCertificado = false, // consulta que só precisa do certificado A1 (ex.: Sintegra): não escolhe IE,
+                         // então um titular com várias IEs não bloqueia a busca
 ): Promise<Record<string, string> | null> {
   // certificado_a1_* precisa ser buscado na conta inteira, não só na fazenda
   // recebida — o upload (Fiscal → Certificado Digital ou o card de emitente
@@ -153,7 +155,7 @@ export async function buscarConfEmitente(
         }
       }
       const ieAlvo = ieOverride || cfg.ie_emitente || "";
-      const ieEscolhida = selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
+      const ieEscolhida = soCertificado ? null : selecionarInscricaoFiscal(iesAtivas, ieAlvo, fazendaId);
       if (ieEscolhida) {
         const titular = prodRows?.find(p => p.id === ieEscolhida.produtor_id);
         if (!titular?.nome) throw new Error("Nome do titular da IE não encontrado no cadastro do produtor.");
