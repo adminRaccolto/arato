@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-i",
+    data: "06/10/2026",
+    titulo: "Olívia: caminhos de menu corrigidos",
+    modulos: ["Suporte"],
+    itens: [
+      { tipo: "correcao", texto: "A Olívia agora indica os caminhos de menu como estão no sistema. Cadastros (Catálogo de Insumos, Itens Gerais, Produtores etc.) fica no menu Cadastros, e não em Configurações." },
+    ],
+    onde: "Ajuda → Suporte",
+  },
+  {
     versao: "2026.10.06-h",
     data: "06/10/2026",
     titulo: "Confirmação antes de salvar, editar e excluir",

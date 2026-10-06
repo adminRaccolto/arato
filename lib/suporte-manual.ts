@@ -39,7 +39,7 @@ A Olívia usa este documento para responder perguntas de usuários.
 O menu superior do Arato tem os seguintes grupos principais:
 
 1. **Lavoura** — operações de campo e planejamento agrícola
-2. **Compras & Estoque** — pedidos, NFs de entrada, estoque
+2. **Comercial & Logística** — pedidos de compra, estoque, expedição, comercialização
 3. **Comercial & Logística** — contratos, expedição, transporte, balança
 4. **Financeiro** — CP, CR, fluxo de caixa, tesouraria, relatórios
 5. **Fiscal** — NF-e emitidas, LCDPR, SPED
@@ -74,7 +74,7 @@ O menu superior do Arato tem os seguintes grupos principais:
 ## MÓDULO 2 — LAVOURA → PLANEJAMENTO
 
 ### 2.1 Planejamento de Safra
-**Caminho:** Lavoura → Planejamento → Planejamento de Safra
+**Caminho:** Produção → Planejamento → Planejamento de Safra
 
 Gerencia ciclos agrícolas com orçamento, comparativo planejado×realizado e agenda de operações.
 
@@ -84,7 +84,7 @@ Gerencia ciclos agrícolas com orçamento, comparativo planejado×realizado e ag
 - **Agenda** — cronograma de operações do ciclo selecionado.
 
 ### 2.2 Safras e Ciclos
-**Caminho:** Lavoura → Planejamento → Safras e Ciclos
+**Caminho:** Produção → Planejamento → Safras e Ciclos
 
 Cadastra anos safra e ciclos. Todo lançamento de campo exige um ciclo previamente cadastrado aqui.
 
@@ -93,7 +93,7 @@ Cadastra anos safra e ciclos. Todo lançamento de campo exige um ciclo previamen
 Os Ciclos cadastrados dentro de um Ano Safra também aparecem para qualquer fazenda da mesma conta, não só para a fazenda que estava ativa quando o ciclo foi criado — um ciclo cadastrado em uma propriedade aparece normalmente ao consultar o mesmo Ano Safra estando em outra fazenda do grupo.
 
 ### 2.3 Orçamento Planejado × Realizado
-**Caminho:** Lavoura → Planejamento → Orçamento Planejado × Realizado
+**Caminho:** Produção → Planejamento → Orçamento Planejado × Realizado
 
 Atalho direto para a aba Comparativo do Planejamento de Safra.
 
@@ -102,7 +102,7 @@ Atalho direto para a aba Comparativo do Planejamento de Safra.
 ## MÓDULO 3 — LAVOURA → OPERAÇÕES DE CAMPO
 
 ### 3.1 Plantio
-**Caminho:** Lavoura → Operações de Campo → Plantio
+**Caminho:** Produção → Operações de Campo → Plantio
 
 Registra o plantio por talhão. Gera baixa automática no estoque de sementes e lança CP de sementes.
 
@@ -115,21 +115,21 @@ Registra o plantio por talhão. Gera baixa automática no estoque de sementes e 
 2. CP "Custo de Sementes" vinculada ao ciclo
 
 ### 3.2 Adubação de Base
-**Caminho:** Lavoura → Operações de Campo → Adubação de Base
+**Caminho:** Produção → Operações de Campo → Adubação de Base
 
 Registra aplicações de fertilizantes sólidos ou líquidos antes ou durante o plantio. Gera baixa de estoque do(s) fertilizante(s) usado(s) — não cria CP nova (o custo já entrou via a NF de compra do insumo; o custo pro DRE/Custos Totais vem do valor da baixa de estoque, não de um lançamento financeiro novo).
 
 Bug corrigido em 15/09/2026: a baixa de estoque dessa operação não estava sendo gravada no histórico (Kardex) nem entrando no custo do DRE/Custos Totais desde 08/09 — o saldo do insumo sempre esteve certo, só o rastro/custo é que sumia. Corrigido, com backfill das baixas que faltaram.
 
 ### 3.3 Correção de Solo
-**Caminho:** Lavoura → Operações de Campo → Correção de Solo
+**Caminho:** Produção → Operações de Campo → Correção de Solo
 
 Registra aplicações de calcário, gesso e corretivos de solo. Gera baixa de estoque do(s) insumo(s) — mesma lógica da Adubação de Base acima, sem CP nova (custo já contabilizado na compra).
 
 Mesmo bug e mesma correção de 15/09/2026 descrita em Adubação de Base (3.2) — também afetava Correção de Solo.
 
 ### 3.4 Pulverização Terrestre
-**Caminho:** Lavoura → Operações de Campo → Pulverização Terrestre
+**Caminho:** Produção → Operações de Campo → Pulverização Terrestre
 
 Registra aplicações de defensivos e fertilizantes foliares. Gera baixa de estoque e CP de defensivos.
 
@@ -140,12 +140,12 @@ Registra aplicações de defensivos e fertilizantes foliares. Gera baixa de esto
 2. CP "Defensivos Agrícolas"
 
 ### 3.5 Aplicação Aérea
-**Caminho:** Lavoura → Operações de Campo → Aplicação Aérea
+**Caminho:** Produção → Operações de Campo → Aplicação Aérea
 
 Registra aplicações realizadas por aeronaves agrícolas. Mesmos campos da pulverização terrestre.
 
 ### 3.6 Tratamento de Sementes
-**Caminho:** Lavoura → Operações de Campo → Tratamento de Sementes
+**Caminho:** Produção → Operações de Campo → Tratamento de Sementes
 
 Registra tratamentos com fungicidas, inseticidas e inoculantes aplicados às sementes antes do plantio.
 
@@ -154,22 +154,22 @@ Registra tratamentos com fungicidas, inseticidas e inoculantes aplicados às sem
 ## MÓDULO 4 — LAVOURA → MONITORAMENTO
 
 ### 4.1 Mapa de Talhões
-**Caminho:** Lavoura → Monitoramento → Mapa de Talhões
+**Caminho:** Produção → Monitoramento → Mapa de Talhões
 
 Visualização dos talhões com suas coordenadas GPS cadastradas.
 
 ### 4.2 Recomendações Agronômicas
-**Caminho:** Lavoura → Monitoramento → Recomendações Agronômicas
+**Caminho:** Produção → Monitoramento → Recomendações Agronômicas
 
 Registro de laudos e recomendações do agrônomo responsável pela fazenda.
 
 ### 4.3 Pragas & Doenças
-**Caminho:** Lavoura → Monitoramento → Pragas & Doenças
+**Caminho:** Produção → Monitoramento → Pragas & Doenças
 
 Monitoramento de ocorrência de pragas e doenças por talhão.
 
 ### 4.4 Pluviometria
-**Caminho:** Lavoura → Monitoramento → Pluviometria
+**Caminho:** Produção → Monitoramento → Pluviometria
 
 Registro de índices pluviométricos por fazenda e talhão.
 
@@ -178,7 +178,7 @@ Registro de índices pluviométricos por fazenda e talhão.
 ## MÓDULO 5 — LAVOURA → COLHEITA
 
 ### 5.1 Colheita
-**Caminho:** Lavoura → Colheita → Colheita
+**Caminho:** Produção → Colheita → Colheita
 
 Registra romaneios de colheita (pesagem de cada caminhão) com classificação de grãos.
 
@@ -194,12 +194,12 @@ Registra romaneios de colheita (pesagem de cada caminhão) com classificação d
 **Importante:** A Pesagem Avulsa de carga NÃO vinculada à colheita deve ser feita em **Comercial & Logística → Balança → Pesagem Avulsa**.
 
 ### 5.2 Romaneios de Produção
-**Caminho:** Lavoura → Colheita → Romaneios de Produção
+**Caminho:** Produção → Colheita → Romaneios de Produção
 
 Lista todos os romaneios de entrada de produção (grãos colhidos e armazenados).
 
 ### 5.3 Classificação de Grãos
-**Caminho:** Lavoura → Colheita → Classificação de Grãos
+**Caminho:** Produção → Colheita → Classificação de Grãos
 
 Gerencia padrões de classificação por commodity (parâmetros ABIOVE para soja, IN MAPA 60/2011 para milho).
 
@@ -208,19 +208,19 @@ Gerencia padrões de classificação por commodity (parâmetros ABIOVE para soja
 ## MÓDULO 6 — LAVOURA → MÁQUINAS
 
 ### 6.1 Máquinas e Veículos
-**Caminho:** Lavoura → Máquinas → Máquinas e Veículos
+**Caminho:** Produção → Máquinas → Máquinas e Veículos
 
 Cadastro de tratores, colheitadeiras, caminhões e outros equipamentos da fazenda.
 
 **Seletor de veículo/máquina vazio em conta com várias fazendas (correção 18/09/2026):** máquina é cadastrada numa fazenda só, mas o seletor (na Apropriação Direta de NF, aqui mesmo, em Seguros, Contratos Financeiros etc.) só listava as da fazenda ativa de quem está vendo a tela — em conta com várias fazendas, um seletor podia aparecer vazio mesmo a conta tendo centenas de máquinas cadastradas em outra fazenda. Corrigido: a lista agora busca em todas as fazendas da conta.
 
 ### 6.2 Manutenções
-**Caminho:** Lavoura → Máquinas → Manutenções
+**Caminho:** Produção → Máquinas → Manutenções
 
 Histórico de manutenções preventivas e corretivas por máquina.
 
 ### 6.3 Custos por Máquina
-**Caminho:** Lavoura → Máquinas → Custos por Máquina
+**Caminho:** Produção → Máquinas → Custos por Máquina
 
 Relatório de gastos de manutenção e combustível agrupados por equipamento.
 
@@ -229,7 +229,7 @@ Relatório de gastos de manutenção e combustível agrupados por equipamento.
 ## MÓDULO 7 — LAVOURA → ALGODÃO (Add-on opcional)
 
 **Disponível apenas para contas com o add-on Algodão habilitado.**
-**Caminho:** Lavoura → Algodão → (aba desejada)
+**Caminho:** Produção → Algodão → (aba desejada)
 
 **Abas disponíveis:**
 - **Safra & Operações** — operações especiais como defolhação e regulador de crescimento (NAWF, % abertura maçãs).
@@ -244,7 +244,7 @@ Relatório de gastos de manutenção e combustível agrupados por equipamento.
 ## MÓDULO 8 — COMPRAS & ESTOQUE → COMPRAS
 
 ### 8.1 Pedidos de Compra
-**Caminho:** Compras & Estoque → Compras → Pedidos de Compra
+**Caminho:** Comercial & Logística → Compras → Pedido de Compras
 
 Controla o processo de compra de insumos do rascunho até a entrega, gerando automaticamente NF de entrada ao receber.
 
@@ -263,7 +263,7 @@ Controla o processo de compra de insumos do rascunho até a entrega, gerando aut
 **Centro de Custo no lançamento de itens:** a lista de Centros de Custo mostrada ao lançar um item é da conta inteira (todas as fazendas do cliente), não só da fazenda ativa no momento — importante em contas com mais de uma fazenda, onde cada uma pode ter seus próprios centros de custo cadastrados.
 
 ### 8.2 NF de Produtos
-**Caminho:** Compras & Estoque → Compras → NF de Produtos
+**Caminho:** Documentos Fiscais → Notas de Entrada → Notas de Terceiro
 
 **Correção 23/09/2026 — seletor "Vincular a um Pedido de Compra" sem busca por texto:** os dois seletores de Pedido de Compra (no cabeçalho da NF e no painel de ações em lote) tinham ficado pra trás na revisão de seletores com busca — voltaram a ser select comum em algum momento. Corrigido: os dois agora filtram por texto conforme você digita, igual ao resto dos seletores de catálogo grande do sistema.
 
@@ -333,7 +333,7 @@ Lança notas fiscais de compra de produtos (insumos, materiais) com entrada no e
 **Combustível por veículo e rateio de peças entre frotas, na Apropriação Direta (17/09/2026):** no item de uma NF do tipo Apropriação Direta, o checkbox "⛽ É combustível?" abre um seletor de veículo — pra diesel/combustível comprado direto no posto (não vem numa bomba/estoque próprio da fazenda, então não é o mesmo fluxo do abastecimento pela bomba em Estoque). É só marcação pra controle de custo por frota — não gera nenhuma movimentação de estoque nem baixa de bomba. Separadamente, quando o Centro de Custo escolhido no item é de manutenção de máquinas, aparece um editor de "Rateio de custo por frota": adiciona quantas máquinas quiser, cada uma com um percentual manual do valor do item — o rateio precisa somar exatamente 100% pra processar a NF (deixe o rateio vazio se não quiser vincular a nenhuma máquina). Cada máquina do rateio gera seu próprio registro no histórico de manutenção, já com o custo proporcional ao percentual — aparece em Relatórios → Manutenção, agrupado por máquina, junto com o restante do custo de manutenção da frota.
 
 ### 8.3 NF de Serviços (NFS-e)
-**Caminho:** Compras & Estoque → Compras → NF de Serviços
+**Caminho:** Documentos Fiscais → Notas de Entrada → Notas de Terceiro (as NFS-e aparecem na mesma lista)
 
 **Mesma lista de Operações Gerenciais da NF de Produtos (21/09/2026):** o seletor de Operação Gerencial da NF de Serviços mostrava só as operações marcadas como "permite NF" (cerca de 30% do plano), enquanto a NF de Produtos e Contas a Pagar mostravam todas as despesas que permitem CP/CR — por isso serviços como Domínio/Hospedagem, Deslocamento/Viagem ou Assessorias não apareciam ao lançar uma NFS-e. As duas notas agora usam exatamente a mesma lista (a O.G. escolhida na nota vira a O.G. do CP), buscando em todas as fazendas da conta, e o seletor da NF de Serviços ganhou busca por texto.
 
@@ -346,7 +346,7 @@ Lança notas fiscais de serviços recebidos (NFS-e). Completamente separado da N
 **Filtro por Produtor/Tomador:** em contas com mais de um produtor, o filtro "Produtor/Tomador" aparece na barra de filtros; a busca por texto também aceita CPF/CNPJ do tomador ou do prestador.
 
 ### 8.4 Pendências de Classificação
-**Caminho:** Compras & Estoque → Compras → Pendências de Classificação
+**Caminho:** Comercial & Logística → Relatórios → Pendências de Classificação
 
 Lista NFs capturadas pelo SIEG aguardando classificação gerencial (categoria e OG).
 
@@ -355,12 +355,12 @@ Lista NFs capturadas pelo SIEG aguardando classificação gerencial (categoria e
 ## MÓDULO 9 — COMPRAS & ESTOQUE → ESTOQUE
 
 ### 9.1 Posição de Estoque
-**Caminho:** Compras & Estoque → Estoque → Posição de Estoque
+**Caminho:** Comercial & Logística → Relatórios → Posição de Insumos
 
 Saldo atual por produto. Filtros: categoria, depósito, busca por nome. Badge vermelho = abaixo do mínimo.
 
 ### 9.2 Kardex (Ficha de Estoque)
-**Caminho:** Compras & Estoque → Estoque → Kardex (Ficha de Estoque)
+**Caminho:** Comercial & Logística → Relatórios → Kardex (Ficha de Estoque)
 
 Rastreamento completo de entradas e saídas de um produto específico, com saldo e custo médio a cada movimentação.
 
@@ -370,19 +370,19 @@ Rastreamento completo de entradas e saídas de um produto específico, com saldo
 - **Coluna Usuário:** nome do operador que lançou, ou "Sistema" para lançamentos automáticos.
 
 ### 9.3 Movimentação por Produto (Posição de Insumos)
-**Caminho:** Compras & Estoque → Estoque → Posição de Insumos → painel "Movimentação por Produto"
+**Caminho:** Comercial & Logística → Relatórios → Posição de Insumos → painel "Movimentação por Produto"
 
 Histórico filtrado de movimentações do produto selecionado, com as mesmas colunas Origem e Usuário do Kardex. A coluna "NF" mostra o número real da nota (não mais o código interno) — resolvida a partir da NF de entrada vinculada à movimentação.
 
 ### 9.3b Saldo por Lote
-**Caminho:** Compras & Estoque → Estoque → Relatórios → Saldo por Lote
+**Caminho:** Comercial & Logística → Relatórios → Posição de Insumos (saldo por lote)
 
 Consulta o saldo de uma semente por lote — escolha a semente (e opcionalmente um depósito) e clique em Buscar. Mostra, por lote: entradas, saídas, saldo atual e data da última movimentação. Antes essa informação só aparecia embutida nos seletores de lote (transferência, plantio, tratamento de sementes); agora também dá pra consultar direto.
 
 O seletor de semente lista as de **todas as fazendas da conta** (não só a fazenda selecionada no topo da tela) — mostra o nome da fazenda ao lado quando há mais de uma, já que lote de semente é rotineiramente transferido entre propriedades.
 
 ### 9.4 Transferências entre Fazendas
-**Caminho:** Compras & Estoque → Estoque de Insumos → Transferência entre Fazendas
+**Caminho:** Comercial & Logística → Estoque → Transferência entre Fazendas
 
 Registra movimentação de insumos entre fazendas da mesma conta com emissão de NF de transferência.
 
@@ -427,7 +427,7 @@ Registra movimentação de insumos entre fazendas da mesma conta com emissão de
 **Catálogo de insumo é por cliente (conta), estoque é por fazenda (corrigido 23/09/2026):** o cadastro do insumo (nome, categoria, unidade, NCM etc.) é compartilhado entre todas as fazendas do mesmo cliente — listarInsumos busca o catálogo inteiro da conta, não só o que foi cadastrado numa fazenda específica. O saldo/estoque de cada insumo continua sendo calculado por fazenda, normalmente, a partir das movimentações (cada fazenda só enxerga o que tem fisicamente). Antes dessa correção, um insumo cadastrado a partir de uma fazenda ficava invisível pras outras fazendas do mesmo cliente — causava catálogo duplicado ("SEM SOJA CG 7681" / "SEMENTE SOJA CG 7681" / "SEM: SOJA 7681" como produtos separados) e fazia a entrada automática de uma Transferência de Estoque entre fazendas parecer que não movimentou nada no destino (a movimentação era gravada no banco, mas o insumo dela não aparecia no catálogo de lá). Cadastrar um insumo novo também passou a checar duplicado contra o catálogo inteiro do cliente, não só a fazenda atual. Vale pra qualquer cliente com mais de uma fazenda.
 
 ### 9.4 Abastecimento de Máquinas
-**Caminho:** Produção → Máquinas (submenu) → Abastecimento de Máquinas
+**Caminho:** Produção → Máquinas → Abastecimento de Máquinas
 
 Registra abastecimentos de combustível por máquina, com baixa automática no estoque. Depois de passar por Suprimentos → Estoque de Grãos e pelo topo do menu Produção, ficou reunido dentro do submenu "Máquinas" (junto de Máquinas e Veículos, Manutenções e Custos por Máquina) — esse submenu aparece com uma seta ▶ no menu Produção.
 
@@ -442,7 +442,7 @@ Registra abastecimentos de combustível por máquina, com baixa automática no e
 **Erro "row-level security policy" ao salvar — corrigido 23/09/2026:** o lançamento (registrar ou editar) gravava direto pelo navegador e podia falhar com esse erro mesmo com o cadastro certo — sintoma de token de sessão expirado, não de permissão. Passou a usar a rota "/api/campo/abastecimento-acao" (servidor, imune a token expirado) pra toda a escrita: o abastecimento em si, a baixa de estoque na bomba, a baixa no insumo de combustível correspondente e a Conta a Pagar opcional.
 
 ### 9.5 Romaneios de Terceiros
-**Caminho:** Compras & Estoque → Estoque → Romaneios de Terceiros
+**Caminho:** Comercial & Logística → Estoque → Romaneios de Terceiros
 
 Romaneios de entrada de grãos em armazéns de terceiros (depositário externo).
 
@@ -451,7 +451,7 @@ Romaneios de entrada de grãos em armazéns de terceiros (depositário externo).
 ## MÓDULO 10 — COMPRAS & ESTOQUE → INTEGRAÇÃO DE DOCUMENTOS
 
 ### 10.1 Notas Capturadas (SIEG)
-**Caminho:** Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)
+**Caminho:** Comercial & Logística → Integração de Documentos → Notas Capturadas (SIEG)
 
 Central de classificação das NF-e capturadas automaticamente pelo SIEG. Permite classificar rapidamente por operação gerencial e categoria antes de processar.
 
@@ -460,7 +460,7 @@ Central de classificação das NF-e capturadas automaticamente pelo SIEG. Permit
 **Novo 23/09/2026 — NF cancelada pelo fornecedor agora reflete no painel:** a sincronização nunca buscava eventos de cancelamento da SEFAZ (só os documentos normais) — uma NF cancelada pelo emitente depois de importada ficava parada como "Pendente" pra sempre, sem ninguém saber. Agora, a cada sincronização, o sistema também busca eventos de cancelamento no mesmo período: **NF ainda pendente** (nada lançado ainda) vira **"Cancelada"** sozinha — sem risco, nada foi processado; **NF já classificada/processada** (já gerou estoque ou Conta a Pagar) **não muda de status sozinha** — só recebe um aviso ("⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar") pra alguém decidir se estorna. Vale tanto pro painel do SIEG quanto pra NF lançada manualmente/importada por XML.
 
 ### 10.2 Ligar / Desligar SIEG
-**Caminho:** Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG
+**Caminho:** Comercial & Logística → Integração de Documentos → Ligar / Desligar SIEG
 
 Atalho para a tela de Automações onde o SIEG pode ser ativado ou desativado.
 
@@ -557,7 +557,7 @@ Relatório de todos os romaneios de saída de grãos (entregas a compradores e a
 Gerencia acertos financeiros com transportadores autônomos (TAC/ANTT).
 
 ### 13.2 CT-e — Conhecimento de Transporte
-**Caminho:** Comercial & Logística → Fretes e Transporte → CT-e
+**Caminho:** Comercial & Logística → Fretes e Transporte → CT-e — Conhecimento de Transporte
 
 Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 
@@ -660,7 +660,7 @@ Emissão de CT-e para frota própria (motoristas CLT, sem CIOT).
 **Correção 23/09/2026 — SEFAZ rejeitava com "cStat 215: Falha no Schema XML" sem aviso prévio:** a validação local antes de transmitir só checava o Código IBGE do Remetente — o IBGE do Percurso (Início/Fim, exigido pelo schema do CT-e independente do remetente) e do Destinatário não eram checados. Se a busca automática de IBGE falhasse silenciosamente pra qualquer um desses (rede instável no momento, nome de cidade), o XML saía com o campo vazio e só a SEFAZ barrava, com uma mensagem genérica que não dizia qual campo faltava. Corrigido: agora os 3 grupos (Remetente, Destinatário, Percurso Início/Fim) são checados antes de transmitir, e o aviso mostra exatamente qual está faltando. **Se travou nisso antes da correção, simplesmente clique em "Autorizar SEFAZ" de novo** — a busca de IBGE roda de novo na hora, geralmente resolve sozinha.
 
 ### 13.3 MDF-e — Manifesto de Cargas
-**Caminho:** Comercial & Logística → Fretes e Transporte → MDF-e
+**Caminho:** Comercial & Logística → Fretes e Transporte → MDF-e — Manifesto de Cargas
 
 Emissão de MDF-e com seleção de CT-e autorizados e NF-e avulsas.
 
@@ -715,14 +715,14 @@ Pesagem de cargas não vinculadas à colheita nem a contrato de entrega. Ticket 
 - **✏ Manual** — campo numérico digitado pelo operador.
 - **🔌 Balança** — leitura automática via porta serial (Web Serial API). Requer Google Chrome ou Microsoft Edge. Protocolos suportados: Toledo Prix/Prix Fit, Filizola MK-III/PDV, Urano UR-E, RS-232 genérico. Configuração padrão: 9600 baud, 8N1.
 
-**Atenção:** Para pesagem durante a colheita (romaneio de produção), use **Lavoura → Colheita → Colheita**.
+**Atenção:** Para pesagem durante a colheita (romaneio de produção), use **Produção → Colheita → Colheita**.
 
 ---
 
 ## MÓDULO 15 — FINANCEIRO → ATIVIDADE RURAL (PRODUTOR)
 
 ### 15.1 Contas a Pagar
-**Caminho:** Financeiro → Atividade Rural → Contas a Pagar
+**Caminho:** Financeiro → Contas a Pagar / Receber → Contas a Pagar
 
 Gerencia despesas do produtor rural (pessoa física — CPF).
 
@@ -757,7 +757,7 @@ Gerencia despesas do produtor rural (pessoa física — CPF).
 **Correção 18/09/2026:** em conta com mais de uma fazenda, o bloco de adiantamento disponível não aparecia se a fazenda ativa no topo da tela fosse diferente da fazenda do próprio CP sendo baixado — a busca usava a fazenda ativa em vez da fazenda do lançamento. Corrigido.
 
 ### 15.2 Contas a Receber
-**Caminho:** Financeiro → Atividade Rural → Contas a Receber
+**Caminho:** Financeiro → Contas a Pagar / Receber → Contas a Receber
 
 Gerencia receitas previstas e realizadas do produtor rural.
 
@@ -766,14 +766,14 @@ Gerencia receitas previstas e realizadas do produtor rural.
 **Origem automática (badge azul):** NF Saída, Arrendamento, Contrato Financeiro, Plantio.
 
 ### 15.3 Adiantamentos a Fornecedores
-**Caminho:** Financeiro → Atividade Rural → Adiantamentos a Fornecedores
+**Caminho:** Financeiro → Contas a Pagar / Receber → Adiantamentos a Fornecedores
 
 Registra pagamentos antecipados a fornecedores antes da entrega do produto ou serviço.
 
 **Dois jeitos de "Aplicar" um adiantamento:** o botão "Aplicar" aqui nesta tela continua existindo — registra uma anotação no histórico do adiantamento (valor, data, NF opcional), útil como controle informativo, mas **não abate nenhum CP**. Pra de fato usar o saldo do adiantamento como pagamento de um CP real, aplique direto na baixa do CP (Contas a Pagar → Registrar pagamento → bloco "💰 Adiantamento disponível", novidade 18/09/2026) — essa via já reduz o saldo do adiantamento E o saldo do CP juntos.
 
 ### 15.4 Folha de Pagamento
-**Caminho:** Financeiro → Atividade Rural → Folha de Pagamento
+**Caminho:** Financeiro → Contas a Pagar / Receber → Folha de Pagamento
 
 Ao montar uma folha nova, a tela mostra TODOS os funcionários ativos da conta (de qualquer fazenda, vinculados a Empresa/PJ ou a Produtor Rural/CPF) numa lista única pra seleção. Ao salvar, o sistema separa automaticamente em uma folha por empregador — uma por Empresa e uma por Produtor Rural — nunca mistura funcionários de produtores diferentes numa mesma folha. Cada folha salva mostra o nome do empregador (empresa ou produtor) na lista.
 
@@ -786,22 +786,22 @@ Ao montar uma folha nova, a tela mostra TODOS os funcionários ativos da conta (
 ## MÓDULO 16 — FINANCEIRO → EMPRESA (CNPJ)
 
 ### 16.1 Contas a Pagar — Empresa
-**Caminho:** Financeiro → Empresa → Contas a Pagar — Empresa
+**Caminho:** Financeiro → Contas a Pagar / Receber → Contas a Pagar (filtro por empresa)
 
 CP da pessoa jurídica (empresa com CNPJ). Mesma funcionalidade da CP do produtor.
 
 ### 16.2 Contas a Receber — Empresa
-**Caminho:** Financeiro → Empresa → Contas a Receber — Empresa
+**Caminho:** Financeiro → Contas a Pagar / Receber → Contas a Receber (filtro por empresa)
 
 CR da pessoa jurídica.
 
 ### 16.3 Folha de Pagamento — Empresa
-**Caminho:** Financeiro → Empresa → Folha de Pagamento — Empresa
+**Caminho:** Financeiro → Contas a Pagar / Receber → Folha de Pagamento — Empresa
 
 Folha de pagamento dos funcionários da empresa (CNPJ) selecionada no topo da tela. Fechar folha gera CP do salário líquido por funcionário, mais FGTS e INSS Patronal (aqui sempre gera os dois, já que o empregador é Empresa).
 
 ### 16.4 Cartões de Crédito
-**Caminho:** Financeiro → Empresa → Cartões de Crédito
+**Caminho:** Financeiro → Cartões de Crédito
 
 Gerencia gastos em cartões de crédito corporativos.
 
@@ -965,7 +965,7 @@ Relatório de despesas agrupadas por Operação Gerencial e categoria financeira
 ## MÓDULO 19 — CONFIGURAÇÕES → COMPLEMENTO FINANCEIRO
 
 ### 19.1 Contratos Financeiros (Crédito Rural)
-**Caminho:** Configurações → Complemento Financeiro → Contratos Financeiros
+**Caminho:** Financeiro → Complemento Financeiro → Contratos Financeiros
 
 Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAMP, FCO, Finame, CPR, etc.).
 
@@ -982,14 +982,14 @@ Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAM
 **Editar parcelas manualmente:** checkbox "Editar parcelas" acima da tabela libera edição das colunas Amortização e Juros (Vencimento e Valor da Parcela já eram editáveis mesmo sem o checkbox). Depois de editar, clique em "Salvar Parcelas e Lançar no CP" pra confirmar — sem isso, o ajuste fica só na tela. Atenção: clicar em "Calcular" de novo depois de editar recalcula a tabela do zero pelo método SAC/PRICE/SACRE e descarta os ajustes manuais não salvos.
 
 ### 19.2 Apoio Financeiro
-**Caminho:** Configurações → Complemento Financeiro → Apoio Financeiro
+**Caminho:** Financeiro → Complemento Financeiro → Apoio Financeiro
 
 **Seletor de Operação Gerencial (21/09/2026):** agora mostra a mesma lista de Contas a Pagar, filtrada pelo tipo do lançamento (A Pagar = despesas, A Receber = receitas), com a classificação e busca por texto. Antes misturava receitas e despesas, só com o nome, e só da fazenda ativa. Ao trocar o tipo, a operação escolhida é limpa para não ficar uma operação de receita num lançamento a pagar.
 
 Ferramenta exclusiva Raccolto para projeções e estimativas financeiras. Os lançamentos aparecem no Fluxo de Caixa com badge laranja "Apoio Financeiro" — não entram no sistema oficial.
 
 ### 19.3 Seguros / Apólices
-**Caminho:** Configurações → Complemento Financeiro → Seguros / Apólices
+**Caminho:** Financeiro → Complemento Financeiro → Seguros / Apólices
 
 Gerencia apólices de seguro (rural, vida, patrimonial, automóvel, máquinas). Controla prêmios e sinistros. Alerta automático de vencimento 7 dias antes.
 
@@ -1010,7 +1010,7 @@ Ao cadastrar uma apólice nova com prêmio "Parcelado" ou "À Vista", o sistema 
 **Juros, multa e desconto no borderô (06/10/2026):** na confirmação do pagamento do borderô, cada título tem campos de multa, juros e desconto. Juros e multa somam ao valor pago; o desconto abate o principal. Na DRE, juros de mora e multas aparecem como despesa financeira em linhas próprias, e os descontos obtidos como redução de despesa.
 
 **Remover parcela (06/10/2026):** no Plano de parcelas, a parcela ainda não paga tem 🗑 para removê-la. Ao confirmar, o CP em aberto dela é apagado e o total a pagar diminui. Parcela paga, conciliada ou em borderô não pode ser removida — estorne o pagamento antes. CP de consórcio não é excluído pela tela de Contas a Pagar: ele espelha o plano.
-**Caminho:** Configurações → Complemento Financeiro → Consórcios
+**Caminho:** Financeiro → Complemento Financeiro → Consórcios
 
 Gerencia cotas de consórcio com cronograma de parcelas e CPs automáticas.
 
@@ -1207,14 +1207,14 @@ Despesas agrupadas por Operação Gerencial.
 ## MÓDULO 23 — CONFIGURAÇÕES → CADASTROS
 
 ### 23.1 Pessoas e Entidades
-**Caminho:** Configurações → Cadastros → Pessoas e Entidades
+**Caminho:** Cadastros → Cadastros — Entidades → Pessoas e Entidades
 
 Cadastro de compradores, fornecedores, transportadoras, arrendantes e outras entidades externas (CNPJ/CPF, IE, PIX, dados bancários, subcategoria).
 
 **Cadastro é do cliente, não da fazenda (22/09/2026):** um fornecedor ou cliente cadastrado numa fazenda aparece nas telas de todas as fazendas do mesmo cliente. Ao cadastrar, o sistema confere o CPF/CNPJ em todas as fazendas antes de criar — se já existir, pergunta se quer usar o cadastro existente em vez de criar um novo.
 
 ### 23.2 Produtores
-**Caminho:** Configurações → Cadastros → Produtores
+**Caminho:** Cadastros → Cadastros — Entidades → Produtores
 
 Cadastro dos produtores rurais com CPF/CNPJ, inscrições estaduais por estado (IE), dados bancários.
 
@@ -1225,17 +1225,17 @@ Cadastro dos produtores rurais com CPF/CNPJ, inscrições estaduais por estado (
 **"Fazenda ou Empresa vinculada" na IE:** ao adicionar uma Inscrição Estadual, o campo de vínculo lista tanto as Fazendas da conta quanto as Empresas (PJ) já cadastradas para aquele produtor — uma IE pode pertencer a uma propriedade física (fazenda) ou a uma empresa do produtor, nunca as duas ao mesmo tempo. Isso importa porque telas que buscam "a IE certa" para uma operação (venda de grãos, arrendamento) filtram por esse vínculo.
 
 ### 23.3 Fazendas e Talhões
-**Caminho:** Configurações → Cadastros → Fazendas e Talhões
+**Caminho:** Cadastros → Cadastros — Entidades → Fazendas e Talhões
 
 Cadastro completo de fazendas (dados gerais, matrículas, certidões CAR/ITR/CCIR, arrendamentos) e talhões com GPS.
 
 ### 23.4 Funcionários
-**Caminho:** Configurações → Cadastros → Funcionários
+**Caminho:** Cadastros → Cadastros — Entidades → Funcionários
 
 Cadastro de funcionários para folha de pagamento (produtor PF e empresa PJ) — mostra os de todas as fazendas da conta, não só a fazenda ativa (corrigido 15/09/2026: a lista ficava vazia dependendo de qual fazenda estava ativa no topo da tela).
 
 ### 23.5 Catálogo de Insumos
-**Caminho:** Configurações → Cadastros → Catálogo de Insumos
+**Caminho:** Cadastros → Cadastros — Agrícola → Catálogo de Insumos
 
 Cadastro de sementes, fertilizantes, defensivos, corretivos e outros insumos com custo médio, estoque mínimo e unidade.
 
@@ -1244,19 +1244,19 @@ Cadastro de sementes, fertilizantes, defensivos, corretivos e outros insumos com
 **Correção 23/09/2026 (achado grave) — o campo NCM existia na tela mas nunca era salvo de verdade:** "NCM (para match automático de NF)" aparecia no formulário, aceitava digitação, mas ao clicar "Salvar" esse valor nunca era enviado — descartado em silêncio. Reabrir um insumo pra editar também sempre mostrava o campo vazio (mesmo se por acaso já tivesse NCM salvo por outro caminho), e salvar de novo apagava o que já existia. Auditoria no banco confirmou o tamanho do problema: **1.929 de 1.959 insumos cadastrados (98%) estavam sem NCM nenhum.** Corrigido: o campo agora salva e recarrega normalmente. **Consequência que também foi corrigida:** a NF-e de Transferência de Estoque, quando o insumo não tinha NCM (praticamente sempre, por causa desse bug), preenchia sozinha com o NCM de SOJA (1201.90.00) — pra qualquer produto, inclusive defensivo e fertilizante — e documentos reais chegaram a sair assim, autorizados pela SEFAZ. A emissão agora **bloqueia** e avisa exatamente qual produto está sem NCM, em vez de adivinhar. **Ação recomendada:** revise o cadastro de insumos aos poucos e preencha o NCM de cada um (prioridade pros que já foram usados em alguma NF-e de transferência) — sem isso, a emissão pra esse insumo específico vai ficar bloqueada até preencher.
 
 ### 23.6 Itens Gerais
-**Caminho:** Configurações → Cadastros → Itens Gerais
+**Caminho:** Cadastros → Cadastros — Agrícola → Itens Gerais
 
 Produtos e serviços que não são insumos agrícolas (peças, ferramentas, materiais de escritório).
 
 Quando a Subcategoria escolhida é "Peças e Manutenção", o cadastro libera dois campos extras: Número de Série (do fabricante) e Foto do Produto (upload de imagem) — úteis para identificar peças parecidas visualmente ou controlar garantia por número de série. Ambos aparecem também na listagem do item.
 
 ### 23.7 Depósitos & Armazéns
-**Caminho:** Configurações → Cadastros → Depósitos & Armazéns
+**Caminho:** Cadastros → Cadastros — Agrícola → Depósitos & Armazéns
 
 Cadastro de armazéns, silos, tulhas, galpões e outros depósitos físicos.
 
 ### 23.8 Contas Bancárias
-**Caminho:** Configurações → Cadastros → Contas Bancárias
+**Caminho:** Cadastros → Cadastros — Financeiro → Contas Bancárias
 
 Cadastro das contas bancárias da fazenda para vinculação com CP/CR e conciliação OFX.
 
@@ -1339,10 +1339,10 @@ Acesse **Comercial & Logística → Balança → Pesagem Avulsa**. Clique em "+ 
 - **Saída:** caminhão chega vazio. 1ª pesagem = Tara. 2ª pesagem = Peso Bruto (após carregar). Líquido = Bruto − Tara.
 
 ### Como registro a colheita de soja?
-Acesse **Lavoura → Colheita → Colheita**. Crie o registro de colheita (fazenda, ciclo, talhão, área, data). Adicione um romaneio por caminhão (placa, peso bruto, tara, classificação ABIOVE). Clique em "Finalizar Colheita" ao terminar.
+Acesse **Produção → Colheita → Colheita**. Crie o registro de colheita (fazenda, ciclo, talhão, área, data). Adicione um romaneio por caminhão (placa, peso bruto, tara, classificação ABIOVE). Clique em "Finalizar Colheita" ao terminar.
 
 ### Como lanço uma NF de compra de insumos?
-Acesse **Compras & Estoque → Compras → NF de Produtos**. Clique em "Lançar NF de Entrada", carregue o XML (recomendado) ou preencha manualmente. Associe os itens ao catálogo de insumos e clique em "Processar NF".
+Acesse **Documentos Fiscais → Notas de Entrada → Notas de Terceiro**. Clique em "Lançar NF de Entrada", carregue o XML (recomendado) ou preencha manualmente. Associe os itens ao catálogo de insumos e clique em "Processar NF".
 
 ### Como crio um contrato de venda de grãos?
 Acesse **Comercial & Logística → Comercialização → Contratos de Grãos**. Clique em "Novo Contrato", preencha produtor, comprador, produto, quantidade, preço, natureza da operação (CFOP preenchido automaticamente) e salve.
@@ -1360,13 +1360,13 @@ Acesse **Financeiro → Relatórios Financeiros → Fluxo de Caixa Previsto**. P
 Na tela de **Pesagem Avulsa** (Comercial & Logística → Balança), clique no toggle "🔌 Balança" no campo de peso. Requer Google Chrome ou Microsoft Edge. Selecione a porta serial, clique "Conectar" e o peso aparece em tempo real.
 
 ### Onde cadastro compradores e fornecedores?
-Acesse **Configurações → Cadastros → Pessoas e Entidades**.
+Acesse **Cadastros → Cadastros — Entidades → Pessoas e Entidades**.
 
 ### Como adiciono uma nova fazenda?
-Acesse **Configurações → Cadastros → Fazendas e Talhões**. Clique em "+ Nova Fazenda".
+Acesse **Cadastros → Cadastros — Entidades → Fazendas e Talhões**. Clique em "+ Nova Fazenda".
 
 ### O que é o SIEG?
-Serviço que captura automaticamente todas as NF-e emitidas contra o CNPJ/CPF da fazenda. As notas aparecem em **Compras & Estoque → Integração de Documentos → Notas Capturadas (SIEG)** para serem classificadas e processadas. Para ativar/desativar: **Compras & Estoque → Integração de Documentos → ⚡ Ligar / Desligar SIEG**.
+Serviço que captura automaticamente todas as NF-e emitidas contra o CNPJ/CPF da fazenda. As notas aparecem em **Comercial & Logística → Integração de Documentos → Notas Capturadas (SIEG)** para serem classificadas e processadas. Para ativar/desativar: **Comercial & Logística → Integração de Documentos → Ligar / Desligar SIEG**.
 
 O CNPJ monitorado pode estar configurado em qualquer fazenda da conta — o botão "Sincronizar SIEG" (tanto em NF de Produtos quanto em NF de Serviço) busca em todas as fazendas da conta, não só na fazenda selecionada no momento na tela.
 
@@ -1374,7 +1374,7 @@ O CNPJ monitorado pode estar configurado em qualquer fazenda da conta — o bot�
 Acesse **Fiscal → Obrigações → LCDPR**. Antes da primeira exportação, preencha a aba "Cadastro LCDPR" com CAEPF e tipo de exploração de cada fazenda e os dados do contador responsável. Depois vá em "Exportação", escolha o produtor e o período (ano ou mês) e clique em "Gerar e baixar".
 
 ### Por que um lançamento do LCDPR aparece com o código de conta "999"?
-"999" é o código oficial da Receita Federal para "numerário em trânsito" — usado quando o lançamento não tem uma conta bancária cadastrada vinculada a ele. Não é um erro; é a forma prevista pelo próprio leiaute oficial para esses casos. Para vincular a uma conta real, cadastre-a em **Configurações → Cadastros → Contas Bancárias** e associe o lançamento a ela no Financeiro.
+"999" é o código oficial da Receita Federal para "numerário em trânsito" — usado quando o lançamento não tem uma conta bancária cadastrada vinculada a ele. Não é um erro; é a forma prevista pelo próprio leiaute oficial para esses casos. Para vincular a uma conta real, cadastre-a em **Cadastros → Cadastros — Financeiro → Contas Bancárias** e associe o lançamento a ela no Financeiro.
 
 ### O que é "vínculo de atividade"?
 Campo que classifica o lançamento para fins fiscais:
@@ -1392,12 +1392,12 @@ Campo que classifica o lançamento para fins fiscais:
 | "Semente não encontrada" ao registrar plantio | Insumo não está no estoque | Lançar NF de entrada ou cadastrar em Catálogo de Insumos |
 | "Estoque insuficiente" | Saldo zerado ou negativo | Verificar Posição de Estoque e lançar entrada |
 | CP em USD sem conversão | Cotação não informada | Abrir a CP, informar cotação no campo e salvar |
-| Fornecedor não preenchido automaticamente pelo SIEG | CNPJ não cadastrado em Pessoas | Cadastrar o fornecedor em Configurações → Cadastros → Pessoas e Entidades |
+| Fornecedor não preenchido automaticamente pelo SIEG | CNPJ não cadastrado em Pessoas | Cadastrar o fornecedor em Cadastros → Cadastros — Entidades → Pessoas e Entidades |
 | NF não pode ser reprocessada | Proteção contra duplicação | Usar botão "Estornar" antes de reprocessar |
 | Consórcio não aparece em CP | Parcelas com data passada | Ir para aba "Vencidos" em Contas a Pagar |
 | Balança não conecta | Browser incompatível | Usar Google Chrome ou Microsoft Edge |
 | Pedido de compra não pode ser excluído | Tem NFs de entrada vinculadas | Usar status "Cancelado" em vez de excluir |
-| "Ciclo não encontrado" ao registrar operação | Ciclo não cadastrado | Cadastrar em Configurações → Cadastros → Safras e Ciclos |
+| "Ciclo não encontrado" ao registrar operação | Ciclo não cadastrado | Cadastrar em Produção → Planejamento → Safras e Ciclos |
 | CP não aparece no Fluxo de Caixa | Produtor ou conta bancária não selecionados no filtro | Usar os botões "Selecionar Todos" nos filtros |
 | "Seu plano Essencial não inclui armazenamento" ao anexar arquivo, mas a conta é Performance | Conta sem assinatura paga (pro bono) era lida como Essencial | Corrigido: sem assinatura, vale o pacote da conta (Performance = 3 GB). Se ainda aparecer, conferir o pacote da conta em Admin |
 | Baixa de CP/CR de Empresa pede conta bancária e novo vencimento | A baixa das Empresas segue o padrão do produtor | Escolher a conta; se pagar menos que o devido, informar o novo vencimento do saldo (fica Parcial); para desfazer usar Reabrir |
@@ -1471,7 +1471,7 @@ Campo que classifica o lançamento para fins fiscais:
 | NFs de entrada manuais, XML e NFS nao aparecem / aparecem tarde em Documentos Fiscais | Corrigido 05/10/2026 -- Fiscal -> Documentos Fiscais | A tela trazia so as 1.000 notas mais recentes pela data da nota, e a conta ja passa disso. Agora a lista carrega todas as paginas. Novo seletor "Ordenar": data da nota (padrao) ou data de cadastro, para ver o que acabou de entrar no sistema mesmo com data de nota antiga |
 | Lote da semente digitado no campo Variedade na transferencia | Corrigido 05/10/2026 -- Estoque -> Transferencias -> Nova Transferencia | A coluna Lote ficava fora da area visivel e o usuario preenchia o campo vizinho (Variedade). As colunas foram reduzidas para caber no modal: Lote aparece ao lado de Variedade, sem rolar. Variedade e a cultivar (ex: TMG 7062); Lote e o numero do lote, e sao campos separados |
 | Nao aparece o seletor de lote na Nova Transferencia de Insumos (desktop) | Corrigido 05/10/2026 -- Estoque -> Transferencias | A coluna Lote existia mas ficava cortada pela largura do modal (a tabela de itens nao rolava), por isso nao aparecia. Agora a tabela rola horizontalmente: use a barra de rolagem embaixo dos itens para ver Lote e o botao de remover item. Para semente, o lote e escolhido depois de selecionar o deposito de origem (sem deposito nao ha saldo por lote para listar) |
-| Nao tem campo de NCM no cadastro de Itens Gerais | Adicionado 02/10/2026 -- Cadastros -> Insumos -> aba Itens Gerais (pecas, materiais, uso/consumo, escritorio, outros) | O cadastro de Insumos agricolas (semente/defensivo/fertilizante/corretivo/combustivel) ja tinha NCM desde antes ("para match automatico de NF"); faltava so em Itens Gerais, que agora tem o mesmo campo e grava normalmente ao editar/criar |
+| Nao tem campo de NCM no cadastro de Itens Gerais | Adicionado 02/10/2026 -- Cadastros → Cadastros — Agrícola → Itens Gerais (pecas, materiais, uso/consumo, escritorio, outros) | O cadastro de Insumos agricolas (semente/defensivo/fertilizante/corretivo/combustivel) ja tinha NCM desde antes ("para match automatico de NF"); faltava so em Itens Gerais, que agora tem o mesmo campo e grava normalmente ao editar/criar |
 | Nao consigo ver a barra de rolagem horizontal em Contas a Pagar/Receber sem descer a tela toda | Corrigido 02/10/2026 -- o grid agora tem altura limitada e rolagem propria, com cabecalho fixo | A barra horizontal fica logo abaixo da ultima linha visivel, nao depois dos 1000 registros |
 | Borderô pendente ficava sempre fixo no topo de Contas a Pagar/Receber | Corrigido 02/10/2026 -- o card do borderô agora entra como uma linha normal dentro do grid, respeitando a ordenacao ativa (pela data mais recente entre os titulos que tem dentro) -- nao fica mais colado no topo independente do filtro/ordem | Ver Itens, Confirmar Pagamento/Recebimento e Cancelar continuam no mesmo lugar, dentro dessa linha |
 | Nao tem coluna de Nº NF no "Ver Itens" do borderô | Adicionado 02/10/2026 | Mostra o numero da NF de cada titulo agrupado no borderô, junto com Origem/Titulo/Vencimento/Valor |
