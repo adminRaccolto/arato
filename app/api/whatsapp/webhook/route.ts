@@ -27,6 +27,14 @@ type AuthResult = {
 };
 
 // ── Autenticar número ──────────────────────────────────────────────────────
+// Mesmo critério do webhook: o número pode chegar com ou sem o 9 depois do DDD.
+function variantesTelefone(telefone: string): string[] {
+  const v = [telefone];
+  if (telefone.startsWith("55") && telefone.length === 12) v.push(telefone.slice(0, 4) + "9" + telefone.slice(4));
+  else if (telefone.startsWith("55") && telefone.length === 13) v.push(telefone.slice(0, 4) + telefone.slice(5));
+  return v;
+}
+
 async function autenticarNumero(telefone: string): Promise<AuthResult | null> {
   const variantes = [telefone];
   if (telefone.startsWith("55") && telefone.length === 12) {
@@ -137,8 +145,9 @@ export async function POST(req: NextRequest) {
   // Implantação em andamento neste número: o agente de implantação conduz a conversa (ele mesmo
   // responde pelo WhatsApp). Se a tabela ainda não existir, a consulta falha em silêncio e o
   // fluxo operacional segue normalmente.
-  const { data: implantacao } = await sb().from("agente_onboarding")
-    .select("conta_id, concluido").eq("telefone", telefone).maybeSingle();
+  const { data: implantacoes } = await sb().from("agente_onboarding")
+    .select("conta_id, concluido").in("telefone", variantesTelefone(telefone)).limit(1);
+  const implantacao = implantacoes?.[0];
   if (implantacao?.conta_id && !implantacao.concluido) {
     try {
       await fetch(new URL("/api/agente/implantar", req.nextUrl.origin), {

@@ -593,6 +593,14 @@ function getSupabaseAdmin() {
   );
 }
 
+// Mesmo critério do webhook: o número pode chegar com ou sem o 9 depois do DDD.
+function variantesTelefone(telefone: string): string[] {
+  const v = [telefone];
+  if (telefone.startsWith("55") && telefone.length === 12) v.push(telefone.slice(0, 4) + "9" + telefone.slice(4));
+  else if (telefone.startsWith("55") && telefone.length === 13) v.push(telefone.slice(0, 4) + telefone.slice(5));
+  return v;
+}
+
 async function upsertOnboarding(
   telefone: string,
   db: SupabaseClient
@@ -710,6 +718,9 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getSupabaseAdmin();
+    // Usa o registro já vinculado à conta (o número pode vir com ou sem o 9), senão criaria outro sem conta
+    const { data: vinculados } = await db.from("agente_onboarding").select("telefone").in("telefone", variantesTelefone(telefone)).limit(1);
+    if (vinculados?.[0]?.telefone) telefone = vinculados[0].telefone as string;
     let onboarding = await upsertOnboarding(telefone, db);
 
     // Adiciona mensagem do usuário ao histórico
