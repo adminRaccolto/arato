@@ -1035,10 +1035,11 @@ function ParametrosSistemaContent() {
   );
 
   // Preenche automaticamente o config fiscal a partir do cadastro do produtor/empresa
-  function autoPreencherDoCadastro(emitter: EmitterEntry) {
+  // forcar = clique no botão "Preencher do Cadastro": sobrescreve os dados de identificação com o cadastro.
+  // Sem forcar (abertura do card): só preenche se o CPF/CNPJ ainda não foi configurado.
+  function autoPreencherDoCadastro(emitter: EmitterEntry, forcar = false) {
     const existente = cfgs[emitter.moduloKey] ?? {};
-    // Só auto-preenche se CPF/CNPJ ainda não foi configurado manualmente
-    if (existente.cpf_cnpj_emitente) return;
+    if (!forcar && existente.cpf_cnpj_emitente) return;
     let seed: Partial<CfgModulo> = {};
     if (emitter.type === "produtor") {
       const p = produtores.find(x => x.id === emitter.id);
@@ -1072,7 +1073,13 @@ function ParametrosSistemaContent() {
         fone:               e.telefone ?? "",
       };
     }
-    setCfgs(prev => ({ ...prev, [emitter.moduloKey]: { ...seed, ...(prev[emitter.moduloKey] ?? {}) } as CfgModulo }));
+    setCfgs(prev => {
+      const atual = (prev[emitter.moduloKey] ?? {}) as Record<string, string>;
+      // Campos já preenchidos (não vazios) prevalecem na abertura; no botão, o cadastro prevalece.
+      const preenchidos = Object.fromEntries(Object.entries(atual).filter(([, v]) => v !== "" && v != null));
+      const resultado = forcar ? { ...atual, ...seed } : { ...seed, ...preenchidos };
+      return { ...prev, [emitter.moduloKey]: resultado as CfgModulo };
+    });
   }
 
   // ── Aba Fiscal — por emitente ─────────────────────────────────────────────
@@ -1233,14 +1240,7 @@ function ParametrosSistemaContent() {
                         Os dados de identificação e endereço podem ser preenchidos automaticamente a partir do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
                       </span>
                       <button
-                        onClick={() => {
-                          // Força recarregamento: limpa CPF para permitir auto-fill mesmo já configurado
-                          setCfgs(prev => {
-                            const current = prev[emitter.moduloKey] ?? {} as CfgModulo;
-                            return { ...prev, [emitter.moduloKey]: { ...current, cpf_cnpj_emitente: "" } };
-                          });
-                          setTimeout(() => autoPreencherDoCadastro(emitter), 0);
-                        }}
+                        onClick={() => autoPreencherDoCadastro(emitter, true)}
                         style={{ padding: "5px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                         ↺ Preencher do Cadastro
                       </button>
