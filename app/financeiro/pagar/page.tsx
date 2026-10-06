@@ -470,6 +470,8 @@ export default function ContasAPagarPage() {
   // parcial já têm pagamento real registrado (excluir perderia o histórico sem reverter nada
   // no banco), cancelado não precisa de exclusão (já está fora do fluxo).
   function podeExcluir(l: RelLancamento): boolean {
+    // CP de consórcio é espelho do plano: exclui-se pela tela de Consórcios
+    if (l.origem_lancamento === "consorcio") return false;
     return l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido";
   }
 

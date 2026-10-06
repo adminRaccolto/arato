@@ -998,6 +998,8 @@ Ao cadastrar uma apólice nova com prêmio "Parcelado" ou "À Vista", o sistema 
 **Gerar/regenerar parcelas ao editar:** na aba "Financeiro" da edição, mexer no toggle À Vista/Parcelado ou clicar em "Gerar" e depois salvar recalcula o cronograma de parcelas + CP. Parcelas já pagas nunca são apagadas ou alteradas — só as que ainda não foram pagas são substituídas. Se a apólice já tem parcela lançada, o sistema pede confirmação antes de salvar ("Essa ação substituirá as parcelas lançadas no financeiro. Salvar mesmo assim?"). Editar outros campos (ex: corretora, observação) sem tocar na aba Financeiro nunca mexe nas parcelas.
 
 ### 19.4 Consórcios
+
+**Remover parcela (06/10/2026):** no Plano de parcelas, a parcela ainda não paga tem 🗑 para removê-la. Ao confirmar, o CP em aberto dela é apagado e o total a pagar diminui. Parcela paga, conciliada ou em borderô não pode ser removida — estorne o pagamento antes. CP de consórcio não é excluído pela tela de Contas a Pagar: ele espelha o plano.
 **Caminho:** Configurações → Complemento Financeiro → Consórcios
 
 Gerencia cotas de consórcio com cronograma de parcelas e CPs automáticas.

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-c",
+    data: "06/10/2026",
+    titulo: "Consórcios: remover parcela do plano",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "No Plano de parcelas do consórcio, cada parcela ainda não paga tem 🗑 para remover. Ao confirmar, o CP em aberto dela é apagado e o total a pagar diminui." },
+      { tipo: "correcao", texto: "CP de consórcio não pode mais ser excluído direto na tela de Contas a Pagar — ele é espelho do plano. Parcela paga, conciliada ou em borderô não é removida; primeiro estorne o pagamento." },
+    ],
+    onde: "Financeiro → Consórcios → Plano de parcelas",
+  },
+  {
     versao: "2026.10.05-v",
     data: "05/10/2026",
     titulo: "CP e CR: barra de rolagem horizontal do grid",

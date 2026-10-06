@@ -921,6 +921,10 @@ export async function buscarLancamentoDuplicado(
 }
 
 export async function excluirLancamento(id: string): Promise<void> {
+  // Parcela de consórcio: o CP é espelho do plano em Consórcios. Apagar aqui faria o plano
+  // mostrar a parcela "a pagar" sem CP, e a próxima confirmação do plano recriaria o CP sem aviso.
+  const { data: atual } = await supabase.from("lancamentos").select("consorcio_id").eq("id", id).maybeSingle();
+  if (atual?.consorcio_id) throw new Error("Este CP é parcela de consórcio. Exclua a parcela na tela de Consórcios (plano de parcelas), que apaga o CP junto.");
   const { error } = await supabase.from("lancamentos").delete().eq("id", id);
   if (error) throw error;
 }

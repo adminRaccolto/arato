@@ -73,6 +73,22 @@ async function salvarGridConsorcio(body: {
   const ogId: string | null = ogRow?.id ?? null;
   const descBase = `Consórcio ${c.administradora} — Cota ${c.numero_cota}`;
 
+  // Trava ANTES de qualquer gravação: parcela removida do plano só pode sair se o CP ainda
+  // estiver em aberto. CP já pago, conciliado ou em borderô exige estorno antes — apagar
+  // mesmo assim deixaria o pagamento órfão no extrato/borderô.
+  const { data: cpsAtuais } = await sb.from("lancamentos")
+    .select("id, numero_documento, status, conciliado, lote_id")
+    .eq("consorcio_id", body.consorcio_id);
+  const numerosPlano = new Set(body.parcelas.map(p => String(p.numero)));
+  const bloqueadas = (cpsAtuais ?? []).filter(l =>
+    !numerosPlano.has(String(l.numero_documento)) &&
+    (!["em_aberto", "vencido"].includes(String(l.status)) || l.conciliado || l.lote_id)
+  );
+  if (bloqueadas.length) {
+    const nums = bloqueadas.map(l => l.numero_documento).join(", ");
+    return NextResponse.json({ error: `Não dá para remover a(s) parcela(s) ${nums}: já foram pagas, conciliadas ou estão em borderô. Estorne esses pagamentos antes.` }, { status: 409 });
+  }
+
   // Parcelas: regrava o plano inteiro (pago vem do grid)
   await sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id);
   const { error: pErr } = await sb.from("parcelas_consorcio").insert(

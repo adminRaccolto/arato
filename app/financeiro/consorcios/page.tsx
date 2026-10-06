@@ -1019,15 +1019,15 @@ export default function ConsorciosPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Nº", "Vencimento", "Valor (R$)", "Situação"].map((h, i) => (
-                      <th key={h} style={{ padding: "6px 8px", textAlign: i === 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                    {["Nº", "Vencimento", "Valor (R$)", "Situação", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "6px 8px", textAlign: i === 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {gridModal.rows.map((r, i) => (
                     <tr key={r.numero} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
-                      <td style={{ padding: "5px 8px", color: "var(--text-3)" }}>{r.numero}/{gridModal.rows.length}</td>
+                      <td style={{ padding: "5px 8px", color: "var(--text-3)" }}>{r.numero}</td>
                       <td style={{ padding: "4px 6px" }}>
                         <input type="date" value={r.data} disabled={r.pago} style={{ ...inp, width: 160 }}
                           onChange={e => setGridModal(g => g && { ...g, rows: g.rows.map((x, j) => j === i ? { ...x, data: e.target.value } : x) })} />
@@ -1037,6 +1037,14 @@ export default function ConsorciosPage() {
                           onChange={v => setGridModal(g => g && { ...g, rows: g.rows.map((x, j) => j === i ? { ...x, valor: v } : x) })} />
                       </td>
                       <td style={{ padding: "5px 8px", fontSize: 11, color: r.pago ? "#166534" : "var(--text-2)" }}>{r.pago ? "Paga" : "A pagar"}</td>
+                      <td style={{ padding: "4px 6px", textAlign: "right" }}>
+                        {!r.pago && (
+                          <button title="Remover esta parcela do plano" onClick={() => {
+                            if (!window.confirm(`Remover a parcela ${r.numero} (${fmtBRL(r.valor)}) do plano?\n\nAo confirmar, o CP em aberto desta parcela é apagado e o total a pagar do consórcio diminui. Parcela já paga, conciliada ou em borderô não pode ser removida.`)) return;
+                            setGridModal(g => g && { ...g, totalPagar: Math.round((g.totalPagar - (Number(r.valor) || 0)) * 100) / 100, rows: g.rows.filter((_, j) => j !== i), err: "" });
+                          }} style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#B91C1C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>🗑</button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
