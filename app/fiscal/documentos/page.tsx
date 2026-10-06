@@ -208,6 +208,56 @@ export default function DocumentosFiscaisPage() {
     }
   }
 
+  async function sincronizarSieg() {
+    const fazAlvo = fazendaId;
+    if (!fazAlvo) return;
+    setSiegSyncing(true); setSiegMsg("");
+    try {
+      const res = await fetch("/api/integracoes/sieg-sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazAlvo, data_inicio: siegDtIni, data_fim: siegDtFim, force_reimport: siegForce }),
+      });
+      // Período grande + "forçar" pode estourar o tempo da função e voltar HTML; mostra o motivo, não o erro bruto
+      let d: Record<string, unknown>;
+      try { d = await res.json() as Record<string, unknown>; }
+      catch {
+        setSiegMsg(res.ok
+          ? "✗ A sincronização demorou demais. Tente um período menor, ou sem \"Forçar re-importação\"."
+          : `✗ Falha do servidor (HTTP ${res.status}). Tente com um período menor.`);
+        return;
+      }
+      if (d.erro) setSiegMsg(`✗ ${d.erro}`);
+      else {
+        const imp = Number(d.importados_nfe ?? 0);
+        const dup = Number(d.duplicados_nfe ?? 0);
+        setSiegMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : ""}`);
+        await carregar();
+      }
+    } catch (e) { setSiegMsg(`✗ Erro de rede: ${e}`); }
+    finally { setSiegSyncing(false); }
+  }
+
+  async function reimportarNfSieg(d: RelDocFiscal) {
+    if (!(await confirmarAcao({ titulo: "Re-importar NF do SIEG?", mensagem: `A NF ${d.numero ?? ""} será buscada de novo no SIEG e atualizada.`, perigo: false }))) return;
+    if (!d.fazenda_id || !d.chave) return;
+    setSiegReimp(p => ({ ...p, [d.id]: true }));
+    try {
+      const base = d.data_doc ?? new Date().toISOString().slice(0, 10);
+      const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
+      const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
+      const res = await fetch("/api/integracoes/sieg-sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: d.fazenda_id, data_inicio: dtIni, data_fim: dtFim, force_reimport: true, chaves_acesso: [d.chave] }),
+      });
+      const txt = await res.text();
+      let j: Record<string, unknown>;
+      try { j = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 200)); }
+      if (j.erro) alert(`Erro: ${j.erro}`);
+      else await carregar();
+    } catch (e) { alert(`Erro ao re-importar: ${e}`); }
+    finally { setSiegReimp(p => ({ ...p, [d.id]: false })); }
+  }
+
   useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Modais por tipo ligados nesta fase ──
@@ -225,6 +275,14 @@ export default function DocumentosFiscaisPage() {
   // query por linha renderizada à toa. NFS não precisa de detalhe extra —
   // tudo que o popup mostra já vem em rel_documentos_fiscais. ──
   const [popover, setPopover] = useState<{ d: RelDocFiscal; x: number; y: number } | null>(null);
+  // ── SIEG: sincronização por período e re-importação de uma NF (tela unificada) ──
+  const hoje30 = (dias: number) => new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
+  const [siegDtIni, setSiegDtIni] = useState(hoje30(30));
+  const [siegDtFim, setSiegDtFim] = useState(hoje30(0));
+  const [siegForce, setSiegForce] = useState(false);
+  const [siegSyncing, setSiegSyncing] = useState(false);
+  const [siegMsg, setSiegMsg] = useState("");
+  const [siegReimp, setSiegReimp] = useState<Record<string, boolean>>({});
   const [nfDetalhe,  setNfDetalhe]  = useState<Record<string, NfDetalhe>>({});
   const [nfDetalheCarregando, setNfDetalheCarregando] = useState<string | null>(null);
   const [cteDetalhe, setCteDetalhe] = useState<Record<string, CteDetalhe>>({});
@@ -492,6 +550,21 @@ export default function DocumentosFiscaisPage() {
             </div>
           );
         })()}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#555" }}>
+          <span style={{ fontWeight: 600 }}>SIEG</span>
+          <InputData value={siegDtIni} onChange={e => setSiegDtIni(e.target.value)} style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12 }} />
+          <span>até</span>
+          <InputData value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)} style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12 }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", userSelect: "none" }}>
+            <input type="checkbox" checked={siegForce} onChange={e => setSiegForce(e.target.checked)} style={{ cursor: "pointer" }} />
+            Forçar re-importação
+          </label>
+          <button onClick={sincronizarSieg} disabled={siegSyncing} style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#111111", color: "#fff", fontWeight: 600, fontSize: 12, cursor: siegSyncing ? "default" : "pointer" }}>
+            {siegSyncing ? "Sincronizando…" : "⟳ Sincronizar SIEG"}
+          </button>
+          {siegMsg && <span style={{ color: siegMsg.startsWith("✗") ? "#B91C1C" : "#1A6B3C" }}>{siegMsg}</span>}
+        </div>
 
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 290px)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -837,6 +910,12 @@ export default function DocumentosFiscaisPage() {
                   <button onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     Abrir NFS
+                  </button>
+                )}
+                {d.tipo_doc === "NF" && pendente && d.origem_doc === "sieg" && (
+                  <button onClick={() => { setPopover(null); reimportarNfSieg(d); }} disabled={!!siegReimp[d.id]}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: siegReimp[d.id] ? "default" : "pointer", fontWeight: 600, fontSize: 11 }}>
+                    {siegReimp[d.id] ? "Re-importando…" : "↻ Re-importar SIEG"}
                   </button>
                 )}
                 {d.tipo_doc === "NF" && nfCarregando && (

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-p",
+    data: "06/10/2026",
+    titulo: "Documentos Fiscais: sincronização SIEG e re-importação",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Em Documentos Fiscais, o painel SIEG tem período, Forçar re-importação e Sincronizar SIEG." },
+      { tipo: "novo", texto: "No popup de uma NF pendente vinda do SIEG, o botão ↻ Re-importar SIEG busca a nota de novo." },
+    ],
+    onde: "Documentos Fiscais",
+  },
+  {
     versao: "2026.10.06-o",
     data: "06/10/2026",
     titulo: "Sintegra: escolher o cadastro quando a SEFAZ devolve mais de um",
