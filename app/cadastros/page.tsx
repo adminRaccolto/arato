@@ -43,7 +43,7 @@ import {
   listarIEsDoProdutor, salvarIEsDoProdutor, listarEmpresasDoProdutor,
   listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
   excluirTalhao, listarArrendamentosTalhao, salvarArrendamentosTalhao, listarArrendamentosUsadosFazenda,
-  listarDocumentacaoTalhao, salvarDocumentacaoTalhao,
+  listarDocumentacaoTalhao, salvarDocumentacaoTalhao, insumoTemMovimento,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -489,6 +489,7 @@ function CadastrosInner() {
   const [buscaMaq, setBuscaMaq]       = useState("");
   const [modalIns, setModalIns]       = useState(false);
   const [editIns, setEditIns]         = useState<Insumo | null>(null);
+  const [unidadeTravada, setUnidadeTravada] = useState(false); // insumo já movimentado: unidade não muda
   const [fIns, setFIns]               = useState({
     nome: "", categoria: "defensivo" as Insumo["categoria"],
     subgrupo: "", unidade: "L" as Insumo["unidade"],
@@ -4788,6 +4789,8 @@ function CadastrosInner() {
 
             const abrirModalIns = (ins?: Insumo) => {
               setEditIns(ins ?? null);
+              setUnidadeTravada(false);
+              if (ins) insumoTemMovimento(ins.id).then(setUnidadeTravada).catch(() => setUnidadeTravada(true));
               setFIns(ins ? {
                 nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
                 // NCM digitado nessa tela nunca era carregado de volta ao editar (hardcoded "" aqui) —
@@ -5087,7 +5090,12 @@ function CadastrosInner() {
                       {/* Unidade */}
                       <div>
                         <label style={lbl}>Unidade *</label>
-                        {isComb ? (
+                        {unidadeTravada ? (
+                          <div>
+                            <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }} value={fIns.unidade} readOnly />
+                            <div style={{ fontSize: 10, color: "#666", marginTop: 3 }}>Bloqueada: este insumo já tem movimentação de estoque ou NF lançada.</div>
+                          </div>
+                        ) : isComb ? (
                           <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }} value="L (litros)" readOnly />
                         ) : fIns.categoria === "semente" ? (
                           <div>

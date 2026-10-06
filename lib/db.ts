@@ -522,7 +522,22 @@ export async function marcarDuplicadoRevisado(
   if (error) throw error;
 }
 
+// Insumo com movimentação de estoque ou item de NF não pode trocar a unidade de medida.
+export async function insumoTemMovimento(id: string): Promise<boolean> {
+  const [mov, nfi] = await Promise.all([
+    supabase.from("movimentacoes_estoque").select("id", { count: "exact", head: true }).eq("insumo_id", id),
+    supabase.from("nf_entrada_itens").select("id", { count: "exact", head: true }).eq("insumo_id", id),
+  ]);
+  return (mov.count ?? 0) > 0 || (nfi.count ?? 0) > 0;
+}
+
 export async function atualizarInsumo(id: string, i: Partial<Insumo>): Promise<void> {
+  if (i.unidade !== undefined) {
+    const { data: atualIns } = await supabase.from("insumos").select("unidade").eq("id", id).maybeSingle();
+    if (atualIns && atualIns.unidade !== i.unidade && await insumoTemMovimento(id)) {
+      throw new Error("A unidade de medida não pode ser alterada: este insumo já tem movimentação de estoque ou NF lançada.");
+    }
+  }
   // Se o campo estoque está sendo alterado diretamente pelo cadastro, registra o
   // ajuste como movimentação — mesma lógica de app/api/insumos PATCH, mantidas em
   // sincronia. Sem isso, o saldo muda sem deixar rastro no kardex.

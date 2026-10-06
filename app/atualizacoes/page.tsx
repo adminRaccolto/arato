@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-r",
+    data: "06/10/2026",
+    titulo: "Insumo: unidade de medida bloqueada após movimentação",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "No cadastro de insumo, a unidade de medida pode ser editada enquanto o insumo não tiver movimentação de estoque nem NF lançada. Depois disso, a unidade fica bloqueada." },
+    ],
+    onde: "Cadastros → Cadastros — Agrícola → Catálogo de Insumos",
+  },
+  {
     versao: "2026.10.06-q",
     data: "06/10/2026",
     titulo: "Sementes: unidade kg ou bag",
