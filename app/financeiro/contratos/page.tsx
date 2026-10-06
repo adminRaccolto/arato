@@ -583,14 +583,20 @@ export default function ContratosFinanceiros() {
 
   // ── Helper: upload PDF da cédula → retorna {pdf_url, pdf_nome} ou null ──
   const uploadPdfCedula = async (contratoId: string, file: File): Promise<{ pdf_url: string; pdf_nome: string } | null> => {
-    const ext  = file.name.split(".").pop() ?? "pdf";
-    const path = `contratos-financeiros/${fazendaId}/${contratoId}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
-    if (upErr) {
-      alert(`⚠️ PDF não pôde ser salvo: ${upErr.message}\n\nVerifique se o bucket "documentos" existe e está público no Supabase Storage.`);
+    // Mesmo caminho dos demais anexos (rota com cota + registro em documentos_anexos, bucket "arquivos").
+    // Antes ia para o bucket "documentos", que não existe no projeto — o PDF nunca era salvo.
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("entidade_tipo", "contrato_financeiro");
+    fd.append("entidade_id", contratoId);
+    fd.append("fazenda_id", fazendaId ?? "");
+    const resp = await fetch("/api/storage/upload", { method: "POST", body: fd });
+    const rj = await resp.json() as { path?: string; erro?: string };
+    if (!resp.ok || !rj.path) {
+      alert(`⚠️ PDF não pôde ser salvo: ${rj.erro ?? "erro no upload"}`);
       return null;
     }
-    const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+    const { data: urlData } = supabase.storage.from("arquivos").getPublicUrl(rj.path);
     const pdfPayload = { pdf_url: urlData.publicUrl, pdf_nome: file.name };
     // Update direto — não passa por desnormalizarContrato para não sobrescrever campos não relacionados
     const { error: dbErr } = await supabase

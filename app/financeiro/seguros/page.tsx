@@ -9,6 +9,7 @@ import {
 import type { Maquina, Produtor, Funcionario, Fazenda } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
+import AnexoDocumentos from "../../../components/AnexoDocumentos";
 
 // ── Estilos base ──────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
@@ -190,10 +191,6 @@ export default function SegurosPage() {
   const [aForm,   setAForm]   = useState(FORM_VAZIO());
   const [aSaving, setASaving] = useState(false);
   const [aErr,    setAErr]    = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [uploadErro, setUploadErro] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
 
   // ── Parcelamento de prêmio ─────────────────────────────────────────────────
   const [premioCondicao, setPremioCondicao] = useState<"avista" | "parcelado">("avista");
@@ -282,14 +279,12 @@ export default function SegurosPage() {
         coberturas_vida: a.coberturas_vida ?? [],
         arquivo_url: a.arquivo_url,
       });
-      setUploadedUrl(a.arquivo_url ?? null);
     } else {
       setApoliceEdit(null);
       setQtdParcelasExistentes(0);
       setAForm(FORM_VAZIO());
-      setUploadedUrl(null);
     }
-    setAErr(""); setUploadErro(""); setTabModal("dados"); setParcelasSeguro([]);
+    setAErr(""); setTabModal("dados"); setParcelasSeguro([]);
     // Reflete a condição real já salva (evita mostrar "À vista" por padrão
     // numa apólice que na verdade é parcelada, ao abrir pra editar).
     setPremioCondicao(a?.forma_pagamento_premio === "parcelado" ? "parcelado" : "avista");
@@ -336,7 +331,7 @@ export default function SegurosPage() {
         status: aForm.status,
         corretora: aForm.corretora || null,
         corretor_contato: aForm.corretor_contato || null,
-        arquivo_url: uploadedUrl || aForm.arquivo_url || null,
+        arquivo_url: aForm.arquivo_url || null,
         observacao: aForm.observacao || null,
         bem_tipo: aForm.bem_tipo || null,
         bem_id: aForm.bem_id || null,
@@ -390,26 +385,6 @@ export default function SegurosPage() {
       return f ? `${f.nome}${aForm.area_ha ? ` — ${aForm.area_ha} ha` : ""}${aForm.cultura ? ` — ${aForm.cultura}` : ""}` : "";
     }
     return aForm.objeto_segurado;
-  }
-
-  // Upload de PDF da apólice
-  async function handleUpload(file: File) {
-    if (!fazendaId) return;
-    setUploading(true);
-    setUploadErro("");
-    try {
-      const path = `apolices/${fazendaId}/${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-      const { error } = await supabase.storage.from("arquivos").upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from("arquivos").getPublicUrl(path);
-      setUploadedUrl(publicUrl);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setUploadErro(`Falha no upload: ${msg}`);
-      console.error("[upload apólice]", e);
-    } finally {
-      setUploading(false);
-    }
   }
 
   // ── CRUD Sinistro ─────────────────────────────────────────────────────────
@@ -957,33 +932,25 @@ export default function SegurosPage() {
                 </div>
               )}
 
-              {/* ── ABA ANEXO ─────────────────────────────────────────────── */}
+              {/* ── ABA ANEXO — mesmo componente de anexos das demais telas (documentos_anexos) ── */}
               {tabModal === "anexo" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={sep}>Arquivo da Apólice (PDF)</div>
-                  <input ref={fileRef} type="file" accept=".pdf,application/pdf" style={{ display: "none" }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
-                  {uploadErro && (
-                    <div style={{ padding: "10px 14px", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, fontSize: 13, color: "#791F1F" }}>
-                      ⚠️ {uploadErro}
+                  <div style={sep}>Documentos da Apólice</div>
+                  {aForm.arquivo_url && (
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 14px", background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, fontSize: 12 }}>
+                      <span>📄 PDF anexado antes desta versão do sistema</span>
+                      <a href={aForm.arquivo_url} target="_blank" rel="noreferrer" style={{ color: "#1A4870", textDecoration: "underline" }}>Abrir PDF</a>
                     </div>
                   )}
-                  {uploadedUrl || aForm.arquivo_url ? (
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "12px 16px", background: "#E8F5E9", border: "0.5px solid #BBF7D0", borderRadius: 10 }}>
-                      <span style={{ fontSize: 22 }}>📄</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1A6B3C" }}>Apólice anexada com sucesso</div>
-                        <a href={uploadedUrl ?? aForm.arquivo_url!} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", textDecoration: "underline" }}>Abrir PDF</a>
-                      </div>
-                      <button onClick={() => { setUploadedUrl(null); setUploadErro(""); setAForm(f => ({ ...f, arquivo_url: undefined })); if (fileRef.current) fileRef.current.value = ""; }} style={{ background: "none", border: "0.5px solid #E24B4A", borderRadius: 6, color: "#E24B4A", cursor: "pointer", padding: "4px 10px", fontSize: 12 }}>Remover</button>
-                    </div>
+                  {apoliceEdit ? (
+                    <AnexoDocumentos
+                      entidade_tipo="apolice"
+                      entidade_id={apoliceEdit.id}
+                      fazenda_id={apoliceEdit.fazenda_id ?? fazendaId ?? ""}
+                    />
                   ) : (
-                    <div onClick={() => !uploading && fileRef.current?.click()}
-                      style={{ border: `2px dashed ${uploading ? "#1A4870" : "var(--border-table)"}`, borderRadius: 10, padding: "32px 20px", textAlign: "center", cursor: uploading ? "default" : "pointer", color: uploading ? "#1A4870" : "var(--text-3)", fontSize: 13, background: uploading ? "#EDF2FB" : "transparent" }}>
-                      {uploading
-                        ? <><span style={{ fontSize: 28, display: "block", marginBottom: 8 }}>⏳</span>Enviando arquivo, aguarde…</>
-                        : <><span style={{ fontSize: 28, display: "block", marginBottom: 8 }}>📎</span>Clique para selecionar o PDF da apólice<br /><span style={{ fontSize: 11 }}>(Somente arquivos .pdf)</span></>
-                      }
+                    <div style={{ padding: "16px", background: "#FBF3E0", border: "0.5px solid #E8D9A8", borderRadius: 10, fontSize: 13, color: "#7A5200" }}>
+                      Salve a apólice primeiro. Depois abra-a de novo para anexar o PDF.
                     </div>
                   )}
                 </div>
@@ -995,8 +962,8 @@ export default function SegurosPage() {
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{aErr}</div>}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
-                <button onClick={salvarApolice} disabled={aSaving || uploading} style={{ ...btnV, opacity: (aSaving || uploading) ? 0.6 : 1, cursor: (aSaving || uploading) ? "default" : "pointer" }}>
-                  {uploading ? "Aguardando upload…" : aSaving ? "Salvando…" : "Salvar Apólice"}
+                <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, opacity: aSaving ? 0.6 : 1, cursor: aSaving ? "default" : "pointer" }}>
+                  {aSaving ? "Salvando…" : "Salvar Apólice"}
                 </button>
               </div>
             </div>

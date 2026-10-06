@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.06-f",
+    data: "06/10/2026",
+    titulo: "Anexos: seguros e contratos financeiros",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O PDF da apólice de seguro agora é salvo na aba Anexo, junto com os demais documentos da tela. Apólices já cadastradas com PDF continuam com o link do arquivo anterior." },
+      { tipo: "correcao", texto: "O PDF da cédula de contrato financeiro era enviado para um local que não existe e não era salvo. Agora segue o mesmo caminho dos demais anexos." },
+    ],
+    onde: "Financeiro → Seguros / Contratos Financeiros",
+  },
+  {
     versao: "2026.10.06-e",
     data: "06/10/2026",
     titulo: "CP e CR: layout de colunas por usuário",

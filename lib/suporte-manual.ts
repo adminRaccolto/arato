@@ -999,6 +999,8 @@ Ao cadastrar uma apólice nova com prêmio "Parcelado" ou "À Vista", o sistema 
 
 ### 19.4 Consórcios
 
+**Anexos em Seguros (06/10/2026):** a aba Anexo da apólice aceita documentos do mesmo jeito das demais telas. Salve a apólice antes; depois abra-a de novo para anexar o PDF.
+
 **Colunas do grid de CP e CR (06/10/2026):** cada usuário escolhe quais colunas aparecem e a ordem delas. O layout é salvo na conta de quem está logado, então vale em qualquer aparelho e não muda para os outros usuários.
 
 **Juros, multa e desconto no borderô (06/10/2026):** na confirmação do pagamento do borderô, cada título tem campos de multa, juros e desconto. Juros e multa somam ao valor pago; o desconto abate o principal. Na DRE, juros de mora e multas aparecem como despesa financeira em linhas próprias, e os descontos obtidos como redução de despesa.
