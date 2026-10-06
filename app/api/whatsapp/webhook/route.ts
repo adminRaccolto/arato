@@ -134,6 +134,20 @@ export async function POST(req: NextRequest) {
   const telefone = jidParaTelefone(remoteJid);
   if (!telefone || !ehNumeroValido(telefone)) return NextResponse.json({ ok: true });
 
+  // Implantação em andamento neste número: o agente de implantação conduz a conversa (ele mesmo
+  // responde pelo WhatsApp). Se a tabela ainda não existir, a consulta falha em silêncio e o
+  // fluxo operacional segue normalmente.
+  const { data: implantacao } = await sb().from("agente_onboarding")
+    .select("conta_id, concluido").eq("telefone", telefone).maybeSingle();
+  if (implantacao?.conta_id && !implantacao.concluido) {
+    try {
+      await fetch(new URL("/api/agente/implantar", req.nextUrl.origin), {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    } catch (e) { console.error("[WH] falha ao encaminhar para implantação:", e); }
+    return NextResponse.json({ ok: true, encaminhado: "implantacao" });
+  }
+
   const messageType = String(data.messageType ?? "");
   const message = data.message as Record<string, unknown> | undefined;
   if (!message) return NextResponse.json({ ok: true });
