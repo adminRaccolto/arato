@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-m",
+    data: "07/10/2026",
+    titulo: "Lançado via completo + Borderô com data de vencimento e valor parcial",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A coluna \"Lançado via\" ficava vazia em todo lançamento manual (Contas a Pagar, Contas a Receber, Fluxo de Caixa, Contratos de Arrendamento) — nenhuma dessas telas gravava a origem. Corrigido para os próximos lançamentos e feito o backfill dos que já existem no banco." },
+      { tipo: "melhoria", texto: "Ao criar um borderô: novo campo de data de vencimento do borderô (opcional), e o valor de cada título agora é editável — pode incluir só parte do saldo de um título no borderô, deixando o restante em aberto para um borderô futuro." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.07-l",
     data: "07/10/2026",
     titulo: "Pessoas (fornecedores/clientes) agora grava o dono real do cadastro",

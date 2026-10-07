@@ -1090,16 +1090,20 @@ export async function criarPagamentoLote(
   conta_bancaria: string | null,
   descricao: string,
   // valor_pago aqui é o valor DESTA baixa (será acumulado ao que já foi pago,
-  // igual à baixa individual) — não o valor final do título.
+  // igual à baixa individual) — não o valor final do título. Pode ser menor
+  // que o saldo do título (pagamento parcial do título dentro do borderô).
   itens: { lancamento_id: string; origem_tabela?: "lancamentos" | "empresa_lancamentos"; valor_pago: number; valor_multa?: number; valor_juros?: number; valor_desconto?: number }[],
   status: "pendente" | "pago" = "pago",
+  // Data alvo do borderô (ex: "vou pagar isso dia 15") — independente da
+  // data_pagamento real, que só existe depois, na confirmação.
+  data_vencimento: string | null = null,
 ): Promise<import("./supabase").PagamentoLote> {
   const valor_total = itens.reduce((s, i) => s + i.valor_pago, 0);
 
   // 1. Cria o lote
   const { data: lote, error: le } = await supabase
     .from("pagamento_lotes")
-    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, valor_total, descricao, status })
+    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, data_vencimento, valor_total, descricao, status })
     .select()
     .single();
   if (le) throw le;

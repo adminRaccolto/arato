@@ -445,6 +445,7 @@ export default function Arrendamentos() {
                 observacao: obs,
                 produtor_id: prodId1,
                 ano_safra_id: cfg.ano_safra_id || undefined,
+                origem_lancamento: "arrendamento",
               } as Parameters<typeof criarLancamento>[0]);
               return lanc.id;
             } catch (e) {
@@ -764,6 +765,7 @@ export default function Arrendamentos() {
             observacao: "Lançado manualmente na tela de Contratos de Arrendamento.",
             produtor_id: selArr.produtor_id || undefined,
             ano_safra_id: payload.ano_safra_id || undefined,
+            origem_lancamento: "arrendamento",
           } as Parameters<typeof criarLancamento>[0]);
           lancamentoId = lanc.id;
         }

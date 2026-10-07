@@ -16297,3 +16297,57 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 332 — Backfill de origem_lancamento para lançamentos manuais antigos.
+-- As telas de lançamento manual (Contas a Pagar/Receber, Fluxo de Caixa
+-- antigo, Contratos de Arrendamento) nunca gravavam origem_lancamento — só
+-- NF de entrada, folha, contrato financeiro e pedido de compra gravavam. O
+-- código já foi corrigido (próximos lançamentos já vêm com o campo certo);
+-- esta seção só corrige os que já existem no banco.
+--
+-- Critério: sem nenhuma das colunas que indicam origem automática
+-- (nf_entrada_id, pedido_compra_id, contrato_financeiro_id, romaneio_id,
+-- consorcio_id, cartao_id, fatura_id, fatura_cartao_id) → é lançamento
+-- manual. Dentro desse grupo, categoria = 'Arrendamento de Terra' vira
+-- 'arrendamento' (rótulo próprio já usado pela tela); o resto vira 'manual'.
+-- contrato_id/maquina_id/funcionario_id preenchidos (achado minoritário, ~85
+-- linhas) ficam de fora de propósito — não há como saber a origem certa
+-- sem investigar caso a caso, melhor deixar "—" do que arriscar errado.
+-- ============================================================================
+UPDATE lancamentos SET origem_lancamento = 'arrendamento'
+WHERE origem_lancamento IS NULL
+  AND categoria = 'Arrendamento de Terra'
+  AND nf_entrada_id IS NULL AND pedido_compra_id IS NULL AND contrato_financeiro_id IS NULL
+  AND romaneio_id IS NULL AND consorcio_id IS NULL AND cartao_id IS NULL
+  AND fatura_id IS NULL AND fatura_cartao_id IS NULL
+  AND contrato_id IS NULL AND maquina_id IS NULL AND funcionario_id IS NULL;
+
+UPDATE lancamentos SET origem_lancamento = 'manual'
+WHERE origem_lancamento IS NULL
+  AND nf_entrada_id IS NULL AND pedido_compra_id IS NULL AND contrato_financeiro_id IS NULL
+  AND romaneio_id IS NULL AND consorcio_id IS NULL AND cartao_id IS NULL
+  AND fatura_id IS NULL AND fatura_cartao_id IS NULL
+  AND contrato_id IS NULL AND maquina_id IS NULL AND funcionario_id IS NULL;
+
+-- Recalcula as linhas atualizadas (mesmo trigger que já propaga origem_lancamento pra rel_lancamentos)
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT id FROM lancamentos WHERE origem_lancamento IN ('manual', 'arrendamento') LOOP
+    PERFORM fn_recalc_rel_lancamento_produtor(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 333 — Borderô: data de vencimento (data alvo do pagamento em lote,
+-- definida já na criação) e documentação de que pagamento parcial por título
+-- dentro do borderô já era suportado pelo modelo de dados (valor_pago por
+-- item), só faltava a tela deixar editar esse valor.
+-- ============================================================================
+ALTER TABLE pagamento_lotes ADD COLUMN IF NOT EXISTS data_vencimento date;
+CREATE INDEX IF NOT EXISTS idx_pagamento_lotes_vencimento ON pagamento_lotes(data_vencimento) WHERE data_vencimento IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

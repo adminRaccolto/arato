@@ -427,6 +427,7 @@ export type PagamentoLote = {
   status?: "pendente" | "pago";   // pendente = agrupado sem baixa; pago = confirmado e baixado
   conta_bancaria?: string;
   data_pagamento?: string;         // preenchido só na confirmação
+  data_vencimento?: string;        // data alvo do borderô, definida já na criação (opcional)
   valor_total: number;
   descricao?: string;
   conciliado?: boolean;

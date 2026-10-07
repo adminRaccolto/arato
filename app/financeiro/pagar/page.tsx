@@ -318,6 +318,11 @@ export default function ContasAPagarPage() {
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
     ...borderosPendentes.map((b): LinhaOuBordero => {
+      // Data própria do borderô tem prioridade pra ordenar por vencimento —
+      // antes disso existir, a única opção era adivinhar pelos itens dentro.
+      if (ordenarPor !== "lancamento" && b.data_vencimento) {
+        return { kind: "bordero", b, data: b.data_vencimento };
+      }
       const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
       const itensDoLote = linhas.filter(l => l.lote_id === b.id);
       const datas = itensDoLote.map(l => l[campo]).filter((d): d is string => !!d);
@@ -808,6 +813,7 @@ export default function ContasAPagarPage() {
           natureza: novoForm.natureza,
           forma_pagamento: novoForm.forma_pagamento || undefined,
           entidade_contabil: novoForm.entidade_contabil || undefined,
+          origem_lancamento: "manual",
         };
         if (novoForm.condicao === "prazo" && parcelasNovo.length > 0) {
           const agrupador = Date.now().toString(36);
@@ -971,12 +977,22 @@ export default function ContasAPagarPage() {
   // ── Criar Borderô (lote pendente, confirma depois) ─────────────
   const [modalCriarBordero, setModalCriarBordero] = useState(false);
   const [borderoDesc, setBorderoDesc] = useState("");
+  const [borderoVencimento, setBorderoVencimento] = useState("");
+  // Valor que vai pro borderô por título — por padrão o saldo inteiro, mas
+  // editável pra menos (pagamento parcial do título dentro do borderô).
+  const [borderoValores, setBorderoValores] = useState<Record<string, number>>({});
   const [salvandoBordero, setSalvandoBordero] = useState(false);
   const [erroBordero, setErroBordero] = useState("");
+
+  function valorBorderoDe(l: RelLancamento): number {
+    return borderoValores[l.id] ?? saldoLote(l);
+  }
 
   function abrirModalCriarBordero() {
     setErroBordero("");
     setBorderoDesc("");
+    setBorderoVencimento("");
+    setBorderoValores({});
     setModalCriarBordero(true);
   }
 
@@ -984,9 +1000,9 @@ export default function ContasAPagarPage() {
     if (!fazendaId || itensLote.length === 0) return;
     setSalvandoBordero(true); setErroBordero("");
     try {
-      const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, origem_tabela: l.origem_tabela as "lancamentos" | "empresa_lancamentos", valor_pago: saldoLote(l) }));
+      const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, origem_tabela: l.origem_tabela as "lancamentos" | "empresa_lancamentos", valor_pago: valorBorderoDe(l) }));
       const desc = borderoDesc.trim() || `Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`;
-      await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente");
+      await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente", borderoVencimento || null);
       setSelecionados(new Set());
       setModalCriarBordero(false);
       await Promise.all([carregar(), carregarBorderos()]);
@@ -1292,6 +1308,7 @@ export default function ContasAPagarPage() {
                             <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>
                             <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
                             <span style={{ fontSize: 12, color: "#555" }}>{(b.itens ?? []).length} título{(b.itens ?? []).length !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
+                            {b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
                           </div>
                           <span style={{ fontSize: 11, color: "#7A5200" }}>clique para ver as ações ›</span>
                         </div>
@@ -1596,28 +1613,42 @@ export default function ContasAPagarPage() {
               Agrupa os títulos selecionados sem baixar agora — define data e conta bancária depois, ao confirmar o pagamento do borderô inteiro de uma vez.
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Descrição do borderô (opcional)</label>
-              <input value={borderoDesc} onChange={e => setBorderoDesc(e.target.value)}
-                placeholder={`Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`}
-                style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div>
+                <label style={lbl}>Descrição do borderô (opcional)</label>
+                <input value={borderoDesc} onChange={e => setBorderoDesc(e.target.value)}
+                  placeholder={`Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`}
+                  style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={lbl}>Data de vencimento do borderô (opcional)</label>
+                <input type="date" value={borderoVencimento} onChange={e => setBorderoVencimento(e.target.value)}
+                  style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
             </div>
 
+            <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
+              O valor de cada título vem com o saldo inteiro — edite pra incluir só parte do título neste borderô (o restante continua em aberto, disponível pra outro borderô depois).
+            </div>
             <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-              <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1.6fr 90px 100px", gap: 6 }}>
-                <span>Origem</span><span>Título</span><span>Venc.</span><span style={{ textAlign: "right" }}>Saldo</span>
+              <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1.4fr 90px 120px", gap: 6 }}>
+                <span>Origem</span><span>Título</span><span>Venc.</span><span style={{ textAlign: "right" }}>Valor no borderô</span>
               </div>
               {itensLote.map((l, i) => (
-                <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 100px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
+                <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.4fr 90px 120px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
                   <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
                   <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
-                  <span style={{ fontWeight: 700, color: "#E24B4A", textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(saldoLote(l))}</span>
+                  <InputMonetario
+                    value={valorBorderoDe(l)}
+                    onChange={v => setBorderoValores(prev => ({ ...prev, [l.id]: Math.max(0, Math.min(v, saldoLote(l))) }))}
+                    style={{ ...inp, fontSize: 12, textAlign: "right", width: "100%", boxSizing: "border-box", fontWeight: 700, color: valorBorderoDe(l) < saldoLote(l) ? "#C9921B" : "#E24B4A" }}
+                  />
                 </div>
               ))}
               <div style={{ background: "#F4F6FA", padding: "8px 10px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid #DDE2EE" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Total do borderô</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(itensLote.reduce((s, l) => s + valorBorderoDe(l), 0))}</span>
               </div>
             </div>
 

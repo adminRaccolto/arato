@@ -359,6 +359,7 @@ export default function Financeiro() {
       talhao:                  novoLanc.talhao      || undefined,
       centro_custo:            novoLanc.centro_custo || undefined,
       observacao:              novoLanc.obs         || undefined,
+      origem_lancamento:       "manual",
     };
     const totalParcelas  = novoLanc.parcelar ? Math.max(1, Number(novoLanc.totalParcelas) || 1) : 1;
     const intervaloMeses = Math.max(1, Number(novoLanc.intervaloMeses) || 1);
@@ -405,6 +406,7 @@ export default function Financeiro() {
         descricao: p.descricao, categoria: p.categoria,
         data_lancamento: TODAY, data_vencimento: p.data,
         valor: p.valor, status: "em_aberto", auto: false,
+        origem_lancamento: "manual",
       });
       setLancamentos(prev => [criado, ...prev]);
       setPrevisoes(prev => prev.filter(x => x.id !== p.id));
