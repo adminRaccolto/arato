@@ -43,7 +43,7 @@ import ClipDocumentos from "../../../components/financeiro/ClipDocumentos";
 import {
   baixarLancamento, reabrirLancamento, atualizarLancamento, atualizarEmpresaLancamento, listarContas, listarContasPorEmpresa, listarContasProdutorDaConta,
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
-  criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, listarBorderosPendentes,
+  criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
   excluirLancamento, excluirEmpresaLancamento,
 } from "../../../lib/db";
@@ -284,22 +284,37 @@ export default function ContasAPagarPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]);
 
-  // ── Borderôs pendentes (ainda não confirmados/baixados) ───────
+  // ── Borderôs — pendentes (ainda não confirmados) e pagos (título já
+  // quitado) ───────────────────────────────────────────────────────
   const [borderosPendentes, setBorderosPendentes] = useState<PagamentoLote[]>([]);
+  const [borderosPagos, setBorderosPagos] = useState<PagamentoLote[]>([]);
   const carregarBorderos = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length) return;
     try {
-      setBorderosPendentes(await listarBorderosPendentes(fids, "pagar"));
+      const [pend, pagos] = await Promise.all([
+        listarBorderosPendentes(fids, "pagar"),
+        listarBorderosPagos(fids, "pagar"),
+      ]);
+      setBorderosPendentes(pend);
+      setBorderosPagos(pagos);
     } catch { /* silencioso — painel só não aparece */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, fazendaIds?.join(",")]);
   useEffect(() => { carregarBorderos(); }, [carregarBorderos]);
 
+  // NFs/lançamentos que já pertencem a um borderô pago não aparecem soltos
+  // na grid — o título (o borderô) é a unidade que foi paga, não cada NF
+  // individual; mostrar as duas coisas ao mesmo tempo descaracteriza o
+  // título. Borderô pendente continua mostrando os itens soltos também
+  // (ainda não foi pago, cada um pode ser cancelado/conferido à parte).
+  const loteIdsPagos = new Set(borderosPagos.map(b => b.id));
+
   // Filtro client-side de Origem/Status (instantâneo, sem nova consulta) —
   // período e busca exigem nova consulta porque mudam o WHERE no banco.
   // Ordenação também é client-side — reordena o que já está carregado.
   const linhas = (resultado ?? []).filter(l => {
+    if (l.lote_id && loteIdsPagos.has(l.lote_id)) return false;
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
     if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
     return true;
@@ -310,11 +325,10 @@ export default function ContasAPagarPage() {
     return ordemAsc ? da.localeCompare(db) : db.localeCompare(da);
   });
 
-  // Borderô pendente entra na ordem normal do grid (não fica mais fixo no
-  // topo) — a "data" dele pra ordenar é a mesma do título mais relevante que
-  // tem dentro (o mais recente lançamento/vencimento entre os itens
-  // agrupados, usando os próprios dados já carregados em `linhas`).
-  type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string };
+  // Borderô pendente/pago entra na ordem normal do grid (não fica mais fixo
+  // no topo) — a "data" dele pra ordenar é a própria (vencimento/pagamento)
+  // quando existe, senão a do título mais relevante dentro dele.
+  type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
     ...borderosPendentes.map((b): LinhaOuBordero => {
@@ -324,11 +338,12 @@ export default function ContasAPagarPage() {
         return { kind: "bordero", b, data: b.data_vencimento };
       }
       const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
-      const itensDoLote = linhas.filter(l => l.lote_id === b.id);
+      const itensDoLote = (resultado ?? []).filter(l => l.lote_id === b.id);
       const datas = itensDoLote.map(l => l[campo]).filter((d): d is string => !!d);
       const data = datas.length ? datas.sort().slice(-1)[0] : (b.created_at ?? "");
       return { kind: "bordero", b, data };
     }),
+    ...borderosPagos.map((b): LinhaOuBordero => ({ kind: "bordero", b, data: b.data_pagamento ?? b.created_at ?? "", pago: true })),
   ].sort((x, y) => {
     const dx = x.kind === "lanc" ? (x.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : x.data;
     const dy = y.kind === "lanc" ? (y.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : y.data;
@@ -975,24 +990,23 @@ export default function ContasAPagarPage() {
   }
 
   // ── Criar Borderô (lote pendente, confirma depois) ─────────────
+  // O borderô É o título (ex: boleto mensal de um posto de combustível que
+  // agrega várias NFs do mês) — as NFs/lançamentos dentro dele são só
+  // referência informativa aqui (número + valor, sem editar). Pagamento
+  // parcial, juros, multa e desconto são do título inteiro — só existem na
+  // confirmação (ver abaixo), nunca por NF individual.
   const [modalCriarBordero, setModalCriarBordero] = useState(false);
   const [borderoDesc, setBorderoDesc] = useState("");
   const [borderoVencimento, setBorderoVencimento] = useState("");
-  // Valor que vai pro borderô por título — por padrão o saldo inteiro, mas
-  // editável pra menos (pagamento parcial do título dentro do borderô).
-  const [borderoValores, setBorderoValores] = useState<Record<string, number>>({});
+  const [borderoNumeroTitulo, setBorderoNumeroTitulo] = useState("");
   const [salvandoBordero, setSalvandoBordero] = useState(false);
   const [erroBordero, setErroBordero] = useState("");
-
-  function valorBorderoDe(l: RelLancamento): number {
-    return borderoValores[l.id] ?? saldoLote(l);
-  }
 
   function abrirModalCriarBordero() {
     setErroBordero("");
     setBorderoDesc("");
     setBorderoVencimento("");
-    setBorderoValores({});
+    setBorderoNumeroTitulo("");
     setModalCriarBordero(true);
   }
 
@@ -1000,9 +1014,9 @@ export default function ContasAPagarPage() {
     if (!fazendaId || itensLote.length === 0) return;
     setSalvandoBordero(true); setErroBordero("");
     try {
-      const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, origem_tabela: l.origem_tabela as "lancamentos" | "empresa_lancamentos", valor_pago: valorBorderoDe(l) }));
+      const itensPayload = itensLote.map(l => ({ lancamento_id: l.id, origem_tabela: l.origem_tabela as "lancamentos" | "empresa_lancamentos", valor_pago: saldoLote(l) }));
       const desc = borderoDesc.trim() || `Borderô ${new Date().toLocaleDateString("pt-BR")} — ${itensLote.length} título${itensLote.length !== 1 ? "s" : ""}`;
-      await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente", borderoVencimento || null);
+      await criarPagamentoLote(fazendaId, "pagar", null, null, desc, itensPayload, "pendente", borderoVencimento || null, borderoNumeroTitulo.trim() || null);
       setSelecionados(new Set());
       setModalCriarBordero(false);
       await Promise.all([carregar(), carregarBorderos()]);
@@ -1026,42 +1040,26 @@ export default function ContasAPagarPage() {
   const [confirmData, setConfirmData] = useState("");
   const [confirmConta, setConfirmConta] = useState("");
   const [confirmContasOpcoes, setConfirmContasOpcoes] = useState<ContaBancaria[]>([]);
-  // Juros, multa e desconto por título, informados na confirmação (mesma regra da baixa em lote)
   const [confirmItens, setConfirmItens] = useState<RelLancamento[]>([]);
-  const [confirmEnc, setConfirmEnc] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
-  // Valor principal a pagar por título — pré-preenchido com o que já estava
-  // gravado no item do lote (pode já ter vindo parcial da criação do
-  // borderô), mas editável aqui também: dá pra decidir o valor só na hora de
-  // confirmar o pagamento de verdade, não só na criação do borderô.
-  const [confirmValorPago, setConfirmValorPago] = useState<Record<string, number>>({});
-  const confirmEncDe = (id: string) => confirmEnc[id] ?? { multa: "0,00", juros: "0,00", desconto: "0,00" };
-  const setConfirmEncCampo = (id: string, campo: "multa" | "juros" | "desconto", v: string) =>
-    setConfirmEnc(prev => ({ ...prev, [id]: { ...confirmEncDe(id), [campo]: v } }));
-  const confirmValorPagoDe = (l: RelLancamento) => confirmValorPago[l.id] ?? saldoLote(l);
-  const valorFinalConfirm = (l: RelLancamento) => {
-    const e = confirmEncDe(l.id);
-    return Math.max(0, confirmValorPagoDe(l) + numBR(e.multa) + numBR(e.juros) - numBR(e.desconto));
-  };
-  const totalConfirm = confirmItens.reduce((s, l) => s + valorFinalConfirm(l), 0);
+  // Valor, juros, multa e desconto são do TÍTULO (o borderô inteiro) — um
+  // valor só, nunca por NF — pré-preenchidos com o total declarado do lote.
+  const [confirmValorPago, setConfirmValorPago] = useState(0);
+  const [confirmJuros, setConfirmJuros] = useState("0,00");
+  const [confirmMulta, setConfirmMulta] = useState("0,00");
+  const [confirmDesconto, setConfirmDesconto] = useState("0,00");
+  const totalConfirm = Math.max(0, confirmValorPago + numBR(confirmJuros) + numBR(confirmMulta) - numBR(confirmDesconto));
 
   async function abrirConfirmarBordero(b: PagamentoLote) {
     setErroBordero("");
     setModalConfirmarBordero(b);
     setConfirmData(hojeISO());
     setConfirmConta("");
-    setConfirmEnc({});
-    setConfirmValorPago({});
+    setConfirmValorPago(b.valor_total ?? 0);
+    setConfirmJuros("0,00"); setConfirmMulta("0,00"); setConfirmDesconto("0,00");
     setConfirmItens([]);
     try {
-      const [itens, { data: loteItens }] = await Promise.all([
-        carregarItensBordero(b.id),
-        supabase.from("pagamento_lote_itens").select("lancamento_id, valor_pago").eq("lote_id", b.id),
-      ]);
+      const itens = await carregarItensBordero(b.id);
       setConfirmItens(itens);
-      // Valor que já estava earmarcado neste item do lote (pode ser parcial,
-      // se foi editado na criação do borderô) — default pro saldo do título
-      // se por algum motivo não achar (lote antigo, etc.).
-      setConfirmValorPago(Object.fromEntries((loteItens ?? []).map(li => [li.lancamento_id as string, (li.valor_pago as number) ?? 0])));
       const empresaIds = Array.from(new Set(itens.filter(i => i.origem_tabela === "empresa_lancamentos" && i.empresa_id).map(i => i.empresa_id as string)));
       const [contasProd, ...contasEmp] = await Promise.all([
         fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[]),
@@ -1075,11 +1073,9 @@ export default function ContasAPagarPage() {
     if (!modalConfirmarBordero || !confirmData || !confirmConta) { setErroBordero("Informe data e conta bancária."); return; }
     setSalvandoBordero(true); setErroBordero("");
     try {
-      const ajustes = confirmItens.map(l => {
-        const e = confirmEncDe(l.id);
-        return { lancamento_id: l.id, valor_juros: numBR(e.juros), valor_multa: numBR(e.multa), valor_desconto: numBR(e.desconto), valor_pago: confirmValorPagoDe(l) };
+      await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, {
+        valor_pago: confirmValorPago, valor_juros: numBR(confirmJuros), valor_multa: numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
       });
-      await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, ajustes);
       setModalConfirmarBordero(null);
       await Promise.all([carregar(), carregarBorderos()]);
     } catch (e: unknown) {
@@ -1096,6 +1092,16 @@ export default function ContasAPagarPage() {
       await carregarBorderos();
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao cancelar borderô");
+    }
+  }
+
+  async function estornarBorderoAction(b: PagamentoLote) {
+    if (!confirm(`Estornar o pagamento do borderô "${b.descricao}"? Os títulos voltam a ficar em aberto, sem conta/data de pagamento.`)) return;
+    try {
+      await estornarBordero(b.id);
+      await Promise.all([carregar(), carregarBorderos()]);
+    } catch (e: unknown) {
+      setErro(e instanceof Error ? e.message : "Erro ao estornar borderô");
     }
   }
 
@@ -1314,17 +1320,23 @@ export default function ContasAPagarPage() {
               {!carregando && linhasComBordero.map(entry => {
                 if (entry.kind === "bordero") {
                   const b = entry.b;
+                  const pago = entry.pago;
+                  const qtdItens = (b.itens ?? []).length;
                   return (
-                    <tr key={`bdr-${b.id}`} onClick={e => setPopBordero({ b, x: e.clientX, y: e.clientY })} style={{ background: "#FBF3E0", borderBottom: "0.5px solid #C9921B60", cursor: "pointer" }}>
+                    <tr key={`bdr-${b.id}`} onClick={e => setPopBordero({ b, x: e.clientX, y: e.clientY })} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60", cursor: "pointer" }}>
                       <td colSpan={colunasVisiveis.length} style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>
+                            {pago
+                              ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
+                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>}
                             <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
-                            <span style={{ fontSize: 12, color: "#555" }}>{(b.itens ?? []).length} título{(b.itens ?? []).length !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
-                            {b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
+                            {b.numero_titulo && <span style={{ fontSize: 11, color: "#888" }}>Nº {b.numero_titulo}</span>}
+                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(pago ? (b.valor_pago ?? b.valor_total) : b.valor_total)}</strong></span>
+                            {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
+                            {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>pago em {fmtData(b.data_pagamento)}</span>}
                           </div>
-                          <span style={{ fontSize: 11, color: "#7A5200" }}>clique para ver as ações ›</span>
+                          <span style={{ fontSize: 11, color: pago ? "#15803D" : "#7A5200" }}>clique para ver as ações ›</span>
                         </div>
                       </td>
                     </tr>
@@ -1437,7 +1449,8 @@ export default function ContasAPagarPage() {
       {menuColunas && <ContextMenuColunas x={menuColunas.x} y={menuColunas.y} colunas={COLS_GRID_CP} ordemTodas={ordemCols} visiveis={visCols} onToggle={toggleCol} onMover={moverColuna} onResetar={resetarCols} onClose={() => setMenuColunas(null)} />}
       {popBordero && (() => {
         const b = popBordero.b;
-        const W = 560, H = 360;
+        const pago = b.status === "pago";
+        const W = 560, H = pago ? 420 : 360;
         const top  = Math.min(popBordero.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
         const left = Math.max(8, Math.min(popBordero.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
         const qtd = (b.itens ?? []).length;
@@ -1446,21 +1459,38 @@ export default function ContasAPagarPage() {
             <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopBordero(null)} />
             <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
-                <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: "#FBF3E0" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#7A5200" }}>📋 BORDERÔ PENDENTE</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}</div>
+                <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ PAGO" : "📋 BORDERÔ PENDENTE"}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}{b.numero_titulo ? ` · Nº ${b.numero_titulo}` : ""}</div>
                 </div>
                 <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
-                  <div><div style={{ color: "#888", fontSize: 10 }}>Títulos</div><div style={{ color: "#1a1a1a" }}>{qtd} título{qtd !== 1 ? "s" : ""}</div></div>
-                  <div><div style={{ color: "#888", fontSize: 10 }}>Total</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
-                  <div><div style={{ color: "#888", fontSize: 10 }}>Criado em</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.created_at)}</div></div>
-                  <div><div style={{ color: "#888", fontSize: 10 }}>Situação</div><div style={{ color: "#1a1a1a" }}>Aguardando confirmação</div></div>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>NFs</div><div style={{ color: "#1a1a1a" }}>{qtd} NF{qtd !== 1 ? "s" : ""}</div></div>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>Total das NFs</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
+                  {pago ? (
+                    <>
+                      <div><div style={{ color: "#888", fontSize: 10 }}>Valor pago</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_pago ?? b.valor_total)}</div></div>
+                      <div><div style={{ color: "#888", fontSize: 10 }}>Data do pagamento</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_pagamento)}</div></div>
+                      {!!(b.valor_juros || b.valor_multa) && <div><div style={{ color: "#888", fontSize: 10 }}>Juros + Multa</div><div style={{ color: "#1a1a1a" }}>{fmtBRL((b.valor_juros ?? 0) + (b.valor_multa ?? 0))}</div></div>}
+                      {!!b.valor_desconto && <div><div style={{ color: "#888", fontSize: 10 }}>Desconto</div><div style={{ color: "#1a1a1a" }}>{fmtBRL(b.valor_desconto)}</div></div>}
+                    </>
+                  ) : (
+                    <>
+                      <div><div style={{ color: "#888", fontSize: 10 }}>Criado em</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.created_at)}</div></div>
+                      <div><div style={{ color: "#888", fontSize: 10 }}>Situação</div><div style={{ color: "#1a1a1a" }}>Aguardando confirmação</div></div>
+                    </>
+                  )}
                 </div>
               </div>
               <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6 }}>
-                <button onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver Itens</button>
-                <button onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>✅ Confirmar Pagamento</button>
-                <button onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</button>
+                <button onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver NFs</button>
+                {pago ? (
+                  <button onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↩ Estornar pagamento</button>
+                ) : (
+                  <>
+                    <button onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>✅ Confirmar Pagamento</button>
+                    <button onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</button>
+                  </>
+                )}
               </div>
             </div>
           </>
@@ -1635,34 +1665,37 @@ export default function ContasAPagarPage() {
                   style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
               <div>
-                <label style={lbl}>Data de vencimento do borderô (opcional)</label>
-                <input type="date" value={borderoVencimento} onChange={e => setBorderoVencimento(e.target.value)}
+                <label style={lbl}>Nº do título (opcional)</label>
+                <input value={borderoNumeroTitulo} onChange={e => setBorderoNumeroTitulo(e.target.value)}
+                  placeholder="Ex: nº do boleto"
                   style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
             </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Data de vencimento do borderô (opcional)</label>
+              <input type="date" value={borderoVencimento} onChange={e => setBorderoVencimento(e.target.value)}
+                style={{ ...inp, width: "100%", maxWidth: 220, boxSizing: "border-box" }} />
+            </div>
 
             <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
-              O valor de cada título vem com o saldo inteiro — edite pra incluir só parte do título neste borderô (o restante continua em aberto, disponível pra outro borderô depois).
+              O borderô é o título (documento de pagamento real) — as NFs abaixo são só referência, o valor de cada uma não é editável aqui. Valor a pagar, juros, multa e desconto do título inteiro são definidos na hora de confirmar o pagamento.
             </div>
             <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-              <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1.4fr 90px 120px", gap: 6 }}>
-                <span>Origem</span><span>Título</span><span>Venc.</span><span style={{ textAlign: "right" }}>Valor no borderô</span>
+              <div style={{ background: "#F4F6FA", padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 110px", gap: 6 }}>
+                <span>Origem</span><span>Título</span><span>Nº NF</span><span>Venc.</span><span style={{ textAlign: "right" }}>Valor</span>
               </div>
               {itensLote.map((l, i) => (
-                <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.4fr 90px 120px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
+                <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 110px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
                   <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                  <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.numero ?? "—"}</span>
                   <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
-                  <InputMonetario
-                    value={valorBorderoDe(l)}
-                    onChange={v => setBorderoValores(prev => ({ ...prev, [l.id]: Math.max(0, Math.min(v, saldoLote(l))) }))}
-                    style={{ ...inp, fontSize: 12, textAlign: "right", width: "100%", boxSizing: "border-box", fontWeight: 700, color: valorBorderoDe(l) < saldoLote(l) ? "#C9921B" : "#E24B4A" }}
-                  />
+                  <span style={{ textAlign: "right", fontWeight: 600, color: "#555", whiteSpace: "nowrap" }}>{fmtBRL(saldoLote(l))}</span>
                 </div>
               ))}
               <div style={{ background: "#F4F6FA", padding: "8px 10px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid #DDE2EE" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Total do borderô</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(itensLote.reduce((s, l) => s + valorBorderoDe(l), 0))}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}</span>
               </div>
             </div>
 
@@ -1688,9 +1721,9 @@ export default function ContasAPagarPage() {
               <button onClick={() => setModalConfirmarBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
             </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
-              {modalConfirmarBordero.descricao} · Total: <strong>{fmtBRL(confirmItens.length ? totalConfirm : modalConfirmarBordero.valor_total)}</strong>
+              {modalConfirmarBordero.descricao}{modalConfirmarBordero.numero_titulo ? ` · Nº ${modalConfirmarBordero.numero_titulo}` : ""} · Total das NFs: <strong>{fmtBRL(modalConfirmarBordero.valor_total)}</strong>
             </div>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
                 <label style={lbl}>Data do pagamento *</label>
                 <InputData type="date" value={confirmData} onChange={e => setConfirmData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
@@ -1703,38 +1736,47 @@ export default function ContasAPagarPage() {
                 </select>
               </div>
             </div>
+
+            <div style={{ fontSize: 11, color: "#555", fontWeight: 600, margin: "16px 0 6px" }}>Valor, juros, multa e desconto do título</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+              <div>
+                <label style={lbl}>Valor a pagar *</label>
+                <InputMonetario value={confirmValorPago} onChange={setConfirmValorPago} style={{ ...inp, width: "100%", boxSizing: "border-box", fontWeight: 700, color: confirmValorPago < (modalConfirmarBordero.valor_total ?? 0) ? "#C9921B" : "#1a1a1a" }} />
+              </div>
+              <div>
+                <label style={lbl}>Juros</label>
+                <input value={confirmJuros} onChange={e => setConfirmJuros(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={lbl}>Multa</label>
+                <input value={confirmMulta} onChange={e => setConfirmMulta(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={lbl}>Desconto</label>
+                <input value={confirmDesconto} onChange={e => setConfirmDesconto(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12 }}>
+              <span style={{ color: "#888" }}>Valor a pagar menor que o total das NFs = baixa parcial do título (o restante continua em aberto).</span>
+              <strong style={{ color: "#E24B4A", whiteSpace: "nowrap", marginLeft: 12 }}>Total: {fmtBRL(totalConfirm)}</strong>
+            </div>
+
             {confirmItens.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>Títulos do borderô — valor, juros, multa e desconto</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 92px 92px 92px 110px", gap: 6, alignItems: "center", fontSize: 11 }}>
+                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>NFs deste título (referência — valor rateado proporcionalmente)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 90px", gap: 6, alignItems: "center", fontSize: 11 }}>
                   <span style={{ color: "#888" }}>Título</span>
-                  <span style={{ textAlign: "center", color: "#888" }}>Valor a pagar</span>
-                  <span style={{ textAlign: "center", color: "#888" }}>Multa</span>
-                  <span style={{ textAlign: "center", color: "#888" }}>Juros</span>
-                  <span style={{ textAlign: "center", color: "#888" }}>Desconto</span>
-                  <span style={{ textAlign: "right", color: "#888" }}>A pagar</span>
-                  {confirmItens.map(l => {
-                    const e = confirmEncDe(l.id);
-                    const inpMiniC: React.CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, textAlign: "right", background: "#fff", boxSizing: "border-box", outline: "none" };
-                    const valorPago = confirmValorPagoDe(l);
-                    return (
-                      <div key={l.id} style={{ display: "contents" }}>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? undefined}>{l.descricao}</span>
-                        <InputMonetario
-                          value={valorPago}
-                          onChange={v => setConfirmValorPago(prev => ({ ...prev, [l.id]: Math.max(0, Math.min(v, saldoLote(l))) }))}
-                          style={{ ...inpMiniC, fontWeight: 700, color: valorPago < saldoLote(l) ? "#C9921B" : "#1a1a1a" }}
-                        />
-                        <input value={e.multa} onChange={ev => setConfirmEncCampo(l.id, "multa", ev.target.value)} style={inpMiniC} />
-                        <input value={e.juros} onChange={ev => setConfirmEncCampo(l.id, "juros", ev.target.value)} style={inpMiniC} />
-                        <input value={e.desconto} onChange={ev => setConfirmEncCampo(l.id, "desconto", ev.target.value)} style={inpMiniC} />
-                        <span style={{ fontWeight: 700, color: "#E24B4A", textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(valorFinalConfirm(l))}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
-                  Valor a pagar menor que o saldo do título = baixa parcial (o restante continua em aberto). Desconto abate do principal. Juros e multa somam ao pagamento. O DRE mostra cada um em linha própria.
+                  <span style={{ color: "#888" }}>Nº NF</span>
+                  <span style={{ color: "#888" }}>Venc.</span>
+                  <span style={{ textAlign: "right", color: "#888" }}>Valor</span>
+                  {confirmItens.map(l => (
+                    <div key={l.id} style={{ display: "contents" }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? undefined}>{l.descricao}</span>
+                      <span>{l.numero ?? "—"}</span>
+                      <span>{fmtData(l.data_vencimento)}</span>
+                      <span style={{ textAlign: "right", fontWeight: 600, color: "#555" }}>{fmtBRL(saldoLote(l))}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

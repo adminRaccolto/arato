@@ -1089,29 +1089,35 @@ export async function criarPagamentoLote(
   data_pagamento: string | null,
   conta_bancaria: string | null,
   descricao: string,
-  // valor_pago aqui é o valor DESTA baixa (será acumulado ao que já foi pago,
-  // igual à baixa individual) — não o valor final do título. Pode ser menor
-  // que o saldo do título (pagamento parcial do título dentro do borderô).
-  itens: { lancamento_id: string; origem_tabela?: "lancamentos" | "empresa_lancamentos"; valor_pago: number; valor_multa?: number; valor_juros?: number; valor_desconto?: number }[],
+  // O borderô É o título (ex: boleto mensal que agrega várias NFs) — o
+  // valor_pago de cada item aqui é só o PESO dele (o valor cheio da NF/
+  // lançamento, pra ratear proporcionalmente quando o título for pago), não
+  // um valor editável por item. Pagamento parcial/juros/multa/desconto são
+  // do título inteiro — ver confirmarPagamentoBordero.
+  itens: { lancamento_id: string; origem_tabela?: "lancamentos" | "empresa_lancamentos"; valor_pago: number }[],
   status: "pendente" | "pago" = "pago",
   // Data alvo do borderô (ex: "vou pagar isso dia 15") — independente da
   // data_pagamento real, que só existe depois, na confirmação.
   data_vencimento: string | null = null,
+  // Referência do documento agregador (ex: nº do boleto) — distinta da
+  // descrição livre.
+  numero_titulo: string | null = null,
 ): Promise<import("./supabase").PagamentoLote> {
   const valor_total = itens.reduce((s, i) => s + i.valor_pago, 0);
 
   // 1. Cria o lote
   const { data: lote, error: le } = await supabase
     .from("pagamento_lotes")
-    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, data_vencimento, valor_total, descricao, status })
+    .insert({ fazenda_id, tipo, conta_bancaria, data_pagamento, data_vencimento, numero_titulo, valor_total, descricao, status })
     .select()
     .single();
   if (le) throw le;
 
-  // 2. Cria os itens do lote
+  // 2. Cria os itens do lote — valor_pago aqui é só o peso (valor cheio da
+  // NF) pro rateio proporcional; juros/multa/desconto não existem mais por
+  // item, são do título (gravados em pagamento_lotes na confirmação).
   const rows = itens.map(i => ({
     lote_id: lote.id, lancamento_id: i.lancamento_id, origem_tabela: i.origem_tabela ?? "lancamentos", valor_pago: i.valor_pago,
-    valor_multa: i.valor_multa || null, valor_juros: i.valor_juros || null, valor_desconto: i.valor_desconto || null,
   }));
   const { error: ie } = await supabase.from("pagamento_lote_itens").insert(rows);
   if (ie) throw ie;
@@ -1139,16 +1145,12 @@ export async function criarPagamentoLote(
       const valorTotal = at?.moeda === "USD" ? ((at?.valor as number | null) ?? 0) * cotacao : ((at?.valor as number | null) ?? 0);
       const jaPago     = (at?.valor_pago as number | null) ?? 0;
       const novoTotal  = jaPago + item.valor_pago;
-      const desconto   = item.valor_desconto ?? 0;
       const statusBaixado = origem === "lancamentos" ? "baixado" : "pago";
-      const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? statusBaixado : "parcial";
+      const novoStatus = novoTotal >= valorTotal - 0.01 ? statusBaixado : "parcial";
       const campoData = origem === "lancamentos" ? "data_baixa" : "data_pagamento";
       const { error: be } = await supabase
         .from(origem)
-        .update({
-          status: novoStatus, valor_pago: novoTotal, [campoData]: data_pagamento, conta_bancaria, lote_id: lote.id,
-          valor_multa: item.valor_multa || null, valor_juros: item.valor_juros || null, valor_desconto: item.valor_desconto || null,
-        })
+        .update({ status: novoStatus, valor_pago: novoTotal, [campoData]: data_pagamento, conta_bancaria, lote_id: lote.id })
         .eq("id", item.lancamento_id);
       if (be) throw be;
     }
@@ -1177,7 +1179,10 @@ async function chamarBorderoAcao(body: {
   lote_id: string;
   data_pagamento?: string;
   conta_bancaria?: string;
-  ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number; valor_pago?: number }[];
+  // Juros/multa/desconto/valor pago são do TÍTULO (o borderô inteiro) — um
+  // valor só, nunca por NF/item. O servidor rateia proporcionalmente entre
+  // os itens pelo peso de cada um (valor_pago gravado na criação).
+  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string };
 }): Promise<void> {
   const res = await fetch("/api/financeiro/bordero-acao", {
     method: "POST",
@@ -1192,9 +1197,9 @@ export async function confirmarPagamentoBordero(
   lote_id: string,
   data_pagamento: string,
   conta_bancaria: string,
-  ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number; valor_pago?: number }[],
+  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string },
 ): Promise<void> {
-  await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria, ajustes });
+  await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria, titulo });
 }
 
 /** Cancela um borderô pendente: remove vínculo dos lançamentos e exclui o lote. */

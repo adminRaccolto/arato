@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-p",
+    data: "07/10/2026",
+    titulo: "Borderô reformulado: o título é o borderô, não cada NF",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O borderô passou a tratar cada NF como se fosse um título separado (valor, juros, multa e desconto por NF), quando na prática o borderô É o título — por exemplo, o boleto mensal que um posto de combustível emite somando várias notas do mês. Reformulado: agora há um único campo de valor a pagar/receber, juros, multa e desconto por borderô inteiro (o sistema rateia entre as NFs por trás, sem precisar fazer isso manualmente); novo campo \"Nº do título\" na criação, para guardar a referência do documento real (ex: número do boleto); as NFs dentro do borderô viraram só uma lista informativa (número + valor), sem edição." },
+      { tipo: "correcao", texto: "Depois de pago, o borderô virou uma linha solta de cada NF com status \"Baixado\", perdendo a referência de que era um título único. Corrigido: borderô pago aparece agora como um único banner \"✅ Borderô Pago\" no grid (como já acontecia com o pendente) — as NFs dele não aparecem mais soltas na lista. Um botão \"Estornar\" foi adicionado para reverter um borderô já pago." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.07-o",
     data: "07/10/2026",
     titulo: "Pagamento parcial no borderô, também ao confirmar",

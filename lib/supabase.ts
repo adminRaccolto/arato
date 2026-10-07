@@ -428,7 +428,16 @@ export type PagamentoLote = {
   conta_bancaria?: string;
   data_pagamento?: string;         // preenchido só na confirmação
   data_vencimento?: string;        // data alvo do borderô, definida já na criação (opcional)
-  valor_total: number;
+  // O borderô É o título (ex: boleto mensal de posto de combustível que
+  // agrega várias NFs do mês) — as NFs dentro dele são só referência. Por
+  // isso valor pago/juros/multa/desconto são do título inteiro, um valor
+  // só, nunca por NF/item individual.
+  numero_titulo?: string;          // referência do documento agregador (ex: nº do boleto)
+  valor_total: number;             // soma informativa das NFs/itens incluídos
+  valor_pago?: number;             // valor realmente pago do título (preenchido na confirmação; pode ser parcial)
+  valor_juros?: number;
+  valor_multa?: number;
+  valor_desconto?: number;
   descricao?: string;
   conciliado?: boolean;
   created_at?: string;

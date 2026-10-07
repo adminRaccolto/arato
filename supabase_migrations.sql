@@ -16351,3 +16351,21 @@ ALTER TABLE pagamento_lotes ADD COLUMN IF NOT EXISTS data_vencimento date;
 CREATE INDEX IF NOT EXISTS idx_pagamento_lotes_vencimento ON pagamento_lotes(data_vencimento) WHERE data_vencimento IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 334 — Correção conceitual do Borderô: o TÍTULO (documento de
+-- pagamento real — ex: boleto mensal de um posto de combustível que
+-- agrega várias NFs do mês) é o borderô em si, não cada NF individual.
+-- Pagamento parcial, juros, multa e desconto passam a ser do TÍTULO
+-- (um valor só, por borderô), não mais por NF dentro dele. O campo
+-- numero_titulo guarda a referência do documento agregador (ex: número
+-- do boleto), separado da descrição livre que já existia.
+-- ============================================================================
+ALTER TABLE pagamento_lotes
+  ADD COLUMN IF NOT EXISTS numero_titulo text,
+  ADD COLUMN IF NOT EXISTS valor_pago numeric,
+  ADD COLUMN IF NOT EXISTS valor_juros numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_multa numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_desconto numeric DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
