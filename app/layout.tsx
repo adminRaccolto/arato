@@ -5,6 +5,7 @@ import BannerInadimplente from "../components/BannerInadimplente";
 import VersionChecker from "../components/VersionChecker";
 import Footer from "../components/Footer";
 import SidebarAtalhos from "../components/SidebarAtalhos";
+import OliviaWidget from "../components/OliviaWidget";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <BannerInadimplente />
           <VersionChecker />
           <SidebarAtalhos />
+          <OliviaWidget />
           <div style={{ paddingLeft: "var(--sidebar-w, 0px)", transition: "padding-left 0.2s ease" }}>
             {children}
           </div>

@@ -279,7 +279,8 @@ const NAV: NavItem[] = [
     children: [
       { type: "divider", label: "Suporte" },
       { id: "ajuda-learning", label: "Aprendizado", path: "/learning" },
-      { id: "ajuda-suporte",  label: "Suporte IA",  path: "/suporte"  },
+      // Suporte IA (Olívia) saiu daqui — agora é o balão flutuante global (OliviaWidget),
+      // sempre acessível no canto inferior esquerdo, sem precisar navegar até aqui.
     ],
   },
 ];

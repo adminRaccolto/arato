@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-g",
+    data: "07/10/2026",
+    titulo: "Olívia agora é um balão flutuante, sempre aberto",
+    modulos: ["Suporte"],
+    itens: [
+      { tipo: "melhoria", texto: "A Olívia saiu da tela própria (Ajuda → Suporte IA) e virou um balão no canto inferior esquerdo, disponível em qualquer tela do sistema. Dá para seguir uma instrução dela e ir fazendo a ação na tela sem perder a conversa — ela continua aberta durante a navegação e só fecha quando você clica no ×." },
+    ],
+    onde: "Balão no canto inferior esquerdo (qualquer tela)",
+  },
+  {
     versao: "2026.10.07-f",
     data: "07/10/2026",
     titulo: "Consulta de CNPJ mostra o motivo real do erro",
