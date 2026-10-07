@@ -175,6 +175,7 @@ export async function POST(req: Request) {
           moeda: "BRL",
           status: "em_aberto",
           categoria: "Pessoal / Salários",
+          origem_lancamento: "folha",
           operacao_gerencial_id: ogSalario,
           data_vencimento: vencimento,
           data_lancamento: hoje,
@@ -210,6 +211,7 @@ export async function POST(req: Request) {
           valor: Math.round(totalFGTS * 100) / 100,
           moeda: "BRL", status: "em_aberto",
           categoria: "Pessoal / Encargos",
+          origem_lancamento: "folha",
           operacao_gerencial_id: ogFgts,
           data_vencimento: vencimentoEncargo, data_lancamento: hoje,
         }).select("id").single();
@@ -229,6 +231,7 @@ export async function POST(req: Request) {
           valor: Math.round(totalINSSPat * 100) / 100,
           moeda: "BRL", status: "em_aberto",
           categoria: "Pessoal / Encargos",
+          origem_lancamento: "folha",
           operacao_gerencial_id: ogInssPat,
           data_vencimento: vencimentoEncargo, data_lancamento: hoje,
         }).select("id").single();
@@ -423,6 +426,7 @@ export async function POST(req: Request) {
         descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
         valor, moeda: "BRL", status: "em_aberto",
         categoria: "Pessoal / Adiantamentos",
+        origem_lancamento: "folha",
         operacao_gerencial_id: ogAdiantFunc,
         data_vencimento: data, data_lancamento: data,
       }).select("id").single();

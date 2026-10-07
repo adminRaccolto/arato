@@ -16174,3 +16174,23 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 330 — Coluna "Lançado via" do grid de CP: os CPs gerados pela Folha de
+-- Pagamento (salário, FGTS, INSS Patronal, adiantamento) nunca gravavam
+-- origem_lancamento — só "Manual" e "NF de Entrada" apareciam na coluna.
+-- Preenche os já existentes; o código já foi corrigido para os próximos.
+-- ============================================================================
+UPDATE lancamentos SET origem_lancamento = 'folha'
+WHERE origem_lancamento IS NULL
+  AND id IN (
+    SELECT cp_lancamento_id FROM folha_funcionarios WHERE cp_lancamento_id IS NOT NULL
+    UNION
+    SELECT cp_fgts_id FROM folha_pagamento WHERE cp_fgts_id IS NOT NULL
+    UNION
+    SELECT cp_inss_patronal_id FROM folha_pagamento WHERE cp_inss_patronal_id IS NOT NULL
+    UNION
+    SELECT lancamento_id FROM adiantamentos_salario WHERE lancamento_id IS NOT NULL
+  );
+
+NOTIFY pgrst, 'reload schema';

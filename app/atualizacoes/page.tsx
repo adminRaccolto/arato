@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-d",
+    data: "07/10/2026",
+    titulo: "Coluna \"Lançado via\" mostra Folha de Pagamento",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Salário, FGTS, INSS Patronal e adiantamento de funcionário nunca gravavam a origem do lançamento — a coluna \"Lançado via\" só mostrava Manual e NF de Entrada. Corrigido para os novos CPs, e os já existentes foram atualizados." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.07-c",
     data: "07/10/2026",
     titulo: "CP de salário mostra o nome do funcionário na coluna Fornecedor",
