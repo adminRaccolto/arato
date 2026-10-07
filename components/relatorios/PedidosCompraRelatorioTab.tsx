@@ -15,11 +15,12 @@
 // (necessários no corpo do relatório) são buscados ao vivo por pedido
 // selecionado, via lib/db.ts (mesmas funções já usadas em Compras).
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../components/InputData";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../AuthProvider";
-import { listarPedidoCompraItens, listarNfEntradasPorPedido, alocarEntregaPorLinha } from "../../lib/db";
-import type { PedidoCompraItem, NfEntrada, NfEntradaItem } from "../../lib/supabase";
+import { listarPedidoCompraItens, listarNfEntradasPorPedido, alocarEntregaPorLinha, listarInsumosParaConta, listarGruposInsumoDaConta } from "../../lib/db";
+import type { PedidoCompraItem, NfEntrada, NfEntradaItem, Insumo, GrupoInsumo } from "../../lib/supabase";
 
 type RelPedido = {
   id: string;
@@ -76,15 +77,25 @@ export default function PedidosCompraRelatorioTab() {
   const [opcoesFornecedor, setOpcoesFornecedor] = useState<{ id: string; nome: string }[]>([]);
   const [opcoesAnoSafra,   setOpcoesAnoSafra]   = useState<{ id: string; descricao: string }[]>([]);
   const [opcoesCarregadas, setOpcoesCarregadas] = useState(false);
+  // Grupo (grupos_insumos, mesmo padrão já usado no Relatório de Aplicações por
+  // Ciclo) e Item (insumo) — pra achar em qual pedido um produto está, em vez
+  // de só filtrar pelo cabeçalho do pedido.
+  const [grupos,  setGrupos]  = useState<GrupoInsumo[]>([]);
+  const [insumos, setInsumos] = useState<Insumo[]>([]);
 
   const [fFornecedor, setFFornecedor] = useState("");
   const [fNrPedForn,  setFNrPedForn]  = useState("");
   const [fStatus,     setFStatus]     = useState<Set<string>>(new Set());
   const [fAnoSafra,   setFAnoSafra]   = useState("");
+  const [fGrupoId,    setFGrupoId]    = useState("");
+  const [fInsumoId,   setFInsumoId]   = useState("");
   const [fDataDe,     setFDataDe]     = useState("");
   const [fDataAte,    setFDataAte]    = useState("");
   const [fTipo,       setFTipo]       = useState<"sintetico" | "analitico">("analitico");
   const [fFormato,    setFFormato]    = useState<"pdf" | "xlsx">("pdf");
+
+  // Item filtrado pelo grupo escolhido (se houver) — cascata igual ao resto do sistema.
+  const insumosDoGrupo = fGrupoId ? insumos.filter(i => i.grupo_id === fGrupoId) : insumos;
 
   const toggleStatus = (v: string) => setFStatus(prev => {
     const next = new Set(prev);
@@ -100,7 +111,11 @@ export default function PedidosCompraRelatorioTab() {
       const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
       let q = supabase.from("rel_pedidos_compra").select("fornecedor_id, fornecedor_nome, ano_safra_id, ano_safra_descricao");
       q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
-      const { data } = await q;
+      const [{ data }, gruposData, insumosData] = await Promise.all([
+        q,
+        listarGruposInsumoDaConta(fazendaId),
+        listarInsumosParaConta(contaId, fazendaId ?? undefined),
+      ]);
       const forn = new Map<string, string>();
       const safra = new Map<string, string>();
       for (const r of data ?? []) {
@@ -109,18 +124,39 @@ export default function PedidosCompraRelatorioTab() {
       }
       setOpcoesFornecedor(Array.from(forn, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)));
       setOpcoesAnoSafra(Array.from(safra, ([id, descricao]) => ({ id, descricao })).sort((a, b) => b.descricao.localeCompare(a.descricao)));
+      setGrupos(gruposData.sort((a, b) => a.nome.localeCompare(b.nome)));
+      setInsumos(insumosData.sort((a, b) => a.nome.localeCompare(b.nome)));
       setOpcoesCarregadas(true);
     } catch { /* silencioso — dropdowns ficam vazios, filtro de texto continua funcionando */ }
   }
 
+  // Resolve quais pedidos têm o item/grupo escolhido — null = sem restrição
+  // (nenhum filtro de produto marcado); [] = filtro marcado mas nada encontrado.
+  async function resolverPedidoIdsPorProduto(): Promise<string[] | null> {
+    if (!fInsumoId && !fGrupoId) return null;
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    const insumoIds = fInsumoId ? [fInsumoId] : insumosDoGrupo.map(i => i.id);
+    if (insumoIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("pedido_compra_itens")
+      .select("pedido_id")
+      .in("fazenda_id", fids)
+      .in("insumo_id", insumoIds);
+    if (error) throw error;
+    return Array.from(new Set((data ?? []).map(r => r.pedido_id as string)));
+  }
+
   async function buscarPedidosFiltrados(): Promise<RelPedido[]> {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    const pedidoIdsPorProduto = await resolverPedidoIdsPorProduto();
+    if (pedidoIdsPorProduto !== null && pedidoIdsPorProduto.length === 0) return [];
     let q = supabase.from("rel_pedidos_compra").select("*");
     q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
     if (fFornecedor) q = q.eq("fornecedor_id", fFornecedor);
     if (fNrPedForn.trim()) q = q.ilike("nr_pedido_fornecedor", `%${fNrPedForn.trim()}%`);
     if (fStatus.size > 0) q = q.in("status", Array.from(fStatus));
     if (fAnoSafra) q = q.eq("ano_safra_id", fAnoSafra);
+    if (pedidoIdsPorProduto) q = q.in("id", pedidoIdsPorProduto);
     if (fDataDe) q = q.gte("data_registro", fDataDe);
     if (fDataAte) q = q.lte("data_registro", fDataAte);
     q = q.order("numero", { ascending: true });
@@ -276,6 +312,8 @@ export default function PedidosCompraRelatorioTab() {
       const partes: string[] = [];
       if (fFornecedor) partes.push(opcoesFornecedor.find(f => f.id === fFornecedor)?.nome ?? "Fornecedor");
       if (fNrPedForn.trim()) partes.push(`Pedido Fornecedor "${fNrPedForn.trim()}"`);
+      if (fInsumoId) partes.push(`Item: ${insumos.find(i => i.id === fInsumoId)?.nome ?? ""}`);
+      else if (fGrupoId) partes.push(`Grupo: ${grupos.find(g => g.id === fGrupoId)?.nome ?? ""}`);
       if (partes.length === 0) partes.push("Todos os fornecedores");
       const titulo = `${partes.join(" · ")} — ${pedidos.length} pedido(s)`;
 
@@ -333,7 +371,7 @@ export default function PedidosCompraRelatorioTab() {
         <div style={{ fontSize: 32, marginBottom: 10 }}>🖨</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>Relatório de Pedidos de Compra</div>
         <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-          Filtre por fornecedor, nº do pedido do fornecedor, status, ano safra e período. Gera direto em PDF (pra imprimir) ou XLSX (baixa), sintético ou analítico.
+          Filtre por fornecedor, nº do pedido do fornecedor, status, grupo, item (insumo), ano safra e período — útil pra achar em qual pedido um produto específico está. Gera direto em PDF (pra imprimir) ou XLSX (baixa), sintético ou analítico.
         </div>
         <button onClick={abrirModal} style={btnV}>🔍 Abrir Filtro e Gerar</button>
       </div>
@@ -373,6 +411,23 @@ export default function PedidosCompraRelatorioTab() {
               </div>
             </div>
 
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={lbl}>Grupo</label>
+                <select value={fGrupoId} onChange={e => { setFGrupoId(e.target.value); setFInsumoId(""); }} style={inp}>
+                  <option value="">Todos os grupos</option>
+                  {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Item (insumo)</label>
+                <select value={fInsumoId} onChange={e => setFInsumoId(e.target.value)} style={inp}>
+                  <option value="">Todos os itens{fGrupoId ? " do grupo" : ""}</option>
+                  {insumosDoGrupo.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+                </select>
+              </div>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={lbl}>Ano Safra</label>
@@ -383,11 +438,11 @@ export default function PedidosCompraRelatorioTab() {
               </div>
               <div>
                 <label style={lbl}>Data de</label>
-                <input type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
+                <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Data até</label>
-                <input type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
+                <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
               </div>
             </div>
 

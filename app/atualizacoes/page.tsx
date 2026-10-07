@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-r",
+    data: "07/10/2026",
+    titulo: "Relatório de Pedidos de Compra ganha filtro por Grupo e Item",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo filtro por Grupo e por Item (insumo) no Relatório de Pedidos de Compra — para achar em qual pedido um produto específico está, sem precisar abrir pedido por pedido. O item é filtrado em cascata pelo grupo escolhido." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.07-q",
     data: "07/10/2026",
     titulo: "\"Preencher do Cadastro\" (Parâmetros Fiscais) agora salva de verdade",
