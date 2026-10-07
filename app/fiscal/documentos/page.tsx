@@ -638,7 +638,10 @@ export default function DocumentosFiscaisPage() {
                     <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{fmtData(d.data_doc)}</td>
                     <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.numero ?? "—"}</td>
                     <td style={{ padding: "7px 10px" }}>{d.serie ?? "—"}</td>
-                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.participante_nome ?? undefined}>{d.participante_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={[d.participante_nome, d.participante_cnpj].filter(Boolean).join(" — ") || undefined}>
+                      {d.participante_nome ?? "—"}
+                      {d.participante_cnpj && <span style={{ color: "#888", fontFamily: "monospace", fontSize: 10, marginLeft: 6 }}>{d.participante_cnpj}</span>}
+                    </td>
                     <td style={{ padding: "7px 10px", fontSize: 11, overflow: "hidden" }}>
                       {d.destinatario_nome
                         ? <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.destinatario_nome}</div>
