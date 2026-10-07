@@ -46,7 +46,7 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 ### Comercial
 - **Contratos de Grãos**: fixo R$/USD, à fixar, basis, cessão de débitos, VFE
 - **Romaneio**: classificação ABIOVE por commodity (soja 7 sub-parâmetros, milho IN MAPA 60/2011)
-- **Expedição**: transbordo/direto, ação de faturamento prepara a NF-e (CFOP 5905 ou 6101) — o "Emitir MDF-e" desta tela é só local/simulado, MDF-e real é no módulo Transporte
+- **Expedição**: transbordo/direto, ação de faturamento prepara a NF-e (CFOP 5905 ou 6101); "Emitir MDF-e" leva à emissão real no módulo Transporte, com a NF-e já pré-selecionada
 - **Arrendamentos**: sc_soja, sc_milho, BRL/ha — gera contratos de grãos ou CP automático
 - **CT-e / MDF-e**: emissão de conhecimento de transporte e manifesto
 

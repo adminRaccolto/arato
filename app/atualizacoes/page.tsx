@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-k",
+    data: "07/10/2026",
+    titulo: "MDF-e da Expedição de Grãos passa a ser emissão real",
+    modulos: ["Comercial", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"Emitir MDF-e\" da Expedição de Grãos gerava uma chave local aleatória e marcava a carga como autorizada sem transmitir nada à SEFAZ. Agora ele leva direto para a emissão real no módulo Transporte, com a NF-e da carga já selecionada — ao autorizar lá de verdade, a carga na Expedição é atualizada sozinha (número, chave e status). Transbordo sem NF continua sem MDF-e disponível, porque não há NF-e/CT-e para o manifesto referenciar." },
+    ],
+    onde: "Comercial & Logística → Expedição de Grãos",
+  },
+  {
     versao: "2026.10.07-j",
     data: "07/10/2026",
     titulo: "Base de conhecimento da Olívia reconstruída do zero",

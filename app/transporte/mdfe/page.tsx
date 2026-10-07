@@ -475,6 +475,22 @@ function MdfePageInner() {
     toggleCte(cteId);
   }, [ctes, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Atalho "Emitir MDF-e" na Expedição de Grãos — mesma ideia do from_cte acima,
+  // só que a carga de expedição já tem a chave da NF-e (não um CT-e pra selecionar).
+  // Corrige o antigo "MDF-e" da Expedição, que gerava uma chave local falsa sem
+  // transmitir nada — agora a emissão real acontece só aqui, de verdade.
+  const prefillCargaApplied = useRef(false);
+  useEffect(() => {
+    if (prefillCargaApplied.current) return;
+    if (!searchParams.get("from_carga")) return;
+    const chave = sessionStorage.getItem("mdfe_prefill_nfe_chave");
+    if (!chave) return;
+    prefillCargaApplied.current = true;
+    sessionStorage.removeItem("mdfe_prefill_nfe_chave");
+    abrirNovo();
+    setForm(f => ({ ...f, nfe_chaves: [chave] }));
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Série e nº do MDF-e herdados de Parâmetros → MDF-e do EMITENTE escolhido (mdfe_emp_<cnpj>).
   // Antes o formulário usava a configuração da primeira empresa e mostrava sempre série 1 /
   // nº 1. Só em MDF-e novo: rascunho já criado mantém o número dele.
@@ -881,6 +897,15 @@ function MdfePageInner() {
       const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; respostaSefaz?: boolean };
       if (data.sucesso) {
         alert(`✓ MDF-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
+        // Se este MDF-e carrega a chave de NF-e de uma carga da Expedição de Grãos,
+        // reflete a autorização real de volta nela (ela abriu esta tela já com a
+        // chave pré-preenchida — ver prefillCargaApplied acima).
+        const chavesNfe = m.documentos.filter(d => d.tipo === "nfe").map(d => d.chave);
+        if (chavesNfe.length > 0) {
+          await supabase.from("cargas_expedicao").update({
+            mdfe_numero: data.numero, mdfe_chave: data.chave, mdfe_status: "autorizado", status: "em_transito",
+          }).in("nfe_chave", chavesNfe);
+        }
       } else {
         // cStat fiscal não é status HTTP: rejeições também usam códigos acima de 500.
         if (data.respostaSefaz) {

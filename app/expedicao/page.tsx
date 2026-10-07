@@ -154,7 +154,6 @@ export default function Expedicao() {
 
   // Modal MDF-e
   const [modalMdfe, setModalMdfe] = useState<Carga | null>(null);
-  const [mdfeForm, setMdfeForm]   = useState({ uf_ini: "MT", uf_fim: "PR", percurso: "", ciot: "", obs: "" });
 
   // Modal DANFE (visualização NF-e gerada)
   const [modalDanfe, setModalDanfe] = useState<Carga | null>(null);
@@ -319,20 +318,22 @@ export default function Expedicao() {
     router.push(`/comercial/faturamento?${params.toString()}`);
   }
 
-  // ── Emitir MDF-e simulado ─────────────────────────────────────────────────
-  async function emitirMdfe(carga: Carga) {
-    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir mdfe)", perigo: false }))) return;
-    if (!carga.nfe_chave && carga.rota !== "transbordo_sem_nf") {
-      alert("Gere a NF-e antes do MDF-e."); return;
+  // ── Ir para emissão real de MDF-e (módulo Transporte, transmite à SEFAZ) ───
+  // Antes esta função fabricava uma chave local aleatória e marcava "autorizado"
+  // sem transmitir nada — corrigido: o MDF-e de verdade só existe no módulo
+  // Transporte (/transporte/mdfe), que já assina e transmite de verdade. Aqui só
+  // preparamos o prefill (igual o atalho "🚚 Emitir MDF-e" que já existe no CT-e)
+  // e levamos pra lá. Quando autorizado, aquela tela atualiza esta carga sozinha
+  // (casando pela chave da NF-e) — ver app/transporte/mdfe/page.tsx, função autorizar().
+  function irParaMdfeReal(carga: Carga) {
+    if (carga.rota === "transbordo_sem_nf") {
+      alert("Transbordo sem NF não tem documento fiscal vinculado — por lei, um MDF-e precisa referenciar ao menos uma NF-e ou CT-e. Não é possível emitir um MDF-e real para esta carga. Se precisar de manifesto de qualquer forma, emita um CT-e para o frete em Comercial & Logística → Fretes e Transporte e gere o MDF-e a partir dele.");
+      return;
     }
-    const num   = String(Math.floor(Math.random() * 90000) + 10000);
-    const chave = `35${new Date().getFullYear().toString().slice(2)}04MDF${num.padStart(9,"0")}55${num.padStart(9,"0")}`;
-    await supabase.from("cargas_expedicao").update({
-      mdfe_numero: num, mdfe_chave: chave, mdfe_status: "autorizado", status: "em_transito",
-    }).eq("id", carga.id);
-    alert(`MDF-e ${num} autorizado! Status → Em Trânsito`);
+    if (!carga.nfe_chave) { alert("Gere a NF-e antes do MDF-e."); return; }
+    sessionStorage.setItem("mdfe_prefill_nfe_chave", carga.nfe_chave);
     setModalMdfe(null);
-    if (contratoSel) carregarCargas(contratoSel.id);
+    router.push("/transporte/mdfe?from_carga=1");
   }
 
   // ── Correção de peso ──────────────────────────────────────────────────────
@@ -619,7 +620,7 @@ export default function Expedicao() {
                                   </button>
                                 )}
                                 {!c.mdfe_chave && (
-                                  <button onClick={() => { setModalMdfe(c); setMdfeForm({ uf_ini: "MT", uf_fim: "PR", percurso: "", ciot: "", obs: "" }); }}
+                                  <button onClick={() => setModalMdfe(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#C9921B", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     MDF-e
                                   </button>
@@ -865,7 +866,7 @@ export default function Expedicao() {
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
-                    <button onClick={() => { setModalMdfe(modalCarga); setModalCarga(null); setMdfeForm({ uf_ini: "MT", uf_fim: "PR", percurso: "", ciot: "", obs: "" }); }}
+                    <button onClick={() => { setModalMdfe(modalCarga); setModalCarga(null); }}
                       style={{ padding: "4px 12px", background: "#FBF3E0", color: "#C9921B", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       Emitir MDF-e
                     </button>
@@ -1080,30 +1081,26 @@ export default function Expedicao() {
             </div>
             {modalMdfe.nfe_chave ? (
               <div style={{ background: "#DCFCE7", border: "0.5px solid #16A34A", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12 }}>
-                NF-e vinculada: <strong>Série {modalMdfe.nfe_serie} Nº {modalMdfe.nfe_numero}</strong>
+                NF-e vinculada: <strong>Série {modalMdfe.nfe_serie} Nº {modalMdfe.nfe_numero}</strong> — será levada para a emissão real do MDF-e.
               </div>
             ) : modalMdfe.rota === "transbordo_sem_nf" ? (
               <div style={{ background: "#E8E8E8", border: "0.5px solid #111111", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#111111" }}>
-                Transbordo sem NF — MDF-e emitido sem NF-e vinculada.
+                Transbordo sem NF não tem documento fiscal vinculado — por lei, um MDF-e precisa referenciar ao menos uma NF-e ou CT-e. Não é possível emitir um MDF-e real para esta carga.
               </div>
             ) : (
               <div style={{ background: "#FEE2E2", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#B91C1C" }}>
                 Gere a NF-e antes de emitir o MDF-e.
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 16 }}>
-              {campo("UF Início *", inp({ value: mdfeForm.uf_ini, onChange: e => setMdfeForm(p => ({ ...p, uf_ini: e.target.value.toUpperCase() })), maxLength: 2 }))}
-              {campo("UF Fim *", inp({ value: mdfeForm.uf_fim, onChange: e => setMdfeForm(p => ({ ...p, uf_fim: e.target.value.toUpperCase() })), maxLength: 2 }))}
-              {campo("UFs do Percurso (ex: GO, MS)", inp({ value: mdfeForm.percurso, onChange: e => setMdfeForm(p => ({ ...p, percurso: e.target.value })) }))}
-              {campo("CIOT (opcional)", inp({ value: mdfeForm.ciot, onChange: e => setMdfeForm(p => ({ ...p, ciot: e.target.value })) }))}
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 18 }}>
+              A emissão de verdade (veículo, motorista, percurso, UF início/fim, CIOT, assinatura e transmissão à SEFAZ) acontece na tela de MDF-e do módulo Transporte — clique abaixo para continuar com a NF-e já selecionada. Quando autorizado lá, esta carga é atualizada automaticamente.
             </div>
-            {campo("Observações", inp({ value: mdfeForm.obs, onChange: e => setMdfeForm(p => ({ ...p, obs: e.target.value })) }))}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
               <button onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              {(modalMdfe.nfe_chave || modalMdfe.rota === "transbordo_sem_nf") && (
-                <button onClick={() => emitirMdfe(modalMdfe)}
+              {modalMdfe.nfe_chave && (
+                <button onClick={() => irParaMdfeReal(modalMdfe)}
                   style={{ padding: "8px 22px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  Emitir e Autorizar MDF-e
+                  Ir para emissão real do MDF-e →
                 </button>
               )}
             </div>
