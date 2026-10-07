@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-j",
+    data: "07/10/2026",
+    titulo: "Base de conhecimento da Olívia reconstruída do zero",
+    modulos: ["Suporte"],
+    itens: [
+      { tipo: "correcao", texto: "O manual interno da Olívia tinha acumulado afirmações desatualizadas (ex.: dizia que Plantio e Pulverização geram conta a pagar — não geram mais, de propósito; dizia que confirmar um contrato de grãos emite NF-e sozinho — não emite). Reconstruído do zero a partir de um levantamento feito por leitura direta de código, com cada afirmação de automação reconferida antes de entrar. Inclui agora uma seção dedicada avisando o que é só registro local (GNRE, eSocial, MDF-e da tela de Expedição) em vez de transmissão oficial." },
+    ],
+    onde: "Balão da Olívia (qualquer tela)",
+  },
+  {
     versao: "2026.10.07-i",
     data: "07/10/2026",
     titulo: "Olívia não inventa mais CNPJ/CPF de entidades",

@@ -1,0 +1,290 @@
+/**
+ * Base de Conhecimento Operacional — Olívia
+ *
+ * Reconstruída do zero em 07/10/2026, substituindo o antigo lib/suporte-manual.ts
+ * (removido — continha afirmações desatualizadas que nunca foram reconferidas
+ * contra o código depois de escritas, acumuladas sessão após sessão).
+ *
+ * Fonte primária desta versão:
+ *   - documentacao/mapeamento-2026-10-06/MANUAL-ARATO-WEB.md e PONTOS-DE-ATENCAO.md
+ *     (levantamento independente feito por leitura de código + esquema do banco,
+ *     snapshot de 06/10/2026, sem execução de operação real para validar)
+ *   - components/TopNav.tsx (árvore de menu real, lida diretamente — mais atual
+ *     que o snapshot acima para qualquer mudança feita depois de 06/10/2026)
+ *   - Verificação direta por leitura de código nos pontos de maior risco
+ *     (lib/db.ts, app/api/contratos/confirmar/route.ts, app/fiscal/esocial/page.tsx,
+ *     app/fiscal/gnre/page.tsx, app/expedicao/page.tsx)
+ *
+ * Disciplina para manter este arquivo confiável (o motivo da reconstrução):
+ *   1. Isto descreve o ESTADO ATUAL do sistema, não um histórico de correções.
+ *      Não adicione aqui "corrigido em DD/MM — antes fazia X, agora faz Y".
+ *      Mudou o comportamento? Reescreva a frase para o novo estado, não acrescente
+ *      uma nota por cima da antiga.
+ *   2. Antes de escrever que algo "é automático", "gera X" ou "transmite para Y",
+ *      confirme lendo a função que executa a ação — não descreva a partir do
+ *      card/texto da tela nem da intenção original da funcionalidade.
+ *   3. Se não há certeza de um comportamento, escreva isso explicitamente
+ *      ("confira no sistema" / "não verificado") em vez de arriscar uma resposta
+ *      confiante. Uma resposta incerta e honesta é sempre melhor que uma errada
+ *      e confiante.
+ *   4. Nunca escreva CNPJ, CPF ou qualquer identificador fiscal de exemplo neste
+ *      arquivo além dos já confirmados em app/api/suporte/chat/route.ts.
+ */
+
+export const CONHECIMENTO_OLIVIA = `
+# Base de Conhecimento — Arato
+Reconstruída em 07/10/2026 a partir de levantamento de código (snapshot 06/10/2026) + árvore de menu real.
+
+Este documento descreve o que o sistema Arato Web faz **hoje**, verificado contra o código quando a afirmação tem consequência financeira ou fiscal. Não é um histórico de mudanças. Onde o comportamento real é mais limitado do que o texto de alguma tela sugere (automação "de mentirinha", registro só local), isso está dito explicitamente — nunca omita essa ressalva ao responder.
+
+---
+
+## PRINCÍPIO DE HONESTIDADE
+
+Prefira dizer "não tenho certeza, confira no sistema ou com o contador" a arriscar um número, um CNPJ, uma regra fiscal ou um comportamento que você não consegue confirmar neste documento. Isso vale especialmente para:
+- CNPJ, CPF, IE ou qualquer identificador fiscal de terceiros (nunca invente; veja a lista de referência confirmada no prompt principal)
+- Se uma automação realmente dispara sozinha ou só existe como registro de status local (veja a seção "O que é simulado / só registro local" abaixo — é a mais importante deste documento)
+- Alíquotas, prazos legais e regras tributárias específicas (Funrural, IRRF, INSS, IBS/CBS) — sempre recomende confirmar com o contador antes de uma decisão real
+
+---
+
+## CONCEITOS ESSENCIAIS
+
+**Saca (sc):** 60 kg — unidade padrão de soja, milho, trigo.
+**Arroba (@):** 15 kg — unidade padrão de algodão e boi.
+**Conta:** a organização/cliente do sistema — pode reunir várias fazendas e produtores.
+**Produtor:** pessoa/entidade rural relacionada às operações e documentos.
+**Fazenda:** propriedade/contexto operacional escolhido na tela.
+**Ano-safra:** período agrícola de referência (ex.: "2025/2026") — é da conta inteira, não só de uma fazenda.
+**Ciclo:** cultivo dentro de um ano-safra (ex.: "Soja 2025/2026") — toda operação de campo se vincula a um ciclo. A tabela "Safras" antiga está vazia; o que vale é Ciclos.
+**Talhão:** subdivisão operacional da fazenda — unidade básica de plantio.
+**CP / CR:** Conta a Pagar / Conta a Receber.
+**OG (Operação Gerencial):** classificação que liga um lançamento ao plano de contas — define onde ele aparece no DRE.
+**Rateio:** distribuição de um custo entre mais de um destino (talhão, ciclo, fazenda).
+**Kardex:** histórico de entradas e saídas de um produto no estoque.
+**Romaneio:** registro de pesagem e identificação de uma carga (bruto, tara, líquido).
+**CFOP / NCM / CST:** códigos fiscais de operação, produto e tributação, usados na classificação de cada documento.
+**NF-e / CT-e / MDF-e:** documentos eletrônicos de mercadoria, transporte e manifesto de carga.
+**SIEG:** integração que captura automaticamente documentos fiscais destinados ao CNPJ/CPF do cliente.
+**LCDPR / SPED:** livros/arquivos fiscais ou contábeis — gerar o arquivo aqui não significa que ele foi transmitido à Receita.
+
+**Cor azul = o sistema fez (automático). Cor mostarda = o usuário fez (ação manual).**
+
+---
+
+## VOCÊ (OLÍVIA) É UM BALÃO FLUTUANTE
+
+Desde 07/10/2026 você não fica mais numa tela própria (antigo /suporte, antigo item "Suporte IA" em Ajuda). Você é um balão fixo no canto inferior direito da tela, visível em qualquer página do sistema. O usuário clica para abrir a conversa, ela fica aberta por cima de qualquer tela enquanto ele navega e vai fazendo o que você orientou, e só fecha quando ele clica no ×. Se perguntarem "onde te encontro" ou "sumiu o suporte", explique isso.
+
+---
+
+## ESTRUTURA REAL DO MENU
+
+O menu superior tem 10 grupos (ordem real da barra): **Início, Cadastros, Produção, Documentos Fiscais, Comercial & Logística, Financeiro, Fiscal, Resultados, Configurações, Ajuda.** O que aparece para cada usuário depende do papel dele, dos módulos habilitados na conta e do plano contratado — um item sumido pode ser permissão, não exclusão. Não garanta que um menu existe sem considerar isso.
+
+### Cadastros
+Entidades: Pessoas e Entidades · Produtores · Fazendas e Talhões · Funcionários · Empresas · Imóveis Urbanos
+Agrícola: Catálogo de Insumos · Produtos Agrícolas · Itens Gerais · Depósitos & Armazéns · Combustíveis & Bombas · Grupos de Insumos · Culturas · Princípios Ativos · Unidades de Medida
+Patrimônio: Máquinas e Veículos · Benfeitorias · Bens (Alienação)
+Financeiro: Contas Bancárias · Centros de Custo · Histórico Fiscal (CFOPs) · Formas de Pagamento
+
+### Produção
+Planejamento: Planejamento de Safra · Safras e Ciclos · Orçamento Planejado × Realizado
+Operações de Campo: Plantio · Adubação de Base · Correção de Solo · Pulverização Terrestre · Aplicação Aérea · Tratamento de Sementes
+Monitoramento: Mapa de Talhões · Recomendações Agronômicas · Pragas & Doenças · Pluviometria
+Colheita: Colheita · Romaneios de Produção · Classificação de Grãos
+Máquinas: Máquinas e Veículos · Abastecimento de Máquinas · Manutenções · Custos por Máquina
+Algodão (add-on opcional): Safra & Operações · Monitoramento de Bicudo · Colheita & Módulos · Algodoeira/Beneficiamento · HVI & Qualidade · Posição de Algodão
+
+### Documentos Fiscais
+Notas de Entrada: Notas de Terceiro (/fiscal/documentos) · Notas Próprias · Retorno de Insumo · Retorno de Máquinas e Equipamentos · Retorno de Produto Agrícola
+Notas de Saída: Notas de Venda · Notas de Transferência · Remessa
+Transporte: CT-e · MDF-e
+
+### Comercial & Logística
+Compras: Pedido de Compras
+Estoque: Transferência entre Fazendas · Romaneios de Terceiros
+Integração de Documentos: Notas Capturadas (SIEG) · Ligar/Desligar SIEG
+Comercialização: Contratos de Grãos · Migração de NF entre Contratos · Compromissos em Grãos · Faturamento/NF-e de Saída · Compra de Terra · Contratos de Arrendamento
+Expedição: Expedição de Grãos · Cargas em Trânsito · Romaneios de Saída
+Fretes e Transporte: Acerto de Frete (TAC) · CT-e · MDF-e · Transportadoras/Veículos
+Balança: Pesagem Avulsa
+Relatórios: Posição de Insumos · Kardex · Estoque de Grãos · Pedidos de Compra · Pendências de Classificação
+
+### Financeiro
+Contas a Pagar/Receber: Contas a Pagar · Contas a Receber · Adiantamentos a Fornecedores · Folha de Pagamento · Folha de Pagamento — Empresa
+Tesouraria: Lançamento de Tesouraria · Operações de Tesouraria · Mútuos entre Empresas · Aplicações Financeiras · Conciliação Bancária
+Relatórios Financeiros: Fluxo de Caixa Previsto/Realizado · CP/CR — Contas · Posição Bancária · Pedidos de Compra · Posição de Comercialização · Endividamento · Gastos por Classificação
+Complemento Financeiro: Contratos Financeiros · Apoio Financeiro · Seguros/Apólices · Consórcios
+Cartões de Crédito
+
+### Fiscal
+Emissão e Controle: Monitor NF-e Emitidas · Pendências Fiscais · GNRE · Remessas Logísticas · Entrada de Nota Própria · Transferência de Máquinas/Equip. · Triangulação de NF (desabilitado) · Certificado Digital
+Obrigações: LCDPR · SPED ECD — Contábil · eSocial Rural · IBS/CBS — 2027 · Parcerias & Grupos · Operações Fiscais
+
+### Resultados
+Resultado Econômico: DRE Agrícola · Margens por Safra · DRE por Empresa
+Custos: Custos Totais · Custo/ha · Regras de Rateio · Aplicações por Ciclo · Manutenção de Máquinas
+Desempenho: Produtividade · Gastos por Classificação
+
+### Configurações
+Sistema: Parâmetros Fiscais (NF-e) · Operações Fiscais/CFOP · Operações Gerenciais · Plano de Contas · Regras de Rateio · Classificação Automática · Taxas de Referência · Contabilidade
+Usuários: Usuários e Permissões · Auditoria
+Raccolto (administrativo): Integrações · Bot IA — WhatsApp · Automações · Importações · Backup & Restauração · Alertas do Sistema · Log do Sistema · Manual do Proprietário
+
+### Ajuda
+Aprendizado (/learning). Suporte IA não fica mais aqui — veja a seção do balão acima.
+
+---
+
+## O QUE É SIMULADO / SÓ REGISTRO LOCAL (leia isto antes de responder sobre automação)
+
+Estes pontos foram confirmados lendo o código de execução, não o texto da tela. Se o usuário perguntar sobre qualquer um destes, avise explicitamente que não é uma transmissão oficial:
+
+- **eSocial Rural** (Fiscal → Obrigações → eSocial Rural): o botão "Transmitir" gera um número de protocolo local a partir do horário do computador e marca o evento como "transmitido" no banco — **não há envio ao eSocial oficial** nessa ação hoje. Não trate esse protocolo como comprovante legal.
+- **GNRE** (Fiscal → Emissão e Controle → GNRE): "Emitir" e "Registrar pagamento" só atualizam o status no banco (emitida/paga) — **não há chamada ao serviço oficial de GNRE**. O status da tela não comprova guia emitida nem recolhida.
+- **MDF-e dentro da tela de Expedição** (Comercial & Logística → Expedição de Grãos, botão "Emitir MDF-e"): gera uma chave/número **local e aleatório** e marca a carga como autorizada/em trânsito, **sem transmitir à SEFAZ**. É diferente do MDF-e de verdade, que fica em Comercial & Logística / Documentos Fiscais → CT-e e MDF-e (/transporte/mdfe) — esse sim transmite de verdade. Nunca trate a mensagem de sucesso da Expedição como comprovante fiscal.
+- **Backup & Restauração** (Configurações → Backup & Restauração): existe tela e rotina declarada de backup diário agendado, mas o endpoint do cron correspondente não foi localizado no levantamento — não dê isso como garantido sem o dono confirmar que está funcionando de fato.
+- **Cartões de funcionalidade em telas "em construção"**: alguns módulos ainda exibem textos descritivos de automações que não necessariamente já estão ligadas a uma rotina real. Quando não tiver certeza de que uma automação descrita numa tela realmente dispara, não garanta que sim.
+- **Confirmar um Contrato de Grãos não emite NF-e automaticamente.** A confirmação atribui número ao contrato e cria o CR (se houver valor), só isso. A emissão de NF-e é uma ação separada, em Faturamento/NF-e de Saída (Comercial & Logística) ou Documentos Fiscais → Notas de Venda.
+- **Plantio e Pulverização Terrestre não lançam Conta a Pagar.** Os dois dão baixa no estoque do insumo usado e registram o custo correspondente (no Kardex e no custo da própria operação), mas não criam um CP novo — isso é proposital: o insumo já foi pago (ou já virou CP) na nota de compra; criar outro CP aqui duplicaria a dívida. Se o usuário perguntar "por que meu plantio não gerou conta a pagar", essa é a resposta correta — não é falha.
+- **Aplicação Aérea**: a tela de salvamento encontrada não chama necessariamente a mesma rotina automática de baixa de estoque das operações diretas (Plantio/Pulverização/Adubação/Correção). Não garanta baixa idêntica sem o usuário confirmar no Kardex.
+
+---
+
+## MÓDULOS — O QUE CADA UM FAZ
+
+### Produção → Planejamento
+Orçamento por ciclo (itens por categoria: sementes, fertilizantes, defensivos, correção de solo, operações, arrendamento, outros), comparativo planejado × realizado com desvio por categoria, e agenda de operações do ciclo. Ano-safra é da conta inteira — um "2025/2026" vale para todas as fazendas do cliente, não precisa recriar por propriedade.
+
+### Produção → Plantio
+Seletor em cascata obrigatório: Produtor → Fazenda → Ano-safra → Ciclo → Talhão. Informe área, data, semente/dose, produtividade e preço esperados. Ao salvar, dá baixa no estoque de sementes (dose × área) e registra o custo no Kardex e no próprio registro do plantio — **sem criar CP** (ver seção acima).
+
+### Produção → Pulverização Terrestre / Aplicação Aérea
+Tipos: herbicida, fungicida, inseticida, nematicida, acaricida, fertilizante foliar, regulador, dessecação, outros. Dá baixa de cada produto no estoque (dose × área) e calcula o custo total da aplicação — **sem criar CP** na Pulverização Terrestre. Aplicação Aérea: confira sempre no Kardex se a baixa ocorreu, não garanta que é automática.
+
+### Produção → Adubação de Base / Correção de Solo
+Registram consumo de fertilizante/corretivo e dão baixa de estoque, sem CP nova (mesmo motivo do Plantio). Correção de Solo trabalha normalmente em toneladas e converte para a unidade do cadastro do insumo (referência 60 kg = 1 saca quando a conversão usa sc).
+
+### Produção → Tratamento de Sementes
+Estados: planejada → em tratamento → concluída / cancelada. A baixa de estoque só acontece se a opção "baixar estoque" for marcada ao concluir — não é automática por padrão.
+
+### Produção → Monitoramento (Mapa, Recomendações, Pragas, Pluviometria)
+Registros de campo por talhão/data. Um registro de monitoramento (praga, chuva) não cria sozinho uma aplicação — são rotinas independentes.
+
+### Produção → Colheita
+Fluxo em 2 etapas: (1) crie o registro de colheita com fazenda/ciclo/talhão/área/data; (2) adicione romaneios por caminhão (placa, peso bruto, tara) com classificação por commodity — Soja segue parâmetros ABIOVE (umidade padrão 14%, impureza padrão 1%, avariados agregando ardidos/mofados/fermentados/germinados/esverdeados/quebrados/carunchados); Milho segue IN MAPA 60/2011 (umidade padrão 14,5%, impureza, avariados, chochos, ardidos, fermentados). Confirmar a entrada dá baixa bruto-menos-tara no estoque e atualiza a produtividade do ciclo — salvar como rascunho não é o mesmo que confirmar.
+
+### Produção → Máquinas
+Cadastro de máquinas/veículos é por fazenda, mas o seletor em outras telas (NF, Seguros, Contratos Financeiros) busca em todas as fazendas da conta. Abastecimento de combustível dá baixa automática no estoque da bomba/insumo e pode vincular a um Ano-safra/Ciclo (opcional). Manutenções e Custos por Máquina são relatórios de histórico.
+
+### Produção → Algodão (add-on opcional)
+Só aparece para contas com o módulo habilitado. Safra & Operações (defolhação, regulador de crescimento), Monitoramento de Bicudo (armadilhas por talhão, alerta automático a partir de 8 capturas/armadilha/semana), Colheita & Módulos (campo → transporte → algodoeira), Algodoeira/Beneficiamento (rendimento de pluma), HVI & Qualidade (laudo por lote, 11 parâmetros USDA/HVI) e Posição de Algodão (preço ICE/CBOT, valor do estoque de pluma).
+
+### Comercial & Logística → Pedido de Compras
+Status: rascunho → aprovado → parcialmente entregue → entregue / cancelado. Pedido aprovado com valor e sem CP vinculado pode gerar o CP automaticamente ao processar a NF de entrada relacionada — confira o campo "lancamento_id" antes de lançar manualmente, para não duplicar. Pedido com NF de entrada vinculada não pode ser excluído — use status Cancelado. Pagamento em barter gera um título em moeda "barter" e, se houver volume comprometido, um contrato de entrega de grãos vinculado ao próprio pedido.
+
+### Documentos Fiscais → Notas de Terceiro (NF de Produtos)
+Captura (XML, SIEG ou digitação manual) e processamento são fases distintas — uma nota "capturada" ou "classificada" pelo SIEG ainda não gerou estoque nem CP até ser processada de fato. No processamento, cada item pode ir para estoque, direto para uma máquina ou direto para um centro de custo (Apropriação Direta), conforme a Operação Gerencial escolhida no cabeçalho. Produto sem unidade compatível com o cadastro pode usar "Conversão manual (livre)" — você digita o total já na unidade do insumo. Para desfazer uma nota processada, use Estornar antes de reprocessar (reverte estoque, CP e pendências fiscais) — nunca edite o cabeçalho de uma nota já processada direto.
+
+### Documentos Fiscais → Notas de Serviço (NFS-e)
+Separada da nota de produtos — wizard Prestador → Serviço (código LC 116/2003) → Tributação (ISS e retenções federais: PIS, COFINS, CSLL, IRRF, INSS). O tomador normalmente é a própria fazenda/produtor contratante.
+
+### Comercial & Logística → Transferência entre Fazendas
+Fluxo: Rascunho → Emitir NF → (Confirmar Entrada, se não automática). CFOP correto: 5.151/6.151 para mercadoria de **produção própria**; 5.152/6.152 para mercadoria **adquirida de terceiros**. O catálogo do insumo (nome, categoria, unidade) é compartilhado por toda a conta; o saldo/estoque é sempre calculado por fazenda. Cancelamento de NF já autorizada só é possível dentro de 24h (regra da SEFAZ) e exige justificativa.
+
+### Comercial & Logística → Contratos de Grãos
+Status: aberto → parcial → encerrado / cancelado. Confirmar o contrato atribui número e cria o CR quando há valor — **não emite NF-e** (isso é uma ação separada). Romaneio de entrega atualiza o saldo do contrato e o status automaticamente. Adiantamento de cliente gera CR já baixado, que abate contra o CR de cada entrega futura (FIFO, do mais antigo primeiro).
+
+### Comercial & Logística → Compromissos em Grãos
+Relatório somente leitura: reúne contratos de grãos originados de arrendamento, compra de terra e barter, com progresso de entrega por commodity.
+
+### Comercial & Logística → Expedição de Grãos
+Rotas mutuamente exclusivas por carga: Transbordo sem NF · Transbordo com Remessa (CFOP 5905) · Direto ao Comprador (CFOP 6101). Pipeline: rascunho → em_trânsito → entregue → corrigindo_peso → encerrada. **O "Emitir MDF-e" desta tela é simulado** (ver seção acima) — para MDF-e real, use o módulo de Transporte. Divergência de peso acima de 1% no destino sinaliza necessidade de NF complementar.
+
+### Comercial & Logística → CT-e / MDF-e (Transporte)
+Este é o MDF-e e CT-e reais, que transmitem à SEFAZ (diferente do atalho simulado da Expedição). Exigem emitente com certificado A1 configurado. Situação tributária do CT-e segue regra por UF (intraestadual → CST 51 diferido; interestadual → CST 00 ou 20). Transferência entre estabelecimentos do mesmo titular usa CST 41 (não tributado); venda usa CST 51 (diferido) — nunca o mesmo CST para as duas operações. Desde 05/01/2026, emitentes Lucro Presumido/Real são obrigados a destacar IBS/CBS no CT-e (Simples Nacional e MEI são dispensados) — configurável em Parâmetros → CT-e.
+
+### Financeiro → Contas a Pagar / Contas a Receber
+Lançamento pode vir de pedido, nota, contrato, folha ou ser manual. Baixa compara valor pago + ajustes (desconto/juros) contra o saldo do título para decidir se fica total ou parcial. Reabrir desfaz os dados da baixa e volta para aberto/vencido. Conciliação bancária classifica cada linha do OFX como alta/média/bloqueado/nenhum (tolerância de valor 0,02; janela de 7 dias, alta considera até 2 dias de diferença) — alta pode aplicar automaticamente; média é só sugestão para revisão manual.
+
+### Financeiro → Folha de Pagamento
+Por competência (mês/ano), pode ser retroativa. A rotina de fechamento verifica duplicidade por competência/funcionário antes de gerar os CPs (salário líquido, FGTS e, se o empregador for Empresa/PJ, também INSS Patronal — produtor rural PF não gera INSS Patronal, usa Funrural à parte). Férias, rescisão e premiação têm fluxos próprios com cálculo específico — sempre proponha conferência do responsável trabalhista/contábil antes de considerar o valor definitivo.
+
+### Fiscal → GNRE e eSocial Rural
+Ver seção "O que é simulado" acima — hoje são controle de status local, sem transmissão oficial comprovada.
+
+### Fiscal → LCDPR / SPED ECD
+Geram o arquivo a partir dos lançamentos classificados (vínculo de atividade, entidade contábil PF/PJ) — gerar o arquivo aqui **não é o mesmo que transmitir** à Receita Federal. O SPED pode pular lançamentos sem Operação Gerencial com conta de débito/crédito configurada — revise a prévia antes de considerar completo.
+
+### Fiscal → IBS/CBS — 2027
+Telas de simulação e parametrização da Reforma Tributária — são ferramentas de cálculo/configuração, não prova de obrigação legal cumprida. Sempre recomende confirmar com o contador antes de uma decisão real baseada nessas simulações.
+
+### Resultados → DRE Agrícola / Custos / Produtividade
+DRE separa receita bruta, deduções (Funrural, SENAR), CPV (sementes/fertilizantes/defensivos/correção — vindos do custo de baixa de estoque das operações, não de CP novo), despesas gerais/administrativas e financeiras. Ponto de equilíbrio = custo total ÷ preço médio por saca. Um total de relatório pode excluir registros fora do filtro ou sem classificação — confira origem e período antes de comparar números entre relatórios diferentes (saldo financeiro, custo de consumo e valor de estoque não são a mesma grandeza).
+
+### Configurações → Automações
+Horários declarados em vercel.json (convertidos para horário de Cuiabá): marcar vencidos 05h, alertas de vencimento 06h, relatório semanal segunda 06h, SIEG 07h, cobrança 07h, backup 02h, curva de mercado dias úteis 18h, atualizar taxas todo dia 1 às 06h. Um horário declarado não garante envio de e-mail/WhatsApp de fato — isso depende de credenciais e serviço externo configurados; se o usuário disser que não recebeu um alerta, oriente a conferir a configuração de e-mail/integrações antes de assumir que é bug.
+
+---
+
+## PERGUNTAS FREQUENTES
+
+**"Confirmar um contrato de grãos emite a NF-e sozinho?"**
+Não. Confirmar só atribui o número do contrato e cria o CR (se houver valor). A NF-e é emitida à parte, em Faturamento/NF-e de Saída ou Documentos Fiscais → Notas de Venda.
+
+**"Por que meu plantio (ou pulverização) não gerou conta a pagar?"**
+É assim de propósito. O insumo já foi pago (ou virou CP) quando entrou pela nota de compra. Plantar/pulverizar só consome o que já é do produtor — criar um CP novo aqui duplicaria a dívida. O custo entra no DRE pelo valor da baixa de estoque, não por um CP novo.
+
+**"Emiti um MDF-e pela Expedição, isso é oficial?"**
+Não necessariamente. O "Emitir MDF-e" dentro da tela de Expedição de Grãos gera uma chave local e não transmite à SEFAZ. Para MDF-e de verdade, use o módulo CT-e/MDF-e em Comercial & Logística → Fretes e Transporte (ou Documentos Fiscais → Transporte).
+
+**"Transmiti um evento de eSocial / emiti uma GNRE, está valendo?"**
+Hoje, não com confiança — as duas ações disponíveis só atualizam o status no banco do Arato; não foi confirmada chamada ao serviço oficial correspondente. Trate como controle interno, não como comprovante legal, e avise o usuário disso.
+
+**"Como registro a colheita?"**
+Produção → Colheita → crie o registro (fazenda/ciclo/talhão/área/data), depois adicione um romaneio por caminhão com peso bruto, tara e classificação ABIOVE (soja) ou IN MAPA 60/2011 (milho). Confirmar a colheita dá entrada no estoque e atualiza a produtividade real do ciclo.
+
+**"Como lanço uma NF de compra de insumos?"**
+Documentos Fiscais → Notas de Terceiro → carregue o XML (recomendado) ou digite manualmente, associe cada item a um insumo do catálogo e processe. Processar é o que efetivamente dá entrada no estoque e gera o CP — capturar ou classificar sozinho não basta.
+
+**"Como configuro a emissão de NF-e?"**
+Configurações → Parâmetros Fiscais (NF-e): preencha CNPJ/IE do emitente, série e ambiente (homologação ou produção), e configure o Certificado Digital A1. Sem isso a emissão não funciona.
+
+**"Como importo o extrato bancário (OFX)?"**
+Financeiro → Conciliação Bancária → escolha a conta certa e importe o arquivo. O sistema classifica cada linha como alta/média/bloqueado/nenhum confiança de vínculo — revise as de confiança média antes de confirmar, e trate separadamente as sem candidato.
+
+**"O que é o SIEG?"**
+Integração que captura automaticamente, direto da SEFAZ, os documentos fiscais emitidos contra o CNPJ/CPF cadastrado da fazenda, e tenta classificar sozinho usando regras já cadastradas. Documento "capturado" ou "classificado" ainda não é a mesma coisa que processado — confirme sempre se já virou estoque/CP de fato.
+
+**"Por que um lançamento do LCDPR aparece com conta '999'?"**
+Contas do tipo caixa/trânsito usam os códigos especiais 000/999 no registro do LCDPR, por determinação do próprio manual oficial da Receita Federal — não é erro.
+
+**"O que é 'vínculo de atividade' num lançamento?"**
+Classifica o lançamento como rural, pessoa física, investimento ou não tributável — define se ele entra no LCDPR (que filtra só "rural") e em qual livro contábil (PF ou PJ, conforme a entidade contábil da fazenda).
+
+---
+
+## DIAGNÓSTICO RÁPIDO DE PROBLEMAS
+
+| Sintoma | Primeira verificação |
+|---|---|
+| Menu ou módulo sumiu | Papel do usuário, plano/add-on da conta, estágio do cadastro inicial — não assuma que foi excluído |
+| Cadastro não aparece numa lista | Conta/fazenda/vínculo certo e filtros aplicados na tela |
+| Ciclo não aparece no seletor | Confira se o Ano-safra certo está vinculado ao Ciclo |
+| Estoque não mudou após uma operação | Confira se a operação foi processada/confirmada (rascunho não baixa estoque) e olhe o Kardex |
+| CP duplicada | Confira se já existe o campo "lancamento_id" vindo do pedido/nota antes de lançar manualmente |
+| CR de contrato não apareceu | Confira se o contrato foi de fato confirmado e se tinha valor |
+| Nota capturada (SIEG) parada como pendente | Falta classificar e processar — captura e classificação não processam sozinhas |
+| Documento fiscal rejeitado pela SEFAZ | Leia a mensagem de retorno e corrija o cadastro apontado — não troque só o status no banco |
+| Conciliação bancária bloqueada | Confira conta/titular, natureza (crédito/débito) e se já havia vínculo anterior |
+| Relatório com números diferentes de outro | Confira se período, filtro, classificação e status são exatamente os mesmos nos dois |
+| Alerta ou e-mail automático não chegou | Confira a configuração de e-mail/integrações antes de considerar bug |
+| "Emiti" GNRE/eSocial e quer confirmar oficialmente | Hoje é só status local — não há confirmação oficial para checar dentro do Arato |
+
+---
+
+## LIMITAÇÕES DESTE DOCUMENTO
+
+Baseado em leitura de código e configuração até 06-07/10/2026, sem execução de operação real para validar cada automação em produção. Comportamento pode ter mudado depois dessa data. Se uma resposta sua aqui parecer contradizer o que o usuário está vendo na tela, confie no que a tela mostra, avise que pode ter mudado, e sugira que o dono do sistema atualize este documento.
+`;

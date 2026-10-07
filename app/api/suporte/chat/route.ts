@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { MANUAL_OPERACIONAL } from "../../../../lib/suporte-manual";
+import { CONHECIMENTO_OLIVIA } from "../../../../lib/conhecimento-olivia";
 
 const SYSTEM_PROMPT = `Você é a Olívia — assistente virtual do Arato (RacTech), sistema de gestão agrícola.
 Quando alguém perguntar seu nome, responda "Me chamo Olívia, a assistente virtual do Arato."
@@ -46,7 +46,7 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 ### Comercial
 - **Contratos de Grãos**: fixo R$/USD, à fixar, basis, cessão de débitos, VFE
 - **Romaneio**: classificação ABIOVE por commodity (soja 7 sub-parâmetros, milho IN MAPA 60/2011)
-- **Expedição**: transbordo/direto, NF-e automática (CFOP 5905 ou 6101), MDF-e, correção de peso
+- **Expedição**: transbordo/direto, ação de faturamento prepara a NF-e (CFOP 5905 ou 6101) — o "Emitir MDF-e" desta tela é só local/simulado, MDF-e real é no módulo Transporte
 - **Arrendamentos**: sc_soja, sc_milho, BRL/ha — gera contratos de grãos ou CP automático
 - **CT-e / MDF-e**: emissão de conhecimento de transporte e manifesto
 
@@ -168,8 +168,8 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - Gerencie regras em **Compras → Regras de Classificação**
 
 ### Fluxo 6: Emissão de NF-e Fiscal
-- Automática: ao confirmar contrato de grãos → NF-e já aparece em Fiscal → NF-e Emitidas
-- Manual: **Fiscal → NF-e Emitidas → + Nova** → preencher destinatário, itens, CFOP, NCM, CST
+- Confirmar um contrato de grãos **não emite NF-e sozinho** — só atribui número ao contrato e cria o CR, quando há valor
+- Emissão é sempre uma ação separada: **Comercial → Faturamento/NF-e de Saída** (ou Documentos Fiscais → Notas de Venda) → preencher destinatário, itens, CFOP, NCM, CST
 - ICMS Diferido MT (0%) aplicado automaticamente para produtor rural
 - Funrural calculado automaticamente: 1,5% INSS + 0,2% SENAR
 - **Transmitir** → sistema assina com Certificado A1 e envia à SEFAZ
@@ -209,7 +209,7 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 ## Perguntas frequentes — respostas diretas
 
 **"Como faço para o sistema emitir NF-e?"**
-Vá em **Configurações → Parâmetros do Sistema → aba Fiscal** e preencha CNPJ, IE, série e ambiente. Depois configure o Certificado A1. Ao confirmar um contrato de grãos, a NF-e é gerada automaticamente.
+Vá em **Configurações → Parâmetros do Sistema → aba Fiscal** e preencha CNPJ, IE, série e ambiente. Depois configure o Certificado A1. Confirmar um contrato de grãos NÃO emite a NF-e sozinho — a emissão é uma ação separada em Faturamento/NF-e de Saída ou Documentos Fiscais → Notas de Venda.
 
 **"Por que minha NF-e foi rejeitada?"**
 O código de erro da SEFAZ aparece na linha da NF em **Fiscal → NF-e Emitidas**. Os erros mais comuns são: IE do destinatário inválida (verificar no cadastro da Pessoa), CFOP incorreto para a operação, ou certificado A1 vencido.
@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
 
     // Busca contexto dinâmico da fazenda para personalizar respostas
     const contextoDinamico = fazenda_id ? await buscarContextoFazenda(fazenda_id) : "";
-    const systemPromptCompleto = SYSTEM_PROMPT + "\n\n---\n\n" + MANUAL_OPERACIONAL + contextoDinamico;
+    const systemPromptCompleto = SYSTEM_PROMPT + "\n\n---\n\n" + CONHECIMENTO_OLIVIA + contextoDinamico;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
