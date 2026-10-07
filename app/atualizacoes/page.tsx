@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-b",
+    data: "07/10/2026",
+    titulo: "SIEG: resync comum volta a corrigir o cabeçalho da NF",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Uma resincronização comum (sem \"Forçar re-importação\") já regravava o XML certo no Storage, mas deixava o cabeçalho da NF no banco (emitente, valor, etc.) com os dados antigos quando a nota já existia. Agora, enquanto a NF ainda está pendente, o cabeçalho é sempre atualizado com os dados reais do XML." },
+    ],
+    onde: "Documentos Fiscais (sincronização SIEG)",
+  },
+  {
     versao: "2026.10.07-a",
     data: "07/10/2026",
     titulo: "NF de entrada: conversão manual (livre) de unidade",

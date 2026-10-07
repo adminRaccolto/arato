@@ -225,8 +225,15 @@ export async function POST(req: NextRequest) {
       const xmlStorageOk = !uploadErr;
 
       if (dup) {
-        if (!forceReimport) { duplicados_nfe++; continue; }
-        // Re-importação forçada: atualiza cabeçalho e, se ainda pendente, recria itens
+        // Achado real 07/10/2026: um resync comum (sem "Forçar re-importação") já regravava o
+        // XML certo no Storage, mas pulava a atualização do cabeçalho no banco se a NF já
+        // existisse — uma NF cujo cabeçalho tinha sido gravado errado numa importação anterior
+        // (ex.: emitente de uma nota diferente) continuava errada no banco mesmo depois do XML
+        // correto já estar salvo. Agora, se a NF ainda está pendente (não afetou nenhum CP/
+        // estoque), o cabeçalho é sempre atualizado com os dados reais do XML; só quando já foi
+        // processada/cancelada é que exige "forçar", porque aí já existe efeito financeiro.
+        if (dup.status !== "pendente" && !forceReimport) { duplicados_nfe++; continue; }
+        // Atualiza cabeçalho e, se ainda pendente, recria itens
         await db.from("nf_entradas").update({
           numero:            nfe.numero,
           serie:             nfe.serie,
