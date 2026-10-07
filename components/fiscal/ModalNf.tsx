@@ -14,6 +14,8 @@
 // lógica foi preservada EXATAMENTE como estava — só a casca mudou (recebe
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../components/InputData";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -235,7 +237,13 @@ function canonUnidade(u: string) {
   return UNIDADE_ALIASES[n] ?? n;
 }
 
+// "livre" — conversão manual sem par de unidades fixo: cobre qualquer unidade que chegue na NF
+// (romaneio, fardo, galão de marca própria, etc.) convertendo direto pra unidade do insumo do
+// catálogo. O destino (labelPara) é resolvido no local de uso, a partir do insumo escolhido.
+const CONVERSAO_LIVRE: ConversaoConfig = { key: "livre", de: "", para: "", fator: null, tipo: "manual", labelSelect: "Conversão manual (livre)", labelPara: "" };
+
 function getConversao(key: string): ConversaoConfig | undefined {
+  if (key === "livre") return CONVERSAO_LIVRE;
   return TABELA_CONVERSAO.find(c => c.key === key);
 }
 
@@ -1070,6 +1078,7 @@ export default function ModalNf({
 
   // ── Salvar rascunho (etapa cabeçalho → itens) ────────────
   async function salvarRascunho(): Promise<NfEntrada | null> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar rascunho)", perigo: false }))) return null;
     if (!fazendaId) return null;
     setErr("");
     if (!cab.numero || !cab.emitente_nome || !cab.data_emissao) {
@@ -1332,7 +1341,7 @@ export default function ModalNf({
         const insumo = insumos.find(i => i.id === it.insumo_id);
         if (!insumo) continue;
         const conv = getConversao(it.conversao_key);
-        const unidadeEfetiva = conv ? conv.para : it.unidade_nf;
+        const unidadeEfetiva = it.conversao_key === "livre" ? insumo.unidade : (conv ? conv.para : it.unidade_nf);
         if (canonUnidade(unidadeEfetiva) !== canonUnidade(insumo.unidade)) {
           setErr(`Item "${it.descricao_nf || insumo.nome}": a unidade que vai para o estoque (${unidadeEfetiva || "—"}) não bate com a unidade cadastrada do insumo (${insumo.unidade}). Selecione uma conversão compatível em "Conversão de Unidade", ou corrija a unidade na NF. Se a conversão depender da densidade do produto (ex: L ↔ kg), calcule o fator manualmente fora do sistema e ajuste a quantidade antes de processar.`);
           return;
@@ -1576,6 +1585,7 @@ export default function ModalNf({
 
   // ── Excluir NF — API route com service_role_key ──────────
   async function chamarApiExcluir(nfId: string): Promise<void> {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Chamar api excluir)", perigo: false }))) return;
     const res = await fetch("/api/compras/excluir-nf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1801,6 +1811,7 @@ export default function ModalNf({
   }
 
   async function salvarReclassificacao() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar reclassificacao)", perigo: false }))) return;
     if (!modalReclass) return;
     setReclassSaving(true);
     setReclassErr("");
@@ -1826,6 +1837,7 @@ export default function ModalNf({
   }
 
   async function salvarNovoInsumo() {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar novo insumo)", perigo: false }))) return;
     if (!fazendaId || !formNovoInsumo.nome.trim()) return;
     setNovoInsumoSaving(true);
     setNovoInsumoErr("");
@@ -2573,11 +2585,11 @@ export default function ModalNf({
                     </div>
                     <div>
                       <label style={lbl}>Data de Emissão *</label>
-                      <input type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
+                      <InputData type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Data de Entrada</label>
-                      <input type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
+                      <InputData type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
                     </div>
                   </div>
 
@@ -2662,7 +2674,7 @@ export default function ModalNf({
                       </div>
                       <div>
                         <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º vencimento)</span>}</label>
-                        <input type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
+                        <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                       </div>
                       {/* ── Parcelamento ── */}
                       <div style={{ gridColumn: "1 / -1" }}>
@@ -2708,7 +2720,7 @@ export default function ModalNf({
                                 </div>
                                 {nfParcelas.map((p, i) => (
                                   <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
-                                    <input type="date" value={p.data}
+                                    <InputData type="date" value={p.data}
                                       onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                       style={{ ...inp, fontSize: 12 }} />
                                     <input type="text" value={p.valorMask}
@@ -3065,6 +3077,8 @@ export default function ModalNf({
                       const temConv   = !!conv;
                       const autoConv  = conv?.tipo === "auto";
                       const manualConv = conv?.tipo === "manual";
+                      const insumoDoItem = insumos.find(i => i.id === it.insumo_id);
+                      const labelParaEfetivo = it.conversao_key === "livre" ? (insumoDoItem?.unidade ?? "destino") : (conv?.labelPara ?? "");
                       // Conversões disponíveis para a unidade NF deste item
                       const convOptions = TABELA_CONVERSAO.filter(
                         c => canonUnidade(it.unidade_nf) === c.de
@@ -3218,6 +3232,7 @@ export default function ModalNf({
                                       ? convOptions.map(c => <option key={c.key} value={c.key}>{c.labelSelect}</option>)
                                       : TABELA_CONVERSAO.map(c => <option key={c.key} value={c.key}>{c.labelSelect}</option>)
                                     }
+                                    <option value="livre">Conversão manual (livre)</option>
                                   </select>
 
                                   {/* AUTO: mostra resultado calculado */}
@@ -3234,17 +3249,16 @@ export default function ModalNf({
                                         decimais={3}
                                         value={it.quantidade || ""}
                                         onChange={v => setItem(it.key, { quantidade: parseFloat(v)||0 })}
-                                        placeholder={`Total em ${conv.labelPara}`}
+                                        placeholder={`Total em ${labelParaEfetivo}`}
                                         style={{ ...inp, fontSize: 11, padding: "4px 7px", flex: 1 }}
                                       />
-                                      <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{conv.labelPara}</span>
+                                      <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{labelParaEfetivo}</span>
                                     </div>
                                   )}
 
                                   {/* Alerta: unidade que vai pro estoque não bate com a do cadastro */}
                                   {(() => {
-                                    const insumoDoItem = insumos.find(i => i.id === it.insumo_id);
-                                    if (!insumoDoItem) return null;
+                                    if (!insumoDoItem || it.conversao_key === "livre") return null;
                                     const unidadeEfetiva = conv ? conv.para : it.unidade_nf;
                                     if (canonUnidade(unidadeEfetiva) === canonUnidade(insumoDoItem.unidade)) return null;
                                     return (
@@ -3918,11 +3932,11 @@ export default function ModalNf({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
                 <div>
                   <label style={lbl}>Data de Emissão</label>
-                  <input type="date" value={devData} onChange={e => setDevData(e.target.value)} style={inp} />
+                  <InputData type="date" value={devData} onChange={e => setDevData(e.target.value)} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Vencimento da CR</label>
-                  <input type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
+                  <InputData type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>CFOP</label>

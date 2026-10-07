@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-a",
+    data: "07/10/2026",
+    titulo: "NF de entrada: conversão manual (livre) de unidade",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "No processamento da NF, a conversão de unidade agora tem a opção \"Conversão manual (livre)\": converte qualquer unidade que vier na nota (romaneio, fardo, caixa, etc.) direto para a unidade do insumo do catálogo, com o total digitado à mão. Antes, só existiam pares fixos (ex.: bag → kg)." },
+    ],
+    onde: "Documentos Fiscais → processar NF de Produtos",
+  },
+  {
     versao: "2026.10.06-t",
     data: "06/10/2026",
     titulo: "Olívia: abastecimento em posto como Apropriação Direta",
