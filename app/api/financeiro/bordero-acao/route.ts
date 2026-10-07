@@ -53,8 +53,9 @@ export async function POST(req: NextRequest) {
       lote_id: string;
       data_pagamento?: string;
       conta_bancaria?: string;
-      // Juros, multa e desconto informados na confirmação, por título do borderô
-      ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number }[];
+      // Juros, multa, desconto e (opcional) valor principal ajustado na
+      // confirmação, por título do borderô
+      ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number; valor_pago?: number }[];
     };
     const { acao, lote_id } = body;
     if (!lote_id) return NextResponse.json({ ok: false, error: "lote_id obrigatório" }, { status: 400 });
@@ -98,13 +99,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Data de pagamento e conta bancária são obrigatórios" }, { status: 400 });
       }
 
-      // Ajustes de juros/multa/desconto da tela de confirmação: gravados no item antes de baixar
+      // Ajustes de juros/multa/desconto — e, agora, do próprio valor principal
+      // (valor_pago) — da tela de confirmação: gravados no item antes de
+      // baixar. valor_pago opcional porque o item já tem um valor definido
+      // desde a criação do borderô (que também pode já ter sido parcial) —
+      // só sobrescreve quando a tela manda um valor explícito.
       for (const aj of body.ajustes ?? []) {
-        const { error: ae } = await sb.from("pagamento_lote_itens").update({
+        const patch: Record<string, number> = {
           valor_juros: Math.max(0, Number(aj.valor_juros) || 0),
           valor_multa: Math.max(0, Number(aj.valor_multa) || 0),
           valor_desconto: Math.max(0, Number(aj.valor_desconto) || 0),
-        }).eq("lote_id", lote_id).eq("lancamento_id", aj.lancamento_id);
+        };
+        if (aj.valor_pago !== undefined && aj.valor_pago !== null) {
+          patch.valor_pago = Math.max(0, Number(aj.valor_pago) || 0);
+        }
+        const { error: ae } = await sb.from("pagamento_lote_itens").update(patch)
+          .eq("lote_id", lote_id).eq("lancamento_id", aj.lancamento_id);
         if (ae) return NextResponse.json({ ok: false, error: ae.message }, { status: 500 });
       }
 

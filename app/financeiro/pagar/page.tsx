@@ -1029,12 +1029,18 @@ export default function ContasAPagarPage() {
   // Juros, multa e desconto por título, informados na confirmação (mesma regra da baixa em lote)
   const [confirmItens, setConfirmItens] = useState<RelLancamento[]>([]);
   const [confirmEnc, setConfirmEnc] = useState<Record<string, { multa: string; juros: string; desconto: string }>>({});
+  // Valor principal a pagar por título — pré-preenchido com o que já estava
+  // gravado no item do lote (pode já ter vindo parcial da criação do
+  // borderô), mas editável aqui também: dá pra decidir o valor só na hora de
+  // confirmar o pagamento de verdade, não só na criação do borderô.
+  const [confirmValorPago, setConfirmValorPago] = useState<Record<string, number>>({});
   const confirmEncDe = (id: string) => confirmEnc[id] ?? { multa: "0,00", juros: "0,00", desconto: "0,00" };
   const setConfirmEncCampo = (id: string, campo: "multa" | "juros" | "desconto", v: string) =>
     setConfirmEnc(prev => ({ ...prev, [id]: { ...confirmEncDe(id), [campo]: v } }));
+  const confirmValorPagoDe = (l: RelLancamento) => confirmValorPago[l.id] ?? saldoLote(l);
   const valorFinalConfirm = (l: RelLancamento) => {
     const e = confirmEncDe(l.id);
-    return Math.max(0, saldoLote(l) + numBR(e.multa) + numBR(e.juros) - numBR(e.desconto));
+    return Math.max(0, confirmValorPagoDe(l) + numBR(e.multa) + numBR(e.juros) - numBR(e.desconto));
   };
   const totalConfirm = confirmItens.reduce((s, l) => s + valorFinalConfirm(l), 0);
 
@@ -1044,10 +1050,18 @@ export default function ContasAPagarPage() {
     setConfirmData(hojeISO());
     setConfirmConta("");
     setConfirmEnc({});
+    setConfirmValorPago({});
     setConfirmItens([]);
     try {
-      const itens = await carregarItensBordero(b.id);
+      const [itens, { data: loteItens }] = await Promise.all([
+        carregarItensBordero(b.id),
+        supabase.from("pagamento_lote_itens").select("lancamento_id, valor_pago").eq("lote_id", b.id),
+      ]);
       setConfirmItens(itens);
+      // Valor que já estava earmarcado neste item do lote (pode ser parcial,
+      // se foi editado na criação do borderô) — default pro saldo do título
+      // se por algum motivo não achar (lote antigo, etc.).
+      setConfirmValorPago(Object.fromEntries((loteItens ?? []).map(li => [li.lancamento_id as string, (li.valor_pago as number) ?? 0])));
       const empresaIds = Array.from(new Set(itens.filter(i => i.origem_tabela === "empresa_lancamentos" && i.empresa_id).map(i => i.empresa_id as string)));
       const [contasProd, ...contasEmp] = await Promise.all([
         fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[]),
@@ -1063,7 +1077,7 @@ export default function ContasAPagarPage() {
     try {
       const ajustes = confirmItens.map(l => {
         const e = confirmEncDe(l.id);
-        return { lancamento_id: l.id, valor_juros: numBR(e.juros), valor_multa: numBR(e.multa), valor_desconto: numBR(e.desconto) };
+        return { lancamento_id: l.id, valor_juros: numBR(e.juros), valor_multa: numBR(e.multa), valor_desconto: numBR(e.desconto), valor_pago: confirmValorPagoDe(l) };
       });
       await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, ajustes);
       setModalConfirmarBordero(null);
@@ -1691,9 +1705,10 @@ export default function ContasAPagarPage() {
             </div>
             {confirmItens.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>Títulos do borderô — juros, multa e desconto</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 92px 92px 92px 110px", gap: 6, alignItems: "center", fontSize: 11 }}>
+                <div style={{ fontSize: 11, color: "#555", fontWeight: 600, marginBottom: 6 }}>Títulos do borderô — valor, juros, multa e desconto</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 92px 92px 92px 110px", gap: 6, alignItems: "center", fontSize: 11 }}>
                   <span style={{ color: "#888" }}>Título</span>
+                  <span style={{ textAlign: "center", color: "#888" }}>Valor a pagar</span>
                   <span style={{ textAlign: "center", color: "#888" }}>Multa</span>
                   <span style={{ textAlign: "center", color: "#888" }}>Juros</span>
                   <span style={{ textAlign: "center", color: "#888" }}>Desconto</span>
@@ -1701,9 +1716,15 @@ export default function ContasAPagarPage() {
                   {confirmItens.map(l => {
                     const e = confirmEncDe(l.id);
                     const inpMiniC: React.CSSProperties = { width: "100%", padding: "4px 6px", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, textAlign: "right", background: "#fff", boxSizing: "border-box", outline: "none" };
+                    const valorPago = confirmValorPagoDe(l);
                     return (
                       <div key={l.id} style={{ display: "contents" }}>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? undefined}>{l.descricao}</span>
+                        <InputMonetario
+                          value={valorPago}
+                          onChange={v => setConfirmValorPago(prev => ({ ...prev, [l.id]: Math.max(0, Math.min(v, saldoLote(l))) }))}
+                          style={{ ...inpMiniC, fontWeight: 700, color: valorPago < saldoLote(l) ? "#C9921B" : "#1a1a1a" }}
+                        />
                         <input value={e.multa} onChange={ev => setConfirmEncCampo(l.id, "multa", ev.target.value)} style={inpMiniC} />
                         <input value={e.juros} onChange={ev => setConfirmEncCampo(l.id, "juros", ev.target.value)} style={inpMiniC} />
                         <input value={e.desconto} onChange={ev => setConfirmEncCampo(l.id, "desconto", ev.target.value)} style={inpMiniC} />
@@ -1713,7 +1734,7 @@ export default function ContasAPagarPage() {
                   })}
                 </div>
                 <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>
-                  Desconto abate do principal. Juros e multa somam ao pagamento. O DRE mostra cada um em linha própria.
+                  Valor a pagar menor que o saldo do título = baixa parcial (o restante continua em aberto). Desconto abate do principal. Juros e multa somam ao pagamento. O DRE mostra cada um em linha própria.
                 </div>
               </div>
             )}

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-o",
+    data: "07/10/2026",
+    titulo: "Pagamento parcial no borderô, também ao confirmar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A tela de \"Confirmar Pagamento\"/\"Confirmar Recebimento\" do borderô ganhou uma coluna de valor editável por título (antes só dava para ajustar juros, multa e desconto). Informar um valor menor que o saldo do título baixa só parcialmente — o restante continua em aberto. Contas a Receber também ganhou os campos de juros/multa/desconto por título na confirmação, que antes só existiam em Contas a Pagar." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Confirmar Pagamento do Borderô",
+  },
+  {
     versao: "2026.10.07-n",
     data: "07/10/2026",
     titulo: "Replicar Transferência: item com estoque zerado não some mais",

@@ -1177,7 +1177,7 @@ async function chamarBorderoAcao(body: {
   lote_id: string;
   data_pagamento?: string;
   conta_bancaria?: string;
-  ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number }[];
+  ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number; valor_pago?: number }[];
 }): Promise<void> {
   const res = await fetch("/api/financeiro/bordero-acao", {
     method: "POST",
@@ -1192,7 +1192,7 @@ export async function confirmarPagamentoBordero(
   lote_id: string,
   data_pagamento: string,
   conta_bancaria: string,
-  ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number }[],
+  ajustes?: { lancamento_id: string; valor_juros?: number; valor_multa?: number; valor_desconto?: number; valor_pago?: number }[],
 ): Promise<void> {
   await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria, ajustes });
 }
