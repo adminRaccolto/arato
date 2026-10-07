@@ -11,9 +11,9 @@ const RELEASES = [
     titulo: "Olívia agora é um balão flutuante, sempre aberto",
     modulos: ["Suporte"],
     itens: [
-      { tipo: "melhoria", texto: "A Olívia saiu da tela própria (Ajuda → Suporte IA) e virou um balão no canto inferior esquerdo, disponível em qualquer tela do sistema. Dá para seguir uma instrução dela e ir fazendo a ação na tela sem perder a conversa — ela continua aberta durante a navegação e só fecha quando você clica no ×." },
+      { tipo: "melhoria", texto: "A Olívia saiu da tela própria (Ajuda → Suporte IA) e virou um balão no canto inferior direito, disponível em qualquer tela do sistema. Dá para seguir uma instrução dela e ir fazendo a ação na tela sem perder a conversa — ela continua aberta durante a navegação e só fecha quando você clica no ×." },
     ],
-    onde: "Balão no canto inferior esquerdo (qualquer tela)",
+    onde: "Balão no canto inferior direito (qualquer tela)",
   },
   {
     versao: "2026.10.07-f",

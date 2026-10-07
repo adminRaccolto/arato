@@ -9,7 +9,7 @@ import {
 import type { SuporteConversa, SuporteMensagem } from "../lib/supabase";
 
 /**
- * Olívia como balão flutuante — canto inferior esquerdo, aberto em qualquer tela.
+ * Olívia como balão flutuante — canto inferior direito, aberto em qualquer tela.
  * Antes ficava só na página /suporte: para seguir uma instrução da Olívia era preciso
  * sair do chat, ir até a tela certa, fazer a ação, e voltar, perdendo o fio da conversa
  * em instruções longas (achado real 07/10/2026, pedido do dono). Agora o chat fica aberto
@@ -160,7 +160,7 @@ export default function OliviaWidget() {
           onClick={() => setAberto(true)}
           title="Falar com a Olívia"
           style={{
-            position: "fixed", left: 20, bottom: 20, zIndex: 2000,
+            position: "fixed", right: 20, bottom: 20, zIndex: 2000,
             width: 58, height: 58, borderRadius: "50%", border: "none", cursor: "pointer",
             background: "#1A4870", boxShadow: "0 4px 16px rgba(11,45,80,0.35)",
             padding: 0, overflow: "hidden",
@@ -173,7 +173,7 @@ export default function OliviaWidget() {
       {/* Painel aberto — fecha só pelo botão ×, nunca ao clicar fora nem ao navegar */}
       {aberto && (
         <div style={{
-          position: "fixed", left: 20, bottom: 20, zIndex: 2000,
+          position: "fixed", right: 20, bottom: 20, zIndex: 2000,
           width: 360, height: 520, maxHeight: "calc(100vh - 40px)",
           background: "#fff", borderRadius: 14, boxShadow: "0 8px 32px rgba(11,45,80,0.28)",
           border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden",
