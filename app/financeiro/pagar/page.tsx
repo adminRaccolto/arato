@@ -50,6 +50,7 @@ import {
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero } from "../../../lib/financeiro/cp-grid";
+import { resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -303,7 +304,7 @@ export default function ContasAPagarPage() {
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
-    ...borderosVisiveis.map((b): LinhaOuBordero => ({ kind: "bordero", b, pago: b.status === "pago",
+    ...borderosVisiveis.map((b): LinhaOuBordero => ({ kind: "bordero", b, pago: resumoBordero(b).status === "baixado",
       data: ordenarPor === "lancamento" ? b.created_at ?? "" : vencimentoBordero(b, resultado ?? []) ?? "" })),
   ].sort((x, y) => {
     const dx = x.kind === "lanc" ? (x.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : x.data;
@@ -849,7 +850,7 @@ export default function ContasAPagarPage() {
   }
 
   const totalPagar = linhas.reduce((s, l) => s + (l.valor ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
-  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0)), 0) + borderosVisiveis.filter(b => b.status !== "pago").reduce((s, b) => s + b.valor_total, 0);
+  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0)), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
   // Reintroduzido 01/10/2026 — a tela antiga do produtor tinha isso, mas só
@@ -1034,7 +1035,7 @@ export default function ContasAPagarPage() {
     setModalConfirmarBordero(b);
     setConfirmData(hojeISO());
     setConfirmConta("");
-    setConfirmValorPago(b.valor_total ?? 0);
+    setConfirmValorPago(resumoBordero(b).saldo);
     setConfirmJuros("0,00"); setConfirmMulta("0,00"); setConfirmDesconto("0,00");
     setConfirmItens([]);
     try {
@@ -1054,7 +1055,7 @@ export default function ContasAPagarPage() {
     setSalvandoBordero(true); setErroBordero("");
     try {
       await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, {
-        valor_pago: confirmValorPago, valor_juros: numBR(confirmJuros), valor_multa: numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
+        principal_anterior: resumoBordero(modalConfirmarBordero).liquidado, valor_pago: confirmValorPago, valor_juros: numBR(confirmJuros), valor_multa: numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
       });
       setModalConfirmarBordero(null);
       await Promise.all([carregar(), carregarBorderos()]);
@@ -1076,7 +1077,7 @@ export default function ContasAPagarPage() {
   }
 
   async function estornarBorderoAction(b: PagamentoLote) {
-    if (!confirm(`Estornar o pagamento do borderô "${b.descricao}"? Os títulos voltam a ficar em aberto, sem conta/data de pagamento.`)) return;
+    if (!confirm(`Estornar o pagamento do borderô "${b.descricao}"? Os pagamentos deste borderô serão desfeitos e os títulos ficarão sem borderô. Pagamentos anteriores serão preservados.`)) return;
     try {
       await estornarBordero(b.id);
       await Promise.all([carregar(), carregarBorderos()]);
@@ -1307,6 +1308,7 @@ export default function ContasAPagarPage() {
                 if (entry.kind === "bordero") {
                   const b = entry.b;
                   const pago = entry.pago;
+                  const parcial = resumoBordero(b).status === "parcial";
                   const qtdItens = (b.itens ?? []).length;
                   return (
                     <tr key={`bdr-${b.id}`} onClick={e => setPopBordero({ b, x: e.clientX, y: e.clientY })} style={{ background: pago ? "#E9F9EF" : "#FBF3E0", borderBottom: pago ? "0.5px solid #16A34A60" : "0.5px solid #C9921B60", cursor: "pointer" }}>
@@ -1315,10 +1317,11 @@ export default function ContasAPagarPage() {
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                             {pago
                               ? <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", background: "#DCFCE7", padding: "2px 8px", borderRadius: 6 }}>✅ BORDERÔ PAGO</span>
-                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>📋 BORDERÔ PENDENTE</span>}
+                              : <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", background: "#FDE9BB", padding: "2px 8px", borderRadius: 6 }}>{parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</span>}
                             <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{b.descricao || "Borderô"}</span>
                             {b.numero_titulo && <span style={{ fontSize: 11, color: "#888" }}>Nº {b.numero_titulo}</span>}
-                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(pago ? (b.valor_pago ?? b.valor_total) : b.valor_total)}</strong></span>
+                            <span style={{ fontSize: 12, color: "#555" }}>{qtdItens} NF{qtdItens !== 1 ? "s" : ""} · <strong>{fmtBRL(b.valor_total)}</strong></span>
+                            {parcial && <span style={{ color: "#7A5200" }}>Liquidado {fmtBRL(resumoBordero(b).liquidado)} · Saldo {fmtBRL(resumoBordero(b).saldo)}</span>}
                             {!pago && b.data_vencimento && <span style={{ fontSize: 11, color: "#7A5200" }}>vence {fmtData(b.data_vencimento)}</span>}
                             {pago && b.data_pagamento && <span style={{ fontSize: 11, color: "#15803D" }}>pago em {fmtData(b.data_pagamento)}</span>}
                           </div>
@@ -1434,7 +1437,9 @@ export default function ContasAPagarPage() {
       {menuColunas && <ContextMenuColunas x={menuColunas.x} y={menuColunas.y} colunas={COLS_GRID_CP} ordemTodas={ordemCols} visiveis={visCols} onToggle={toggleCol} onMover={moverColuna} onResetar={resetarCols} onClose={() => setMenuColunas(null)} />}
       {popBordero && (() => {
         const b = popBordero.b;
-        const pago = b.status === "pago";
+        const resumo = resumoBordero(b);
+        const pago = resumo.status === "baixado";
+        const parcial = resumo.status === "parcial";
         const W = 560, H = pago ? 420 : 360;
         const top  = Math.min(popBordero.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);
         const left = Math.max(8, Math.min(popBordero.x - 20, (typeof window !== "undefined" ? window.innerWidth : 1200) - W - 8));
@@ -1445,15 +1450,16 @@ export default function ContasAPagarPage() {
             <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
                 <div style={{ padding: "12px 14px 10px", borderBottom: "0.5px solid #DDE2EE", background: pago ? "#E9F9EF" : "#FBF3E0" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ PAGO" : "📋 BORDERÔ PENDENTE"}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: pago ? "#15803D" : "#7A5200" }}>{pago ? "✅ BORDERÔ PAGO" : parcial ? "◐ BORDERÔ PARCIAL" : "📋 BORDERÔ PENDENTE"}</div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginTop: 3 }}>{b.descricao || "Borderô"}{b.numero_titulo ? ` · Nº ${b.numero_titulo}` : ""}</div>
                 </div>
                 <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
                   <div><div style={{ color: "#888", fontSize: 10 }}>NFs</div><div style={{ color: "#1a1a1a" }}>{qtd} NF{qtd !== 1 ? "s" : ""}</div></div>
+                  <div><div style={{ color: "#888", fontSize: 10 }}>Saldo em aberto</div><div style={{ color: parcial ? "#7A5200" : "#1a1a1a", fontWeight: 700 }}>{fmtBRL(resumo.saldo)}</div></div>
                   <div><div style={{ color: "#888", fontSize: 10 }}>Total das NFs</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
-                  {pago ? (
+                  {(pago || parcial) ? (
                     <>
-                      <div><div style={{ color: "#888", fontSize: 10 }}>Valor pago</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_pago ?? b.valor_total)}</div></div>
+                      <div><div style={{ color: "#888", fontSize: 10 }}>Principal liquidado</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_pago ?? b.valor_total)}</div></div>
                       <div><div style={{ color: "#888", fontSize: 10 }}>Data do pagamento</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_pagamento)}</div></div>
                       {!!(b.valor_juros || b.valor_multa) && <div><div style={{ color: "#888", fontSize: 10 }}>Juros + Multa</div><div style={{ color: "#1a1a1a" }}>{fmtBRL((b.valor_juros ?? 0) + (b.valor_multa ?? 0))}</div></div>}
                       {!!b.valor_desconto && <div><div style={{ color: "#888", fontSize: 10 }}>Desconto</div><div style={{ color: "#1a1a1a" }}>{fmtBRL(b.valor_desconto)}</div></div>}
@@ -1468,12 +1474,13 @@ export default function ContasAPagarPage() {
               </div>
               <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6 }}>
                 <button onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver NFs</button>
-                {pago ? (
+                {(pago || parcial) && (
                   <button onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↩ Estornar pagamento</button>
-                ) : (
+                )}
+                {!pago && (
                   <>
-                    <button onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>✅ Confirmar Pagamento</button>
-                    <button onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</button>
+                    <button onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>{parcial ? "Pagar saldo restante" : "✅ Confirmar Pagamento"}</button>
+                    {!parcial && <button onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</button>}
                   </>
                 )}
               </div>
@@ -1706,7 +1713,7 @@ export default function ContasAPagarPage() {
               <button onClick={() => setModalConfirmarBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
             </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
-              {modalConfirmarBordero.descricao}{modalConfirmarBordero.numero_titulo ? ` · Nº ${modalConfirmarBordero.numero_titulo}` : ""} · Total das NFs: <strong>{fmtBRL(modalConfirmarBordero.valor_total)}</strong>
+              {modalConfirmarBordero.descricao}{modalConfirmarBordero.numero_titulo ? ` · Nº ${modalConfirmarBordero.numero_titulo}` : ""} · Total das NFs: <strong>{fmtBRL(modalConfirmarBordero.valor_total)}</strong> · Saldo em aberto: <strong>{fmtBRL(resumoBordero(modalConfirmarBordero).saldo)}</strong>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
@@ -1726,7 +1733,7 @@ export default function ContasAPagarPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
               <div>
                 <label style={lbl}>Valor a pagar *</label>
-                <InputMonetario value={confirmValorPago} onChange={setConfirmValorPago} style={{ ...inp, width: "100%", boxSizing: "border-box", fontWeight: 700, color: confirmValorPago < (modalConfirmarBordero.valor_total ?? 0) ? "#C9921B" : "#1a1a1a" }} />
+                <InputMonetario value={confirmValorPago} onChange={setConfirmValorPago} style={{ ...inp, width: "100%", boxSizing: "border-box", fontWeight: 700, color: confirmValorPago < resumoBordero(modalConfirmarBordero).saldo ? "#C9921B" : "#1a1a1a" }} />
               </div>
               <div>
                 <label style={lbl}>Juros</label>
@@ -1742,7 +1749,7 @@ export default function ContasAPagarPage() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12 }}>
-              <span style={{ color: "#888" }}>Valor a pagar menor que o total das NFs = baixa parcial do título (o restante continua em aberto).</span>
+              <span style={{ color: "#888" }}>Valor a pagar menor que o saldo = pagamento parcial. O restante continua em aberto neste borderô.</span>
               <strong style={{ color: "#E24B4A", whiteSpace: "nowrap", marginLeft: 12 }}>Total: {fmtBRL(totalConfirm)}</strong>
             </div>
 
@@ -1787,7 +1794,7 @@ export default function ContasAPagarPage() {
               <button onClick={() => setModalVerBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
             </div>
             <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
-              {modalVerBordero.status === "pago" ? "✅ Pago" : "⏳ Pendente"} · Total: <strong>{fmtBRL(modalVerBordero.valor_total)}</strong>
+              {resumoBordero(modalVerBordero).status === "baixado" ? "✅ Pago" : resumoBordero(modalVerBordero).status === "parcial" ? "◐ Parcial" : "⏳ Pendente"} · Total: <strong>{fmtBRL(modalVerBordero.valor_total)}</strong> · Saldo: <strong>{fmtBRL(resumoBordero(modalVerBordero).saldo)}</strong>
             </div>
             {erroVerBordero && <div role="alert" style={{ color: "#B91C1C", padding: 12 }}>{erroVerBordero}</div>}
             {carregandoVerBordero ? (

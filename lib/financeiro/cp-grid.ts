@@ -1,4 +1,5 @@
 import type { PagamentoLote } from "../supabase";
+import { resumoBordero } from "./saldo-bordero";
 
 export type TituloGrid = {
   id: string; origem_tabela: string; lote_id: string | null;
@@ -22,9 +23,9 @@ function texto(v: unknown) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 }
 function corresponde(status: string, vencimento: string | null, campos: unknown[], f: FiltrosCP) {
-  const vencido = (status === "em_aberto" || status === "vencido") && !!vencimento && vencimento < f.hoje;
+  const vencido = (status === "em_aberto" || status === "vencido" || status === "parcial") && !!vencimento && vencimento < f.hoje;
   if (f.status.size && !f.status.has(status) && !(f.status.has("vencido") && vencido)
-      && !(f.status.has("em_aberto") && status === "vencido")) return false;
+      && !(f.status.has("em_aberto") && (status === "vencido" || status === "parcial"))) return false;
   if (f.de && (!vencimento || vencimento < f.de)) return false;
   if (f.ate && (!vencimento || vencimento > f.ate)) return false;
   return !f.busca.trim() || campos.some(v => texto(v).includes(texto(f.busca.trim())));
@@ -45,7 +46,7 @@ export function vencimentoBordero(b: PagamentoLote, titulos: TituloGrid[]) {
 export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: FiltrosCP) {
   if (f.origens.size && !(b.itens ?? []).some(i => f.origens.has(i.origem_tabela ?? "lancamentos"))) return false;
   const itens = itensDoBordero(b, titulos);
-  return corresponde(b.status === "pago" ? "baixado" : "em_aberto", vencimentoBordero(b, titulos),
+  return corresponde(resumoBordero(b).status, vencimentoBordero(b, titulos),
     [b.descricao, b.numero_titulo, ...itens.flatMap(t => [t.descricao, t.pessoa_nome, t.empresa_nome, t.nfe_numero])], f);
 }
 

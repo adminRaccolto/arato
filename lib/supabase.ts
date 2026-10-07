@@ -424,7 +424,7 @@ export type PagamentoLote = {
   id: string;
   fazenda_id: string;
   tipo: "pagar" | "receber";
-  status?: "pendente" | "pago";   // pendente = agrupado sem baixa; pago = confirmado e baixado
+  status?: "pendente" | "pago";   // pendente = ainda há saldo (inclusive parcial); pago = quitado. Use resumoBordero para a situação financeira.
   conta_bancaria?: string;
   data_pagamento?: string;         // preenchido só na confirmação
   data_vencimento?: string;        // data alvo do borderô, definida já na criação (opcional)
@@ -434,7 +434,7 @@ export type PagamentoLote = {
   // só, nunca por NF/item individual.
   numero_titulo?: string;          // referência do documento agregador (ex: nº do boleto)
   valor_total: number;             // soma informativa das NFs/itens incluídos
-  valor_pago?: number;             // valor realmente pago do título (preenchido na confirmação; pode ser parcial)
+  valor_pago?: number;             // principal liquidado acumulado, incluindo descontos. Caixa = principal + juros + multa - desconto.
   valor_juros?: number;
   valor_multa?: number;
   valor_desconto?: number;
