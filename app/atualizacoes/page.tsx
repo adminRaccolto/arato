@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-i",
+    data: "07/10/2026",
+    titulo: "Olívia não inventa mais CNPJ/CPF de entidades",
+    modulos: ["Suporte"],
+    itens: [
+      { tipo: "correcao", texto: "Ao pedir ajuda pra cadastrar uma entidade (ex: INSS, Caixa Econômica Federal), a Olívia podia responder com um CNPJ inventado, formatado como se fosse real. Agora ela nunca fabrica esse tipo de dado — avisa quando não tem certeza e orienta a confirmar na Receita Federal antes de cadastrar." },
+    ],
+    onde: "Balão da Olívia (qualquer tela)",
+  },
+  {
     versao: "2026.10.07-h",
     data: "07/10/2026",
     titulo: "Máscara de CNPJ perdia a pontuação no meio da digitação",
