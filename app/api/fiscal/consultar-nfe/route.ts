@@ -37,12 +37,18 @@ async function upsertFornecedor(
       ? cnpjLimpo.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
       : cnpjLimpo;
 
+  // Pessoa é da conta inteira — resolve conta_id da fazenda pra não duplicar
+  // o mesmo fornecedor quando ele já foi cadastrado a partir de outra fazenda
+  // do mesmo cliente.
+  const { data: fazRow } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const contaId = fazRow?.conta_id ?? null;
+
   // Compara raw + formatado, limit(1)+array em vez de maybeSingle() — mesma
   // classe de bug encontrada em auditoria (91 fornecedores duplicados por
   // comparação exata de string sem considerar máscara ou duplicata pré-existente).
   const { data: existenteList } = await supabase.from("pessoas")
     .select("id, municipio, logradouro, cnae")
-    .eq("fazenda_id", fazendaId)
+    .eq(contaId ? "conta_id" : "fazenda_id", contaId ?? fazendaId)
     .or(`cpf_cnpj.eq.${cnpjLimpo},cpf_cnpj.eq.${cnpjFmt}`)
     .order("created_at", { ascending: true })
     .limit(1);
@@ -70,6 +76,7 @@ async function upsertFornecedor(
   // Cria novo fornecedor
   const { data: nova } = await supabase.from("pessoas").insert({
     fazenda_id:     fazendaId,
+    conta_id:       contaId,
     nome:           dados.nome ?? cnpjLimpo,
     tipo:           cnpjLimpo.length === 11 ? "pf" : "pj",
     fornecedor:     true,

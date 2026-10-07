@@ -838,6 +838,12 @@ export type MatriculaImovel = {
 export type Pessoa = {
   id: string;
   fazenda_id: string;
+  // Dono real do cadastro — Pessoa é do cliente, comum a todas as fazendas
+  // dele, não de uma propriedade específica (decidido 22/set/2026, coluna
+  // adicionada em 07/out/2026, Seção 240). fazenda_id continua existindo e
+  // sendo gravado (é NOT NULL na tabela), mas não é mais o que define a quem
+  // o cadastro pertence — conta_id é.
+  conta_id?: string | null;
   nome: string;
   tipo: "pf" | "pj";
   cliente: boolean;

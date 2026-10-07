@@ -399,10 +399,13 @@ export async function emitirNFe(
     const digitsFmt = digits.length === 14
       ? digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
       : digits.length === 11 ? digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : digits;
+    // Pessoa é da conta inteira, não só desta fazenda — o destinatário pode
+    // ter sido cadastrado a partir de outra fazenda do mesmo cliente.
+    const { data: fazRowPes } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
     const { data: pessList } = await sb()
       .from("pessoas")
       .select("id, municipio_ibge, municipio, estado, cep")
-      .eq("fazenda_id", fazendaId)
+      .eq(fazRowPes?.conta_id ? "conta_id" : "fazenda_id", fazRowPes?.conta_id ?? fazendaId)
       .or(`cpf_cnpj.eq.${digits},cpf_cnpj.eq.${digitsFmt}`)
       .limit(1);
     const pess = pessList?.[0] ?? null;

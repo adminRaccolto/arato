@@ -170,10 +170,12 @@ async function syncFazenda(
           : cnpjEmit.length === 11
             ? cnpjEmit.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
             : cnpjEmit;
+        // Pessoa é da conta inteira — sem isso, o mesmo fornecedor virava
+        // duplicado a cada fazenda diferente da conta que o SIEG sincronizava.
         const { data: pesList } = await db
           .from("pessoas")
           .select("id")
-          .eq("fazenda_id", fazendaId)
+          .eq(contaId ? "conta_id" : "fazenda_id", contaId ?? fazendaId)
           .or(`cpf_cnpj.eq.${cnpjEmit},cpf_cnpj.eq.${cnpjFmt}`)
           .order("created_at", { ascending: true })
           .limit(1);
@@ -183,6 +185,7 @@ async function syncFazenda(
         } else {
           const { data: nova } = await db.from("pessoas").insert({
             fazenda_id:     fazendaId,
+            conta_id:       contaId,
             nome:           nfe.nome_emitente || cnpjEmit,
             cpf_cnpj:       cnpjEmit,
             tipo:           cnpjEmit.length === 11 ? "pf" : "pj",

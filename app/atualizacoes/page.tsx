@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-l",
+    data: "07/10/2026",
+    titulo: "Pessoas (fornecedores/clientes) agora grava o dono real do cadastro",
+    modulos: ["Cadastros", "Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O cadastro de Pessoas (fornecedores, clientes, prestadores) é do cliente, não de uma fazenda específica — mas o sistema ainda gravava e buscava só pela fazenda que estava ativa no momento. Em contas com mais de uma fazenda, isso podia fazer um fornecedor \"sumir\" ou ser duplicado dependendo de qual fazenda estava ativa (no WhatsApp, na importação automática do SIEG, na consulta de NF-e, na emissão de NF-e e em Consórcios). Corrigido: toda busca/criação de Pessoa agora usa o cliente (conta) como escopo real." },
+    ],
+    onde: "Cadastros → Pessoas e Entidades (e qualquer fluxo que cadastra fornecedor automaticamente)",
+  },
+  {
     versao: "2026.10.07-k",
     data: "07/10/2026",
     titulo: "MDF-e da Expedição de Grãos passa a ser emissão real",

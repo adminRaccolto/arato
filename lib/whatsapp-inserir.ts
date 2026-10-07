@@ -143,6 +143,16 @@ type InsumoRow = { id: string; nome: string; unidade: string; custo_medio: numbe
 // entre as fazendas do cliente (ver lib/db.ts listarInsumos). Sem isso, o
 // WhatsApp podia não achar um insumo já cadastrado numa fazenda irmã e
 // recriar duplicado, ou simplesmente não deduzir o estoque certo.
+// Pessoa (fornecedor/cliente) é do cliente inteiro, não de uma fazenda —
+// resolve o conta_id pra gravar/buscar por ele em vez de fazenda_id (ver
+// [[feedback_conta_id_nao_fazenda_id]]). null quando a fazenda não tem conta
+// vinculada (dado legado) — nesse caso os call sites caem de volta pra
+// fazenda_id sozinho.
+async function resolverContaId(fazendaId: string): Promise<string | null> {
+  const { data } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  return data?.conta_id ?? null;
+}
+
 async function fazendaIdsDaConta(fazendaId: string): Promise<string[]> {
   const { data: fazAtual } = await sb().from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
   if (!fazAtual?.conta_id) return [fazendaId];
@@ -512,10 +522,12 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
   // Procura na tabela pessoas por nome parecido (case-insensitive) para vincular pessoa_id
   let pessoaId: string | null = null;
   if (comprador) {
+    // Pessoa é da conta inteira, não só desta fazenda.
+    const contaIdPes = await resolverContaId(fazendaId);
     const { data: pessoasRows } = await sb()
       .from("pessoas")
       .select("id, nome")
-      .eq("fazenda_id", fazendaId)
+      .eq(contaIdPes ? "conta_id" : "fazenda_id", contaIdPes ?? fazendaId)
       .ilike("nome", `%${comprador.split(" ")[0]}%`)  // busca pelo primeiro token do nome
       .limit(5);
 
@@ -528,6 +540,7 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
       const tipoPessoa = dados.comprador_cnpj ? "juridica" : "fisica";
       const { data: novaPessoa } = await sb().from("pessoas").insert({
         fazenda_id: fazendaId,
+        conta_id:   contaIdPes,
         nome:       comprador,
         tipo:       tipoPessoa,
         cpf_cnpj:   dados.comprador_cnpj ? String(dados.comprador_cnpj) : null,
@@ -1739,8 +1752,9 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
   let pessoaId: string | null = null;
   const nomePessoa = String(dados.fornecedor ?? dados.cliente ?? "");
   if (nomePessoa && nomePessoa !== "não informar" && nomePessoa !== "nao informar") {
+    const contaIdPes = await resolverContaId(fazendaId);
     const { data: pessoa } = await sb().from("pessoas")
-      .select("id").eq("fazenda_id", fazendaId).ilike("nome", `%${nomePessoa}%`).single();
+      .select("id").eq(contaIdPes ? "conta_id" : "fazenda_id", contaIdPes ?? fazendaId).ilike("nome", `%${nomePessoa}%`).single();
     pessoaId = pessoa?.id ?? null;
   }
 
@@ -1996,9 +2010,10 @@ async function inserirRomaneioFoto(dados: Record<string, unknown>, fazendaId: st
     contrato = (cNum?.[0] as ContratoRef | undefined) ?? null;
 
     if (!contrato) {
-      // busca por comprador
+      // busca por comprador — Pessoa é da conta inteira, não só desta fazenda
+      const contaIdPes = await resolverContaId(fazendaId);
       const { data: pBusca } = await sb().from("pessoas")
-        .select("id").eq("fazenda_id", fazendaId).ilike("nome", `%${contratoStr}%`).limit(1);
+        .select("id").eq(contaIdPes ? "conta_id" : "fazenda_id", contaIdPes ?? fazendaId).ilike("nome", `%${contratoStr}%`).limit(1);
       if (pBusca?.[0]) {
         const { data: cComp } = await sb().from("contratos")
           .select("id, numero, produtor_id").eq("fazenda_id", fazendaId)
@@ -2122,9 +2137,10 @@ async function inserirNovoFornecedor(dados: Record<string, unknown>, fazendaId: 
   // Busca raw + formatado, limit(1)+array — evita duplicar fornecedor já
   // cadastrado com máscara e a falha silenciosa do maybeSingle() com duplicata
   // pré-existente (achado de auditoria: mesmo padrão em 91 casos reais).
+  const contaIdPes = await resolverContaId(fazendaId);
   if (cnpj) {
     const { data: existenteList } = await sb().from("pessoas")
-      .select("id, nome").eq("fazenda_id", fazendaId)
+      .select("id, nome").eq(contaIdPes ? "conta_id" : "fazenda_id", contaIdPes ?? fazendaId)
       .or(`cpf_cnpj.eq.${cnpj},cpf_cnpj.eq.${cnpjFmtBusca}`)
       .order("created_at", { ascending: true })
       .limit(1);
@@ -2134,6 +2150,7 @@ async function inserirNovoFornecedor(dados: Record<string, unknown>, fazendaId: 
 
   const { error } = await sb().from("pessoas").insert({
     fazenda_id: fazendaId,
+    conta_id:   contaIdPes,
     nome,
     tipo,
     cpf_cnpj:   cnpj || null,
@@ -2308,12 +2325,15 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   // num único dia, via esse fluxo).
   let pessoaId: string | null = null;
   let pessoaNova = false;
+  const contaIdPes2 = await resolverContaId(fazendaId);
+  const porConta = contaIdPes2 ? "conta_id" : "fazenda_id";
+  const valConta = contaIdPes2 ?? fazendaId;
   if (cnpj) {
     const cnpjFmtBusca = cnpj.length === 14
       ? cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
       : cnpj.length === 11 ? cnpj.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4") : cnpj;
     const { data: existenteList } = await sb().from("pessoas")
-      .select("id").eq("fazenda_id", fazendaId)
+      .select("id").eq(porConta, valConta)
       .or(`cpf_cnpj.eq.${cnpj},cpf_cnpj.eq.${cnpjFmtBusca}`)
       .order("created_at", { ascending: true })
       .limit(1);
@@ -2325,12 +2345,13 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
       const primeiroToken = razao.split(/\s+/)[0];
       if (primeiroToken.length > 2) {
         const { data: porNome } = await sb().from("pessoas")
-          .select("id").eq("fazenda_id", fazendaId).ilike("nome", `%${primeiroToken}%`).limit(1).maybeSingle();
+          .select("id").eq(porConta, valConta).ilike("nome", `%${primeiroToken}%`).limit(1).maybeSingle();
         if (porNome) { pessoaId = porNome.id; }
       }
       if (!pessoaId) {
         const { data: nova, error: errP } = await sb().from("pessoas").insert({
           fazenda_id: fazendaId,
+          conta_id:   contaIdPes2,
           nome:       razao,
           tipo:       "pj",
           cpf_cnpj:   cnpj,
@@ -2344,7 +2365,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     // Sem CNPJ: busca por nome exato ou similar antes de criar
     const primeiroToken = razao.split(/\s+/)[0];
     const { data: porNome } = await sb().from("pessoas")
-      .select("id, nome").eq("fazenda_id", fazendaId)
+      .select("id, nome").eq(porConta, valConta)
       .ilike("nome", `%${primeiroToken.length > 2 ? primeiroToken : razao}%`)
       .limit(5);
     if (porNome && porNome.length > 0) {
@@ -2353,6 +2374,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     } else {
       const { data: nova, error: errP } = await sb().from("pessoas").insert({
         fazenda_id: fazendaId,
+        conta_id:   contaIdPes2,
         nome:       razao,
         tipo:       "pj",
         fornecedor: true,

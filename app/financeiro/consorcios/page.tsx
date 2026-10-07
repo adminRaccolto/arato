@@ -250,16 +250,17 @@ export default function ConsorciosPage() {
       .then(({ data }) => setProdutores((data ?? []) as ProdutorSimples[]));
   }, [contaId]);
 
-  // Carrega pessoas com subcategoria "Adm Consórcios"
+  // Carrega pessoas com subcategoria "Adm Consórcios" — Pessoa é da conta
+  // inteira, não só da fazenda ativa (ver [[feedback_conta_id_nao_fazenda_id]]).
   useEffect(() => {
-    if (!fazendaId) return;
+    if (!fazendaId && !contaId) return;
     supabase.from("pessoas")
       .select("id, nome, cpf_cnpj")
-      .eq("fazenda_id", fazendaId)
+      .eq(contaId ? "conta_id" : "fazenda_id", contaId ?? fazendaId)
       .contains("subcategorias", ["Adm Consórcios"])
       .order("nome")
       .then(({ data }) => setPessoasAdm((data ?? []) as PessoaAdm[]));
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   // Carrega OG IDs de consórcio quando a fazenda está disponível
   useEffect(() => {

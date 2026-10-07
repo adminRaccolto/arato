@@ -92,10 +92,14 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     pathLabel: "Ir para Pessoas",
     minStep: 4,
     check: async (fazendaId) => {
+      // Pessoa é da conta inteira — sem isso, uma conta que já cadastrou
+      // fornecedores a partir de OUTRA fazenda aparecia como se este passo
+      // nunca tivesse sido concluído.
+      const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
       const { count } = await supabase
         .from("pessoas")
         .select("*", { count: "exact", head: true })
-        .eq("fazenda_id", fazendaId);
+        .eq(faz?.conta_id ? "conta_id" : "fazenda_id", faz?.conta_id ?? fazendaId);
       return (count ?? 0) >= 1;
     },
   },

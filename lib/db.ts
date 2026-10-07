@@ -1661,6 +1661,24 @@ async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): P
   return fzs.map(f => f.id);
 }
 
+// Resolve só o conta_id de uma fazenda (reaproveita a mesma rota de
+// resolverFazendaIdsDaConta, sem mexer na assinatura dela — usada em ~23
+// outros lugares). Usado pra gravar Pessoa pelo dono real (conta_id), não
+// mais pela fazenda que por acaso estava ativa na sessão.
+async function resolverContaId(fazenda_id?: string | null): Promise<string | null> {
+  if (!fazenda_id) return null;
+  try {
+    const res = await fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fazenda_id }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json() as { ok: boolean; fazendas?: { conta_id?: string | null }[] };
+    return json.fazendas?.[0]?.conta_id ?? null;
+  } catch { return null; }
+}
+
 // Carrega pessoas de TODAS as fazendas da conta (nova arquitetura multi-fazenda)
 export async function listarPessoasDaConta(fazenda_id_fallback?: string | null): Promise<Pessoa[]> {
   return cached(`pessoas:${fazenda_id_fallback ?? ""}`, async () => {
@@ -1716,7 +1734,11 @@ export async function criarPessoa(p: Omit<Pessoa, "id" | "created_at">): Promise
       throw new Error("Cadastro cancelado — CPF/CNPJ já usado por outro cadastro.");
     }
   }
-  const { data, error } = await supabase.from("pessoas").insert(p).select().single();
+  // conta_id é o dono real do cadastro (ver tipo Pessoa) — resolvido a partir
+  // da fazenda informada, gravado junto com fazenda_id (que continua NOT NULL
+  // na tabela, mas deixa de ser o campo de escopo).
+  const contaId = p.conta_id ?? await resolverContaId(p.fazenda_id);
+  const { data, error } = await supabase.from("pessoas").insert({ ...p, conta_id: contaId }).select().single();
   if (error) throw error;
   invalidateCache("pessoas");
   return data;
@@ -2552,11 +2574,15 @@ export async function criarNfEntradaItem(i: Omit<NfEntradaItem, "id" | "created_
 // Busca o depósito de terceiro vinculado a um fornecedor pelo CNPJ
 async function buscarDepositoTerceiroPorCnpj(fazenda_id: string, cnpj: string): Promise<string | null> {
   if (!cnpj) return null;
-  // 1. Localiza a pessoa pelo CPF/CNPJ
+  // 1. Localiza a pessoa pelo CPF/CNPJ — Pessoa é da conta inteira, não só
+  // desta fazenda (o fornecedor pode ter sido cadastrado a partir de outra
+  // fazenda do mesmo cliente). O depósito em si continua fazenda-scoped (é
+  // físico) — só a busca da Pessoa precisa ser conta-wide.
+  const contaId = await resolverContaId(fazenda_id);
   const { data: pessoas } = await supabase
     .from("pessoas")
     .select("id")
-    .eq("fazenda_id", fazenda_id)
+    .eq(contaId ? "conta_id" : "fazenda_id", contaId ?? fazenda_id)
     .eq("cpf_cnpj", cnpj)
     .limit(1);
   if (!pessoas || pessoas.length === 0) return null;
@@ -3012,9 +3038,12 @@ export async function processarNfEntrada(
   // duplicados no catálogo por causa exatamente desse padrão.
   let pessoaId: string | null = null;
   if (cnpjRaw) {
+    // Pessoa é da conta inteira — o mesmo fornecedor pode já estar cadastrado
+    // a partir de outra fazenda do mesmo cliente.
+    const contaId = await resolverContaId(fazenda_id);
     const { data: pesExistList } = await supabase
       .from("pessoas").select("id")
-      .eq("fazenda_id", fazenda_id)
+      .eq(contaId ? "conta_id" : "fazenda_id", contaId ?? fazenda_id)
       .or(`cpf_cnpj.eq.${cnpjRaw},cpf_cnpj.eq.${cnpjFmt}`)
       .order("created_at", { ascending: true })
       .limit(1);
@@ -3024,6 +3053,7 @@ export async function processarNfEntrada(
     } else {
       const { data: novaPes } = await supabase.from("pessoas").insert({
         fazenda_id,
+        conta_id: contaId,
         nome: emitente,
         tipo: "pj",
         cliente: false,
