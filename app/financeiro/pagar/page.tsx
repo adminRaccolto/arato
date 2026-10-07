@@ -49,6 +49,8 @@ import {
 } from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
+import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero } from "../../../lib/financeiro/cp-grid";
+import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import SelectBusca from "../../../components/SelectBusca";
@@ -252,37 +254,25 @@ export default function ContasAPagarPage() {
     try {
       let q = supabase.from("rel_lancamentos").select("*").eq("tipo", "pagar");
       q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
-      if (fOrigem.size > 0) q = q.in("origem_tabela", Array.from(fOrigem));
-      if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
-      if (fDataDe) q = q.gte("data_vencimento", fDataDe);
-      if (fDataAte) q = q.lte("data_vencimento", fDataAte);
-      if (fBusca.trim()) {
-        const t = fBusca.trim();
-        q = q.or(`descricao.ilike.%${t}%,pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%`);
+      // Paginação: filtros locais sempre usam o mesmo conjunto completo,
+      // inclusive os itens dos borderôs fora do período selecionado.
+      q = q.order("id");
+      const registros: RelLancamento[] = [];
+      for (let inicio = 0; ; inicio += 1000) {
+        const { data, error } = await q.range(inicio, inicio + 999);
+        if (error) throw error;
+        registros.push(...((data ?? []) as RelLancamento[]));
+        if (!data || data.length < 1000) break;
       }
-      q = q.order("data_lancamento", { ascending: false }).limit(1000);
-
-      const { data, error } = await q;
-      if (error) throw error;
-      setResultado((data ?? []) as RelLancamento[]);
+      setResultado(await carregarNumerosNF(supabase, registros));
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
     } finally {
       setCarregando(false);
     }
-  // Período/busca/origem/status entram nos deps pra "Atualizar" e Enter
-  // sempre lerem o valor atual dos campos (sem isso, carregar() ficava com
-  // uma closure velha — digitar na busca ou mudar a data não tinha efeito
-  // nenhum ao clicar Atualizar). O efeito abaixo NÃO depende de carregar —
-  // só de fazenda/conta — pra não disparar uma consulta nova a cada tecla.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca]);
-
-  // Carrega automaticamente ao abrir a tela (período padrão) — nunca espera
-  // o usuário escolher filtro primeiro. Refiltrar é sempre sobre o que já
-  // está carregado; só período/busca disparam nova consulta (botão Atualizar).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]);
+  }, [fazendaId, fazendaIds?.join(","), contaId]);
+  useEffect(() => { carregar(); }, [carregar]);
 
   // ── Borderôs — pendentes (ainda não confirmados) e pagos (título já
   // quitado) ───────────────────────────────────────────────────────
@@ -298,52 +288,23 @@ export default function ContasAPagarPage() {
       ]);
       setBorderosPendentes(pend);
       setBorderosPagos(pagos);
-    } catch { /* silencioso — painel só não aparece */ }
+    } catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar borderôs"); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId, fazendaIds?.join(",")]);
   useEffect(() => { carregarBorderos(); }, [carregarBorderos]);
 
-  // NFs/lançamentos que já pertencem a um borderô pago não aparecem soltos
-  // na grid — o título (o borderô) é a unidade que foi paga, não cada NF
-  // individual; mostrar as duas coisas ao mesmo tempo descaracteriza o
-  // título. Borderô pendente continua mostrando os itens soltos também
-  // (ainda não foi pago, cada um pode ser cancelado/conferido à parte).
-  const loteIdsPagos = new Set(borderosPagos.map(b => b.id));
-
-  // Filtro client-side de Origem/Status (instantâneo, sem nova consulta) —
-  // período e busca exigem nova consulta porque mudam o WHERE no banco.
-  // Ordenação também é client-side — reordena o que já está carregado.
-  const linhas = (resultado ?? []).filter(l => {
-    if (l.lote_id && loteIdsPagos.has(l.lote_id)) return false;
-    if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
-    if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
-    return true;
-  }).sort((a, b) => {
-    const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
-    const da = a[campo] ?? "";
-    const db = b[campo] ?? "";
-    return ordemAsc ? da.localeCompare(db) : db.localeCompare(da);
-  });
-
-  // Borderô pendente/pago entra na ordem normal do grid (não fica mais fixo
-  // no topo) — a "data" dele pra ordenar é a própria (vencimento/pagamento)
-  // quando existe, senão a do título mais relevante dentro dele.
+  const todosBorderos = [...borderosPendentes, ...borderosPagos];
+  const vinculos = vinculosBorderos(todosBorderos);
+  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, de: fDataDe, ate: fDataAte, hoje: hojeISO() };
+  // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
+  // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP));
+  const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
     ...linhas.map((l): LinhaOuBordero => ({ kind: "lanc", l })),
-    ...borderosPendentes.map((b): LinhaOuBordero => {
-      // Data própria do borderô tem prioridade pra ordenar por vencimento —
-      // antes disso existir, a única opção era adivinhar pelos itens dentro.
-      if (ordenarPor !== "lancamento" && b.data_vencimento) {
-        return { kind: "bordero", b, data: b.data_vencimento };
-      }
-      const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
-      const itensDoLote = (resultado ?? []).filter(l => l.lote_id === b.id);
-      const datas = itensDoLote.map(l => l[campo]).filter((d): d is string => !!d);
-      const data = datas.length ? datas.sort().slice(-1)[0] : (b.created_at ?? "");
-      return { kind: "bordero", b, data };
-    }),
-    ...borderosPagos.map((b): LinhaOuBordero => ({ kind: "bordero", b, data: b.data_pagamento ?? b.created_at ?? "", pago: true })),
+    ...borderosVisiveis.map((b): LinhaOuBordero => ({ kind: "bordero", b, pago: b.status === "pago",
+      data: ordenarPor === "lancamento" ? b.created_at ?? "" : vencimentoBordero(b, resultado ?? []) ?? "" })),
   ].sort((x, y) => {
     const dx = x.kind === "lanc" ? (x.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : x.data;
     const dy = y.kind === "lanc" ? (y.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : y.data;
@@ -887,8 +848,8 @@ export default function ContasAPagarPage() {
     }
   }
 
-  const totalPagar = linhas.reduce((s, l) => s + (l.valor ?? 0), 0);
-  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0)), 0);
+  const totalPagar = linhas.reduce((s, l) => s + (l.valor ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
+  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0)), 0) + borderosVisiveis.filter(b => b.status !== "pago").reduce((s, b) => s + b.valor_total, 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
   // Reintroduzido 01/10/2026 — a tela antiga do produtor tinha isso, mas só
@@ -917,7 +878,7 @@ export default function ContasAPagarPage() {
   }, []);
 
   const podeSelecionar = (l: RelLancamento) =>
-    l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
+    !tituloVinculado(l, vinculos) && saldoBase(l) > 0 && (l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial");
   const toggleSel = (id: string) => setSelecionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const idsSelecionaveis = linhas.filter(podeSelecionar).map(l => l.id);
   const toggleTodos = () => {
@@ -1029,9 +990,28 @@ export default function ContasAPagarPage() {
 
   // ── Confirmar Pagamento / Cancelar / Ver Itens de um Borderô ───
   async function carregarItensBordero(loteId: string): Promise<RelLancamento[]> {
-    const { data, error } = await supabase.from("rel_lancamentos").select("*").eq("lote_id", loteId);
-    if (error) throw error;
-    return (data ?? []) as RelLancamento[];
+    const membros: { lancamento_id: string; origem_tabela: string | null }[] = [];
+    for (let inicio = 0; ; inicio += 1000) {
+      const { data, error } = await supabase.from("pagamento_lote_itens")
+        .select("lancamento_id, origem_tabela").eq("lote_id", loteId).order("id").range(inicio, inicio + 999);
+      if (error) throw error;
+      membros.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+    const linhas: RelLancamento[] = [];
+    for (const origem of ["lancamentos", "empresa_lancamentos"] as const) {
+      const ids = [...new Set(membros.filter(i => (i.origem_tabela ?? "lancamentos") === origem).map(i => i.lancamento_id))];
+      // Lotes grandes também precisam de todas as NFs, sem o limite padrão da API.
+      for (let inicio = 0; inicio < ids.length; inicio += 200) {
+        const bloco = ids.slice(inicio, inicio + 200);
+        const { data, error } = await supabase.from("rel_lancamentos").select("*").eq("origem_tabela", origem).in("id", bloco);
+        if (error) throw error;
+        if (data.length !== bloco.length)
+          throw new Error("Não foi possível carregar todos os títulos do borderô. Atualize a tela e tente novamente.");
+        linhas.push(...(data as RelLancamento[]).map(r => ({ ...r, lote_id: loteId })));
+      }
+    }
+    return carregarNumerosNF(supabase, linhas);
   }
 
   const [modalConfirmarBordero, setModalConfirmarBordero] = useState<PagamentoLote | null>(null);
@@ -1089,7 +1069,7 @@ export default function ContasAPagarPage() {
     if (!confirm(`Cancelar o borderô "${b.descricao}"? Os títulos voltam a ficar soltos (sem borderô), sem baixar nada.`)) return;
     try {
       await cancelarBordero(b.id);
-      await carregarBorderos();
+      await Promise.all([carregar(), carregarBorderos()]);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao cancelar borderô");
     }
@@ -1108,13 +1088,16 @@ export default function ContasAPagarPage() {
   const [modalVerBordero, setModalVerBordero] = useState<PagamentoLote | null>(null);
   const [verBorderoItens, setVerBorderoItens] = useState<RelLancamento[]>([]);
   const [carregandoVerBordero, setCarregandoVerBordero] = useState(false);
+  const [erroVerBordero, setErroVerBordero] = useState("");
 
   async function abrirVerBordero(b: PagamentoLote) {
     setModalVerBordero(b);
+    setVerBorderoItens([]);
+    setErroVerBordero("");
     setCarregandoVerBordero(true);
     try {
       setVerBorderoItens(await carregarItensBordero(b.id));
-    } catch { setVerBorderoItens([]); }
+    } catch (e: unknown) { setErroVerBordero(e instanceof Error ? e.message : "Erro ao carregar as NFs do borderô"); }
     finally { setCarregandoVerBordero(false); }
   }
 
@@ -1235,11 +1218,12 @@ export default function ContasAPagarPage() {
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
             <label style={lblMini}>Buscar</label>
-            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, fornecedor..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, fornecedor, nº NF ou borderô..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div>
             <label style={lblMini}>Origem</label>
             <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setFOrigem(new Set())} style={chip(fOrigem.size === 0)}>Todas</button>
               {ORIGEM_OPCOES.map(o => (
                 <button key={o.v} onClick={() => toggle(fOrigem, setFOrigem, o.v)} style={chip(fOrigem.has(o.v))}>{o.label}</button>
               ))}
@@ -1248,8 +1232,9 @@ export default function ContasAPagarPage() {
           <div>
             <label style={lblMini}>Status</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button onClick={() => setFStatus(new Set())} style={chip(fStatus.size === 0)}>Todos</button>
               {STATUS_OPCOES.map(s => (
-                <button key={s.v} onClick={() => toggle(fStatus, setFStatus, s.v)} style={chip(fStatus.has(s.v))}>{s.label}</button>
+                <button key={s.v} onClick={() => setFStatus(new Set([s.v]))} style={chip(fStatus.has(s.v))}>{s.label}</button>
               ))}
             </div>
           </div>
@@ -1261,7 +1246,8 @@ export default function ContasAPagarPage() {
             <label style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <button onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</button>
+          <button onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </button>
         </div>
@@ -1273,7 +1259,7 @@ export default function ContasAPagarPage() {
         )}
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: 12, color: "#555", flexWrap: "wrap" }}>
-          <span><strong>{linhas.length}</strong> lançamento(s)</span>
+          <span><strong>{linhasComBordero.length}</strong> título(s) · {borderosVisiveis.length} borderô(s)</span>
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
           <span>·</span>
@@ -1344,13 +1330,12 @@ export default function ContasAPagarPage() {
                 }
                 const l = entry.l;
                 const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
-                const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
                 const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
                 const celulasGrid: Record<string, ReactNode> = {
                   checkbox: (
                     <td style={{ padding: "7px 8px", textAlign: "center" }}>
-                      {aberto && <input type="checkbox" style={{ cursor: "pointer" }} checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />}
+                      {podeSelecionar(l) && <input type="checkbox" style={{ cursor: "pointer" }} checked={selecionados.has(l.id)} onChange={() => toggleSel(l.id)} />}
                     </td>
                   ),
                   origem: (
@@ -1437,7 +1422,7 @@ export default function ContasAPagarPage() {
                   </tr>
                 );
               })}
-              {!carregando && linhas.length === 0 && (
+              {!carregando && linhasComBordero.length === 0 && (
                 <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
@@ -1687,8 +1672,8 @@ export default function ContasAPagarPage() {
               {itensLote.map((l, i) => (
                 <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 110px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
-                  <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
-                  <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.numero ?? "—"}</span>
+                  <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.pessoa_nome ?? l.empresa_nome ?? l.descricao}</span>
+                  <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.nfe_numero ?? "—"}</span>
                   <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                   <span style={{ textAlign: "right", fontWeight: 600, color: "#555", whiteSpace: "nowrap" }}>{fmtBRL(saldoLote(l))}</span>
                 </div>
@@ -1772,7 +1757,7 @@ export default function ContasAPagarPage() {
                   {confirmItens.map(l => (
                     <div key={l.id} style={{ display: "contents" }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? undefined}>{l.descricao}</span>
-                      <span>{l.numero ?? "—"}</span>
+                      <span>{l.nfe_numero ?? "—"}</span>
                       <span>{fmtData(l.data_vencimento)}</span>
                       <span style={{ textAlign: "right", fontWeight: 600, color: "#555" }}>{fmtBRL(saldoLote(l))}</span>
                     </div>
@@ -1804,6 +1789,7 @@ export default function ContasAPagarPage() {
             <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
               {modalVerBordero.status === "pago" ? "✅ Pago" : "⏳ Pendente"} · Total: <strong>{fmtBRL(modalVerBordero.valor_total)}</strong>
             </div>
+            {erroVerBordero && <div role="alert" style={{ color: "#B91C1C", padding: 12 }}>{erroVerBordero}</div>}
             {carregandoVerBordero ? (
               <div style={{ padding: 24, textAlign: "center", color: "#888" }}>Carregando...</div>
             ) : (
@@ -1814,13 +1800,13 @@ export default function ContasAPagarPage() {
                 {verBorderoItens.map((l, i) => (
                   <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
-                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.pessoa_nome ?? l.empresa_nome ?? l.descricao}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.nfe_numero ?? "—"}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(l.valor)}</span>
                   </div>
                 ))}
-                {verBorderoItens.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 12 }}>Nenhum item encontrado.</div>}
+                {!erroVerBordero && verBorderoItens.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 12 }}>Nenhum item encontrado.</div>}
               </div>
             )}
           </div>
@@ -1866,7 +1852,7 @@ export default function ContasAPagarPage() {
                 return (
                   <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 68px 80px 70px 70px 70px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
-                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.pessoa_nome ?? l.empresa_nome ?? l.descricao}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ color: "#888", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }}>{fmtBRL(saldoLote(l))}</span>
                     <input value={e.multa} onChange={ev => setEncargoLote(l.id, "multa", ev.target.value)} style={inpMini} />

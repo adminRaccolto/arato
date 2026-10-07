@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "./supabase";
+import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
 import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 
@@ -1103,6 +1104,7 @@ export async function criarPagamentoLote(
   // descrição livre.
   numero_titulo: string | null = null,
 ): Promise<import("./supabase").PagamentoLote> {
+  validarItensBordero(itens);
   const valor_total = itens.reduce((s, i) => s + i.valor_pago, 0);
 
   // 1. Cria o lote
@@ -1113,14 +1115,9 @@ export async function criarPagamentoLote(
     .single();
   if (le) throw le;
 
-  // 2. Cria os itens do lote — valor_pago aqui é só o peso (valor cheio da
-  // NF) pro rateio proporcional; juros/multa/desconto não existem mais por
-  // item, são do título (gravados em pagamento_lotes na confirmação).
-  const rows = itens.map(i => ({
-    lote_id: lote.id, lancamento_id: i.lancamento_id, origem_tabela: i.origem_tabela ?? "lancamentos", valor_pago: i.valor_pago,
-  }));
-  const { error: ie } = await supabase.from("pagamento_lote_itens").insert(rows);
-  if (ie) throw ie;
+  // Vínculo exclusivo antes de qualquer baixa; desfaz a criação se algum
+  // título já estiver em outro borderô, inclusive em requisições concorrentes.
+  await vincularItensBordero(supabase, lote.id, tipo, itens);
 
   const itensProd = itens.filter(i => (i.origem_tabela ?? "lancamentos") === "lancamentos");
   const itensEmp  = itens.filter(i => i.origem_tabela === "empresa_lancamentos");
@@ -1151,17 +1148,7 @@ export async function criarPagamentoLote(
       const { error: be } = await supabase
         .from(origem)
         .update({ status: novoStatus, valor_pago: novoTotal, [campoData]: data_pagamento, conta_bancaria, lote_id: lote.id })
-        .eq("id", item.lancamento_id);
-      if (be) throw be;
-    }
-  } else {
-    // 3. Apenas vincula o lote_id sem mudar status
-    for (const item of itens) {
-      const origem = item.origem_tabela ?? "lancamentos";
-      const { error: be } = await supabase
-        .from(origem)
-        .update({ lote_id: lote.id })
-        .eq("id", item.lancamento_id);
+        .eq("id", item.lancamento_id).eq("lote_id", lote.id);
       if (be) throw be;
     }
   }
