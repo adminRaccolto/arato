@@ -138,7 +138,7 @@ export default function PedidosCompraRelatorioTab() {
     const insumoIds = fInsumoId ? [fInsumoId] : insumosDoGrupo.map(i => i.id);
     if (insumoIds.length === 0) return [];
     const { data, error } = await supabase
-      .from("pedido_compra_itens")
+      .from("pedidos_compra_itens")
       .select("pedido_id")
       .in("fazenda_id", fids)
       .in("insumo_id", insumoIds);
@@ -359,7 +359,14 @@ export default function PedidosCompraRelatorioTab() {
       }
       setModalAberto(false);
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao gerar relatório");
+      // Erro do Supabase/Postgrest não é instanceof Error (é um objeto plano
+      // com .message) — sem isso, a mensagem real nunca aparecia, só o texto
+      // genérico (achado real: "Could not find the table" escondido atrás de
+      // "Erro ao gerar relatório").
+      const msg = e instanceof Error ? e.message
+        : (e && typeof e === "object" && "message" in e) ? String((e as { message: unknown }).message)
+        : "Erro ao gerar relatório";
+      setErro(msg);
     } finally {
       setGerando(false);
     }
