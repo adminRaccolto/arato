@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-e",
+    data: "07/10/2026",
+    titulo: "Taxa bancária mostra o banco da conta como Fornecedor",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Taxa bancária lançada pela Tesouraria não tem fornecedor cadastrado — só a conta bancária. A coluna Fornecedor do grid de CP agora mostra o banco da própria conta nesse caso." },
+    ],
+    onde: "Financeiro → Tesouraria / Contas a Pagar",
+  },
+  {
     versao: "2026.10.07-d",
     data: "07/10/2026",
     titulo: "Coluna \"Lançado via\" mostra Folha de Pagamento",
