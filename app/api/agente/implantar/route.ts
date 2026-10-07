@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 import { enviarTexto } from "../../../../lib/whatsapp-evolution";
 import { seedOperacoesGerenciais } from "../../../../lib/seedOperacoesGerenciais";
 
@@ -421,10 +422,12 @@ async function executeTool(
 
       const email = input.email as string;
       const nome = input.nome as string;
+      const senhaProvisoria = crypto.randomUUID().slice(0, 8);
 
-      // Cria usuário via Supabase Auth Admin
+      // Cria usuário via Supabase Auth Admin — com senha provisória, enviada no e-mail de acesso
       const { data: authUser, error: authErr } = await db.auth.admin.createUser({
         email,
+        password: senhaProvisoria,
         email_confirm: true,
         user_metadata: { nome },
       });
@@ -469,13 +472,45 @@ async function executeTool(
         role: "produtor",
       }, { onConflict: "user_id" });
 
-      // Gera link de convite
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://arato.agr.br";
-      await db.auth.admin.generateLink({
-        type: "invite",
-        email,
-        options: { redirectTo: `${appUrl}/login` },
-      });
+      // E-mail de acesso de verdade — generateLink (usado antes) só cria um link, não dispara e-mail
+      // nenhum. Mesmo padrão de app/api/admin/criar-usuario: senha provisória enviada pelo Resend.
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://web.arato.agr.br";
+      const nomeFaz = (dados.fazenda as { nome?: string } | undefined)?.nome ?? "sua fazenda";
+      const resendKey = process.env.RESEND_API_KEY;
+      if (resendKey) {
+        try {
+          await new Resend(resendKey).emails.send({
+            from: process.env.RESEND_FROM ?? "noreply@agr.com.br",
+            to: email,
+            subject: `Seu acesso ao Arato — ${nomeFaz}`,
+            html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#F4F6FA;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6FA;padding:32px 0;"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;border:0.5px solid #DDE2EE;overflow:hidden;">
+      <tr><td style="background:#1A4870;padding:28px 32px;">
+        <div style="font-size:22px;font-weight:700;color:#ffffff;">Arato</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.65);margin-top:3px;">Gestão Agrícola</div>
+      </td></tr>
+      <tr><td style="padding:32px;">
+        <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:#1a1a1a;">Bem-vindo, ${nome}!</p>
+        <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">Sua conta no Arato foi criada para a fazenda <strong>${nomeFaz}</strong>. Use as credenciais abaixo para fazer seu primeiro acesso.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6FA;border-radius:8px;border:0.5px solid #DDE2EE;margin-bottom:24px;"><tr><td style="padding:20px 24px;">
+          <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;margin-bottom:12px;">Suas credenciais de acesso</div>
+          <table cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:13px;color:#555;padding-bottom:8px;padding-right:16px;">E-mail</td><td style="font-size:13px;color:#1a1a1a;font-weight:600;padding-bottom:8px;">${email}</td></tr>
+            <tr><td style="font-size:13px;color:#555;padding-right:16px;">Senha provisória</td><td style="font-size:14px;color:#1A4870;font-weight:700;font-family:monospace;">${senhaProvisoria}</td></tr>
+          </table>
+        </td></tr></table>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#FBF3E0;border-radius:8px;border:0.5px solid #C9921B;margin-bottom:28px;"><tr><td style="padding:14px 18px;font-size:13px;color:#7A5A12;"><strong>⚠️ Troque a senha no primeiro acesso.</strong></td></tr></table>
+        <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;"><tr><td style="background:#1A4870;border-radius:8px;"><a href="${appUrl}/login" style="display:inline-block;padding:13px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">Acessar o Arato →</a></td></tr></table>
+        <p style="margin:0;font-size:12px;color:#888;line-height:1.6;">Link direto: <a href="${appUrl}/login" style="color:#1A4870;">${appUrl}/login</a></p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`,
+          });
+        } catch (e) { console.error("[agente-implantar] falha ao enviar e-mail de acesso:", e); }
+      }
 
       return {
         result: { ok: true, user_id: authUser.user.id },
