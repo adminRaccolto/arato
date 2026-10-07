@@ -94,6 +94,12 @@ const Ctx = createContext<AuthCtx>({
 
 export function useAuth() { return useContext(Ctx); }
 
+// Usuário interno da Raccolto (ou BPO) — nunca deve cair na tela de implantação de um
+// cliente, independente da tag da conta: a implantação é do cliente, não de quem o atende.
+function ehStaffInterno(role: string | null): boolean {
+  return role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor" || role === "raccotlo_operacional" || role === "bpo";
+}
+
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [fazendaId,              setFazendaId]              = useState<string | null>(null);
   const [fazendaIds,             setFazendaIds]             = useState<string[]>([]);
@@ -138,6 +144,28 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setLogoCliente(logoUrl ?? null);
     const cidReal = clienteContaId && !clienteContaId.startsWith("sem_conta_") ? clienteContaId : null;
     setContaId(cidReal);
+    // Status da conta nova (implantação, plano) — sem isso, ficava com o valor da conta
+    // anterior até o próximo login: trocar de cliente podia prender (ou liberar) a tela de
+    // implantação errada, achado real 07/10/2026.
+    if (cidReal) {
+      supabase.from("contas").select("nome, pacote, status, onboarding_ativo")
+        .eq("id", cidReal).maybeSingle()
+        .then(({ data: conta }) => {
+          if (!conta) return;
+          if (conta.nome) setContaNome(conta.nome as string);
+          setPlanoAtual((conta.pacote as PlanoId) ?? null);
+          setContaStatus((conta.status as string) ?? null);
+          const ativo = !ehStaffInterno(userRole) && ((conta.onboarding_ativo as boolean) ?? false);
+          setOnboardingAtivo(ativo);
+          setStepsCompletos(0);
+          if (ativo) calcularStepsCompletos(id).then(setStepsCompletos).catch(() => {});
+        });
+    } else {
+      setOnboardingAtivo(false);
+      setPlanoAtual(null);
+      setContaStatus(null);
+      setStepsCompletos(0);
+    }
     // Resolve todas as fazendas da conta para queries multi-fazenda
     fetch("/api/fazenda/da-conta", {
       method: "POST",
@@ -147,7 +175,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (json?.ok && json.fazendas?.length) setFazendaIds(json.fazendas.map(f => f.id));
     }).catch(() => {});
     router.push("/");
-  }, [router]);
+  }, [router, userRole]);
 
   const clearFazenda = useCallback(() => {
     localStorage.removeItem("raccotlo_fazenda_id");
@@ -325,7 +353,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           if (conta.nome) setContaNome(conta.nome as string);
           setPlanoAtual((conta.pacote as PlanoId) ?? null);
           setContaStatus((conta.status as string) ?? null);
-          const ativo = (conta.onboarding_ativo as boolean) ?? false;
+          const ativo = !ehStaffInterno(role) && ((conta.onboarding_ativo as boolean) ?? false);
           setOnboardingAtivo(ativo);
           if (conta.logo_url) setLogoCliente(conta.logo_url as string);
           // Calcula steps só se onboarding ativo (evita 7 queries desnecessárias)
