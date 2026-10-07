@@ -16071,3 +16071,106 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 329 — Grid de CP/CR: coluna Fornecedor vazia em salário/adiantamento/
+-- premiação de folha. O CP gerado ao fechar a folha não grava pessoa_id nem
+-- nenhuma referência ao funcionário (só o nome dentro do texto da descrição) —
+-- o único vínculo existe ao contrário, em folha_funcionarios.cp_lancamento_id.
+-- Esta versão busca o nome do funcionário por esse caminho quando não há
+-- pessoa_id, e recalcula as linhas de folha já existentes.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION fn_recalc_rel_lancamento_produtor(p_id uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v            lancamentos%ROWTYPE;
+  v_conta_id   uuid;
+  v_prod_nome  text;
+  v_pes_nome   text;
+  v_cc_nome    text;
+  v_safra_desc text;
+  v_ciclo_desc text;
+  v_og_nome    text;
+  v_cb_nome    text;
+  v_status_norm text;
+BEGIN
+  SELECT * INTO v FROM lancamentos WHERE id = p_id;
+  IF NOT FOUND THEN
+    DELETE FROM rel_lancamentos WHERE id = p_id AND origem_tabela = 'lancamentos';
+    RETURN;
+  END IF;
+
+  SELECT conta_id INTO v_conta_id FROM fazendas WHERE id = v.fazenda_id;
+  SELECT nome INTO v_prod_nome FROM produtores WHERE id = v.produtor_id;
+  SELECT nome INTO v_pes_nome  FROM pessoas    WHERE id = v.pessoa_id;
+  IF v_pes_nome IS NULL THEN
+    -- Salário/adiantamento/premiação de folha: sem pessoa_id, busca pelo vínculo reverso
+    SELECT nome_funcionario INTO v_pes_nome FROM folha_funcionarios WHERE cp_lancamento_id = v.id LIMIT 1;
+  END IF;
+  SELECT nome INTO v_cc_nome   FROM centros_custo WHERE id = v.centro_custo_id;
+  SELECT descricao INTO v_safra_desc FROM anos_safra WHERE id = v.ano_safra_id;
+  SELECT descricao INTO v_ciclo_desc FROM ciclos WHERE id = v.ciclo_id;
+  SELECT descricao INTO v_og_nome FROM operacoes_gerenciais WHERE id = v.operacao_gerencial_id;
+  IF v.conta_bancaria::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    SELECT nome INTO v_cb_nome FROM contas_bancarias WHERE id = v.conta_bancaria::text::uuid;
+  END IF;
+
+  v_status_norm := CASE v.status
+    WHEN 'baixado'   THEN 'baixado'
+    WHEN 'cancelado' THEN 'cancelado'
+    WHEN 'parcial'   THEN 'parcial'
+    WHEN 'vencido'   THEN 'vencido'
+    ELSE 'em_aberto'
+  END;
+
+  INSERT INTO rel_lancamentos (
+    id, origem_tabela, fazenda_id, conta_id, empresa_id, empresa_nome, produtor_id, produtor_nome,
+    tipo, descricao, categoria, valor, valor_pago, valor_multa, valor_juros, valor_desconto, moeda,
+    status_origem, status_normalizado, data_lancamento, data_vencimento, data_baixa,
+    pessoa_id, pessoa_nome, conta_bancaria, conta_bancaria_nome, centro_custo_id, centro_custo_nome,
+    ano_safra_id, ano_safra_descricao, ciclo_id, ciclo_descricao,
+    operacao_gerencial_id, operacao_gerencial_nome, vinculo_atividade, entidade_contabil,
+    origem_lancamento, numero_documento, observacao, conciliado, lote_id, numero, nfe_numero, updated_at
+  ) VALUES (
+    v.id, 'lancamentos', v.fazenda_id, v_conta_id, NULL, NULL, v.produtor_id, v_prod_nome,
+    v.tipo, v.descricao, v.categoria, v.valor, v.valor_pago, v.valor_multa, v.valor_juros, v.valor_desconto, v.moeda,
+    v.status, v_status_norm, v.data_lancamento, v.data_vencimento, v.data_baixa,
+    v.pessoa_id, v_pes_nome, v.conta_bancaria::text, v_cb_nome, v.centro_custo_id, v_cc_nome,
+    v.ano_safra_id, v_safra_desc, v.ciclo_id, v_ciclo_desc,
+    v.operacao_gerencial_id, v_og_nome, v.vinculo_atividade, v.entidade_contabil,
+    v.origem_lancamento, v.numero_documento, v.observacao, v.conciliado, v.lote_id, v.numero, v.nfe_numero, now()
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    origem_tabela = EXCLUDED.origem_tabela, fazenda_id = EXCLUDED.fazenda_id, conta_id = EXCLUDED.conta_id,
+    empresa_id = EXCLUDED.empresa_id, empresa_nome = EXCLUDED.empresa_nome,
+    produtor_id = EXCLUDED.produtor_id, produtor_nome = EXCLUDED.produtor_nome,
+    tipo = EXCLUDED.tipo, descricao = EXCLUDED.descricao, categoria = EXCLUDED.categoria,
+    valor = EXCLUDED.valor, valor_pago = EXCLUDED.valor_pago, valor_multa = EXCLUDED.valor_multa,
+    valor_juros = EXCLUDED.valor_juros, valor_desconto = EXCLUDED.valor_desconto, moeda = EXCLUDED.moeda,
+    status_origem = EXCLUDED.status_origem, status_normalizado = EXCLUDED.status_normalizado,
+    data_lancamento = EXCLUDED.data_lancamento, data_vencimento = EXCLUDED.data_vencimento, data_baixa = EXCLUDED.data_baixa,
+    pessoa_id = EXCLUDED.pessoa_id, pessoa_nome = EXCLUDED.pessoa_nome,
+    conta_bancaria = EXCLUDED.conta_bancaria, conta_bancaria_nome = EXCLUDED.conta_bancaria_nome,
+    centro_custo_id = EXCLUDED.centro_custo_id, centro_custo_nome = EXCLUDED.centro_custo_nome,
+    ano_safra_id = EXCLUDED.ano_safra_id, ano_safra_descricao = EXCLUDED.ano_safra_descricao,
+    ciclo_id = EXCLUDED.ciclo_id, ciclo_descricao = EXCLUDED.ciclo_descricao,
+    operacao_gerencial_id = EXCLUDED.operacao_gerencial_id, operacao_gerencial_nome = EXCLUDED.operacao_gerencial_nome,
+    vinculo_atividade = EXCLUDED.vinculo_atividade, entidade_contabil = EXCLUDED.entidade_contabil,
+    origem_lancamento = EXCLUDED.origem_lancamento, numero_documento = EXCLUDED.numero_documento,
+    observacao = EXCLUDED.observacao, conciliado = EXCLUDED.conciliado, lote_id = EXCLUDED.lote_id,
+    numero = EXCLUDED.numero, nfe_numero = EXCLUDED.nfe_numero,
+    updated_at = now();
+END;
+$$;
+
+-- Recalcula os CPs de folha já existentes (salário, adiantamento, premiação) — a coluna
+-- Fornecedor passa a mostrar o nome do funcionário sem precisar reabrir nada.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT DISTINCT cp_lancamento_id AS id FROM folha_funcionarios WHERE cp_lancamento_id IS NOT NULL LOOP
+    PERFORM fn_recalc_rel_lancamento_produtor(r.id);
+  END LOOP;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-c",
+    data: "07/10/2026",
+    titulo: "CP de salário mostra o nome do funcionário na coluna Fornecedor",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O CP gerado ao fechar a folha não grava nenhum vínculo com o funcionário além do texto da descrição, então a coluna Fornecedor ficava vazia. Agora o grid busca o nome por onde ele realmente existe (a própria folha) quando não há fornecedor cadastrado." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.07-b",
     data: "07/10/2026",
     titulo: "SIEG: resync comum volta a corrigir o cabeçalho da NF",
