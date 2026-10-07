@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-n",
+    data: "07/10/2026",
+    titulo: "Replicar Transferência: item com estoque zerado não some mais",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Adicionar ou remover itens ao replicar uma Transferência de Insumos já funcionava (abre como uma transferência nova, totalmente editável). Mas se o insumo de um item já tivesse ficado com saldo zerado — comum justo ao replicar uma transferência já emitida, que já consumiu aquele estoque — o campo aparecia em branco, parecendo quebrado. Corrigido: o insumo já selecionado aparece na lista mesmo sem saldo, marcado como \"sem saldo\"." },
+    ],
+    onde: "Comercial & Logística → Estoque → Transferência entre Fazendas",
+  },
+  {
     versao: "2026.10.07-m",
     data: "07/10/2026",
     titulo: "Lançado via completo + Borderô com data de vencimento e valor parcial",

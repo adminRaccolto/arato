@@ -1151,6 +1151,16 @@ export default function TransferenciasEstoquePage() {
                           <td style={td}>
                             <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 190 }}>
                               <option value="">— Selecione —</option>
+                              {/* Insumo já selecionado neste item some da lista quando o estoque atual
+                                  está zerado (comum ao replicar uma transferência já emitida, que já
+                                  consumiu o estoque daquele insumo) — sem isso, o select ficava em
+                                  branco mesmo com o item corretamente preenchido no estado, parecendo
+                                  que o item tinha sumido/quebrado. */}
+                              {insumoSel && (insumoSel.estoque ?? 0) <= 0 && (
+                                <option value={insumoSel.id}>
+                                  {insumoSel.nome} (Est: {(insumoSel.estoque ?? 0).toFixed(2)} {insumoSel.unidade}) — sem saldo
+                                </option>
+                              )}
                               {todosInsumos.filter(ins => (ins.estoque ?? 0) > 0).map(ins => (
                                 <option key={ins.id} value={ins.id}>
                                   {ins.nome} (Est: {(ins.estoque ?? 0).toFixed(2)} {ins.unidade})
