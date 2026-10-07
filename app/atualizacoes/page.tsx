@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-h",
+    data: "07/10/2026",
+    titulo: "Máscara de CNPJ perdia a pontuação no meio da digitação",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Ao digitar um CNPJ, no instante em que o campo tinha 13 dígitos (faltando só o último) a formatação sumia e o campo mostrava os números sem pontos nem traço, confundindo quem estava digitando e levando a erros no dígito verificador ou na filial. A formatação agora é contínua do primeiro ao último dígito." },
+    ],
+    onde: "Cadastros → Pessoas / Empresas / Produtores",
+  },
+  {
     versao: "2026.10.07-g",
     data: "07/10/2026",
     titulo: "Olívia agora é um balão flutuante, sempre aberto",

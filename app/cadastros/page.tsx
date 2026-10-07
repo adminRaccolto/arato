@@ -232,7 +232,13 @@ function maskCpfCnpj(v: string, tipo: "pf" | "pj") {
   if (d.length <= 5)  return d.replace(/(\d{2})(\d+)/, "$1.$2");
   if (d.length <= 8)  return d.replace(/(\d{2})(\d{3})(\d+)/, "$1.$2.$3");
   if (d.length <= 12) return d.replace(/(\d{2})(\d{3})(\d{3})(\d+)/, "$1.$2.$3/$4");
-  return d.slice(0, 14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  // Com 13 dígitos (ainda digitando o 2º dígito verificador), o regex antigo exigia
+  // os 14 completos e não formatava nada — o campo ficava sem pontuação por um instante
+  // ("0000000000019"), confundindo quem está digitando e levando a erros de dígito.
+  const dd = d.slice(0, 14);
+  const base = dd.slice(0, 12).replace(/(\d{2})(\d{3})(\d{3})(\d+)/, "$1.$2.$3/$4");
+  const resto = dd.slice(12);
+  return resto ? `${base}-${resto}` : base;
 }
 
 function maskPhone(v: string) {
