@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       // O borderô É o título (ex: boleto mensal que agrega várias NFs) — um
       // valor só de pago/juros/multa/desconto pro título inteiro, nunca por
       // NF/item. Ratear entre os itens é responsabilidade do servidor.
-      titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number };
+      titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string };
     };
     const { acao, lote_id } = body;
     if (!lote_id) return NextResponse.json({ ok: false, error: "lote_id obrigatório" }, { status: 400 });

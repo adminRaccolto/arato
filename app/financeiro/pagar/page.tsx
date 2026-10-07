@@ -50,7 +50,7 @@ import {
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero } from "../../../lib/financeiro/cp-grid";
-import { resumoBordero } from "../../../lib/financeiro/saldo-bordero";
+import { arredondarMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
@@ -1020,6 +1020,7 @@ export default function ContasAPagarPage() {
   const [popBordero, setPopBordero] = useState<{ b: PagamentoLote; x: number; y: number } | null>(null);
   const [confirmData, setConfirmData] = useState("");
   const [confirmConta, setConfirmConta] = useState("");
+  const [confirmVencimentoSaldo, setConfirmVencimentoSaldo] = useState("");
   const [confirmContasOpcoes, setConfirmContasOpcoes] = useState<ContaBancaria[]>([]);
   const [confirmItens, setConfirmItens] = useState<RelLancamento[]>([]);
   // Valor, juros, multa e desconto são do TÍTULO (o borderô inteiro) — um
@@ -1035,6 +1036,7 @@ export default function ContasAPagarPage() {
     setModalConfirmarBordero(b);
     setConfirmData(hojeISO());
     setConfirmConta("");
+    setConfirmVencimentoSaldo("");
     setConfirmValorPago(resumoBordero(b).saldo);
     setConfirmJuros("0,00"); setConfirmMulta("0,00"); setConfirmDesconto("0,00");
     setConfirmItens([]);
@@ -1055,6 +1057,7 @@ export default function ContasAPagarPage() {
     setSalvandoBordero(true); setErroBordero("");
     try {
       await confirmarPagamentoBordero(modalConfirmarBordero.id, confirmData, confirmConta, {
+        novo_vencimento_saldo: arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo ? confirmVencimentoSaldo || undefined : undefined,
         principal_anterior: resumoBordero(modalConfirmarBordero).liquidado, valor_pago: confirmValorPago, valor_juros: numBR(confirmJuros), valor_multa: numBR(confirmMulta), valor_desconto: numBR(confirmDesconto),
       });
       setModalConfirmarBordero(null);
@@ -1456,6 +1459,7 @@ export default function ContasAPagarPage() {
                 <div style={{ padding: "12px 14px", fontSize: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
                   <div><div style={{ color: "#888", fontSize: 10 }}>NFs</div><div style={{ color: "#1a1a1a" }}>{qtd} NF{qtd !== 1 ? "s" : ""}</div></div>
                   <div><div style={{ color: "#888", fontSize: 10 }}>Saldo em aberto</div><div style={{ color: parcial ? "#7A5200" : "#1a1a1a", fontWeight: 700 }}>{fmtBRL(resumo.saldo)}</div></div>
+                  {!pago && <div><div style={{ color: "#888", fontSize: 10 }}>Vencimento do saldo</div><div style={{ color: "#1a1a1a" }}>{fmtData(b.data_vencimento)}</div></div>}
                   <div><div style={{ color: "#888", fontSize: 10 }}>Total das NFs</div><div style={{ color: "#1a1a1a", fontWeight: 700 }}>{fmtBRL(b.valor_total)}</div></div>
                   {(pago || parcial) ? (
                     <>
@@ -1752,6 +1756,18 @@ export default function ContasAPagarPage() {
               <span style={{ color: "#888" }}>Valor a pagar menor que o saldo = pagamento parcial. O restante continua em aberto neste borderô.</span>
               <strong style={{ color: "#E24B4A", whiteSpace: "nowrap", marginLeft: 12 }}>Total: {fmtBRL(totalConfirm)}</strong>
             </div>
+
+            {confirmValorPago > 0 && arredondarMoeda(confirmValorPago) < resumoBordero(modalConfirmarBordero).saldo && (
+              <div style={{ marginTop: 14, padding: 12, background: "#FBF3E0", borderRadius: 8 }}>
+                <label style={lbl} htmlFor="bordero-vencimento-saldo">Novo vencimento do saldo (opcional)</label>
+                <InputData id="bordero-vencimento-saldo" type="date" value={confirmVencimentoSaldo} onChange={e => setConfirmVencimentoSaldo(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                <div style={{ fontSize: 11, color: "#7A5200", marginTop: 6 }}>
+                  Saldo após este pagamento: <strong>{fmtBRL(arredondarMoeda(resumoBordero(modalConfirmarBordero).saldo - confirmValorPago))}</strong>.
+                  {" "}Se deixar a data em branco, o saldo mantém o vencimento atual
+                  {modalConfirmarBordero.data_vencimento ? ` (${fmtData(modalConfirmarBordero.data_vencimento)})` : ""}.
+                </div>
+              </div>
+            )}
 
             {confirmItens.length > 0 && (
               <div style={{ marginTop: 16 }}>

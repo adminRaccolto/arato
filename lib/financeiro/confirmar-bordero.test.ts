@@ -163,3 +163,42 @@ test("falha ao excluir o cabeçalho no estorno mantém os pagamentos e vínculos
   await assert.rejects(estornarBorderoComSaldo(b.db, "b1"), /Falha simulada/);
   assert.deepEqual(b.tabelas, antes);
 });
+
+test("baixa parcial atribui novo vencimento somente ao saldo do borderô", async () => {
+  const b = banco();
+  await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, novo_vencimento_saldo: "2026-11-15" });
+  assert.equal(b.lote().data_vencimento, "2026-11-15");
+  assert.equal(b.lote().data_pagamento, "2026-10-07");
+  assert.equal(resumoBordero(b.lote()).saldo, 1500);
+  const filtros = { origens: new Set<string>(), status: new Set(["parcial"]), busca: "", de: "2026-11-01", ate: "2026-11-30", hoje: "2026-10-07" };
+  assert.equal(filtrarBordero(b.lote(), [], filtros), true);
+  assert.equal(filtrarBordero(b.lote(), [], { ...filtros, de: "2026-10-01", ate: "2026-10-31" }), false);
+  await pagar(b.db, 1500, 2500);
+  assert.equal(b.lote().data_vencimento, "2026-11-15");
+  assert.equal(resumoBordero(b.lote()).saldo, 0);
+});
+test("vencimento é opcional: pagamentos parciais sem nova data mantêm a data existente", async () => {
+  for (const novo_vencimento_saldo of [undefined, "", "  "]) {
+    const b = banco();
+    await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, novo_vencimento_saldo });
+    assert.equal(b.lote().data_vencimento, "2026-10-15");
+  }
+});
+test("quitação integral não altera vencimento, mesmo com campo de nova data enviado", async () => {
+  const b = banco();
+  await confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 4000, novo_vencimento_saldo: "2026-11-15" });
+  assert.equal(b.lote().data_vencimento, "2026-10-15");
+});
+test("data inexistente ou fora do formato é rejeitada antes de qualquer baixa", async () => {
+  for (const novo_vencimento_saldo of ["2026-02-30", "2026-13-01", "15/11/2026", "inválida"]) {
+    const b = banco(); const antes = structuredClone(b.tabelas);
+    await assert.rejects(confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, novo_vencimento_saldo }), /data válida/);
+    assert.deepEqual(b.tabelas, antes);
+  }
+});
+test("falha na baixa não publica a nova data do saldo", async () => {
+  const b = banco(); b.falhas.cabecalho = true;
+  await assert.rejects(confirmarBorderoComSaldo(b.db, "b1", "2026-10-07", "conta1", { valor_pago: 2500, novo_vencimento_saldo: "2026-11-15" }));
+  assert.equal(b.lote().data_vencimento, "2026-10-15");
+  assert.equal(b.lote().valor_pago, null);
+});

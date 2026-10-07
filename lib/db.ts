@@ -1169,7 +1169,7 @@ async function chamarBorderoAcao(body: {
   // Juros/multa/desconto/valor pago são do TÍTULO (o borderô inteiro) — um
   // valor só, nunca por NF/item. O servidor rateia proporcionalmente entre
   // os itens pelo saldo de cada um, acumulando pagamentos anteriores.
-  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number };
+  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string };
 }): Promise<void> {
   const res = await fetch("/api/financeiro/bordero-acao", {
     method: "POST",
@@ -1184,7 +1184,7 @@ export async function confirmarPagamentoBordero(
   lote_id: string,
   data_pagamento: string,
   conta_bancaria: string,
-  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number },
+  titulo?: { valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number; numero_titulo?: string; principal_anterior?: number; novo_vencimento_saldo?: string },
 ): Promise<void> {
   await chamarBorderoAcao({ acao: "confirmar", lote_id, data_pagamento, conta_bancaria, titulo });
 }

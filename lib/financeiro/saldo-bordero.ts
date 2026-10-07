@@ -15,6 +15,7 @@ export function resumoBordero(b: Pick<PagamentoLote, "status" | "valor_total" | 
 
 export type ValoresPagamentoBordero = {
   valor_pago?: number; valor_juros?: number; valor_multa?: number; valor_desconto?: number;
+  novo_vencimento_saldo?: string;
 };
 export function acumularPagamentoBordero(b: PagamentoLote, pagamento: ValoresPagamentoBordero) {
   const atual = resumoBordero(b);
@@ -28,10 +29,23 @@ export function acumularPagamentoBordero(b: PagamentoLote, pagamento: ValoresPag
   if (arredondarMoeda(principal) > atual.saldo) throw new Error("O pagamento supera o saldo em aberto do borderô.");
   if (desconto > principal) throw new Error("O desconto não pode superar o principal deste pagamento.");
   const liquidado = arredondarMoeda(atual.liquidado + principal);
+  const saldo = arredondarMoeda(Math.max(0, b.valor_total - liquidado));
+  let novoVencimento = "";
+  if (saldo > 0 && pagamento.novo_vencimento_saldo !== undefined) {
+    const valor = pagamento.novo_vencimento_saldo;
+    if (typeof valor !== "string") throw new Error("Informe uma data válida para o vencimento do saldo.");
+    novoVencimento = valor.trim();
+    if (novoVencimento) {
+      const data = new Date(`${novoVencimento}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(novoVencimento) || !Number.isFinite(data.getTime()) || data.toISOString().slice(0, 10) !== novoVencimento)
+        throw new Error("Informe uma data válida para o vencimento do saldo.");
+    }
+  }
   return {
     principal: arredondarMoeda(principal), juros: arredondarMoeda(juros), multa: arredondarMoeda(multa), desconto: arredondarMoeda(desconto),
-    saldo: arredondarMoeda(Math.max(0, b.valor_total - liquidado)),
+    saldo,
     patch: {
+      ...(novoVencimento ? { data_vencimento: novoVencimento } : {}),
       // O banco aceita pendente/pago. Parcial é determinado pelo saldo,
       // permitindo corrigir também os registros antigos marcados como pagos.
       status: liquidado >= arredondarMoeda(b.valor_total) ? "pago" : "pendente",
