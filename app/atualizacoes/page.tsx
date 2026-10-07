@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-f",
+    data: "07/10/2026",
+    titulo: "Consulta de CNPJ mostra o motivo real do erro",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Ao buscar dados de CNPJ, qualquer falha mostrava \"CNPJ não encontrado\", mesmo quando o motivo era outro (CNPJ com dígito errado, limite de consultas, Receita fora do ar). Agora a mensagem mostra o motivo real." },
+    ],
+    onde: "Cadastros → Pessoas",
+  },
+  {
     versao: "2026.10.07-e",
     data: "07/10/2026",
     titulo: "Taxa bancária mostra o banco da conta como Fornecedor",

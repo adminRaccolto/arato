@@ -1873,7 +1873,17 @@ function CadastrosInner() {
     setBuscandoCnpj(true);
     try {
       const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${raw}`);
-      if (!r.ok) { alert("CNPJ não encontrado na Receita Federal"); return; }
+      if (!r.ok) {
+        // A mensagem variava sempre como "não encontrado", mesmo quando o motivo real era
+        // outro (CNPJ com dígito verificador errado, limite de consultas, API fora do ar) —
+        // mostra o motivo que a própria Receita/BrasilAPI devolveu.
+        const corpo = await r.json().catch(() => null) as { message?: string } | null;
+        if (r.status === 404) alert("CNPJ não encontrado na Receita Federal.");
+        else if (r.status === 400) alert(corpo?.message || "CNPJ inválido — confira os dígitos.");
+        else if (r.status === 429) alert("Limite de consultas à Receita Federal atingido no momento. Tente de novo em instantes.");
+        else alert(`Falha ao consultar a Receita Federal (HTTP ${r.status})${corpo?.message ? `: ${corpo.message}` : "."}`);
+        return;
+      }
       const d = await r.json();
       const cepRaw = (d.cep ?? "").replace(/\D/g, "");
       // IE: BrasilAPI retorna em inscricoes_estaduais[] ou inscricao_estadual
