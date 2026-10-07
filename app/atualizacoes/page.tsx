@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.07-q",
+    data: "07/10/2026",
+    titulo: "\"Preencher do Cadastro\" (Parâmetros Fiscais) agora salva de verdade",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"↺ Preencher do Cadastro\", no card de cada emitente em Parâmetros Fiscais, só atualizava a tela — sem clicar separadamente em \"Salvar Parâmetros\" depois, nada era gravado, e mesmo clicando havia risco de salvar um valor desatualizado. Corrigido: o botão agora grava direto, com confirmação visual no próprio botão (\"✓ Preenchido e salvo!\")." },
+    ],
+    onde: "Configurações → Parâmetros Fiscais (NF-e) → card do emitente",
+  },
+  {
     versao: "2026.10.07-p",
     data: "07/10/2026",
     titulo: "Borderô reformulado: o título é o borderô, não cada NF",

@@ -1035,9 +1035,13 @@ function ParametrosSistemaContent() {
   );
 
   // Preenche automaticamente o config fiscal a partir do cadastro do produtor/empresa
-  // forcar = clique no botão "Preencher do Cadastro": sobrescreve os dados de identificação com o cadastro.
-  // Sem forcar (abertura do card): só preenche se o CPF/CNPJ ainda não foi configurado.
-  function autoPreencherDoCadastro(emitter: EmitterEntry, forcar = false) {
+  // forcar = clique no botão "Preencher do Cadastro": sobrescreve os dados de identificação com o
+  // cadastro E GRAVA DE VERDADE no banco (achado real: o botão só atualizava o estado local da
+  // tela via setCfgs — sem clicar depois em "Salvar Parâmetros" separadamente, nada era persistido,
+  // e mesmo clicando havia risco de corrida entre o setState e o salvar() ler um valor desatualizado
+  // — por isso parecia "sem ação"). Sem forcar (abertura do card): só preenche localmente, e só se o
+  // CPF/CNPJ ainda não foi configurado — não salva sozinho, pra não pedir confirmação a cada card aberto.
+  async function autoPreencherDoCadastro(emitter: EmitterEntry, forcar = false) {
     const existente = cfgs[emitter.moduloKey] ?? {};
     if (!forcar && existente.cpf_cnpj_emitente) return;
     let seed: Partial<CfgModulo> = {};
@@ -1073,11 +1077,19 @@ function ParametrosSistemaContent() {
         fone:               e.telefone ?? "",
       };
     }
+    if (forcar) {
+      // Clique explícito no botão — grava de verdade, sem depender de o
+      // usuário lembrar de clicar em "Salvar Parâmetros" depois.
+      const atual = (cfgs[emitter.moduloKey] ?? {}) as Record<string, string>;
+      const resultado = { ...atual, ...seed } as CfgModulo;
+      await salvarComValor(emitter.moduloKey, resultado);
+      return;
+    }
     setCfgs(prev => {
       const atual = (prev[emitter.moduloKey] ?? {}) as Record<string, string>;
-      // Campos já preenchidos (não vazios) prevalecem na abertura; no botão, o cadastro prevalece.
+      // Campos já preenchidos (não vazios) prevalecem na abertura do card.
       const preenchidos = Object.fromEntries(Object.entries(atual).filter(([, v]) => v !== "" && v != null));
-      const resultado = forcar ? { ...atual, ...seed } : { ...seed, ...preenchidos };
+      const resultado = { ...seed, ...preenchidos };
       return { ...prev, [emitter.moduloKey]: resultado as CfgModulo };
     });
   }
@@ -1241,8 +1253,9 @@ function ParametrosSistemaContent() {
                       </span>
                       <button
                         onClick={() => autoPreencherDoCadastro(emitter, true)}
-                        style={{ padding: "5px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        ↺ Preencher do Cadastro
+                        disabled={salvando === emitter.moduloKey}
+                        style={{ padding: "5px 14px", background: ok === emitter.moduloKey ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        {salvando === emitter.moduloKey ? "Preenchendo..." : ok === emitter.moduloKey ? "✓ Preenchido e salvo!" : "↺ Preencher do Cadastro"}
                       </button>
                     </div>
 

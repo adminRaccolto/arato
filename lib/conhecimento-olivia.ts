@@ -263,6 +263,8 @@ Documentos Fiscais → Notas de Terceiro → carregue o XML (recomendado) ou dig
 **"Como configuro a emissão de NF-e?"**
 Configurações → Parâmetros Fiscais (NF-e): preencha CNPJ/IE do emitente, série e ambiente (homologação ou produção), e configure o Certificado Digital A1. Sem isso a emissão não funciona.
 
+**"↺ Preencher do Cadastro"** (dentro do card de cada emitente): puxa nome, documento e endereço do cadastro de Produtor/Empresa e já grava direto — não é preciso clicar em "Salvar Parâmetros" depois. Inscrição Municipal não vem desse botão (o cadastro de Produtor não tem esse campo) — precisa digitar manualmente quando o emitente tiver.
+
 **"Como importo o extrato bancário (OFX)?"**
 Financeiro → Conciliação Bancária → escolha a conta certa e importe o arquivo. O sistema classifica cada linha como alta/média/bloqueado/nenhum confiança de vínculo — revise as de confiança média antes de confirmar, e trate separadamente as sem candidato.
 
