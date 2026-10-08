@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-p",
+    data: "08/10/2026",
+    titulo: "Busca de CNPJ ganhou segunda fonte quando a primeira está fora do ar",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "O botão de auto-preenchimento por CNPJ (Cadastros → Pessoas) dependia de uma única fonte pública (BrasilAPI) — quando ela ficava instável ou fora do ar (erro 503/500) ou no limite de consultas (429), a busca simplesmente falhava. Agora, nesses casos, tenta automaticamente uma segunda fonte (ReceitaWS) antes de mostrar erro — só desiste de verdade se as duas falharem, ou se o CNPJ realmente não existir/tiver dígito errado." },
+    ],
+    onde: "Cadastros → Pessoas → Novo/Editar → botão \"...\" ao lado do CNPJ",
+  },
+  {
     versao: "2026.10.08-o",
     data: "08/10/2026",
     titulo: "NF de Devolução de Compra: endereço/IBGE do fornecedor completado automaticamente",

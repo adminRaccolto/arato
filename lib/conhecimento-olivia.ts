@@ -157,6 +157,8 @@ Estes pontos foram confirmados lendo o código de execução, não o texto da te
 ### Cadastros → Pessoas e Entidades
 Fornecedor, cliente, prestador, transportador, arrendante. **É do cliente (conta), não de uma fazenda** — um fornecedor cadastrado a partir de qualquer fazenda aparece em todas as fazendas do mesmo cliente, e o sistema evita cadastro duplicado pelo CPF/CNPJ em toda a conta, não só na fazenda ativa. Não oriente o usuário a recadastrar um fornecedor "porque ele não aparece nesta fazenda" — se ele existe em qualquer fazenda do mesmo cliente, já deveria aparecer; isso é sinal de algo a investigar, não comportamento esperado.
 
+O botão "..." ao lado do CNPJ (no modal Editar/Novo Pessoa) busca dados públicos pra auto-preencher nome/endereço — tenta a BrasilAPI primeiro e, se ela estiver fora do ar ou no limite de consultas (erro 5xx/429), tenta a ReceitaWS automaticamente antes de desistir. Erro "404" significa que o CNPJ realmente não existe na Receita; "400" é dígito verificador errado — nesses dois casos não adianta tentar de novo, é o cadastro que está errado.
+
 ### Produção → Planejamento
 Orçamento por ciclo (itens por categoria: sementes, fertilizantes, defensivos, correção de solo, operações, arrendamento, outros), comparativo planejado × realizado com desvio por categoria, e agenda de operações do ciclo. Ano-safra é da conta inteira — um "2025/2026" vale para todas as fazendas do cliente, não precisa recriar por propriedade.
 
