@@ -192,6 +192,8 @@ Status: rascunho → aprovado → parcialmente entregue → entregue / cancelado
 ### Documentos Fiscais → Notas de Terceiro (NF de Produtos)
 Captura (XML, SIEG ou digitação manual) e processamento são fases distintas — uma nota "capturada" ou "classificada" pelo SIEG ainda não gerou estoque nem CP até ser processada de fato. No processamento, cada item pode ir para estoque, direto para uma máquina ou direto para um centro de custo (Apropriação Direta), conforme a Operação Gerencial escolhida no cabeçalho. Produto sem unidade compatível com o cadastro pode usar "Conversão manual (livre)" — você digita o total já na unidade do insumo. Para desfazer uma nota processada, use Estornar antes de reprocessar (reverte estoque, CP e pendências fiscais) — nunca edite o cabeçalho de uma nota já processada direto.
 
+**Devolução de Compra**: botão "↩ Devolver" (card da NF em Documentos Fiscais, ou dentro do modal da NF já processada) emite uma NF-e de devolução de verdade na SEFAZ (saída, de volta ao fornecedor, CFOP 5201/6201). Só aparece em NF processada do tipo **Insumos** ou **Peças / Manut.** — os dois tipos que podem apropriar item em estoque. Mesmo aparecendo, só entram na lista de devolução os itens que foram de fato pro estoque (tipo_apropiacao = estoque); item lançado direto numa máquina ou por Apropriação Direta (centro de custo) não tem o que devolver do estoque, então não aparece na lista — nesse caso o ajuste é por Reclassificar ou Estornar, não por Devolução.
+
 ### Documentos Fiscais → Notas de Serviço (NFS-e)
 Separada da nota de produtos — wizard Prestador → Serviço (código LC 116/2003) → Tributação (ISS e retenções federais: PIS, COFINS, CSLL, IRRF, INSS). O tomador normalmente é a própria fazenda/produtor contratante.
 

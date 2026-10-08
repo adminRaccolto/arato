@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-b",
+    data: "08/10/2026",
+    titulo: "Devolução de Compra liberada para NF de Peças / Manutenção",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "O botão \"↩ Devolver\" só aparecia em NF do tipo Insumos. Peças/Manutenção também pode ir pro estoque (quando não usa Apropriação Direta), então agora o botão aparece pros dois tipos. Continua só listando pra devolução os itens que realmente foram pro estoque — item apropriado direto numa máquina ou centro de custo não entra, porque não há saldo de estoque pra reverter." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → card da NF processada (tipo Peças / Manut.)",
+  },
+  {
     versao: "2026.10.08-a",
     data: "08/10/2026",
     titulo: "Novo relatório: Pedidos de Compra Consolidado por Insumo",

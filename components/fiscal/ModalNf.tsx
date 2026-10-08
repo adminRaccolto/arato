@@ -2139,7 +2139,7 @@ export default function ModalNf({
       if (!nf) { setErr("NF não encontrada."); setCarregandoNf(false); return; }
       await abrirEditar(nf);
       setCarregandoNf(false);
-      if (acaoInicial === "devolver" && nf.status === "processada" && nf.tipo_entrada === "insumos") {
+      if (acaoInicial === "devolver" && nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas")) {
         abrirDevolucao(nf);
       } else if (acaoInicial === "estornar" && nf.status === "processada") {
         estornarNFClick(nf);
@@ -3701,7 +3701,7 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && (
                         <button onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
-                      {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
+                      {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas") && (
                         <button onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (

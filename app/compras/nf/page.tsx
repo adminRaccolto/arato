@@ -3136,7 +3136,7 @@ export default function NfCompraPage() {
                                         Editar uma NF processada exige Estornar primeiro (reverte estoque e financeiro):
                                         sem isso, salvar o cabeçalho voltava o status pra "pendente" por baixo, sem
                                         avisar, e o guard de processarNF() nunca disparava (o status já tinha mudado). */}
-                                    {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
+                                    {nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas") && (
                                       <button onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
                                         Devolver
