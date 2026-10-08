@@ -33,6 +33,7 @@
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
@@ -153,6 +154,7 @@ const chip = (ativo: boolean): React.CSSProperties => ({
 });
 
 export default function DocumentosFiscaisPage() {
+  const router = useRouter();
   const { fazendaId, fazendaIds, contaId } = useAuth();
 
   const [carregando, setCarregando] = useState(true);
@@ -894,6 +896,12 @@ export default function DocumentosFiscaisPage() {
                   <button onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #E24B4A50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     ↩ Devolver
+                  </button>
+                )}
+                {d.tipo_doc === "NF" && processada && nf?.tipo_entrada === "insumos" && (
+                  <button onClick={() => { setPopover(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${d.id}`); }}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#E6F1FB", color: "#1A4870", border: "0.5px solid #1A487050", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
+                    🚚 Emitir NF Remessa
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (

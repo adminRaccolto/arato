@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-l",
+    data: "08/10/2026",
+    titulo: "Botão de Remessa de volta no card da NF (Documentos Fiscais)",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O botão \"🚚 Emitir NF Remessa\" existia dentro do modal da NF, mas nunca tinha sido adicionado ao card rápido da grid de Documentos Fiscais (onde já tinham Devolver/Estornar/Reclassificar) — ficava sem essa opção ao abrir o card direto, só aparecia entrando no modal completo. Adicionado no mesmo lugar, mesma condição (NF processada, tipo Insumos)." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → card da NF processada",
+  },
+  {
     versao: "2026.10.08-k",
     data: "08/10/2026",
     titulo: "Cartão de Crédito integrado ao Contas a Pagar",
