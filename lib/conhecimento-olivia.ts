@@ -202,6 +202,8 @@ Fluxo: Rascunho → Emitir NF → (Confirmar Entrada, se não automática). CFOP
 
 **Replicar (⧉):** disponível em qualquer transferência, de qualquer status. Abre uma cópia nova (rascunho), totalmente editável — inclusive os itens: dá para adicionar, remover e trocar insumo/quantidade/custo livremente antes de emitir de novo. Não altera nem referencia a transferência original.
 
+O seletor de Insumo, por item, tem busca por texto (digite parte do nome pra filtrar) — útil quando o catálogo da fazenda tem muitos itens cadastrados.
+
 ### Comercial & Logística → Contratos de Grãos
 Status: aberto → parcial → encerrado / cancelado. Confirmar o contrato atribui número e cria o CR quando há valor — **não emite NF-e** (isso é uma ação separada). Romaneio de entrega atualiza o saldo do contrato e o status automaticamente. Adiantamento de cliente gera CR já baixado, que abate contra o CR de cada entrega futura (FIFO, do mais antigo primeiro).
 

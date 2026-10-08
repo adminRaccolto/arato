@@ -2,9 +2,10 @@
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
+import SelectBusca from "../../../components/SelectBusca";
+import { supabase } from "../../../lib/supabase";
 import type { Fazenda, Deposito, Insumo, TransferenciaEstoque, TransferenciaEstoqueItem, Produtor, ProdutorIE } from "../../../lib/supabase";
 import { saldoPorLote, listarProdutoresDaConta, listarIEsDoProdutor } from "../../../lib/db";
 
@@ -88,11 +89,6 @@ const STATUS_LABEL: Record<string, { txt: string; bg: string; cor: string }> = {
 
 export default function TransferenciasEstoquePage() {
   const { fazendaId, contaId } = useAuth();
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
 
   // ── Dados ─────────────────────────────────────────────────────────────────
   const [transferencias, setTransferencias] = useState<TransferenciaComItens[]>([]);
@@ -226,13 +222,25 @@ export default function TransferenciasEstoquePage() {
       }));
       setDepositosPorFazenda(depMap);
 
-      // Insumos de todas as fazendas
+      // Insumos de todas as fazendas — paginado: o Supabase corta em 1.000
+      // linhas por padrão, e uma fazenda com catálogo grande passava disso
+      // silenciosamente, sumindo com os insumos cadastrados depois do corte
+      // no seletor da transferência.
       const insMap: Record<string, Insumo[]> = {};
       await Promise.all(fazendas.map(async (f) => {
-        const { data } = await supabase
-          .from("insumos").select("id,nome,unidade,estoque,categoria,deposito_id,custo_medio")
-          .eq("fazenda_id", f.id).order("nome");
-        insMap[f.id] = (data ?? []) as Insumo[];
+        const PAGE = 1000;
+        let all: Insumo[] = [];
+        let from = 0;
+        while (true) {
+          const { data } = await supabase
+            .from("insumos").select("id,nome,unidade,estoque,categoria,deposito_id,custo_medio")
+            .eq("fazenda_id", f.id).order("nome")
+            .range(from, from + PAGE - 1);
+          all = all.concat((data ?? []) as Insumo[]);
+          if (!data || data.length < PAGE) break;
+          from += PAGE;
+        }
+        insMap[f.id] = all;
       }));
       setInsumosPorFazenda(insMap);
 
@@ -1149,24 +1157,26 @@ export default function TransferenciasEstoquePage() {
                       return (
                         <tr key={i}>
                           <td style={td}>
-                            <select value={it.insumo_id} onChange={e => updateItem(i, "insumo_id", e.target.value)} style={{ ...inp, width: 190 }}>
-                              <option value="">— Selecione —</option>
-                              {/* Insumo já selecionado neste item some da lista quando o estoque atual
-                                  está zerado (comum ao replicar uma transferência já emitida, que já
-                                  consumiu o estoque daquele insumo) — sem isso, o select ficava em
-                                  branco mesmo com o item corretamente preenchido no estado, parecendo
-                                  que o item tinha sumido/quebrado. */}
-                              {insumoSel && (insumoSel.estoque ?? 0) <= 0 && (
-                                <option value={insumoSel.id}>
-                                  {insumoSel.nome} (Est: {(insumoSel.estoque ?? 0).toFixed(2)} {insumoSel.unidade}) — sem saldo
-                                </option>
-                              )}
-                              {todosInsumos.filter(ins => (ins.estoque ?? 0) > 0).map(ins => (
-                                <option key={ins.id} value={ins.id}>
-                                  {ins.nome} (Est: {(ins.estoque ?? 0).toFixed(2)} {ins.unidade})
-                                </option>
-                              ))}
-                            </select>
+                            <SelectBusca
+                              value={it.insumo_id}
+                              onChange={v => updateItem(i, "insumo_id", v)}
+                              placeholder="— Selecione —"
+                              style={{ ...inp, width: 190 }}
+                              options={[
+                                // Insumo já selecionado neste item some da lista quando o estoque atual
+                                // está zerado (comum ao replicar uma transferência já emitida, que já
+                                // consumiu o estoque daquele insumo) — sem isso, o seletor ficava em
+                                // branco mesmo com o item corretamente preenchido no estado, parecendo
+                                // que o item tinha sumido/quebrado.
+                                ...(insumoSel && (insumoSel.estoque ?? 0) <= 0
+                                  ? [{ value: insumoSel.id, label: `${insumoSel.nome} (Est: ${(insumoSel.estoque ?? 0).toFixed(2)} ${insumoSel.unidade}) — sem saldo` }]
+                                  : []),
+                                ...todosInsumos.filter(ins => (ins.estoque ?? 0) > 0).map(ins => ({
+                                  value: ins.id,
+                                  label: `${ins.nome} (Est: ${(ins.estoque ?? 0).toFixed(2)} ${ins.unidade})`,
+                                })),
+                              ]}
+                            />
                           </td>
                           <td style={td}>
                             <input type="text" value={it.quantidade} onChange={e => updateItem(i, "quantidade", e.target.value)} placeholder="0,000" style={{ ...inp, width: 78 }} />

@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-j",
+    data: "08/10/2026",
+    titulo: "Transferência entre Fazendas: seletor de Insumo com busca e corrigido corte de itens",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Em fazendas com catálogo grande de insumos, o seletor de produto na Transferência entre Fazendas podia não mostrar todos os itens cadastrados — a busca no banco cortava em 1.000 registros. Corrigido para buscar todos, em qualquer quantidade." },
+      { tipo: "melhoria", texto: "O seletor de Insumo, por item da transferência, agora tem um campo de busca — digite parte do nome do produto pra filtrar a lista, em vez de rolar um dropdown longo." },
+    ],
+    onde: "Comercial & Logística → Transferência entre Fazendas",
+  },
+  {
     versao: "2026.10.08-i",
     data: "08/10/2026",
     titulo: "Corrigido: tela em branco ao abrir páginas com controle de plano",
