@@ -1750,6 +1750,31 @@ export default function ModalNf({
         quantidade:      i.quantidade_devolver,
         valor_unitario:  i.valor_unitario,
       }));
+      // A devolução enviava só nome+CPF/CNPJ do destinatário (o fornecedor da NF
+      // original) — sem endereço/IBGE nenhum, sempre, pra toda devolução, não só
+      // quando faltava no cadastro. A SEFAZ rejeita (505) sem o IBGE. Resolve o
+      // cadastro completo da Pessoa aqui, e — mesmo padrão já usado na NF de
+      // Remessa — completa pelo CEP via ViaCEP se faltar endereço/IBGE no cadastro.
+      const fornecedorPessoa = pessoas.find(p => p.id === devNfOrig.pessoa_id);
+      let destLogradouro     = fornecedorPessoa?.logradouro ?? "";
+      let destBairro         = fornecedorPessoa?.bairro ?? "";
+      let destMunicipioNome  = fornecedorPessoa?.municipio ?? "";
+      let destUf             = fornecedorPessoa?.estado ?? "";
+      let destMunicipioIbge  = fornecedorPessoa?.municipio_ibge ?? "";
+      const destCep          = (fornecedorPessoa?.cep ?? "").replace(/\D/g, "");
+      if (destCep.length === 8 && (!destMunicipioIbge || !destLogradouro)) {
+        try {
+          const r = await fetch(`https://viacep.com.br/ws/${destCep}/json/`);
+          const d = await r.json();
+          if (!d.erro) {
+            destLogradouro    = destLogradouro    || d.logradouro || "";
+            destBairro        = destBairro        || d.bairro     || "";
+            destMunicipioNome = destMunicipioNome  || d.localidade || "";
+            destUf            = destUf            || d.uf         || "";
+            destMunicipioIbge = destMunicipioIbge  || d.ibge       || "";
+          }
+        } catch { /* segue sem — o erro da SEFAZ embaixo já orienta a corrigir o cadastro */ }
+      }
       const resp = await fetch("/api/fiscal/emitir-nfe", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -1761,8 +1786,16 @@ export default function ModalNf({
           produtor_id_hint: devNfOrig.produtor_id,
           cpf_cnpj_hint:   devCpfHint,
           destinatario: {
-            nome:     devNfOrig.emitente_nome,
-            cpf_cnpj: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
+            nome:           devNfOrig.emitente_nome,
+            cpf_cnpj:       (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
+            ie:             fornecedorPessoa?.inscricao_est || undefined,
+            logradouro:     destLogradouro || undefined,
+            numero:         fornecedorPessoa?.numero || undefined,
+            bairro:         destBairro || undefined,
+            municipio_ibge: destMunicipioIbge || undefined,
+            municipio_nome: destMunicipioNome || undefined,
+            uf:             destUf || undefined,
+            cep:            destCep || undefined,
           },
           itens:    itensNfe,
           natureza: "Devolução de Compra",

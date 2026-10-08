@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-o",
+    data: "08/10/2026",
+    titulo: "NF de Devolução de Compra: endereço/IBGE do fornecedor completado automaticamente",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A Devolução de Compra enviava pra SEFAZ só o nome e CPF/CNPJ do fornecedor — nunca o endereço nem o código IBGE, mesmo quando o cadastro de Pessoas tinha esses dados. A SEFAZ rejeitava (erro 505, \"Código IBGE do município do destinatário não informado\"). Corrigido: agora busca o cadastro completo do fornecedor, e se faltar endereço/IBGE lá mas o CEP estiver preenchido, completa automaticamente pelo CEP antes de emitir — mesmo recurso já usado na NF de Remessa." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → card da NF processada → ↩ Devolver",
+  },
+  {
     versao: "2026.10.08-n",
     data: "08/10/2026",
     titulo: "NF de Remessa: produtor, endereço do destinatário e CFOP corrigidos",
