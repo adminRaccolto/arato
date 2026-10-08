@@ -57,28 +57,18 @@ export async function proxy(request: NextRequest) {
   );
 
   // getUser() renova o token se próximo do vencimento e atualiza os cookies
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    // Diagnóstico temporário (08/10/2026) — caso real reportado continuando
-    // mesmo após as correções anteriores: loga o motivo exato no servidor
-    // (visível via `vercel logs`) pra confirmar/descartar a teoria da corrida
-    // de refresh token em vez de continuar ajustando às cegas.
-    console.error("[proxy] getUser sem usuário", { pathname, errorMsg: error?.message, errorCode: (error as { code?: string } | null)?.code });
-    // Achado real 08/10/2026: mesmo com a rajada de prefetch já cortada acima,
-    // usuário continuava sendo deslogado ao navegar de verdade pra Financeiro.
-    // Causa: o cliente Supabase do NAVEGADOR (lib/supabase.ts, autoRefreshToken
-    // ativo) e este proxy rodando no servidor são dois processos de renovação
-    // INDEPENDENTES disputando o mesmo refresh token guardado no cookie — se o
-    // navegador renova em paralelo a uma requisição de navegação (comum logo
-    // após o login, ou com várias abas), o proxy chega a usar um refresh token
-    // que acabou de virar obsoleto e getUser() falha aqui — sem o usuário ter
-    // feito nada de errado. Antes, essa falha virava redirect imediato pra
-    // /login (um logout de verdade, pela ótica do usuário). Agora: só força
-    // o redirect quando NÃO existe cookie de sessão nenhum (usuário realmente
-    // nunca logado); havendo cookie mas getUser() falhando, deixa passar — o
-    // AuthProvider no navegador tem seu próprio getUser() (roda de novo,
-    // sem essa corrida servidor×cliente) e decide se desloga de verdade.
+    // Achado real 08/10/2026 (investigado com logs ao vivo em produção): o
+    // logout reportado em Financeiro não era causado por código — era o
+    // RELÓGIO DO SISTEMA do computador do usuário estar desacertado (o
+    // BannerRelogioDessincronizado agora avisa isso proativamente). Ainda
+    // assim, mantém esta tolerância como defesa: só força redirect pra
+    // /login quando NÃO existe cookie de sessão nenhum (usuário realmente
+    // nunca logado); havendo cookie mas getUser() falhando nesse instante
+    // (ex: relógio desacertado, ou uma renovação concorrente genuína),
+    // deixa passar — o AuthProvider no navegador decide se desloga de verdade.
     const temCookieDeSessao = request.cookies.getAll().some(c => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
     if (!temCookieDeSessao) {
       return NextResponse.redirect(new URL("/login", request.url));

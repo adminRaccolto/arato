@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AuthProvider from "../components/AuthProvider";
 import ConfirmarAcaoHost from "../components/ConfirmarAcao";
 import BannerInadimplente from "../components/BannerInadimplente";
+import BannerRelogioDessincronizado from "../components/BannerRelogioDessincronizado";
 import VersionChecker from "../components/VersionChecker";
 import Footer from "../components/Footer";
 import SidebarAtalhos from "../components/SidebarAtalhos";
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, padding: 0, display: "flex", flexDirection: "column", minHeight: "100vh", paddingBottom: 28 }}>
         <AuthProvider>
           <ConfirmarAcaoHost />
+          <BannerRelogioDessincronizado />
           <BannerInadimplente />
           <VersionChecker />
           <SidebarAtalhos />

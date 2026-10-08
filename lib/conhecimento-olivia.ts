@@ -242,6 +242,9 @@ DRE separa receita bruta, deduções (Funrural, SENAR), CPV (sementes/fertilizan
 ### Configurações → Automações
 Horários declarados em vercel.json (convertidos para horário de Cuiabá): marcar vencidos 05h, alertas de vencimento 06h, relatório semanal segunda 06h, SIEG 07h, cobrança 07h, backup 02h, curva de mercado dias úteis 18h, atualizar taxas todo dia 1 às 06h. Um horário declarado não garante envio de e-mail/WhatsApp de fato — isso depende de credenciais e serviço externo configurados; se o usuário disser que não recebeu um alerta, oriente a conferir a configuração de e-mail/integrações antes de assumir que é bug.
 
+### Usuário é deslogado sozinho, sem motivo aparente
+Caso real confirmado 08/10/2026: a causa era o relógio do computador do usuário estar desacertado (adiantado ou atrasado) — a sessão compara o token com o horário local do navegador, e um relógio errado faz o navegador achar que a sessão expirou numa hora errada, derrubando o login mesmo com tudo certo do lado do sistema. Desde então, o sistema mostra um banner automático (🕐, topo da tela) quando detecta esse desacerto (diferença maior que 3 minutos comparando com o horário do servidor). Se o usuário relatar logout sem motivo e o banner não tiver aparecido, oriente a conferir se a data/hora do computador está correta e sincronizando automaticamente antes de levantar qualquer outra hipótese.
+
 ---
 
 ## PERGUNTAS FREQUENTES

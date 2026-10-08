@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-h",
+    data: "08/10/2026",
+    titulo: "Causa real do logout em Financeiro encontrada: relógio do computador — novo aviso automático",
+    modulos: ["Autenticação"],
+    itens: [
+      { tipo: "correcao", texto: "Depurado ao vivo com logs de produção: o caso específico reportado não era causado por código — era o relógio do sistema do computador do usuário estar desacertado (adiantado/atrasado). A validação de sessão compara o horário do token com o relógio local do navegador; se esse relógio estiver errado, o navegador acha que a sessão expirou na hora errada e força o logout, mesmo com tudo certo do lado do sistema. Confirmado corrigindo a data/hora daquele computador — parou de acontecer." },
+      { tipo: "melhoria", texto: "Novo aviso automático: o sistema agora detecta quando o relógio do computador está desacertado em mais de 3 minutos (comparando com o horário do servidor) e mostra um banner pedindo pra corrigir a data/hora — em vez da pessoa descobrir isso só depois de ser deslogada sem explicação." },
+    ],
+    onde: "Qualquer tela — banner aparece no topo quando detectado",
+  },
+  {
     versao: "2026.10.08-g",
     data: "08/10/2026",
     titulo: "Relatório de Pedidos de Compra: cabeçalho redesenhado + nome antigo removido do sistema",
