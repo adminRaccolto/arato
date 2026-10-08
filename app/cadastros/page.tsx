@@ -1878,43 +1878,16 @@ function CadastrosInner() {
     if (raw.length !== 14) return;
     setBuscandoCnpj(true);
     try {
+      // Rota própria (servidor), não mais fetch direto do navegador pra BrasilAPI/
+      // ReceitaWS — achado real 08/10/2026: o fallback pra ReceitaWS direto do
+      // navegador sempre falhava silenciosamente (ela não manda header CORS), mesmo
+      // com a consulta indo bem no servidor deles. Rodando no servidor (servidor-a-
+      // servidor) não tem essa restrição.
+      const r = await fetch(`/api/cadastros/consultar-cnpj?cnpj=${raw}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let d: any = null;
-      const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${raw}`);
-      if (r.ok) {
-        d = await r.json();
-      } else if (r.status !== 404 && r.status !== 400) {
-        // BrasilAPI fora do ar/instável (5xx) ou limite de consultas (429) — tenta uma
-        // segunda fonte pública antes de desistir. Achado real 08/10/2026: BrasilAPI
-        // devolveu 503 "fora do ar" numa consulta real, sem fallback nenhum até então.
-        // 404 (CNPJ não existe) e 400 (dígito inválido) não tentam de novo — nenhuma
-        // outra fonte vai achar um CNPJ que realmente não existe.
-        try {
-          const r2 = await fetch(`https://receitaws.com.br/v1/cnpj/${raw}`);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const d2: any = await r2.json().catch(() => null);
-          if (r2.ok && d2 && d2.status !== "ERROR") {
-            // Reempacota no mesmo formato de campos que o BrasilAPI devolve, pra não
-            // duplicar o processamento abaixo (IE, telefone, CNAE etc.) por fonte.
-            d = {
-              razao_social: d2.nome, logradouro: d2.logradouro, numero: d2.numero,
-              complemento: d2.complemento, bairro: d2.bairro, municipio: d2.municipio,
-              uf: d2.uf, cep: d2.cep, email: d2.email,
-              descricao_porte: d2.porte, descricao_situacao_cadastral: d2.situacao,
-              cnae_fiscal_descricao: d2.atividade_principal?.[0]?.text,
-            };
-          }
-        } catch { /* segue pro alerta abaixo com o motivo da falha original */ }
-      }
-      if (!d) {
-        // A mensagem variava sempre como "não encontrado", mesmo quando o motivo real era
-        // outro (CNPJ com dígito verificador errado, limite de consultas, API fora do ar) —
-        // mostra o motivo que a própria Receita/BrasilAPI devolveu.
-        const corpo = await r.json().catch(() => null) as { message?: string } | null;
-        if (r.status === 404) alert("CNPJ não encontrado na Receita Federal.");
-        else if (r.status === 400) alert(corpo?.message || "CNPJ inválido — confira os dígitos.");
-        else if (r.status === 429) alert("Limite de consultas à Receita Federal atingido no momento (nas duas fontes tentadas). Tente de novo em instantes.");
-        else alert(`Falha ao consultar a Receita Federal (HTTP ${r.status}, nas duas fontes tentadas)${corpo?.message ? `: ${corpo.message}` : "."}`);
+      const d: any = await r.json().catch(() => null);
+      if (!r.ok || !d || d.error) {
+        alert(d?.error || `Falha ao consultar a Receita Federal (HTTP ${r.status}).`);
         return;
       }
       const cepRaw = (d.cep ?? "").replace(/\D/g, "");

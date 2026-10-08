@@ -12,6 +12,7 @@ const RELEASES = [
     modulos: ["Cadastros"],
     itens: [
       { tipo: "melhoria", texto: "O botão de auto-preenchimento por CNPJ (Cadastros → Pessoas) dependia de uma única fonte pública (BrasilAPI) — quando ela ficava instável ou fora do ar (erro 503/500) ou no limite de consultas (429), a busca simplesmente falhava. Agora, nesses casos, tenta automaticamente uma segunda fonte (ReceitaWS) antes de mostrar erro — só desiste de verdade se as duas falharem, ou se o CNPJ realmente não existir/tiver dígito errado." },
+      { tipo: "correcao", texto: "A primeira versão desse fallback ainda falhava na prática: a segunda fonte (ReceitaWS) não aceita ser chamada direto do navegador (bloqueio de CORS), então a tentativa sempre caía em silêncio mesmo com a ReceitaWS respondendo normalmente (confirmado: BrasilAPI fora do ar e ReceitaWS com os dados certos, ao mesmo tempo). Movida a consulta inteira (as duas fontes) pra uma rota própria no servidor — aí não existe essa restrição." },
     ],
     onde: "Cadastros → Pessoas → Novo/Editar → botão \"...\" ao lado do CNPJ",
   },
