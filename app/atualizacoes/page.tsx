@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-c",
+    data: "08/10/2026",
+    titulo: "Relatório de Pedidos de Compra: mudou de lugar, ganhou identidade visual e corrigiu filtro",
+    modulos: ["Comercial", "Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "O relatório agora vive em Comercial & Logística → Relatórios → Pedidos de Compra (rota própria), não mais dentro de Financeiro → Relatórios Financeiros — antes os dois menus apontavam pra mesma tela dentro de Financeiro, dando a impressão de que o item em Comercial era só um atalho." },
+      { tipo: "correcao", texto: "Na visão Consolidado por Insumo, ao filtrar por um Item ou Grupo específico, pedidos que também tinham OUTROS produtos traziam esses outros produtos junto no consolidado, mesmo não selecionados. Corrigido: agora só entra na soma o item realmente filtrado." },
+      { tipo: "melhoria", texto: "O cabeçalho do PDF mostrava só \"RacTech\" genérico, sem logo nem nome do cliente. Agora mostra a logo e o nome da conta (cliente), tanto na visão Por Pedido quanto na Consolidado por Insumo." },
+    ],
+    onde: "Comercial & Logística → Relatórios → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.08-b",
     data: "08/10/2026",
     titulo: "Devolução de Compra liberada para NF de Peças / Manutenção",

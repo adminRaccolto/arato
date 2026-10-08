@@ -128,7 +128,7 @@ function logoFazendaSrc(fzId?: string | null): string | null {
 }
 
 export default function PedidosCompraRelatorioTab() {
-  const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeUsuario, contaNome, logoCliente } = useAuth();
 
   const [modalAberto, setModalAberto] = useState(false);
   const [gerando, setGerando] = useState(false);
@@ -289,8 +289,8 @@ export default function PedidosCompraRelatorioTab() {
     return `<div class="rt-page">
 <div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
   <div style="display:flex;align-items:center;gap:12px">
-    ${logo ? `<img src="${logo}" style="height:40px;object-fit:contain">` : ""}
-    <div><div style="font-size:14pt;font-weight:700;color:#111111">RacTech</div></div>
+    ${logo || logoCliente ? `<img src="${logo || logoCliente}" style="height:40px;object-fit:contain">` : ""}
+    <div><div style="font-size:14pt;font-weight:700;color:#111111">${contaNome ?? "RacTech"}</div></div>
   </div>
   <div style="text-align:right">
     <div style="font-size:13pt;font-weight:700;color:#111111">RELATÓRIO DE PEDIDO DE COMPRA</div>
@@ -361,7 +361,10 @@ export default function PedidosCompraRelatorioTab() {
 
     return `<div class="rt-page">
 <div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
-  <div><div style="font-size:14pt;font-weight:700;color:#111111">RacTech</div></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    ${logoCliente ? `<img src="${logoCliente}" style="height:40px;object-fit:contain">` : ""}
+    <div><div style="font-size:14pt;font-weight:700;color:#111111">${contaNome ?? "RacTech"}</div></div>
+  </div>
   <div style="text-align:right">
     <div style="font-size:13pt;font-weight:700;color:#111111">PEDIDOS DE COMPRA — CONSOLIDADO POR INSUMO</div>
     <div style="font-size:9pt;color:#555">${titulo}</div>
@@ -436,7 +439,17 @@ export default function PedidosCompraRelatorioTab() {
       const titulo = `${partes.join(" · ")} — ${pedidos.length} pedido(s)`;
 
       if (fVisao === "insumo") {
-        const linhas = consolidarPorInsumo(dados);
+        // resolverPedidoIdsPorProduto() só restringe quais PEDIDOS entram (pra
+        // reaproveitar a mesma busca da visão Por Pedido) — mas um pedido que
+        // contém o insumo buscado pode ter OUTROS itens também. Na visão por
+        // insumo isso não pode vazar: filtra os itens de novo aqui, agora por
+        // insumo_id, antes de consolidar. Achado real 08/10/2026 — sem esse
+        // segundo filtro, insumos não selecionados apareciam junto no relatório.
+        const insumoIdsFiltro = fInsumoId ? new Set([fInsumoId]) : fGrupoId ? new Set(insumosDoGrupo.map(i => i.id)) : null;
+        const dadosParaConsolidar = insumoIdsFiltro
+          ? dados.map(d => ({ ...d, itens: d.itens.filter(it => it.insumo_id && insumoIdsFiltro.has(it.insumo_id)) }))
+          : dados;
+        const linhas = consolidarPorInsumo(dadosParaConsolidar);
         if (linhas.length === 0) { setErro("Nenhum item de catálogo (insumo) encontrado nos pedidos filtrados."); return; }
 
         if (fFormato === "pdf") {
