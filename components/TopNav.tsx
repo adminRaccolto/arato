@@ -580,6 +580,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                   <Link
                     key={gc.id}
                     href={gc.path}
+                    prefetch={false}
                     onClick={() => { setDropdown(null); setOpenSub(null); }}
                     style={{
                       display: "flex", alignItems: "center",
@@ -937,6 +938,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                             <Link
                               key={child.id}
                               href={child.path}
+                              prefetch={false}
                               onClick={() => setDropdown(null)}
                               style={{
                                 display: "flex", alignItems: "center",

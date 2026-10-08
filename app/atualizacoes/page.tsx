@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-d",
+    data: "08/10/2026",
+    titulo: "Corrigido: usuário era deslogado ao abrir o menu Financeiro",
+    modulos: ["Autenticação"],
+    itens: [
+      { tipo: "correcao", texto: "Usuários (principalmente recém-criados) eram deslogados ao abrir o menu Financeiro — o maior menu do sistema, com ~20 itens. Causa: cada link do menu dispara um prefetch em segundo plano; o servidor renovava o token de sessão a cada requisição, inclusive nos prefetches, e vários prefetches simultâneos tentando renovar o MESMO token faziam a renovação falhar para todos menos o primeiro, derrubando a sessão. Corrigido: requisições de prefetch não renovam mais o token; os links dos menus também pararam de disparar prefetch." },
+    ],
+    onde: "Qualquer menu — mais visível em Financeiro",
+  },
+  {
     versao: "2026.10.08-c",
     data: "08/10/2026",
     titulo: "Relatório de Pedidos de Compra: mudou de lugar, ganhou identidade visual e corrigiu filtro",
