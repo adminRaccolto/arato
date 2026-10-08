@@ -2568,7 +2568,7 @@ export async function criarNfEntradaItem(i: Omit<NfEntradaItem, "id" | "created_
 }
 
 // Busca o depósito de terceiro vinculado a um fornecedor pelo CNPJ
-async function buscarDepositoTerceiroPorCnpj(fazenda_id: string, cnpj: string): Promise<string | null> {
+export async function buscarDepositoTerceiroPorCnpj(fazenda_id: string, cnpj: string): Promise<string | null> {
   if (!cnpj) return null;
   // 1. Localiza a pessoa pelo CPF/CNPJ — Pessoa é da conta inteira, não só
   // desta fazenda (o fornecedor pode ter sido cadastrado a partir de outra

@@ -202,6 +202,8 @@ Captura (XML, SIEG ou digitação manual) e processamento são fases distintas �
 
 **Emitir NF Remessa**: abre o wizard de Notas de Venda pré-preenchido a partir da NF de Entrada de origem — Produtor remetente já vem selecionado (é quem recebeu a mercadoria naquela NF, agora remetendo pro armazém/depósito), itens de estoque pré-carregados, CFOP começa em 6.905 (interestadual) e troca sozinho pra 5.905 assim que o Destinatário (armazém) escolhido tiver a mesma UF do emitente — nos dois casos a lista de CFOP nesse modo mostra só os códigos de remessa (6.905/5.905/6.117/6.119), sem opções de venda/devolução que não se aplicam aqui. Ao escolher o Destinatário no catálogo de Pessoas, se o cadastro tiver CEP mas faltar endereço ou código IBGE, o sistema busca automaticamente pelo CEP (ViaCEP) pra completar.
 
+Na aba Retirada/Entrega, "Local de Retirada" e "Local de Entrega" são seletores dos Depósitos cadastrados (com opção "✎ Outro" pra digitar livre quando o local não é um depósito do cadastro). Em modo Remessa, os dois vêm pré-preenchidos sozinhos: Retirada = o depósito onde a mercadoria ficou guardada ao dar entrada na NF original; Entrega = o Depósito de Terceiro já vinculado ao CNPJ do Destinatário escolhido, se existir um cadastrado. Só muda automaticamente se o campo ainda estiver vazio — escolha manual do usuário nunca é sobrescrita.
+
 ### Documentos Fiscais → Notas de Serviço (NFS-e)
 Separada da nota de produtos — wizard Prestador → Serviço (código LC 116/2003) → Tributação (ISS e retenções federais: PIS, COFINS, CSLL, IRRF, INSS). O tomador normalmente é a própria fazenda/produtor contratante.
 

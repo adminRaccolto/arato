@@ -5,10 +5,10 @@ import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop } from "../../lib/nfe/cst-por-cfop";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica, listarDepositos, buscarDepositoTerceiroPorCnpj } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
-import type { NotaFiscal, Produtor, ProdutorIE, Pessoa } from "../../lib/supabase";
+import type { NotaFiscal, Produtor, ProdutorIE, Pessoa, Deposito } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
 
@@ -727,6 +727,7 @@ function FiscalInner() {
   // escolher 5.905 (mesmo Estado) vs 6.905 (interestadual) conforme a UF do
   // destinatário (armazém) escolhida pelo usuário, só conhecida depois.
   const [remessaUfEmit, setRemessaUfEmit] = useState<string | null>(null);
+  const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
   const [danfeCfg, setDanfeCfg] = useState<DanfeCfg>({});
   const [carregando, setCarregando] = useState(true);
@@ -738,6 +739,12 @@ function FiscalInner() {
   useEffect(() => {
     if (abaParam) setAba(abaParam);
   }, [abaParam]);
+
+  // Depósitos da fazenda — usados nos seletores de Local de Retirada/Entrega
+  useEffect(() => {
+    if (!fazendaId) return;
+    listarDepositos(fazendaId).then(setDepositos).catch(() => setDepositos([]));
+  }, [fazendaId]);
 
   // Pre-fill modal quando navegado de "Emitir NF Remessa" em NF de Entrada
   useEffect(() => {
@@ -778,6 +785,14 @@ function FiscalInner() {
       // Produtor vazio mesmo essa pessoa já estando na lista.
       const produtorId = (nf as { produtor_id?: string } | null)?.produtor_id;
       if (produtorId) onProdutorChange(produtorId);
+      // Local de Retirada: o depósito onde a mercadoria ficou guardada ao dar
+      // entrada na NF de origem — pega do primeiro item com depósito definido
+      // (achado real 08/10/2026: campo abria sempre vazio, texto livre).
+      const depositoEntradaId = itensEntrada.find(i => i.deposito_id)?.deposito_id;
+      if (depositoEntradaId) {
+        const { data: depEntrada } = await supabase.from("depositos").select("nome").eq("id", depositoEntradaId).maybeSingle();
+        if (depEntrada?.nome) setFVenda(p => ({ ...p, local_retirada: depEntrada.nome }));
+      }
       // Pré-popula itens de estoque da NF de entrada
       const estoqueItens = itensEntrada.filter(
         (i) => !i.tipo_apropiacao || i.tipo_apropiacao === "estoque" || i.tipo_apropiacao === "maquinario",
@@ -906,6 +921,20 @@ function FiscalInner() {
     if (cfopCerto !== fVenda.cfop) onCfopChange(cfopCerto);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remessaModo, remessaUfEmit, fVenda.dest_uf]);
+
+  // Remessa: assim que o Destinatário (armazém) é escolhido na aba Destinatário,
+  // busca se já existe um Depósito de Terceiro vinculado àquele CNPJ e
+  // pré-seleciona como Local de Entrega — só se o campo ainda não tiver sido
+  // preenchido manualmente (não sobrescreve uma escolha do usuário).
+  useEffect(() => {
+    if (!remessaModo || !fazendaId || !fVenda.cnpj || fVenda.local_entrega) return;
+    buscarDepositoTerceiroPorCnpj(fazendaId, fVenda.cnpj).then(depId => {
+      if (!depId) return;
+      const dep = depositos.find(d => d.id === depId);
+      if (dep) fv({ local_entrega: dep.nome });
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remessaModo, fazendaId, fVenda.cnpj, depositos]);
 
   // Formulário Devolução
   const [fDev, setFDev] = useState({
@@ -1396,8 +1425,8 @@ function FiscalInner() {
           natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
           inf_cpl:  [
             fVenda.observacao || "",
-            fVenda.local_entrega
-              ? `LOCAL DE ENTREGA: ${fVenda.local_entrega}`
+            fVenda.local_entrega.trim()
+              ? `LOCAL DE ENTREGA: ${fVenda.local_entrega.trim()}`
               : "",
           ].filter(Boolean).join(" | ") || undefined,
           frete:    fVenda.frete_conta,
@@ -2555,6 +2584,26 @@ function FiscalInner() {
         const row = (...children: React.ReactNode[]) => (
           <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-end" }}>{children}</div>
         );
+        // Local de Retirada/Entrega — dropdown com os Depósitos cadastrados, com
+        // opção de digitar livre (mantém o campo útil pra quem não tiver o local
+        // cadastrado como depósito — nem toda Nota de Venda é uma Remessa).
+        const OUTRO_LOCAL = "__outro__";
+        const seletorLocal = (value: string, onChange: (v: string) => void, placeholder: string) => {
+          const bateDeposito = depositos.some(d => d.nome === value);
+          const emModoLivre = value !== "" && !bateDeposito;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <select style={inSt} value={emModoLivre ? OUTRO_LOCAL : value} onChange={e => onChange(e.target.value === OUTRO_LOCAL ? " " : e.target.value)}>
+                <option value="">— Selecionar —</option>
+                {depositos.map(d => <option key={d.id} value={d.nome}>{d.nome}</option>)}
+                <option value={OUTRO_LOCAL}>✎ Outro (digitar)</option>
+              </select>
+              {emModoLivre && (
+                <input style={inSt} value={value.trim()} onChange={e => onChange(e.target.value)} placeholder={placeholder} autoFocus />
+              )}
+            </div>
+          );
+        };
         const tabCfg: {key: TabNFe; label: string}[] = [
           {key:"produtor",     label:"Produtor"},
           {key:"destinatario", label:"Destinatário"},
@@ -2930,8 +2979,8 @@ function FiscalInner() {
                 {/* ── ABA: RETIRADA/ENTREGA ── */}
                 {tabNFe === "retirada" && (
                   <div>
-                    {row(field("Local de Retirada", <input style={inSt} value={fVenda.local_retirada} onChange={e => fv({local_retirada:e.target.value})} placeholder="Fazenda / Armazém de origem" />))}
-                    {row(field("Local de Entrega",  <input style={inSt} value={fVenda.local_entrega}  onChange={e => fv({local_entrega:e.target.value})}  placeholder="Armazém / Porto de destino" />))}
+                    {row(field("Local de Retirada", seletorLocal(fVenda.local_retirada, v => fv({local_retirada:v}), "Fazenda / Armazém de origem")))}
+                    {row(field("Local de Entrega",  seletorLocal(fVenda.local_entrega,  v => fv({local_entrega:v}),  "Armazém / Porto de destino")))}
                   </div>
                 )}
 

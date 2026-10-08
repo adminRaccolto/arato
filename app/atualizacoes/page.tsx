@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-r",
+    data: "08/10/2026",
+    titulo: "NF de Remessa: Local de Retirada/Entrega viram seletor de Depósitos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "\"Local de Retirada\" e \"Local de Entrega\" (aba Retirada/Entrega) eram campos de texto livre — agora são um seletor com os Depósitos cadastrados (com opção \"✎ Outro\" pra digitar livre quando o local não é um depósito do cadastro)." },
+      { tipo: "melhoria", texto: "No modo Remessa (a partir de uma NF de Entrada), os dois campos vêm pré-preenchidos sozinhos: Local de Retirada com o depósito onde a mercadoria ficou guardada na entrada original; Local de Entrega com o Depósito de Terceiro já vinculado ao CNPJ do Destinatário escolhido, quando existir um cadastrado. Escolha manual nunca é sobrescrita." },
+    ],
+    onde: "Fiscal → Notas de Venda → aba Retirada/Entrega",
+  },
+  {
     versao: "2026.10.08-q",
     data: "08/10/2026",
     titulo: "Corrigido de vez: logo do cliente agora aparece no DANFE",
