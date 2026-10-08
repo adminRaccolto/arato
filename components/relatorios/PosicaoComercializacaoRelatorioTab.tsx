@@ -12,6 +12,7 @@
 // (COALESCE pessoas.nome), ano safra e conta_id resolvidos, além de saldo_sc
 // já calculado (quantidade_sc - entregue_sc).
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../components/InputData";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../AuthProvider";
@@ -60,7 +61,7 @@ const btnV: React.CSSProperties = { padding: "8px 18px", background: "#2A2A2A", 
 const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 
 export default function PosicaoComercializacaoRelatorioTab() {
-  const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeUsuario, contaNome, logoCliente } = useAuth();
 
   const [modalAberto, setModalAberto] = useState(false);
   const [gerando, setGerando] = useState(false);
@@ -165,8 +166,14 @@ export default function PosicaoComercializacaoRelatorioTab() {
 </style></head><body>
 <div class="rt-toolbar"><span>${titulo}</span><button class="rt-btn" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button></div>
 <div class="rt-page-wrapper"><div class="rt-page">
-<div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
-  <div style="font-size:14pt;font-weight:700;color:#111111">RacTech</div>
+<div style="border-bottom:2px solid #111111;padding-bottom:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start">
+  <div style="display:flex;align-items:center;gap:12px">
+    ${logoCliente ? `<img src="${logoCliente}" style="height:44px;object-fit:contain">` : ""}
+    <div>
+      <div style="font-size:15pt;font-weight:700;color:#111111;line-height:1.2">${contaNome ?? "—"}</div>
+      <div style="font-size:7.5pt;color:#888;margin-top:3px">Emitido por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")}</div>
+    </div>
+  </div>
   <div style="text-align:right">
     <div style="font-size:13pt;font-weight:700;color:#111111">POSIÇÃO DE COMERCIALIZAÇÃO DE GRÃOS</div>
     <div style="font-size:9pt;color:#555">${titulo}</div>
@@ -199,8 +206,8 @@ ${fTipo === "analitico" ? `
   </tr></thead>
   <tbody>${linhasDetalhe}</tbody>
 </table>` : ""}
-<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#888">
-  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — RacTech · Gestão Agrícola de Precisão · Relatório (rel_contratos)
+<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#aaa;text-align:center">
+  Arato · Gestão Agrícola de Precisão
 </div>
 </div></div>
 </body></html>`;
@@ -223,7 +230,7 @@ ${fTipo === "analitico" ? `
       if (fFormato === "pdf") {
         const win = window.open("", "_blank");
         if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-        win.document.write(buildHtml(contratos, `${titulo} — RacTech`));
+        win.document.write(buildHtml(contratos, `${titulo} — Arato`));
         win.document.close();
         win.focus();
       } else {
@@ -319,11 +326,11 @@ ${fTipo === "analitico" ? `
               </div>
               <div>
                 <label style={lbl}>Data contrato de</label>
-                <input type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
+                <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
               </div>
               <div>
                 <label style={lbl}>até</label>
-                <input type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
+                <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
               </div>
             </div>
 

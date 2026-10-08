@@ -287,10 +287,13 @@ export default function PedidosCompraRelatorioTab() {
     }
 
     return `<div class="rt-page">
-<div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
+<div style="border-bottom:2px solid #111111;padding-bottom:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start">
   <div style="display:flex;align-items:center;gap:12px">
-    ${logo || logoCliente ? `<img src="${logo || logoCliente}" style="height:40px;object-fit:contain">` : ""}
-    <div><div style="font-size:14pt;font-weight:700;color:#111111">${contaNome ?? "RacTech"}</div></div>
+    ${logo || logoCliente ? `<img src="${logo || logoCliente}" style="height:44px;object-fit:contain">` : ""}
+    <div>
+      <div style="font-size:15pt;font-weight:700;color:#111111;line-height:1.2">${contaNome ?? "—"}</div>
+      <div style="font-size:7.5pt;color:#888;margin-top:3px">Emitido por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")}</div>
+    </div>
   </div>
   <div style="text-align:right">
     <div style="font-size:13pt;font-weight:700;color:#111111">RELATÓRIO DE PEDIDO DE COMPRA</div>
@@ -336,8 +339,8 @@ export default function PedidosCompraRelatorioTab() {
     { l: "% Recebido", v: `${Math.round(pctRecebido)}%`, hl: false },
   ].map(s => `<div style="border:1px solid #DDE2EE;border-radius:4px;padding:6px 9px;background:${s.hl ? "#111111" : "#fff"};color:${s.hl ? "#fff" : "#111111"}"><div style="font-size:7pt;color:${s.hl ? "rgba(255,255,255,0.8)" : "#888"};margin-bottom:2px">${s.l}</div><div style="font-size:11pt;font-weight:700">${s.v}</div></div>`).join("")}
 </div>
-<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#888">
-  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — RacTech · Gestão Agrícola de Precisão · Relatório (rel_pedidos_compra)
+<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#aaa;text-align:center">
+  Arato · Gestão Agrícola de Precisão
 </div>
 </div>`;
   }
@@ -360,10 +363,13 @@ export default function PedidosCompraRelatorioTab() {
     }).join("");
 
     return `<div class="rt-page">
-<div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
+<div style="border-bottom:2px solid #111111;padding-bottom:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start">
   <div style="display:flex;align-items:center;gap:12px">
-    ${logoCliente ? `<img src="${logoCliente}" style="height:40px;object-fit:contain">` : ""}
-    <div><div style="font-size:14pt;font-weight:700;color:#111111">${contaNome ?? "RacTech"}</div></div>
+    ${logoCliente ? `<img src="${logoCliente}" style="height:44px;object-fit:contain">` : ""}
+    <div>
+      <div style="font-size:15pt;font-weight:700;color:#111111;line-height:1.2">${contaNome ?? "—"}</div>
+      <div style="font-size:7.5pt;color:#888;margin-top:3px">Emitido por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")}</div>
+    </div>
   </div>
   <div style="text-align:right">
     <div style="font-size:13pt;font-weight:700;color:#111111">PEDIDOS DE COMPRA — CONSOLIDADO POR INSUMO</div>
@@ -392,8 +398,8 @@ export default function PedidosCompraRelatorioTab() {
     <td style="background:#111111;border:1px solid #111111"></td>
   </tr></tfoot>
 </table>
-<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#888">
-  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — RacTech · Gestão Agrícola de Precisão · Relatório consolidado por insumo
+<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#aaa;text-align:center">
+  Arato · Gestão Agrícola de Precisão
 </div>
 </div>`;
   }
@@ -456,7 +462,7 @@ export default function PedidosCompraRelatorioTab() {
           const pagina = buildPaginaConsolidadoHtml(linhas, titulo, fTipo);
           const win = window.open("", "_blank");
           if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-          win.document.write(buildRelatorioHtml([pagina], `Consolidado por Insumo — ${titulo} — RacTech`));
+          win.document.write(buildRelatorioHtml([pagina], `Consolidado por Insumo — ${titulo} — Arato`));
           win.document.close();
           win.focus();
         } else {
@@ -490,7 +496,7 @@ export default function PedidosCompraRelatorioTab() {
         const paginas = dados.map(d => buildPaginaPedidoHtml(d.ped, d.itens, d.nfs, d.nfItens));
         const win = window.open("", "_blank");
         if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-        win.document.write(buildRelatorioHtml(paginas, `${titulo} — RacTech`));
+        win.document.write(buildRelatorioHtml(paginas, `${titulo} — Arato`));
         win.document.close();
         win.focus();
       } else {

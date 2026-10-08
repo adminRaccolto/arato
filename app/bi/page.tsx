@@ -3120,7 +3120,7 @@ export default function BI() {
                   </div>
                 )}
                 <div style={{ marginTop: 16, fontSize: 9, color: "var(--text-muted)", borderTop: "0.5px solid #ddd", paddingTop: 6 }}>
-                  RacTech — Gestão Agrícola · Raccolto Agronegócios
+                  Arato — Gestão Agrícola · Raccolto Agronegócios
                 </div>
               </div>
             </div>
@@ -5466,7 +5466,7 @@ export default function BI() {
           const colsExtrasHead = isUSD ? `<th style="${thPrint}text-align:right">Equiv. R$</th><th style="${thPrint}text-align:right">PTAX ref.</th>` : "";
           const emissao = new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
           win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>RacTech — ${c.descricao}</title>
+<title>Arato — ${c.descricao}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
@@ -5485,7 +5485,7 @@ export default function BI() {
   }
 </style></head><body>
 <div class="toolbar">
-  <span class="toolbar-title">RacTech — Contrato Financeiro / RT</span>
+  <span class="toolbar-title">Arato — Contrato Financeiro / RT</span>
   <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
 </div>
 <div class="page-wrapper"><div class="page">
@@ -5541,7 +5541,7 @@ export default function BI() {
       <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Parcelas Pagas</div>
         <div style="font-size:13px;font-weight:800;color:#555">${c.parcelas.filter(p=>p.status==="pago").length}/${c.parcelas.length}</div></div>
     </div>
-    <div style="font-size:9px;color:#aaa">Gerado pelo RacTech · ${new Date().toLocaleDateString("pt-BR")}</div>
+    <div style="font-size:9px;color:#aaa">Gerado pelo Arato · ${new Date().toLocaleDateString("pt-BR")}</div>
   </div>
 </div></div>
 </body></html>`);

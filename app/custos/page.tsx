@@ -902,7 +902,7 @@ function CustosInner() {
                 </div>
               )}
 
-              <p style={{ textAlign: "center", fontSize: 11, color: "#666", marginTop: 24 }}>RacTech · menos cliques, mais campo</p>
+              <p style={{ textAlign: "center", fontSize: 11, color: "#666", marginTop: 24 }}>Arato · menos cliques, mais campo</p>
             </>
           )}
         </div>

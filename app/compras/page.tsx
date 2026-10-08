@@ -763,7 +763,7 @@ export default function ComprasPage() {
 </div>
 
 <div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#888">
-  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — RacTech · Gestão Agrícola de Precisão
+  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — Arato · Gestão Agrícola de Precisão
 </div>
 </div>`;
   };
@@ -809,7 +809,7 @@ export default function ComprasPage() {
     const pagina = buildPaginaPedidoHtml(ped, itens, nfs, nfItens, "analitico");
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(buildRelatorioPedidosHtml([pagina], `Pedido ${ped.nr_pedido || `#${ped.numero}`} — RacTech`));
+    win.document.write(buildRelatorioPedidosHtml([pagina], `Pedido ${ped.nr_pedido || `#${ped.numero}`} — Arato`));
     win.document.close();
     win.focus();
   };

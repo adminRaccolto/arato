@@ -375,7 +375,7 @@ export default function RelAplicacoesPage() {
   .r{text-align:right}
 </style></head><body>
 <div class="rt-toolbar">
-  <span>RacTech — Relatório de Aplicações</span>
+  <span>Arato — Relatório de Aplicações</span>
   <button class="rt-btn" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
 </div>
 <div class="rt-page-wrapper"><div class="rt-page">
@@ -429,7 +429,7 @@ export default function RelAplicacoesPage() {
 </table>
 <div style="margin-top:12px;padding-top:6px;border-top:1px solid var(--border-table);display:flex;justify-content:space-between;align-items:center;font-size:7pt;color:#888">
   ${logoAratoSrc ? `<img src="${logoAratoSrc}" style="height:20px;object-fit:contain">` : "<span></span>"}
-  <span>RacTech — Gestão Agrícola de Precisão</span>
+  <span>Arato — Gestão Agrícola de Precisão</span>
   <span>Gerado em ${dataGeracao}</span>
 </div>
 </div></div>
@@ -558,7 +558,7 @@ export default function RelAplicacoesPage() {
         const pn = (doc.internal as unknown as { getCurrentPageInfo: () => { pageNumber: number } }).getCurrentPageInfo().pageNumber;
         doc.setFontSize(6.5); doc.setFont("helvetica","normal"); doc.setTextColor(136,136,136);
         if (imgArato) { try { doc.addImage(imgArato, "PNG", mg, ph - 7, 14, 5); } catch {} }
-        doc.text("RacTech — Gestão Agrícola de Precisão", pw / 2, ph - 4, { align: "center" });
+        doc.text("Arato — Gestão Agrícola de Precisão", pw / 2, ph - 4, { align: "center" });
         doc.text(`Página ${pn}`, pw - mg, ph - 4, { align: "right" });
       },
     });

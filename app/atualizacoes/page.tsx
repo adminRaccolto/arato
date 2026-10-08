@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-g",
+    data: "08/10/2026",
+    titulo: "Relatório de Pedidos de Compra: cabeçalho redesenhado + nome antigo removido do sistema",
+    modulos: ["Financeiro", "Fiscal", "BI"],
+    itens: [
+      { tipo: "melhoria", texto: "Cabeçalho dos PDFs de Pedidos de Compra (Por Pedido e Consolidado por Insumo) e de Posição de Comercialização redesenhado: logo e nome do cliente em destaque à esquerda, com \"Emitido por [usuário] em [data e hora]\" logo abaixo — antes essa informação só aparecia pequena no rodapé. Rodapé agora é só a marca, discreta." },
+      { tipo: "correcao", texto: "Removidas todas as referências a um nome de produto antigo que não é mais usado neste projeto, espalhadas em rodapés e títulos de PDFs, e-mails automáticos e comentários de código (inclusive no XML da NF-e, campo verProc) — o nome correto do sistema é Arato em todo lugar agora." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros; Fiscal; BI",
+  },
+  {
     versao: "2026.10.08-f",
     data: "08/10/2026",
     titulo: "Corrigido de vez: logout em Financeiro (causa real encontrada)",
@@ -43,7 +54,7 @@ const RELEASES = [
     itens: [
       { tipo: "melhoria", texto: "O relatório agora vive em Comercial & Logística → Relatórios → Pedidos de Compra (rota própria), não mais dentro de Financeiro → Relatórios Financeiros — antes os dois menus apontavam pra mesma tela dentro de Financeiro, dando a impressão de que o item em Comercial era só um atalho." },
       { tipo: "correcao", texto: "Na visão Consolidado por Insumo, ao filtrar por um Item ou Grupo específico, pedidos que também tinham OUTROS produtos traziam esses outros produtos junto no consolidado, mesmo não selecionados. Corrigido: agora só entra na soma o item realmente filtrado." },
-      { tipo: "melhoria", texto: "O cabeçalho do PDF mostrava só \"RacTech\" genérico, sem logo nem nome do cliente. Agora mostra a logo e o nome da conta (cliente), tanto na visão Por Pedido quanto na Consolidado por Insumo." },
+      { tipo: "melhoria", texto: "O cabeçalho do PDF mostrava só um nome genérico, sem logo nem nome do cliente. Agora mostra a logo e o nome da conta (cliente), tanto na visão Por Pedido quanto na Consolidado por Insumo." },
     ],
     onde: "Comercial & Logística → Relatórios → Pedidos de Compra",
   },
@@ -4264,7 +4275,7 @@ export default function CentralAtualizacoes() {
         <header style={{ marginBottom: 24 }}>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Central de Atualizações</h1>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>
-            Histórico de melhorias, novidades e correções do sistema RacTech
+            Histórico de melhorias, novidades e correções do sistema Arato
           </p>
         </header>
 

@@ -1361,7 +1361,7 @@ export default function ColheitaPage() {
                   <div style={{ marginTop: 32, borderTop: "1px solid #000", paddingTop: 8, textAlign: "center", fontSize: 12, color: "#555" }}>
                     Assinatura do motorista / responsável
                   </div>
-                  <div style={{ marginTop: 4, textAlign: "center", fontSize: 10, color: "#888" }}>Emitido via RacTech</div>
+                  <div style={{ marginTop: 4, textAlign: "center", fontSize: 10, color: "#888" }}>Emitido via Arato</div>
                 </div>
               </div>
             </div>

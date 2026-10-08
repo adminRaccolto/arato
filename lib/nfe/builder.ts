@@ -628,7 +628,7 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
       <indFinal>${indIEDest === "9" ? "1" : "0"}</indFinal>
       <indPres>0</indPres>
       <procEmi>0</procEmi>
-      <verProc>RacTech 1.0</verProc>
+      <verProc>Arato 1.0</verProc>
       ${nfeRefTag}
     </ide>
     <emit>

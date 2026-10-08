@@ -564,7 +564,7 @@ export default function PesagemAvulsa() {
   <div class="ass-box">Responsável pelo Recebimento<br><br></div>
 </div>
 
-<div class="rodape">Documento gerado em ${new Date().toLocaleString("pt-BR")} · RacTech — Sistema de Gestão Agrícola</div>
+<div class="rodape">Documento gerado em ${new Date().toLocaleString("pt-BR")} · Arato — Sistema de Gestão Agrícola</div>
 
 <div class="no-print" style="text-align:center;margin:16px">
   <button onclick="window.print()" style="padding:8px 20px;font-size:13px;cursor:pointer">🖨 Imprimir Romaneio</button>

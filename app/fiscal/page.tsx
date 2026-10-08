@@ -509,7 +509,7 @@ ${isContingencia ? `<div class="cont">⚡ EMITIDA EM CONTINGÊNCIA — ${modoEmi
 </div>
 
 <div style="text-align:right;font-size:5pt;color:#555;margin-top:2px">
-  DATA E HORA DA IMPRESSÃO: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")} &nbsp; RacTech ERP Agrícola
+  DATA E HORA DA IMPRESSÃO: ${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR")} &nbsp; Arato ERP Agrícola
 </div>
 
 </div>

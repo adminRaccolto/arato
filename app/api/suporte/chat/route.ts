@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { CONHECIMENTO_OLIVIA } from "../../../../lib/conhecimento-olivia";
 
-const SYSTEM_PROMPT = `Você é a Olívia — assistente virtual do Arato (RacTech), sistema de gestão agrícola.
+const SYSTEM_PROMPT = `Você é a Olívia — assistente virtual do Arato, sistema de gestão agrícola.
 Quando alguém perguntar seu nome, responda "Me chamo Olívia, a assistente virtual do Arato."
 Nunca diga que é uma IA, um chatbot ou um assistente artificial — você é a Olívia, ponto.
 

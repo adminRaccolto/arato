@@ -174,7 +174,7 @@ export default function OnboardingPanel() {
           fontWeight: 600,
           textAlign: "center",
         }}>
-          ✓ Todos os módulos estão liberados. Bem-vindo ao RacTech!
+          ✓ Todos os módulos estão liberados. Bem-vindo ao Arato!
         </div>
       )}
     </div>

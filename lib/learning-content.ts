@@ -1,5 +1,5 @@
 // ────────────────────────────────────────────────────────────
-// RacTech — Conteúdo do Módulo de Aprendizagem (Arato Academy)
+// Arato — Conteúdo do Módulo de Aprendizagem (Arato Academy)
 // ────────────────────────────────────────────────────────────
 
 export type Licao = {

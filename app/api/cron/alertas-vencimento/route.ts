@@ -118,7 +118,7 @@ function montarEmail(alertas: Alerta[], fazendaNome: string): string {
 
     <!-- Footer -->
     <div style="text-align:center;color:#aaa;font-size:11px;margin-top:16px;">
-      Enviado automaticamente pelo RacTech · Gestão Agrícola<br>
+      Enviado automaticamente pelo Arato · Gestão Agrícola<br>
       Para gerenciar alertas, acesse Configurações → Automações
     </div>
   </div>

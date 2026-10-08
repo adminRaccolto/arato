@@ -1,5 +1,5 @@
 /**
- * RacTech — camada de acesso a dados
+ * Arato — camada de acesso a dados
  * Todas as queries ao Supabase ficam aqui.
  * Os componentes importam essas funções e não chamam supabase diretamente.
  */

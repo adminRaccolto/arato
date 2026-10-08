@@ -607,7 +607,7 @@ export default function DanfePage() {
 
         {/* ── RODAPÉ ───────────────────────────────────────────────────── */}
         <div style={{ fontSize: 6, color: "#666", textAlign: "right", marginTop: "1mm" }}>
-          DATA E HORA DA IMPRESSÃO: {new Date().toLocaleString("pt-BR")} &nbsp;·&nbsp; RacTech ERP Agrícola
+          DATA E HORA DA IMPRESSÃO: {new Date().toLocaleString("pt-BR")} &nbsp;·&nbsp; Arato ERP Agrícola
         </div>
       </div>
 
