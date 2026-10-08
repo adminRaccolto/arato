@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-f",
+    data: "08/10/2026",
+    titulo: "Corrigido de vez: logout em Financeiro (causa real encontrada)",
+    modulos: ["Autenticação"],
+    itens: [
+      { tipo: "correcao", texto: "Achada a causa real do logout em Financeiro, confirmada num caso real: 4 páginas (Apoio Financeiro, Endividamento, Cartões de Crédito e Relatórios Financeiros) criavam sua PRÓPRIA conexão de sessão com o Supabase, em vez de usar a única conexão compartilhada do resto do sistema — em 1 dos casos, uma conexão nova a cada vez que a tela re-renderizava. Ter mais de uma conexão de sessão no mesmo navegador é um problema conhecido do Supabase: elas disputam o mesmo token guardado no navegador e uma pode invalidar a sessão da outra, causando logout aleatório sem motivo aparente. Corrigido: as 4 páginas agora usam a mesma conexão única do resto do sistema. As duas correções anteriores (prefetch do menu e tolerância a falha momentânea de renovação) continuam valendo como proteção extra, mas essa era a causa de fato." },
+    ],
+    onde: "Financeiro → Apoio Financeiro, Endividamento, Cartões de Crédito, Relatórios Financeiros",
+  },
+  {
     versao: "2026.10.08-e",
     data: "08/10/2026",
     titulo: "Corrigido (parte 2): logout ao navegar para Financeiro",

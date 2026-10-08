@@ -1,15 +1,10 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
 import { listarContratosFinanceirosDaConta } from "../../../lib/db";
 import TopNav from "../../../components/TopNav";
+import { supabase } from "../../../lib/supabase";
 import type { ContratoFinanceiro, ParcelaPagamento, GarantiaContrato } from "../../../lib/supabase";
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
 
 // ─── Tipos para Compra de Imóveis Rurais ─────────────────────────────────────
 interface CctPagamento {

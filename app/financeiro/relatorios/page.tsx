@@ -8,7 +8,7 @@ import { abrirPreviewImpressao } from "../../../lib/print";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "../../../lib/supabase";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import PosicaoComercializacaoRelatorioTab from "../../../components/relatorios/PosicaoComercializacaoRelatorioTab";
@@ -255,20 +255,16 @@ function FinanceiroRelatoriosInner() {
     // precisam do carregamento pesado de lançamentos das outras abas (pode
     // passar de 13 mil linhas numa conta grande).
     if (aba === "comercializacao") { setCarregando(false); return; }
-    const sb = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
     // Carrega de TODAS as fazendas da conta para incluir previsões de todas as fazendas
     const fidsParaCarregar = fazendaIds?.length ? fazendaIds : [fazendaId];
     Promise.all([
       Promise.all(fidsParaCarregar.map(fid => listarLancamentos(fid))).then(results => results.flat()),
       listarOperacoesGerenciais(fazendaId),
       temApoio
-        ? sb.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds)
+        ? supabase.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds)
         : Promise.resolve({ data: [] }),
       temApoio
-        ? sb.from("apoio_lancamentos").select("id,tipo,descricao,valor,data_vencimento,categoria,pessoa_nome").in("fazenda_id", fazendaIds).eq("baixado", false)
+        ? supabase.from("apoio_lancamentos").select("id,tipo,descricao,valor,data_vencimento,categoria,pessoa_nome").in("fazenda_id", fazendaIds).eq("baixado", false)
         : Promise.resolve({ data: [] }),
     ]).then(([lans, ops, apoioRes, apoioLancsRes]) => {
       setLancamentos(lans);

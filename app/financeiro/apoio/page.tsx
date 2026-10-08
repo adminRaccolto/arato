@@ -2,7 +2,6 @@
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 import {
@@ -14,6 +13,7 @@ import {
   listarFazendasDaConta,
 } from "../../../lib/db";
 import SelectBusca from "../../../components/SelectBusca";
+import { supabase } from "../../../lib/supabase";
 import type { Pessoa, AnoSafra, Ciclo, OperacaoGerencial, ContaBancaria } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -202,11 +202,6 @@ export default function ApoioFinanceiroPage() {
   const [modalBaixaLote, setModalBaixaLote] = useState(false);
   const [baixaLoteData, setBaixaLoteData] = useState(hoje());
   const [salvandoLote, setSalvandoLote] = useState(false);
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
 
   // ── Carregar dados de referência ──────────────────────────────────────────
   useEffect(() => {

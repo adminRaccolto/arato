@@ -15,13 +15,11 @@ import {
   competenciaFatura,
 } from "../../../lib/db";
 import type { CartaoCredito, FaturaCartao, Lancamento } from "../../../lib/supabase";
-import { createBrowserClient } from "@supabase/ssr";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fmtBRL    = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData   = (s?: string | null) => { if (!s) return "—"; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
-const getSb     = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 const BANDEIRA_LABEL: Record<string, string> = {
   visa: "Visa", master: "Mastercard", elo: "Elo",
