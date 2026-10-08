@@ -3318,8 +3318,29 @@ export default function ModalNf({
                           </>
                         ) : (
                           <>
-                            <div style={{ padding: "6px 8px" }}>
+                            <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
                               <input value={it.descricao_nf} onChange={e => setItem(it.key, { descricao_nf: e.target.value })} placeholder="Descrição" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              {/* Apropriação "Estoque" fora do fluxo tipo "insumos" (ex: Peças/
+                                  Manutenção que entra em estoque em vez de ir direto pra uma
+                                  máquina) também precisa associar um insumo do catálogo — sem
+                                  isso o processamento bloqueia com erro mas não existia campo
+                                  nenhum aqui pra resolver. Mesmo padrão simplificado do seletor
+                                  da aba Insumos (catálogo + criar novo), sem a lógica de
+                                  princípio ativo/lote de semente que só se aplica lá. */}
+                              {it.tipo_apropiacao === "estoque" && (
+                                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                  <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })}
+                                    style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1, borderColor: it.insumo_id ? undefined : "#F6C87A" }}>
+                                    <option value="">— catálogo —</option>
+                                    {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                  </select>
+                                  <button
+                                    onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
+                                    title="Cadastrar novo produto"
+                                    style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                  >+</button>
+                                </div>
+                              )}
                             </div>
                             <div style={{ padding: "6px 8px" }}>
                               <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />

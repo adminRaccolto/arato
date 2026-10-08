@@ -194,6 +194,8 @@ Captura (XML, SIEG ou digitação manual) e processamento são fases distintas �
 
 **Devolução de Compra**: botão "↩ Devolver" (card da NF em Documentos Fiscais, ou dentro do modal da NF já processada) emite uma NF-e de devolução de verdade na SEFAZ (saída, de volta ao fornecedor, CFOP 5201/6201). Só aparece em NF processada do tipo **Insumos** ou **Peças / Manut.** — os dois tipos que podem apropriar item em estoque. Mesmo aparecendo, só entram na lista de devolução os itens que foram de fato pro estoque (tipo_apropiacao = estoque); item lançado direto numa máquina ou por Apropriação Direta (centro de custo) não tem o que devolver do estoque, então não aparece na lista — nesse caso o ajuste é por Reclassificar ou Estornar, não por Devolução.
 
+**Peças / Manutenção com Apropriação "Estoque"**: nesse tipo de NF, cada item normalmente é vinculado a uma máquina (vai direto pro maquinário, não pro estoque) — mas a Apropriação do item pode ser trocada pra "Estoque" quando a peça entra pro estoque em vez de ser consumida direto. Quando isso acontece, aparece um seletor de insumo do catálogo (com botão "+" pra cadastrar um novo na hora) embaixo do campo Descrição — exatamente como no tipo Insumos. Sem escolher um insumo ali, o processamento bloqueia com o erro "associe um insumo... antes de processar".
+
 ### Documentos Fiscais → Notas de Serviço (NFS-e)
 Separada da nota de produtos — wizard Prestador → Serviço (código LC 116/2003) → Tributação (ISS e retenções federais: PIS, COFINS, CSLL, IRRF, INSS). O tomador normalmente é a própria fazenda/produtor contratante.
 

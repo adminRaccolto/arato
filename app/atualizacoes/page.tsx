@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-m",
+    data: "08/10/2026",
+    titulo: "NF de Peças/Manutenção: seletor de insumo quando Apropriação é Estoque",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Em NF do tipo Peças/Manutenção, trocar a Apropriação de um item para \"Estoque\" bloqueava o processamento pedindo pra associar um insumo do catálogo — mas não existia nenhum campo na tela pra fazer essa associação (só existia no tipo Insumos). Adicionado o mesmo seletor (catálogo + botão de cadastrar novo produto na hora) embaixo da Descrição, sempre que a Apropriação do item for Estoque, em qualquer tipo de NF." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → Nova NF de Produtos → Peças/Manutenção → item com Apropriação Estoque",
+  },
+  {
     versao: "2026.10.08-l",
     data: "08/10/2026",
     titulo: "Botão de Remessa de volta no card da NF (Documentos Fiscais)",
