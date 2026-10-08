@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-e",
+    data: "08/10/2026",
+    titulo: "Corrigido (parte 2): logout ao navegar para Financeiro",
+    modulos: ["Autenticação"],
+    itens: [
+      { tipo: "correcao", texto: "Mesmo depois de cortar a rajada de prefetch do menu, o logout em Financeiro continuava acontecendo. Causa de fundo: o navegador (que renova o token de sessão sozinho em segundo plano) e o servidor (que também renova a cada navegação) são dois processos independentes disputando o mesmo token — se os dois tentam renovar quase ao mesmo tempo, um dos dois perde e recebia erro de sessão, mesmo o usuário estando logado de verdade. Corrigido: o servidor só força logout agora quando realmente não existe nenhum cookie de sessão; se existe cookie mas a renovação falhou nesse instante, a navegação segue normalmente e quem decide se a sessão é válida é o navegador (que não tem esse problema de corrida)." },
+    ],
+    onde: "Qualquer menu — mais visível em Financeiro (o maior menu do sistema)",
+  },
+  {
     versao: "2026.10.08-d",
     data: "08/10/2026",
     titulo: "Corrigido: usuário era deslogado ao abrir o menu Financeiro",
