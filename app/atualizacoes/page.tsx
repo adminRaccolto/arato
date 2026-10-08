@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-a",
+    data: "08/10/2026",
+    titulo: "Novo relatório: Pedidos de Compra Consolidado por Insumo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "O Relatório de Pedidos de Compra ganhou uma segunda Visão: \"Consolidado por Insumo\". Em vez de 1 página por pedido, soma a quantidade pedida, entregue, cancelada, saldo e o valor total de cada item do catálogo em TODOS os pedidos que o contêm (dentro do filtro aplicado), mostrando também quantos pedidos diferentes têm aquele item. No modo Detalhado, mostra ainda a lista desses pedidos por item. Disponível em PDF e XLSX." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Pedidos de Compra → Visão: Consolidado por Insumo",
+  },
+  {
     versao: "2026.10.07-r",
     data: "07/10/2026",
     titulo: "Relatório de Pedidos de Compra ganha filtro por Grupo e Item",

@@ -57,6 +57,66 @@ const fmtMoeda = (v: number | null | undefined, moeda: string) => moeda === "USD
 const fmtN = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 
+type LinhaConsolidada = {
+  insumoId: string;
+  nome: string;
+  unidade: string;
+  qtdPedida: number;
+  qtdEntregue: number;
+  qtdCancelada: number;
+  saldo: number;
+  valorPorMoeda: Record<string, number>;
+  pedidos: { numero: string; fornecedor: string; data: string; moeda: string; qtdPedida: number; qtdEntregue: number; cancelada: number; saldo: number; valorTotal: number }[];
+};
+
+function fmtValorPorMoeda(v: Record<string, number>): string {
+  const entries = Object.entries(v);
+  if (entries.length === 0) return "—";
+  return entries.map(([moeda, val]) => fmtMoeda(val, moeda)).join(" · ");
+}
+
+// Agrupa os itens de todos os pedidos já filtrados por insumo_id — o Insumo
+// é a peça central, não o pedido. Mesma lógica de entrega (alocarEntregaPorLinha
+// pra pedido fiscal, qtd_entregue direto pra manual) já usada na visão por pedido.
+function consolidarPorInsumo(
+  dados: { ped: RelPedido; itens: PedidoCompraItem[]; nfs: NfEntrada[]; nfItens: NfEntradaItem[] }[],
+): LinhaConsolidada[] {
+  const mapa = new Map<string, LinhaConsolidada>();
+  for (const { ped, itens, nfs, nfItens } of dados) {
+    const ehFiscal = ped.fiscal ?? false;
+    const nfsProcessadasIds = new Set(nfs.filter(n => n.status === "processada").map(n => n.id));
+    const entregaPorLinha = ehFiscal
+      ? alocarEntregaPorLinha(itens, nfItens.filter(it => nfsProcessadasIds.has(it.nf_entrada_id ?? "")))
+      : new Map<string, number>();
+    const moeda = ped.moeda ?? "R$";
+    for (const it of itens) {
+      if (!it.insumo_id) continue; // só agrupa itens vinculados a um insumo do catálogo
+      const entregue = ehFiscal ? (entregaPorLinha.get(it.id) ?? 0) : (it.qtd_entregue ?? 0);
+      const cancelada = it.qtd_cancelada ?? 0;
+      const saldo = Math.max(0, it.quantidade - cancelada - entregue);
+      const valorTotal = it.valor_total ?? (it.quantidade * it.valor_unitario);
+
+      let linha = mapa.get(it.insumo_id);
+      if (!linha) {
+        linha = { insumoId: it.insumo_id, nome: it.nome_item, unidade: it.unidade, qtdPedida: 0, qtdEntregue: 0, qtdCancelada: 0, saldo: 0, valorPorMoeda: {}, pedidos: [] };
+        mapa.set(it.insumo_id, linha);
+      }
+      linha.qtdPedida += it.quantidade;
+      linha.qtdEntregue += entregue;
+      linha.qtdCancelada += cancelada;
+      linha.saldo += saldo;
+      linha.valorPorMoeda[moeda] = (linha.valorPorMoeda[moeda] ?? 0) + valorTotal;
+      linha.pedidos.push({
+        numero: ped.nr_pedido || `#${ped.numero}`,
+        fornecedor: ped.fornecedor_nome ?? "—",
+        data: ped.data_registro,
+        moeda, qtdPedida: it.quantidade, qtdEntregue: entregue, cancelada, saldo, valorTotal,
+      });
+    }
+  }
+  return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
 const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
@@ -91,6 +151,11 @@ export default function PedidosCompraRelatorioTab() {
   const [fInsumoId,   setFInsumoId]   = useState("");
   const [fDataDe,     setFDataDe]     = useState("");
   const [fDataAte,    setFDataAte]    = useState("");
+  // Visão: "pedido" = relatório original (1 página por pedido, com as NFs
+  // vinculadas); "insumo" = novo relatório pedido pelo dono 08/10/2026 —
+  // agrupa pedidos_compra_itens por insumo_id em vez de por pedido_id, pra
+  // responder "em quais pedidos esse produto está" de forma consolidada.
+  const [fVisao,      setFVisao]      = useState<"pedido" | "insumo">("pedido");
   const [fTipo,       setFTipo]       = useState<"sintetico" | "analitico">("analitico");
   const [fFormato,    setFFormato]    = useState<"pdf" | "xlsx">("pdf");
 
@@ -277,6 +342,59 @@ export default function PedidosCompraRelatorioTab() {
 </div>`;
   }
 
+  // ── Construção do HTML da visão "Consolidado por Insumo" (1 página só) ──
+  function buildPaginaConsolidadoHtml(linhas: LinhaConsolidada[], titulo: string, tipo: "sintetico" | "analitico"): string {
+    const td = (v: string, right = false, bold = false) =>
+      `<td style="padding:4px 7px;border:1px solid #E5E7EB;${right ? "text-align:right;" : ""}${bold ? "font-weight:700;" : ""}white-space:nowrap">${v}</td>`;
+
+    const totais = { pedida: 0, entregue: 0, cancelada: 0, saldo: 0, porMoeda: {} as Record<string, number> };
+    const linhasHtml = linhas.map(l => {
+      totais.pedida += l.qtdPedida; totais.entregue += l.qtdEntregue; totais.cancelada += l.qtdCancelada; totais.saldo += l.saldo;
+      for (const [m, v] of Object.entries(l.valorPorMoeda)) totais.porMoeda[m] = (totais.porMoeda[m] ?? 0) + v;
+      const principal = `<tr>${td(l.nome)}${td(l.unidade)}${td(fmtN(l.qtdPedida), true)}${td(fmtN(l.qtdEntregue), true)}${td(fmtN(l.qtdCancelada), true)}${td(fmtN(l.saldo), true)}${td(fmtValorPorMoeda(l.valorPorMoeda), true, true)}${td(String(l.pedidos.length), true)}</tr>`;
+      if (tipo !== "analitico") return principal;
+      const detalhe = l.pedidos.map(p =>
+        `<tr style="background:#F8FAFC;font-size:7.5pt;color:#555"><td colspan="2" style="padding:3px 7px 3px 20px;border:1px solid #E5E7EB">↳ ${p.numero} — ${p.fornecedor} (${fmtData(p.data)})</td>${td(fmtN(p.qtdPedida), true)}${td(fmtN(p.qtdEntregue), true)}${td(fmtN(p.cancelada), true)}${td(fmtN(p.saldo), true)}${td(fmtMoeda(p.valorTotal, p.moeda), true)}${td("", true)}</tr>`
+      ).join("");
+      return principal + detalhe;
+    }).join("");
+
+    return `<div class="rt-page">
+<div style="border-bottom:2px solid #111111;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
+  <div><div style="font-size:14pt;font-weight:700;color:#111111">RacTech</div></div>
+  <div style="text-align:right">
+    <div style="font-size:13pt;font-weight:700;color:#111111">PEDIDOS DE COMPRA — CONSOLIDADO POR INSUMO</div>
+    <div style="font-size:9pt;color:#555">${titulo}</div>
+  </div>
+</div>
+<table style="width:100%;border-collapse:collapse;font-size:8pt">
+  <thead><tr>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:left;border:1px solid #111111">Item (Insumo)</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:left;border:1px solid #111111">Un.</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Qtd. Pedida</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Qtd. Entregue</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Qtd. Cancelada</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Saldo</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Valor Total</th>
+    <th style="background:#111111;color:#fff;padding:4px 7px;text-align:right;border:1px solid #111111">Nº Pedidos</th>
+  </tr></thead>
+  <tbody>${linhasHtml}</tbody>
+  <tfoot><tr>
+    <td colspan="2" style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;border:1px solid #111111">TOTAL</td>
+    <td style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;text-align:right;border:1px solid #111111">${fmtN(totais.pedida)}</td>
+    <td style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;text-align:right;border:1px solid #111111">${fmtN(totais.entregue)}</td>
+    <td style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;text-align:right;border:1px solid #111111">${fmtN(totais.cancelada)}</td>
+    <td style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;text-align:right;border:1px solid #111111">${fmtN(totais.saldo)}</td>
+    <td style="background:#111111;color:#fff;font-weight:700;padding:4px 7px;text-align:right;border:1px solid #111111">${fmtValorPorMoeda(totais.porMoeda)}</td>
+    <td style="background:#111111;border:1px solid #111111"></td>
+  </tr></tfoot>
+</table>
+<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#888">
+  Gerado por ${nomeUsuario ?? "—"} em ${new Date().toLocaleString("pt-BR")} — RacTech · Gestão Agrícola de Precisão · Relatório consolidado por insumo
+</div>
+</div>`;
+  }
+
   function buildRelatorioHtml(paginas: string[], tituloToolbar: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${tituloToolbar}</title>
 <style>
@@ -316,6 +434,44 @@ export default function PedidosCompraRelatorioTab() {
       else if (fGrupoId) partes.push(`Grupo: ${grupos.find(g => g.id === fGrupoId)?.nome ?? ""}`);
       if (partes.length === 0) partes.push("Todos os fornecedores");
       const titulo = `${partes.join(" · ")} — ${pedidos.length} pedido(s)`;
+
+      if (fVisao === "insumo") {
+        const linhas = consolidarPorInsumo(dados);
+        if (linhas.length === 0) { setErro("Nenhum item de catálogo (insumo) encontrado nos pedidos filtrados."); return; }
+
+        if (fFormato === "pdf") {
+          const pagina = buildPaginaConsolidadoHtml(linhas, titulo, fTipo);
+          const win = window.open("", "_blank");
+          if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
+          win.document.write(buildRelatorioHtml([pagina], `Consolidado por Insumo — ${titulo} — RacTech`));
+          win.document.close();
+          win.focus();
+        } else {
+          const XLSX = await import("xlsx");
+          const linhasResumo = linhas.map(l => ({
+            "Item": l.nome, "Un.": l.unidade, "Qtd. Pedida": l.qtdPedida, "Qtd. Entregue": l.qtdEntregue,
+            "Qtd. Cancelada": l.qtdCancelada, "Saldo": l.saldo, "Valor Total": fmtValorPorMoeda(l.valorPorMoeda), "Nº de Pedidos": l.pedidos.length,
+          }));
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasResumo), "Resumo");
+          if (fTipo === "analitico") {
+            const linhasDet: Record<string, string | number>[] = [];
+            for (const l of linhas) {
+              for (const p of l.pedidos) {
+                linhasDet.push({
+                  "Item": l.nome, "Nº Pedido": p.numero, "Fornecedor": p.fornecedor, "Data": fmtData(p.data),
+                  "Qtd. Pedida": p.qtdPedida, "Qtd. Entregue": p.qtdEntregue, "Qtd. Cancelada": p.cancelada,
+                  "Saldo": p.saldo, "Valor Total": p.valorTotal, "Moeda": p.moeda,
+                });
+              }
+            }
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Detalhado");
+          }
+          XLSX.writeFile(wb, `Consolidado_Insumo_${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+        setModalAberto(false);
+        return;
+      }
 
       if (fFormato === "pdf") {
         const paginas = dados.map(d => buildPaginaPedidoHtml(d.ped, d.itens, d.nfs, d.nfItens));
@@ -378,7 +534,7 @@ export default function PedidosCompraRelatorioTab() {
         <div style={{ fontSize: 32, marginBottom: 10 }}>🖨</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>Relatório de Pedidos de Compra</div>
         <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-          Filtre por fornecedor, nº do pedido do fornecedor, status, grupo, item (insumo), ano safra e período — útil pra achar em qual pedido um produto específico está. Gera direto em PDF (pra imprimir) ou XLSX (baixa), sintético ou analítico.
+          Filtre por fornecedor, nº do pedido do fornecedor, status, grupo, item (insumo), ano safra e período. Visão Por Pedido (1 página por pedido) ou Consolidado por Insumo (soma pedida/entregue/saldo de um produto em todos os pedidos que o contém). Gera direto em PDF (pra imprimir) ou XLSX (baixa).
         </div>
         <button onClick={abrirModal} style={btnV}>🔍 Abrir Filtro e Gerar</button>
       </div>
@@ -453,16 +609,35 @@ export default function PedidosCompraRelatorioTab() {
               </div>
             </div>
 
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Visão</label>
+              <div style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
+                {([["pedido", "Por Pedido (1 página por pedido)"], ["insumo", "Consolidado por Insumo (todos os pedidos somados)"]] as const).map(([v, label]) => (
+                  <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                    <input type="checkbox" checked={fVisao === v} onChange={() => setFVisao(v)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
               <div>
                 <label style={lbl}>Tipo</label>
                 <div style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
-                  {([["sintetico", "Sintético (só as NFs)"], ["analitico", "Analítico (NFs abertas)"]] as const).map(([v, label]) => (
-                    <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input type="checkbox" checked={fTipo === v} onChange={() => setFTipo(v)} />
-                      {label}
-                    </label>
-                  ))}
+                  {fVisao === "pedido"
+                    ? ([["sintetico", "Sintético (só as NFs)"], ["analitico", "Analítico (NFs abertas)"]] as const).map(([v, label]) => (
+                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                          <input type="checkbox" checked={fTipo === v} onChange={() => setFTipo(v)} />
+                          {label}
+                        </label>
+                      ))
+                    : ([["sintetico", "Resumo (só o consolidado)"], ["analitico", "Detalhado (com os pedidos de cada item)"]] as const).map(([v, label]) => (
+                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                          <input type="checkbox" checked={fTipo === v} onChange={() => setFTipo(v)} />
+                          {label}
+                        </label>
+                      ))}
                 </div>
               </div>
               <div>
