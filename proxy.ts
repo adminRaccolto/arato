@@ -57,9 +57,14 @@ export async function proxy(request: NextRequest) {
   );
 
   // getUser() renova o token se próximo do vencimento e atualiza os cookies
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
   if (!user) {
+    // Diagnóstico temporário (08/10/2026) — caso real reportado continuando
+    // mesmo após as correções anteriores: loga o motivo exato no servidor
+    // (visível via `vercel logs`) pra confirmar/descartar a teoria da corrida
+    // de refresh token em vez de continuar ajustando às cegas.
+    console.error("[proxy] getUser sem usuário", { pathname, errorMsg: error?.message, errorCode: (error as { code?: string } | null)?.code });
     // Achado real 08/10/2026: mesmo com a rajada de prefetch já cortada acima,
     // usuário continuava sendo deslogado ao navegar de verdade pra Financeiro.
     // Causa: o cliente Supabase do NAVEGADOR (lib/supabase.ts, autoRefreshToken
