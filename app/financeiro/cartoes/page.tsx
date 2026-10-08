@@ -13,8 +13,11 @@ import {
   reabrirFatura,
   vincularLancamentoFatura,
   competenciaFatura,
+  autoFecharFaturasVencidas,
+  pagarFaturaCartao,
+  listarContasProdutorDaConta,
 } from "../../../lib/db";
-import type { CartaoCredito, FaturaCartao, Lancamento } from "../../../lib/supabase";
+import type { CartaoCredito, FaturaCartao, Lancamento, ContaBancaria } from "../../../lib/supabase";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -83,6 +86,14 @@ export default function CartoesCredito() {
   const [lançsFatura,  setLançsFatura]  = useState<Lancamento[]>([]);
   const [loadingLanc,  setLoadingLanc]  = useState(false);
 
+  // Pagar Fatura — o único evento que move dinheiro de verdade
+  const [contasPagamento, setContasPagamento] = useState<ContaBancaria[]>([]);
+  const [faturaPagar,     setFaturaPagar]     = useState<FaturaCartao | null>(null);
+  const [pagarConta,      setPagarConta]      = useState("");
+  const [pagarData,       setPagarData]       = useState(() => new Date().toISOString().split("T")[0]);
+  const [pagandoFatura,   setPagandoFatura]   = useState(false);
+  const [erroPagarFatura, setErroPagarFatura] = useState("");
+
   // Conciliação
   const [cartaoConcil,  setCartaoConcil]  = useState<string>("");
   const [faturaConcil,  setFaturaConcil]  = useState<string>("");
@@ -95,13 +106,21 @@ export default function CartoesCredito() {
   useEffect(() => {
     if (!contaId) return;
     setLoading(true);
-    Promise.all([
-      listarCartoesDaConta(contaId),
-      listarFaturasDaConta(contaId),
-    ]).then(([c, f]) => {
-      setCartoes(c);
-      setFaturas(f);
-    }).finally(() => setLoading(false));
+    // Fecha sozinha qualquer fatura 'aberta' cuja data de fechamento já
+    // passou, antes de listar — não tem cron pra isso (achado real 08/10/2026:
+    // basta checar toda vez que a tela é aberta, "fechamento" só precisa
+    // acontecer antes da próxima vez que alguém olhar pra fatura).
+    autoFecharFaturasVencidas(contaId).catch(() => {}).finally(() => {
+      Promise.all([
+        listarCartoesDaConta(contaId),
+        listarFaturasDaConta(contaId),
+        listarContasProdutorDaConta(contaId),
+      ]).then(([c, f, cb]) => {
+        setCartoes(c);
+        setFaturas(f);
+        setContasPagamento(cb);
+      }).finally(() => setLoading(false));
+    });
   }, [contaId]);
 
   const faturasFiltradas = useMemo(() => {
@@ -187,6 +206,33 @@ export default function CartoesCredito() {
     const atualizadas = await listarFaturasDaConta(contaId!);
     setFaturas(atualizadas);
     if (faturaAberta?.id === f.id) setFaturaAberta(atualizadas.find(x => x.id === f.id) ?? null);
+  };
+
+  // ── Pagar Fatura — único evento que move dinheiro de verdade ─────────────
+  const abrirPagarFatura = (f: FaturaCartao) => {
+    setFaturaPagar(f);
+    setPagarConta("");
+    setPagarData(new Date().toISOString().split("T")[0]);
+    setErroPagarFatura("");
+  };
+
+  const confirmarPagarFatura = async () => {
+    if (!faturaPagar) return;
+    const cartao = cartoes.find(c => c.id === faturaPagar.cartao_id);
+    if (!cartao) { setErroPagarFatura("Cartão não encontrado."); return; }
+    if (!pagarConta) { setErroPagarFatura("Selecione a conta de pagamento."); return; }
+    setPagandoFatura(true);
+    setErroPagarFatura("");
+    try {
+      await pagarFaturaCartao(faturaPagar, cartao, pagarConta, pagarData);
+      const atualizadas = await listarFaturasDaConta(contaId!);
+      setFaturas(atualizadas);
+      setFaturaPagar(null);
+    } catch (e) {
+      setErroPagarFatura(e instanceof Error ? e.message : "Erro ao pagar a fatura");
+    } finally {
+      setPagandoFatura(false);
+    }
   };
 
   // ── Conciliação: parse do extrato ─────────────────────────────────────────
@@ -365,7 +411,7 @@ export default function CartoesCredito() {
                 <div style={{ padding: 48, textAlign: "center", color: "var(--text-2)" }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>💳</div>
                   <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhuma fatura encontrada</div>
-                  <div style={{ fontSize: 12 }}>As faturas são geradas automaticamente quando uma CP é baixada via Cartão de Crédito.</div>
+                  <div style={{ fontSize: 12 }}>As faturas são geradas automaticamente quando um lançamento de Contas a Pagar escolhe Cartão de Crédito como forma de pagamento.</div>
                 </div>
               ) : (
                 <div style={{ display: "grid", gap: 8 }}>
@@ -403,6 +449,12 @@ export default function CartoesCredito() {
                                 <button onClick={() => toggleFecharFatura(f)}
                                   style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: f.status === "aberta" ? "#FBF3E0" : "var(--bg-card)", color: f.status === "aberta" ? "#7A5A12" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                                   {f.status === "aberta" ? "🔒 Fechar fatura" : "🔓 Reabrir fatura"}
+                                </button>
+                              )}
+                              {f.status === "fechada" && (
+                                <button onClick={() => abrirPagarFatura(f)}
+                                  style={{ padding: "6px 14px", border: "none", borderRadius: 8, background: "#1A5C38", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                                  💰 Pagar fatura
                                 </button>
                               )}
                             </div>
@@ -688,6 +740,57 @@ export default function CartoesCredito() {
           </div>
         </div>
       )}
+
+      {/* ═══ MODAL PAGAR FATURA — único evento que move dinheiro de verdade ═══ */}
+      {faturaPagar && (() => {
+        const cartao = cartoes.find(c => c.id === faturaPagar.cartao_id);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+            onClick={e => { if (e.target === e.currentTarget) setFaturaPagar(null); }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+              <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>💰 Pagar Fatura</span>
+                <button onClick={() => setFaturaPagar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              </div>
+              <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
+                  <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{cartao?.titular ?? "—"} {cartao?.numero_final ? `••••${cartao.numero_final}` : ""}</div>
+                  <div style={{ color: "var(--text-2)", fontSize: 12 }}>{MESES[faturaPagar.mes - 1]} {faturaPagar.ano} · vence {fmtData(faturaPagar.data_vencimento)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: "#E24B4A", marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(faturaPagar.valor_total)}</div>
+                </div>
+                <div>
+                  <label style={lblS}>Conta de Pagamento *</label>
+                  <select value={pagarConta} onChange={e => setPagarConta(e.target.value)} style={inpS}>
+                    <option value="">— Selecionar —</option>
+                    {contasPagamento.map(c => {
+                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                      return <option key={c.id} value={label}>{label}</option>;
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label style={lblS}>Data do Pagamento *</label>
+                  <input type="date" value={pagarData} onChange={e => setPagarData(e.target.value)} style={inpS} />
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                  Gera um lançamento único, já baixado, pelo valor total da fatura — este é o movimento real de caixa. Os lançamentos individuais que compuseram a fatura não são alterados.
+                </div>
+                {erroPagarFatura && <div style={{ padding: "10px 12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 12 }}>{erroPagarFatura}</div>}
+              </div>
+              <div style={{ padding: "14px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button onClick={() => setFaturaPagar(null)}
+                  style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontSize: 13 }}>
+                  Cancelar
+                </button>
+                <button onClick={confirmarPagarFatura} disabled={pagandoFatura}
+                  style={{ padding: "8px 22px", background: pagandoFatura ? "#999" : "#1A5C38", color: "#fff", border: "none", borderRadius: 8, cursor: pagandoFatura ? "default" : "pointer", fontSize: 13, fontWeight: 600 }}>
+                  {pagandoFatura ? "Pagando…" : "Confirmar Pagamento"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

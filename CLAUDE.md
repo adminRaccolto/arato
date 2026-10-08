@@ -1293,6 +1293,48 @@ a construir do zero — não é extração, continua em Fretes e Transporte → 
 
 ---
 
+### Sessão de 08 de outubro de 2026 — Cartão de Crédito integrado ao Contas a Pagar
+
+Módulo de Cartões de Crédito (`cartoes_credito`/`faturas_cartao`, criado 03/09/2026) existia isolado
+— nunca tinha sido ligado ao fluxo real de CP. Dono trouxe a especificação completa, confirmada
+contra o histórico de commits (achado real: o modal de "Novo Lançamento" foi reconstruído fiel ao
+legado em 02/10/2026 e deixou essa integração de fora, documentado na própria mensagem do commit).
+
+**Desenho acordado**: lançamento pago no cartão não é saldo em aberto do fornecedor nem dívida já
+quitada — "mora" na fatura até ela ser paga de verdade. Por isso, novo status `'cartao'` em
+`lancamentos` (Seção 335) — um terceiro estado fora do fluxo normal pendente→baixado:
+- some do grid de Contas a Pagar (`lib/financeiro/cp-grid.ts` exclui `status_normalizado === "cartao"`
+  incondicionalmente, mesmo sem filtro nenhum marcado)
+- não movimenta conta bancária/conciliação agora
+- ainda conta pro DRE normalmente, pela OG/ciclo do lançamento original, na data da compra —
+  regime de competência não muda, só o de caixa fica represado
+
+**"Pagar Fatura"** (Financeiro → Cartões de Crédito, só em fatura Fechada) é o único evento que move
+dinheiro de verdade — gera UM lançamento consolidado já baixado (mesmo padrão já usado no Borderô:
+um título agregando vários itens por trás), com `origem_lancamento: 'cartao_fatura'`. Os lançamentos
+individuais continuam intocados, servindo de detalhe/auditoria.
+
+Fatura fecha sozinha quando a data de fechamento passa — checado ao abrir a tela de Cartões
+(`autoFecharFaturasVencidas`), sem cron.
+
+**Arquivos**: `lib/db.ts` (`criarLancamentoNoCartao`, `pagarFaturaCartao`, `autoFecharFaturasVencidas`,
+`vincularLancamentoFatura` limpo do RPC morto), `app/financeiro/pagar/page.tsx` (seletor de cartão
+condicional à Forma de Pagamento), `app/financeiro/cartoes/page.tsx` (botão Pagar Fatura + modal),
+`lib/financeiro/cp-grid.ts`, `lib/supabase.ts` (`Lancamento.status` + `origem_lancamento` ampliados).
+
+**Migration pendente — Seção 335**: precisa ser executada no Supabase SQL Editor antes de usar esse
+fluxo em produção (amplia os `CHECK` constraints de `lancamentos.status` e `.origem_lancamento`).
+
+**Deliberadamente fora desta sessão** (extensões futuras mencionadas pelo dono, não pedidas ainda):
+- NF de Produtos: selecionar Cartão de Crédito como forma de pagamento na NF e pular a criação do
+  CP normal, alimentando a fatura direto (hoje a NF nem tem essa opção no dropdown).
+- Conciliação bancária do cartão: hoje é só uma comparação na tela (`app/financeiro/cartoes/page.tsx`
+  aba Conciliação) — nada é persistido, perde tudo ao sair da aba. Precisaria de tabela própria.
+- Suporte a Cartão de Crédito no lado Empresa do modal de CP (`empresa_lancamentos` não tem
+  `cartao_id`/`fatura_cartao_id` no schema — ficou de fora, só o lado Produtor foi integrado).
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.

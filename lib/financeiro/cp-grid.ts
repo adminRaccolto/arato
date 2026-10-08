@@ -31,6 +31,11 @@ function corresponde(status: string, vencimento: string | null, campos: unknown[
   return !f.busca.trim() || campos.some(v => texto(v).includes(texto(f.busca.trim())));
 }
 export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
+  // 'cartao': comprometido no cartão de crédito — nunca é saldo em aberto do
+  // fornecedor/produtor, não entra no grid de CP de jeito nenhum (nem sem
+  // filtro de status algum marcado). Vive só dentro da fatura do cartão
+  // (Financeiro → Cartões de Crédito) até a fatura ser paga.
+  if (t.status_normalizado === "cartao") return false;
   return (!f.origens.size || f.origens.has(t.origem_tabela)) && corresponde(
     t.status_normalizado ?? "", t.data_vencimento,
     [t.descricao, t.pessoa_nome, t.empresa_nome, t.nfe_numero], f);

@@ -7494,18 +7494,15 @@ export async function vincularLancamentoFatura(
     .single();
   if (errFatura) throw errFatura;
 
-  // Atualiza valor_total somando o valor deste lançamento
-  const { error: errUpd } = await supabase.rpc("incrementar_fatura_cartao", {
-    p_fatura_id: fatura.id,
-    p_valor: valor,
-  }).throwOnError();
-  // Se a função RPC não existir, faz update manual
-  if (errUpd) {
-    await supabase
-      .from("faturas_cartao")
-      .update({ valor_total: (fatura.valor_total ?? 0) + valor })
-      .eq("id", fatura.id);
-  }
+  // Soma o valor deste lançamento ao total acumulado da fatura. Sem RPC
+  // atômico (nunca existiu de verdade no banco — achado real 08/10/2026: a
+  // chamada supabase.rpc("incrementar_fatura_cartao", ...) sempre falhava
+  // silenciosamente e caía neste mesmo update manual) — aceitável pro volume
+  // de uso (lançamento manual, não há concorrência real).
+  await supabase
+    .from("faturas_cartao")
+    .update({ valor_total: (fatura.valor_total ?? 0) + valor })
+    .eq("id", fatura.id);
 
   // Vincula o lançamento à fatura
   await supabase
@@ -7514,6 +7511,77 @@ export async function vincularLancamentoFatura(
     .eq("id", lancamentoId);
 
   return fatura as FaturaCartao;
+}
+
+// Cria um lançamento de CP já "no cartão" — status 'cartao' (não é saldo em
+// aberto do fornecedor, não movimenta conta bancária) e acumula o valor na
+// fatura da competência certa, criando-a se necessário. Usado pelo modal de
+// Novo Lançamento (Contas a Pagar) e, no futuro, pela NF de Produtos quando
+// a forma de pagamento escolhida for Cartão de Crédito.
+export async function criarLancamentoNoCartao(
+  base: Omit<Lancamento, "id" | "created_at" | "status" | "cartao_id">,
+  cartao: CartaoCredito,
+  contaId: string,
+): Promise<Lancamento> {
+  const lanc = await criarLancamento({ ...base, status: "cartao", cartao_id: cartao.id });
+  await vincularLancamentoFatura(lanc.id, cartao, base.data_vencimento, base.valor, contaId, base.fazenda_id);
+  return lanc;
+}
+
+// "Pagar fatura" — o único evento que move dinheiro de verdade neste fluxo.
+// Gera UM lançamento consolidado (já baixado, com conta bancária e data real
+// de pagamento) pelo valor total acumulado da fatura, e fecha o círculo:
+// fatura.lancamento_cp_id aponta pro lançamento, status vira 'paga'. Os
+// lançamentos individuais que compuseram a fatura (status 'cartao') não são
+// alterados — continuam servindo de detalhe/auditoria de o que formou esse
+// total; o DRE já os reconhece pela OG de cada um, na data de cada compra.
+export async function pagarFaturaCartao(
+  fatura: FaturaCartao,
+  cartao: CartaoCredito,
+  contaBancaria: string,
+  dataPagamento: string,
+): Promise<Lancamento> {
+  if (fatura.status === "paga") throw new Error("Esta fatura já foi paga.");
+  const fazendaId = fatura.fazenda_id ?? cartao.fazenda_id;
+  if (!fazendaId) throw new Error("Fatura sem fazenda vinculada.");
+  const lanc = await criarLancamento({
+    fazenda_id: fazendaId,
+    tipo: "pagar",
+    moeda: "BRL",
+    descricao: `Fatura ${cartao.titular} — ${String(fatura.mes).padStart(2, "0")}/${fatura.ano}`,
+    categoria: "Pagamento Cartão de Crédito",
+    data_lancamento: dataPagamento,
+    data_vencimento: fatura.data_vencimento,
+    data_baixa: dataPagamento,
+    valor: fatura.valor_total,
+    valor_pago: fatura.valor_total,
+    status: "baixado",
+    auto: false,
+    conta_bancaria: contaBancaria,
+    cartao_id: cartao.id,
+    origem_lancamento: "cartao_fatura",
+  });
+  await supabase
+    .from("faturas_cartao")
+    .update({ status: "paga", lancamento_cp_id: lanc.id })
+    .eq("id", fatura.id);
+  return lanc;
+}
+
+// Fecha automaticamente faturas 'aberta' cuja data_fechamento já passou — a
+// próxima fatura (mês seguinte) nasce sozinha na primeira compra lançada
+// nela, via vincularLancamentoFatura (upsert), não precisa ser criada aqui
+// de antemão. Chamado ao carregar a tela de Cartões (sem cron — acordado
+// como suficiente: "fechamento" só importa a próxima vez que alguém olhar
+// a fatura ou tentar lançar uma compra nova).
+export async function autoFecharFaturasVencidas(contaId: string): Promise<void> {
+  const hoje = new Date().toISOString().split("T")[0];
+  await supabase
+    .from("faturas_cartao")
+    .update({ status: "fechada" })
+    .eq("conta_id", contaId)
+    .eq("status", "aberta")
+    .lt("data_fechamento", hoje);
 }
 
 export async function listarFaturasDaConta(contaId: string): Promise<FaturaCartao[]> {

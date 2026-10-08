@@ -45,9 +45,9 @@ import {
   criarLancamento, criarEmpresaLancamento, listarPessoasDaConta, listarEmpresasDaConta, listarCentrosCustoGeralDaConta,
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
-  excluirLancamento, excluirEmpresaLancamento,
+  excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
 } from "../../../lib/db";
-import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo } from "../../../lib/supabase";
+import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero } from "../../../lib/financeiro/cp-grid";
 import { arredondarMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
@@ -515,6 +515,7 @@ export default function ContasAPagarPage() {
     forma_pagamento: "PIX",
     conta_pagamento: "",
     competencia: "",
+    cartao_id: "",
   };
   type ParcelaGrid = { data: string; valor: number };
   const [modalNovo, setModalNovo] = useState(false);
@@ -531,6 +532,7 @@ export default function ContasAPagarPage() {
   const [empSafras, setEmpSafras] = useState<AnoSafra[]>([]);
   const [empCiclos, setEmpCiclos] = useState<Ciclo[]>([]);
   const [centrosNovo, setCentrosNovo] = useState<CentroCusto[]>([]);
+  const [cartoesNovo, setCartoesNovo] = useState<CartaoCredito[]>([]);
 
   useEffect(() => {
     if (!contaId && !fazendaId) return;
@@ -554,6 +556,13 @@ export default function ContasAPagarPage() {
       } catch { setEmpSafras([]); setCentrosNovo([]); }
     })();
   }, [modalNovo, fazendaId]);
+
+  // Cartões de crédito da conta — só precisa carregar quando o modal abre
+  // (forma de pagamento Cartão de Crédito mostra o seletor condicionalmente)
+  useEffect(() => {
+    if (!modalNovo || !contaId) return;
+    listarCartoesDaConta(contaId).then(setCartoesNovo).catch(() => setCartoesNovo([]));
+  }, [modalNovo, contaId]);
 
   useEffect(() => {
     if (!novoForm.emp_ano_safra_id || !fazendaId) { setEmpCiclos([]); return; }
@@ -689,6 +698,8 @@ export default function ContasAPagarPage() {
       if (novoForm.moeda === "barter" && !novoForm.sacas) erros.push("Quantidade de sacas é obrigatória.");
       if (!novoForm.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória.");
       if (novoForm.condicao === "prazo" && parcelasNovo.length === 0) erros.push("Gere as parcelas antes de salvar.");
+      if (novoForm.forma_pagamento === "Cartão de Crédito" && !novoForm.cartao_id) erros.push("Selecione o cartão de crédito.");
+      if (novoForm.forma_pagamento === "Cartão de Crédito" && novoForm.condicao === "recorrencia") erros.push("Cartão de Crédito não é compatível com Recorrência — use Parcelado (editável) se precisar dividir em várias faturas.");
     }
     if (erros.length > 0) { setErroNovo(erros.join(" ")); return; }
     setErroNovo("");
@@ -792,18 +803,28 @@ export default function ContasAPagarPage() {
           entidade_contabil: novoForm.entidade_contabil || undefined,
           origem_lancamento: "manual",
         };
+        // Cartão de Crédito: cada parcela/compra vira um lançamento status
+        // 'cartao' (não entra no saldo em aberto do fornecedor) e acumula na
+        // fatura da competência certa — cada uma na sua, pela própria data de
+        // vencimento (ex: parcelado em 3x cai em 3 faturas/meses diferentes).
+        const cartaoSel = novoForm.forma_pagamento === "Cartão de Crédito"
+          ? cartoesNovo.find(c => c.id === novoForm.cartao_id)
+          : undefined;
+        const criar = cartaoSel
+          ? (l: typeof base) => criarLancamentoNoCartao(l, cartaoSel, contaId!)
+          : criarLancamento;
         if (novoForm.condicao === "prazo" && parcelasNovo.length > 0) {
           const agrupador = Date.now().toString(36);
           const total = parcelasNovo.length;
           for (let i = 0; i < total; i++) {
-            await criarLancamento({ ...base, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
+            await criar({ ...base, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
           }
         } else if (novoForm.condicao === "prazo") {
           await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
         } else if (novoForm.condicao === "recorrencia") {
           await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
         } else {
-          await criarLancamento(base);
+          await criar(base);
         }
         if (salvarComoRegra) await criarRegraClassificacaoNovo();
       } else {
@@ -2233,7 +2254,7 @@ export default function ContasAPagarPage() {
                           <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} placeholder="Ex: Compra de herbicida — Talhão 3" value={novoForm.descricao} onChange={e => setNovoForm(p => ({ ...p, descricao: e.target.value }))} />
                         </div>
                         <div>
-                          <label style={lbl}>1º Vencimento *</label>
+                          <label style={lbl}>{novoForm.forma_pagamento === "Cartão de Crédito" ? "Data da Compra *" : "1º Vencimento *"}</label>
                           <InputData style={{ ...inp, width: "100%", boxSizing: "border-box" }} type="date" value={novoForm.data_vencimento} onChange={e => setNovoForm(p => ({ ...p, data_vencimento: e.target.value }))} />
                         </div>
                         <div>
@@ -2244,10 +2265,25 @@ export default function ContasAPagarPage() {
                         </div>
                       </div>
 
+                      {novoForm.forma_pagamento === "Cartão de Crédito" && (
+                        <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 12 }}>
+                          <label style={lbl}>Cartão *</label>
+                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.cartao_id} onChange={e => setNovoForm(p => ({ ...p, cartao_id: e.target.value }))}>
+                            <option value="">— Selecionar —</option>
+                            {cartoesNovo.map(c => (
+                              <option key={c.id} value={c.id}>{c.titular}{c.numero_final ? ` •••• ${c.numero_final}` : ""}</option>
+                            ))}
+                          </select>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>
+                            Não entra no saldo em aberto nem movimenta conta bancária agora — vai pra fatura do cartão. O pagamento real acontece em Financeiro → Cartões de Crédito, ao pagar a fatura.
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div>
                           <label style={lbl}>Conta de Pagamento</label>
-                          <select style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                          <select disabled={novoForm.forma_pagamento === "Cartão de Crédito"} style={{ ...inp, width: "100%", boxSizing: "border-box", opacity: novoForm.forma_pagamento === "Cartão de Crédito" ? 0.5 : 1 }} value={novoForm.conta_pagamento} onChange={e => setNovoForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
                             <option value="">— Selecionar —</option>
                             {contasNovo.map(c => {
                               const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();

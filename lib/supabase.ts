@@ -303,7 +303,11 @@ export type Lancamento = {
   data_prorrogacao?: string;
   valor: number;
   valor_pago?: number;
-  status: "previsto" | "em_aberto" | "vencido" | "vencendo" | "parcial" | "baixado" | "cancelado";
+  // "cartao": comprometido no cartão de crédito — não é saldo em aberto do
+  // fornecedor/produtor nem dívida já quitada; o valor vive na fatura do
+  // cartão (cartao_id/fatura_cartao_id) até a fatura ser paga de verdade
+  // (aí sim nasce um lançamento próprio, esse sim baixado/com conta bancária).
+  status: "previsto" | "em_aberto" | "vencido" | "vencendo" | "parcial" | "baixado" | "cancelado" | "cartao";
   auto: boolean;
   // Parcelamento
   num_parcela?: number;
@@ -350,7 +354,7 @@ export type Lancamento = {
   entidade_contabil?: "pf" | "pj";  // qual entidade contabiliza (PF/CNPJ ou PJ/CNPJ)
   // Rastreabilidade — de onde veio o lançamento
   numero_documento?: string;           // Nº do documento/contrato vinculado (usado por contratos_financeiros)
-  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "consorcio" | "manual" | "compra_terra" | "nf_servico" | "seguro";
+  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "consorcio" | "manual" | "compra_terra" | "nf_servico" | "seguro" | "cartao_fatura";
   pedido_compra_id?: string;          // FK pedidos_compra.id — quando gerado por pedido de compra
   consorcio_id?: string;              // FK consorcios.id — parcelas de consórcio
   operacao_gerencial_id?: string;     // FK operacoes_gerenciais.id — vínculo contábil (débito/crédito)

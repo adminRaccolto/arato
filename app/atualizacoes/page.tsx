@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-k",
+    data: "08/10/2026",
+    titulo: "Cartão de Crédito integrado ao Contas a Pagar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao criar um lançamento de Contas a Pagar com Forma de Pagamento \"Cartão de Crédito\", agora é preciso escolher o cartão (cadastrado em Financeiro → Cartões de Crédito). O lançamento não entra mais como saldo em aberto do fornecedor nem movimenta conta bancária na hora — o valor vai direto pra fatura do cartão daquela competência, acumulando com os demais lançamentos. O custo continua contando normalmente pro DRE, pela Operação Gerencial escolhida." },
+      { tipo: "melhoria", texto: "A fatura do cartão agora fecha sozinha quando a data de fechamento passa (checado ao abrir a tela de Cartões), e ganhou o botão \"💰 Pagar fatura\" — o único evento que de fato move dinheiro: gera um lançamento único, já baixado, pelo valor total da fatura, com conta bancária e data reais, pronto pra conciliação. Os lançamentos individuais que compuseram a fatura continuam intocados, servindo de detalhe do que foi pago." },
+    ],
+    onde: "Financeiro → Contas a Pagar (Novo Lançamento) e Financeiro → Cartões de Crédito",
+  },
+  {
     versao: "2026.10.08-j",
     data: "08/10/2026",
     titulo: "Transferência entre Fazendas: seletor de Insumo com busca e corrigido corte de itens",

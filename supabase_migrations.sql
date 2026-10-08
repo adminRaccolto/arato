@@ -16239,11 +16239,15 @@ BEGIN
     SELECT nome INTO v_cb_nome FROM contas_bancarias WHERE id = v.conta_bancaria::text::uuid;
   END IF;
 
+  -- Seção 335: 'cartao' precisa de valor PRÓPRIO aqui — nunca pode cair no
+  -- ELSE 'em_aberto', senão volta a aparecer como saldo em aberto do
+  -- fornecedor no grid de CP, exatamente o que esse status existe pra evitar.
   v_status_norm := CASE v.status
     WHEN 'baixado'   THEN 'baixado'
     WHEN 'cancelado' THEN 'cancelado'
     WHEN 'parcial'   THEN 'parcial'
     WHEN 'vencido'   THEN 'vencido'
+    WHEN 'cartao'    THEN 'cartao'
     ELSE 'em_aberto'
   END;
 
@@ -16367,5 +16371,40 @@ ALTER TABLE pagamento_lotes
   ADD COLUMN IF NOT EXISTS valor_juros numeric DEFAULT 0,
   ADD COLUMN IF NOT EXISTS valor_multa numeric DEFAULT 0,
   ADD COLUMN IF NOT EXISTS valor_desconto numeric DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================================
+-- SEÇÃO 335 — Integra Cartão de Crédito ao Contas a Pagar e à NF de Produtos
+-- (módulo cartoes_credito/faturas_cartao já existia isolado desde a Seção
+-- correspondente a 88f35ea9 — nunca tinha sido ligado ao fluxo real de CP).
+--
+-- Desenho acordado com o dono 08/10/2026: lançamento pago no cartão NÃO é
+-- saldo em aberto do fornecedor nem dívida já quitada — o valor "mora" na
+-- fatura do cartão até a fatura ser paga de verdade. Por isso o novo status
+-- 'cartao' é um terceiro estado, fora do fluxo normal pendente→baixado:
+--   - some do grid de Contas a Pagar (não é saldo em aberto do produtor)
+--   - não movimenta conta bancária/conciliação (não é dívida paga ainda)
+--   - ainda assim conta pro DRE normalmente (OG/ciclo do lançamento original
+--     continuam valendo — regime de competência não muda, só o de caixa)
+-- Quando a fatura é fechada e depois paga, nasce UM lançamento consolidado
+-- (mesmo padrão já usado no Borderô — Seção 334) que é esse sim o que move
+-- dinheiro de verdade; esse lançamento usa a nova origem 'cartao_fatura'.
+-- ============================================================================
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_status_check;
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_status_check
+  CHECK (status IN ('previsto','em_aberto','vencido','vencendo','parcial','baixado','cancelado','liquidado','cartao'));
+
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria',
+    'plantio','contrato_financeiro','consorcio','manual','compra_terra',
+    'nf_servico','seguro','cartao_fatura'
+  ));
 
 NOTIFY pgrst, 'reload schema';
