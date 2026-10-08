@@ -21,7 +21,8 @@ const NATUREZAS_VENDA = [
   { codigo: "5.101",    descricao: "Venda de Producao - Operacao Interna (CFOP 5.101)",                obs: "ICMS diferido nos termos do Decreto MT n. 4.540/2004. Operacao interna no Estado de Mato Grosso. Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991." },
   { codigo: "5.501",    descricao: "Venda com Fim Especifico de Exportacao - Interna (CFOP 5.501)",    obs: "Venda com fim especifico de exportacao. Operacao interna - ICMS suspenso conforme art. 7., inciso VII do RICMS-MT. PIS/COFINS imunes conforme art. 149-A da CF/88." },
   { codigo: "7.101",    descricao: "Exportacao Direta pelo Produtor (CFOP 7.101)",                     obs: "Exportacao direta. Operacao imune de ICMS, PIS, COFINS e Funrural conforme art. 149-A da CF/88 e art. 14 da Lei 11.945/2009." },
-  { codigo: "6.905",    descricao: "Remessa para Armazem Geral / Deposito (CFOP 6.905)",               obs: "Remessa para deposito em armazem geral de terceiros. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
+  { codigo: "6.905",    descricao: "Remessa para Armazem Geral / Deposito - Interestadual (CFOP 6.905)", obs: "Remessa para deposito em armazem geral de terceiros, fora do Estado. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
+  { codigo: "5.905",    descricao: "Remessa para Armazem Geral / Deposito - Interna (CFOP 5.905)",      obs: "Remessa para deposito em armazem geral de terceiros, dentro do mesmo Estado. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
   { codigo: "6.117",    descricao: "Remessa Simbolica - Entrega Futura (CFOP 6.117)",                  obs: "Faturamento antecipado. NF simbolica sem movimentacao fisica de mercadoria. ICMS diferido nos termos do Decreto MT n. 4.540/2004." },
   { codigo: "6.119",    descricao: "Remessa para Venda a Ordem (CFOP 6.119)",                          obs: "Venda a ordem - operacao triangular. ICMS diferido conforme Decreto MT n. 4.540/2004." },
 ];
@@ -722,6 +723,10 @@ function FiscalInner() {
   const nfEntradaIdParam = searchParams.get("nf_entrada_id");
   // Estado do modo "emitir remessa" (navegado de NF de Entrada)
   const [remessaModo, setRemessaModo] = useState<{ nf_entrada_id: string; nf_numero?: string; nf_emitente?: string } | null>(null);
+  // UF do emitente, resolvida uma vez no pré-preenchimento — usada depois pra
+  // escolher 5.905 (mesmo Estado) vs 6.905 (interestadual) conforme a UF do
+  // destinatário (armazém) escolhida pelo usuário, só conhecida depois.
+  const [remessaUfEmit, setRemessaUfEmit] = useState<string | null>(null);
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
   const [danfeCfg, setDanfeCfg] = useState<DanfeCfg>({});
   const [carregando, setCarregando] = useState(true);
@@ -749,8 +754,11 @@ function FiscalInner() {
         .eq("fazenda_id", fazendaId)
         .or("modulo.like.fiscal_pf_%,modulo.like.fiscal_emp_%");
       const ufEmit = ((fmods?.[0]?.config ?? {}) as Record<string, string>).uf ?? "MT";
-      // Detentor do grão é o emitente da NF de compra; UF do armazém onde vai remeter
-      // Default 6.905 (interestadual) — usuário pode mudar no campo CFOP
+      setRemessaUfEmit(ufEmit);
+      // Default 6.905 (interestadual) — o efeito que reage a dest_uf (mais
+      // abaixo) troca pra 5.905 automaticamente assim que o usuário escolher
+      // um destinatário na mesma UF do emitente; até lá, sem destinatário
+      // nenhum escolhido, não dá pra saber qual dos dois é o certo.
       const cfop = "6.905";
       const natRemessa = NATUREZAS_VENDA.find(n => n.codigo === "6.905")!;
       const hoje = new Date().toISOString().slice(0, 10);
@@ -764,6 +772,12 @@ function FiscalInner() {
         data_saida: hoje,
         hora_saida: agora,
       }));
+      // Produtor remetente da remessa é o mesmo que recebeu a mercadoria na NF
+      // de Entrada original (quem comprou é quem agora está remetendo pro
+      // armazém/depósito) — achado real 08/10/2026: a tela abria com o campo
+      // Produtor vazio mesmo essa pessoa já estando na lista.
+      const produtorId = (nf as { produtor_id?: string } | null)?.produtor_id;
+      if (produtorId) onProdutorChange(produtorId);
       // Pré-popula itens de estoque da NF de entrada
       const estoqueItens = itensEntrada.filter(
         (i) => !i.tipo_apropiacao || i.tipo_apropiacao === "estoque" || i.tipo_apropiacao === "maquinario",
@@ -880,6 +894,18 @@ function FiscalInner() {
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === cfop);
     fv({ cfop, natureza_texto: nat?.descricao ?? "", observacao: nat?.obs ?? fVenda.observacao });
   }
+
+  // Remessa: troca 6.905 ⇄ 5.905 sozinho assim que a UF do destinatário
+  // (armazém escolhido pelo usuário) ficar conhecida/mudar — só enquanto o
+  // CFOP ainda for um dos dois da remessa (não mexe se o usuário já trocou
+  // manualmente pra outra coisa, ex: uma devolução).
+  useEffect(() => {
+    if (!remessaModo || !remessaUfEmit || !fVenda.dest_uf) return;
+    if (fVenda.cfop !== "6.905" && fVenda.cfop !== "5.905") return;
+    const cfopCerto = fVenda.dest_uf === remessaUfEmit ? "5.905" : "6.905";
+    if (cfopCerto !== fVenda.cfop) onCfopChange(cfopCerto);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remessaModo, remessaUfEmit, fVenda.dest_uf]);
 
   // Formulário Devolução
   const [fDev, setFDev] = useState({
@@ -2728,6 +2754,27 @@ function FiscalInner() {
                                   });
                                   setBuscaPessoa(p.nome + (p.cpf_cnpj ? " — " + p.cpf_cnpj : ""));
                                   setDropdownPessoa(false);
+                                  // Cadastro de pessoa às vezes não tem logradouro/IBGE preenchidos
+                                  // (CEP/cidade/UF sim) — acha automaticamente pelo CEP, mesmo
+                                  // padrão já usado no campo CEP e no carregamento de rascunho,
+                                  // em vez de deixar a pessoa descobrir só no erro de "falta IBGE".
+                                  const cepDigits = (p.cep ?? "").replace(/\D/g, "");
+                                  if (cepDigits.length === 8 && (!p.logradouro || !p.municipio_ibge)) {
+                                    fetch(`https://viacep.com.br/ws/${cepDigits}/json/`)
+                                      .then(r => r.json())
+                                      .then(d => {
+                                        if (d.erro) return;
+                                        setFVenda(prev => ({
+                                          ...prev,
+                                          dest_endereco:       prev.dest_endereco       || d.logradouro || prev.dest_endereco,
+                                          dest_bairro:         prev.dest_bairro         || d.bairro     || prev.dest_bairro,
+                                          dest_cidade:         prev.dest_cidade         || d.localidade || prev.dest_cidade,
+                                          dest_uf:             prev.dest_uf             || d.uf         || prev.dest_uf,
+                                          dest_municipio_ibge: prev.dest_municipio_ibge || d.ibge       || prev.dest_municipio_ibge,
+                                        }));
+                                      })
+                                      .catch(() => {});
+                                  }
                                 }}
                                 style={{ padding:"8px 14px", cursor:"pointer", borderBottom:"1px solid #f5f5f5" }}
                                 onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background="#F0F5FF"; }}
@@ -2794,14 +2841,24 @@ function FiscalInner() {
                   <div>
                     {row(
                       field("CFOP *",
-                        <select style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
-                          <optgroup label="Venda">
-                            {NATUREZAS_VENDA.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
-                          </optgroup>
-                          <optgroup label="Devolução">
-                            {NATUREZAS_DEVOLUCAO.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
-                          </optgroup>
-                        </select>, "0 0 100px"),
+                        remessaModo ? (
+                          // Remessa pra armazém/depósito: só os CFOPs de remessa fazem sentido
+                          // aqui — venda/exportação/devolução são de outro fluxo (Nota de Venda
+                          // normal), só confundiam a escolha nesse modo.
+                          <select style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
+                            {NATUREZAS_VENDA.filter(o => ["6.905", "5.905", "6.117", "6.119"].includes(o.codigo))
+                              .map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
+                          </select>
+                        ) : (
+                          <select style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
+                            <optgroup label="Venda">
+                              {NATUREZAS_VENDA.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
+                            </optgroup>
+                            <optgroup label="Devolução">
+                              {NATUREZAS_DEVOLUCAO.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
+                            </optgroup>
+                          </select>
+                        ), "0 0 100px"),
                       field("Natureza de Operação",
                         <input style={inSt} value={fVenda.natureza_texto} onChange={e => fv({natureza_texto:e.target.value})} placeholder="Auto-preenchido pelo CFOP" />),
                       field("", <div style={{paddingBottom:2}}>{chk(fVenda.uso_imediato, () => fv({uso_imediato:!fVenda.uso_imediato}), "Uso Imediato")}</div>, "0 0 110px"),

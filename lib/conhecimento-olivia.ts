@@ -196,6 +196,8 @@ Captura (XML, SIEG ou digitação manual) e processamento são fases distintas �
 
 **Peças / Manutenção com Apropriação "Estoque"**: nesse tipo de NF, cada item normalmente é vinculado a uma máquina (vai direto pro maquinário, não pro estoque) — mas a Apropriação do item pode ser trocada pra "Estoque" quando a peça entra pro estoque em vez de ser consumida direto. Quando isso acontece, aparece um seletor de insumo do catálogo (com botão "+" pra cadastrar um novo na hora) embaixo do campo Descrição — exatamente como no tipo Insumos. Sem escolher um insumo ali, o processamento bloqueia com o erro "associe um insumo... antes de processar".
 
+**Emitir NF Remessa**: abre o wizard de Notas de Venda pré-preenchido a partir da NF de Entrada de origem — Produtor remetente já vem selecionado (é quem recebeu a mercadoria naquela NF, agora remetendo pro armazém/depósito), itens de estoque pré-carregados, CFOP começa em 6.905 (interestadual) e troca sozinho pra 5.905 assim que o Destinatário (armazém) escolhido tiver a mesma UF do emitente — nos dois casos a lista de CFOP nesse modo mostra só os códigos de remessa (6.905/5.905/6.117/6.119), sem opções de venda/devolução que não se aplicam aqui. Ao escolher o Destinatário no catálogo de Pessoas, se o cadastro tiver CEP mas faltar endereço ou código IBGE, o sistema busca automaticamente pelo CEP (ViaCEP) pra completar.
+
 ### Documentos Fiscais → Notas de Serviço (NFS-e)
 Separada da nota de produtos — wizard Prestador → Serviço (código LC 116/2003) → Tributação (ISS e retenções federais: PIS, COFINS, CSLL, IRRF, INSS). O tomador normalmente é a própria fazenda/produtor contratante.
 

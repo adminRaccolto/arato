@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-n",
+    data: "08/10/2026",
+    titulo: "NF de Remessa: produtor, endereço do destinatário e CFOP corrigidos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Ao emitir NF de Remessa a partir de uma NF de Entrada, o Produtor remetente abria vazio — agora vem pré-selecionado com o mesmo produtor que recebeu a mercadoria na nota original." },
+      { tipo: "melhoria", texto: "Ao escolher o Destinatário (armazém/depósito) pelo cadastro de Pessoas, se faltar Endereço ou Código IBGE no cadastro (mas o CEP estiver lá), o sistema agora busca essas informações automaticamente pelo CEP, em vez de deixar os campos em branco bloqueando a emissão." },
+      { tipo: "correcao", texto: "A lista de CFOP nesse modo estava com opções de venda/devolução que não se aplicam a uma remessa, e faltava o CFOP 5.905 (remessa dentro do mesmo Estado) — só existia o 6.905 (interestadual). Agora a lista mostra só os CFOPs de remessa (5.905/6.905/6.117/6.119), e o sistema troca sozinho entre 5.905 e 6.905 conforme a UF do destinatário escolhido." },
+    ],
+    onde: "Fiscal → Documentos Fiscais → card da NF processada → 🚚 Emitir NF Remessa",
+  },
+  {
     versao: "2026.10.08-m",
     data: "08/10/2026",
     titulo: "NF de Peças/Manutenção: seletor de insumo quando Apropriação é Estoque",
