@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
+export const runtime = "nodejs"; // sharp (achatamento da logo) e pdfkit precisam de Node
+
 export async function GET(req: NextRequest) {
   const chave      = req.nextUrl.searchParams.get("chave")?.replace(/\D/g, "") ?? "";
   const fazenda_id = req.nextUrl.searchParams.get("fazenda_id") ?? "";
@@ -92,7 +94,21 @@ export async function GET(req: NextRequest) {
         const { data: conta } = await db.from("contas").select("logo_url").eq("id", faz.conta_id).maybeSingle();
         if (conta?.logo_url) {
           const imgRes = await fetch(conta.logo_url as string);
-          if (imgRes.ok) logoBuffer = Buffer.from(await imgRes.arrayBuffer());
+          if (imgRes.ok) {
+            const rawLogo = Buffer.from(await imgRes.arrayBuffer());
+            // Achado real 08/10/2026: logo embutia no PDF (o XObject existia) mas ficava
+            // INVISÍVEL — o decodificador de PNG do pdfkit não trata bem canal alfa (a
+            // maioria dos logos é PNG com transparência) e renderizava a imagem toda
+            // transparente, sem erro nenhum. "Achatar" (remover o alfa, compor sobre
+            // fundo branco) antes de passar pro pdfkit resolve; falhando o achatamento
+            // por qualquer motivo, usa a imagem original (nunca pior do que já era).
+            try {
+              const sharp = (await import("sharp")).default;
+              logoBuffer = await sharp(rawLogo).flatten({ background: "#ffffff" }).png().toBuffer();
+            } catch {
+              logoBuffer = rawLogo;
+            }
+          }
         }
       }
     }

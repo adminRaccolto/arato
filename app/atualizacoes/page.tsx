@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-q",
+    data: "08/10/2026",
+    titulo: "Corrigido de vez: logo do cliente agora aparece no DANFE",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A logo do cliente tinha sido ligada ao DANFE numa correção anterior, mas continuava não aparecendo no PDF — investigado a fundo: a imagem era embutida no arquivo, só que invisível. Causa real: a maioria das logos é PNG com transparência, e o motor que desenha o PDF não trata bem esse canal — a imagem virava 100% transparente, sem erro nenhum pra avisar. Corrigido: antes de desenhar, a logo é \"achatada\" (transparência removida, composta sobre fundo branco), o que resolve pra qualquer logo PNG com transparência, em qualquer DANFE do sistema (NF de entrada, devolução, remessa, NF-e emitida)." },
+    ],
+    onde: "Qualquer botão \"↗ DANFE\" do sistema",
+  },
+  {
     versao: "2026.10.08-p",
     data: "08/10/2026",
     titulo: "Busca de CNPJ ganhou segunda fonte quando a primeira está fora do ar",
