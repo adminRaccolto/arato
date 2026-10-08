@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.08-i",
+    data: "08/10/2026",
+    titulo: "Corrigido: tela em branco ao abrir páginas com controle de plano",
+    modulos: ["Sistema"],
+    itens: [
+      { tipo: "correcao", texto: "Páginas protegidas por controle de plano/add-on (ex: Relatório de Pedidos de Compra) podiam ficar com a tela inteira em branco — até o menu superior sumia — enquanto os módulos da conta ainda estavam carregando. Acontecia com qualquer usuário, mas era mais visível pra equipe Raccolto/BPO, que nunca deveria ficar bloqueada esperando isso. Corrigido: equipe interna tem acesso imediato sem espera, e o menu superior agora fica sempre visível mesmo que o conteúdo da página ainda esteja decidindo se pode aparecer." },
+    ],
+    onde: "Qualquer página com controle de plano (Relatório de Pedidos de Compra, Relatórios Financeiros, Seguros, Consórcios, etc.)",
+  },
+  {
     versao: "2026.10.08-h",
     data: "08/10/2026",
     titulo: "Causa real do logout em Financeiro encontrada: relógio do computador — novo aviso automático",

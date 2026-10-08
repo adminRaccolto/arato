@@ -97,8 +97,22 @@ interface PlanoGateProps {
   children?: React.ReactNode;
 }
 
+// Mesma lista de cargos internos usada em AuthProvider.podeAcessarPlano —
+// equipe Raccolto/BPO tem acesso irrestrito e nunca deve ficar bloqueada
+// nem ver a tela em branco esperando conta_modulos carregar (que nem se
+// aplica a eles).
+const CARGOS_EQUIPE_INTERNA = ["raccotlo", "raccotlo_gestor", "raccotlo_operacional", "raccotlo_seletor", "bpo"];
+
 export default function PlanoGate({ modulo, children }: PlanoGateProps) {
   const { podeAcessarPlano, planoAtual, userRole, inadimplente, contaStatus, modulosCarregados } = useAuth();
+
+  // Equipe interna: acesso irrestrito, sem esperar nada carregar — achado real
+  // 08/10/2026: sem esse bypass aqui, a tela inteira (até o TopNav) ficava em
+  // branco pro próprio dono/equipe até modulosCarregados resolver, mesmo numa
+  // página nova sendo testada pela primeira vez.
+  if (CARGOS_EQUIPE_INTERNA.includes(userRole ?? "")) {
+    return children ? <>{children}</> : null;
+  }
 
   // Inadimplente: bloqueia TUDO independente do plano
   if (inadimplente && userRole !== "raccotlo") {
