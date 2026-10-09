@@ -75,17 +75,14 @@ export async function POST(req: NextRequest) {
     }
 
     const falhas: string[] = [];
-
-    // 1. Atualiza extrato (log do import; id "virtual-…" não existe na tabela — no-op esperado)
-    const { error } = await sb
-      .from("extratos_bancarios")
-      .update({ linhas: body.linhas, conciliados: body.conciliados, pendentes: body.pendentes })
-      .eq("id", body.id);
-
-    if (error) {
-      console.error("[persistir-extrato] erro ao atualizar extrato:", error.message);
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-    }
+    // IDs cuja baixa (passo 2) falhou — nunca marcar conciliado=true pra eles no passo 3.
+    // Achado real 09/10/2026: a baixa podia falhar mas o "conciliado=true" rodava mesmo
+    // assim (eram dois updates independentes, sem essa checagem) — o lançamento ficava
+    // com a bolinha de conciliado acesa só que sem status "parcial"/"baixado" nem
+    // valor_pago atualizados. Resultado: o sistema achava que ele já tinha sido
+    // totalmente resolvido com OUTRA linha do extrato e bloqueava o saldo restante de
+    // ser conciliado de novo ("já está conciliado com outra linha").
+    const idsFalhosBaixa = new Set<string>();
 
     // 2. Baixa lançamentos — antes os erros de cada update eram descartados e a rota
     // respondia ok:true mesmo com a baixa não gravada (tela "baixada", banco em aberto).
@@ -113,7 +110,8 @@ export async function POST(req: NextRequest) {
               ? { status: "pago", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
               : { status: "pendente", valor_pago: item.valor_pago }
           ).eq("id", item.id);
-          return r.error ? `baixa empresa ${item.id}: ${r.error.message}` : null;
+          if (r.error) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${r.error.message}`; }
+          return null;
         }
         const r = await sb.from("lancamentos").update({
             status:     item.status ?? "baixado",
@@ -121,7 +119,7 @@ export async function POST(req: NextRequest) {
             valor_pago: item.valor_pago,
             ...(item.conta_bancaria ? { conta_bancaria: item.conta_bancaria } : {}),
           }).eq("id", item.id);
-          if (r.error) return `baixa ${item.id}: ${r.error.message}`;
+          if (r.error) { idsFalhosBaixa.add(item.id); return `baixa ${item.id}: ${r.error.message}`; }
           await sb.from("parcelas_pagamento")
             .update({ status: item.status === "parcial" ? "parcial" : "pago", data_pagamento: item.data_baixa })
             .eq("lancamento_id", item.id);
@@ -159,14 +157,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Marca lancamentos como conciliado=true (quando vinculados)
-    if (body.lancamento_ids_conciliados?.length) {
+    // 3. Marca lancamentos como conciliado=true (quando vinculados) — nunca os que falharam
+    // a baixa no passo 2 (ver idsFalhosBaixa acima).
+    const idsConciliar = (body.lancamento_ids_conciliados ?? []).filter(id => !idsFalhosBaixa.has(id));
+    if (idsFalhosBaixa.size > 0 && idsConciliar.length < (body.lancamento_ids_conciliados?.length ?? 0)) {
+      falhas.push(`conciliado=true pulado para ${idsFalhosBaixa.size} lançamento(s) cuja baixa falhou`);
+    }
+    if (idsConciliar.length) {
       const r = await sb.from("lancamentos")
         .update({ conciliado: true })
-        .in("id", body.lancamento_ids_conciliados);
+        .in("id", idsConciliar);
       if (r.error) falhas.push(`conciliado=true: ${r.error.message}`);
       // Títulos de empresa: mesmos IDs, na tabela da empresa (só atualiza o que existir)
-      const rE = await sb.from("empresa_lancamentos").update({ conciliado: true }).in("id", body.lancamento_ids_conciliados);
+      const rE = await sb.from("empresa_lancamentos").update({ conciliado: true }).in("id", idsConciliar);
       if (rE.error) falhas.push(`conciliado empresa: ${rE.error.message}`);
     }
 
@@ -175,19 +178,19 @@ export async function POST(req: NextRequest) {
     // "—") porque só o cliente gravava a conta e alguns caminhos não gravavam (achado 25/09/2026).
     // Este é o ponto único por onde todo vínculo passa; só preenche quem está SEM conta (não move
     // conta já definida — mover exige confirmação do usuário, passo 2c).
-    if (body.lancamento_ids_conciliados?.length) {
+    if (idsConciliar.length) {
       const { data: extConta } = await sb.from("extratos_bancarios").select("conta_id").eq("id", body.id).maybeSingle();
       const contaExtrato = extConta?.conta_id as string | undefined;
       if (contaExtrato) {
         const r = await sb.from("lancamentos").update({ conta_bancaria: contaExtrato })
-          .in("id", body.lancamento_ids_conciliados).is("conta_bancaria", null).in("status", ["baixado", "parcial"]);
+          .in("id", idsConciliar).is("conta_bancaria", null).in("status", ["baixado", "parcial"]);
         if (r.error) falhas.push(`conta do extrato: ${r.error.message}`);
       }
     }
 
     // 3b. Borderô (lote de pagamento) conciliado = todos os títulos dele ligados a uma linha
-    if (body.lancamento_ids_conciliados?.length) {
-      const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", body.lancamento_ids_conciliados).not("lote_id", "is", null);
+    if (idsConciliar.length) {
+      const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", idsConciliar).not("lote_id", "is", null);
       const loteIds = Array.from(new Set((ls ?? []).map(l => l.lote_id as string)));
       if (loteIds.length) {
         const r = await sb.from("pagamento_lotes").update({ conciliado: true }).in("id", loteIds);
@@ -214,6 +217,21 @@ export async function POST(req: NextRequest) {
     if (falhas.length) {
       console.error("[persistir-extrato] falhas parciais:", falhas);
       return NextResponse.json({ ok: false, error: falhas.join(" | ") }, { status: 500 });
+    }
+
+    // 5. Atualiza o extrato (o que a tela mostra como "conciliado") só DEPOIS de confirmar que
+    // todo o lado do sistema (lançamentos) foi gravado com sucesso. Achado real 09/10/2026: isso
+    // rodava primeiro — se qualquer passo seguinte falhasse, a rota retornava ok:false (o usuário
+    // via o erro, corretamente), mas esta gravação já tinha sido feita e nunca era desfeita: o
+    // extrato ficava marcado como conciliado enquanto o lançamento correspondente não tinha sido
+    // baixado nem conciliado de verdade — extrato e sistema saíam dessincronizados.
+    const { error } = await sb
+      .from("extratos_bancarios")
+      .update({ linhas: body.linhas, conciliados: body.conciliados, pendentes: body.pendentes })
+      .eq("id", body.id);
+    if (error) {
+      console.error("[persistir-extrato] erro ao atualizar extrato:", error.message);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });

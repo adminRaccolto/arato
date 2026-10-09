@@ -3108,6 +3108,12 @@ export async function processarNfEntrada(
   const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(((nfCfopRow?.cfop as string | null) ?? "").trim());
 
   if (!nfSemPagamento && (!temRemessa || temOutros || temVef)) {
+    // NF com Condição de Pagamento "Parcelado" nunca reaproveita o lançamento único do
+    // pedido — o reaproveitamento (abaixo) só sabe ATUALIZAR um título, nunca dividir em
+    // vários. Achado real 09/10/2026: usuário configurava 2+ parcelas no processamento da
+    // NF, mas se ela estivesse vinculada a um Pedido de Compra com lançamento_id já salvo,
+    // o parcelamento era silenciosamente ignorado — o CP saía sempre como um título único.
+    const parcelado = (opts?.parcelas?.length ?? 0) > 1;
     // Se NF está vinculada a um pedido que já tem lançamento → atualiza em vez de duplicar
     let lancamentoIdPedido: string | null = null;
     if (opts?.pedidoCompraId) {
@@ -3117,7 +3123,16 @@ export async function processarNfEntrada(
         .eq("id", opts.pedidoCompraId)
         .maybeSingle();
       const idCandidato = ped?.lancamento_id ?? null;
-      if (idCandidato) {
+      if (idCandidato && parcelado) {
+        // Parcelando: nunca atualiza o título único do pedido (vira várias parcelas
+        // abaixo) — se ele ainda não tinha dono (placeholder criado na aprovação do
+        // pedido, sem nf_entrada_id), apaga pra não sobrar um CP fantasma duplicado.
+        const { data: lancPlaceholder } = await supabase.from("lancamentos").select("id, nf_entrada_id").eq("id", idCandidato).maybeSingle();
+        if (lancPlaceholder && !lancPlaceholder.nf_entrada_id) {
+          await supabase.from("lancamentos").delete().eq("id", idCandidato);
+          await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", opts.pedidoCompraId);
+        }
+      } else if (idCandidato && !parcelado) {
         // Confirma que o lançamento apontado ainda existe antes de reutilizá-lo.
         // Achado real: "insert or update on table nf_entradas violates foreign
         // key constraint nf_entradas_lancamento_id_fkey" — pedidos_compra.

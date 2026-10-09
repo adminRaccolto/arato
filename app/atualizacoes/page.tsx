@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-g",
+    data: "09/10/2026",
+    titulo: "3 correções no Contas a Pagar e na Conciliação Bancária",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Parcelamento de NF: se a NF estivesse vinculada a um Pedido de Compra que já tinha um lançamento salvo, o sistema sempre reaproveitava esse único título — mesmo configurando \"Parcelado\" com várias parcelas na aba Operações, o parcelamento era ignorado e o CP saía como título único. Corrigido: NF parcelada nunca mais reaproveita o lançamento do pedido, sempre cria as parcelas de verdade." },
+      { tipo: "correcao", texto: "Conciliação bancária: corrigido o caso em que uma falha no meio da gravação deixava o extrato marcado como conciliado e o lançamento (sistema) não — a gravação do extrato como conciliado agora só acontece depois que todos os lançamentos envolvidos foram atualizados com sucesso." },
+      { tipo: "correcao", texto: "Mesma causa explicava o saldo restante de um pagamento parcial \"sumir\" da conciliação dizendo que já estava conciliado: se a baixa falhasse mas o \"conciliado\" fosse gravado mesmo assim, o lançamento ficava marcado como resolvido sem ter sido baixado de verdade. Corrigido junto." },
+    ],
+    onde: "Financeiro → Contas a Pagar (parcelamento de NF) · Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.09-f",
     data: "09/10/2026",
     titulo: "NF de Produtos: seletor de Ciclo não mostrava todos os ciclos da fazenda da NF",
