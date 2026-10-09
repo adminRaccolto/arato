@@ -32,14 +32,15 @@ function adminClient() {
   );
 }
 
-type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo" | "abastecimentos";
-const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo", "abastecimentos"];
+type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo" | "abastecimentos" | "colheitas";
+const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo", "abastecimentos", "colheitas"];
 const LABEL_TABELA: Record<Tabela, string> = {
   plantios: "Plantio",
   pulverizacoes: "Pulverização",
   adubacoes_base: "Adubação de Base",
   correcoes_solo: "Correção de Solo",
   abastecimentos: "Abastecimento",
+  colheitas: "Colheita",
 };
 
 // POST /api/campo/notificar-pendente

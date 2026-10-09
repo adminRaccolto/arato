@@ -36,14 +36,15 @@ function adminClient() {
   );
 }
 
-type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo" | "abastecimentos";
-const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo", "abastecimentos"];
+type Tabela = "plantios" | "pulverizacoes" | "adubacoes_base" | "correcoes_solo" | "abastecimentos" | "colheitas";
+const TABELAS_VALIDAS: Tabela[] = ["plantios", "pulverizacoes", "adubacoes_base", "correcoes_solo", "abastecimentos", "colheitas"];
 const LABEL_TABELA: Record<Tabela, string> = {
   plantios: "Plantio",
   pulverizacoes: "Pulverização",
   adubacoes_base: "Adubação de Base",
   correcoes_solo: "Correção de Solo",
   abastecimentos: "Abastecimento",
+  colheitas: "Colheita",
 };
 
 interface Payload {
@@ -287,6 +288,15 @@ async function consumirEstoque(
     // lib/db.ts) — sem isso o DRE subestimava o custo de correção vindo do
     // App Campo (achado 15/set/2026).
     await adm.from("correcoes_solo").update({ custo_total: custoTotal }).eq("id", id);
+    return { ok: true };
+  }
+
+  // colheitas — nada a baixar: é saída de grão (entrada no estoque de
+  // grãos), não consumo de insumo. A própria linha de `colheitas`, já com
+  // total_sacas/total_kg_classificado, é o estoque (Estoque de Grãos já lê
+  // direto dali, filtrado por status_campo='aprovado') — só falta o flip de
+  // status, feito no fim desta rota igual aos outros tipos.
+  if (tabela === "colheitas") {
     return { ok: true };
   }
 
