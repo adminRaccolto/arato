@@ -1,4 +1,5 @@
 "use client";
+import InputNumerico from "../../../components/InputNumerico";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -795,7 +796,7 @@ export default function AplicacaoAereaPage() {
                             )}
                           </td>
                           <td style={{ padding: "4px 6px", width: "16%" }}>
-                            <input type="number" placeholder="0,00" value={item.dose_ha} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, dose_ha: e.target.value } : it))} style={inp} min={0} step="0.01" />
+                            <InputNumerico decimais={3} placeholder="0,00" value={item.dose_ha} onChange={v => setItens(prev => prev.map((it, i) => i === idx ? { ...it, dose_ha: v } : it))} style={inp} min={0} />
                           </td>
                           <td style={{ padding: "4px 6px", width: "16%" }}>
                             <select value={item.unidade} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, unidade: e.target.value } : it))} style={inp}>
@@ -803,7 +804,7 @@ export default function AplicacaoAereaPage() {
                             </select>
                           </td>
                           <td style={{ padding: "4px 6px", width: "20%" }}>
-                            <input type="number" placeholder="R$" value={item.valor_unitario} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: e.target.value } : it))} style={inp} min={0} step="0.01" />
+                            <InputNumerico decimais={2} placeholder="R$" value={item.valor_unitario} onChange={v => setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: v } : it))} style={inp} min={0} />
                           </td>
                           <td style={{ padding: "4px 6px" }}>
                             <button onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={btnX}>✕</button>
@@ -818,17 +819,17 @@ export default function AplicacaoAereaPage() {
                   <div style={gridG("1fr 1fr")}>
                     <div>
                       <label style={lbl}>Volume de Calda (L/ha)</label>
-                      <input type="number" placeholder={form.tipo_aeronave === "drone" ? "5–15" : "15–40"} value={form.volume_calda_l_ha} onChange={e => sf("volume_calda_l_ha", e.target.value)} style={inp} min={0} step="0.5" />
+                      <InputNumerico decimais={2} placeholder={form.tipo_aeronave === "drone" ? "5–15" : "15–40"} value={form.volume_calda_l_ha} onChange={v => sf("volume_calda_l_ha", v)} style={inp} min={0} />
                     </div>
                     <div>
                       <label style={lbl}>Altura de Voo (m)</label>
-                      <input type="number" placeholder={form.tipo_aeronave === "drone" ? "2–4" : "2–5"} value={form.altura_voo_m} onChange={e => sf("altura_voo_m", e.target.value)} style={inp} min={0} step="0.5" />
+                      <InputNumerico decimais={2} placeholder={form.tipo_aeronave === "drone" ? "2–4" : "2–5"} value={form.altura_voo_m} onChange={v => sf("altura_voo_m", v)} style={inp} min={0} />
                     </div>
                   </div>
                   <div style={{ ...gridG("1fr 1fr"), marginTop: 12 }}>
                     <div>
                       <label style={lbl}>Custo por Hectare (R$/ha)</label>
-                      <input type="number" placeholder="Ex: 55,00" value={form.custo_ha} onChange={e => sf("custo_ha", e.target.value)} style={inp} min={0} step="0.5" />
+                      <InputNumerico decimais={2} placeholder="Ex: 55,00" value={form.custo_ha} onChange={v => sf("custo_ha", v)} style={inp} min={0} />
                     </div>
                     <div>
                       <label style={lbl}>Custo Total</label>
@@ -845,17 +846,17 @@ export default function AplicacaoAereaPage() {
                   <div style={gridG("1fr 1fr")}>
                     <div>
                       <label style={lbl}>Temperatura (°C)</label>
-                      <input type="number" placeholder="25" value={form.temperatura_c} onChange={e => sf("temperatura_c", e.target.value)} style={inp} step="0.5" />
+                      <input type="text" inputMode="decimal" placeholder="25" value={form.temperatura_c} onChange={e => sf("temperatura_c", e.target.value.replace(",", "."))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Umidade Relativa (%)</label>
-                      <input type="number" placeholder="70" value={form.umidade_rel_pct} onChange={e => sf("umidade_rel_pct", e.target.value)} style={inp} min={0} max={100} step="1" />
+                      <InputNumerico decimais={2} placeholder="70" value={form.umidade_rel_pct} onChange={v => sf("umidade_rel_pct", v)} style={inp} min={0} max={100} />
                     </div>
                   </div>
                   <div style={{ ...gridG("1fr 1fr"), marginTop: 12 }}>
                     <div>
                       <label style={lbl}>Vel. Vento (km/h)</label>
-                      <input type="number" placeholder="8" value={form.velocidade_vento_kmh} onChange={e => sf("velocidade_vento_kmh", e.target.value)} style={{ ...inp, borderColor: ventoAlerta ? "#E24B4A" : undefined }} min={0} step="0.5" />
+                      <InputNumerico decimais={2} placeholder="8" value={form.velocidade_vento_kmh} onChange={v => sf("velocidade_vento_kmh", v)} style={{ ...inp, borderColor: ventoAlerta ? "#E24B4A" : undefined }} min={0} />
                     </div>
                     <div>
                       <label style={lbl}>Direção do Vento</label>

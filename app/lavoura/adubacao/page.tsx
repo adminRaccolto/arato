@@ -331,10 +331,10 @@ export default function AdubacaoBasePage() {
                   </select>
                   <input style={{ ...inp, opacity: it.insumo_id ? 0.4 : 1 }} placeholder="Nome livre" value={it.produto_nome} disabled={!!it.insumo_id}
                     onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, produto_nome: e.target.value } : x))} />
-                  <InputNumerico style={inp} decimais={0} placeholder="Ex: 350" value={it.dose_kg_ha}
+                  <InputNumerico style={inp} decimais={3} placeholder="Ex: 350,125" value={it.dose_kg_ha}
                     onChange={v => setItens(p => p.map((x, i) => i === idx ? { ...x, dose_kg_ha: v } : x))} />
                   <div style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)", textAlign: "center" as const }}>
-                    {qtd > 0 ? fmtN(qtd, 0) : "—"} kg
+                    {qtd > 0 ? fmtN(qtd, 3) : "—"} kg
                   </div>
                   <button style={btnX} onClick={() => removeItem(idx)}>✕</button>
                   {ins && <div style={{ gridColumn: "1/-1", fontSize: 10, color: "#111111", marginTop: -4 }}>
@@ -351,7 +351,7 @@ export default function AdubacaoBasePage() {
                 <div style={{ color: "#7A5A12", fontWeight: 600, marginBottom: 4 }}>Resumo de custo</div>
                 {calcItens.map((it, i) => (
                   <div key={i} style={{ color: "var(--text-2)", marginBottom: 2 }}>
-                    {it.nome}: {fmtN(it.quantidade_kg, 0)} kg · {fmtBRL(it.custo_total)}
+                    {it.nome}: {fmtN(it.quantidade_kg, 3)} kg · {fmtBRL(it.custo_total)}
                   </div>
                 ))}
                 <div style={{ marginTop: 6, fontWeight: 600, color: "#C9921B" }}>

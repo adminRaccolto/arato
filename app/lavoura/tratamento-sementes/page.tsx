@@ -1,4 +1,5 @@
 "use client";
+import InputNumerico from "../../../components/InputNumerico";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -618,10 +619,10 @@ export default function TratamentoSementesPage() {
               </div>
 
               {/* Dose */}
-              <input
-                type="number" min="0" step="0.01"
+              <InputNumerico
+                decimais={3} min="0"
                 value={it.dose_100kg}
-                onChange={e => setItem(it._key, "dose_100kg", e.target.value, lista, setLista)}
+                onChange={v => setItem(it._key, "dose_100kg", v, lista, setLista)}
                 placeholder="ex: 200"
                 style={{ ...inp, padding: "6px 8px", fontSize: 12 }}
                 disabled={readOnly}
@@ -1040,10 +1041,10 @@ export default function TratamentoSementesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Quantidade (sc) *</label>
-                  <input
-                    type="number" min="0" step="1"
+                  <InputNumerico
+                    decimais={3} min="0"
                     value={form.quantidade_sc}
-                    onChange={e => setForm(f => ({ ...f, quantidade_sc: e.target.value }))}
+                    onChange={v => setForm(f => ({ ...f, quantidade_sc: v }))}
                     placeholder="sacas"
                     style={inp}
                   />
@@ -1076,10 +1077,10 @@ export default function TratamentoSementesPage() {
                     </>
                   )}
                   <span style={{ fontSize: 12, color: "#555" }}>Vol. calda:</span>
-                  <input
-                    type="number" min="0"
+                  <InputNumerico
+                    decimais={3} min="0"
                     value={form.volume_calda_ml_100kg}
-                    onChange={e => setForm(f => ({ ...f, volume_calda_ml_100kg: e.target.value }))}
+                    onChange={v => setForm(f => ({ ...f, volume_calda_ml_100kg: v }))}
                     style={{ ...inp, width: 80, padding: "5px 8px" }}
                   />
                   <span style={{ fontSize: 12, color: "#888" }}>mL/100kg</span>
@@ -1147,7 +1148,7 @@ export default function TratamentoSementesPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
                   <label style={lbl}>Qtd. Tratada (sc) *</label>
-                  <input type="number" min="0" value={formConcluir.quantidade_sc} onChange={e => setFormConcluir(f => ({ ...f, quantidade_sc: e.target.value }))} style={inp} />
+                  <InputNumerico decimais={3} min="0" value={formConcluir.quantidade_sc} onChange={v => setFormConcluir(f => ({ ...f, quantidade_sc: v }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Operador</label>
@@ -1174,7 +1175,7 @@ export default function TratamentoSementesPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
                   <label style={lbl}>Germinação (%)</label>
-                  <input type="number" min="0" max="100" step="0.1" value={formConcluir.germinacao_pct} onChange={e => setFormConcluir(f => ({ ...f, germinacao_pct: e.target.value }))} placeholder="Ex: 92" style={inp} />
+                  <InputNumerico decimais={2} min="0" max="100" value={formConcluir.germinacao_pct} onChange={v => setFormConcluir(f => ({ ...f, germinacao_pct: v }))} placeholder="Ex: 92" style={inp} />
                   {Number(formConcluir.germinacao_pct) > 0 && (
                     <div style={{ fontSize: 11, marginTop: 3, color: Number(formConcluir.germinacao_pct) >= 80 ? "#15803D" : "#B91C1C", fontWeight: 600 }}>
                       {Number(formConcluir.germinacao_pct) >= 80 ? "✓ Acima do mínimo legal (80%)" : "⚠ Abaixo do mínimo legal (80%)"}
@@ -1183,11 +1184,11 @@ export default function TratamentoSementesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Vigor (%)</label>
-                  <input type="number" min="0" max="100" step="0.1" value={formConcluir.vigor_pct} onChange={e => setFormConcluir(f => ({ ...f, vigor_pct: e.target.value }))} placeholder="Ex: 88" style={inp} />
+                  <InputNumerico decimais={2} min="0" max="100" value={formConcluir.vigor_pct} onChange={v => setFormConcluir(f => ({ ...f, vigor_pct: v }))} placeholder="Ex: 88" style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Umidade (%)</label>
-                  <input type="number" min="0" max="100" step="0.1" value={formConcluir.umidade_pct} onChange={e => setFormConcluir(f => ({ ...f, umidade_pct: e.target.value }))} placeholder="Ex: 12" style={inp} />
+                  <InputNumerico decimais={2} min="0" max="100" value={formConcluir.umidade_pct} onChange={v => setFormConcluir(f => ({ ...f, umidade_pct: v }))} placeholder="Ex: 12" style={inp} />
                   {Number(formConcluir.umidade_pct) > 0 && (
                     <div style={{ fontSize: 11, marginTop: 3, color: Number(formConcluir.umidade_pct) <= 13 ? "#15803D" : "#EF9F27", fontWeight: 600 }}>
                       {Number(formConcluir.umidade_pct) <= 13 ? "✓ Adequada para armazenagem" : "⚠ Umidade elevada — risco de fungos"}
@@ -1214,10 +1215,10 @@ export default function TratamentoSementesPage() {
                     <div style={{ fontSize: 12, color: "#888", fontVariantNumeric: "tabular-nums" }}>
                       {fmtN(it.dose_total, 1)} {it.unidade}
                     </div>
-                    <input
-                      type="number" min="0" step="0.01"
+                    <InputNumerico
+                      decimais={3} min="0"
                       value={it.consumo_real}
-                      onChange={e => setItensConcluir(prev => prev.map((x, j) => j === i ? { ...x, consumo_real: e.target.value } : x))}
+                      onChange={v => setItensConcluir(prev => prev.map((x, j) => j === i ? { ...x, consumo_real: v } : x))}
                       style={{ ...inp, padding: "5px 8px", fontSize: 12 }}
                     />
                   </div>
