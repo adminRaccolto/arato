@@ -434,7 +434,7 @@ export default function FolhaEmpresaPage() {
                 <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   <div>
                     <label style={S.label}>Competência</label>
-                    <input type="month" value={fComp} onChange={e=>setFComp(e.target.value)} style={{ ...S.inp, width:160 }} />
+                    <InputData type="month" value={fComp} onChange={e=>setFComp(e.target.value)} style={{ ...S.inp, width:160 }} />
                   </div>
                   <div style={{ marginLeft:"auto" }}>
                     <button onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>+ Nova Folha</button>
@@ -553,7 +553,7 @@ export default function FolhaEmpresaPage() {
                 <label style={{ ...S.label, marginBottom:2 }}>Competência</label>
                 {folhaEdit.id
                   ? <span style={{ fontSize:14, fontWeight:700, color:"#0B2D50" }}>{nomeMes(folhaEdit.competencia ?? "")}</span>
-                  : <input type="month" value={folhaEdit.competencia ?? ""} onChange={e => setFolhaEdit(p => ({ ...p, competencia: e.target.value }))} style={{ ...S.inp, fontSize:13 }} />
+                  : <InputData type="month" value={folhaEdit.competencia ?? ""} onChange={e => setFolhaEdit(p => ({ ...p, competencia: e.target.value }))} style={{ ...S.inp, fontSize:13 }} />
                 }
               </div>
               {folhaEdit.status && <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[folhaEdit.status], background:ST_COLOR[folhaEdit.status]+"18", borderRadius:4, padding:"3px 10px" }}>{ST_LABEL[folhaEdit.status]}</span>}
@@ -673,7 +673,7 @@ export default function FolhaEmpresaPage() {
               </div>
               <div>
                 <label style={S.label}>Descontar na competência</label>
-                <input type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
+                <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
               </div>
               <div><label style={S.label}>Descrição / Motivo</label><input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" /></div>
             </div>
@@ -744,7 +744,7 @@ export default function FolhaEmpresaPage() {
                 </select>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                <div><label style={S.label}>Mês de referência *</label><input type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label style={S.label}>Mês de referência *</label><InputData type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
                 <div><label style={S.label}>Valor (R$) *</label><input type="number" value={premEdit.valor??""} onChange={e=>setPremEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
               </div>
               <div><label style={S.label}>Descrição *</label><input type="text" value={premEdit.descricao??""} onChange={e=>setPremEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Gratificação de produtividade..." /></div>

@@ -381,7 +381,7 @@ export default function GnrePage() {
                 </div>
                 <div>
                   <label style={lbl}>Competência</label>
-                  <input type="month" value={form.competencia} onChange={e => setForm(f => ({ ...f, competencia: e.target.value }))} style={inp} />
+                  <InputData type="month" value={form.competencia} onChange={e => setForm(f => ({ ...f, competencia: e.target.value }))} style={inp} />
                 </div>
               </div>
 

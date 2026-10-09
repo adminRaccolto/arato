@@ -1,6 +1,11 @@
-export type TipoData = "date" | "datetime-local";
+export type TipoData = "date" | "datetime-local" | "month";
 
 export function exibirData(iso?: string | null, tipo: TipoData = "date"): string {
+  if (tipo === "month") {
+    if (!iso || !/^\d{4}-\d{2}$/.test(iso)) return "";
+    const [ano, mes] = iso.split("-");
+    return `${mes}/${ano}`;
+  }
   if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return "";
   const [ano, mes, dia] = iso.slice(0, 10).split("-");
   const data = `${dia}/${mes}/${ano}`;
@@ -10,6 +15,10 @@ export function exibirData(iso?: string | null, tipo: TipoData = "date"): string
 }
 
 export function mascararData(raw: string, tipo: TipoData = "date"): string {
+  if (tipo === "month") {
+    const nums = raw.replace(/\D/g, "").slice(0, 6);
+    return nums.length > 2 ? `${nums.slice(0, 2)}/${nums.slice(2)}` : nums;
+  }
   const nums = raw.replace(/\D/g, "").slice(0, tipo === "date" ? 8 : 12);
   let out = nums.slice(0, 2);
   if (nums.length > 2) out += "/" + nums.slice(2, 4);
@@ -21,6 +30,12 @@ export function mascararData(raw: string, tipo: TipoData = "date"): string {
 
 export function dataParaIso(display: string, tipo: TipoData = "date", validar = true): string {
   const nums = display.replace(/\D/g, "");
+  if (tipo === "month") {
+    if (nums.length !== 6) return "";
+    const mes = nums.slice(0, 2), ano = nums.slice(2);
+    if (validar && (Number(ano) < 1 || Number(mes) < 1 || Number(mes) > 12)) return "";
+    return `${ano}-${mes}`;
+  }
   if (nums.length !== (tipo === "date" ? 8 : 12)) return "";
   const dia = nums.slice(0, 2), mes = nums.slice(2, 4), ano = nums.slice(4, 8);
   const hora = nums.slice(8, 10), minuto = nums.slice(10, 12);
@@ -37,6 +52,7 @@ export function dataParaIso(display: string, tipo: TipoData = "date", validar = 
 
 export function dataLocalAgora(tipo: TipoData = "date", agora = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
+  if (tipo === "month") return `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}`;
   const data = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())}`;
   return tipo === "datetime-local" ? `${data}T${pad(agora.getHours())}:${pad(agora.getMinutes())}` : data;
 }

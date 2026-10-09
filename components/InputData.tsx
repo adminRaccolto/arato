@@ -6,8 +6,8 @@ import { exibirData, mascararData, dataParaIso, dataLocalAgora, type TipoData } 
  * Campo de data com botão "Hoje" ao lado. Digitação fluida (dd/mm/aaaa) — os números
  * entram naturalmente, as barras aparecem sozinhas, sem precisar de Tab pra passar de
  * dia pra mês pra ano (o <input type="date"> nativo exigia isso, achado real 09/10/2026).
- * value/onChange usam ISO, igual ao input nativo. `calendario` habilita o seletor
- * ao lado da digitação; `datetime-local` inclui a hora, sem conversão de fuso.
+ * value/onChange usam ISO, igual ao input nativo. O calendário acompanha a digitação;
+ * `datetime-local` inclui a hora e `month` permite competências em mm/aaaa.
  */
 interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type"> {
   value?: string | null;
@@ -18,16 +18,21 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "o
 
 const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
   { style, disabled, readOnly, value, onChange, onBlur, onFocus, placeholder,
-    type = "date", calendario = false, min, max, step, ...resto },
+    type = "date", calendario = true, min, max, step, ...resto },
   ref,
 ) {
   // O rascunho preserva a digitação incompleta; alterações externas usam o valor do pai.
-  const [rascunho, setRascunho] = useState(() => ({ display: exibirData(value, type), value, type }));
-  const display = rascunho.value === value && rascunho.type === type
-    ? rascunho.display : exibirData(value, type);
+  const [rascunho, setRascunho] = useState(() => ({ display: exibirData(value, type), value, emitido: value, type }));
+  if (rascunho.value !== value || rascunho.type !== type) {
+    setRascunho({
+      display: rascunho.type === type && rascunho.emitido === value ? rascunho.display : exibirData(value, type),
+      value, emitido: value, type,
+    });
+  }
+  const display = rascunho.display;
 
   function atualizarDisplay(display: string, proximoValor = value) {
-    setRascunho({ display, value: onChange ? proximoValor : value, type });
+    setRascunho({ display, value, emitido: onChange ? proximoValor : value, type });
   }
 
   function dentroDoPeriodo(iso: string) {
@@ -56,11 +61,13 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
   }
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", ...(calendario ? { width: style?.width ?? "100%" } : {}) }}>
+    <span className={calendario ? "input-data" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", ...(calendario ? { width: style?.width ?? "100%", maxWidth: style?.maxWidth ?? "100%", containerType: "inline-size" } : {}) }}>
+      {calendario && <style>{`@container (max-width: 190px) { .input-data-hoje { display: none; } } @container (max-width: 130px) { .input-data-texto { padding-left: 5px !important; padding-right: 5px !important; font-size: 11px !important; } }`}</style>}
       <input
         ref={ref}
         {...resto}
         type="text"
+        className={[resto.className, calendario ? "input-data-texto" : undefined].filter(Boolean).join(" ") || undefined}
         inputMode="numeric"
         autoComplete="off"
         value={display}
@@ -68,7 +75,7 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
         readOnly={readOnly}
         min={min}
         max={max}
-        placeholder={placeholder ?? (type === "date" ? "dd/mm/aaaa" : "dd/mm/aaaa hh:mm")}
+        placeholder={placeholder ?? (type === "month" ? "mm/aaaa" : type === "date" ? "dd/mm/aaaa" : "dd/mm/aaaa hh:mm")}
         aria-invalid={resto["aria-invalid"] ?? (calendario && !!display && !dentroDoPeriodo(dataParaIso(display, type)))}
         onChange={handleChange}
         onFocus={onFocus}
@@ -84,13 +91,14 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
           </svg>
           <input
             type={type}
-            aria-label={type === "date" ? "Escolher data no calendário" : "Escolher data e hora no calendário"}
+            aria-label={type === "month" ? "Escolher mês e ano no calendário" : type === "date" ? "Escolher data no calendário" : "Escolher data e hora no calendário"}
             title="Abrir calendário"
             value={value ?? ""}
             min={min}
             max={max}
             step={step ?? (type === "datetime-local" ? 60 : undefined)}
             onClick={e => {
+              resto.onClick?.(e);
               // O input permanece acessível e clicável como alternativa ao showPicker.
               try { e.currentTarget.showPicker?.(); } catch { e.currentTarget.focus(); }
             }}
@@ -105,10 +113,10 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
         </span>
       )}
       {!disabled && !readOnly && (
-        <button type="button" onClick={marcarHoje} title={type === "date" ? "Preencher com a data de hoje" : "Preencher com a data e hora atuais"}
+        <button className="input-data-hoje" type="button" onClick={e => { e.stopPropagation(); marcarHoje(); }} title={type === "month" ? "Preencher com o mês atual" : type === "date" ? "Preencher com a data de hoje" : "Preencher com a data e hora atuais"}
           disabled={calendario && !dentroDoPeriodo(dataLocalAgora(type))}
           style={{ padding: "2px 6px", fontSize: 10, fontWeight: 600, borderRadius: 5, border: "0.5px solid #DDE2EE", background: "#F4F6FA", color: "#1A4870", cursor: "pointer", whiteSpace: "nowrap" }}>
-          {type === "date" ? "Hoje" : "Agora"}
+          {type === "month" ? "Atual" : type === "date" ? "Hoje" : "Agora"}
         </button>
       )}
     </span>

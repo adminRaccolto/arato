@@ -15,6 +15,7 @@
 // Monte o componente só quando for abrir (id=null → nova; id=<uuid> → edita/
 // visualiza) — ao desmontar, todo o estado interno se perde naturalmente.
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -714,14 +715,14 @@ export default function ModalNfServico({
                   </div>
                   <div>
                     <label style={lbl}>Data da Prestação *</label>
-                    <input type="date" value={cab.data_prestacao} onChange={e => {
+                    <InputData type="date" value={cab.data_prestacao} onChange={e => {
                       const dt = e.target.value;
                       setCab(p => ({ ...p, data_prestacao: dt, competencia: dt.substring(0, 7) }));
                     }} style={inp} />
                   </div>
                   <div>
                     <label style={lbl}>Competência (mês)</label>
-                    <input type="month" value={cab.competencia} onChange={e => setCab(p=>({...p,competencia:e.target.value}))} style={inp} />
+                    <InputData type="month" value={cab.competencia} onChange={e => setCab(p=>({...p,competencia:e.target.value}))} style={inp} />
                   </div>
                 </div>
 
@@ -913,7 +914,7 @@ export default function ModalNfServico({
                   </div>
                   <div>
                     <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º venc.)</span>}</label>
-                    <input type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
+                    <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                   </div>
                 </div>
 
@@ -971,7 +972,7 @@ export default function ModalNfServico({
                           </div>
                           {nfParcelas.map((p, i) => (
                             <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
-                              <input type="date" value={p.data}
+                              <InputData type="date" value={p.data}
                                 onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                 style={{ ...inp, fontSize: 12 }} />
                               <input type="text" value={p.valorMask}

@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -2681,7 +2682,7 @@ function ParametrosSistemaContent() {
               {campo("Tipo *", sel({ value: modalM.tipo ?? "clt", onChange: e => setModalM(p => ({ ...p!, tipo: e.target.value })), children: [<option key="clt" value="clt">CLT — Frota própria (isento de CIOT)</option>, <option key="tac" value="tac">TAC — Autônomo (CIOT obrigatório)</option>] as React.ReactNode }))}
               {campo("RNTRC", inp({ value: modalM.rntrc ?? "", onChange: e => setModalM(p => ({ ...p!, rntrc: e.target.value })), placeholder: "Registro ANTT (TAC)" }))}
               {campo("CNH", inp({ value: modalM.cnh ?? "", onChange: e => setModalM(p => ({ ...p!, cnh: e.target.value })) }))}
-              {campo("Validade CNH", inp({ type: "date", value: modalM.cnh_validade ?? "", onChange: e => setModalM(p => ({ ...p!, cnh_validade: e.target.value })) }))}
+              {campo("Validade CNH", <InputData type="date" value={modalM.cnh_validade ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_validade: e.target.value }))} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box" }} />)}
               {campo("Status", sel({ value: modalM.ativo === false ? "inativo" : "ativo", onChange: e => setModalM(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>

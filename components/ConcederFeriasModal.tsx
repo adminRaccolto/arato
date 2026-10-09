@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../components/InputData";
 import { useMemo, useState } from "react";
 import type { Funcionario, FuncionarioFerias } from "../lib/supabase";
 import { calcularFerias, concederFerias, salarioReferencia } from "../lib/rh-financeiro";
@@ -53,7 +54,7 @@ export default function ConcederFeriasModal({ func, fazendaId, fer, onClose, onD
         <div style={{ fontSize: 16, fontWeight: 700 }}>Conceder férias — {func.nome}</div>
         <div style={{ fontSize: 12, color: "#666", margin: "2px 0 14px" }}>Período aquisitivo {fer.periodo_inicio} → {fer.periodo_fim} · salário de referência {fmt(salario)}</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <div><label style={lbl}>Início do gozo *</label><input type="date" style={inp} value={inicio} onChange={e => setInicio(e.target.value)} /></div>
+          <div><label style={lbl}>Início do gozo *</label><InputData type="date" style={inp} value={inicio} onChange={e => setInicio(e.target.value)} /></div>
           <div><label style={lbl}>Dias de gozo</label><input style={inp} value={dias} onChange={e => setDias(e.target.value)} /></div>
           <div><label style={lbl}>Fim do gozo</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} value={fim ? fim.split("-").reverse().join("/") : ""} readOnly /></div>
         </div>
@@ -79,7 +80,7 @@ export default function ConcederFeriasModal({ func, fazendaId, fer, onClose, onD
 
         <div style={{ marginTop: 12, maxWidth: 240 }}>
           <label style={lbl}>Vencimento do pagamento (até 2 dias antes)</label>
-          <input type="date" style={inp} value={vencPagto} onChange={e => setPagto(e.target.value)} />
+          <InputData type="date" style={inp} value={vencPagto} onChange={e => setPagto(e.target.value)} />
         </div>
         <div style={{ fontSize: 11, color: "#16A34A", marginTop: 10 }}>Ao confirmar, o sistema lança automaticamente {fmt(valorFerias + valorAbono)} no Contas a Pagar, com a operação gerencial de férias.</div>
         {erro && <div style={{ color: "#E24B4A", fontSize: 12, marginTop: 10 }}>{erro}</div>}

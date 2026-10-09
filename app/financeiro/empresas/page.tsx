@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -174,11 +175,11 @@ export default function DREEmpresasPage() {
             </div>
             <div style={{ flex: "0 0 150px" }}>
               <label style={S.label}>De (competência)</label>
-              <input type="month" style={S.inp} value={fDe} onChange={e => setFDe(e.target.value)} />
+              <InputData type="month" style={S.inp} value={fDe} onChange={e => setFDe(e.target.value)} />
             </div>
             <div style={{ flex: "0 0 150px" }}>
               <label style={S.label}>Até (competência)</label>
-              <input type="month" style={S.inp} value={fAte} onChange={e => setFAte(e.target.value)} />
+              <InputData type="month" style={S.inp} value={fAte} onChange={e => setFAte(e.target.value)} />
             </div>
             <button style={{ ...S.btn("#1A4870"), alignSelf: "flex-end" }} onClick={carregar}>Atualizar</button>
           </div>

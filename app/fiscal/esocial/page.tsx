@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -436,7 +437,7 @@ export default function EsocialPage() {
           <>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center" }}>
               <label style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 600 }}>Competência:</label>
-              <input type="month" value={competApuracao} onChange={e => { setCompetApuracao(e.target.value); setFolhaMsg(null); }} style={{ ...inp, width: 160 }} />
+              <InputData type="month" value={competApuracao} onChange={e => { setCompetApuracao(e.target.value); setFolhaMsg(null); }} style={{ ...inp, width: 160 }} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
@@ -590,7 +591,7 @@ export default function EsocialPage() {
               </div>
               <div>
                 <label style={lbl}>Competência</label>
-                <input type="month" value={formEvt.competencia} onChange={e => setFormEvt(f => ({ ...f, competencia: e.target.value }))} style={inp} />
+                <InputData type="month" value={formEvt.competencia} onChange={e => setFormEvt(f => ({ ...f, competencia: e.target.value }))} style={inp} />
               </div>
             </div>
             <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>

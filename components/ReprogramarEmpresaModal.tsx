@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../components/InputData";
 import { useState } from "react";
 import type { EmpresaLancamento } from "../lib/supabase";
 
@@ -44,7 +45,7 @@ export default function ReprogramarEmpresaModal({ lanc, onClose, onDone }: {
           <div>Valor atual: <strong>{fmtBRL(lanc.valor)}</strong></div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div><label style={lbl}>Nova data de vencimento *</label><input type="date" style={inp} value={novaData} onChange={e => setNovaData(e.target.value)} /></div>
+          <div><label style={lbl}>Nova data de vencimento *</label><InputData type="date" style={inp} value={novaData} onChange={e => setNovaData(e.target.value)} /></div>
           <div><label style={lbl}>Novo valor (deixe em branco para manter)</label><input style={inp} placeholder={lanc.valor.toFixed(2).replace(".", ",")} value={novoValor} onChange={e => setNovoValor(e.target.value)} /></div>
           <div><label style={lbl}>Motivo / Observação</label><input style={inp} placeholder="Ex.: Acordado com fornecedor" value={obs} onChange={e => setObs(e.target.value)} /></div>
         </div>

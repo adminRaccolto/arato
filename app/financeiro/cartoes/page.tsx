@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -770,7 +771,7 @@ export default function CartoesCredito() {
                 </div>
                 <div>
                   <label style={lblS}>Data do Pagamento *</label>
-                  <input type="date" value={pagarData} onChange={e => setPagarData(e.target.value)} style={inpS} />
+                  <InputData type="date" value={pagarData} onChange={e => setPagarData(e.target.value)} style={inpS} />
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>
                   Gera um lançamento único, já baixado, pelo valor total da fatura — este é o movimento real de caixa. Os lançamentos individuais que compuseram a fatura não são alterados.

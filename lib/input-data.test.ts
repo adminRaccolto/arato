@@ -41,3 +41,13 @@ test("Hoje e Agora usam a data e a hora locais do usuário", () => {
   assert.equal(dataLocalAgora("date", agora), "2026-10-09");
   assert.equal(dataLocalAgora("datetime-local", agora), "2026-10-09T23:45");
 });
+
+test("competência mensal aceita digitação contínua e mantém o formato ISO sem dia", () => {
+  assert.equal(mascararData("102026", "month"), "10/2026");
+  assert.equal(dataParaIso("10/2026", "month"), "2026-10");
+  assert.equal(exibirData("2026-10", "month"), "10/2026");
+  for (const invalida of ["00/2026", "13/2026", "10/0000", "10/202"]) {
+    assert.equal(dataParaIso(invalida, "month"), "");
+  }
+  assert.equal(dataLocalAgora("month", new Date(2026, 9, 9)), "2026-10");
+});

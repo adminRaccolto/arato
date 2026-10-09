@@ -329,7 +329,7 @@ export default function EmpresaReceberPage() {
               </div>
               <div>
                 <label style={S.label}>Competência</label>
-                <input type="month" style={S.inp} value={form.competencia ?? ""} onChange={e => setForm(p=>({...p, competencia: e.target.value}))} />
+                <InputData type="month" style={S.inp} value={form.competencia ?? ""} onChange={e => setForm(p=>({...p, competencia: e.target.value}))} />
               </div>
               <div>
                 <label style={S.label}>Valor (R$) *</label>

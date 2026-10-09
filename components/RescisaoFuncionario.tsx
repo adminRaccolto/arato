@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../components/InputData";
 import { useEffect, useMemo, useState } from "react";
 import type { Funcionario, FuncionarioFerias } from "../lib/supabase";
 import {
@@ -113,7 +114,7 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
               <select style={inp} value={tipo} onChange={e => setTipo(e.target.value as TipoDesligamento)}>
                 {(Object.keys(TIPOS_DESLIGAMENTO) as TipoDesligamento[]).map(k => <option key={k} value={k}>{TIPOS_DESLIGAMENTO[k]}</option>)}
               </select></div>
-            <div><label style={lbl}>Data do desligamento</label><input type="date" style={inp} value={desligamento} onChange={e => setDesligamento(e.target.value)} /></div>
+            <div><label style={lbl}>Data do desligamento</label><InputData type="date" style={inp} value={desligamento} onChange={e => setDesligamento(e.target.value)} /></div>
             <div><label style={lbl}>Aviso prévio</label>
               <select style={inp} value={aviso} onChange={e => setAviso(e.target.value as AvisoPrevio)}>
                 {avisoOpcoes.map(a => <option key={a} value={a}>{a === "trabalhado" ? "Trabalhado" : a === "indenizado" ? (tipo === "pedido_demissao" ? "Não cumprido (descontar)" : "Indenizado") : "Sem aviso"}</option>)}
@@ -151,7 +152,7 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
               <input style={inp} disabled={multaFgtsPct(tipo) === 0} value={saldoFgts ?? mask(fgtsEst)} onChange={e => setSaldoFgts(e.target.value)} />
               <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Estimativa (8% × meses); corrija com o extrato do FGTS.</div></div>
             <div><label style={lbl}>Multa do FGTS (lançada à parte)</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} readOnly value={fmt(multa)} /></div>
-            <div><label style={lbl}>Pagar até (10 dias corridos)</label><input type="date" style={inp} value={prazo} onChange={e => setPagto(e.target.value)} /></div>
+            <div><label style={lbl}>Pagar até (10 dias corridos)</label><InputData type="date" style={inp} value={prazo} onChange={e => setPagto(e.target.value)} /></div>
           </div>
           <div style={{ marginTop: 12 }}><label style={lbl}>Observação</label><input style={inp} value={obs} onChange={e => setObs(e.target.value)} /></div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 10 }}>Cálculo de referência (CLT). INSS e IRRF ficam por sua conta ou do contador; férias vencidas em dobro e a homologação também. Ao lançar, o sistema cria o Contas a Pagar da rescisão{multa > 0 ? " e o da multa do FGTS" : ""} e marca o funcionário como desligado.</div>

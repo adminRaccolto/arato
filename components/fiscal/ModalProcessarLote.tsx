@@ -12,6 +12,7 @@
 // a VÁRIAS NFs pendentes de uma vez, processando-as quando o tipo de
 // destino é "Apropriação Direta" (sem entrada em estoque).
 // ═══════════════════════════════════════════════════════════════════════════
+import InputData from "../../components/InputData";
 import { useState, useEffect } from "react";
 import {
   atualizarNfEntrada,
@@ -238,7 +239,7 @@ export default function ModalProcessarLote({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Vencimento da CP</label>
-            <input type="date" value={settings.data_vencimento_cp} onChange={e => setSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
+            <InputData type="date" value={settings.data_vencimento_cp} onChange={e => setSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
           </div>
           <div>
             <label style={lbl}>Ano Safra</label>

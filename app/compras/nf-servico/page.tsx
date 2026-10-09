@@ -954,10 +954,10 @@ export default function NfServicoPage() {
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Competência:</span>
-            <input type="month" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
+            <InputData type="month" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>–</span>
-            <input type="month" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
+            <InputData type="month" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             {(filtroDataDe || filtroDataAte) && (
               <button onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
@@ -1326,7 +1326,7 @@ export default function NfServicoPage() {
                     </div>
                     <div>
                       <label style={lbl}>Competência (mês)</label>
-                      <input type="month" value={cab.competencia} onChange={e => setCab(p=>({...p,competencia:e.target.value}))} style={inp} />
+                      <InputData type="month" value={cab.competencia} onChange={e => setCab(p=>({...p,competencia:e.target.value}))} style={inp} />
                     </div>
                   </div>
 

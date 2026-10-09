@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -692,7 +693,7 @@ export default function Expedicao() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 18 }}>
-              {campo("Data Saída *", inp({ type: "date", value: nova.data_saida ?? hoje(), onChange: e => setNova(p => ({ ...p, data_saida: e.target.value })) }))}
+              {campo("Data Saída *", <InputData type="date" value={nova.data_saida ?? hoje()} onChange={e => setNova(p => ({ ...p, data_saida: e.target.value }))} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", background: "var(--bg-card)" }} />)}
               {campo("Destino / Comprador", inp({ value: nova.destino_razao_social ?? "", onChange: e => setNova(p => ({ ...p, destino_razao_social: e.target.value })) }))}
               {campo("Depósito Destino", inp({ value: nova.deposito_destino ?? "", onChange: e => setNova(p => ({ ...p, deposito_destino: e.target.value })), placeholder: "Armazém, CD..." }))}
               {campo("Transportadora", sel({

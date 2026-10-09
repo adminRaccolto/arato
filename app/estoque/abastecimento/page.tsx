@@ -428,7 +428,7 @@ export default function AbastecimentoPage() {
 
         {/* Filtros do histórico */}
         <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
-          <input
+          <InputData
             type="month"
             value={filtroMes}
             onChange={e => setFiltroMes(e.target.value)}

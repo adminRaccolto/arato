@@ -1594,7 +1594,7 @@ export default function ContasAReceberPage() {
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={lbl}>Data de vencimento do borderô (opcional)</label>
-              <input type="date" value={borderoVencimento} onChange={e => setBorderoVencimento(e.target.value)}
+              <InputData type="date" value={borderoVencimento} onChange={e => setBorderoVencimento(e.target.value)}
                 style={{ ...inp, width: "100%", maxWidth: 220, boxSizing: "border-box" }} />
             </div>
 
@@ -1993,7 +1993,7 @@ export default function ContasAReceberPage() {
                         </div>
                         <div>
                           <label style={lbl}>Competência</label>
-                          <input type="month" value={novoForm.competencia} onChange={e => setNovoForm(p => ({ ...p, competencia: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                          <InputData type="month" value={novoForm.competencia} onChange={e => setNovoForm(p => ({ ...p, competencia: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

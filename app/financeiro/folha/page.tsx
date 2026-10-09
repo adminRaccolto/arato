@@ -811,12 +811,12 @@ export default function FolhaPagamentoPage() {
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                 <div>
                   <label style={S.label}>De</label>
-                  <input type="month" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
+                  <InputData type="month" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 <span style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>até</span>
                 <div>
                   <label style={S.label}>Até</label>
-                  <input type="month" value={fCompAte} onChange={e=>{ if (!e.target.value) return; setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
+                  <InputData type="month" value={fCompAte} onChange={e=>{ if (!e.target.value) return; setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 {fCompAte > fComp && (
                   <span style={{ fontSize: 11, color: "#C9921B", background: "#FBF3E0", borderRadius: 4, padding: "3px 8px", marginBottom: 4, fontWeight: 600 }}>
@@ -1053,11 +1053,11 @@ export default function FolhaPagamentoPage() {
                 <>
                   <div>
                     <div style={{ ...S.label, marginBottom:2 }}>Competência — de</div>
-                    <input type="month" value={modalCompDe} onChange={e => { setModalCompDe(e.target.value); if (e.target.value > modalCompAte) setModalCompAte(e.target.value); }} style={{ ...S.inp, fontSize:13 }} />
+                    <InputData type="month" value={modalCompDe} onChange={e => { setModalCompDe(e.target.value); if (e.target.value > modalCompAte) setModalCompAte(e.target.value); }} style={{ ...S.inp, fontSize:13 }} />
                   </div>
                   <div>
                     <div style={{ ...S.label, marginBottom:2 }}>Até</div>
-                    <input type="month" value={modalCompAte} min={modalCompDe} onChange={e => setModalCompAte(e.target.value)} style={{ ...S.inp, fontSize:13 }} />
+                    <InputData type="month" value={modalCompAte} min={modalCompDe} onChange={e => setModalCompAte(e.target.value)} style={{ ...S.inp, fontSize:13 }} />
                   </div>
                   {modalCompAte > modalCompDe && (
                     <span style={{ fontSize:11, fontWeight:700, color:"#C9921B", background:"#FBF3E0", borderRadius:4, padding:"3px 10px", marginTop:16 }}>
@@ -1379,7 +1379,7 @@ export default function FolhaPagamentoPage() {
               </div>
               <div>
                 <label style={S.label}>Descontar na competência</label>
-                <input type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
+                <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 <span style={{ fontSize:11, color:"#888" }}>Mês onde o valor será descontado do salário</span>
               </div>
               <div>
@@ -1417,7 +1417,7 @@ export default function FolhaPagamentoPage() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
                   <label style={S.label}>Mês de referência *</label>
-                  <input type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
+                  <InputData type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 </div>
                 <div>
                   <label style={S.label}>Valor (R$) *</label>

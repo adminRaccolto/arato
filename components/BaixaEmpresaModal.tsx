@@ -1,4 +1,5 @@
 "use client";
+import InputData from "../components/InputData";
 import { useState } from "react";
 import type { EmpresaLancamento } from "../lib/supabase";
 
@@ -75,7 +76,7 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
           {(lanc.valor_pago ?? 0) > 0 && <> · já {pagar ? "pago" : "recebido"} {fmtBRL(lanc.valor_pago!)} · saldo {fmtBRL(saldo)}</>}
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div><label style={lbl}>Data *</label><input type="date" style={inp} value={data} onChange={e => setData(e.target.value)} /></div>
+          <div><label style={lbl}>Data *</label><InputData type="date" style={inp} value={data} onChange={e => setData(e.target.value)} /></div>
           <div>
             <label style={lbl}>Conta bancária *</label>
             <select style={inp} value={conta} onChange={e => setConta(e.target.value)}>
@@ -98,7 +99,7 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
               Baixa <strong>parcial</strong> — restam <strong>{fmtBRL(restante)}</strong> em aberto.
             </div>
             <label style={lbl}>Novo vencimento do saldo *</label>
-            <input type="date" style={{ ...inp, maxWidth: 200 }} value={novaData} min={data} onChange={e => setNovaData(e.target.value)} />
+            <InputData type="date" style={{ ...inp, maxWidth: 200 }} value={novaData} min={data} onChange={e => setNovaData(e.target.value)} />
           </div>
         )}
         <div style={{ marginTop: 12 }}>
