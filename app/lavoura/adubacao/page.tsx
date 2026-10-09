@@ -65,6 +65,9 @@ export default function AdubacaoBasePage() {
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [detalhe, setDetalhe]       = useState<AdubacaoBase | null>(null);
+  const [detalheItens, setDetalheItens] = useState<AdubacaoBaseItem[]>([]);
+  const [detalheCarregando, setDetalheCarregando] = useState(false);
 
   const [f, setF] = useState({
     ano_safra_sel: "", ciclo_id: "", talhao_id: "",
@@ -202,13 +205,27 @@ export default function AdubacaoBasePage() {
     finally { setSalvando(false); }
   }
 
+  const fazendaLabel = (id?: string) => fazendas.find(f => f.id === id)?.nome ?? "—";
+  const anoSafraLabel = (cicloId: string) => {
+    const c = todosCiclos.find(x => x.id === cicloId);
+    if (!c) return "—";
+    return anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "—";
+  };
   const cicloLabel = (id: string) => {
     const c = todosCiclos.find(x => x.id === id);
     if (!c) return "—";
-    const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
-    return `${CULTURAS[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
+    return c.descricao || CULTURAS[c.cultura] || c.cultura;
   };
-  const talhaoLabel = (id?: string) => talhoes.find(t => t.id === id)?.nome ?? "—";
+  const talhaoLabel = (id?: string) => id ? (talhoes.find(t => t.id === id)?.nome ?? "—") : "Todos";
+
+  async function abrirDetalhe(r: AdubacaoBase) {
+    setDetalhe(r);
+    setDetalheItens([]);
+    setDetalheCarregando(true);
+    try { setDetalheItens(await listarAdubacaoItens(r.id)); }
+    catch { setDetalheItens([]); }
+    finally { setDetalheCarregando(false); }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
@@ -258,8 +275,8 @@ export default function AdubacaoBasePage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
-                    {["Safra / Talhão", "Modalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                    {["Fazenda", "Ano Safra", "Ciclo", "Talhão", "Modalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i < 4 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -267,11 +284,11 @@ export default function AdubacaoBasePage() {
                   {registros.map((r, i) => {
                     const mod = MODALIDADES[r.modalidade];
                     return (
-                      <tr key={r.id} style={{ borderBottom: i < registros.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{cicloLabel(r.ciclo_id)}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{r.talhao_id ? talhaoLabel(r.talhao_id) : "Todos os talhões"}</div>
-                        </td>
+                      <tr key={r.id} style={{ borderBottom: i < registros.length - 1 ? "0.5px solid var(--border-row)" : "none", cursor: "pointer" }} onClick={() => abrirDetalhe(r)}>
+                        <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-1)" }}>{fazendaLabel(r.fazenda_id)}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{anoSafraLabel(r.ciclo_id)}</td>
+                        <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-1)" }}>{cicloLabel(r.ciclo_id)}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{talhaoLabel(r.talhao_id)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <span style={{ background: mod.bg, color: mod.color, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 600 }}>{mod.label}</span>
                         </td>
@@ -280,7 +297,7 @@ export default function AdubacaoBasePage() {
                         <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#E24B4A" }}>
                           {r.custo_total ? fmtBRL(r.custo_total) : "—"}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <button style={{ ...btnX, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }} onClick={() => abrirEditar(r)}>✎ Editar</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</button>
@@ -405,6 +422,69 @@ export default function AdubacaoBasePage() {
                 onClick={salvar}>
                 {salvando ? "Salvando…" : editandoId ? "⟳ Salvar edição (reajusta o estoque)" : "⟳ Registrar e baixar estoque"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Popup de detalhe da operação ── */}
+      {detalhe && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={() => setDetalhe(null)}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw", maxHeight: "88vh", overflowY: "auto" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Detalhe da Aplicação</div>
+              <button style={{ ...btnR, padding: "4px 10px", fontSize: 12 }} onClick={() => setDetalhe(null)}>✕</button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>
+              {MODALIDADES[detalhe.modalidade].label} · {fmtData(detalhe.data_aplicacao)}
+            </div>
+
+            <div style={secTit}>Identificação</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12, marginBottom: 4 }}>
+              <div><span style={{ color: "var(--text-2)" }}>Fazenda:</span> <strong>{fazendaLabel(detalhe.fazenda_id)}</strong></div>
+              <div><span style={{ color: "var(--text-2)" }}>Ano Safra:</span> <strong>{anoSafraLabel(detalhe.ciclo_id)}</strong></div>
+              <div><span style={{ color: "var(--text-2)" }}>Ciclo:</span> <strong>{cicloLabel(detalhe.ciclo_id)}</strong></div>
+              <div><span style={{ color: "var(--text-2)" }}>Talhão:</span> <strong>{talhaoLabel(detalhe.talhao_id)}</strong></div>
+              <div><span style={{ color: "var(--text-2)" }}>Área:</span> <strong>{fmtN(detalhe.area_ha)} ha</strong></div>
+              <div><span style={{ color: "var(--text-2)" }}>Custo Total:</span> <strong style={{ color: "#E24B4A" }}>{detalhe.custo_total ? fmtBRL(detalhe.custo_total) : "—"}</strong></div>
+            </div>
+            {detalhe.observacao && (
+              <div style={{ fontSize: 12, marginTop: 8 }}><span style={{ color: "var(--text-2)" }}>Observação:</span> {detalhe.observacao}</div>
+            )}
+
+            <div style={secTit}>Produtos Aplicados</div>
+            {detalheCarregando ? (
+              <div style={{ fontSize: 12, color: "var(--text-2)" }}>Carregando…</div>
+            ) : detalheItens.length === 0 ? (
+              <div style={{ fontSize: 12, color: "var(--text-2)" }}>Nenhum produto registrado.</div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    {["Produto", "Dose (kg/ha)", "Qtd. Total", "Custo"].map((h, i) => (
+                      <th key={i} style={{ textAlign: i === 0 ? "left" : "right", padding: "4px 6px", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalheItens.map((it, i) => (
+                    <tr key={it.id ?? i} style={{ borderBottom: i < detalheItens.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                      <td style={{ padding: "6px", color: "var(--text-1)", fontWeight: 600 }}>{it.produto_nome ?? "—"}</td>
+                      <td style={{ padding: "6px", textAlign: "right" }}>{fmtN(it.dose_kg_ha, 3)}</td>
+                      <td style={{ padding: "6px", textAlign: "right" }}>{fmtN(it.quantidade_kg, 3)} kg</td>
+                      <td style={{ padding: "6px", textAlign: "right", fontWeight: 600 }}>{it.custo_total ? fmtBRL(it.custo_total) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+              <button style={{ ...btnR, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}
+                onClick={() => { const r = detalhe; setDetalhe(null); abrirEditar(r); }}>✎ Editar</button>
+              <button style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
             </div>
           </div>
         </div>
