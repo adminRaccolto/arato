@@ -142,6 +142,10 @@ const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] =
   { v: "processada", label: "Processada", bg: "#DCFCE7", color: "#166534" },
   { v: "cancelada",  label: "Cancelada",  bg: "#FCEBEB", color: "#791F1F" },
 ];
+const TIPO_ENTRADA_OPCOES: { v: string; label: string }[] =
+  Object.entries(TIPO_ENTRADA_META).map(([v, m]) => ({ v, label: m.label }));
+const ORIGEM_OPCOES: { v: string; label: string }[] =
+  Object.entries(ORIGEM_DOC_META).map(([v, label]) => ({ v, label }));
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
@@ -153,6 +157,47 @@ const chip = (ativo: boolean): React.CSSProperties => ({
   border: ativo ? "1.5px solid #2A2A2A" : "0.5px solid #DDE2EE", background: ativo ? "#2A2A2A" : "#fff", color: ativo ? "#fff" : "#555",
 });
 
+// ── Dropdown de filtro multi-seleção (checkbox) — Status, Tipo de Entrada, Origem ──
+function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto, onAbrirFechar }: {
+  label: string;
+  opcoes: { v: string; label: string }[];
+  selecionado: Set<string>;
+  onToggle: (v: string) => void;
+  onLimpar: () => void;
+  aberto: boolean;
+  onAbrirFechar: () => void;
+}) {
+  return (
+    <div style={{ position: "relative" }}>
+      <label style={lblMini}>{label}</label>
+      <button onClick={onAbrirFechar} style={{ ...inp, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 150, justifyContent: "space-between" }}>
+        <span>{selecionado.size === 0 ? "Todos" : `${selecionado.size} selecionado${selecionado.size > 1 ? "s" : ""}`}</span>
+        <span style={{ fontSize: 9, color: "#888" }}>▾</span>
+      </button>
+      {aberto && (
+        <>
+          <div onClick={onAbrirFechar} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.14)", zIndex: 41, minWidth: 210, padding: 6, maxHeight: 260, overflowY: "auto" }}>
+            {opcoes.map(o => (
+              <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6 }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#F4F6FA")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                <input type="checkbox" checked={selecionado.has(o.v)} onChange={() => onToggle(o.v)} />
+                {o.label}
+              </label>
+            ))}
+            {selecionado.size > 0 && (
+              <button onClick={onLimpar} style={{ width: "100%", marginTop: 4, fontSize: 11, color: "#0C447C", background: "none", border: "none", cursor: "pointer", padding: "6px", textAlign: "left" }}>
+                Limpar seleção
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function DocumentosFiscaisPage() {
   const router = useRouter();
   const { fazendaId, fazendaIds, contaId } = useAuth();
@@ -163,11 +208,14 @@ export default function DocumentosFiscaisPage() {
   // Ordenação da lista: pela data da nota (padrão) ou pela data de cadastro no sistema
   const [ordenarPor, setOrdenarPor] = useState<"data_doc" | "created_at">("data_doc");
 
-  const [fTipo,    setFTipo]    = useState<Set<string>>(new Set());
-  const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
+  const [fTipo,        setFTipo]        = useState<Set<string>>(new Set());
+  const [fStatus,      setFStatus]      = useState<Set<string>>(new Set());
+  const [fTipoEntrada, setFTipoEntrada] = useState<Set<string>>(new Set());
+  const [fOrigem,      setFOrigem]      = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState("");
+  const [dropdownAberto, setDropdownAberto] = useState<"status" | "tipoEntrada" | "origem" | null>(null);
 
   const toggle = (set: Set<string>, setFn: (s: Set<string>) => void, v: string) => {
     const next = new Set(set);
@@ -190,6 +238,8 @@ export default function DocumentosFiscaisPage() {
         q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
         if (fTipo.size > 0) q = q.in("tipo_doc", Array.from(fTipo));
         if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
+        if (fTipoEntrada.size > 0) q = q.in("tipo_entrada", Array.from(fTipoEntrada));
+        if (fOrigem.size > 0) q = q.in("origem_doc", Array.from(fOrigem));
         if (fDataDe) q = q.gte("data_doc", fDataDe);
         if (fDataAte) q = q.lte("data_doc", fDataAte);
         if (fBusca.trim()) {
@@ -410,6 +460,8 @@ export default function DocumentosFiscaisPage() {
   const linhas = (resultado ?? []).filter(d => {
     if (fTipo.size > 0 && !fTipo.has(d.tipo_doc)) return false;
     if (fStatus.size > 0 && !fStatus.has(d.status_normalizado ?? "")) return false;
+    if (fTipoEntrada.size > 0 && !fTipoEntrada.has(d.tipo_entrada ?? "")) return false;
+    if (fOrigem.size > 0 && !fOrigem.has(d.origem_doc ?? "")) return false;
     return true;
   });
 
@@ -454,12 +506,33 @@ export default function DocumentosFiscaisPage() {
               {TIPO_OPCOES.map(t => <button key={t.v} onClick={() => toggle(fTipo, setFTipo, t.v)} style={chip(fTipo.has(t.v))}>{t.label}</button>)}
             </div>
           </div>
-          <div>
-            <label style={lblMini}>Status</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              {STATUS_OPCOES.map(s => <button key={s.v} onClick={() => toggle(fStatus, setFStatus, s.v)} style={chip(fStatus.has(s.v))}>{s.label}</button>)}
-            </div>
-          </div>
+          <FiltroDropdown
+            label="Status"
+            opcoes={STATUS_OPCOES}
+            selecionado={fStatus}
+            onToggle={v => toggle(fStatus, setFStatus, v)}
+            onLimpar={() => setFStatus(new Set())}
+            aberto={dropdownAberto === "status"}
+            onAbrirFechar={() => setDropdownAberto(p => p === "status" ? null : "status")}
+          />
+          <FiltroDropdown
+            label="Tipo de Entrada"
+            opcoes={TIPO_ENTRADA_OPCOES}
+            selecionado={fTipoEntrada}
+            onToggle={v => toggle(fTipoEntrada, setFTipoEntrada, v)}
+            onLimpar={() => setFTipoEntrada(new Set())}
+            aberto={dropdownAberto === "tipoEntrada"}
+            onAbrirFechar={() => setDropdownAberto(p => p === "tipoEntrada" ? null : "tipoEntrada")}
+          />
+          <FiltroDropdown
+            label="Origem"
+            opcoes={ORIGEM_OPCOES}
+            selecionado={fOrigem}
+            onToggle={v => toggle(fOrigem, setFOrigem, v)}
+            onLimpar={() => setFOrigem(new Set())}
+            aberto={dropdownAberto === "origem"}
+            onAbrirFechar={() => setDropdownAberto(p => p === "origem" ? null : "origem")}
+          />
           <div>
             <label style={lblMini}>Data de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />

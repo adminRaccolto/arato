@@ -6,6 +6,29 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-a",
+    data: "09/10/2026",
+    titulo: "Documentos Fiscais: filtros de Origem e Tipo de Entrada + Status em dropdown",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Novos filtros \"Tipo de Entrada\" (Insumos, Combustível, Peças/Manut., Consumo, Aprop. Direta, VEF, Remessa, Devolução) e \"Origem\" (Manual, XML, Sieg, Leitor) — antes esses dados só apareciam como badge na lista, sem como filtrar." },
+      { tipo: "melhoria", texto: "O filtro de Status deixou de ser botões soltos e virou um dropdown com caixa de múltipla seleção (marca vários valores de uma vez, com \"Limpar seleção\")." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro",
+  },
+  {
+    versao: "2026.10.09-b",
+    data: "09/10/2026",
+    titulo: "Retorno de Armazém Geral: botão direto na NF de Remessa, sem mais cair numa tela de venda",
+    modulos: ["Comercial"],
+    itens: [
+      { tipo: "correcao", texto: "O card \"Devolução / Retorno\" do \"+Nova NF-e\" abria o mesmo formulário genérico de venda avulsa, só trocando o CFOP — por isso o retorno de grão enviado a armazém geral parecia uma nota de saída comum, sem nenhum dado da remessa original pré-preenchido." },
+      { tipo: "melhoria", texto: "Agora toda NF de Remessa (CFOP 6.905/5.905) autorizada ganha um botão \"↩ Retorno\" direto na linha, na própria tabela de Faturamento. Ele pré-preenche destinatário, itens e CFOP espelhado (6.906/5.906) a partir da remessa original, referenciando a chave dela — só confirma e emite. Depois de retornada, a linha mostra \"✓ Retornada\" no lugar do botão." },
+      { tipo: "melhoria", texto: "O card \"+Nova NF-e\" → \"Retorno de Armazém Geral\" agora lista as remessas autorizadas aguardando retorno para escolher, em vez de abrir um formulário em branco. Devolução de mercadoria comprada ou vendida não é mais uma opção aqui — isso continua em Documentos Fiscais → Notas de Terceiro." },
+    ],
+    onde: "Comercial & Logística → Faturamento / NF-e de Saída",
+  },
+  {
     versao: "2026.10.08-r",
     data: "08/10/2026",
     titulo: "NF de Remessa: Local de Retirada/Entrega viram seletor de Depósitos",

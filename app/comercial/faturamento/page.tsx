@@ -93,7 +93,7 @@ type NFeItem = {
   valor_total: number; valor_financeiro: number; cclass_trib: string;
 };
 type TabNFe = "produtor" | "destinatario" | "operacoes" | "transportador" | "retirada" | "fiscal" | "obs" | "pontualidade";
-type Passo  = "origem" | "contrato" | "romaneio" | "form" | "nf_vinculada";
+type Passo  = "origem" | "contrato" | "romaneio" | "retorno_origem" | "form" | "nf_vinculada";
 type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 
 // ── Estado inicial do formulário ───────────────────────────────────────────────
@@ -192,6 +192,8 @@ function FaturamentoInner() {
   const [nfeItens,    setNfeItens]    = useState<NFeItem[]>([]);
   const [emitindo,    setEmitindo]    = useState(false);
   const [erroForm,    setErroForm]    = useState<string|null>(null);
+  // Retorno de Armazém Geral — guarda a NF de Remessa de origem para marcar "retornada" após emitir
+  const [retornoOrigemId, setRetornoOrigemId] = useState<string | null>(null);
   const [nfEmitida,   setNfEmitida]   = useState<{numero:string;chave?:string;cfop:string;venda_a_ordem:boolean;entrega_futura:boolean}|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
   const [fazendas,     setFazendas]     = useState<{id:string;nome:string;municipio?:string;estado?:string}[]>([]);
@@ -347,6 +349,7 @@ function FaturamentoInner() {
     setRomaneios([]);
     setErroForm(null);
     setFazNFe(fazendaId ?? ""); // sugestão inicial; usuário troca no seletor da aba Produtor
+    setRetornoOrigemId(null);
     setModalAberto(true);
   }
 
@@ -451,6 +454,61 @@ function FaturamentoInner() {
     }));
     setNfeItens([]);
     setPasso("form");
+  }
+
+  // ── Retorno de Armazém Geral — a partir de uma NF de Remessa já autorizada ──
+  // Espelha CFOP, destinatário e itens da remessa de origem; referencia a NF
+  // original via nf_ref_chave/numero (NFref no XML) para o retorno ser rastreável.
+  function abrirRetornoDoGrid(nota: NotaFiscal) {
+    const hoje  = new Date().toISOString().slice(0, 10);
+    const agora = new Date().toTimeString().slice(0, 8);
+    const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
+    const cfopRetorno = ["5.905", "5905"].includes(nota.cfop) ? "5.906" : "6.906";
+    const nat = NATUREZAS_VENDA.find(n => n.codigo === cfopRetorno);
+    const emitCnpjDigits = String(dj.emit_cnpj ?? "").replace(/\D/g, "");
+    const produtorMatch = emitCnpjDigits
+      ? produtores.find(p => p.cpf_cnpj?.replace(/\D/g, "") === emitCnpjDigits)
+      : undefined;
+
+    setFazNFe(nota.fazenda_id);
+    setContratoSelecionado(null);
+    setTipoAvulsa("retorno");
+    setRetornoOrigemId(nota.id);
+    setFVenda({
+      ...FVENDA_INICIAL,
+      produtor_id:         produtorMatch?.id ?? "",
+      destinatario:         nota.destinatario,
+      cnpj:                 nota.cnpj_destinatario ?? "",
+      dest_tipo_pessoa:     (dj.dest_tipo_pessoa as "fisica" | "juridica") ?? "juridica",
+      dest_ie:              String(dj.dest_ie ?? ""),
+      dest_endereco:        String(dj.dest_endereco ?? ""),
+      dest_numero:          String(dj.dest_numero ?? ""),
+      dest_bairro:          String(dj.dest_bairro ?? ""),
+      dest_cep:             String(dj.dest_cep ?? ""),
+      dest_fone:            String(dj.dest_fone ?? ""),
+      dest_cidade:          String(dj.dest_cidade ?? ""),
+      dest_uf:              String(dj.dest_uf ?? ""),
+      dest_municipio_ibge:  String(dj.dest_municipio_ibge ?? ""),
+      cfop:                 cfopRetorno,
+      natureza_texto:       nat?.descricao ?? "Retorno de Armazém Geral",
+      observacao: `Retorno de mercadoria depositada em armazém geral — referente à NF de Remessa nº ${nota.numero}` +
+        (nota.chave_acesso ? ` (chave ${nota.chave_acesso}).` : ".") +
+        (nat ? `\n\n${textoNat(nat)}` : ""),
+      data_emissao: hoje, data_saida: hoje, hora_saida: agora,
+      frete_conta:  dj.frete_conta ? String(dj.frete_conta) : "1",
+      nf_ref_chave:  nota.chave_acesso ?? "",
+      nf_ref_numero: nota.numero,
+    });
+    setNfeItens((nota.itens_json ?? []).map(i => ({
+      id: crypto.randomUUID(), tipo_item: "Produto", item: i.item, ncm: i.ncm,
+      quantidade: String(i.quantidade), unidade: i.unidade.toLowerCase(),
+      valor_unitario: i.valor_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+      valor_total: i.valor_total, valor_financeiro: i.valor_total, cclass_trib: "",
+    })));
+    setTabNFe("produtor");
+    setErroForm(null);
+    setPasso("form");
+    setModalAberto(true);
   }
 
   // ── Atualizar item ────────────────────────────────────────────────────────
@@ -669,6 +727,16 @@ function FaturamentoInner() {
       }
 
       setNotas(p => [nova, ...p]);
+
+      // Retorno de Armazém Geral autorizado — marca a Remessa de origem como retornada
+      if (!erroSefaz && tipoAvulsa === "retorno" && retornoOrigemId) {
+        const origem = notas.find(n => n.id === retornoOrigemId);
+        const djOrigem = { ...(origem?.dados_nf_json ?? {}), retornada: true, retorno_numero: nova.numero, retorno_chave: nova.chave_acesso ?? undefined };
+        await supabase.from("notas_fiscais").update({ dados_nf_json: djOrigem }).eq("id", retornoOrigemId);
+        setNotas(p => p.map(n => n.id === retornoOrigemId ? { ...n, dados_nf_json: djOrigem } : n));
+        setRetornoOrigemId(null);
+      }
+
       const ehVendaOrdem    = contratoSelecionado?.venda_a_ordem === true;
       const ehEntregaFutura = fVenda.cfop === "6.117";
       setNfEmitida({ numero: nova.numero, chave: nova.chave_acesso ?? undefined, cfop: fVenda.cfop, venda_a_ordem: ehVendaOrdem, entrega_futura: ehEntregaFutura });
@@ -1214,6 +1282,19 @@ function FaturamentoInner() {
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           DANFE
                         </button>
+                        {["6.905","5.905","6905","5905"].includes(nota.cfop) && (
+                          (nota.dados_nf_json as Record<string, unknown> | undefined)?.retornada ? (
+                            <span style={{ padding:"4px 10px", fontSize:11, background:"#F1EFE8", color:"#666", borderRadius:6, whiteSpace:"nowrap" }}>
+                              ✓ Retornada
+                            </span>
+                          ) : nota.status === "autorizada" && (
+                            <button
+                              style={{ padding:"4px 10px", fontSize:11, background:"#EBF4FB", color:"#0B2D50", border:"0.5px solid #1A487050", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
+                              onClick={() => abrirRetornoDoGrid(nota)}>
+                              ↩ Retorno
+                            </button>
+                          )
+                        )}
                         {nota.status === "em_digitacao" && (
                           <button
                             style={{ padding:"4px 10px", fontSize:11, background:"#2A2A2A", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
@@ -1345,16 +1426,49 @@ function FaturamentoInner() {
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Depósito em armazém (6.905), entrega futura (6.117) ou venda à ordem (6.119).</div>
                 </button>
                 <button
-                  onClick={() => { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "2.201"); }}
+                  onClick={() => setPasso("retorno_origem")}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
                   onMouseLeave={e => (e.currentTarget.style.background = "var(--bg-card)")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Devolução / Retorno</div>
-                  <div style={{ fontSize:12, color:"var(--text-2)" }}>Devolução de mercadoria vendida ou retorno de armazém geral.</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Retorno de Armazém Geral</div>
+                  <div style={{ fontSize:12, color:"var(--text-2)" }}>Traz de volta mercadoria enviada por uma NF de Remessa (6.905/5.905) já autorizada.</div>
                 </button>
               </div>
+              <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:16 }}>
+                Devolução de mercadoria comprada ou vendida não é emitida aqui — veja Documentos Fiscais → Notas de Terceiro.
+              </div>
               <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+            </div>
+          )}
+
+          {/* ── PASSO Retorno: escolher a NF de Remessa de origem ── */}
+          {passo === "retorno_origem" && (
+            <div style={{ background:"var(--bg-card)", borderRadius:14, width:640, maxHeight:"80vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)" }}>
+                <div style={{ fontSize:15, fontWeight:700, color:"var(--text-1)" }}>Retorno de Armazém Geral</div>
+                <div style={{ fontSize:12, color:"var(--text-2)", marginTop:2 }}>Selecione a NF de Remessa que está retornando</div>
+              </div>
+              <div style={{ overflowY:"auto", padding:"8px 12px", flex:1 }}>
+                {notas.filter(n => ["6.905","5.905","6905","5905"].includes(n.cfop) && n.status === "autorizada" && !(n.dados_nf_json as Record<string, unknown> | undefined)?.retornada).length === 0 ? (
+                  <div style={{ padding:24, textAlign:"center", color:"#999", fontSize:13 }}>Nenhuma NF de Remessa autorizada aguardando retorno.</div>
+                ) : notas
+                    .filter(n => ["6.905","5.905","6905","5905"].includes(n.cfop) && n.status === "autorizada" && !(n.dados_nf_json as Record<string, unknown> | undefined)?.retornada)
+                    .map(n => (
+                      <button key={n.id} onClick={() => abrirRetornoDoGrid(n)}
+                        style={{ display:"flex", justifyContent:"space-between", alignItems:"center", width:"100%", padding:"12px 14px", marginBottom:6, border:"0.5px solid var(--border-table)", borderRadius:10, background:"var(--bg-page)", cursor:"pointer", textAlign:"left" }}>
+                        <div>
+                          <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>Remessa nº {n.numero} — {n.destinatario}</div>
+                          <div style={{ fontSize:11, color:"var(--text-3)" }}>{fmtData(n.data_emissao)} · CFOP {n.cfop} · {fmtR$(n.valor_total)}</div>
+                        </div>
+                        <span style={{ fontSize:12, color:"#0B2D50", fontWeight:600 }}>Retornar →</span>
+                      </button>
+                    ))
+                }
+              </div>
+              <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end" }}>
+                <button style={btnR} onClick={() => setPasso("origem")}>Voltar</button>
+              </div>
             </div>
           )}
 
@@ -1537,7 +1651,7 @@ function FaturamentoInner() {
                 <button style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</button>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
-                    {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
+                    {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
                   </div>
                   <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", marginTop:2 }}>
                     {fVenda.destinatario ? `Destinatário: ${fVenda.destinatario}` : "Preencha os dados da nota"}
