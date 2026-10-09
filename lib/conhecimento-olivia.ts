@@ -168,6 +168,8 @@ Seletor em cascata obrigatório: Produtor → Fazenda → Ano-safra → Ciclo �
 ### Produção → Pulverização Terrestre / Aplicação Aérea
 Tipos: herbicida, fungicida, inseticida, nematicida, acaricida, fertilizante foliar, regulador, dessecação, outros. Dá baixa de cada produto no estoque (dose × área) e calcula o custo total da aplicação — **sem criar CP** na Pulverização Terrestre. Aplicação Aérea: confira sempre no Kardex se a baixa ocorreu, não garanta que é automática.
 
+Na grade de "Produtos Aplicados" (Pulverização Terrestre), a coluna **Total** também é editável — digitando o total aplicado o sistema calcula a dose/ha sozinho (total ÷ área), igual a digitar a dose calcula o total (dose × área). Os dois campos sempre ficam consistentes entre si; só funciona com a Área (ha) já preenchida, já que é ela que faz a conversão entre os dois.
+
 ### Produção → Adubação de Base / Correção de Solo
 Registram consumo de fertilizante/corretivo e dão baixa de estoque, sem CP nova (mesmo motivo do Plantio). Correção de Solo trabalha normalmente em toneladas e converte para a unidade do cadastro do insumo (referência 60 kg = 1 saca quando a conversão usa sc).
 

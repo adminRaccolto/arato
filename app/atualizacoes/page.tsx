@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-d",
+    data: "09/10/2026",
+    titulo: "Pulverização: coluna Total também aceita lançamento direto",
+    modulos: ["Lavoura"],
+    itens: [
+      { tipo: "melhoria", texto: "Na grade de \"Produtos Aplicados\", a coluna Total deixou de ser só exibição — agora dá pra digitar o total aplicado direto e o sistema calcula a dose/ha sozinho (total ÷ área), igual já acontecia ao digitar a dose (dose × área = total). Precisa da Área (ha) já preenchida pra converter entre os dois." },
+    ],
+    onde: "Produção → Pulverização Terrestre → Registrar Pulverização",
+  },
+  {
     versao: "2026.10.09-c",
     data: "09/10/2026",
     titulo: "Corrigido de vez: \"Código IBGE do emitente não configurado\" na primeira NF-e de cada cliente",

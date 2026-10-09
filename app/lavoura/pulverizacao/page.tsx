@@ -455,7 +455,21 @@ export default function PulverizacaoPage() {
                         <td style={{ padding: "6px 8px", width: 90 }}>
                           <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} placeholder="0,000" value={it.dose_ha} onChange={v => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: v } : x))} />
                         </td>
-                        <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "var(--text-1)" }}>{total > 0 ? `${fmtN(total, 2)} ${it.unidade}` : "—"}</td>
+                        <td style={{ padding: "6px 8px", width: 100 }}>
+                          <InputNumerico
+                            style={{ ...inp, fontSize: 12, textAlign: "right" }}
+                            decimais={2}
+                            placeholder="0,00"
+                            value={total > 0 ? total : ""}
+                            disabled={areaHa <= 0}
+                            title={areaHa <= 0 ? "Preencha a Área (ha) para lançar o total direto" : "Informe o total e o sistema calcula a dose/ha"}
+                            onChange={v => {
+                              if (areaHa <= 0) return;
+                              const novoTotal = parseFloat(v) || 0;
+                              setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: String(novoTotal / areaHa) } : x));
+                            }}
+                          />
+                        </td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{custoTot > 0 ? fmtBRL(custoTot) : "—"}</td>
                         <td style={{ padding: "6px 8px", width: 40 }}>
