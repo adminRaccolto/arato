@@ -358,11 +358,11 @@ export default function PlantioPage() {
               </div>
               <div>
                 <label style={lbl}>Data de Plantio *</label>
-                <InputData style={inp} type="date" value={f.data_plantio} onChange={e => setF(p => ({ ...p, data_plantio: e.target.value }))} />
+                <InputData calendario style={inp} type="date" value={f.data_plantio} onChange={e => setF(p => ({ ...p, data_plantio: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Colheita Prevista</label>
-                <InputData style={inp} type="date" value={f.data_colheita_prevista} onChange={e => setF(p => ({ ...p, data_colheita_prevista: e.target.value }))} />
+                <InputData calendario style={inp} type="date" value={f.data_colheita_prevista} onChange={e => setF(p => ({ ...p, data_colheita_prevista: e.target.value }))} />
               </div>
               <div></div>
             </div>

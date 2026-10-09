@@ -601,7 +601,7 @@ export default function Pluviometria() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Data *</label>
-                  <InputData type="date" value={lData} onChange={e => setLData(e.target.value)} style={inp} />
+                  <InputData calendario type="date" value={lData} onChange={e => setLData(e.target.value)} style={inp} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Hora da leitura</label>

@@ -335,7 +335,7 @@ function ModalNova({
               </div>
               <div>
                 <label style={lbl}>Data da Recomendação *</label>
-                <InputData type="date" value={f.data_recomendacao} onChange={e => setF(v => ({...v, data_recomendacao: e.target.value}))} style={inp} />
+                <InputData calendario type="date" value={f.data_recomendacao} onChange={e => setF(v => ({...v, data_recomendacao: e.target.value}))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Remonte / Transpasse (%)</label>
@@ -343,11 +343,11 @@ function ModalNova({
               </div>
               <div>
                 <label style={lbl}>Previsto Início</label>
-                <InputData type="date" value={f.data_prevista_inicio} onChange={e => setF(v => ({...v, data_prevista_inicio: e.target.value}))} style={inp} />
+                <InputData calendario type="date" value={f.data_prevista_inicio} onChange={e => setF(v => ({...v, data_prevista_inicio: e.target.value}))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Previsto Fim</label>
-                <InputData type="date" value={f.data_prevista_fim} onChange={e => setF(v => ({...v, data_prevista_fim: e.target.value}))} style={inp} />
+                <InputData calendario type="date" value={f.data_prevista_fim} onChange={e => setF(v => ({...v, data_prevista_fim: e.target.value}))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Agrônomo Responsável</label>

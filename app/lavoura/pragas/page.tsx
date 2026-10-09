@@ -653,7 +653,7 @@ export default function PragasPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data *</label>
-                  <InputData type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
+                  <InputData calendario type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
                 </div>
               </div>
 

@@ -1,78 +1,62 @@
 "use client";
-import { forwardRef, useState, useEffect, useRef, type ChangeEvent, type InputHTMLAttributes } from "react";
+import { forwardRef, useState, type ChangeEvent, type InputHTMLAttributes } from "react";
+import { exibirData, mascararData, dataParaIso, dataLocalAgora, type TipoData } from "../lib/input-data";
 
 /**
  * Campo de data com botão "Hoje" ao lado. Digitação fluida (dd/mm/aaaa) — os números
  * entram naturalmente, as barras aparecem sozinhas, sem precisar de Tab pra passar de
  * dia pra mês pra ano (o <input type="date"> nativo exigia isso, achado real 09/10/2026).
- * Mantém a mesma interface de fora: value/onChange usam "AAAA-MM-DD" (e.target.value),
- * igual ao <input type="date"> — nenhuma tela que usa este componente precisa mudar.
+ * value/onChange usam ISO, igual ao input nativo. `calendario` habilita o seletor
+ * ao lado da digitação; `datetime-local` inclui a hora, sem conversão de fuso.
  */
 interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type"> {
   value?: string | null;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  type?: "date";
-}
-
-function paraExibicao(iso?: string | null): string {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
-  const [a, m, d] = iso.split("-");
-  return `${d}/${m}/${a}`;
-}
-
-function mascarar(raw: string): string {
-  const nums = raw.replace(/\D/g, "").slice(0, 8);
-  let out = "";
-  if (nums.length > 0) out += nums.slice(0, 2);
-  if (nums.length > 2) out += "/" + nums.slice(2, 4);
-  if (nums.length > 4) out += "/" + nums.slice(4, 8);
-  return out;
-}
-
-// "dd/mm/aaaa" completo → "aaaa-mm-dd"; incompleto → "" (não dispara onChange até fechar os 8 dígitos)
-function paraIso(display: string): string {
-  const nums = display.replace(/\D/g, "");
-  if (nums.length < 8) return "";
-  const d = nums.slice(0, 2), m = nums.slice(2, 4), a = nums.slice(4, 8);
-  return `${a}-${m}-${d}`;
+  type?: TipoData;
+  calendario?: boolean;
 }
 
 const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
-  { style, disabled, value, onChange, onBlur, onFocus, placeholder, ...resto },
+  { style, disabled, readOnly, value, onChange, onBlur, onFocus, placeholder,
+    type = "date", calendario = false, min, max, step, ...resto },
   ref,
 ) {
-  const focused = useRef(false);
-  const [display, setDisplay] = useState(() => paraExibicao(value));
+  // O rascunho preserva a digitação incompleta; alterações externas usam o valor do pai.
+  const [rascunho, setRascunho] = useState(() => ({ display: exibirData(value, type), value, type }));
+  const display = rascunho.value === value && rascunho.type === type
+    ? rascunho.display : exibirData(value, type);
 
-  useEffect(() => {
-    if (!focused.current) setDisplay(paraExibicao(value));
-  }, [value]);
+  function atualizarDisplay(display: string, proximoValor = value) {
+    setRascunho({ display, value: onChange ? proximoValor : value, type });
+  }
 
-  const hojeISO = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
+  function dentroDoPeriodo(iso: string) {
+    return !!iso && (min == null || iso >= String(min)) && (max == null || iso <= String(max));
+  }
 
   function dispararChange(iso: string) {
     onChange?.({ target: { value: iso }, currentTarget: { value: iso } } as unknown as ChangeEvent<HTMLInputElement>);
   }
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    const masked = mascarar(e.target.value);
-    setDisplay(masked);
-    if (masked === "") { dispararChange(""); return; } // campo limpo (ex: apagar tudo) — propaga pro pai
-    const iso = paraIso(masked);
-    if (iso) dispararChange(iso);
+    const masked = mascararData(e.target.value, type);
+    const iso = dataParaIso(masked, type, calendario);
+    if (calendario || masked === "" || iso) {
+      const proximoValor = calendario && !dentroDoPeriodo(iso) ? "" : iso;
+      atualizarDisplay(masked, proximoValor);
+      dispararChange(proximoValor);
+    } else atualizarDisplay(masked);
   }
 
   function marcarHoje() {
-    const iso = hojeISO();
-    setDisplay(paraExibicao(iso));
+    const iso = dataLocalAgora(type);
+    if (calendario && !dentroDoPeriodo(iso)) return;
+    atualizarDisplay(exibirData(iso, type), iso);
     dispararChange(iso);
   }
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", ...(calendario ? { width: style?.width ?? "100%" } : {}) }}>
       <input
         ref={ref}
         {...resto}
@@ -81,16 +65,50 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
         autoComplete="off"
         value={display}
         disabled={disabled}
-        placeholder={placeholder ?? "dd/mm/aaaa"}
+        readOnly={readOnly}
+        min={min}
+        max={max}
+        placeholder={placeholder ?? (type === "date" ? "dd/mm/aaaa" : "dd/mm/aaaa hh:mm")}
+        aria-invalid={resto["aria-invalid"] ?? (calendario && !!display && !dentroDoPeriodo(dataParaIso(display, type)))}
         onChange={handleChange}
-        onFocus={e => { focused.current = true; onFocus?.(e); }}
-        onBlur={e => { focused.current = false; onBlur?.(e); }}
-        style={style}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        style={calendario ? { ...style, minWidth: 0, flex: 1 } : style}
       />
-      {!disabled && (
-        <button type="button" onClick={marcarHoje} title="Preencher com a data de hoje"
+      {calendario && !disabled && !readOnly && (
+        <span className="input-data-calendario" style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 30, height: 30, border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 5, background: "var(--bg-input, #F4F6FA)", color: "var(--text-2, #1A4870)" }}>
+          <style>{`.input-data-calendario:focus-within { outline: 2px solid #1A4870; outline-offset: 2px; } .input-data-calendario input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; cursor: pointer; }`}</style>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M16 3v4M8 3v4M3 11h18" />
+          </svg>
+          <input
+            type={type}
+            aria-label={type === "date" ? "Escolher data no calendário" : "Escolher data e hora no calendário"}
+            title="Abrir calendário"
+            value={value ?? ""}
+            min={min}
+            max={max}
+            step={step ?? (type === "datetime-local" ? 60 : undefined)}
+            onClick={e => {
+              // O input permanece acessível e clicável como alternativa ao showPicker.
+              try { e.currentTarget.showPicker?.(); } catch { e.currentTarget.focus(); }
+            }}
+            onChange={e => {
+              const iso = e.target.value;
+              const proximoValor = dentroDoPeriodo(iso) ? iso : "";
+              atualizarDisplay(exibirData(iso, type), proximoValor);
+              dispararChange(proximoValor);
+            }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", minWidth: 0 }}
+          />
+        </span>
+      )}
+      {!disabled && !readOnly && (
+        <button type="button" onClick={marcarHoje} title={type === "date" ? "Preencher com a data de hoje" : "Preencher com a data e hora atuais"}
+          disabled={calendario && !dentroDoPeriodo(dataLocalAgora(type))}
           style={{ padding: "2px 6px", fontSize: 10, fontWeight: 600, borderRadius: 5, border: "0.5px solid #DDE2EE", background: "#F4F6FA", color: "#1A4870", cursor: "pointer", whiteSpace: "nowrap" }}>
-          Hoje
+          {type === "date" ? "Hoje" : "Agora"}
         </button>
       )}
     </span>

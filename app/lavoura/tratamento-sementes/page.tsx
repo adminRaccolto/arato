@@ -1000,7 +1000,7 @@ export default function TratamentoSementesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data Prevista</label>
-                  <InputData type="date" value={form.data_planejada} onChange={e => setForm(f => ({ ...f, data_planejada: e.target.value }))} style={inp} />
+                  <InputData calendario type="date" value={form.data_planejada} onChange={e => setForm(f => ({ ...f, data_planejada: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Cultura *</label>
@@ -1160,11 +1160,11 @@ export default function TratamentoSementesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data / Hora Início</label>
-                  <input type="datetime-local" value={formConcluir.data_inicio} onChange={e => setFormConcluir(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
+                  <InputData calendario type="datetime-local" value={formConcluir.data_inicio} onChange={e => setFormConcluir(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Data / Hora Conclusão</label>
-                  <input type="datetime-local" value={formConcluir.data_conclusao} onChange={e => setFormConcluir(f => ({ ...f, data_conclusao: e.target.value }))} style={inp} />
+                  <InputData calendario type="datetime-local" value={formConcluir.data_conclusao} onChange={e => setFormConcluir(f => ({ ...f, data_conclusao: e.target.value }))} style={inp} />
                 </div>
               </div>
             </div>

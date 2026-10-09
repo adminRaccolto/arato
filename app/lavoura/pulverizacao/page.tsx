@@ -382,11 +382,11 @@ export default function PulverizacaoPage() {
               </div>
               <div>
                 <label style={lbl}>Data Início *</label>
-                <InputData style={inp} type="date" value={f.data_inicio} onChange={e => setF(p => ({ ...p, data_inicio: e.target.value }))} />
+                <InputData calendario style={inp} type="date" value={f.data_inicio} onChange={e => setF(p => ({ ...p, data_inicio: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Data Término</label>
-                <InputData style={inp} type="date" value={f.data_fim} onChange={e => setF(p => ({ ...p, data_fim: e.target.value }))} />
+                <InputData calendario style={inp} type="date" value={f.data_fim} onChange={e => setF(p => ({ ...p, data_fim: e.target.value }))} />
               </div>
             </div>
 

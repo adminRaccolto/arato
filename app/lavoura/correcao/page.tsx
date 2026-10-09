@@ -302,7 +302,7 @@ export default function CorrecaoSoloPage() {
               </div>
               <div>
                 <label style={lbl}>Data de Aplicação *</label>
-                <InputData style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
+                <InputData calendario style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Observação</label>

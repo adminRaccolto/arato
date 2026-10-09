@@ -868,7 +868,7 @@ export default function ColheitaPage() {
                 </label>
                 <label>
                   <div style={lbStyle}>Data de colheita</div>
-                  <InputData type="date" value={formColheita.data_colheita} onChange={e => setFormColheita(f => ({ ...f, data_colheita: e.target.value }))} style={inpStyle} />
+                  <InputData calendario type="date" value={formColheita.data_colheita} onChange={e => setFormColheita(f => ({ ...f, data_colheita: e.target.value }))} style={inpStyle} />
                 </label>
               </div>
 
@@ -989,7 +989,7 @@ export default function ColheitaPage() {
                     </label>
                     <label>
                       <div style={lbStyle}>Data</div>
-                      <InputData type="date" value={formRomaneio.data} onChange={e => setFormRomaneio(f => ({ ...f, data: e.target.value }))} style={inpStyle} />
+                      <InputData calendario type="date" value={formRomaneio.data} onChange={e => setFormRomaneio(f => ({ ...f, data: e.target.value }))} style={inpStyle} />
                     </label>
                   </div>
                 </div>

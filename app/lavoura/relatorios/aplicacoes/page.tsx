@@ -734,11 +734,11 @@ export default function RelAplicacoesPage() {
                 </div>
                 <div>
                   <label style={lbl}>Data início</label>
-                  <InputData style={inp} type="date" value={fDtInicio} onChange={e => setFDtInicio(e.target.value)} />
+                  <InputData calendario style={inp} type="date" value={fDtInicio} onChange={e => setFDtInicio(e.target.value)} />
                 </div>
                 <div>
                   <label style={lbl}>Data fim</label>
-                  <InputData style={inp} type="date" value={fDtFim} onChange={e => setFDtFim(e.target.value)} />
+                  <InputData calendario style={inp} type="date" value={fDtFim} onChange={e => setFDtFim(e.target.value)} />
                 </div>
               </div>
 

@@ -643,7 +643,7 @@ export default function PlanoAgricola() {
             </div>
             <div>
               <label style={lbl}>Data de Início *</label>
-              <InputData style={inp} type="date" value={fNP.data_plantio} onChange={e => setFNP(p => ({ ...p, data_plantio: e.target.value }))} />
+              <InputData calendario style={inp} type="date" value={fNP.data_plantio} onChange={e => setFNP(p => ({ ...p, data_plantio: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Status inicial</label>
@@ -682,7 +682,7 @@ export default function PlanoAgricola() {
             </div>
             <div>
               <label style={lbl}>Data Prevista *</label>
-              <InputData style={inp} type="date" value={fOp.data_prev} onChange={e => setFOp(p => ({ ...p, data_prev: e.target.value }))} />
+              <InputData calendario style={inp} type="date" value={fOp.data_prev} onChange={e => setFOp(p => ({ ...p, data_prev: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
               <label style={lbl}>Descrição / Detalhes</label>
@@ -708,7 +708,7 @@ export default function PlanoAgricola() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={lbl}>Data de realização</label>
-              <InputData style={inp} type="date" value={fConc.data_real} onChange={e => setFConc(p => ({ ...p, data_real: e.target.value }))} />
+              <InputData calendario style={inp} type="date" value={fConc.data_real} onChange={e => setFConc(p => ({ ...p, data_real: e.target.value }))} />
             </div>
             <div>
               <label style={lbl}>Custo real (R$/ha)</label>
@@ -734,7 +734,7 @@ export default function PlanoAgricola() {
             </div>
             <div>
               <label style={lbl}>Data da colheita</label>
-              <InputData style={inp} type="date" value={fColh.data_colheita} onChange={e => setFColh(p => ({ ...p, data_colheita: e.target.value }))} />
+              <InputData calendario style={inp} type="date" value={fColh.data_colheita} onChange={e => setFColh(p => ({ ...p, data_colheita: e.target.value }))} />
             </div>
           </div>
           {fColh.produtividade_sc_ha && modalColheita.area_ha && (
