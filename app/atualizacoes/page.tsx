@@ -6,6 +6,26 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-l",
+    data: "09/10/2026",
+    titulo: "Baixa em lote e Confirmar Borderô: conta bancária agora lista todas as fazendas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Os modais \"Baixar em Lote\" e \"Confirmar Pagamento do Borderô\" (Contas a Pagar e a Receber) listavam conta bancária só da fazenda ativa da sessão — como a grade é conta-wide (mostra títulos de todas as fazendas juntos), um lote com títulos de mais de uma fazenda não encontrava a conta certa das outras na lista. Agora lista contas de toda a conta do cliente, igual já era no modal de baixa individual." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Baixar em Lote / Confirmar Borderô",
+  },
+  {
+    versao: "2026.10.09-k",
+    data: "09/10/2026",
+    titulo: "Ciclo Auxiliar: opção de Consórcio (mesma área do ciclo principal)",
+    modulos: ["Lavoura", "Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Novo checkbox \"Consórcio\" no Ciclo Auxiliar — marca que ele ocupa a mesma área do Ciclo Principal ao mesmo tempo (ex.: Crotalária plantada junto com o Milho Verão). Antes, o cálculo de disponibilidade de talhão sempre somava a área do ciclo principal como \"ocupada\", travando o auxiliar em 0 ha disponível em qualquer talhão já usado pelo principal." },
+    ],
+    onde: "Cadastros → Safras & Ciclos → Novo Ciclo (requer a Migration Seção 336 — ver supabase_migrations.sql)",
+  },
+  {
     versao: "2026.10.09-j",
     data: "09/10/2026",
     titulo: "Campo de data agora digita fluido, sem precisar de Tab",

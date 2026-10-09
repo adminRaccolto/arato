@@ -16408,3 +16408,16 @@ ALTER TABLE lancamentos
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 336 — Ciclo Auxiliar em consórcio: mesma área do ciclo principal
+-- =============================================================================
+-- Pedido real 09/10/2026: ciclo auxiliar (cobertura de solo, adubação verde) pode
+-- ocorrer em CONSÓRCIO com o ciclo principal — mesma área, mesmo período, ao mesmo
+-- tempo — não necessariamente depois dele. O cálculo de ocupação de talhão (Cadastros
+-- → Safras & Ciclos → Novo Ciclo) soma a área de TODO ciclo que se sobrepõe na mesma
+-- fazenda/período, então sem essa flag o talhão do ciclo principal sempre aparecia
+-- "0 ha disponível" pro auxiliar consorciado — mesmo sendo exatamente o uso esperado.
+ALTER TABLE ciclos ADD COLUMN IF NOT EXISTS is_consorcio boolean DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

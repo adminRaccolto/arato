@@ -927,8 +927,11 @@ export default function ContasAPagarPage() {
       const empresaIds = Array.from(new Set(
         itensLote.filter(l => l.origem_tabela === "empresa_lancamentos" && l.empresa_id).map(l => l.empresa_id as string)
       ));
+      // Conta-wide (todas as fazendas do cliente), não só a fazenda ativa — a grade de CP já é
+      // conta-wide, então um lote pode ter títulos de várias fazendas; limitar a conta bancária
+      // à fazenda ativa escondia a conta certa pros títulos das outras (achado real 09/10/2026).
       const [contasProd, ...contasEmp] = await Promise.all([
-        fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[]),
+        contaId ? listarContasProdutorDaConta(contaId) : (fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[])),
         ...empresaIds.map(id => listarContasPorEmpresa(id)),
       ]);
       const unicas = Array.from(new Map([contasProd, ...contasEmp].flat().map(c => [c.id, c])).values());
@@ -1065,8 +1068,9 @@ export default function ContasAPagarPage() {
       const itens = await carregarItensBordero(b.id);
       setConfirmItens(itens);
       const empresaIds = Array.from(new Set(itens.filter(i => i.origem_tabela === "empresa_lancamentos" && i.empresa_id).map(i => i.empresa_id as string)));
+      // Conta-wide, mesmo motivo do lote acima — um borderô pode agregar títulos de mais de uma fazenda.
       const [contasProd, ...contasEmp] = await Promise.all([
-        fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[]),
+        contaId ? listarContasProdutorDaConta(contaId) : (fazendaId ? listarContas(fazendaId) : Promise.resolve([] as ContaBancaria[])),
         ...empresaIds.map(id => listarContasPorEmpresa(id)),
       ]);
       setConfirmContasOpcoes(Array.from(new Map([contasProd, ...contasEmp].flat().map(c => [c.id, c])).values()));

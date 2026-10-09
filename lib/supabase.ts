@@ -923,6 +923,7 @@ export type Ciclo = {
   ciclo_pai_id?: string | null;                 // ciclo principal que absorve os custos
   absorcao_pct?: number | null;                 // % dos custos absorvidos (default 100)
   motivo_auxiliar?: string | null;              // ex: "Milheto para cobertura de solo"
+  is_consorcio?: boolean | null;                // auxiliar em consórcio com o ciclo principal — mesma área, mesmo período
   produto_agricola_id?: string | null;          // FK insumos.id — produto que este ciclo colhe (ex: Soja Convencional)
   produto_agricola_nome?: string | null;        // nome denormalizado para exibição rápida
   created_at?: string;

@@ -387,7 +387,7 @@ function CadastrosInner() {
   const [modalCiclo, setModalCiclo]   = useState(false);
   const [editCiclo, setEditCiclo]     = useState<Ciclo | null>(null);
   const [cicloFazendaId, setCicloFazendaId] = useState<string>("");
-  const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: "" });
+  const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", is_consorcio: false, produto_agricola_id: "" });
   // talhões vinculados ao ciclo: { talhao_id -> area_plantada_ha (string para input) }
   const [cicloTalhoes, setCicloTalhoes] = useState<Record<string, string>>({});
   // área já comprometida por OUTROS ciclos que se sobrepõem no tempo: { talhao_id -> ha }
@@ -2001,7 +2001,7 @@ function CadastrosInner() {
   });
   // Calcula quantos ha cada talhão já tem comprometido em ciclos que se sobrepõem
   // ao intervalo [inicio, fim], excluindo o próprio ciclo em edição (excluirCicloId)
-  const calcularOcupacao = async (inicio: string, fim: string, excluirCicloId?: string, fazendaCicloId?: string) => {
+  const calcularOcupacao = async (inicio: string, fim: string, excluirCicloId?: string, fazendaCicloId?: string, excluirCicloPaiId?: string) => {
     if (!inicio || !fim) { setOcupado({}); return; }
     // Busca todos os ciclos da fazenda cujas datas se sobrepõem com [inicio, fim]
     const { data: ciclosOverlap } = await supabase
@@ -2011,9 +2011,11 @@ function CadastrosInner() {
       .lte("data_inicio", fim)   // ciclo começa antes do fim do atual
       .gte("data_fim",    inicio); // ciclo termina depois do início do atual
     if (!ciclosOverlap || ciclosOverlap.length === 0) { setOcupado({}); return; }
+    // Auxiliar em consórcio: a área do Ciclo Principal não entra como "ocupada" pra ele —
+    // os dois usam a mesma terra ao mesmo tempo, de propósito (ver Seção 336).
     const ids = ciclosOverlap
       .map((c: { id: string }) => c.id)
-      .filter(id => id !== excluirCicloId);
+      .filter(id => id !== excluirCicloId && id !== excluirCicloPaiId);
     if (ids.length === 0) { setOcupado({}); return; }
     const { data: cts } = await supabase
       .from("ciclo_talhoes")
@@ -2064,15 +2066,16 @@ function CadastrosInner() {
       ciclo_pai_id: c.ciclo_pai_id ?? "",
       absorcao_pct: c.absorcao_pct != null ? String(c.absorcao_pct) : "100",
       motivo_auxiliar: c.motivo_auxiliar ?? "",
+      is_consorcio: c.is_consorcio ?? false,
       produto_agricola_id: c.produto_agricola_id ?? autoPA(c.cultura),
-    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: autoPA("Soja") });
+    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", is_consorcio: false, produto_agricola_id: autoPA("Soja") });
     // carrega talhões vinculados se editando
     if (c) {
       const { data: ct } = await supabase.from("ciclo_talhoes").select("talhao_id,area_plantada_ha").eq("ciclo_id", c.id);
       const mapa: Record<string, string> = {};
       (ct ?? []).forEach((r: { talhao_id: string; area_plantada_ha: number }) => { mapa[r.talhao_id] = String(r.area_plantada_ha); });
       setCicloTalhoes(mapa);
-      if (inicio && fim) await calcularOcupacao(inicio, fim, c.id, fid);
+      if (inicio && fim) await calcularOcupacao(inicio, fim, c.id, fid, c.is_consorcio ? (c.ciclo_pai_id ?? undefined) : undefined);
     } else {
       setCicloTalhoes({});
     }
@@ -2112,6 +2115,7 @@ function CadastrosInner() {
       ciclo_pai_id: fCiclo.is_auxiliar && fCiclo.ciclo_pai_id ? fCiclo.ciclo_pai_id : null,
       absorcao_pct: fCiclo.is_auxiliar ? (parseFloat(fCiclo.absorcao_pct) || 100) : null,
       motivo_auxiliar: fCiclo.is_auxiliar && fCiclo.motivo_auxiliar.trim() ? fCiclo.motivo_auxiliar.trim() : null,
+      is_consorcio: fCiclo.is_auxiliar && fCiclo.ciclo_pai_id ? fCiclo.is_consorcio : false,
       produto_agricola_id: fCiclo.produto_agricola_id || null,
     };
     const fazCiclo = cicloFazendaId || (fazIdEff)!;
@@ -8876,7 +8880,7 @@ function CadastrosInner() {
           {/* Toggle Auxiliar */}
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:18, padding:"10px 14px", background:fCiclo.is_auxiliar?"#FBF3E0":"var(--bg-card)", borderRadius:10, border:`0.5px solid ${fCiclo.is_auxiliar?"#C9921B":"var(--border-table)"}` }}>
             <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
-              <input type="checkbox" checked={fCiclo.is_auxiliar} onChange={e => setFCiclo(p => ({ ...p, is_auxiliar: e.target.checked, ciclo_pai_id: "", absorcao_pct: "100", cultura: "" }))} style={{ width:16, height:16, cursor:"pointer" }} />
+              <input type="checkbox" checked={fCiclo.is_auxiliar} onChange={e => setFCiclo(p => ({ ...p, is_auxiliar: e.target.checked, ciclo_pai_id: "", absorcao_pct: "100", is_consorcio: false, cultura: "" }))} style={{ width:16, height:16, cursor:"pointer" }} />
               <span style={{ fontSize:13, fontWeight:700, color:fCiclo.is_auxiliar?"#7A5200":"var(--text-1)" }}>Ciclo Auxiliar</span>
             </label>
             <span style={{ fontSize:11, color:"var(--text-3)" }}>
@@ -8894,13 +8898,16 @@ function CadastrosInner() {
                 <select style={inp} value={fCiclo.ciclo_pai_id} onChange={e => {
                   const paiId = e.target.value;
                   const pai = ciclos.find(c => c.id === paiId);
+                  const novoInicio = pai && !fCiclo.data_inicio && !fCiclo.data_fim ? pai.data_inicio : fCiclo.data_inicio;
+                  const novoFim    = pai && !fCiclo.data_inicio && !fCiclo.data_fim ? pai.data_fim    : fCiclo.data_fim;
                   setFCiclo(p => ({
                     ...p, ciclo_pai_id: paiId,
                     // Consórcio: o auxiliar normalmente ocorre na MESMA janela do ciclo
                     // principal (mesma área, ao mesmo tempo) — herda as datas dele como
                     // sugestão, editável logo abaixo se o caso real for diferente.
-                    ...(pai && !p.data_inicio && !p.data_fim ? { data_inicio: pai.data_inicio, data_fim: pai.data_fim } : {}),
+                    data_inicio: novoInicio, data_fim: novoFim,
                   }));
+                  if (novoInicio && novoFim) calcularOcupacao(novoInicio, novoFim, editCiclo?.id, cicloFazendaId, fCiclo.is_consorcio ? paiId : undefined);
                 }}>
                   <option value="">— selecione —</option>
                   {ciclos.filter(c => !c.is_auxiliar && c.id !== editCiclo?.id).map(c => (
@@ -8914,10 +8921,24 @@ function CadastrosInner() {
                   value={fCiclo.absorcao_pct}
                   onChange={v => setFCiclo(p => ({ ...p, absorcao_pct: v }))} />
               </div>
+              <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:8 }}>
+                <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
+                  <input type="checkbox" checked={fCiclo.is_consorcio} style={{ width:15, height:15, cursor:"pointer" }}
+                    onChange={e => {
+                      const marcado = e.target.checked;
+                      setFCiclo(p => ({ ...p, is_consorcio: marcado }));
+                      if (fCiclo.data_inicio && fCiclo.data_fim) {
+                        calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, cicloFazendaId, marcado ? fCiclo.ciclo_pai_id : undefined);
+                      }
+                    }} />
+                  <span style={{ fontSize:12, fontWeight:600, color:"var(--text-1)" }}>Consórcio — ocupa a mesma área do ciclo principal, ao mesmo tempo</span>
+                </label>
+              </div>
               {fCiclo.ciclo_pai_id && (
                 <div style={{ gridColumn:"1/-1", background:"#FDE9BB", borderRadius:8, padding:"8px 12px", fontSize:11, color:"#7A5200" }}>
                   Os custos deste ciclo serão somados ao DRE do ciclo <strong>{ciclos.find(c => c.id === fCiclo.ciclo_pai_id)?.descricao}</strong>{fCiclo.absorcao_pct !== "100" ? ` (${fCiclo.absorcao_pct}% de absorção)` : ""}.
                   A cultura principal continua com suas próprias receitas e operações.
+                  {fCiclo.is_consorcio && " Como é consórcio, os talhões do ciclo principal não contam como \"ocupados\" pra este ciclo — os dois usam a mesma área."}
                 </div>
               )}
             </div>
@@ -8975,13 +8996,13 @@ function CadastrosInner() {
             <div>
               <label style={lbl}>Início *</label>
               <InputData style={{ ...inp, borderColor: !fCiclo.data_inicio ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_inicio}
-                onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId); }} />
+                onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId, fCiclo.is_consorcio ? fCiclo.ciclo_pai_id : undefined); }} />
               {!fCiclo.data_inicio && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>Data obrigatória</div>}
             </div>
             <div>
               <label style={lbl}>Fim *</label>
               <InputData style={{ ...inp, borderColor: !fCiclo.data_fim ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_fim}
-                onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId); }} />
+                onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId, fCiclo.is_consorcio ? fCiclo.ciclo_pai_id : undefined); }} />
               {!fCiclo.data_fim && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>Data obrigatória</div>}
             </div>
             {!fCiclo.is_auxiliar && (() => {
@@ -9033,7 +9054,7 @@ function CadastrosInner() {
                 setCicloTalhoes({});
                 setOcupado({});
                 await carregarTalhoesDeFazenda(fid);
-                if (fCiclo.data_inicio && fCiclo.data_fim) await calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, fid);
+                if (fCiclo.data_inicio && fCiclo.data_fim) await calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, fid, fCiclo.is_consorcio ? fCiclo.ciclo_pai_id : undefined);
               }}
             />
             {editCiclo
