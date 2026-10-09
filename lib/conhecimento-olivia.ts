@@ -184,6 +184,8 @@ Na grade de "Produtos Aplicados" (Pulverização Terrestre), a coluna **Total** 
 ### Produção → Adubação de Base / Correção de Solo
 Registram consumo de fertilizante/corretivo e dão baixa de estoque, sem CP nova (mesmo motivo do Plantio). Correção de Solo trabalha normalmente em toneladas e converte para a unidade do cadastro do insumo (referência 60 kg = 1 saca quando a conversão usa sc).
 
+**Adubação de Base — 2 bugs corrigidos 09/10/2026**: (1) a coluna "Safra / Talhão" do grid aparecia sempre em branco ("—") pra qualquer registro — a lista de aplicações já é conta-wide (mostra todas as fazendas juntas), mas a busca do nome do ciclo/talhão pra exibir só olhava a fazenda ativa da sessão; corrigido pra buscar em todas as fazendas da conta. (2) não existia botão de editar um lançamento já feito, só excluir — adicionado "✎ Editar" por linha, reabre o mesmo formulário preenchido; salvar a edição reverte o estoque do lançamento antigo e grava um novo no lugar (mesmo efeito de uma edição de verdade). Mesma classe de problema (grid sem editar, nem pra Plantio/Pulverização/Correção de Solo/Colheita Própria) — só Adubação de Base foi corrigida até agora, reportar se o dono pedir as outras.
+
 ### Produção → Tratamento de Sementes
 Estados: planejada → em tratamento → concluída / cancelada. A baixa de estoque só acontece se a opção "baixar estoque" for marcada ao concluir — não é automática por padrão.
 

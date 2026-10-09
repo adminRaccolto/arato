@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-m",
+    data: "09/10/2026",
+    titulo: "Adubação de Base: coluna Safra/Talhão em branco corrigida + botão Editar",
+    modulos: ["Lavoura"],
+    itens: [
+      { tipo: "correcao", texto: "A coluna \"Safra / Talhão\" do grid aparecia sempre em branco — a lista já mostra aplicações de todas as fazendas juntas, mas a busca do nome do ciclo/talhão só olhava a fazenda ativa da sessão. Corrigido pra buscar em todas as fazendas da conta." },
+      { tipo: "melhoria", texto: "Novo botão \"✎ Editar\" em cada linha — reabre o formulário preenchido; salvar a edição ajusta o estoque certinho (reverte o lançamento antigo e grava o novo)." },
+    ],
+    onde: "Produção → Adubação de Base",
+  },
+  {
     versao: "2026.10.09-l",
     data: "09/10/2026",
     titulo: "Baixa em lote e Confirmar Borderô: conta bancária agora lista todas as fazendas",

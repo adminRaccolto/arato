@@ -6,7 +6,7 @@ import TopNav from "../../../components/TopNav";
 import {
   listarTodosCiclos, listarTalhoes, listarInsumosParaConta,
   listarAnosSafra,
-  listarAdubacoesDaConta, criarAdubacao, criarAdubacaoItem, processarAdubacao, excluirAdubacao, listarFazendas,
+  listarAdubacoesDaConta, criarAdubacao, criarAdubacaoItem, listarAdubacaoItens, processarAdubacao, excluirAdubacao, listarFazendas,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -64,6 +64,7 @@ export default function AdubacaoBasePage() {
   const [erro, setErro]           = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   const [f, setF] = useState({
     ano_safra_sel: "", ciclo_id: "", talhao_id: "",
@@ -89,16 +90,17 @@ export default function AdubacaoBasePage() {
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
   }, [fazendaId, fazendaFiltro, contaId]);
 
-  // Ciclos e talhões — recarregam quando fazenda do formulário muda
+  // Ciclos e talhões pra exibição no grid (coluna "Safra / Talhão") — conta-wide, não só a
+  // fazenda do formulário (`fid`): a lista de aplicações já é conta-wide, então um registro de
+  // qualquer fazenda do cliente precisa achar o nome do ciclo/talhão dele aqui. O formulário de
+  // "+ Registrar Aplicação" não depende disso — o CascadeSelector busca os próprios ciclos/
+  // talhões da fazenda escolhida ali dentro, de forma independente.
   useEffect(() => {
-    if (!fid) return;
-    listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
-    listarTalhoes(fid).then(setTalhoes).catch(() => {});
-  }, [fid]);
-
-  const ciclosDisponiveis = cascade.anoSafraId
-    ? todosCiclos.filter(c => c.ano_safra_id === cascade.anoSafraId)
-    : todosCiclos;
+    if (fazendas.length === 0) return;
+    const ids = fazendas.map(f => f.id!);
+    Promise.all(ids.map(id => listarTodosCiclos(id))).then(lotes => setTodosCiclos(lotes.flat())).catch(() => {});
+    Promise.all(ids.map(id => listarTalhoes(id))).then(lotes => setTalhoes(lotes.flat())).catch(() => {});
+  }, [fazendas]);
 
   const areaHa = parseFloat(f.area_ha) || 0;
 
@@ -127,12 +129,43 @@ export default function AdubacaoBasePage() {
   function addItem() { setItens(p => [...p, { insumo_id: "", produto_nome: "", dose_kg_ha: "" }]); }
   function removeItem(i: number) { setItens(p => p.filter((_, idx) => idx !== i)); }
 
+  // Edição: reabre o mesmo formulário preenchido. Salvar com editandoId reverte o estoque do
+  // registro antigo (excluirAdubacao já faz isso certinho) e cria um novo no lugar — mesmo
+  // resultado de uma edição de verdade, sem precisar de um caminho de "atualizar com delta de
+  // estoque" separado e sem retestar.
+  async function abrirEditar(r: AdubacaoBase) {
+    setErro(null);
+    const ciclo = todosCiclos.find(c => c.id === r.ciclo_id);
+    setCascade({ fazendaId: r.fazenda_id, anoSafraId: ciclo?.ano_safra_id ?? "", cicloId: r.ciclo_id, talhaoId: r.talhao_id ?? "" });
+    setF({
+      ano_safra_sel: ciclo?.ano_safra_id ?? "",
+      ciclo_id: r.ciclo_id,
+      talhao_id: r.talhao_id ?? "",
+      modalidade: r.modalidade,
+      area_ha: String(r.area_ha),
+      data_aplicacao: r.data_aplicacao,
+      observacao: r.observacao ?? "",
+    });
+    try {
+      const itensExistentes = await listarAdubacaoItens(r.id);
+      setItens(itensExistentes.length > 0
+        ? itensExistentes.map(it => ({ insumo_id: it.insumo_id ?? "", produto_nome: it.produto_nome ?? "", dose_kg_ha: String(it.dose_kg_ha ?? "") }))
+        : [{ insumo_id: "", produto_nome: "", dose_kg_ha: "" }]);
+    } catch { setItens([{ insumo_id: "", produto_nome: "", dose_kg_ha: "" }]); }
+    setEditandoId(r.id);
+    setModal(true);
+  }
+
   async function salvar() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!f.ciclo_id || !f.area_ha || !f.data_aplicacao) return;
     if (calcItens.length === 0) { alert("Adicione ao menos um produto."); return; }
     try {
       setSalvando(true);
+      if (editandoId) {
+        await excluirAdubacao(editandoId);
+        setRegistros(p => p.filter(x => x.id !== editandoId));
+      }
       const reg = await criarAdubacao({
         fazenda_id: fid!,
         ciclo_id: f.ciclo_id,
@@ -147,7 +180,7 @@ export default function AdubacaoBasePage() {
       const nomes: Record<string, string> = {};
       for (const it of calcItens) {
         const item = await criarAdubacaoItem({
-          adubacao_id: reg.id, fazenda_id: fazendaId!,
+          adubacao_id: reg.id, fazenda_id: fid!,
           insumo_id: it.insumo_id || undefined,
           produto_nome: it.nome,
           dose_kg_ha: it.dose_kg_ha,
@@ -164,6 +197,7 @@ export default function AdubacaoBasePage() {
       setCascade({});
       setItens([{ insumo_id: "", produto_nome: "", dose_kg_ha: "" }]);
       setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", modalidade: "convencional", area_ha: "", data_aplicacao: "", observacao: "" });
+      setEditandoId(null);
     } catch (e) { alert((e as { message?: string })?.message || JSON.stringify(e)); }
     finally { setSalvando(false); }
   }
@@ -196,7 +230,7 @@ export default function AdubacaoBasePage() {
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             )}
-            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+            <button style={btnV} onClick={() => { setCascade({}); setEditandoId(null); setModal(true); }}>+ Registrar Aplicação</button>
           </div>
         </header>
 
@@ -247,7 +281,10 @@ export default function AdubacaoBasePage() {
                           {r.custo_total ? fmtBRL(r.custo_total) : "—"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <button style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</button>
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                            <button style={{ ...btnX, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }} onClick={() => abrirEditar(r)}>✎ Editar</button>
+                            <button style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -265,7 +302,7 @@ export default function AdubacaoBasePage() {
          >
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Registrar Adubação de Base</div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>{editandoId ? "✎ Editar Adubação de Base" : "Registrar Adubação de Base"}</div>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>NPK, micronutrientes, adubação foliar e fertirrigação</div>
 
@@ -304,7 +341,7 @@ export default function AdubacaoBasePage() {
               </div>
               <div>
                 <label style={lbl}>Data de Aplicação *</label>
-                <InputData style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
+                <InputData calendario style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Observação</label>
@@ -361,12 +398,12 @@ export default function AdubacaoBasePage() {
             )}
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
+              <button style={btnR} onClick={() => { setModal(false); setEditandoId(null); }}>Cancelar</button>
               <button
                 style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_aplicacao ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.area_ha || !f.data_aplicacao}
                 onClick={salvar}>
-                {salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}
+                {salvando ? "Salvando…" : editandoId ? "⟳ Salvar edição (reajusta o estoque)" : "⟳ Registrar e baixar estoque"}
               </button>
             </div>
           </div>
