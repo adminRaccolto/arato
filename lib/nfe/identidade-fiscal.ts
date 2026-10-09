@@ -39,11 +39,23 @@ export function aplicarInscricaoFiscal(
   const resultado = { ...config };
   const protegidos = new Set(["razao_social", "cpf_cnpj_emitente", "ie_emitente", "uf_emitente", "municipio_ibge", "municipio_nome", "cep", "logradouro", "numero", "complemento", "bairro", "cert_a1_path", "cert_a1_senha"]);
   for (const [campo, valor] of Object.entries(configIe ?? {})) if (!protegidos.has(campo)) resultado[campo] = valor;
+  // Endereço vem da IE quando ela tem o campo preenchido (o estabelecimento pode ser
+  // mesmo um endereço diferente do cadastro base) — mas NUNCA apaga um campo já
+  // preenchido em Parâmetros → Fiscal só porque a IE (Cadastros → Produtores) ainda
+  // não tem esse campo específico. Achado real 09/10/2026: toda primeira emissão de
+  // cliente novo falhava com "Código IBGE do emitente não configurado" mesmo com o
+  // município preenchido certinho em Parâmetros → Fiscal — a IE escolhida aqui vinha
+  // sem município_ibge próprio (comum: o cadastro de IE raramente repete o endereço
+  // completo) e sobrescrevia o valor correto por um vazio, incondicionalmente.
   return {
     ...resultado, razao_social: titular.nome, ie_emitente: inscricao.inscricao_estadual,
-    uf_emitente: inscricao.estado ?? "", municipio_ibge: inscricao.municipio_ibge ?? "",
-    municipio_nome: inscricao.municipio ?? "", cep: inscricao.cep ?? "",
-    logradouro: inscricao.logradouro ?? "", numero: inscricao.numero ?? "",
-    complemento: inscricao.complemento ?? "", bairro: inscricao.bairro ?? "",
+    uf_emitente: inscricao.estado || config.uf_emitente || "",
+    municipio_ibge: inscricao.municipio_ibge || config.municipio_ibge || "",
+    municipio_nome: inscricao.municipio || config.municipio_nome || "",
+    cep: inscricao.cep || config.cep || "",
+    logradouro: inscricao.logradouro || config.logradouro || "",
+    numero: inscricao.numero || config.numero || "",
+    complemento: inscricao.complemento || config.complemento || "",
+    bairro: inscricao.bairro || config.bairro || "",
   };
 }

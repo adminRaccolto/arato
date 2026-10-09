@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-c",
+    data: "09/10/2026",
+    titulo: "Corrigido de vez: \"Código IBGE do emitente não configurado\" na primeira NF-e de cada cliente",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Toda primeira emissão de NF-e de um CPF/CNPJ novo podia falhar com \"Código IBGE do município do emitente não configurado\", mesmo com o endereço certinho preenchido em Parâmetros → Fiscal. Causa: quando o emitente tem uma Inscrição Estadual cadastrada (Cadastros → Produtores → IEs), o sistema usa o endereço dessa IE — mas se a IE não repetir o município/IBGE (o normal é só preencher isso em Parâmetros → Fiscal mesmo), o IBGE correto era apagado e substituído por vazio, sem condição nenhuma." },
+      { tipo: "correcao", texto: "Agora cada campo de endereço (IBGE, município, CEP, logradouro, número, complemento, bairro) só vem da Inscrição Estadual quando ela de fato tiver esse campo preenchido — senão o sistema usa o que está em Parâmetros → Fiscal, em vez de apagar. Vale para todo emitente, de qualquer cliente, sem precisar reconfigurar nada." },
+    ],
+    onde: "Qualquer emissão de NF-e (Faturamento, Transferências, Remessa, Devolução)",
+  },
+  {
     versao: "2026.10.09-a",
     data: "09/10/2026",
     titulo: "Documentos Fiscais: filtros de Origem e Tipo de Entrada + Status em dropdown",

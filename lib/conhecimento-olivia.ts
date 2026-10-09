@@ -300,6 +300,8 @@ Configurações → Parâmetros Fiscais (NF-e): preencha CNPJ/IE do emitente, s�
 
 **"↺ Preencher do Cadastro"** (dentro do card de cada emitente): puxa nome, documento e endereço do cadastro de Produtor/Empresa e já grava direto — não é preciso clicar em "Salvar Parâmetros" depois. Inscrição Municipal não vem desse botão (o cadastro de Produtor não tem esse campo) — precisa digitar manualmente quando o emitente tiver.
 
+**"Código IBGE do município do emitente não configurado" mesmo com o endereço certo em Parâmetros → Fiscal**: bug corrigido (09/10/2026). Quando o emitente tem uma Inscrição Estadual ativa (Cadastros → Produtores → IEs), a emissão usa o endereço dessa IE — mas se a IE tiver sido cadastrada sem repetir o município/IBGE (comum, já que o endereço "de verdade" normalmente só é preenchido em Parâmetros → Fiscal), o sistema sobrescrevia o IBGE correto por um vazio vindo da IE, incondicionalmente. Agora cada campo de endereço (IBGE, município, CEP, logradouro, número, complemento, bairro) só vem da IE quando ela de fato tiver esse campo preenchido — senão usa o de Parâmetros → Fiscal. Isso batia em toda primeira emissão de cliente novo, não era específico de nenhuma conta.
+
 **"Como importo o extrato bancário (OFX)?"**
 Financeiro → Conciliação Bancária → escolha a conta certa e importe o arquivo. O sistema classifica cada linha como alta/média/bloqueado/nenhum confiança de vínculo — revise as de confiança média antes de confirmar, e trate separadamente as sem candidato.
 
