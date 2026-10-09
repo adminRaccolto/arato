@@ -1941,11 +1941,16 @@ export default function ModalNf({
       setWPedidos((data ?? []) as PedidoMin[]);
     } catch { setWPedidos([]); }
   }
-  // Carrega ciclos quando o ano safra muda no formulário
+  // Carrega ciclos quando o ano safra muda no formulário. Usa a fazenda DONA da NF
+  // (nfEdit.fazenda_id), não a fazenda ativa da sessão (fazendaId) — Documentos Fiscais
+  // lista NFs de todas as fazendas da conta de uma vez, então a fazenda ativa do TopNav
+  // raramente é a mesma da NF aberta; filtrar por ela escondia ciclos cadastrados na
+  // fazenda certa só porque outra fazenda da conta estava ativa no momento.
   useEffect(() => {
     if (!cab.ano_safra_id) { setCiclosNF([]); return; }
-    listarCiclos(cab.ano_safra_id, fazendaId).then(setCiclosNF).catch(() => setCiclosNF([]));
-  }, [cab.ano_safra_id, fazendaId]);
+    const fazCiclo = nfEdit?.fazenda_id ?? fazendaId;
+    listarCiclos(cab.ano_safra_id, fazCiclo).then(setCiclosNF).catch(() => setCiclosNF([]));
+  }, [cab.ano_safra_id, fazendaId, nfEdit?.fazenda_id]);
 
   // Reforço do auto-preenchimento de Produtor: se wProdutores só termina de carregar
   // DEPOIS que a NF já foi aberta (abrirEditar roda antes do re-render refletir o

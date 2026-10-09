@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-f",
+    data: "09/10/2026",
+    titulo: "NF de Produtos: seletor de Ciclo não mostrava todos os ciclos da fazenda da NF",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O dropdown de Ciclo (aba Operações da NF, quando vinculada a um ano safra) filtrava pela fazenda ativa da sessão em vez da fazenda dona da própria NF — como Documentos Fiscais lista NFs de todas as fazendas da conta juntas, abrir uma NF de uma fazenda diferente da ativa no TopNav escondia os ciclos certos. Corrigido para sempre usar a fazenda da NF sendo editada." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → editar NF → aba Operações",
+  },
+  {
     versao: "2026.10.09-e",
     data: "09/10/2026",
     titulo: "Corrigido: NF processada sumindo do Contas a Pagar em pedidos com várias entregas",
