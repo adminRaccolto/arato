@@ -8876,7 +8876,7 @@ function CadastrosInner() {
           {/* Toggle Auxiliar */}
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:18, padding:"10px 14px", background:fCiclo.is_auxiliar?"#FBF3E0":"var(--bg-card)", borderRadius:10, border:`0.5px solid ${fCiclo.is_auxiliar?"#C9921B":"var(--border-table)"}` }}>
             <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
-              <input type="checkbox" checked={fCiclo.is_auxiliar} onChange={e => setFCiclo(p => ({ ...p, is_auxiliar: e.target.checked, ciclo_pai_id: "", absorcao_pct: "100" }))} style={{ width:16, height:16, cursor:"pointer" }} />
+              <input type="checkbox" checked={fCiclo.is_auxiliar} onChange={e => setFCiclo(p => ({ ...p, is_auxiliar: e.target.checked, ciclo_pai_id: "", absorcao_pct: "100", cultura: "" }))} style={{ width:16, height:16, cursor:"pointer" }} />
               <span style={{ fontSize:13, fontWeight:700, color:fCiclo.is_auxiliar?"#7A5200":"var(--text-1)" }}>Ciclo Auxiliar</span>
             </label>
             <span style={{ fontSize:11, color:"var(--text-3)" }}>
@@ -8888,10 +8888,20 @@ function CadastrosInner() {
 
           {/* Seção Auxiliar — ciclo pai + absorção */}
           {fCiclo.is_auxiliar && (
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:14, marginBottom:18, padding:"14px 16px", background:"#FFFBF3", borderRadius:10, border:"0.5px solid #EDD8A0" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:14, marginBottom:18, padding:"14px 16px", background:"#FFFBF3", borderRadius:10, border:"0.5px solid #EDD8A0" }}>
               <div>
                 <label style={lbl}>Ciclo Principal (absorve os custos) *</label>
-                <select style={inp} value={fCiclo.ciclo_pai_id} onChange={e => setFCiclo(p => ({ ...p, ciclo_pai_id: e.target.value }))}>
+                <select style={inp} value={fCiclo.ciclo_pai_id} onChange={e => {
+                  const paiId = e.target.value;
+                  const pai = ciclos.find(c => c.id === paiId);
+                  setFCiclo(p => ({
+                    ...p, ciclo_pai_id: paiId,
+                    // Consórcio: o auxiliar normalmente ocorre na MESMA janela do ciclo
+                    // principal (mesma área, ao mesmo tempo) — herda as datas dele como
+                    // sugestão, editável logo abaixo se o caso real for diferente.
+                    ...(pai && !p.data_inicio && !p.data_fim ? { data_inicio: pai.data_inicio, data_fim: pai.data_fim } : {}),
+                  }));
+                }}>
                   <option value="">— selecione —</option>
                   {ciclos.filter(c => !c.is_auxiliar && c.id !== editCiclo?.id).map(c => (
                     <option key={c.id} value={c.id}>{c.descricao}</option>
@@ -8903,21 +8913,6 @@ function CadastrosInner() {
                 <InputNumerico style={inp} decimais={0} min="1" max="100" placeholder="100"
                   value={fCiclo.absorcao_pct}
                   onChange={v => setFCiclo(p => ({ ...p, absorcao_pct: v }))} />
-              </div>
-              <div>
-                <label style={lbl}>Tipo / Motivo</label>
-                <select style={inp} value={fCiclo.motivo_auxiliar} onChange={e => setFCiclo(p => ({ ...p, motivo_auxiliar: e.target.value }))}>
-                  <option value="">— selecione —</option>
-                  <option value="Milheto (cobertura de solo)">Milheto (cobertura de solo)</option>
-                  <option value="Crotalária (adubação verde)">Crotalária (adubação verde)</option>
-                  <option value="Braquiária (palhada/rotação)">Braquiária (palhada/rotação)</option>
-                  <option value="Nabo forrageiro">Nabo forrageiro</option>
-                  <option value="Urochloa inter-safra">Urochloa inter-safra</option>
-                  <option value="Aveia (cobertura/pastejo)">Aveia (cobertura/pastejo)</option>
-                  <option value="Feijão guandu">Feijão guandu</option>
-                  <option value="Sorgo biomassa">Sorgo biomassa</option>
-                  <option value="Outro">Outro</option>
-                </select>
               </div>
               {fCiclo.ciclo_pai_id && (
                 <div style={{ gridColumn:"1/-1", background:"#FDE9BB", borderRadius:8, padding:"8px 12px", fontSize:11, color:"#7A5200" }}>
@@ -8933,17 +8928,32 @@ function CadastrosInner() {
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição * (ex: Soja 2026/2027)</label><input style={inp} placeholder={fCiclo.is_auxiliar ? "Ex: Milheto 2025/2026" : "Soja 2026/2027"} value={fCiclo.descricao} onChange={e => setFCiclo(p => ({ ...p, descricao: e.target.value }))} /></div>
             <div>
               <label style={lbl}>Cultura *</label>
-              <select style={inp} value={fCiclo.cultura} onChange={e => {
-                const nome = e.target.value;
-                const base = nome.split(/[\s,]+/)[0].toLowerCase();
-                const match = insumosPA.find(i => i.nome.toLowerCase().startsWith(base));
-                setFCiclo(p => ({ ...p, cultura: nome, produto_agricola_id: match?.id ?? p.produto_agricola_id }));
-              }}>
-                {(culturasList.filter(c => c.ativa).length > 0
-                  ? culturasList.filter(c => c.ativa).map(c => c.nome)
-                  : CULTURAS
-                ).map(c => <option key={c}>{c}</option>)}
-              </select>
+              {(() => {
+                // Auxiliar (cobertura de solo, adubação verde) nunca mistura com as culturas
+                // comerciais principais (soja, milho…) e vice-versa — cada ciclo só pode
+                // apontar pra uma cultura do grupo certo, vindas do cadastro real de
+                // Cadastros → Culturas (categoria "Cobertura de Solo" x as demais).
+                const ativas = culturasList.filter(c => c.ativa);
+                const filtradas = fCiclo.is_auxiliar
+                  ? ativas.filter(c => c.categoria === "cobertura")
+                  : ativas.filter(c => c.categoria !== "cobertura");
+                const opcoes = filtradas.length > 0 ? filtradas.map(c => c.nome) : (fCiclo.is_auxiliar ? [] : CULTURAS);
+                return opcoes.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "#C9921B" }}>
+                    Nenhuma cultura de cobertura cadastrada ainda. Vá em Cadastros → Culturas → &quot;+ Nova Cultura&quot; e crie uma com categoria <strong>Cobertura de Solo</strong> (ex: Milheto, Crotalária, Braquiária).
+                  </div>
+                ) : (
+                  <select style={inp} value={fCiclo.cultura} onChange={e => {
+                    const nome = e.target.value;
+                    const base = nome.split(/[\s,]+/)[0].toLowerCase();
+                    const match = insumosPA.find(i => i.nome.toLowerCase().startsWith(base));
+                    setFCiclo(p => ({ ...p, cultura: nome, produto_agricola_id: match?.id ?? p.produto_agricola_id }));
+                  }}>
+                    <option value="">— selecione —</option>
+                    {opcoes.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                );
+              })()}
             </div>
             {!fCiclo.is_auxiliar && (
               <div style={{ gridColumn: "1/-1" }}>

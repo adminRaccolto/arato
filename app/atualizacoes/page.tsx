@@ -6,6 +6,28 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-i",
+    data: "09/10/2026",
+    titulo: "Campos de valor agora digitam da esquerda pra direita, como texto normal",
+    modulos: ["Sistema"],
+    itens: [
+      { tipo: "melhoria", texto: "Todo campo numérico mascarado (R$, kg, %, etc.) mudou de padrão: antes preenchia \"centavos primeiro\" (da direita pra esquerda, como calculadora — digitar um valor redondo tipo R$ 1.000,00 exigia digitar \"100000\"). Agora digita como texto comum: os dígitos entram na ordem natural, o ponto de milhar aparece sozinho a cada 3 dígitos, e os decimais só aparecem quando você mesmo digita a vírgula." },
+    ],
+    onde: "Todo campo de valor do sistema (lançamentos, recomendações agronômicas, operações, etc.)",
+  },
+  {
+    versao: "2026.10.09-h",
+    data: "09/10/2026",
+    titulo: "Ciclo Auxiliar: datas do consórcio, cultura filtrada por categoria",
+    modulos: ["Lavoura", "Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao escolher o Ciclo Principal num Ciclo Auxiliar, Início/Fim agora vêm pré-preenchidos com as mesmas datas dele (editável) — cobre o caso normal de consórcio, onde as duas culturas ocupam a mesma área ao mesmo tempo." },
+      { tipo: "melhoria", texto: "Removido o dropdown \"Tipo / Motivo\" (lista fixa de nomes de planta, redundante com o campo Cultura logo abaixo)." },
+      { tipo: "melhoria", texto: "O campo Cultura agora é filtrado pelo cadastro real de Cadastros → Culturas: Ciclo Principal só mostra culturas que não são de cobertura; Ciclo Auxiliar só mostra as cadastradas com categoria \"Cobertura de Solo\" — sem mais culturas comerciais (soja, milho…) aparecendo como opção de cobertura, nem o contrário." },
+    ],
+    onde: "Cadastros → Safras & Ciclos → Novo Ciclo",
+  },
+  {
     versao: "2026.10.09-g",
     data: "09/10/2026",
     titulo: "3 correções no Contas a Pagar e na Conciliação Bancária",
