@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-j",
+    data: "09/10/2026",
+    titulo: "Campo de data agora digita fluido, sem precisar de Tab",
+    modulos: ["Sistema"],
+    itens: [
+      { tipo: "melhoria", texto: "Todo campo de data trocou o calendário nativo do navegador (que exige Tab ou acertar exatamente 2 dígitos pra pular de dia pra mês pra ano) por um campo mascarado dd/mm/aaaa — digita os 8 números direto, sem parar, sem clicar em nada; as barras entram sozinhas." },
+    ],
+    onde: "Todo campo de data do sistema",
+  },
+  {
     versao: "2026.10.09-i",
     data: "09/10/2026",
     titulo: "Campos de valor agora digitam da esquerda pra direita, como texto normal",
