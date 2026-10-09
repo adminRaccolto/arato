@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.09-e",
+    data: "09/10/2026",
+    titulo: "Corrigido: NF processada sumindo do Contas a Pagar em pedidos com várias entregas",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Quando um Pedido de Compra era entregue em mais de uma NF (entrega parcial — situação normal), processar a NF mais nova reaproveitava o mesmo lançamento (CP) das NFs anteriores do mesmo pedido e sobrescrevia valor e descrição com os dados da NF nova — apagando, na prática, o Contas a Pagar das entregas anteriores. Só a última NF processada de cada pedido ficava com CP de verdade." },
+      { tipo: "correcao", texto: "Cada NF de um pedido agora sempre ganha seu próprio lançamento — o reaproveitamento só acontece quando o lançamento do pedido ainda não tem dono (pedido recém aprovado, antes de qualquer NF chegar)." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro (ao processar NF vinculada a Pedido de Compra)",
+  },
+  {
     versao: "2026.10.09-d",
     data: "09/10/2026",
     titulo: "Pulverização: coluna Total também aceita lançamento direto",

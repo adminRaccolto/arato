@@ -3126,10 +3126,19 @@ export async function processarNfEntrada(
         // mesma NF) e o código confiava nesse valor sem checar. Se sumiu,
         // trata como se não houvesse lançamento prévio (cria um novo abaixo)
         // e limpa a referência velha pra não repetir o problema depois.
-        const { data: lancExiste } = await supabase.from("lancamentos").select("id").eq("id", idCandidato).maybeSingle();
-        if (lancExiste) {
+        // Achado real 09/10/2026: um pedido pode ser entregue em VÁRIAS NFs (entrega parcial é
+        // normal) — mas esse "lançamento do pedido" é feito pra UMA só. Sem checar o dono atual,
+        // cada NF seguinte reaproveitava e REESCREVIA o mesmo lançamento (valor, nf_entrada_id,
+        // descrição) com os próprios dados — apagando silenciosamente o CP da NF anterior. 9+ NFs
+        // de um único pedido (Centro Oeste Mineração) colapsaram assim num só lançamento, cada
+        // reprocessamento substituindo o anterior; mesmo padrão achado em Dipagro e CJ Selecta.
+        // Só reaproveita se o lançamento ainda não tiver dono (nf_entrada_id nulo — pedido recém
+        // aprovado, sem NF nenhuma ainda) ou já for desta MESMA NF (reprocessamento/correção);
+        // se já pertence a outra NF, essa NF ganha seu próprio lançamento novo abaixo.
+        const { data: lancExiste } = await supabase.from("lancamentos").select("id, nf_entrada_id").eq("id", idCandidato).maybeSingle();
+        if (lancExiste && (!lancExiste.nf_entrada_id || lancExiste.nf_entrada_id === nfId)) {
           lancamentoIdPedido = idCandidato;
-        } else {
+        } else if (!lancExiste) {
           await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", opts.pedidoCompraId);
         }
       }
