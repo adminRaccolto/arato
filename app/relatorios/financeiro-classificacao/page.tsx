@@ -5,7 +5,7 @@ import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarOperacoesGerenciais } from "../../../lib/db";
+import { listarOperacoesGerenciais, listarEmpresaLancamentosComoLancamento } from "../../../lib/db";
 import type { Lancamento, OperacaoGerencial } from "../../../lib/supabase";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -240,9 +240,19 @@ function RelFinClassInner() {
   // classificações usadas nos lançamentos
   useEffect(() => {
     if (!fazendaId || ops.length === 0) return;
-    supabase.from("lancamentos")
-      .select("categoria, operacao_gerencial_id")
-      .in("fazenda_id", fazendaIds)
+    // Paginado (limite de 1.000 linhas por consulta) e inclui os títulos de empresa
+    const paginar = async (tabela: string) => {
+      let out: { categoria?: string; operacao_gerencial_id?: string }[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data: pg } = await supabase.from(tabela).select("categoria, operacao_gerencial_id")
+          .in("fazenda_id", fazendaIds).order("id", { ascending: true }).range(from, from + 999);
+        out = out.concat(pg ?? []);
+        if (!pg || pg.length < 1000) break;
+      }
+      return out;
+    };
+    Promise.all([paginar("lancamentos"), paginar("empresa_lancamentos")])
+      .then(([a, b]) => ({ data: [...a, ...b] }))
       .then(({ data }) => {
         const map = new Map<string, ClassifOpt>();
         (data ?? []).forEach((l: { categoria?: string; operacao_gerencial_id?: string }) => {
@@ -345,22 +355,47 @@ function RelFinClassInner() {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      let q = supabase
-        .from("lancamentos")
-        .select("*, pessoas(nome)")
-        .in("fazenda_id", fazendaIds)
-        .gte("data_vencimento", inicio)
-        .lte("data_vencimento", fim);
-
       const tipos = [...tipoSel];
-      if (tipos.length === 1) q = q.eq("tipo", tipos[0]);
-      if (statusSel.size > 0 && statusSel.size < Object.keys(STATUS_LABELS).length)
-        q = q.in("status", [...statusSel]);
-
-      const { data, error } = await q;
-      if (error) throw error;
-
+      const filtrarStatus = statusSel.size > 0 && statusSel.size < Object.keys(STATUS_LABELS).length;
+      // Paginado: o PostgREST corta em 1.000 linhas sem avisar (períodos longos perdiam títulos).
       type Raw = LancRow & { pessoas?: { nome: string } | null };
+      let data: Raw[] = [];
+      for (let from = 0; ; from += 1000) {
+        let q = supabase
+          .from("lancamentos")
+          .select("*, pessoas(nome)")
+          .in("fazenda_id", fazendaIds)
+          .gte("data_vencimento", inicio)
+          .lte("data_vencimento", fim)
+          .order("data_vencimento", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + 999);
+        if (tipos.length === 1) q = q.eq("tipo", tipos[0]);
+        if (filtrarStatus) q = q.in("status", [...statusSel]);
+        const { data: pg, error } = await q;
+        if (error) throw error;
+        data = data.concat((pg ?? []) as unknown as Raw[]);
+        if (!pg || pg.length < 1000) break;
+      }
+
+      // Títulos de EMPRESA ficam em empresa_lancamentos; sem eles o relatório só mostrava os antigos.
+      const empresaTit = (await listarEmpresaLancamentosComoLancamento(fazendaIds).catch(() => [] as Lancamento[]))
+        .filter(l => l.data_vencimento >= inicio && l.data_vencimento <= fim)
+        .filter(l => tipos.length !== 1 || l.tipo === tipos[0])
+        .filter(l => !filtrarStatus || statusSel.has(l.status));
+      const idsPessoa = [...new Set(empresaTit.map(l => (l as { pessoa_id?: string }).pessoa_id).filter(Boolean))] as string[];
+      const nomePessoa = new Map<string, string>();
+      for (let i = 0; i < idsPessoa.length; i += 150) {
+        const { data: ps } = await supabase.from("pessoas").select("id, nome").in("id", idsPessoa.slice(i, i + 150));
+        (ps ?? []).forEach((p: { id: string; nome: string }) => nomePessoa.set(p.id, p.nome));
+      }
+      const doEmpresa: Raw[] = empresaTit.map(l => ({
+        ...(l as unknown as Raw),
+        pessoas: (l as { pessoa_id?: string }).pessoa_id && nomePessoa.get((l as { pessoa_id?: string }).pessoa_id!)
+          ? { nome: nomePessoa.get((l as { pessoa_id?: string }).pessoa_id!)! } : null,
+      }));
+      data = [...data, ...doEmpresa];
+
       const loaded: LancRow[] = (data ?? []).map((l: Raw) => {
         const op = ops.find(o => o.id === l.operacao_gerencial_id);
         return {

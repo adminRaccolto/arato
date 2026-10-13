@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-k",
+    data: "13/10/2026",
+    titulo: "Gastos por Classificação: títulos de Empresa e períodos longos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O relatório Gastos por Classificação lia só os lançamentos do produtor; agora inclui os títulos de Empresa e as classificações usadas por eles aparecem no filtro." },
+      { tipo: "correcao", texto: "A consulta cortava em 1.000 linhas sem avisar, então períodos longos perdiam títulos. Agora é paginada." },
+    ],
+    onde: "Resultados → Gastos por Classificação",
+  },
+  {
     versao: "2026.10.13-j",
     data: "13/10/2026",
     titulo: "Relatório CP/CR: lançamentos de Empresa recentes não apareciam",
