@@ -1706,7 +1706,11 @@ function CtePageInner() {
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{c.motorista_nome || "—"}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(c.valor_frete)}</td>
-                      <td style={{ padding: "10px 12px" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      <td style={{ padding: "10px 12px" }}>
+                        {badge(sm.label, sm.bg, sm.cl)}
+                        {c.tipo_cte === "substituto" && <div style={{ marginTop: 4 }}>{badge("Substituto", "#E3EEF9", "#0B2D50")}</div>}
+                        {c.status === "substituido" && c.cte_substituto_chave && <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>por …{c.cte_substituto_chave.slice(-8)}</div>}
+                      </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", whiteSpace: "nowrap" }}>
                           {c.status === "rascunho" && (
