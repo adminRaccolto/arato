@@ -74,7 +74,7 @@ export default function NovaSenha() {
 
         {/* Conteúdo */}
         <div style={{ padding: "32px 40px 36px" }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>
+          <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>
             Nova senha
           </h2>
           <p style={{ margin: "0 0 28px", fontSize: 13, color: "var(--text-3)" }}>
@@ -112,7 +112,7 @@ export default function NovaSenha() {
           ) : (
             <form onSubmit={definirNovaSenha}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, letterSpacing: "0.06em" }}>
+                <label data-arato-label="true" style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, letterSpacing: "0.06em" }}>
                   NOVA SENHA
                 </label>
                 <input
@@ -128,7 +128,7 @@ export default function NovaSenha() {
               </div>
 
               <div style={{ marginBottom: 28 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, letterSpacing: "0.06em" }}>
+                <label data-arato-label="true" style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, letterSpacing: "0.06em" }}>
                   CONFIRMAR SENHA
                 </label>
                 <input
@@ -143,7 +143,7 @@ export default function NovaSenha() {
                 />
               </div>
 
-              <button
+              <button data-arato-button="toggle"
                 type="submit"
                 disabled={carregando || !sessaoOk}
                 style={{

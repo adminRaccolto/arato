@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { calcINSS, calcIRRF, vencimentoSalario } from "../../../lib/folha-calculo";
@@ -1436,10 +1437,10 @@ export default function FolhaPagamentoPage() {
             <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
               <div>
                 <label data-arato-label="true" style={S.label}>Funcionário *</label>
-                <select value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
+                <SelectField value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
@@ -1459,10 +1460,10 @@ export default function FolhaPagamentoPage() {
               {!adiEdit.id && (
                 <div>
                   <label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
-                  <select value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
+                  <SelectField value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
                     <option value="">{adiEdit.funcionario_id ? "Selecionar..." : "Escolha o funcionário primeiro"}</option>
                     {contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
+                  </SelectField>
                   <span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span>
                 </div>
               )}
@@ -1493,10 +1494,10 @@ export default function FolhaPagamentoPage() {
             <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
               <div>
                 <label data-arato-label="true" style={S.label}>Funcionário *</label>
-                <select value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
+                <SelectField value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>

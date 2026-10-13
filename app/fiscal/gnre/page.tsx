@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -204,19 +205,19 @@ export default function GnrePage() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>GNRE</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>GNRE</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Guias Nacionais de Recolhimento de Tributos Estaduais
             </p>
           </div>
-          <button
+          <button data-arato-button="primary"
             onClick={() => abrirModal()}
             style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
@@ -232,7 +233,7 @@ export default function GnrePage() {
             { label: "Pago no Mês",  value: fmt(pagaMes),         sub: "Competência atual",        cor: "#166534", bg: "#DCFCE7" },
             { label: "Total Guias",  value: String(ativas.length),sub: "emitidas + pendentes",     cor: "var(--text-2)",    bg: "var(--bg-page)" },
           ].map((k, i) => (
-            <div key={i} style={{ ...card, background: k.bg, borderColor: "transparent" }}>
+            <div data-arato-statistic="display" key={i} style={{ ...card, background: k.bg, borderColor: "transparent" }}>
               <div style={{ fontSize: 11, color: k.cor, fontWeight: 600, marginBottom: 6, opacity: 0.8 }}>{k.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.value}</div>
               <div style={{ fontSize: 11, color: k.cor, opacity: 0.6, marginTop: 2 }}>{k.sub}</div>
@@ -241,20 +242,20 @@ export default function GnrePage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <input
             placeholder="Buscar por tipo, UF, documento..."
             value={busca} onChange={e => setBusca(e.target.value)}
             style={{ ...inp, width: 280 }}
           />
-          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 160 }}>
+          <SelectField value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 160 }}>
             <option value="todas">Todos os status</option>
             {Object.entries(STATUS_COR).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-          <select value={filtroUF} onChange={e => setFiltroUF(e.target.value)} style={{ ...inp, width: 130 }}>
+          </SelectField>
+          <SelectField value={filtroUF} onChange={e => setFiltroUF(e.target.value)} style={{ ...inp, width: 130 }}>
             <option value="">Todas as UFs</option>
             {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-          </select>
+          </SelectField>
         </div>
 
         {/* Tabela */}
@@ -262,13 +263,13 @@ export default function GnrePage() {
           {loading ? (
             <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando...</div>
           ) : lista.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)" }}>
+            <div data-arato-statistic="display" style={{ textAlign: "center", padding: 60, color: "var(--text-3)" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhuma GNRE encontrada</div>
               <div style={{ fontSize: 12 }}>Clique em "+ Nova GNRE" para emitir sua primeira guia.</div>
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#F8FAFF" }}>
                   {["Tipo/Receita","UF","Doc. Origem","Competência","Vencimento","Valor Total","Status","Ações"].map(h => (
@@ -302,23 +303,23 @@ export default function GnrePage() {
                       <td style={{ padding: "9px 10px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
                           {g.status === "rascunho" && (
-                            <button onClick={() => emitir(g)}
+                            <button data-arato-button="primary" onClick={() => emitir(g)}
                               style={{ padding: "4px 10px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Emitir
                             </button>
                           )}
                           {(g.status === "emitida" || g.status === "vencida") && (
-                            <button onClick={() => { setPagarModal(g); setDataPgto(hoje); }}
+                            <button data-arato-button="primary" onClick={() => { setPagarModal(g); setDataPgto(hoje); }}
                               style={{ padding: "4px 10px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Pagar
                             </button>
                           )}
-                          <button onClick={() => abrirModal(g)}
+                          <button data-arato-button="secondary" onClick={() => abrirModal(g)}
                             style={{ padding: "4px 10px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                             Editar
                           </button>
                           {g.status !== "paga" && g.status !== "cancelada" && (
-                            <button onClick={() => cancelar(g.id)}
+                            <button data-arato-button="icon" onClick={() => cancelar(g.id)}
                               style={{ padding: "4px 8px", background: "none", border: "none", fontSize: 14, cursor: "pointer", color: "#E24B4A" }}>
                               ✕
                             </button>
@@ -336,110 +337,110 @@ export default function GnrePage() {
 
       {/* ── Modal Nova/Editar GNRE ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
 
-            <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>{editando ? "Editar GNRE" : "Nova GNRE"}</span>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
             </div>
 
-            <div style={{ padding: "22px 24px", display: "grid", gap: 16 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "22px 24px", display: "grid", gap: 16 }}>
               {/* Tipo de receita */}
-              <div>
-                <label style={lbl}>Tipo de Receita *</label>
-                <select value={form.tipo_receita} onChange={e => setForm(f => ({ ...f, tipo_receita: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo de Receita *</label>
+                <SelectField value={form.tipo_receita} onChange={e => setForm(f => ({ ...f, tipo_receita: e.target.value }))} style={inp}>
                   <option value="">Selecione...</option>
                   {TIPOS_RECEITA.map(t => <option key={t.codigo} value={t.codigo}>{t.codigo} — {t.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
 
               {/* UF + Emitente */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>UF Favorecida (Destino) *</label>
-                  <select value={form.uf_favorecida} onChange={e => setForm(f => ({ ...f, uf_favorecida: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>UF Favorecida (Destino) *</label>
+                  <SelectField value={form.uf_favorecida} onChange={e => setForm(f => ({ ...f, uf_favorecida: e.target.value }))} style={inp}>
                     <option value="">Selecione...</option>
                     {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>UF Emitente</label>
-                  <select value={form.uf_emitente} onChange={e => setForm(f => ({ ...f, uf_emitente: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>UF Emitente</label>
+                  <SelectField value={form.uf_emitente} onChange={e => setForm(f => ({ ...f, uf_emitente: e.target.value }))} style={inp}>
                     {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
               </div>
 
               {/* Documento + Competência */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Documento de Origem (NF-e / número)</label>
+                  <label data-arato-label="true" style={lbl}>Documento de Origem (NF-e / número)</label>
                   <input value={form.documento_origem} onChange={e => setForm(f => ({ ...f, documento_origem: e.target.value }))}
                     placeholder="Ex: 35250312345678000199550010000012341234567890" style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Competência</label>
+                  <label data-arato-label="true" style={lbl}>Competência</label>
                   <InputData type="month" value={form.competencia} onChange={e => setForm(f => ({ ...f, competencia: e.target.value }))} style={inp} />
                 </div>
               </div>
 
               {/* Valores */}
-              <div style={{ background: "#F8FAFF", borderRadius: 8, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-panel="true" data-arato-fields="true" style={{ background: "#F8FAFF", borderRadius: 8, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Valor Principal (R$) *</label>
+                  <label data-arato-label="true" style={lbl}>Valor Principal (R$) *</label>
                   <InputNumerico min="0"
                     value={form.valor_principal}
                     onChange={v => setForm(f => ({ ...f, valor_principal: parseFloat(v) || 0 }))}
                     style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Juros (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Juros (R$)</label>
                   <InputNumerico min="0"
                     value={form.valor_juros}
                     onChange={v => setForm(f => ({ ...f, valor_juros: parseFloat(v) || 0 }))}
                     style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Multa (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Multa (R$)</label>
                   <InputNumerico min="0"
                     value={form.valor_multa}
                     onChange={v => setForm(f => ({ ...f, valor_multa: parseFloat(v) || 0 }))}
                     style={inp} />
                 </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", justifyContent: "flex-end" }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#111111" }}>
                   Total: {fmt(form.valor_principal + form.valor_juros + form.valor_multa)}
                 </span>
               </div>
 
               {/* Vencimento */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Vencimento</label>
+                  <label data-arato-label="true" style={lbl}>Vencimento</label>
                   <InputData type="date" value={form.vencimento} onChange={e => setForm(f => ({ ...f, vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Status</label>
-                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusGNRE }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Status</label>
+                  <SelectField value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusGNRE }))} style={inp}>
                     {Object.entries(STATUS_COR).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
               </div>
 
               {/* Obs */}
-              <div>
-                <label style={lbl}>Observações</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observações</label>
                 <textarea value={form.obs} onChange={e => setForm(f => ({ ...f, obs: e.target.value }))}
                   rows={2} style={{ ...inp, resize: "vertical" }} placeholder="NF relacionada, motivo da guia, etc." />
               </div>
             </div>
 
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando || !form.tipo_receita || !form.uf_favorecida}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvar} disabled={salvando || !form.tipo_receita || !form.uf_favorecida}
                 style={{ padding: "9px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando..." : editando ? "Salvar" : "Criar GNRE"}
               </button>
@@ -450,18 +451,18 @@ export default function GnrePage() {
 
       {/* ── Modal Registrar Pagamento ── */}
       {pagarModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 360, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Registrar Pagamento</div>
-            <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 360, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Registrar Pagamento</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>
               {pagarModal.tipo_receita} — UF {pagarModal.uf_favorecida}
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#111111", marginBottom: 20 }}>{fmt(pagarModal.valor_total)}</div>
-            <label style={lbl}>Data do Pagamento</label>
+            <div data-arato-dialog-body="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", marginBottom: 20 }}>{fmt(pagarModal.valor_total)}</div>
+            <label data-arato-label="true" style={lbl}>Data do Pagamento</label>
             <InputData type="date" value={dataPgto} onChange={e => setDataPgto(e.target.value)} style={{ ...inp, marginBottom: 20 }} />
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button onClick={registrarPagamento} style={{ flex: 1, padding: "9px 0", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Confirmar</button>
+            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+              <button data-arato-button="secondary" onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={registrarPagamento} style={{ flex: 1, padding: "9px 0", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Confirmar</button>
             </div>
           </div>
         </div>

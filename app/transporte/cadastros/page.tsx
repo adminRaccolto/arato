@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -72,13 +73,13 @@ function diasParaVencerCnh(val?: string): number | null {
 // ── Modal genérico ────────────────────────────────────────────────────────────
 function Modal({ titulo, onClose, children, width = 720 }: { titulo: string; onClose: () => void; children: React.ReactNode; width?: number }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
         </div>
-        <div style={{ padding: 20, overflowY: "auto" }}>{children}</div>
+        <div data-arato-dialog-body="true" style={{ padding: 20, overflowY: "auto" }}>{children}</div>
       </div>
     </div>
   );
@@ -88,7 +89,7 @@ function Modal({ titulo, onClose, children, width = 720 }: { titulo: string; onC
 function Campo({ label, required, children }: { label: React.ReactNode; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label style={lbl}>{label}{required && <span style={{ color: "#E24B4A" }}> *</span>}</label>
+      <label data-arato-label="true" style={lbl}>{label}{required && <span style={{ color: "#E24B4A" }}> *</span>}</label>
       {children}
     </div>
   );
@@ -272,15 +273,15 @@ export default function TransporteCadastrosPage() {
       <div style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Cadastros de Transporte</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Cadastros de Transporte</h1>
             <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Transportadoras, veículos e motoristas — usados em NF-e, CT-e e MDF-e</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar…"
               style={{ ...inp, width: 180 }} />
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
+            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
               <input type="checkbox" checked={soAtivos} onChange={e => setSoAtivos(e.target.checked)} />
               Só ativos
             </label>
@@ -294,7 +295,7 @@ export default function TransporteCadastrosPage() {
             ["veiculos",        `Veículos / Caminhões (${veicFilt.length})`],
             ["motoristas",      `Motoristas (${motorFilt.length})`],
           ] as [Aba, string][]).map(([a, l]) => (
-            <button key={a} onClick={() => { setAba(a); setBusca(""); }}
+            <button data-arato-button="toggle" key={a} onClick={() => { setAba(a); setBusca(""); }}
               style={{ padding: "10px 20px", border: "none", borderBottom: aba === a ? "2px solid #2A2A2A" : "2px solid transparent",
                 background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#2A2A2A" : "var(--text-2)", cursor: "pointer" }}>
               {l}
@@ -306,14 +307,14 @@ export default function TransporteCadastrosPage() {
         {aba === "transportadoras" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
-              <button style={{ ...btnR, display: "flex", alignItems: "center", gap: 5 }}
+              <button data-arato-button="secondary" style={{ ...btnR, display: "flex", alignItems: "center", gap: 5 }}
                 onClick={sincronizarDeEmpresas} disabled={sincronizando}>
                 {sincronizando ? "Importando…" : "⟳ Importar de Empresas"}
               </button>
-              <button style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</button>
+              <button data-arato-button="primary" style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</button>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Razão Social / Nome Fantasia", "CNPJ / CPF", "IE", "RNTRC", "Município / UF", "Status", ""].map(h => (
@@ -346,7 +347,7 @@ export default function TransporteCadastrosPage() {
                         </span>
                       </td>
                       <td style={{ padding: "10px 12px" }}>
-                        <button style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalT(t)}>Editar</button>
+                        <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalT(t)}>Editar</button>
                       </td>
                     </tr>
                   ))}
@@ -360,10 +361,10 @@ export default function TransporteCadastrosPage() {
         {aba === "veiculos" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-              <button style={btnV} onClick={() => setModalV({ ativo: true })}>+ Novo Veículo</button>
+              <button data-arato-button="primary" style={btnV} onClick={() => setModalV({ ativo: true })}>+ Novo Veículo</button>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Placa", "Tipo", "Carroceria", "Tara / Cap.", "RENAVAM", "Transportadora", "Status", ""].map(h => (
@@ -397,7 +398,7 @@ export default function TransporteCadastrosPage() {
                         </span>
                       </td>
                       <td style={{ padding: "10px 12px" }}>
-                        <button style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalV(v)}>Editar</button>
+                        <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalV(v)}>Editar</button>
                       </td>
                     </tr>
                   ))}
@@ -411,10 +412,10 @@ export default function TransporteCadastrosPage() {
         {aba === "motoristas" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-              <button style={btnV} onClick={() => setModalM({ ativo: true })}>+ Novo Motorista</button>
+              <button data-arato-button="primary" style={btnV} onClick={() => setModalM({ ativo: true })}>+ Novo Motorista</button>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Nome", "CPF", "CNH / Categoria / UF", "Validade CNH", "Transportadora", "Telefone", "Status", ""].map(h => (
@@ -462,7 +463,7 @@ export default function TransporteCadastrosPage() {
                           </span>
                         </td>
                         <td style={{ padding: "10px 12px" }}>
-                          <button style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalM(m)}>Editar</button>
+                          <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalM(m)}>Editar</button>
                         </td>
                       </tr>
                     );
@@ -479,7 +480,7 @@ export default function TransporteCadastrosPage() {
         <Modal titulo={modalT.id ? "Editar Transportadora" : "Nova Transportadora"} onClose={() => setModalT(null)} width={800}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
               <Campo label="Razão Social" required>
                 <input style={inp} value={modalT.razao_social ?? ""} onChange={e => setModalT(p => ({ ...p!, razao_social: e.target.value }))} placeholder="Transportes XYZ Ltda" />
               </Campo>
@@ -488,7 +489,7 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
               <Campo label="CNPJ">
                 <input style={inp} value={modalT.cnpj ?? ""} onChange={e => setModalT(p => ({ ...p!, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" />
               </Campo>
@@ -503,9 +504,9 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
+            <div data-arato-panel="true" style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Endereço</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <Campo label="CEP">
                   <input style={inp} value={modalT.cep ?? ""} onChange={e => setModalT(p => ({ ...p!, cep: e.target.value }))}
                     onBlur={e => buscarCep(e.target.value, setModalT as never)} placeholder="00000-000" />
@@ -520,15 +521,15 @@ export default function TransporteCadastrosPage() {
                   <input style={inp} value={modalT.bairro ?? ""} onChange={e => setModalT(p => ({ ...p!, bairro: e.target.value }))} />
                 </Campo>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
                 <Campo label="Município">
                   <input style={inp} value={modalT.municipio ?? ""} onChange={e => setModalT(p => ({ ...p!, municipio: e.target.value }))} />
                 </Campo>
                 <Campo label="UF">
-                  <select style={inp} value={modalT.uf ?? ""} onChange={e => setModalT(p => ({ ...p!, uf: e.target.value }))}>
+                  <SelectField style={inp} value={modalT.uf ?? ""} onChange={e => setModalT(p => ({ ...p!, uf: e.target.value }))}>
                     <option value="">—</option>
                     {UFS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  </SelectField>
                 </Campo>
                 <Campo label="Telefone">
                   <input style={inp} value={modalT.telefone ?? ""} onChange={e => setModalT(p => ({ ...p!, telefone: e.target.value }))} placeholder="(65) 99999-9999" />
@@ -543,24 +544,24 @@ export default function TransporteCadastrosPage() {
             {empresas.length > 0 && (
               <div>
                 <Campo label="Empresa Própria (vínculo jurídico)">
-                  <select style={inp} value={modalT.empresa_id ?? ""} onChange={e => setModalT(p => ({ ...p!, empresa_id: e.target.value || undefined }))}>
+                  <SelectField style={inp} value={modalT.empresa_id ?? ""} onChange={e => setModalT(p => ({ ...p!, empresa_id: e.target.value || undefined }))}>
                     <option value="">— Transportadora externa —</option>
                     {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                  </select>
+                  </SelectField>
                 </Campo>
               </div>
             )}
 
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={modalT.ativa ?? true} onChange={e => setModalT(p => ({ ...p!, ativa: e.target.checked }))} />
                 Ativa
               </label>
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button style={btnR} onClick={() => setModalT(null)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarT}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalT(null)}>Cancelar</button>
+              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarT}>
                 {salvando ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -573,16 +574,16 @@ export default function TransporteCadastrosPage() {
         <Modal titulo={modalV.id ? "Editar Veículo" : "Novo Veículo"} onClose={() => setModalV(null)} width={800}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12 }}>
               <Campo label="Placa" required>
                 <input style={{ ...inp, fontFamily: "monospace", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}
                   value={modalV.placa ?? ""} onChange={e => setModalV(p => ({ ...p!, placa: e.target.value.toUpperCase() }))} placeholder="ABC1D23" maxLength={8} />
               </Campo>
               <Campo label="UF Placa">
-                <select style={inp} value={modalV.uf_placa ?? ""} onChange={e => setModalV(p => ({ ...p!, uf_placa: e.target.value }))}>
+                <SelectField style={inp} value={modalV.uf_placa ?? ""} onChange={e => setModalV(p => ({ ...p!, uf_placa: e.target.value }))}>
                   <option value="">—</option>
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="RENAVAM">
                 <input style={inp} value={modalV.renavam ?? ""} onChange={e => setModalV(p => ({ ...p!, renavam: e.target.value }))} placeholder="00000000000" maxLength={11} />
@@ -591,25 +592,25 @@ export default function TransporteCadastrosPage() {
                 <input style={inp} value={modalV.rntrc ?? ""} onChange={e => setModalV(p => ({ ...p!, rntrc: e.target.value }))} placeholder="12345678" />
               </Campo>
               <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
                   <input type="checkbox" checked={modalV.ativo ?? true} onChange={e => setModalV(p => ({ ...p!, ativo: e.target.checked }))} />
                   Ativo
                 </label>
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
               <Campo label="Tipo de Veículo">
-                <select style={inp} value={modalV.tipo ?? ""} onChange={e => setModalV(p => ({ ...p!, tipo: e.target.value }))}>
+                <SelectField style={inp} value={modalV.tipo ?? ""} onChange={e => setModalV(p => ({ ...p!, tipo: e.target.value }))}>
                   <option value="">— selecione —</option>
                   {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="Tipo de Carroceria">
-                <select style={inp} value={modalV.tipo_carroceria ?? ""} onChange={e => setModalV(p => ({ ...p!, tipo_carroceria: e.target.value }))}>
+                <SelectField style={inp} value={modalV.tipo_carroceria ?? ""} onChange={e => setModalV(p => ({ ...p!, tipo_carroceria: e.target.value }))}>
                   <option value="">— selecione —</option>
                   {TIPOS_CARROCERIA.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="Tara (kg)">
                 <input style={inp} type="number" min={0} value={modalV.tara_kg ?? ""} onChange={e => setModalV(p => ({ ...p!, tara_kg: parseFloat(e.target.value) || undefined }))} placeholder="Ex: 14000" />
@@ -619,7 +620,7 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
               <Campo label="Marca">
                 <input style={inp} value={modalV.marca ?? ""} onChange={e => setModalV(p => ({ ...p!, marca: e.target.value }))} placeholder="Scania, Volvo, Mercedes…" />
               </Campo>
@@ -634,24 +635,24 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <Campo label="Transportadora proprietária">
-                <select style={inp} value={modalV.transportadora_id ?? ""} onChange={e => setModalV(p => ({ ...p!, transportadora_id: e.target.value || undefined }))}>
+                <SelectField style={inp} value={modalV.transportadora_id ?? ""} onChange={e => setModalV(p => ({ ...p!, transportadora_id: e.target.value || undefined }))}>
                   <option value="">— proprietário autônomo —</option>
                   {transportadoras.filter(t => t.ativa).map(t => <option key={t.id} value={t.id}>{t.razao_social}</option>)}
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="Motorista habitual">
-                <select style={inp} value={modalV.motorista_habitual_id ?? ""} onChange={e => setModalV(p => ({ ...p!, motorista_habitual_id: e.target.value || undefined }))}>
+                <SelectField style={inp} value={modalV.motorista_habitual_id ?? ""} onChange={e => setModalV(p => ({ ...p!, motorista_habitual_id: e.target.value || undefined }))}>
                   <option value="">— nenhum —</option>
                   {motoristas.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
+                </SelectField>
               </Campo>
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button style={btnR} onClick={() => setModalV(null)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarV}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalV(null)}>Cancelar</button>
+              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarV}>
                 {salvando ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -664,7 +665,7 @@ export default function TransporteCadastrosPage() {
         <Modal titulo={modalM.id ? "Editar Motorista" : "Novo Motorista"} onClose={() => setModalM(null)} width={720}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
               <Campo label="Nome completo" required>
                 <input style={inp} value={modalM.nome ?? ""} onChange={e => setModalM(p => ({ ...p!, nome: e.target.value }))} placeholder="João da Silva" />
               </Campo>
@@ -673,23 +674,23 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ padding: "12px 16px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #F0D888" }}>
+            <div data-arato-panel="true" style={{ padding: "12px 16px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #F0D888" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#7A5A12", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>CNH — Carteira Nacional de Habilitação</div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
                 <Campo label="Nº da CNH">
                   <input style={inp} value={modalM.cnh_numero ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_numero: e.target.value }))} placeholder="00000000000" maxLength={11} />
                 </Campo>
                 <Campo label="Categoria">
-                  <select style={inp} value={modalM.cnh_categoria ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_categoria: e.target.value }))}>
+                  <SelectField style={inp} value={modalM.cnh_categoria ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_categoria: e.target.value }))}>
                     <option value="">—</option>
                     {CNH_CATS.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  </SelectField>
                 </Campo>
                 <Campo label="UF Emissão">
-                  <select style={inp} value={modalM.cnh_uf ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_uf: e.target.value }))}>
+                  <SelectField style={inp} value={modalM.cnh_uf ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_uf: e.target.value }))}>
                     <option value="">—</option>
                     {UFS.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  </SelectField>
                 </Campo>
                 <Campo label="Validade">
                   <InputData style={inp} type="date" value={modalM.cnh_validade ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_validade: e.target.value }))} />
@@ -701,14 +702,14 @@ export default function TransporteCadastrosPage() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
               <Campo label={<>Transportadora {modalM.transportadora_id
                 ? <span style={{ color: "#16A34A", fontWeight: 700 }}>· CLT</span>
                 : <span style={{ color: "#C9921B", fontWeight: 700 }}>· Autônomo (TAC)</span>}</>}>
-                <select style={inp} value={modalM.transportadora_id ?? ""} onChange={e => setModalM(p => ({ ...p!, transportadora_id: e.target.value || undefined }))}>
+                <SelectField style={inp} value={modalM.transportadora_id ?? ""} onChange={e => setModalM(p => ({ ...p!, transportadora_id: e.target.value || undefined }))}>
                   <option value="">— autônomo (TAC — CIOT obrigatório) —</option>
                   {transportadoras.filter(t => t.ativa).map(t => <option key={t.id} value={t.id}>{t.razao_social}</option>)}
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="Telefone">
                 <input style={inp} value={modalM.telefone ?? ""} onChange={e => setModalM(p => ({ ...p!, telefone: e.target.value }))} placeholder="(65) 99999-9999" />
@@ -719,15 +720,15 @@ export default function TransporteCadastrosPage() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={modalM.ativo ?? true} onChange={e => setModalM(p => ({ ...p!, ativo: e.target.checked }))} />
                 Ativo
               </label>
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button style={btnR} onClick={() => setModalM(null)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarM}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalM(null)}>Cancelar</button>
+              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarM}>
                 {salvando ? "Salvando…" : "Salvar"}
               </button>
             </div>

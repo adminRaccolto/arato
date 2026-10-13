@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -130,19 +131,19 @@ export default function AdminParceiros() {
 
   return (
     <div style={{ padding: "24px 32px", fontFamily: "system-ui, sans-serif", maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Parceiros BPO</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Parceiros BPO</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Empresas de BPO que gerenciam clientes no Arato sob sua própria identidade.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => { setModal("usuario"); setMsg(null); }}
+          <button data-arato-button="secondary" onClick={() => { setModal("usuario"); setMsg(null); }}
             style={{ background: "#fff", border: "0.5px solid #1A4870", color: "#1A4870", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
             + Usuário BPO
           </button>
-          <button onClick={() => { setModal("parceiro"); setEditando(null); setForm(FORM_VAZIO); setMsg(null); }}
+          <button data-arato-button="primary" onClick={() => { setModal("parceiro"); setEditando(null); setForm(FORM_VAZIO); setMsg(null); }}
             style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
             + Novo parceiro
           </button>
@@ -156,7 +157,7 @@ export default function AdminParceiros() {
         ) : parceiros.length === 0 ? (
           <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhum parceiro BPO cadastrado.</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F8FAFD" }}>
                 {["Empresa", "CNPJ", "E-mail admin", "Clientes", "Status", ""].map(h => (
@@ -182,11 +183,11 @@ export default function AdminParceiros() {
                     </span>
                   </td>
                   <td style={{ padding: "10px 14px", textAlign: "right", display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    <button onClick={() => { setEditando(p); setForm({ nome: p.nome, cnpj: p.cnpj ?? "", email_admin: p.email_admin ?? "", obs: p.obs ?? "" }); setModal("parceiro"); setMsg(null); }}
+                    <button data-arato-button="secondary" onClick={() => { setEditando(p); setForm({ nome: p.nome, cnpj: p.cnpj ?? "", email_admin: p.email_admin ?? "", obs: p.obs ?? "" }); setModal("parceiro"); setMsg(null); }}
                       style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontSize: 11, color: "#555" }}>
                       Editar
                     </button>
-                    <button onClick={() => toggleAtivo(p)}
+                    <button data-arato-button="secondary" onClick={() => toggleAtivo(p)}
                       style={{ background: "none", border: `0.5px solid ${p.ativo ? "#E24B4A" : "#16A34A"}`, borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontSize: 11, color: p.ativo ? "#E24B4A" : "#16A34A" }}>
                       {p.ativo ? "Desativar" : "Ativar"}
                     </button>
@@ -200,33 +201,33 @@ export default function AdminParceiros() {
 
       {/* Modal — Parceiro */}
       {modal === "parceiro" && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 480, padding: 28 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{editando ? "Editar parceiro" : "Novo parceiro BPO"}</h2>
-              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div data-arato-dialog="form" style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 480, padding: 28 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{editando ? "Editar parceiro" : "Novo parceiro BPO"}</h2>
+              <button data-arato-button="icon" onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
             </div>
             {msg && <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 14, background: msg.ok ? "#F0FFF4" : "#FFF0F0", border: `0.5px solid ${msg.ok ? "#16A34A" : "#E24B4A"}`, fontSize: 13, color: msg.ok ? "#16A34A" : "#E24B4A" }}>{msg.txt}</div>}
             <form onSubmit={salvarParceiro} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label style={lbl}>Nome da empresa *</label>
+                <label data-arato-label="true" style={lbl}>Nome da empresa *</label>
                 <input required value={form.nome} onChange={e => upd("nome", e.target.value)} style={inp} placeholder="Ex: ABC Agro Consultoria" />
               </div>
               <div>
-                <label style={lbl}>CNPJ</label>
+                <label data-arato-label="true" style={lbl}>CNPJ</label>
                 <input value={form.cnpj} onChange={e => upd("cnpj", e.target.value)} style={inp} placeholder="00.000.000/0000-00" />
               </div>
               <div>
-                <label style={lbl}>E-mail do administrador BPO</label>
+                <label data-arato-label="true" style={lbl}>E-mail do administrador BPO</label>
                 <input type="email" value={form.email_admin} onChange={e => upd("email_admin", e.target.value)} style={inp} />
               </div>
               <div>
-                <label style={lbl}>Observações</label>
+                <label data-arato-label="true" style={lbl}>Observações</label>
                 <textarea value={form.obs} onChange={e => upd("obs", e.target.value)} style={{ ...inp, height: 60, resize: "vertical" }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                <button type="button" onClick={() => setModal(null)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                <button type="submit" disabled={salvando} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? .6 : 1 }}>
+              <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+                <button data-arato-button="secondary" type="button" onClick={() => setModal(null)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button data-arato-button="primary" type="submit" disabled={salvando} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? .6 : 1 }}>
                   {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Criar parceiro"}
                 </button>
               </div>
@@ -237,11 +238,11 @@ export default function AdminParceiros() {
 
       {/* Modal — Usuário BPO */}
       {modal === "usuario" && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 460, padding: 28 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Novo usuário BPO</h2>
-              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div data-arato-dialog="form" style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 460, padding: 28 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Novo usuário BPO</h2>
+              <button data-arato-button="icon" onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
             </div>
             <p style={{ fontSize: 12, color: "#666", marginTop: 0, marginBottom: 16 }}>
               Cria um usuário com acesso ao Portal do Parceiro BPO. Ele verá apenas os clientes vinculados ao parceiro selecionado.
@@ -249,29 +250,29 @@ export default function AdminParceiros() {
             {msg && <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 14, background: msg.ok ? "#F0FFF4" : "#FFF0F0", border: `0.5px solid ${msg.ok ? "#16A34A" : "#E24B4A"}`, fontSize: 13, color: msg.ok ? "#16A34A" : "#E24B4A" }}>{msg.txt}</div>}
             <form onSubmit={criarUsuarioBpo} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label style={lbl}>Parceiro BPO *</label>
-                <select required value={uForm.parceiro_id} onChange={e => updU("parceiro_id", e.target.value)} style={inp}>
+                <label data-arato-label="true" style={lbl}>Parceiro BPO *</label>
+                <SelectField required value={uForm.parceiro_id} onChange={e => updU("parceiro_id", e.target.value)} style={inp}>
                   <option value="">Selecione...</option>
                   {parceiros.filter(p => p.ativo).map(p => (
                     <option key={p.id} value={p.id}>{p.nome}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>Nome completo *</label>
+                <label data-arato-label="true" style={lbl}>Nome completo *</label>
                 <input required value={uForm.nome} onChange={e => updU("nome", e.target.value)} style={inp} />
               </div>
               <div>
-                <label style={lbl}>E-mail de acesso *</label>
+                <label data-arato-label="true" style={lbl}>E-mail de acesso *</label>
                 <input required type="email" value={uForm.email} onChange={e => updU("email", e.target.value)} style={inp} />
               </div>
               <div>
-                <label style={lbl}>Senha provisória *</label>
+                <label data-arato-label="true" style={lbl}>Senha provisória *</label>
                 <input required value={uForm.senha} onChange={e => updU("senha", e.target.value)} style={inp} minLength={8} placeholder="Mínimo 8 caracteres" />
               </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                <button type="button" onClick={() => setModal(null)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                <button type="submit" disabled={salvando} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? .6 : 1 }}>
+              <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+                <button data-arato-button="secondary" type="button" onClick={() => setModal(null)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button data-arato-button="primary" type="submit" disabled={salvando} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? .6 : 1 }}>
                   {salvando ? "Criando..." : "Criar usuário BPO"}
                 </button>
               </div>

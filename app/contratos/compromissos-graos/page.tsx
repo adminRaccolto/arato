@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -219,20 +220,20 @@ export default function CompromissosGraosPage() {
   const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4, textTransform: "uppercase" as const, letterSpacing: "0.04em" };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />
 
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compromissos em Grãos</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compromissos em Grãos</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Sacas comprometidas por comercialização, arrendamento, compra de terra e barter — relatório consolidado
             </p>
           </div>
-          <button
+          <button data-arato-button="secondary"
             onClick={() => window.print()}
             style={{ background: "#fff", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             className="no-print"
@@ -242,42 +243,42 @@ export default function CompromissosGraosPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 2fr", gap: 12, marginBottom: 20, background: "#fff", padding: 16, borderRadius: 10, border: "0.5px solid #DDE2EE" }} className="no-print">
+        <div data-arato-panel="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 2fr", gap: 12, marginBottom: 20, background: "#fff", padding: 16, borderRadius: 10, border: "0.5px solid #DDE2EE" }} className="no-print">
           <div>
-            <label style={lbl}>Status</label>
-            <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={inp}>
+            <label data-arato-label="true" style={lbl}>Status</label>
+            <SelectField value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={inp}>
               <option value="todos">Todos</option>
               <option value="aberto">Aberto</option>
               <option value="parcial">Parcial</option>
               <option value="encerrado">Encerrado</option>
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Commodity</label>
-            <select value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)} style={inp}>
+            <label data-arato-label="true" style={lbl}>Commodity</label>
+            <SelectField value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)} style={inp}>
               <option value="todos">Todas</option>
               {COMMODITIES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Origem</label>
-            <select value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={inp}>
+            <label data-arato-label="true" style={lbl}>Origem</label>
+            <SelectField value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={inp}>
               <option value="todos">Todas</option>
               <option value="comercializacao">Comercialização</option>
               <option value="arrendamento">Arrendamento</option>
               <option value="compra_terra">Compra de Terra</option>
               <option value="barter">Barter</option>
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Safra</label>
-            <select value={filtroSafra} onChange={e => setFiltroSafra(e.target.value)} style={inp}>
+            <label data-arato-label="true" style={lbl}>Safra</label>
+            <SelectField value={filtroSafra} onChange={e => setFiltroSafra(e.target.value)} style={inp}>
               <option value="todos">Todas</option>
               {safras.map(s => <option key={s.id} value={s.id}>{s.descricao}</option>)}
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Busca</label>
+            <label data-arato-label="true" style={lbl}>Busca</label>
             <input
               type="text"
               placeholder="Nº contrato, contraparte, produto…"
@@ -295,7 +296,7 @@ export default function CompromissosGraosPage() {
             { label: "Sacas Entregues",     val: fmtSc(totalEntregue), sub: totalSacas > 0 ? `${((totalEntregue/totalSacas)*100).toFixed(1)}% do total` : "—" },
             { label: "Saldo a Entregar",    val: fmtSc(totalSaldo),    sub: "em aberto", color: totalSaldo > 0 ? "#E24B4A" : "#16A34A" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color ?? "#1A4870", margin: "6px 0 2px", fontVariantNumeric: "tabular-nums" }}>{k.val}</div>
               <div style={{ fontSize: 11, color: "#888" }}>{k.sub}</div>
@@ -345,8 +346,8 @@ export default function CompromissosGraosPage() {
               Nenhum compromisso com os filtros selecionados.
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA" }}>
                     {["Nº", "Commodity", "Origem", "Contraparte", "Safra", "Entrega", "Comprometido", "Entregue", "Saldo", "Preço Ref.", "Status"].map(h => (

@@ -27,7 +27,7 @@ const COR_PLANO: Record<PlanoId, string> = {
 function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
   const vencido = contaStatus === "cancelado" || contaStatus === "inativo";
   return (
-    <div style={{
+    <div data-arato-statistic="action" style={{
       minHeight: "100vh", background: "var(--bg-page)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "40px 24px", fontFamily: "system-ui, sans-serif",
@@ -38,7 +38,7 @@ function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
         padding: "48px 40px", maxWidth: 500, width: "100%",
         textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.08)",
       }}>
-        <div style={{
+        <div data-arato-statistic="display" style={{
           width: 64, height: 64, borderRadius: "50%", background: "#FEF2F2",
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 20px", fontSize: 28,
@@ -52,7 +52,7 @@ function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
           {vencido ? "Conta encerrada" : "Acesso suspenso"}
         </span>
 
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 10px" }}>
+        <h2 data-arato-h2="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 10px" }}>
           {vencido ? "Sua assinatura foi encerrada" : "Pagamento em atraso"}
         </h2>
 
@@ -131,7 +131,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
   const planoAtualNome  = planoAtual ? NOME_PLANO[planoAtual] : null;
 
   return (
-    <div style={{
+    <div data-arato-statistic="action" style={{
       minHeight: "100vh", background: "var(--bg-page)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "40px 24px", fontFamily: "system-ui, sans-serif",
@@ -144,7 +144,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
         boxShadow: "0 8px 40px rgba(0,0,0,0.08)",
       }}>
         {/* Ícone */}
-        <div style={{
+        <div data-arato-statistic="display" style={{
           width: 64, height: 64, borderRadius: "50%",
           background: planoNecessario === "performance" ? "#FBF3E0" : "#E8E8E8",
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -165,7 +165,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
           </span>
         </div>
 
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 10px" }}>
+        <h2 data-arato-h2="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 10px" }}>
           Este módulo não está incluso no seu plano
         </h2>
 

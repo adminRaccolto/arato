@@ -199,14 +199,14 @@ export default function AutomacoesPage() {
       <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Automações</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Automações</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Jobs agendados que rodam automaticamente. Use o toggle para ativar/desativar por fazenda.
           </p>
         </div>
 
         {/* Banner */}
-        <div style={{ background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
+        <div data-arato-statistic="display" style={{ background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start" }}>
           <span style={{ fontSize: 18 }}>⚙️</span>
           <div style={{ fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
             <strong>Cron Jobs na Vercel</strong> — os horários usam UTC convertido para Brasília (UTC-3).
@@ -232,7 +232,7 @@ export default function AutomacoesPage() {
                   const semConfig = aut.temConfig && !cfg.api_key;
 
                   return (
-                    <div
+                    <div data-arato-statistic="action"
                       key={aut.id}
                       style={{
                         background: "var(--bg-card)",
@@ -247,7 +247,7 @@ export default function AutomacoesPage() {
                       }}
                     >
                       {/* Ícone */}
-                      <div style={{ width: 44, height: 44, borderRadius: 10, background: `${aut.cor}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+                      <div data-arato-statistic="display" style={{ width: 44, height: 44, borderRadius: 10, background: `${aut.cor}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
                         {aut.icone}
                       </div>
 
@@ -275,7 +275,7 @@ export default function AutomacoesPage() {
                         {aut.temConfig && cfg.cnpjs && (
                           <div style={{ marginTop: 6, fontSize: 11, color: "#111111", background: "#EEEEEE", padding: "4px 10px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <span>CNPJ(s) monitorados: <strong>{cfg.cnpjs}</strong></span>
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={() => { setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" }); setModalSieg(true); }}
                               style={{ background: "none", border: "none", color: "#111111", fontSize: 11, cursor: "pointer", fontWeight: 600, padding: 0 }}
                             >
@@ -305,7 +305,7 @@ export default function AutomacoesPage() {
                         {/* Toggle ON/OFF */}
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 11, color: "var(--text-3)" }}>{ativa ? "Ativa" : "Inativa"}</span>
-                          <button
+                          <button data-arato-button="toggle"
                             onClick={() => {
                               if (aut.temConfig && !ativa && !cfg.api_key) {
                                 setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" });
@@ -332,7 +332,7 @@ export default function AutomacoesPage() {
 
                         {/* Botão config SIEG */}
                         {aut.temConfig && (
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => { setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" }); setModalSieg(true); }}
                             style={{
                               padding: "6px 12px", borderRadius: 6, border: "0.5px solid var(--border)",
@@ -344,7 +344,7 @@ export default function AutomacoesPage() {
                         )}
 
                         {/* Botão executar */}
-                        <button
+                        <button data-arato-button="toggle"
                           onClick={() => executar(aut)}
                           disabled={st === "running"}
                           style={{
@@ -370,14 +370,14 @@ export default function AutomacoesPage() {
         })}
 
         {/* Configuração de e-mail */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: "0 0 4px" }}>Configuração de E-mail</h2>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
+          <h2 data-arato-h2="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: "0 0 4px" }}>Configuração de E-mail</h2>
           <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 16px" }}>
             Configure o remetente dos alertas automáticos.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 600 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 600 }}>
             <div>
-              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Remetente (RESEND_FROM)</label>
+              <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Remetente (RESEND_FROM)</label>
               <input
                 value={emailConfig.from}
                 onChange={e => setEmailConfig(c => ({ ...c, from: e.target.value }))}
@@ -389,7 +389,7 @@ export default function AutomacoesPage() {
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Destinatário padrão (fallback)</label>
+              <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Destinatário padrão (fallback)</label>
               <input
                 value={emailConfig.destinatario}
                 onChange={e => setEmailConfig(c => ({ ...c, destinatario: e.target.value }))}
@@ -402,7 +402,7 @@ export default function AutomacoesPage() {
 
         {/* Variáveis de ambiente */}
         <div style={{ background: "#FAFBFD", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: "#333", margin: "0 0 12px" }}>Variáveis de Ambiente (Vercel)</h2>
+          <h2 data-arato-h2="true" style={{ fontSize: 13, fontWeight: 700, color: "#333", margin: "0 0 12px" }}>Variáveis de Ambiente (Vercel)</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {[
               { key: "RESEND_API_KEY",             desc: "Chave da API Resend para envio de e-mails",               obrig: true  },
@@ -426,17 +426,17 @@ export default function AutomacoesPage() {
 
       {/* ── Modal Configuração SIEG ── */}
       {modalSieg && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(560px, 97vw)", padding: 28 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>🔄 Configuração SIEG</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(560px, 97vw)", padding: 28 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>🔄 Configuração SIEG</div>
             <p style={{ fontSize: 12, color: "#666", margin: "0 0 20px", lineHeight: 1.6 }}>
               A chave de API pode ser configurada aqui (por fazenda) ou via variável de ambiente
               <code style={{ fontSize: 11, background: "#F0F2F8", padding: "1px 5px", borderRadius: 4, marginLeft: 4 }}>SIEG_API_KEY</code>
               na Vercel (global para todas as fazendas).
             </p>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600 }}>API Key SIEG</label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>
+              <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600 }}>API Key SIEG</label>
               <input
                 type="password"
                 value={siegForm.api_key}
@@ -444,37 +444,37 @@ export default function AutomacoesPage() {
                 placeholder="Cole aqui a chave de API da SIEG..."
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
               />
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
                 Disponível no painel SIEG → Configurações → API Key. Se o campo estiver vazio, usa SIEG_API_KEY da Vercel.
               </div>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600 }}>CNPJ(s) para monitorar</label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 24 }}>
+              <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600 }}>CNPJ(s) para monitorar</label>
               <input
                 value={siegForm.cnpjs}
                 onChange={e => setSiegForm(f => ({ ...f, cnpjs: e.target.value }))}
                 placeholder="00.000.000/0001-00, 11.111.111/0001-11"
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
               />
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
                 Separe múltiplos CNPJs com vírgula. O sistema consulta todos e importa NFs destinadas a eles.
               </div>
             </div>
 
-            <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#166534" }}>
+            <div data-arato-dialog-body="true" style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#166534" }}>
               <strong>Após salvar:</strong> ative o toggle da automação SIEG para que o cron execute automaticamente 2× ao dia.
               Você pode clicar em <strong>▶ Executar</strong> para testar manualmente.
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary"
                 onClick={() => setModalSieg(false)}
                 style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancelar
               </button>
-              <button
+              <button data-arato-button="primary"
                 onClick={salvarSieg}
                 disabled={salvando["sieg-sync"]}
                 style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback } from "react";
@@ -100,7 +101,7 @@ const hoje = () => new Date().toISOString().slice(0, 10);
 
 const campo = (label: string, children: React.ReactNode) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
+    <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
     {children}
   </div>
 );
@@ -108,7 +109,7 @@ const inp = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
   <input {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", background: "var(--bg-card)", ...props.style }} />
 );
 const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", ...props.style }} />
+  <SelectField {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", ...props.style }} />
 );
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -374,7 +375,7 @@ export default function Expedicao() {
 
   if (!podeAcessarPlano("expedicao")) return <PlanoGate modulo="expedicao" />;
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       {/* ─── Layout: lista contratos ◄── ──► detalhe contrato ──────────────── */}
@@ -393,7 +394,7 @@ export default function Expedicao() {
           {/* Header */}
           <div style={{ padding: "20px 20px 14px", borderBottom: "0.5px solid var(--bg-tag)" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>Comercial</div>
-            <h1 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Expedição de Grãos</h1>
+            <h1 data-arato-h1="true" style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Expedição de Grãos</h1>
 
             {/* Filtros */}
             <input
@@ -403,32 +404,32 @@ export default function Expedicao() {
               style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", marginBottom: 8, boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", gap: 8 }}>
-              <select
+              <SelectField
                 value={filtroAno}
                 onChange={e => { setFiltroAno(e.target.value); setFiltroCiclo(""); }}
                 style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}
               >
                 <option value="">Todos os anos</option>
                 {anosS.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-              </select>
-              <select
+              </SelectField>
+              <SelectField
                 value={filtroCiclo}
                 onChange={e => setFiltroCiclo(e.target.value)}
                 style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}
               >
                 <option value="">Todos os ciclos</option>
                 {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.cultura}</option>)}
-              </select>
+              </SelectField>
             </div>
             {fazendas.length > 1 && (
-              <select
+              <SelectField
                 value={fazendaFiltro}
                 onChange={e => setFazendaFiltro(e.target.value)}
                 style={{ width: "100%", padding: "6px 8px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", outline: "none", marginTop: 6 }}
               >
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-              </select>
+              </SelectField>
             )}
           </div>
 
@@ -493,7 +494,7 @@ export default function Expedicao() {
             <div style={{ background: "var(--bg-card)", padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <button
+                  <button data-arato-button="secondary"
                     onClick={() => { setContratoSel(null); setCargas([]); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, padding: 0, lineHeight: 1 }}
                   >
@@ -507,7 +508,7 @@ export default function Expedicao() {
                   {contratoSel.produto} · {contratoSel.safra} · {contratoSel.modalidade ?? "—"}
                 </div>
               </div>
-              <button
+              <button data-arato-button="primary"
                 onClick={() => { setNova({ data_saida: hoje(), rota: "direto_comprador", destino_razao_social: contratoSel.comprador }); setModalNova(true); }}
                 style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
@@ -516,14 +517,14 @@ export default function Expedicao() {
             </div>
 
             {/* KPIs do contrato */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, padding: "16px 24px" }}>
+            <div data-arato-statistic="display" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, padding: "16px 24px" }}>
               {[
                 { label: "Contratado",   value: `${(contratoSel.quantidade_sc??0).toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "var(--bg-page)", txt: "var(--text-1)" },
                 { label: "Embarcado",    value: `${scEmbarcado.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#E8E8E8", txt: "#111111" },
                 { label: "Em Trânsito", value: `${scTransito.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#FEF3C7", txt: "#92400E" },
                 { label: "Saldo",        value: `${scSaldo.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: scSaldo > 0 ? "#FBF3E0" : "#DCFCE7", txt: scSaldo > 0 ? "#C9921B" : "#16A34A" },
               ].map(k => (
-                <div key={k.label} style={{ background: k.cor, borderRadius: 8, padding: "12px 16px", border: "0.5px solid var(--border)" }}>
+                <div data-arato-statistic="display" key={k.label} style={{ background: k.cor, borderRadius: 8, padding: "12px 16px", border: "0.5px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: k.txt, opacity: 0.7, marginBottom: 2, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: k.txt }}>{k.value}</div>
                 </div>
@@ -537,7 +538,7 @@ export default function Expedicao() {
                 <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                   Nenhuma carga registrada para este contrato.
                   <br />
-                  <button
+                  <button data-arato-button="primary"
                     onClick={() => { setNova({ data_saida: hoje(), rota: "direto_comprador", destino_razao_social: contratoSel.comprador }); setModalNova(true); }}
                     style={{ marginTop: 14, padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   >
@@ -547,7 +548,7 @@ export default function Expedicao() {
               )}
               {!carregandoC && cargas.length > 0 && (
                 <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Nº Carga","Data","Rota","Peso Liq. (kg)","NF-e","MDF-e","Status","Ações"].map(h => (
@@ -585,7 +586,7 @@ export default function Expedicao() {
                               {c.nfe_chave ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                   <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{c.nfe_numero} ✔</span>
-                                  <button onClick={e => { e.stopPropagation(); setModalDanfe(c); }}
+                                  <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setModalDanfe(c); }}
                                     style={{ padding: "1px 7px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
                                     Ver
                                   </button>
@@ -609,31 +610,31 @@ export default function Expedicao() {
                             <td style={{ padding: "9px 12px" }} onClick={e => e.stopPropagation()}>
                               <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
                                 {c.rota !== "transbordo_sem_nf" && !c.nfe_chave && (
-                                  <button onClick={() => irParaFaturamento(c)}
+                                  <button data-arato-button="primary" onClick={() => irParaFaturamento(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Faturar →
                                   </button>
                                 )}
                                 {c.nfe_chave && (
-                                  <button onClick={() => setModalDanfe(c)}
+                                  <button data-arato-button="secondary" onClick={() => setModalDanfe(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Ver NF-e
                                   </button>
                                 )}
                                 {!c.mdfe_chave && (
-                                  <button onClick={() => setModalMdfe(c)}
+                                  <button data-arato-button="secondary" onClick={() => setModalMdfe(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#C9921B", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     MDF-e
                                   </button>
                                 )}
                                 {(c.status === "entregue" || c.status === "corrigindo_peso") && !c.peso_liquido_destino_kg && (
-                                  <button onClick={() => { setModalPeso(c); setPesoDestino(""); setObsCorrecao(""); }}
+                                  <button data-arato-button="secondary" onClick={() => { setModalPeso(c); setPesoDestino(""); setObsCorrecao(""); }}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #E24B4A", background: "#FEE2E2", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Peso
                                   </button>
                                 )}
                                 {c.status !== "encerrada" && (
-                                  <button onClick={() => avancarStatus(c)}
+                                  <button data-arato-button="secondary" onClick={() => avancarStatus(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "#333", fontSize: 11, cursor: "pointer" }}>
                                     →
                                   </button>
@@ -656,22 +657,22 @@ export default function Expedicao() {
           Modal Nova Carga
       ═══════════════════════════════════════════════════════════════════ */}
       {modalNova && (
-        <div style={modalStyle}>
+        <div data-arato-overlay="true" style={modalStyle}>
           <div style={box(740)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h3 style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>Nova Carga</h3>
+                <h3 data-arato-h3="true" style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>Nova Carga</h3>
                 <div style={{ fontSize: 12, color: "var(--text-3)" }}>Contrato {contratoSel?.numero} — {contratoSel?.comprador}</div>
               </div>
-              <button onClick={() => setModalNova(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Seleção de rota */}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 8 }}>Rota *</label>
+              <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 8 }}>Rota *</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {(["transbordo_sem_nf","transbordo_com_remessa","direto_comprador"] as RotaCarga[]).map(r => (
-                  <button key={r} onClick={() => setNova(p => ({ ...p, rota: r }))}
+                  <button data-arato-button="toggle" key={r} onClick={() => setNova(p => ({ ...p, rota: r }))}
                     style={{
                       padding: "11px 10px", borderRadius: 8, cursor: "pointer", textAlign: "center",
                       border: nova.rota === r ? "2px solid #111111" : "0.5px solid var(--border)",
@@ -692,7 +693,7 @@ export default function Expedicao() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 18 }}>
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 18 }}>
               {campo("Data Saída *", <InputData type="date" value={nova.data_saida ?? hoje()} onChange={e => setNova(p => ({ ...p, data_saida: e.target.value }))} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", background: "var(--bg-card)" }} />)}
               {campo("Destino / Comprador", inp({ value: nova.destino_razao_social ?? "", onChange: e => setNova(p => ({ ...p, destino_razao_social: e.target.value })) }))}
               {campo("Depósito Destino", inp({ value: nova.deposito_destino ?? "", onChange: e => setNova(p => ({ ...p, deposito_destino: e.target.value })), placeholder: "Armazém, CD..." }))}
@@ -752,8 +753,8 @@ export default function Expedicao() {
             )}
             {campo("Observação", inp({ value: nova.observacao ?? "", onChange: e => setNova(p => ({ ...p, observacao: e.target.value })) }))}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarNovaCarga} disabled={saving || !nova.rota}
+              <button data-arato-button="secondary" onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarNovaCarga} disabled={saving || !nova.rota}
                 style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {saving ? "Salvando..." : "Registrar Carga"}
               </button>
@@ -766,11 +767,11 @@ export default function Expedicao() {
           Modal Detalhe Carga
       ═══════════════════════════════════════════════════════════════════ */}
       {modalCarga && (
-        <div style={modalStyle}>
+        <div data-arato-overlay="true" style={modalStyle}>
           <div style={box(700)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, fontFamily: "monospace" }}>{modalCarga.numero}</h3>
+                <h3 data-arato-h3="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, fontFamily: "monospace" }}>{modalCarga.numero}</h3>
                 <div style={{ display: "flex", gap: 8 }}>
                   <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, ...STATUS_COR[modalCarga.status] }}>{STATUS_LABEL[modalCarga.status]}</span>
                   <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)" }}>
@@ -778,11 +779,11 @@ export default function Expedicao() {
                   </span>
                 </div>
               </div>
-              <button onClick={() => setModalCarga(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalCarga(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Pipeline */}
-            <div style={{ display: "flex", alignItems: "center", background: "var(--bg-page)", borderRadius: 8, padding: "10px 16px", marginBottom: 22, overflowX: "auto" }}>
+            <div data-arato-grid-container="true" style={{ display: "flex", alignItems: "center", background: "var(--bg-page)", borderRadius: 8, padding: "10px 16px", marginBottom: 22, overflowX: "auto" }}>
               {PIPELINE.map((s, i) => {
                 const isCurr = modalCarga.status === s;
                 const isPast = PIPELINE.indexOf(modalCarga.status) > i;
@@ -832,11 +833,11 @@ export default function Expedicao() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>Série {modalCarga.nfe_serie} Nº {modalCarga.nfe_numero} — Autorizada</div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => { setModalDanfe(modalCarga); setModalCarga(null); }}
+                        <button data-arato-button="secondary" onClick={() => { setModalDanfe(modalCarga); setModalCarga(null); }}
                           style={{ padding: "3px 10px", background: "#E8E8E8", color: "#111111", border: "0.5px solid #111111", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                           Ver / Imprimir
                         </button>
-                        <button onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
+                        <button data-arato-button="secondary" onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
                           style={{ padding: "3px 10px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border)", borderRadius: 5, fontSize: 11, cursor: "pointer" }}>
                           Monitor NF-e
                         </button>
@@ -849,7 +850,7 @@ export default function Expedicao() {
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
-                    <button onClick={() => { irParaFaturamento(modalCarga); setModalCarga(null); }}
+                    <button data-arato-button="primary" onClick={() => { irParaFaturamento(modalCarga); setModalCarga(null); }}
                       style={{ padding: "4px 12px", background: "#D5E8F5", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       Faturar →
                     </button>
@@ -867,7 +868,7 @@ export default function Expedicao() {
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
-                    <button onClick={() => { setModalMdfe(modalCarga); setModalCarga(null); }}
+                    <button data-arato-button="secondary" onClick={() => { setModalMdfe(modalCarga); setModalCarga(null); }}
                       style={{ padding: "4px 12px", background: "#FBF3E0", color: "#C9921B", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       Emitir MDF-e
                     </button>
@@ -879,18 +880,18 @@ export default function Expedicao() {
             {/* Ações */}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               {(modalCarga.status === "entregue" || modalCarga.status === "corrigindo_peso") && !modalCarga.peso_liquido_destino_kg && (
-                <button onClick={() => { setModalPeso(modalCarga); setModalCarga(null); setPesoDestino(""); setObsCorrecao(""); }}
+                <button data-arato-button="secondary" onClick={() => { setModalPeso(modalCarga); setModalCarga(null); setPesoDestino(""); setObsCorrecao(""); }}
                   style={{ padding: "8px 16px", background: "#FEE2E2", color: "#B91C1C", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Informar Peso Destino
                 </button>
               )}
               {modalCarga.status !== "encerrada" && (
-                <button onClick={() => { avancarStatus(modalCarga); setModalCarga(null); }}
+                <button data-arato-button="primary" onClick={() => { avancarStatus(modalCarga); setModalCarga(null); }}
                   style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Avançar Status →
                 </button>
               )}
-              <button onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+              <button data-arato-button="secondary" onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
             </div>
           </div>
         </div>
@@ -900,20 +901,20 @@ export default function Expedicao() {
           Modal DANFE — Visualização / Impressão da NF-e
       ═══════════════════════════════════════════════════════════════════ */}
       {modalDanfe && (
-        <div style={modalStyle}>
+        <div data-arato-overlay="true" style={modalStyle}>
           <div style={{ ...box(680), maxHeight: "92vh", overflowY: "auto" }}>
             {/* Cabeçalho do modal */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h3 style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>DANFE Simplificado</h3>
+                <h3 data-arato-h3="true" style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>DANFE Simplificado</h3>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Documento Auxiliar da NF-e — {modalDanfe.numero}</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => window.print()}
+                <button data-arato-button="primary" onClick={() => window.print()}
                   style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   🖨 Imprimir
                 </button>
-                <button onClick={() => setModalDanfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+                <button data-arato-button="icon" onClick={() => setModalDanfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
               </div>
             </div>
 
@@ -957,7 +958,7 @@ export default function Expedicao() {
               {/* Produto */}
               <div style={{ border: "0.5px solid #999", borderRadius: 4, marginBottom: 12 }}>
                 <div style={{ background: "var(--bg-page)", padding: "5px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase" }}>Produtos / Serviços</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Descrição", "NCM", "CFOP", "Qtd", "Un", "Peso Líq. (kg)", "Sacas"].map(h => (
@@ -1012,8 +1013,8 @@ export default function Expedicao() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-              <button onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
-              <button onClick={() => window.print()} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
+              <button data-arato-button="secondary" onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+              <button data-arato-button="primary" onClick={() => window.print()} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
             </div>
           </div>
         </div>
@@ -1023,11 +1024,11 @@ export default function Expedicao() {
           Modal Correção de Peso
       ═══════════════════════════════════════════════════════════════════ */}
       {modalPeso && (
-        <div style={modalStyle}>
+        <div data-arato-overlay="true" style={modalStyle}>
           <div style={box(500)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Correção de Peso — {modalPeso.numero}</h3>
-              <button onClick={() => setModalPeso(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Correção de Peso — {modalPeso.numero}</h3>
+              <button data-arato-button="icon" onClick={() => setModalPeso(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px", marginBottom: 18, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[["Produto", modalPeso.produto], ["Peso Liq. Origem", `${fmt(modalPeso.peso_liquido_kg)} kg`],
@@ -1057,8 +1058,8 @@ export default function Expedicao() {
               {campo("Observação", inp({ value: obsCorrecao, onChange: e => setObsCorrecao(e.target.value), placeholder: "Ex: classificação destino, reclamação..." }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarCorrecaoPeso} disabled={!pesoDestino || saving}
+              <button data-arato-button="secondary" onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarCorrecaoPeso} disabled={!pesoDestino || saving}
                 style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: pesoDestino ? "pointer" : "not-allowed" }}>
                 {saving ? "Salvando..." : "Confirmar e Encerrar Carga"}
               </button>
@@ -1071,14 +1072,14 @@ export default function Expedicao() {
           Modal MDF-e
       ═══════════════════════════════════════════════════════════════════ */}
       {modalMdfe && (
-        <div style={modalStyle}>
+        <div data-arato-overlay="true" style={modalStyle}>
           <div style={box(560)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h3 style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>Emitir MDF-e</h3>
+                <h3 data-arato-h3="true" style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>Emitir MDF-e</h3>
                 <div style={{ fontSize: 12, color: "var(--text-3)" }}>Carga {modalMdfe.numero} — {modalMdfe.produto}</div>
               </div>
-              <button onClick={() => setModalMdfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalMdfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             {modalMdfe.nfe_chave ? (
               <div style={{ background: "#DCFCE7", border: "0.5px solid #16A34A", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12 }}>
@@ -1097,9 +1098,9 @@ export default function Expedicao() {
               A emissão de verdade (veículo, motorista, percurso, UF início/fim, CIOT, assinatura e transmissão à SEFAZ) acontece na tela de MDF-e do módulo Transporte — clique abaixo para continuar com a NF-e já selecionada. Quando autorizado lá, esta carga é atualizada automaticamente.
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               {modalMdfe.nfe_chave && (
-                <button onClick={() => irParaMdfeReal(modalMdfe)}
+                <button data-arato-button="primary" onClick={() => irParaMdfeReal(modalMdfe)}
                   style={{ padding: "8px 22px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Ir para emissão real do MDF-e →
                 </button>

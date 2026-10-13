@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
@@ -9,7 +10,7 @@ import dynamic from "next/dynamic";
 const MapaLeaflet = dynamic(() => import("../../components/MapaLeaflet"), {
   ssr: false,
   loading: () => (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#EEF3F8" }}>
+    <div data-arato-statistic="display" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#EEF3F8" }}>
       <div style={{ textAlign: "center", color: "var(--text-3)" }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
         <div style={{ fontSize: 13 }}>Carregando mapa…</div>
@@ -184,7 +185,7 @@ export default function MapaPage() {
   const comPlantio = talhoes.filter(t => !!t.plantio);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
@@ -202,7 +203,7 @@ export default function MapaPage() {
           </div>
           {/* Seletor de fazenda — visível quando conta tem >1 fazenda */}
           {fazendas.length > 1 && (
-            <select
+            <SelectField
               value={fazSel}
               onChange={e => setFazSel(e.target.value)}
               style={{
@@ -215,7 +216,7 @@ export default function MapaPage() {
               {fazendas.map(f => (
                 <option key={f.id} value={f.id}>{f.nome}</option>
               ))}
-            </select>
+            </SelectField>
           )}
           {fazendas.length === 1 && (
             <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
@@ -234,7 +235,7 @@ export default function MapaPage() {
             fontSize: 12, color: msg.startsWith("Erro") ? "#B91C1C" : "#15803D",
           }}>
             {msg}
-            <button onClick={() => setMsg(null)} style={{ float: "right", background: "none", border: "none", cursor: "pointer", color: "inherit", fontSize: 14 }}>×</button>
+            <button data-arato-button="icon" onClick={() => setMsg(null)} style={{ float: "right", background: "none", border: "none", cursor: "pointer", color: "inherit", fontSize: 14 }}>×</button>
           </div>
         )}
 
@@ -300,7 +301,7 @@ export default function MapaPage() {
                         sem KML
                       </span>
                     )}
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={e => { e.stopPropagation(); setUploadId(t.id); fileRef.current?.click(); }}
                       disabled={uploading}
                       style={{
@@ -348,7 +349,7 @@ export default function MapaPage() {
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{selecionado.nome}</div>
-              <button onClick={() => setSelecionado(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1 }}>×</button>
+              <button data-arato-button="icon" onClick={() => setSelecionado(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1 }}>×</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
@@ -375,7 +376,7 @@ export default function MapaPage() {
 
         {/* Aviso quando não há coordenadas nem KML */}
         {!loading && talhoes.every(t => !t.kml_url && !t.lat && !t.lng) && (
-          <div style={{
+          <div data-arato-statistic="display" style={{
             position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
             zIndex: 1000, background: "var(--bg-card)", borderRadius: 12, padding: "24px 32px",
             boxShadow: "0 4px 24px rgba(0,0,0,0.12)", textAlign: "center", maxWidth: 340,

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -724,14 +725,14 @@ export default function ConsorciosPage() {
 
   if (!podeAcessarPlano("fin_tesouraria")) return <PlanoGate modulo="fin_tesouraria" />;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Consórcios</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Consórcios</h1>
           <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
             Cotas em andamento — acompanhe parcelas, contemplações e migração para financiamento
           </p>
@@ -745,7 +746,7 @@ export default function ConsorciosPage() {
             { label: "Crédito Disponível", value: fmtBRL(totalCredito),            sub: "a contemplar",       color: "#111111" },
             { label: "Parcelas Atrasadas", value: parcelasAtrasadas.length.toString(), sub: "requer atenção",  color: parcelasAtrasadas.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -755,7 +756,7 @@ export default function ConsorciosPage() {
 
         {/* Banner IA Extrato Consórcio */}
         {contaModulosOverrides["ia_consorcio"] === true && (
-          <div style={{ background: "linear-gradient(135deg,#E8F0FE,#F0F4FF)", border: "0.5px solid #B8CCF8", borderRadius: 12, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div data-arato-panel="true" data-arato-filters="true" style={{ background: "linear-gradient(135deg,#E8F0FE,#F0F4FF)", border: "0.5px solid #B8CCF8", borderRadius: 12, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 2 }}>
                 🤖 Importar Extrato de Consórcio com IA
@@ -769,7 +770,7 @@ export default function ConsorciosPage() {
                 </div>
               )}
             </div>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, background: iaCarregando ? "#888" : "#1A4870", color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: iaCarregando ? "not-allowed" : "pointer" }}>
+            <label data-arato-label="true" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: iaCarregando ? "#888" : "#1A4870", color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: iaCarregando ? "not-allowed" : "pointer" }}>
               {iaCarregando ? "Analisando…" : "📄 Enviar PDF"}
               <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaCarregando}
                 onChange={e => { const f = e.target.files?.[0]; if (f) extrairPdfConsorcio(f); e.target.value = ""; }}
@@ -791,7 +792,7 @@ export default function ConsorciosPage() {
             { id: "lista",    label: "Consórcios"                 },
             { id: "parcelas", label: "Próximas Parcelas"          },
           ] as { id: typeof aba; label: string }[]).map(a => (
-            <button key={a.id} onClick={() => setAba(a.id)} style={{
+            <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{
               padding: "9px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.id ? 700 : 400,
               color: aba === a.id ? "#111111" : "#666",
@@ -813,9 +814,9 @@ export default function ConsorciosPage() {
                   placeholder="Filtrar por grupo ou número da cota…"
                   style={{ width: "100%", padding: "8px 10px 8px 32px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-page)", color: "var(--text-1)", boxSizing: "border-box" }}
                 />
-                {busca && <button onClick={() => setBusca("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 14 }}>✕</button>}
+                {busca && <button data-arato-button="icon" onClick={() => setBusca("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 14 }}>✕</button>}
               </div>
-              <button onClick={() => abrirConsorcio()} style={btnV}>+ Novo Consórcio</button>
+              <button data-arato-button="primary" onClick={() => abrirConsorcio()} style={btnV}>+ Novo Consórcio</button>
             </div>
 
             {(() => {
@@ -894,16 +895,16 @@ export default function ConsorciosPage() {
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
                           {badge(sm.label, sm.bg, sm.cl)}
                           {c.status === "a_contemplar" && (
-                            <button onClick={e => { e.stopPropagation(); abrirContemplacao(c); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>
+                            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirContemplacao(c); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>
                               Contemplar
                             </button>
                           )}
                           {parcelasC.length === 0 && (
-                            <button onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
+                            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                               Plano de parcelas
                             </button>
                           )}
-                          <button onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                             Editar
                           </button>
                         </div>
@@ -917,7 +918,7 @@ export default function ConsorciosPage() {
                               Parcelas ({parcelasC.length}) — mensalidade mensal {fmtBRL(c.valor_parcela_mensal)}
                             </div>
                             {parcelasC.length > 0 && (
-                              <button onClick={() => abrirGridConsorcio(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                              <button data-arato-button="secondary" onClick={() => abrirGridConsorcio(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                                 Editar plano
                               </button>
                             )}
@@ -926,7 +927,7 @@ export default function ConsorciosPage() {
                             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Clique em "Plano de parcelas" para criar o cronograma.</div>
                           ) : (
                             <div style={{ maxHeight: 240, overflowY: "auto" }}>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-tag)", position: "sticky", top: 0 }}>
                                     {["Nº", "Vencimento", "Valor", "Status", ""].map(h => (
@@ -947,7 +948,7 @@ export default function ConsorciosPage() {
                                         </td>
                                         <td style={{ padding: "5px 10px", textAlign: "right" }}>
                                           {!p.pago && (
-                                            <button onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "3px 8px", border: "0.5px solid #11111150", borderRadius: 5, background: "#E8E8E8", cursor: "pointer", fontSize: 10, color: "#0D0D0D", fontWeight: 600 }}>
+                                            <button data-arato-button="secondary" onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "3px 8px", border: "0.5px solid #11111150", borderRadius: 5, background: "#E8E8E8", cursor: "pointer", fontSize: 10, color: "#0D0D0D", fontWeight: 600 }}>
                                               Pagar
                                             </button>
                                           )}
@@ -977,7 +978,7 @@ export default function ConsorciosPage() {
         {aba === "parcelas" && (
           <div>
             {/* Resumo mensal */}
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
+            <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 11, color: "#666" }}>Compromisso mensal total</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#111111" }}>{fmtBRL(totalMensal)}</div>
@@ -994,7 +995,7 @@ export default function ConsorciosPage() {
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-card)" }}>
                       {["Vencimento", "Consórcio", "Cota", "Parcela Nº", "Valor", "Status", ""].map(h => (
@@ -1018,7 +1019,7 @@ export default function ConsorciosPage() {
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             {!p.pago && (
-                              <button onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
+                              <button data-arato-button="secondary" onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                                 Pagar
                               </button>
                             )}
@@ -1038,17 +1039,17 @@ export default function ConsorciosPage() {
           MODAL CONSÓRCIO
       ══════════════════════════════════════════════════════ */}
       {gridModal && (
-        <div onClick={() => !gridModal.saving && setGridModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
-            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Plano de parcelas — {gridModal.titulo}</div>
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
+        <div data-arato-overlay="true" onClick={() => !gridModal.saving && setGridModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="page" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Plano de parcelas — {gridModal.titulo}</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
                 Edite vencimento e valor se precisar. Nada vai para o Contas a Pagar até você confirmar. Depois de confirmado, qualquer alteração aqui é refletida nos CPs.
               </div>
             </div>
-            <div style={{ padding: "12px 20px", overflowY: "auto", flex: 1 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "12px 20px", overflowY: "auto", flex: 1 }}>
               {gridModal.err && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 10 }}>{gridModal.err}</div>}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nº", "Vencimento", "Valor (R$)", "Situação", ""].map((h, i) => (
@@ -1071,7 +1072,7 @@ export default function ConsorciosPage() {
                       <td style={{ padding: "5px 8px", fontSize: 11, color: r.pago ? "#166534" : "var(--text-2)" }}>{r.pago ? "Paga" : "A pagar"}</td>
                       <td style={{ padding: "4px 6px", textAlign: "right" }}>
                         {!r.pago && (
-                          <button title="Remover esta parcela do plano" onClick={() => {
+                          <button data-arato-button="danger" title="Remover esta parcela do plano" onClick={() => {
                             if (!window.confirm(`Remover a parcela ${r.numero} (${fmtBRL(r.valor)}) do plano?\n\nAo confirmar, o CP em aberto desta parcela é apagado e o total a pagar do consórcio diminui. Parcela já paga, conciliada ou em borderô não pode ser removida.`)) return;
                             setGridModal(g => g && { ...g, totalPagar: Math.round((g.totalPagar - (Number(r.valor) || 0)) * 100) / 100, rows: g.rows.filter((_, j) => j !== i), err: "" });
                           }} style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#B91C1C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>🗑</button>
@@ -1086,15 +1087,15 @@ export default function ConsorciosPage() {
               const soma = Math.round(gridModal.rows.reduce((s, r) => s + (Number(r.valor) || 0), 0) * 100) / 100;
               const dif = Math.round((soma - gridModal.totalPagar) * 100) / 100;
               return (
-                <div style={{ padding: "10px 20px", borderTop: "0.5px solid var(--border-table)", fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <div>
+                <div data-arato-dialog-heading="true" style={{ padding: "10px 20px", borderTop: "0.5px solid var(--border-table)", fontSize: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div data-arato-dialog-body="true">
                     <span style={{ color: "var(--text-3)" }}>Total a pagar: </span><strong>{fmtBRL(gridModal.totalPagar)}</strong>
                     <span style={{ color: "var(--text-3)", marginLeft: 12 }}>Soma das parcelas: </span><strong>{fmtBRL(soma)}</strong>
                     {Math.abs(dif) > 0.01 && <span style={{ color: "#B45309", marginLeft: 12 }}>diferença {fmtBRL(dif)}</span>}
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setGridModal(null)} disabled={gridModal.saving} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Fechar sem lançar</button>
-                    <button onClick={confirmarGrid} disabled={gridModal.saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                  <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
+                    <button data-arato-button="secondary" onClick={() => setGridModal(null)} disabled={gridModal.saving} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Fechar sem lançar</button>
+                    <button data-arato-button="primary" onClick={confirmarGrid} disabled={gridModal.saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
                       {gridModal.saving ? "Salvando…" : "Confirmar e lançar no CP"}
                     </button>
                   </div>
@@ -1106,21 +1107,21 @@ export default function ConsorciosPage() {
       )}
 
       {modalConsor && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             {/* Cabeçalho */}
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{consorEdit ? "Editar Consórcio" : "Novo Consórcio"}</div>
-              <button onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{consorEdit ? "Editar Consórcio" : "Novo Consórcio"}</div>
+              <button data-arato-button="icon" onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Tab bar */}
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--bg-tag)" }}>
+            <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--bg-tag)" }}>
               {(["dados", "rateio"] as const).map(t => {
                 const nCiclos = rateioLinhas.filter(l => l.ciclo_id).length;
                 const label = t === "dados" ? "Dados" : nCiclos > 0 ? `Rateio (${nCiclos})` : "Rateio";
                 return (
-                  <button key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
+                  <button data-arato-button="toggle" key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
                     style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
                       fontWeight: tabConsor === t ? 700 : 400,
                       color: tabConsor === t ? "#111111" : "#666",
@@ -1135,19 +1136,19 @@ export default function ConsorciosPage() {
             {/* TAB: DADOS */}
             {tabConsor === "dados" && (
             <div style={{ padding: "20px 22px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 {fazendasConta.length > 1 && (
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={lbl}>Fazenda *</label>
-                    <select value={cForm.fazenda_id} onChange={e => setCForm(f => ({ ...f, fazenda_id: e.target.value }))} style={inp}>
+                    <label data-arato-label="true" style={lbl}>Fazenda *</label>
+                    <SelectField value={cForm.fazenda_id} onChange={e => setCForm(f => ({ ...f, fazenda_id: e.target.value }))} style={inp}>
                       <option value="">— Selecionar —</option>
                       {fazendasConta.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                 )}
                 {/* Row 1 — Administradora (fornecedor) | Cota | Grupo */}
                 <div>
-                  <label style={lbl}>
+                  <label data-arato-label="true" style={lbl}>
                     Administradora (fornecedor)
                     {pessoasAdm.length === 0 && (
                       <span style={{ color: "#C9921B", marginLeft: 6, fontStyle: "italic" }}>
@@ -1155,7 +1156,7 @@ export default function ConsorciosPage() {
                       </span>
                     )}
                   </label>
-                  <select
+                  <SelectField
                     value={cForm.administradora_pessoa_id}
                     onChange={e => {
                       const pesId = e.target.value;
@@ -1172,82 +1173,82 @@ export default function ConsorciosPage() {
                     {pessoasAdm.map(p => (
                       <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Número da Cota</label>
+                  <label data-arato-label="true" style={lbl}>Número da Cota</label>
                   <input value={cForm.numero_cota} onChange={e => setCForm(f => ({ ...f, numero_cota: e.target.value }))} style={inp} placeholder="000001" />
                 </div>
                 <div>
-                  <label style={lbl}>Grupo</label>
+                  <label data-arato-label="true" style={lbl}>Grupo</label>
                   <input value={cForm.grupo} onChange={e => setCForm(f => ({ ...f, grupo: e.target.value }))} style={inp} placeholder="Ex.: 0042" />
                 </div>
                 {/* Row 2 — Nome da Administradora (text) | Tipo | Descrição */}
                 <div>
-                  <label style={lbl}>Nome da Administradora</label>
+                  <label data-arato-label="true" style={lbl}>Nome da Administradora</label>
                   <input value={cForm.administradora} onChange={e => setCForm(f => ({ ...f, administradora: e.target.value }))} style={inp} placeholder="Ex.: BB Consórcios, Porto Seguro…" />
                 </div>
                 <div>
-                  <label style={lbl}>Tipo de Bem</label>
-                  <select value={cForm.tipo_bem} onChange={e => setCForm(f => ({ ...f, tipo_bem: e.target.value as TipoBem }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Tipo de Bem</label>
+                  <SelectField value={cForm.tipo_bem} onChange={e => setCForm(f => ({ ...f, tipo_bem: e.target.value as TipoBem }))} style={inp}>
                     {Object.entries(TIPO_BEM_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Descrição do Bem</label>
+                  <label data-arato-label="true" style={lbl}>Descrição do Bem</label>
                   <input value={cForm.descricao_bem} onChange={e => setCForm(f => ({ ...f, descricao_bem: e.target.value }))} style={inp} placeholder="Ex.: John Deere 5075E ou Caminhão VUC" />
                 </div>
                 <div>
-                  <label style={lbl}>Valor do Crédito (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Valor do Crédito (R$)</label>
                   <InputMonetario style={inp} value={cForm.valor_credito} onChange={v => setCForm(f => ({ ...f, valor_credito: v, valor_total_pagar: totalAPagarCalc(v, Number(f.taxa_adm_pct), Number(f.fundo_reserva_pct)) }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Taxa de Administração (%)</label>
+                  <label data-arato-label="true" style={lbl}>Taxa de Administração (%)</label>
                   <input type="text" inputMode="decimal" value={String(cForm.taxa_adm_pct)} placeholder="Ex.: 18" style={inp}
                     onChange={e => setCForm(f => ({ ...f, taxa_adm_pct: e.target.value, valor_total_pagar: totalAPagarCalc(Number(f.valor_credito), Number(e.target.value.replace(",", ".")), Number(f.fundo_reserva_pct)) }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Fundo de Reserva (%)</label>
+                  <label data-arato-label="true" style={lbl}>Fundo de Reserva (%)</label>
                   <input type="text" inputMode="decimal" value={String(cForm.fundo_reserva_pct)} placeholder="Ex.: 2" style={inp}
                     onChange={e => setCForm(f => ({ ...f, fundo_reserva_pct: e.target.value, valor_total_pagar: totalAPagarCalc(Number(f.valor_credito), Number(f.taxa_adm_pct), Number(e.target.value.replace(",", "."))) }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Total a Pagar (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Total a Pagar (R$)</label>
                   <InputMonetario style={inp} value={cForm.valor_total_pagar} onChange={v => setCForm(f => ({ ...f, valor_total_pagar: v }))} />
                   <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Crédito + taxa de administração + fundo de reserva. Pode ajustar.</div>
                 </div>
                 <div>
-                  <label style={lbl}>Parcela Mensal (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Parcela Mensal (R$)</label>
                   <input value={fmtBRL(parcelaMensalCalc())} disabled style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }} />
                   <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Total a pagar ÷ parcelas</div>
                 </div>
                 <div>
-                  <label style={lbl}>Total de Parcelas</label>
+                  <label data-arato-label="true" style={lbl}>Total de Parcelas</label>
                   <InputNumerico decimais={0} min="1" value={cForm.total_parcelas} onChange={v => setCForm(f => ({ ...f, total_parcelas: v }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Data de Início</label>
+                  <label data-arato-label="true" style={lbl}>Data de Início</label>
                   <InputData type="date" value={cForm.data_inicio} onChange={e => setCForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Parcelas Pagas</label>
+                  <label data-arato-label="true" style={lbl}>Parcelas Pagas</label>
                   <InputNumerico decimais={0} min="0" value={cForm.parcelas_pagas} onChange={v => setCForm(f => ({ ...f, parcelas_pagas: v }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Status</label>
-                  <select value={cForm.status} onChange={e => setCForm(f => ({ ...f, status: e.target.value as StatusConsorcio }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Status</label>
+                  <SelectField value={cForm.status} onChange={e => setCForm(f => ({ ...f, status: e.target.value as StatusConsorcio }))} style={inp}>
                     {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Agricultor / Consorciado</label>
-                  <select value={cForm.produtor_id} onChange={e => setCForm(f => ({ ...f, produtor_id: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Agricultor / Consorciado</label>
+                  <SelectField value={cForm.produtor_id} onChange={e => setCForm(f => ({ ...f, produtor_id: e.target.value }))} style={inp}>
                     <option value="">— Selecione —</option>
                     {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Observação</label>
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <textarea value={cForm.observacao} onChange={e => setCForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                 </div>
               </div>
@@ -1268,11 +1269,11 @@ export default function ConsorciosPage() {
               <>
                 {/* Filtro por Ano Safra */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Filtrar ciclos por Ano Safra</label>
-                  <select value={anoSafraFiltroR} onChange={e => setAnoSafraFiltroR(e.target.value)} style={{ ...inp, maxWidth: 280 }}>
+                  <label data-arato-label="true" style={lbl}>Filtrar ciclos por Ano Safra</label>
+                  <SelectField value={anoSafraFiltroR} onChange={e => setAnoSafraFiltroR(e.target.value)} style={{ ...inp, maxWidth: 280 }}>
                     <option value="">— Todos os anos —</option>
                     {anosRat.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
 
                 {/* Linhas de rateio */}
@@ -1280,8 +1281,8 @@ export default function ConsorciosPage() {
                   {rateioLinhas.map((linha, idx) => {
                     const opsCiclos = ciclosRat.filter(c => !anoSafraFiltroR || c.ano_safra_id === anoSafraFiltroR);
                     return (
-                      <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 130px 36px", gap: 8, alignItems: "center" }}>
-                        <select
+                      <div data-arato-item-grid="true" key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 130px 36px", gap: 8, alignItems: "center" }}>
+                        <SelectField
                           value={linha.ciclo_id}
                           onChange={e => setRateioLinhas(ls => ls.map((l, i) => i === idx ? { ...l, ciclo_id: e.target.value } : l))}
                           style={inp}
@@ -1292,7 +1293,7 @@ export default function ConsorciosPage() {
                               {c.cultura ? `${c.cultura} · ` : ""}{c.descricao}
                             </option>
                           ))}
-                        </select>
+                        </SelectField>
                         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                           <input
                             type="number" min="0" max="100" step="0.01"
@@ -1303,7 +1304,7 @@ export default function ConsorciosPage() {
                           />
                           <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>%</span>
                         </div>
-                        <button
+                        <button data-arato-button="danger"
                           onClick={() => setRateioLinhas(ls => ls.filter((_, i) => i !== idx))}
                           style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, cursor: "pointer", fontSize: 16, color: "#791F1F" }}
                         >×</button>
@@ -1312,7 +1313,7 @@ export default function ConsorciosPage() {
                   })}
                 </div>
 
-                <button
+                <button data-arato-button="secondary"
                   onClick={() => setRateioLinhas(ls => [...ls, { ciclo_id: "", percentual: "" }])}
                   style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", cursor: "pointer", fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}
                 >+ Adicionar Ciclo</button>
@@ -1344,7 +1345,7 @@ export default function ConsorciosPage() {
             )}
 
             {/* Rodapé */}
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
               {tabConsor === "dados" && cErr && (
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{cErr}</div>
               )}
@@ -1356,20 +1357,20 @@ export default function ConsorciosPage() {
                   ✅ Rateio salvo. Use &quot;Editar plano&quot; para aplicar às CPs existentes.
                 </div>
               )}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 {consorEdit && tabConsor === "dados" && (
-                  <button onClick={excluirConsorcio} disabled={cSaving} style={{ ...btnR, color: "#B91C1C", borderColor: "#FCA5A5", background: "#FEF2F2", marginRight: "auto" }}>
+                  <button data-arato-button="danger" onClick={excluirConsorcio} disabled={cSaving} style={{ ...btnR, color: "#B91C1C", borderColor: "#FCA5A5", background: "#FEF2F2", marginRight: "auto" }}>
                     Excluir consórcio
                   </button>
                 )}
-                <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
                 {tabConsor === "dados" && (
-                  <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
+                  <button data-arato-button="toggle" onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
                     {cSaving ? "Salvando…" : "Salvar"}
                   </button>
                 )}
                 {tabConsor === "rateio" && (
-                  <button onClick={salvarRateio} disabled={rateioSaving || !consorEdit} style={{ ...btnV, background: rateioSaving || !consorEdit ? "var(--text-muted)" : "#111111", cursor: rateioSaving || !consorEdit ? "default" : "pointer" }}>
+                  <button data-arato-button="toggle" onClick={salvarRateio} disabled={rateioSaving || !consorEdit} style={{ ...btnV, background: rateioSaving || !consorEdit ? "var(--text-muted)" : "#111111", cursor: rateioSaving || !consorEdit ? "default" : "pointer" }}>
                     {rateioSaving ? "Salvando…" : "Salvar Rateio"}
                   </button>
                 )}
@@ -1383,62 +1384,62 @@ export default function ConsorciosPage() {
           MODAL CONTEMPLAÇÃO
       ══════════════════════════════════════════════════════ */}
       {modalContempl && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Contemplação</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Contemplação</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {modalContempl.administradora} — Cota {modalContempl.numero_cota} · Crédito {fmtBRL(modalContempl.valor_credito)}
                 </div>
               </div>
-              <button onClick={() => setModalContempl(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalContempl(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {contemplErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{contemplErr}</div>}
 
-              <div>
-                <label style={lbl}>Data de Contemplação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data de Contemplação</label>
                 <InputData type="date" value={contemplForm.data_contemplacao} onChange={e => setContemplForm(f => ({ ...f, data_contemplacao: e.target.value }))} style={inp} />
               </div>
-              <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <label style={{ ...lbl, margin: 0 }}>Lances (deixe vazio se contemplado por sorteio)</label>
-                  <button type="button" onClick={() => setLancesForm(ls => [...ls, { tipo: "dinheiro", valor: 0, data: contemplForm.data_contemplacao, conta_bancaria_id: contemplForm.conta_bancaria_id, origem: "" }])}
+              <div data-arato-dialog-body="true" data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
+                <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <label data-arato-label="true" style={{ ...lbl, margin: 0 }}>Lances (deixe vazio se contemplado por sorteio)</label>
+                  <button data-arato-button="secondary" type="button" onClick={() => setLancesForm(ls => [...ls, { tipo: "dinheiro", valor: 0, data: contemplForm.data_contemplacao, conta_bancaria_id: contemplForm.conta_bancaria_id, origem: "" }])}
                     style={{ ...btnR, padding: "4px 10px", fontSize: 12 }}>+ Lance</button>
                 </div>
                 {lancesForm.map((l, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "130px 1fr 28px", gap: 8, marginBottom: 8, alignItems: "end" }}>
+                  <div data-arato-fields="true" key={i} style={{ display: "grid", gridTemplateColumns: "130px 1fr 28px", gap: 8, marginBottom: 8, alignItems: "end" }}>
                     <div>
-                      <label style={lbl}>Tipo</label>
-                      <select value={l.tipo} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, tipo: e.target.value as LanceForm["tipo"] } : x))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Tipo</label>
+                      <SelectField value={l.tipo} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, tipo: e.target.value as LanceForm["tipo"] } : x))} style={inp}>
                         <option value="dinheiro">Em dinheiro</option>
                         <option value="embutido">Embutido</option>
                         <option value="terceiros">Recurso de terceiros</option>
-                      </select>
+                      </SelectField>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: l.tipo === "embutido" ? "1fr" : "1fr 1fr", gap: 8 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: l.tipo === "embutido" ? "1fr" : "1fr 1fr", gap: 8 }}>
                       <div>
-                        <label style={lbl}>Valor (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Valor (R$)</label>
                         <InputMonetario style={inp} value={l.valor} onChange={v => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, valor: v } : x))} />
                       </div>
                       {l.tipo === "dinheiro" && (
                         <div>
-                          <label style={lbl}>Paga da conta *</label>
-                          <select value={l.conta_bancaria_id} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, conta_bancaria_id: e.target.value } : x))} style={inp}>
+                          <label data-arato-label="true" style={lbl}>Paga da conta *</label>
+                          <SelectField value={l.conta_bancaria_id} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, conta_bancaria_id: e.target.value } : x))} style={inp}>
                             <option value="">Selecione…</option>
                             {contasBancarias.map(cb => <option key={cb.id} value={cb.id}>{cb.nome}{cb.banco ? ` — ${cb.banco}` : ""}</option>)}
-                          </select>
+                          </SelectField>
                         </div>
                       )}
                       {l.tipo === "terceiros" && (
                         <div>
-                          <label style={lbl}>Origem</label>
+                          <label data-arato-label="true" style={lbl}>Origem</label>
                           <input value={l.origem} onChange={e => setLancesForm(ls => ls.map((x, j) => j === i ? { ...x, origem: e.target.value } : x))} style={inp} placeholder="FGTS, outro consórcio…" />
                         </div>
                       )}
                     </div>
-                    <button type="button" onClick={() => setLancesForm(ls => ls.filter((_, j) => j !== i))} style={{ height: 34, border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>×</button>
+                    <button data-arato-button="danger" type="button" onClick={() => setLancesForm(ls => ls.filter((_, j) => j !== i))} style={{ height: 34, border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>×</button>
                   </div>
                 ))}
                 {lancesForm.length > 0 && (() => {
@@ -1450,23 +1451,23 @@ export default function ConsorciosPage() {
                       <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8 }}>
                         Total {fmtBRL(tot)} · em dinheiro {fmtBRL(dinh)} (gera contas a pagar) · embutido {fmtBRL(emb)} (sai do crédito) · terceiros {fmtBRL(tot - dinh - emb)}
                       </div>
-                      <label style={lbl}>O lance abate o saldo…</label>
-                      <select value={efeitoLance} onChange={e => setEfeitoLance(e.target.value as typeof efeitoLance)} style={inp}>
+                      <label data-arato-label="true" style={lbl}>O lance abate o saldo…</label>
+                      <SelectField value={efeitoLance} onChange={e => setEfeitoLance(e.target.value as typeof efeitoLance)} style={inp}>
                         <option value="reduz_parcela">reduzindo o valor das parcelas restantes</option>
                         <option value="reduz_prazo">reduzindo o prazo (remove as últimas parcelas)</option>
                         <option value="nenhum">sem alterar as parcelas (contrato já refletiu)</option>
-                      </select>
+                      </SelectField>
                     </>
                   );
                 })()}
               </div>
-              <div>
-                <label style={lbl}>Bem Adquirido / Alienação do Bem</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Bem Adquirido / Alienação do Bem</label>
                 <input value={contemplForm.bem_adquirido} onChange={e => setContemplForm(f => ({ ...f, bem_adquirido: e.target.value }))} style={inp} placeholder="Ex.: John Deere 5075E, ano 2024" />
               </div>
-              <div>
-                <label style={lbl}>Creditar na Conta Bancária *</label>
-                <select
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Creditar na Conta Bancária *</label>
+                <SelectField
                   value={contemplForm.conta_bancaria_id}
                   onChange={e => setContemplForm(f => ({ ...f, conta_bancaria_id: e.target.value }))}
                   style={inp}
@@ -1475,12 +1476,12 @@ export default function ConsorciosPage() {
                   {contasBancarias.map(cb => (
                     <option key={cb.id} value={cb.id}>{cb.nome}{cb.banco ? ` — ${cb.banco}` : ""}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ background: "#E8F5E9", border: "0.5px solid #A7D7B5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1A6B3C" }}>
+              <div data-arato-dialog-body="true" style={{ background: "#E8F5E9", border: "0.5px solid #A7D7B5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1A6B3C" }}>
                 Será lançado um <strong>crédito de {fmtBRL(modalContempl.valor_credito - lancesForm.filter(l => l.tipo === "embutido").reduce((sm, l) => sm + (Number(l.valor) || 0), 0))}</strong>{lancesForm.some(l => l.tipo === "embutido") ? " (crédito menos o lance embutido)" : " (valor do crédito da cota)"} na conta selecionada como baixado.
               </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
                 <input
                   type="checkbox"
                   checked={contemplForm.migrar_financiamento}
@@ -1495,9 +1496,9 @@ export default function ConsorciosPage() {
                 </div>
               )}
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalContempl(null)}>Cancelar</button>
-              <button onClick={confirmarContemplacao} disabled={contemplSaving} style={{ ...btnV, background: contemplSaving ? "var(--text-muted)" : "#16A34A", cursor: contemplSaving ? "default" : "pointer" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalContempl(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={confirmarContemplacao} disabled={contemplSaving} style={{ ...btnV, background: contemplSaving ? "var(--text-muted)" : "#16A34A", cursor: contemplSaving ? "default" : "pointer" }}>
                 {contemplSaving ? "Confirmando…" : "Confirmar Contemplação"}
               </button>
             </div>
@@ -1509,22 +1510,22 @@ export default function ConsorciosPage() {
           MODAL PAGAR PARCELA
       ══════════════════════════════════════════════════════ */}
       {modalParcela && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Confirmar Pagamento</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Parcela {modalParcela.numero_parcela} — {fmtBRL(modalParcela.valor)} — venc. {fmtData(modalParcela.data_vencimento)}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Confirmar Pagamento</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Parcela {modalParcela.numero_parcela} — {fmtBRL(modalParcela.valor)} — venc. {fmtData(modalParcela.data_vencimento)}</div>
               </div>
-              <button onClick={() => setModalParcela(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalParcela(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px" }}>
-              <label style={lbl}>Data do Pagamento</label>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
+              <label data-arato-label="true" style={lbl}>Data do Pagamento</label>
               <InputData type="date" value={parcelaData} onChange={e => setParcelaData(e.target.value)} style={inp} />
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalParcela(null)}>Cancelar</button>
-              <button onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#111111", cursor: parcelaSaving ? "default" : "pointer" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalParcela(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#111111", cursor: parcelaSaving ? "default" : "pointer" }}>
                 {parcelaSaving ? "Salvando…" : "Confirmar Pagamento"}
               </button>
             </div>

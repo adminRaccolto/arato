@@ -35,8 +35,8 @@ async function tokenAtual(): Promise<string | null> {
  *   visiveis              → objeto { key: boolean }
  *   resetar()             → volta ao padrão
  */
-export function useColunasGrid(grid: string, colunas: ColDef[]) {
-  const defaultVis   = Object.fromEntries(colunas.map(c => [c.key, true]));
+export function useColunasGrid(grid: string, colunas: ColDef[], defaultVisible?: readonly string[]) {
+  const defaultVis   = Object.fromEntries(colunas.map(c => [c.key, c.fixo || !defaultVisible || defaultVisible.includes(c.key)]));
   const defaultOrder = colunas.map(c => c.key);
 
   const [visiveis,   setVisiveis]   = useState<Record<string, boolean>>(defaultVis);
@@ -55,6 +55,8 @@ export function useColunasGrid(grid: string, colunas: ColDef[]) {
     (async () => {
       try {
         const token = await tokenAtual();
+        if (cancelado) return;
+        setVisiveis(defaultVis); setOrdemTodas(defaultOrder); setLarguras({});
         if (!token) return;
         const r = await fetch(`/api/preferencias-grid?grid=${encodeURIComponent(grid)}`, {
           headers: { Authorization: `Bearer ${token}` },

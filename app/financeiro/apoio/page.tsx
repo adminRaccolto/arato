@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -602,29 +603,29 @@ export default function ApoioFinanceiroPage() {
       <div style={{ padding: "20px 24px", maxWidth: "100%", fontFamily: "system-ui, sans-serif" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" data-arato-filters="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Apoio Financeiro</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Apoio Financeiro</h1>
             <p style={{ fontSize: 13, color: "#888", margin: "3px 0 0" }}>
               Visão paralela do financeiro — não integrada ao LCDPR
             </p>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label style={{ ...lbl, margin: 0 }}>De</label>
+              <label data-arato-label="true" style={{ ...lbl, margin: 0 }}>De</label>
               <InputData type="date" value={dataIni} onChange={(e) => setDataIni(e.target.value)} style={{ ...inp, width: 140 }} />
-              <label style={{ ...lbl, margin: 0 }}>Até</label>
+              <label data-arato-label="true" style={{ ...lbl, margin: 0 }}>Até</label>
               <InputData type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} style={{ ...inp, width: 140 }} />
             </div>
-            <button onClick={carregar} style={btn("#111111")} disabled={carregando}>
+            <button data-arato-button="secondary" onClick={carregar} style={btn("#111111")} disabled={carregando}>
               {carregando ? "…" : "Atualizar"}
             </button>
-            <button onClick={exportarExcel} style={btn("#16A34A")}>
+            <button data-arato-button="secondary" onClick={exportarExcel} style={btn("#16A34A")}>
               ↓ Exportar Excel
             </button>
           </div>
@@ -644,7 +645,7 @@ export default function ApoioFinanceiroPage() {
             { label: "Apoio Exclusivo — Pagar", valor: fmtBRL(exclCP), sub: `${apoioLancs.filter(a => a.tipo === "pagar" && !a.baixado).length} em aberto`, cor: "#C9921B" },
             { label: "Apoio Exclusivo — Receber", valor: fmtBRL(exclCR), sub: `${apoioLancs.filter(a => a.tipo === "receber" && !a.baixado).length} em aberto`, cor: "#444444" },
           ].map((k) => (
-            <div key={k.label} style={{ ...card, borderLeft: `3px solid ${k.cor}` }}>
+            <div data-arato-statistic="display" key={k.label} style={{ ...card, borderLeft: `3px solid ${k.cor}` }}>
               <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.valor}</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
@@ -658,7 +659,7 @@ export default function ApoioFinanceiroPage() {
             { id: "compartilhado", label: `CP/CR Compartilhado (${lancamentos.length})` },
             { id: "exclusivo",     label: `Apoio Exclusivo (${apoioLancs.length})` },
           ] as const).map((t) => (
-            <button
+            <button data-arato-button="toggle"
               key={t.id}
               onClick={() => setAba(t.id)}
               style={{
@@ -676,26 +677,26 @@ export default function ApoioFinanceiroPage() {
         {/* ── Aba: Compartilhado ──────────────────────────────────────────────── */}
         {aba === "compartilhado" && (
           <div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-              <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)} style={{ ...inp, width: 160 }}>
+            <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <SelectField value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)} style={{ ...inp, width: 160 }}>
                 <option value="">Todos os tipos</option>
                 <option value="pagar">Contas a Pagar</option>
                 <option value="receber">Contas a Receber</option>
-              </select>
-              <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value as typeof filtroStatus)} style={{ ...inp, width: 200 }}>
+              </SelectField>
+              <SelectField value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value as typeof filtroStatus)} style={{ ...inp, width: 200 }}>
                 <option value="">Todos os status</option>
                 <option value="aberto">Aberto</option>
                 <option value="baixado_apoio">Baixado (Apoio)</option>
                 <option value="baixado_oficial">Baixado (Oficial)</option>
-              </select>
+              </SelectField>
               <span style={{ fontSize: 12, color: "#888", alignSelf: "center" }}>
                 {lancsFiltrados.length} lançamento(s)
               </span>
             </div>
 
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       {["Vencimento", "Tipo", "Descrição", "Categoria", "Valor", "Status Oficial", "Status Apoio", "Ação"].map((h) => (
@@ -765,7 +766,7 @@ export default function ApoioFinanceiroPage() {
                           <td style={td}>
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                               {sa === "aberto" && (
-                                <button
+                                <button data-arato-button="secondary"
                                   onClick={() => abrirModalBaixar(l)}
                                   disabled={emAcao}
                                   style={btn("#C9921B")}
@@ -774,7 +775,7 @@ export default function ApoioFinanceiroPage() {
                                 </button>
                               )}
                               {sa === "baixado_apoio" && (
-                                <button
+                                <button data-arato-button="secondary"
                                   onClick={() => desfazerBaixaApoio(l)}
                                   disabled={emAcao}
                                   style={btn("#888")}
@@ -783,7 +784,7 @@ export default function ApoioFinanceiroPage() {
                                 </button>
                               )}
                               {sa === "baixado_oficial" && (
-                                <button
+                                <button data-arato-button="secondary"
                                   onClick={() => reabrirBaixaOficial(l)}
                                   disabled={emAcao}
                                   style={{ ...btn("#888"), fontSize: 11 }}
@@ -816,16 +817,16 @@ export default function ApoioFinanceiroPage() {
                   <span style={{ fontSize: 13, color: "#555", fontWeight: 600 }}>
                     {selecionados.size} selecionado(s)
                   </span>
-                  <button
+                  <button data-arato-button="secondary"
                     onClick={() => { setBaixaLoteData(hoje()); setModalBaixaLote(true); }}
                     style={btn("#C9921B")}
                   >
                     Baixar Selecionados
                   </button>
-                  <button onClick={excluirEmLote} style={btn("#E24B4A")}>
+                  <button data-arato-button="secondary" onClick={excluirEmLote} style={btn("#E24B4A")}>
                     Excluir Selecionados
                   </button>
-                  <button onClick={() => setSelecionados(new Set())} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                  <button data-arato-button="secondary" onClick={() => setSelecionados(new Set())} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                     Limpar Seleção
                   </button>
                 </div>
@@ -835,18 +836,18 @@ export default function ApoioFinanceiroPage() {
                 </span>
               )}
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={excluirTudo} style={{ ...btn("#E24B4A"), background: "white", color: "#E24B4A", border: "0.5px solid #E24B4A" }}>
+                <button data-arato-button="secondary" onClick={excluirTudo} style={{ ...btn("#E24B4A"), background: "white", color: "#E24B4A", border: "0.5px solid #E24B4A" }}>
                   🗑 Excluir Tudo
                 </button>
-                <button onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#111111")}>
+                <button data-arato-button="secondary" onClick={() => { setFormApoio(FORM_VAZIO); setModalAberto(true); }} style={btn("#111111")}>
                   + Novo Lançamento
                 </button>
               </div>
             </div>
 
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                   <colgroup>
                     {COL_APOIO_PCT.map((w, i) => <col key={i} style={{ width: w }} />)}
                   </colgroup>
@@ -869,12 +870,12 @@ export default function ApoioFinanceiroPage() {
                       <th style={th} />
                       <th style={th} />
                       <th style={th}>
-                        <select value={fStatus} onChange={e => setFStatus(e.target.value as "" | "aberto" | "baixado")}
+                        <SelectField value={fStatus} onChange={e => setFStatus(e.target.value as "" | "aberto" | "baixado")}
                           style={{ width: "100%", fontSize: 10, border: "0.5px solid #DDE2EE", borderRadius: 4, padding: "2px 4px", background: "#fff" }}>
                           <option value="">Todos</option>
                           <option value="aberto">Aberto</option>
                           <option value="baixado">Baixado</option>
-                        </select>
+                        </SelectField>
                       </th>
                       {[
                         [fDescricao,  setFDescricao,  "Descrição…"],
@@ -900,7 +901,7 @@ export default function ApoioFinanceiroPage() {
                       <th style={th} />
                       <th style={th}>
                         {(fDescricao || fFornecedor || fProdutor || fSafra || fOrigem || fCategoria || fStatus) && (
-                          <button onClick={() => { setFDescricao(""); setFForncedor(""); setFProdutor(""); setFSafra(""); setFOrigem(""); setFCategoria(""); setFStatus(""); }}
+                          <button data-arato-button="secondary" onClick={() => { setFDescricao(""); setFForncedor(""); setFProdutor(""); setFSafra(""); setFOrigem(""); setFCategoria(""); setFStatus(""); }}
                             style={{ fontSize: 10, padding: "2px 6px", border: "0.5px solid #DDE2EE", borderRadius: 4, background: "#fff", cursor: "pointer", color: "#E24B4A", whiteSpace: "nowrap" }}>
                             ✕ Limpar
                           </button>
@@ -989,17 +990,17 @@ export default function ApoioFinanceiroPage() {
                           <td style={{ ...td, padding: "6px 4px" }}>
                             <div style={{ display: "flex", gap: 4 }}>
                               {!a.baixado ? (
-                                <button onClick={() => baixarApoioExclusivo(a)} disabled={emAcao}
+                                <button data-arato-button="secondary" onClick={() => baixarApoioExclusivo(a)} disabled={emAcao}
                                   style={{ ...btn("#C9921B"), padding: "4px 8px", fontSize: 11 }}>
                                   {emAcao ? "…" : "Baixar"}
                                 </button>
                               ) : (
-                                <button onClick={() => desfazerBaixaExclusivo(a)} disabled={emAcao}
+                                <button data-arato-button="secondary" onClick={() => desfazerBaixaExclusivo(a)} disabled={emAcao}
                                   style={{ ...btn("#888"), padding: "4px 8px", fontSize: 11 }}>
                                   {emAcao ? "…" : "Reabrir"}
                                 </button>
                               )}
-                              <button onClick={() => excluirApoioExclusivo(a)} disabled={emAcao}
+                              <button data-arato-button="secondary" onClick={() => excluirApoioExclusivo(a)} disabled={emAcao}
                                 style={{ ...btn("#E24B4A"), padding: "4px 8px", fontSize: 11 }}>
                                 {emAcao ? "…" : "Excluir"}
                               </button>
@@ -1023,24 +1024,24 @@ export default function ApoioFinanceiroPage() {
 
         {/* ── Modal: Baixar com conta bancária ──────────────────────────────── */}
         {modalBaixar && (
-          <div
+          <div data-arato-overlay="true"
             onClick={() => setModalBaixar(null)}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            <div
+            <div data-arato-dialog="form"
               onClick={(e) => e.stopPropagation()}
               style={{ ...card, width: 420, maxWidth: "95vw", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
             >
-              <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+              <h3 data-arato-h3="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
                 Registrar Baixa — Apoio
               </h3>
               <p style={{ margin: "0 0 18px", fontSize: 12, color: "#888" }}>
                 {modalBaixar.descricao} · {fmtBRL(modalBaixar.valor)}
               </p>
 
-              <div style={{ display: "grid", gap: 14 }}>
-                <div>
-                  <label style={lbl}>Data da Baixa *</label>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Data da Baixa *</label>
                   <InputData
                     type="date"
                     value={baixarForm.data_baixa}
@@ -1048,9 +1049,9 @@ export default function ApoioFinanceiroPage() {
                     style={{ ...inp, width: "100%" }}
                   />
                 </div>
-                <div>
-                  <label style={lbl}>Conta Bancária</label>
-                  <select
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Conta Bancária</label>
+                  <SelectField
                     value={baixarForm.conta_bancaria_id}
                     onChange={(e) => setBaixarForm({ ...baixarForm, conta_bancaria_id: e.target.value })}
                     style={{ ...inp, width: "100%" }}
@@ -1059,10 +1060,10 @@ export default function ApoioFinanceiroPage() {
                     {contasBancarias.map((c) => (
                       <option key={c.id} value={c.id}>{c.nome} — {c.banco}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
-                <div>
-                  <label style={lbl}>Observação</label>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <input
                     type="text"
                     placeholder="Opcional"
@@ -1073,12 +1074,12 @@ export default function ApoioFinanceiroPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
                 {erroModal && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erroModal}</span>}
-                <button onClick={() => { setModalBaixar(null); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                <button data-arato-button="secondary" onClick={() => { setModalBaixar(null); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                   Cancelar
                 </button>
-                <button
+                <button data-arato-button="secondary"
                   onClick={confirmarBaixa}
                   disabled={salvandoBaixa}
                   style={btn("#C9921B")}
@@ -1092,23 +1093,23 @@ export default function ApoioFinanceiroPage() {
 
         {/* ── Modal: Baixa em Lote ──────────────────────────────────────────── */}
         {modalBaixaLote && (
-          <div
+          <div data-arato-overlay="true"
             onClick={() => setModalBaixaLote(false)}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            <div
+            <div data-arato-dialog="form"
               onClick={(e) => e.stopPropagation()}
               style={{ ...card, width: 400, maxWidth: "95vw", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
             >
-              <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+              <h3 data-arato-h3="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
                 Baixa em Lote
               </h3>
               <p style={{ margin: "0 0 18px", fontSize: 12, color: "#888" }}>
                 {selecionados.size} lançamento(s) selecionado(s) serão marcados como baixados.
               </p>
 
-              <div>
-                <label style={lbl}>Data da Baixa *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data da Baixa *</label>
                 <InputData
                   type="date"
                   value={baixaLoteData}
@@ -1117,12 +1118,12 @@ export default function ApoioFinanceiroPage() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
                 {erroModal && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erroModal}</span>}
-                <button onClick={() => { setModalBaixaLote(false); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                <button data-arato-button="secondary" onClick={() => { setModalBaixaLote(false); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                   Cancelar
                 </button>
-                <button
+                <button data-arato-button="secondary"
                   onClick={baixarEmLote}
                   disabled={salvandoLote}
                   style={btn("#C9921B")}
@@ -1136,35 +1137,35 @@ export default function ApoioFinanceiroPage() {
 
         {/* ── Modal: Novo Lançamento Exclusivo ──────────────────────────────── */}
         {modalAberto && (
-          <div
+          <div data-arato-overlay="true"
             onClick={() => setModalAberto(false)}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            <div
+            <div data-arato-dialog="page"
               onClick={(e) => e.stopPropagation()}
               style={{ ...card, width: 680, maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
             >
-              <h3 style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+              <h3 data-arato-h3="true" style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
                 Novo Lançamento — Apoio Exclusivo
               </h3>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 {/* Tipo */}
-                <div>
-                  <label style={lbl}>Tipo *</label>
-                  <select
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Tipo *</label>
+                  <SelectField
                     value={formApoio.tipo}
                     onChange={(e) => setFormApoio({ ...formApoio, tipo: e.target.value as "pagar" | "receber", operacao_gerencial_id: "" })}
                     style={{ ...inp, width: "100%" }}
                   >
                     <option value="pagar">Contas a Pagar</option>
                     <option value="receber">Contas a Receber</option>
-                  </select>
+                  </SelectField>
                 </div>
 
                 {/* Vencimento */}
-                <div>
-                  <label style={lbl}>Vencimento *</label>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Vencimento *</label>
                   <InputData
                     type="date"
                     value={formApoio.data_vencimento}
@@ -1174,8 +1175,8 @@ export default function ApoioFinanceiroPage() {
                 </div>
 
                 {/* Descrição */}
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Descrição *</label>
+                <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                  <label data-arato-label="true" style={lbl}>Descrição *</label>
                   <input
                     type="text"
                     placeholder="Ex: Pagamento pessoal - aluguel"
@@ -1186,8 +1187,8 @@ export default function ApoioFinanceiroPage() {
                 </div>
 
                 {/* Valor */}
-                <div>
-                  <label style={lbl}>Valor (R$)</label>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Valor (R$)</label>
                   <input
                     type="text"
                     placeholder="0,00"
@@ -1198,9 +1199,9 @@ export default function ApoioFinanceiroPage() {
                 </div>
 
                 {/* Pessoa / Fornecedor */}
-                <div>
-                  <label style={lbl}>Pessoa / Fornecedor</label>
-                  <select
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Pessoa / Fornecedor</label>
+                  <SelectField
                     value={formApoio.pessoa_id}
                     onChange={(e) => setFormApoio({ ...formApoio, pessoa_id: e.target.value })}
                     style={{ ...inp, width: "100%" }}
@@ -1209,13 +1210,13 @@ export default function ApoioFinanceiroPage() {
                     {pessoas.map((p) => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
 
                 {/* Ano Safra */}
-                <div>
-                  <label style={lbl}>Ano Safra *</label>
-                  <select
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+                  <SelectField
                     value={formApoio.ano_safra_id}
                     onChange={(e) => setFormApoio({ ...formApoio, ano_safra_id: e.target.value, ciclo_id: "" })}
                     style={{ ...inp, width: "100%" }}
@@ -1224,13 +1225,13 @@ export default function ApoioFinanceiroPage() {
                     {anosSafra.map((a) => (
                       <option key={a.id} value={a.id}>{a.descricao}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
 
                 {/* Ciclo */}
-                <div>
-                  <label style={lbl}>Ciclo</label>
-                  <select
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Ciclo</label>
+                  <SelectField
                     value={formApoio.ciclo_id}
                     onChange={(e) => setFormApoio({ ...formApoio, ciclo_id: e.target.value })}
                     style={{ ...inp, width: "100%" }}
@@ -1240,12 +1241,12 @@ export default function ApoioFinanceiroPage() {
                     {ciclosFiltrados.map((c) => (
                       <option key={c.id} value={c.id}>{c.descricao ?? c.cultura}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
 
                 {/* Operação Gerencial */}
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Operação Gerencial</label>
+                <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                  <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
                   <SelectBusca
                     value={formApoio.operacao_gerencial_id}
                     onChange={(id) => setFormApoio({ ...formApoio, operacao_gerencial_id: id })}
@@ -1258,8 +1259,8 @@ export default function ApoioFinanceiroPage() {
                 </div>
 
                 {/* Categoria */}
-                <div>
-                  <label style={lbl}>Categoria (livre)</label>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Categoria (livre)</label>
                   <input
                     type="text"
                     placeholder="Ex: Pessoal, Família…"
@@ -1270,8 +1271,8 @@ export default function ApoioFinanceiroPage() {
                 </div>
 
                 {/* Observação */}
-                <div>
-                  <label style={lbl}>Observação</label>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <input
                     type="text"
                     value={formApoio.observacao}
@@ -1281,12 +1282,12 @@ export default function ApoioFinanceiroPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 }}>
                 {erroModal && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erroModal}</span>}
-                <button onClick={() => { setModalAberto(false); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+                <button data-arato-button="secondary" onClick={() => { setModalAberto(false); setErroModal(""); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                   Cancelar
                 </button>
-                <button
+                <button data-arato-button="secondary"
                   onClick={salvarApoioLanc}
                   disabled={salvando}
                   style={btn("#111111")}

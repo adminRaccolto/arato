@@ -117,14 +117,14 @@ export default function BackupPage() {
   const podeRestaurar = userRole === "raccotlo" || userRole === "admin";
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Proteção de Dados — Backup & Restauração</h1>
+          <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Proteção de Dados — Backup & Restauração</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Exporta todos os dados da fazenda para um arquivo JSON seguro armazenado na nuvem.
           </p>
@@ -134,7 +134,7 @@ export default function BackupPage() {
         {resultado && (
           <div style={{ marginBottom: 18, padding: "12px 16px", borderRadius: 8, background: resultado.tipo === "ok" ? "#ECFDF5" : "#FCEBEB", border: `0.5px solid ${resultado.tipo === "ok" ? "#BBF7D0" : "#FECACA"}`, color: resultado.tipo === "ok" ? "#14532D" : "#791F1F", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <span>{resultado.tipo === "ok" ? "✓ " : "✗ "}{resultado.msg}</span>
-            <button onClick={() => { setResultado(null); setDetalhes(null); }} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "inherit", padding: 0, flexShrink: 0 }}>✕</button>
+            <button data-arato-button="icon" onClick={() => { setResultado(null); setDetalhes(null); }} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "inherit", padding: 0, flexShrink: 0 }}>✕</button>
           </div>
         )}
 
@@ -180,7 +180,7 @@ export default function BackupPage() {
               armazenado com segurança no Supabase Storage.
             </div>
           </div>
-          <button
+          <button data-arato-button="toggle"
             onClick={criarBackup}
             disabled={criando}
             style={{
@@ -197,7 +197,7 @@ export default function BackupPage() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden", marginBottom: 22 }}>
           <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Histórico de Backups</span>
-            <button onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
+            <button data-arato-button="secondary" onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
               {loading ? "…" : "↻ Atualizar"}
             </button>
           </div>
@@ -205,7 +205,7 @@ export default function BackupPage() {
           {loading ? (
             <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Carregando…</div>
           ) : backups.length === 0 ? (
-            <div style={{ padding: "48px 18px", textAlign: "center" }}>
+            <div data-arato-statistic="display" style={{ padding: "48px 18px", textAlign: "center" }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>💾</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Nenhum backup encontrado</div>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>
@@ -213,7 +213,7 @@ export default function BackupPage() {
               </div>
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Data/Hora", "Arquivo", "Tamanho", "Ações"].map((h, i) => (
@@ -238,7 +238,7 @@ export default function BackupPage() {
                         </a>
                       )}
                       {podeRestaurar && (
-                        <button
+                        <button data-arato-button="secondary"
                           onClick={() => { setModalRestaura(b); setConfirmacao(""); setResultado(null); setDetalhes(null); }}
                           style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #FECACA", background: "#FFF8F8", fontSize: 11, color: "#791F1F", cursor: "pointer", fontWeight: 600 }}
                         >
@@ -321,21 +321,21 @@ export default function BackupPage() {
 
       {/* ── Modal Restauração ─────────────────────────────────────── */}
       {modalRestaura && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#791F1F", marginBottom: 6 }}>Restaurar Backup</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18, lineHeight: 1.6 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "#791F1F", marginBottom: 6 }}>Restaurar Backup</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18, lineHeight: 1.6 }}>
               Esta operação vai sobrescrever os dados atuais com os dados do backup selecionado.
               Registros novos criados após o backup <strong>não serão apagados</strong> (modo upsert).
             </div>
 
-            <div style={{ background: "#FBF3E0", border: "0.5px solid #FDE9BB", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#7A5A12" }}>
+            <div data-arato-dialog-body="true" style={{ background: "#FBF3E0", border: "0.5px solid #FDE9BB", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#7A5A12" }}>
               <strong>Backup:</strong> {nomeParaData(modalRestaura.nome)}<br />
               <strong>Tamanho:</strong> {fmtTamanho(modalRestaura.tamanho_bytes)}
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", display: "block", marginBottom: 6 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <label data-arato-label="true" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", display: "block", marginBottom: 6 }}>
                 Para confirmar, digite <strong style={{ color: "#E24B4A" }}>RESTAURAR</strong>:
               </label>
               <input
@@ -347,14 +347,14 @@ export default function BackupPage() {
               />
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary"
                 onClick={() => { setModalRestaura(null); setConfirmacao(""); }}
                 style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Cancelar
               </button>
-              <button
+              <button data-arato-button="toggle"
                 onClick={restaurarBackup}
                 disabled={confirmacao !== "RESTAURAR" || !!restaurando}
                 style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: confirmacao !== "RESTAURAR" || restaurando ? "#ccc" : "#E24B4A", color: "#fff", fontSize: 13, fontWeight: 700, cursor: confirmacao !== "RESTAURAR" || restaurando ? "not-allowed" : "pointer" }}

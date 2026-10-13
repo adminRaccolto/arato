@@ -623,7 +623,7 @@ export default function Dashboard() {
   `;
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg-page)", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" }}>
+    <div data-arato-page="true" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg-page)", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" }}>
       {/* eslint-disable-next-line react/no-danger */}
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <TopNav />
@@ -640,7 +640,7 @@ export default function Dashboard() {
         }}>
 
           {/* Linha 1: saudação + status bolsas + busca */}
-          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18,flexWrap:"wrap" }}>
+          <div data-arato-filters="true" style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18,flexWrap:"wrap" }}>
             <span style={{ fontSize:13,color:"var(--text-3)",fontWeight:500,letterSpacing:".01em" }}>
               {saudar()}, {(nomeUsuario ?? "").split(" ")[0] || "…"}&nbsp;·&nbsp;
               {new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}
@@ -685,7 +685,7 @@ export default function Dashboard() {
                   background:"rgba(255,255,255,0.06)",outline:"none",color:"rgba(255,255,255,0.85)" }}
               />
               {buscaGlobal && !buscandoGlobal && (
-                <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</button>
+                <button data-arato-button="icon" onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</button>
               )}
               {buscaAberta && buscaGlobal.trim().length >= 2 && (
                 <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:300,overflowY:"auto" }}>
@@ -806,7 +806,7 @@ export default function Dashboard() {
                     style={{ padding:"4px 10px",background:"rgba(59,130,246,0.15)",color:"#60A5FA",border:"0.5px solid rgba(59,130,246,0.3)",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,textDecoration:"none" }}>
                     Conciliar
                   </a>
-                  <button onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"4px 9px",background:"rgba(255,255,255,0.04)",color:"var(--text-3)",border:"0.5px solid var(--border)",borderRadius:6,fontSize:11,cursor:"pointer",flexShrink:0 }}>
+                  <button data-arato-button="secondary" onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"4px 9px",background:"rgba(255,255,255,0.04)",color:"var(--text-3)",border:"0.5px solid var(--border)",borderRadius:6,fontSize:11,cursor:"pointer",flexShrink:0 }}>
                     Ignorar
                   </button>
                 </div>

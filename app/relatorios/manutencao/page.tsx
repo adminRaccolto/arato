@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import React, { useState, useEffect, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
@@ -324,23 +325,23 @@ function RelManutInner() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Histórico de manutenções agrupado por equipamento</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {gerado && (
               <>
-                <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <button data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   PDF / Imprimir
                 </button>
-                <button onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <button data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Exportar Excel
                 </button>
               </>
@@ -349,11 +350,11 @@ function RelManutInner() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
           {/* Modo de filtro */}
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
             {(["data", "safra"] as const).map(m => (
-              <button key={m} onClick={() => setModoFiltro(m)}
+              <button data-arato-button="secondary" key={m} onClick={() => setModoFiltro(m)}
                 style={{ ...btn(modoFiltro === m), padding: "7px 18px" }}>
                 {m === "data" ? "Intervalo de Datas" : "Por Safra / Ciclo"}
               </button>
@@ -361,31 +362,31 @@ function RelManutInner() {
           </div>
 
           {modoFiltro === "data" ? (
-            <div style={{ display: "grid", gridTemplateColumns: "160px 160px", gap: 16, marginBottom: 20 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "160px 160px", gap: 16, marginBottom: 20 }}>
               <div>
-                <label style={lbl}>Data Início</label>
+                <label data-arato-label="true" style={lbl}>Data Início</label>
                 <InputData type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
               </div>
               <div>
-                <label style={lbl}>Data Fim</label>
+                <label data-arato-label="true" style={lbl}>Data Fim</label>
                 <InputData type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
               </div>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "200px 200px", gap: 16, marginBottom: 20 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "200px 200px", gap: 16, marginBottom: 20 }}>
               <div>
-                <label style={lbl}>Ano Safra</label>
-                <select value={anoSafraId} onChange={e => setAnoSafraId(e.target.value)} style={{ ...inp, width: "100%" }}>
+                <label data-arato-label="true" style={lbl}>Ano Safra</label>
+                <SelectField value={anoSafraId} onChange={e => setAnoSafraId(e.target.value)} style={{ ...inp, width: "100%" }}>
                   <option value="">Selecione o ano safra</option>
                   {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>Ciclo (opcional)</label>
-                <select value={cicloId} onChange={e => setCicloId(e.target.value)} style={{ ...inp, width: "100%" }} disabled={!anoSafraId}>
+                <label data-arato-label="true" style={lbl}>Ciclo (opcional)</label>
+                <SelectField value={cicloId} onChange={e => setCicloId(e.target.value)} style={{ ...inp, width: "100%" }} disabled={!anoSafraId}>
                   <option value="">Safra inteira</option>
                   {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao ?? c.cultura}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
           )}
@@ -393,10 +394,10 @@ function RelManutInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
             {/* Tipo de Equipamento */}
             <div>
-              <label style={lbl}>Tipo de Equipamento</label>
+              <label data-arato-label="true" style={lbl}>Tipo de Equipamento</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Object.entries(TIPO_MAQUINA_LABEL).map(([k, v]) => (
-                  <button key={k} onClick={() => toggleSet(tiposMaqSel, k, setTiposMaqSel)}
+                  <button data-arato-button="toggle" key={k} onClick={() => toggleSet(tiposMaqSel, k, setTiposMaqSel)}
                     style={btn(tiposMaqSel.has(k))}>
                     {v}
                   </button>
@@ -405,10 +406,10 @@ function RelManutInner() {
             </div>
             {/* Tipo de Manutenção */}
             <div>
-              <label style={lbl}>Tipo de Manutenção</label>
+              <label data-arato-label="true" style={lbl}>Tipo de Manutenção</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Object.entries(TIPO_MANUT_LABEL).map(([k, v]) => (
-                  <button key={k} onClick={() => toggleSet(tiposManutSel, k, setTiposManutSel)}
+                  <button data-arato-button="toggle" key={k} onClick={() => toggleSet(tiposManutSel, k, setTiposManutSel)}
                     style={btn(tiposManutSel.has(k), TIPO_MANUT_COR[k])}>
                     {v}
                   </button>
@@ -418,15 +419,15 @@ function RelManutInner() {
             {/* Equipamentos */}
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                <label style={{ ...lbl, margin: 0 }}>Equipamentos</label>
-                <button onClick={() => setMaquinasSel(new Set(maquinas.map(m => m.id)))}
+                <label data-arato-label="true" style={{ ...lbl, margin: 0 }}>Equipamentos</label>
+                <button data-arato-button="secondary" onClick={() => setMaquinasSel(new Set(maquinas.map(m => m.id)))}
                   style={{ fontSize: 11, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Todos</button>
-                <button onClick={() => setMaquinasSel(new Set())}
+                <button data-arato-button="secondary" onClick={() => setMaquinasSel(new Set())}
                   style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Nenhum</button>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 100, overflowY: "auto" }}>
                 {maquinas.filter(m => tiposMaqSel.has(m.tipo)).map(m => (
-                  <button key={m.id} onClick={() => toggleSet(maquinasSel, m.id, setMaquinasSel)}
+                  <button data-arato-button="secondary" key={m.id} onClick={() => toggleSet(maquinasSel, m.id, setMaquinasSel)}
                     style={btn(maquinasSel.has(m.id))}>
                     {m.nome}
                   </button>
@@ -436,7 +437,7 @@ function RelManutInner() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={gerar} disabled={loading}
+            <button data-arato-button="primary" onClick={gerar} disabled={loading}
               style={{ padding: "10px 28px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {loading ? "Gerando..." : "Gerar Relatório"}
             </button>
@@ -469,8 +470,8 @@ function RelManutInner() {
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Data", "Tipo", "Serviço / Descrição", "Custo"].map(h => (

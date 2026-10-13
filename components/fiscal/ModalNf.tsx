@@ -14,6 +14,7 @@
 // lógica foi preservada EXATAMENTE como estava — só a casca mudou (recebe
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
+import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
@@ -2213,29 +2214,29 @@ export default function ModalNf({
 
   if (carregandoNf) {
     return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-        <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 40, color: "var(--text-2)", fontSize: 13 }}>Carregando NF…</div>
+      <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+        <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 40, color: "var(--text-2)", fontSize: 13 }}>Carregando NF…</div>
       </div>
     );
   }
 
   return (
     <>
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1140, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1140, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {nfEdit ? `NF ${nfEdit.numero}/${nfEdit.serie}` : "Nova NF de Compra"}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {etapa === "cabecalho" ? "Passo 1 — Cabeçalho" : "Passo 2 — Itens & Processamento"}
                 </div>
               </div>
               {/* Stepper */}
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {(["cabecalho", "itens"] as Etapa[]).map((e, i) => (
                   <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: etapa === e ? "#1A5C38" : etapa > e ? "#E8E8E8" : "var(--bg-page)", color: etapa === e ? "#fff" : etapa > e ? "#111111" : "var(--text-muted)" }}>
@@ -2245,10 +2246,10 @@ export default function ModalNf({
                   </div>
                 ))}
               </div>
-              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
-            <div style={{ padding: "16px 20px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "16px 20px" }}>
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{err}</div>}
               {viewOnly && (
                 <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
@@ -2262,7 +2263,7 @@ export default function ModalNf({
                 <div style={lockStyle}>
 
                   {/* ── Barra compacta: Como lançar + Tipo de entrada ── */}
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
                     <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
                       {/* Como lançar */}
                       <div style={{ flex: "1 1 auto" }}>
@@ -2274,7 +2275,7 @@ export default function ModalNf({
                             { v: "leitor", label: "▌▌ Chave / Leitor" },
                             { v: "sieg",   label: "🔗 Sieg / API" },
                           ] as { v: OrigEscolha; label: string }[]).map(({ v, label }) => (
-                            <button key={v}
+                            <button data-arato-button="toggle" key={v}
                               onClick={() => { setOrig(v); setLeitorChave(""); setLeitorErro(null); if (v === "leitor") setTimeout(() => leitorRef.current?.focus(), 50); }}
                               style={{ padding: "5px 12px", border: `1.5px solid ${orig === v ? "#1A5C38" : "var(--border-table)"}`, borderRadius: 6, background: orig === v ? "#E8F5E9" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: orig === v ? 700 : 400, color: orig === v ? "#1A5C38" : "var(--text-2)", whiteSpace: "nowrap" }}>
                               {label}
@@ -2286,12 +2287,12 @@ export default function ModalNf({
                       {/* Tipo de entrada */}
                       <div style={{ flex: "1 1 200px" }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>Tipo de Entrada</div>
-                        <select value={tipo} onChange={e => setTipo(e.target.value as TipoEntrada)}
+                        <SelectField value={tipo} onChange={e => setTipo(e.target.value as TipoEntrada)}
                           style={{ ...inp, fontWeight: 600, background: TIPO_LABELS[tipo]?.cor ?? "var(--bg-input)" }}>
                           {(Object.entries(TIPO_LABELS) as [TipoEntrada, typeof TIPO_LABELS[TipoEntrada]][]).map(([v, meta]) => (
                             <option key={v} value={v}>{meta.label}</option>
                           ))}
-                        </select>
+                        </SelectField>
                         {TIPO_LABELS[tipo] && (
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{TIPO_LABELS[tipo].desc}</div>
                         )}
@@ -2301,7 +2302,7 @@ export default function ModalNf({
                     {/* Painel de input por origem (colapsável) */}
                     {orig === "xml" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
-                        <label style={lbl}>Arquivo XML da NF-e</label>
+                        <label data-arato-label="true" style={lbl}>Arquivo XML da NF-e</label>
                         <input ref={xmlInputRef} type="file" accept=".xml"
                           onChange={e => {
                             const f = e.target.files?.[0];
@@ -2317,7 +2318,7 @@ export default function ModalNf({
 
                     {orig === "leitor" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
-                        <label style={lbl}>Chave de Acesso — 44 dígitos (escaneie ou digite)</label>
+                        <label data-arato-label="true" style={lbl}>Chave de Acesso — 44 dígitos (escaneie ou digite)</label>
                         <div style={{ position: "relative" }}>
                           <input
                             ref={leitorRef}
@@ -2385,13 +2386,13 @@ export default function ModalNf({
 
                     {orig === "sieg" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
-                        <label style={lbl}>Chave de Acesso Sieg (44 dígitos)</label>
+                        <label data-arato-label="true" style={lbl}>Chave de Acesso Sieg (44 dígitos)</label>
                         <div style={{ display: "flex", gap: 10 }}>
                           <input value={siegChave} onChange={e => setSiegChave(e.target.value.replace(/\D/g, ""))}
                             placeholder="00000000000000000000000000000000000000000000"
                             maxLength={44} style={{ ...inp, flex: 1, fontFamily: "monospace", fontSize: 12 }}
                           />
-                          <button onClick={buscarSieg} disabled={siegLoading} style={{ ...btnV, whiteSpace: "nowrap" }}>
+                          <button data-arato-button="primary" onClick={buscarSieg} disabled={siegLoading} style={{ ...btnV, whiteSpace: "nowrap" }}>
                             {siegLoading ? "Buscando…" : "Consultar"}
                           </button>
                         </div>
@@ -2400,7 +2401,7 @@ export default function ModalNf({
                   </div>
 
                   {/* ── Vínculo com Pedido de Compra — ao topo ── */}
-                  <div style={{ background: cab.pedido_compra_id ? "#E8F5E9" : "var(--bg-page)", border: `0.5px solid ${cab.pedido_compra_id ? "#86EFAC" : "var(--border-table)"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                  <div data-arato-panel="true" style={{ background: cab.pedido_compra_id ? "#E8F5E9" : "var(--bg-page)", border: `0.5px solid ${cab.pedido_compra_id ? "#86EFAC" : "var(--border-table)"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: cab.pedido_compra_id ? 8 : 0 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: cab.pedido_compra_id ? "#1A6B3C" : "var(--text-1)" }}>
                         {cab.pedido_compra_id ? "✓ Vinculado ao Pedido de Compra" : "Vincular a um Pedido de Compra"}
@@ -2423,7 +2424,7 @@ export default function ModalNf({
                         })}
                       />
                       {cab.pedido_compra_id && (
-                        <button onClick={() => onPedidoChange("")} style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #86EFAC", background: "transparent", color: "#166534", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" as const }}>
+                        <button data-arato-button="secondary" onClick={() => onPedidoChange("")} style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #86EFAC", background: "transparent", color: "#166534", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" as const }}>
                           ✕ Desvincular
                         </button>
                       )}
@@ -2437,17 +2438,17 @@ export default function ModalNf({
                     )}
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                     <div>
-                      <label style={lbl}>Número da NF *</label>
+                      <label data-arato-label="true" style={lbl}>Número da NF *</label>
                       <input value={cab.numero} onChange={e => setCab(p=>({...p,numero:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Série</label>
+                      <label data-arato-label="true" style={lbl}>Série</label>
                       <input value={cab.serie} onChange={e => setCab(p=>({...p,serie:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>CFOP</label>
+                      <label data-arato-label="true" style={lbl}>CFOP</label>
                       <input
                         value={cab.cfop}
                         onChange={e => setCab(p=>({...p,cfop:e.target.value}))}
@@ -2470,20 +2471,20 @@ export default function ModalNf({
                   </div>
 
                   {CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop || "").trim()) && (
-                    <div style={{ border: "0.5px solid #C9921B", background: "#FBF3E0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+                    <div data-arato-panel="true" style={{ border: "0.5px solid #C9921B", background: "#FBF3E0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5500" }}>Bem do ativo imobilizado — {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) ? "retorno / entrada de bem" : "transferência de bem"}</div>
                       <div style={{ fontSize: 11, color: "#7A5500", marginTop: 2 }}>Sem cobrança: esta NF não gera Contas a Pagar nem movimenta estoque, e não exige Operação Gerencial.</div>
                       {CFOPS_RETORNO_DE_REMESSA.has((cab.cfop || "").trim()) && (
                         <div style={{ marginTop: 10 }}>
-                          <label style={lbl}>Baixar a remessa correspondente (Fiscal → Transferência de Máquinas)</label>
-                          <select value={transfVinculoId} onChange={e => setTransfVinculoId(e.target.value)} style={inp}>
+                          <label data-arato-label="true" style={lbl}>Baixar a remessa correspondente (Fiscal → Transferência de Máquinas)</label>
+                          <SelectField value={transfVinculoId} onChange={e => setTransfVinculoId(e.target.value)} style={inp}>
                             <option value="">— não vincular a nenhuma remessa —</option>
                             {transfCandidatas.map(t => (
                               <option key={t.id} value={t.id}>
                                 {t.maquina_nome} · {t.destinatario_nome} · NF {t.nf_saida_numero ?? "s/nº"}{t.nf_saida_data ? ` de ${t.nf_saida_data.split("-").reverse().join("/")}` : ""}
                               </option>
                             ))}
-                          </select>
+                          </SelectField>
                           <div style={{ fontSize: 10, color: "#7A5500", marginTop: 3 }}>
                             {transfCandidatas.length === 0 ? "Nenhuma remessa aberta encontrada." : transfVinculoId ? "Ao processar, a remessa selecionada passa a Retornada com os dados desta NF." : "Selecione a remessa para dar baixa nela ao processar."}
                           </div>
@@ -2492,12 +2493,12 @@ export default function ModalNf({
                     </div>
                   )}
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-                        <label style={{ ...lbl, marginBottom: 0 }}>Emitente (Fornecedor) *</label>
+                      <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                        <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Emitente (Fornecedor) *</label>
                         {!cab.pessoa_id && cab.emitente_nome && (
-                          <button
+                          <button data-arato-button="secondary"
                             disabled={savingForn}
                             onClick={async () => {
                               if (!fazendaId || !cab.emitente_nome) return;
@@ -2600,14 +2601,14 @@ export default function ModalNf({
                       </div>
                     </div>
                     <div>
-                      <label style={lbl}>Nome do emitente *</label>
+                      <label data-arato-label="true" style={lbl}>Nome do emitente *</label>
                       <input value={cab.emitente_nome} onChange={e => setCab(p=>({...p,emitente_nome:e.target.value}))} style={inp} />
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>CNPJ do Emitente</label>
+                      <label data-arato-label="true" style={lbl}>CNPJ do Emitente</label>
                       <input
                         value={cab.emitente_cnpj}
                         onChange={e => setCab(p => ({ ...p, emitente_cnpj: e.target.value }))}
@@ -2631,33 +2632,33 @@ export default function ModalNf({
                       />
                     </div>
                     <div>
-                      <label style={lbl}>Data de Emissão *</label>
+                      <label data-arato-label="true" style={lbl}>Data de Emissão *</label>
                       <InputData type="date" value={cab.data_emissao} onChange={e => setCab(p=>({...p,data_emissao:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Data de Entrada</label>
+                      <label data-arato-label="true" style={lbl}>Data de Entrada</label>
                       <InputData type="date" value={cab.data_entrada} onChange={e => setCab(p=>({...p,data_entrada:e.target.value}))} style={inp} />
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Valor Produtos (R$) *</label>
+                      <label data-arato-label="true" style={lbl}>Valor Produtos (R$) *</label>
                       <input value={cab.valor_total} onChange={e => setCab(p=>({...p,valor_total:e.target.value}))} placeholder="0,00" style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Natureza da Operação</label>
+                      <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
                       <input value={cab.natureza} onChange={e => setCab(p=>({...p,natureza:e.target.value}))} style={inp} />
                     </div>
                   </div>
 
                   {/* ── Impostos adicionados ao total ── */}
-                  <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                  <div data-arato-panel="true" style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 10, padding: 14, marginBottom: 14 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 10 }}>
                       Impostos Adicionados ao Total
                       <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>Deixe em branco se não houver</span>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
                       {([
                         ["IPI",    "valor_ipi",     "Imp. Produtos Industrializados"],
                         ["ST",     "valor_st",      "Substituição Tributária ICMS"],
@@ -2667,7 +2668,7 @@ export default function ModalNf({
                         ["ICMS Deson.","valor_icms_deson","ICMS Desonerado (−) — redução/isenção reconhecida pelo emitente, comum em exportação/armazém alfandegado"],
                       ] as [string, keyof typeof cab, string][]).map(([label, field, tooltip]) => (
                         <div key={field} title={tooltip}>
-                          <label style={{ ...lbl, color: "#92400E" }}>{label}</label>
+                          <label data-arato-label="true" style={{ ...lbl, color: "#92400E" }}>{label}</label>
                           <input value={String((cab as Record<string, unknown>)[field] ?? "")} onChange={e => setCab(p=>({...p,[field]:e.target.value}))} placeholder="0,00" style={{ ...inp, borderColor: "#FCD34D" }} />
                         </div>
                       ))}
@@ -2702,12 +2703,12 @@ export default function ModalNf({
                     })()}
                   </div>
 
-                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Pagamento e Classificação</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div>
-                        <label style={lbl}>Forma de Pagamento</label>
-                        <select value={cab.forma_pagamento} onChange={e => setCab(p => ({ ...p, forma_pagamento: e.target.value }))} style={inp}>
+                        <label data-arato-label="true" style={lbl}>Forma de Pagamento</label>
+                        <SelectField value={cab.forma_pagamento} onChange={e => setCab(p => ({ ...p, forma_pagamento: e.target.value }))} style={inp}>
                           <option value="">— selecionar —</option>
                           <option value="a_vista">À Vista</option>
                           <option value="prazo_boleto">A Prazo — Boleto</option>
@@ -2717,43 +2718,43 @@ export default function ModalNf({
                           <option value="barter">Barter (troca por grãos)</option>
                           <option value="financiamento">Financiamento</option>
                           <option value="outros">Outros</option>
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º vencimento)</span>}</label>
+                        <label data-arato-label="true" style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º vencimento)</span>}</label>
                         <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                       </div>
                       {/* ── Parcelamento ── */}
                       <div style={{ gridColumn: "1 / -1" }}>
-                        <label style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
+                        <label data-arato-label="true" style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
                         <div style={{ display: "flex", gap: 6, marginBottom: nfCondicao === "prazo" ? 10 : 0 }}>
                           {(["avista", "prazo"] as const).map(v => (
-                            <button key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
+                            <button data-arato-button="toggle" key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
                               style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${nfCondicao === v ? "#1A4870" : "var(--border-table)"}`, background: nfCondicao === v ? "#1A4870" : "var(--bg-card)", color: nfCondicao === v ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                               {v === "avista" ? "À Vista" : "Parcelado"}
                             </button>
                           ))}
                         </div>
                         {nfCondicao === "prazo" && (
-                          <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                          <div data-arato-panel="true" style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: nfParcelas.length > 0 ? 12 : 0 }}>
                               <div>
-                                <label style={lbl}>Nº de Parcelas</label>
+                                <label data-arato-label="true" style={lbl}>Nº de Parcelas</label>
                                 <input type="number" min="2" max="120" value={nfQtdParcelas}
                                   onChange={e => { setNfQtdParcelas(e.target.value); setNfParcelas([]); }}
                                   style={{ ...inp, width: 80 }} />
                               </div>
                               <div>
-                                <label style={lbl}>Intervalo (meses)</label>
-                                <select value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
+                                <label data-arato-label="true" style={lbl}>Intervalo (meses)</label>
+                                <SelectField value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
                                   <option value="1">Mensal</option>
                                   <option value="2">Bimestral</option>
                                   <option value="3">Trimestral</option>
                                   <option value="6">Semestral</option>
                                   <option value="12">Anual</option>
-                                </select>
+                                </SelectField>
                               </div>
-                              <button onClick={gerarParcelasNf}
+                              <button data-arato-button="primary" onClick={gerarParcelasNf}
                                 style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                                 Gerar parcelas
                               </button>
@@ -2766,7 +2767,7 @@ export default function ModalNf({
                                   <span />
                                 </div>
                                 {nfParcelas.map((p, i) => (
-                                  <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
+                                  <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
                                     <InputData type="date" value={p.data}
                                       onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                       style={{ ...inp, fontSize: 12 }} />
@@ -2799,14 +2800,14 @@ export default function ModalNf({
                         )}
                       </div>
                       <div>
-                        <label style={lbl}>Ano Safra *</label>
-                        <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={{ ...inp, borderColor: cab.ano_safra_id ? undefined : "#E24B4A" }}>
+                        <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+                        <SelectField value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={{ ...inp, borderColor: cab.ano_safra_id ? undefined : "#E24B4A" }}>
                           <option value="">— selecionar —</option>
                           {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Operação Gerencial</label>
+                        <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
                         <SelectBusca
                           value={cab.operacao_gerencial_id}
                           onChange={id => setCab(p => ({ ...p, operacao_gerencial_id: id }))}
@@ -2816,33 +2817,33 @@ export default function ModalNf({
                         />
                       </div>
                       <div>
-                        <label style={lbl}>Ciclo</label>
-                        <select value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
+                        <label data-arato-label="true" style={lbl}>Ciclo</label>
+                        <SelectField value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
                           <option value="">— selecione o ano safra —</option>
                           {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Produtor</label>
-                        <select value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value, ie_produtor: ""}))} style={inp}>
+                        <label data-arato-label="true" style={lbl}>Produtor</label>
+                        <SelectField value={cab.produtor_id} onChange={e => setCab(p=>({...p, produtor_id: e.target.value, ie_produtor: ""}))} style={inp}>
                           <option value="">— selecionar —</option>
                           {wProdutores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       {cab.produtor_id && (
                         <div>
-                          <label style={lbl}>I.E. do Produtor</label>
+                          <label data-arato-label="true" style={lbl}>I.E. do Produtor</label>
                           {iesProdutor.length === 0 ? (
                             <input value={cab.ie_produtor} onChange={e => setCab(p => ({ ...p, ie_produtor: e.target.value }))} style={inp} placeholder="Sem IE cadastrada — digite manualmente" />
                           ) : (
-                            <select value={cab.ie_produtor} onChange={e => setCab(p => ({ ...p, ie_produtor: e.target.value }))} style={inp}>
+                            <SelectField value={cab.ie_produtor} onChange={e => setCab(p => ({ ...p, ie_produtor: e.target.value }))} style={inp}>
                               <option value="">— selecionar IE —</option>
                               {iesProdutor.map(ie => (
                                 <option key={ie.id} value={ie.inscricao_estadual}>
                                   {ie.inscricao_estadual}{ie.estado ? ` — ${ie.estado}` : ""}{ie.municipio ? ` / ${ie.municipio}` : ""}
                                 </option>
                               ))}
-                            </select>
+                            </SelectField>
                           )}
                         </div>
                       )}
@@ -2851,11 +2852,11 @@ export default function ModalNf({
 
                   {/* Campos específicos por tipo */}
                   {tipo === "remessa" && (
-                    <div style={{ background: "#E6F1FB30", border: "0.5px solid #93C5FD", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                    <div data-arato-panel="true" style={{ background: "#E6F1FB30", border: "0.5px solid #93C5FD", borderRadius: 10, padding: 14, marginBottom: 14 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#0C447C", marginBottom: 10 }}>Remessa — Depósito Operacional de Destino</div>
                       <div>
-                        <label style={lbl}>Depósito de destino (onde o insumo será armazenado)</label>
-                        <select value={cab.deposito_destino_id} onChange={e => setCab(p=>({...p,deposito_destino_id:e.target.value}))} style={inp}>
+                        <label data-arato-label="true" style={lbl}>Depósito de destino (onde o insumo será armazenado)</label>
+                        <SelectField value={cab.deposito_destino_id} onChange={e => setCab(p=>({...p,deposito_destino_id:e.target.value}))} style={inp}>
                           <option value="">Selecionar depósito…</option>
                           {wDepositos.filter(d => !["terceiro","armazem_terceiro"].includes(d.tipo)).length > 0 && (
                             <optgroup label="Depósitos Próprios">
@@ -2871,7 +2872,7 @@ export default function ModalNf({
                               ))}
                             </optgroup>
                           )}
-                        </select>
+                        </SelectField>
                       </div>
                     </div>
                   )}
@@ -2897,13 +2898,13 @@ export default function ModalNf({
                   )}
 
                   {tipo === "custo_direto" && modoDireto === "combustivel" && (
-                    <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <div style={{ fontSize: 12, color: "#7A5800" }}>
+                    <div data-arato-dialog-heading="true" style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14, marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#7A5800" }}>
                         Aqui só cabe abastecimento DIRETO de um veículo (posto de terceiro). Se esta NF é uma
                         <strong> compra de combustível para o tanque/bomba da fazenda</strong>, mude para Compra Normal —
                         aí aparece o catálogo do produto e o crédito na bomba, sem exigir veículo.
                       </div>
-                      <button
+                      <button data-arato-button="toggle"
                         onClick={() => {
                           // Preserva descrição/quantidade/valor já digitados — só troca o tipo da NF
                           // (habilita o catálogo + bomba/tanque) e a apropriação de cada item, que
@@ -2921,44 +2922,44 @@ export default function ModalNf({
                   )}
 
                   <div style={{ marginBottom: 8 }}>
-                    <label style={lbl}>Chave de Acesso NF-e (44 dígitos)</label>
+                    <label data-arato-label="true" style={lbl}>Chave de Acesso NF-e (44 dígitos)</label>
                     <input value={cab.chave_acesso} onChange={e => setCab(p=>({...p,chave_acesso:e.target.value.replace(/\D/g,"")}))} maxLength={44} placeholder="Opcional — para rastreabilidade" style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
                   </div>
 
                   {/* ── Classificação Contábil / LCDPR ── */}
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 7, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                       Classificação Contábil / LCDPR
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
                       <div>
-                        <label style={lbl}>Vínculo de Atividade</label>
-                        <select style={inp} value={cab.vinculo_atividade} onChange={e => setCab(p => ({ ...p, vinculo_atividade: e.target.value as typeof cab.vinculo_atividade }))}>
+                        <label data-arato-label="true" style={lbl}>Vínculo de Atividade</label>
+                        <SelectField style={inp} value={cab.vinculo_atividade} onChange={e => setCab(p => ({ ...p, vinculo_atividade: e.target.value as typeof cab.vinculo_atividade }))}>
                           <option value="rural">🌱 Atividade Rural (LCDPR)</option>
                           <option value="pessoa_fisica">👤 Pessoa Física (não rural)</option>
                           <option value="investimento">🏗 Investimento / Imobilizado</option>
                           <option value="nao_tributavel">— Não Tributável</option>
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Entidade Contábil</label>
-                        <select style={inp} value={cab.entidade_contabil} onChange={e => setCab(p => ({ ...p, entidade_contabil: e.target.value as "pf" | "pj" }))}>
+                        <label data-arato-label="true" style={lbl}>Entidade Contábil</label>
+                        <SelectField style={inp} value={cab.entidade_contabil} onChange={e => setCab(p => ({ ...p, entidade_contabil: e.target.value as "pf" | "pj" }))}>
                           <option value="pf">PF — Produtor Rural (CPF)</option>
                           <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
-                        </select>
+                        </SelectField>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ marginBottom: 8 }}>
-                    <label style={lbl}>Observações</label>
+                    <label data-arato-label="true" style={lbl}>Observações</label>
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
                 </div>
 
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button style={btnR} onClick={onClose}>Cancelar</button>
-                    <button style={btnV} onClick={async () => {
+                  <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                    <button data-arato-button="secondary" style={btnR} onClick={onClose}>Cancelar</button>
+                    <button data-arato-button="toggle" style={btnV} onClick={async () => {
                       // Em modo de visualização (NF processada), só navega — não tenta
                       // salvar (salvarRascunho() bloquearia com o guard de "já processada").
                       if (viewOnly) { setEtapa("itens"); return; }
@@ -2990,7 +2991,7 @@ export default function ModalNf({
                       <span style={{ fontSize: 13, color: "#7A5500" }}>
                         ⚠ Esta NF foi importada sem itens (possível contingência ou XML incompleto no SIEG).
                       </span>
-                      <button
+                      <button data-arato-button="toggle"
                         onClick={resyncWizard}
                         disabled={wizardResyncando}
                         style={{ padding: "5px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: wizardResyncando ? "#f5e0a0" : "#FBF3E0", color: "#7A5500", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
@@ -3019,7 +3020,7 @@ export default function ModalNf({
                         Nenhum item carregado. Volte ao Cabeçalho e importe o XML ou busque via Leitor de Chave.
                       </span>
                       {nfEdit?.origem === "sieg" && (
-                        <button onClick={resyncWizard} disabled={wizardResyncando}
+                        <button data-arato-button="toggle" onClick={resyncWizard} disabled={wizardResyncando}
                           style={{ padding: "5px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: wizardResyncando ? "#f5e0a0" : "#FBF3E0", color: "#7A5500", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {wizardResyncando ? "Re-sincronizando…" : "🔄 Re-sincronizar do SIEG"}
                         </button>
@@ -3027,8 +3028,8 @@ export default function ModalNf({
                     </div>
                   )}
                   {/* Cabeçalho da etapa */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                    <div>
+                  <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div data-arato-dialog-body="true">
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)" }}>
                         {tipo === "insumos"      ? "Associação de produtos" :
                          tipo === "custo_direto" ? "Itens — Apropriação Direta" :
@@ -3045,7 +3046,7 @@ export default function ModalNf({
                         </div>
                       )}
                     </div>
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={() => setItens(p => [...p, { ...ITEM_VAZIO(), tipo_apropiacao: tipoAprpDefault(tipo) }])}
                       style={{ padding: "6px 14px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A5C38", fontWeight: 600 }}
                     >
@@ -3062,22 +3063,22 @@ export default function ModalNf({
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
                         Centro de custo do lançamento
                       </div>
-                    <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div data-arato-panel="true" style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                         <div>
-                          <label style={{ ...lbl, marginBottom: 3 }}>Centro de Custo{sugestaoNome && <span style={{ marginLeft: 6, fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>}</label>
-                          <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }} style={inp}>
+                          <label data-arato-label="true" style={{ ...lbl, marginBottom: 3 }}>Centro de Custo{sugestaoNome && <span style={{ marginLeft: 6, fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>✦ {sugestaoNome}</span>}</label>
+                          <SelectField value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); setCcGlobalMaquinaId(""); }} style={inp}>
                             <option value="">— selecionar CC —</option>
                             {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
-                          </select>
+                          </SelectField>
                         </div>
                         {ccManutencao(cab.centro_custo_id) && (
                           <div>
-                            <label style={lbl}>Máquina (manutenção)</label>
-                            <select value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)} style={{ ...inp, background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                            <label data-arato-label="true" style={lbl}>Máquina (manutenção)</label>
+                            <SelectField value={ccGlobalMaquinaId} onChange={e => setCcGlobalMaquinaId(e.target.value)} style={{ ...inp, background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
                               <option value="">🔧 Selecionar máquina</option>
                               {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                            </select>
+                            </SelectField>
                           </div>
                         )}
                       </div>
@@ -3086,7 +3087,7 @@ export default function ModalNf({
                           mercado com 20+ itens) vai pro mesmo centro de custo. Item a item
                           continua disponível pra quando algum item precisa de um CC diferente. */}
                       {cab.centro_custo_id && itens.some(i => i.descricao_nf.trim()) && (
-                        <button
+                        <button data-arato-button="secondary"
                           onClick={() => setItens(prev => prev.map(it => it.descricao_nf.trim() ? { ...it, centro_custo_id: cab.centro_custo_id, maquina_id: ccGlobalMaquinaId || it.maquina_id } : it))}
                           style={{ marginTop: 10, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                           ↓ Aplicar este centro de custo a todos os itens
@@ -3132,7 +3133,7 @@ export default function ModalNf({
                       );
                       return (
                       <div key={it.key} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
-                        <div style={{
+                        <div data-arato-item-grid="true" style={{
                           display: "grid",
                           gridTemplateColumns: tipo === "insumos"
                             ? "3fr 68px 90px 90px 110px 180px 28px"
@@ -3169,7 +3170,7 @@ export default function ModalNf({
                                    (a apropriação de custo é no consumo, não na compra). */
                                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                    <select value={it.insumo_id} onChange={e => {
+                                    <SelectField value={it.insumo_id} onChange={e => {
                                         const nid = e.target.value;
                                         const ins = insumos.find(i => i.id === nid);
                                         const autoLotes = ins?.categoria === "semente" && it.lotes_semente.length === 0
@@ -3202,21 +3203,21 @@ export default function ModalNf({
                                       }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
                                       <option value="">— catálogo —</option>
                                       {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                    </select>
-                                    <button
+                                    </SelectField>
+                                    <button data-arato-button="icon"
                                       onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                       title="Cadastrar novo produto"
                                       style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
                                     >+</button>
                                   </div>
                                   {it.insumo_id && linhasPedidoDoProduto(it.insumo_id).length > 1 && (
-                                    <select value={it.pedido_item_id} onChange={e => setItem(it.key, { pedido_item_id: e.target.value })}
+                                    <SelectField value={it.pedido_item_id} onChange={e => setItem(it.key, { pedido_item_id: e.target.value })}
                                       style={{ ...inp, fontSize: 10, padding: "3px 6px", background: it.pedido_item_id ? "#FFF8E6" : "#FEE2E2", border: `0.5px solid ${it.pedido_item_id ? "#F6C87A" : "#FCA5A5"}` }}>
                                       <option value="">⚠ qual linha do pedido?</option>
                                       {linhasPedidoDoProduto(it.insumo_id).map(pi => (
                                         <option key={pi.id} value={pi.id}>{pi.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {pi.unidade} (saldo {Math.max(0, pi.quantidade - (pi.qtd_cancelada ?? 0) - (pi.qtd_entregue ?? 0)).toLocaleString("pt-BR", { maximumFractionDigits: 3 })})</option>
                                       ))}
-                                    </select>
+                                    </SelectField>
                                   )}
                                 </div>
                               )}
@@ -3265,7 +3266,7 @@ export default function ModalNf({
                               {it.tipo_apropiacao !== "direto" && (
                                 <>
                                   {/* Select de conversão */}
-                                  <select
+                                  <SelectField
                                     value={it.conversao_key}
                                     onChange={e => setItem(it.key, { conversao_key: e.target.value })}
                                     style={{ ...inp, fontSize: 11, padding: "4px 7px",
@@ -3280,7 +3281,7 @@ export default function ModalNf({
                                       : TABELA_CONVERSAO.map(c => <option key={c.key} value={c.key}>{c.labelSelect}</option>)
                                     }
                                     <option value="livre">Conversão manual (livre)</option>
-                                  </select>
+                                  </SelectField>
 
                                   {/* AUTO: mostra resultado calculado */}
                                   {autoConv && conv && (
@@ -3343,10 +3344,10 @@ export default function ModalNf({
                                   OG dentro de cada item. */}
                               {modoDireto === "combustivel" ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                  <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }}>
+                                  <SelectField value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", background: "#FFF0E0", border: "0.5px solid #F0B060" }}>
                                     <option value="">⛽ Veículo que abasteceu —</option>
                                     {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                                  </select>
+                                  </SelectField>
                                   {/* Data, tipo de combustível, valor/L e valor total já vêm da NF —
                                       só falta o hodômetro/horímetro pra alimentar o histórico de
                                       abastecimento do veículo (mesmo registro que o abastecimento
@@ -3356,10 +3357,10 @@ export default function ModalNf({
                               ) : modoDireto === "manutencao" ? (
                                 <span style={{ fontSize: 11, color: "var(--text-3)" }}>🔧 Rateio por frota abaixo ↓</span>
                               ) : (
-                                <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                                <SelectField value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                   <option value="">— selecionar CC —</option>
                                   {ccOpts.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
-                                </select>
+                                </SelectField>
                               )}
                             </div>
                           </>
@@ -3376,12 +3377,12 @@ export default function ModalNf({
                                   princípio ativo/lote de semente que só se aplica lá. */}
                               {it.tipo_apropiacao === "estoque" && (
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                                  <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })}
+                                  <SelectField value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })}
                                     style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1, borderColor: it.insumo_id ? undefined : "#F6C87A" }}>
                                     <option value="">— catálogo —</option>
                                     {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                  </select>
-                                  <button
+                                  </SelectField>
+                                  <button data-arato-button="icon"
                                     onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                     title="Cadastrar novo produto"
                                     style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
@@ -3402,26 +3403,26 @@ export default function ModalNf({
                               {fmtBRL(it.valor_total)}
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                              <SelectField value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">—</option>
                                 {ccOpts.filter(c => !ccOpts.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
-                              </select>
+                              </SelectField>
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <select value={it.tipo_apropiacao} onChange={e => setItem(it.key, { tipo_apropiacao: e.target.value as NfEntradaItem["tipo_apropiacao"] })} style={{ ...inp, fontSize: 11, padding: "5px 6px" }}>
+                              <SelectField value={it.tipo_apropiacao} onChange={e => setItem(it.key, { tipo_apropiacao: e.target.value as NfEntradaItem["tipo_apropiacao"] })} style={{ ...inp, fontSize: 11, padding: "5px 6px" }}>
                                 <option value="direto">Direto</option>
                                 <option value="estoque">Estoque</option>
                                 <option value="maquinario">Maquinário</option>
                                 <option value="terceiro">Terceiro</option>
                                 <option value="vef">VEF</option>
                                 <option value="remessa">Remessa</option>
-                              </select>
+                              </SelectField>
                             </div>
                           </>
                         )}
                         <div style={{ padding: "6px 8px", textAlign: "center" }}>
                           {itens.length > 1 && (
-                            <button onClick={() => setItens(p => p.filter(x => x.key !== it.key))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
+                            <button data-arato-button="icon" onClick={() => setItens(p => p.filter(x => x.key !== it.key))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
                           )}
                         </div>
                         </div>
@@ -3441,13 +3442,13 @@ export default function ModalNf({
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#7A5A12", marginBottom: 6 }}>🔧 Rateio de custo por frota (opcional) — se informar máquinas, some 100%</div>
                               {it.maquinas_rateio.map((r, idx) => (
                                 <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 4, alignItems: "center" }}>
-                                  <select value={r.maquina_id} onChange={e => {
+                                  <SelectField value={r.maquina_id} onChange={e => {
                                     const novo = it.maquinas_rateio.map((x, i) => i === idx ? { ...x, maquina_id: e.target.value } : x);
                                     setItem(it.key, { maquinas_rateio: novo });
                                   }} style={{ ...inp, fontSize: 12, flex: 1, background: "#fff" }}>
                                     <option value="">— máquina —</option>
                                     {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                                  </select>
+                                  </SelectField>
                                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                     <InputNumerico decimais={1} value={r.percentual || ""} onChange={v => {
                                       const novo = it.maquinas_rateio.map((x, i) => i === idx ? { ...x, percentual: parseFloat(v) || 0 } : x);
@@ -3455,11 +3456,11 @@ export default function ModalNf({
                                     }} style={{ ...inp, fontSize: 12, width: 70, background: "#fff" }} />
                                     <span style={{ fontSize: 11, color: "#7A5A12" }}>%</span>
                                   </div>
-                                  <button onClick={() => setItem(it.key, { maquinas_rateio: it.maquinas_rateio.filter((_, i) => i !== idx) })} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1 }}>×</button>
+                                  <button data-arato-button="icon" onClick={() => setItem(it.key, { maquinas_rateio: it.maquinas_rateio.filter((_, i) => i !== idx) })} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1 }}>×</button>
                                 </div>
                               ))}
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <button onClick={() => setItem(it.key, { maquinas_rateio: [...it.maquinas_rateio, { maquina_id: "", percentual: it.maquinas_rateio.length === 0 ? 100 : 0 }] })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #F6C87A", background: "#fff", cursor: "pointer", color: "#7A5A12" }}>+ Adicionar máquina</button>
+                                <button data-arato-button="secondary" onClick={() => setItem(it.key, { maquinas_rateio: [...it.maquinas_rateio, { maquina_id: "", percentual: it.maquinas_rateio.length === 0 ? 100 : 0 }] })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #F6C87A", background: "#fff", cursor: "pointer", color: "#7A5A12" }}>+ Adicionar máquina</button>
                                 {it.maquinas_rateio.length > 0 && (
                                   <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#166534" : "#B91C1C" }}>Total: {totalPct.toFixed(1)}%{!ok ? " — deve somar 100%" : ""}</span>
                                 )}
@@ -3482,7 +3483,7 @@ export default function ModalNf({
                           <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 12px", background: "#F0F7F1" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, color: "#1A5C38" }}>🌱 Lotes de Semente</span>
-                              <button
+                              <button data-arato-button="secondary"
                                 onClick={() => setItem(it.key, { lotes_semente: [...it.lotes_semente, { numero: "", quantidade_kg: undefined }] })}
                                 style={{ fontSize: 11, padding: "2px 10px", borderRadius: 5, border: "0.5px solid #16A34A", background: "#E8F5E9", color: "#16A34A", cursor: "pointer", fontWeight: 700 }}
                               >+ Lote</button>
@@ -3527,7 +3528,7 @@ export default function ModalNf({
                                   }}
                                   style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}
                                 />
-                                <select
+                                <SelectField
                                   value={lote.insumo_id ?? ""}
                                   onChange={e => {
                                     const novos = it.lotes_semente.map((l, i) => i === li ? { ...l, insumo_id: e.target.value || undefined } : l);
@@ -3540,7 +3541,7 @@ export default function ModalNf({
                                   {insumos.filter(i => i.categoria === "semente" && (insumoAtivo(i) || i.id === lote.insumo_id)).map(i => (
                                     <option key={i.id} value={i.id}>{i.nome}</option>
                                   ))}
-                                </select>
+                                </SelectField>
                                 <input
                                   type="number"
                                   min={0}
@@ -3554,7 +3555,7 @@ export default function ModalNf({
                                   }}
                                   style={{ ...inp, fontSize: 11, padding: "4px 8px", width: 100, flexShrink: 0, borderColor: semPesoEste ? "#E24B4A" : undefined }}
                                 />
-                                <button
+                                <button data-arato-button="icon"
                                   onClick={() => setItem(it.key, { lotes_semente: it.lotes_semente.filter((_, i) => i !== li) })}
                                   style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15, flexShrink: 0 }}
                                 >×</button>
@@ -3680,7 +3681,7 @@ export default function ModalNf({
                   {tipo === "insumos" && (
                     <div style={{ marginBottom: 16 }}>
                       {/* Checkbox */}
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
+                      <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none", marginBottom: 12 }}>
                         <input
                           type="checkbox"
                           checked={cab.e_combustivel}
@@ -3698,11 +3699,11 @@ export default function ModalNf({
 
                       {/* Seletor Bomba — visível quando É Combustível */}
                       {cab.e_combustivel && (
-                        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14 }}>
+                        <div data-arato-panel="true" style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 10, padding: 14 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
                             Bomba / Tanque destino (crédito de estoque)
                           </div>
-                          <select
+                          <SelectField
                             value={cab.bomba_destino_id}
                             onChange={e => setCab(p => ({ ...p, bomba_destino_id: e.target.value }))}
                             style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}
@@ -3713,7 +3714,7 @@ export default function ModalNf({
                                 {b.nome} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
                               </option>
                             ))}
-                          </select>
+                          </SelectField>
                           {wBombas.length === 0 && (
                             <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
                               Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis &amp; Bombas.
@@ -3724,12 +3725,12 @@ export default function ModalNf({
 
                       {/* Seletor Depósito — visível quando NÃO é combustível */}
                       {!cab.e_combustivel && itens.some(i => i.tipo_apropiacao !== "direto") && (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                    <div data-arato-panel="true" style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Depósito padrão para itens sem depósito individual</div>
                         <div style={{ display: "flex", gap: 4, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
                           {(["proprio", "terceiro"] as const).map(t => (
-                            <button key={t} onClick={() => setDepFiltro(t)}
+                            <button data-arato-button="toggle" key={t} onClick={() => setDepFiltro(t)}
                               style={{ fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
                                 background: depFiltro === t ? "#111111" : "transparent",
                                 color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
@@ -3738,7 +3739,7 @@ export default function ModalNf({
                           ))}
                         </div>
                       </div>
-                      <select
+                      <SelectField
                         onChange={e => {
                           const dep = e.target.value;
                           setItens(p => p.map(it => it.deposito_id ? it : { ...it, deposito_id: dep }));
@@ -3753,38 +3754,38 @@ export default function ModalNf({
                           .map(d => (
                             <option key={d.id} value={d.id}>{d.nome} — {d.tipo}</option>
                           ))}
-                      </select>
+                      </SelectField>
                     </div>
                   )}
                     </div>
                   )}
                 </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</button>
+                  <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                      <button data-arato-button="toggle" style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</button>
                       {/* Estornar/Excluir — ficam aqui dentro do modal (não há mais botões de
                           linha por tipo na grid unificada); mesmas condições de status do
                           dropdown de ações da tela antiga. */}
                       {nfEdit && nfEdit.status === "processada" && (
-                        <button onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
+                        <button data-arato-button="secondary" onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas") && (
-                        <button onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
+                        <button data-arato-button="secondary" onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
-                        <button onClick={() => router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nfEdit.id}`)} style={{ ...btnR, borderColor: "#1A487050", color: "#1A4870" }}>🚚 Emitir NF Remessa</button>
+                        <button data-arato-button="secondary" onClick={() => router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nfEdit.id}`)} style={{ ...btnR, borderColor: "#1A487050", color: "#1A4870" }}>🚚 Emitir NF Remessa</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && (
-                        <button onClick={() => abrirReclassificar(nfEdit)} style={{ ...btnR, borderColor: "#C9921B50", color: "#7A5200" }}>🏷 Reclassificar</button>
+                        <button data-arato-button="secondary" onClick={() => abrirReclassificar(nfEdit)} style={{ ...btnR, borderColor: "#C9921B50", color: "#7A5200" }}>🏷 Reclassificar</button>
                       )}
                       {nfEdit && nfEdit.status !== "cancelada" && (
-                        <button onClick={() => iniciarExclusaoNf(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
+                        <button data-arato-button="danger" onClick={() => iniciarExclusaoNf(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", background: "#FCEBEB", color: "#791F1F" }}>🗑 Excluir</button>
                       )}
                     </div>
                     {!viewOnly && (
                       <div style={{ display: "flex", gap: 10 }}>
-                        <button style={btnR} onClick={async () => {
+                        <button data-arato-button="secondary" style={btnR} onClick={async () => {
                           // Salvar como pendente sem processar
                           if (nfEdit) {
                             await atualizarNfEntrada(nfEdit.id, { status: "pendente" });
@@ -3794,7 +3795,7 @@ export default function ModalNf({
                         }}>
                           Salvar como Pendente
                         </button>
-                        <button
+                        <button data-arato-button="toggle"
                           style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }}
                           onClick={processarNF}
                           disabled={saving}
@@ -3810,9 +3811,9 @@ export default function ModalNf({
           </div>
         </div>
       {modalExcluir && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
 
             {modalExcluir.verificando ? (
               <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-2)", fontSize: 13 }}>
@@ -3824,8 +3825,8 @@ export default function ModalNf({
                 <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20, lineHeight: 1.6 }}>
                   A NF <strong>{modalExcluir.nf.numero}</strong> possui um lançamento financeiro que foi incluído em um lote de pagamento (conciliação bancária). Não é possível excluir — desfaça a conciliação primeiro.
                 </div>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
+                <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
                 </div>
               </>
             ) : (
@@ -3858,9 +3859,9 @@ export default function ModalNf({
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
-                  <button
+                <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
+                  <button data-arato-button="toggle"
                     onClick={confirmarExclusao}
                     disabled={modalExcluir.excluindo}
                     style={{ padding: "8px 18px", background: modalExcluir.excluindo ? "var(--text-muted)" : "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: modalExcluir.excluindo ? "default" : "pointer", fontSize: 13 }}
@@ -3875,17 +3876,17 @@ export default function ModalNf({
       )}
 
       {modalNovoInsumo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Cadastrar produto no catálogo</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Cadastrar produto no catálogo</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>
               O produto será criado no catálogo de insumos e já vinculado ao item da NF.
             </div>
 
-            <div style={{ display: "grid", gap: 14 }}>
-              <div>
-                <label style={lbl}>Nome do produto *</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nome do produto *</label>
                 <input
                   style={inp}
                   value={formNovoInsumo.nome}
@@ -3894,7 +3895,7 @@ export default function ModalNf({
                   autoFocus
                 />
                 {formNovoInsumo.nome !== modalNovoInsumo.nome && (
-                  <button
+                  <button data-arato-button="secondary"
                     onClick={() => setFormNovoInsumo(p => ({ ...p, nome: modalNovoInsumo.nome }))}
                     style={{ marginTop: 4, fontSize: 11, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                   >
@@ -3903,10 +3904,10 @@ export default function ModalNf({
                 )}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Categoria *</label>
-                  <select style={inp} value={formNovoInsumo.categoria}
+                  <label data-arato-label="true" style={lbl}>Categoria *</label>
+                  <SelectField style={inp} value={formNovoInsumo.categoria}
                     onChange={e => setFormNovoInsumo(p => ({ ...p, categoria: e.target.value as Insumo["categoria"] }))}>
                     <optgroup label="Insumos agrícolas">
                       <option value="semente">Semente</option>
@@ -3923,11 +3924,11 @@ export default function ModalNf({
                       <option value="escritorio">Escritório</option>
                       <option value="outros">Outros</option>
                     </optgroup>
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Unidade de medida *</label>
-                  <select style={inp} value={formNovoInsumo.unidade}
+                  <label data-arato-label="true" style={lbl}>Unidade de medida *</label>
+                  <SelectField style={inp} value={formNovoInsumo.unidade}
                     onChange={e => setFormNovoInsumo(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
                     <option value="un">Unidade (un)</option>
                     <option value="kg">Quilograma (kg)</option>
@@ -3942,7 +3943,7 @@ export default function ModalNf({
                     <option value="pc">Peça (pc)</option>
                     <option value="par">Par</option>
                     <option value="outros">Outros</option>
-                  </select>
+                  </SelectField>
                 </div>
               </div>
             </div>
@@ -3953,13 +3954,13 @@ export default function ModalNf({
               </div>
             )}
 
-            <div style={{ marginTop: 14, background: "#FBF0D8", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#7A5A12" }}>
+            <div data-arato-dialog-body="true" style={{ marginTop: 14, background: "#FBF0D8", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#7A5A12" }}>
               ◈ Estoque, estoque mínimo e custo médio podem ser ajustados depois em Cadastros → Insumos.
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button style={btnR} onClick={() => setModalNovoInsumo(null)}>Cancelar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovoInsumo(null)}>Cancelar</button>
+              <button data-arato-button="toggle"
                 onClick={salvarNovoInsumo}
                 disabled={!formNovoInsumo.nome.trim() || novoInsumoSaving}
                 style={{ ...btnV, background: !formNovoInsumo.nome.trim() || novoInsumoSaving ? "var(--text-muted)" : "#C9921B", cursor: !formNovoInsumo.nome.trim() || novoInsumoSaving ? "default" : "pointer" }}
@@ -3972,14 +3973,14 @@ export default function ModalNf({
       )}
 
       {devModal && devNfOrig && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Devolução de Compra</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Devolução de Compra</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
                   NF de origem: <strong>{devNfOrig.numero}/{devNfOrig.serie}</strong> · {devNfOrig.emitente_nome} · {fmtBRL(devNfOrig.valor_total)}
                 </div>
                 {Math.abs(devFatorDesconto - 1) > 0.001 && (
@@ -3988,35 +3989,35 @@ export default function ModalNf({
                   </div>
                 )}
               </div>
-              <button onClick={() => setDevModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 16 }}>×</button>
+              <button data-arato-button="icon" onClick={() => setDevModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 16 }}>×</button>
             </div>
 
-            <div style={{ padding: 24 }}>
+            <div data-arato-dialog-body="true" style={{ padding: 24 }}>
               {devErr && (
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{devErr}</div>
               )}
 
               {/* Cabeçalho da devolução */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
                 <div>
-                  <label style={lbl}>Data de Emissão</label>
+                  <label data-arato-label="true" style={lbl}>Data de Emissão</label>
                   <InputData type="date" value={devData} onChange={e => setDevData(e.target.value)} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Vencimento da CR</label>
+                  <label data-arato-label="true" style={lbl}>Vencimento da CR</label>
                   <InputData type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>CFOP</label>
-                  <select value={devCfop} onChange={e => setDevCfop(e.target.value)} style={inp}>
+                  <label data-arato-label="true" style={lbl}>CFOP</label>
+                  <SelectField value={devCfop} onChange={e => setDevCfop(e.target.value)} style={inp}>
                     <option value="5201">5201 — Dev. compra intraestadual</option>
                     <option value="6201">6201 — Dev. compra interestadual</option>
                     <option value="5202">5202 — Dev. compra c/ substituição</option>
                     <option value="6202">6202 — Dev. compra c/ substituição interestadual</option>
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Observações</label>
+                  <label data-arato-label="true" style={lbl}>Observações</label>
                   <input value={devObs} onChange={e => setDevObs(e.target.value)} placeholder="Opcional" style={inp} />
                 </div>
               </div>
@@ -4034,7 +4035,7 @@ export default function ModalNf({
                     ))}
                   </div>
                   {devItens.map(it => (
-                    <div key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
+                    <div data-arato-item-grid="true" key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
                       <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>
                         {it.descricao_produto}
                         {it.qtdOriginalNF != null && it.unidadeOriginalNF && it.unidadeOriginalNF !== it.unidade && (
@@ -4084,9 +4085,9 @@ export default function ModalNf({
               )}
 
               {/* Ações */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button style={btnR} onClick={() => setDevModal(false)}>Cancelar</button>
-                <button
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setDevModal(false)}>Cancelar</button>
+                <button data-arato-button="toggle"
                   onClick={confirmarDevolucao}
                   disabled={devSaving || devItens.filter(i => i.quantidade_devolver > 0).length === 0}
                   style={{ ...btnV, background: devSaving ? "#ccc" : "#E24B4A", cursor: devSaving ? "default" : "pointer" }}
@@ -4100,30 +4101,30 @@ export default function ModalNf({
       )}
 
       {modalReclass && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             {/* Cabeçalho */}
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Reclassificar NF</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Reclassificar NF</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   NF {modalReclass.numero}/{modalReclass.serie} — {modalReclass.emitente_nome}
                 </div>
-                <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4, background: "#FBF3E0", display: "inline-block", padding: "2px 8px", borderRadius: 6 }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#C9921B", marginTop: 4, background: "#FBF3E0", display: "inline-block", padding: "2px 8px", borderRadius: 6 }}>
                   Altera apenas a classificação. Os lançamentos financeiros gerados não são afetados.
                 </div>
               </div>
-              <button onClick={() => setModalReclass(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 12 }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalReclass(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 12 }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
               {reclassErr && (
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>
                   {reclassErr}
                 </div>
               )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Operação Gerencial</label>
+                  <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
                   <SelectBusca
                     value={reclassOpId}
                     onChange={setReclassOpId}
@@ -4133,20 +4134,20 @@ export default function ModalNf({
                   />
                 </div>
                 <div>
-                  <label style={lbl}>Centro de Custo</label>
-                  <select value={reclassCC} onChange={e => setReclassCC(e.target.value)} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Centro de Custo</label>
+                  <SelectField value={reclassCC} onChange={e => setReclassCC(e.target.value)} style={inp}>
                     <option value="">— sem centro de custo —</option>
                     {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(cc => (
                       <option key={cc.id} value={cc.id}>{cc.nome}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
               </div>
             </div>
             {/* Rodapé */}
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalReclass(null)}>Cancelar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalReclass(null)}>Cancelar</button>
+              <button data-arato-button="toggle"
                 onClick={salvarReclassificacao}
                 disabled={reclassSaving}
                 style={{ ...btnV, background: reclassSaving ? "var(--text-muted)" : "#C9921B", cursor: reclassSaving ? "default" : "pointer" }}

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -1188,7 +1189,7 @@ function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
 
   return (
     <div>
-      <div
+      <div data-arato-panel="true"
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={handleDrop}
@@ -1229,8 +1230,8 @@ function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
 function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colunas: string[] }) {
   if (!rows.length) return null;
   return (
-    <div style={{ overflowX: "auto", marginTop: 16 }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+    <div data-arato-grid-container="true" style={{ overflowX: "auto", marginTop: 16 }}>
+      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
             <th style={{ padding: "6px 10px", border: "0.5px solid var(--border)", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>#</th>
@@ -1279,7 +1280,7 @@ function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados 
   return (
     <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
       {itens.map(({ label, valor, cor, bg }) => (
-        <div key={label} style={{ padding: "10px 20px", borderRadius: 8, background: bg, border: `0.5px solid ${cor}40` }}>
+        <div data-arato-statistic="display" key={label} style={{ padding: "10px 20px", borderRadius: 8, background: bg, border: `0.5px solid ${cor}40` }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: cor }}>{valor}</div>
           <div style={{ fontSize: 12, color: cor }}>{label}</div>
         </div>
@@ -1419,7 +1420,7 @@ function ImportacaoInner() {
     return (
       <>
         <TopNav />
-        <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
+        <div data-arato-statistic="display" style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-1)" }}>Acesso restrito</div>
           <div style={{ fontSize: 14, marginTop: 8 }}>Esta área é exclusiva para a equipe Raccolto.</div>
@@ -3205,7 +3206,7 @@ function ImportacaoInner() {
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>
+        <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>
           Importações
         </h1>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
@@ -3221,7 +3222,7 @@ function ImportacaoInner() {
             {(["pessoas", "cp", "cr", "apoio", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "matriculas_imp", "talhoes_imp", "funcionarios", "propriedades_pkg"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
-                <button
+                <button data-arato-button="toggle"
                   key={a}
                   onClick={() => { setAba(a); if (a !== "insumos") { setInsumoFazSel(""); setInsumoDepSel(""); } }}
                   style={{
@@ -3261,11 +3262,11 @@ function ImportacaoInner() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 24 }}>{cfg.icon}</span>
-                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{cfg.label}</h2>
+                  <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{cfg.label}</h2>
                 </div>
                 <p style={{ margin: "4px 0 0 34px", fontSize: 13, color: "#666" }}>{cfg.desc}</p>
               </div>
-              <button
+              <button data-arato-button="secondary"
                 onClick={() => downloadTemplate(aba)}
                 style={{
                   padding: "8px 16px", background: "white", border: "0.5px solid #111111",
@@ -3279,29 +3280,29 @@ function ImportacaoInner() {
 
             {/* Seletores de Fazenda / Depósito — apenas na aba Insumos */}
             {aba === "insumos" && (
-              <div style={{ marginBottom: 16, padding: "14px 16px", background: "#F0F7FF", border: "0.5px solid #11111140", borderRadius: 10 }}>
+              <div data-arato-panel="true" style={{ marginBottom: 16, padding: "14px 16px", background: "#F0F7FF", border: "0.5px solid #11111140", borderRadius: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
                   Destino da Importação
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>
+                    <label data-arato-label="true" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>
                       Fazenda <span style={{ color: "#888", fontWeight: 400 }}>(opcional — substitui coluna da planilha)</span>
                     </label>
-                    <select
+                    <SelectField
                       value={insumoFazSel}
                       onChange={e => { setInsumoFazSel(e.target.value); setInsumosRows([]); setResultInsumos(null); }}
                       style={{ width: "100%", padding: "7px 10px", border: "0.5px solid #CCC", borderRadius: 8, fontSize: 13, background: "white", color: insumoFazSel ? "var(--text-1)" : "#888" }}
                     >
                       <option value="">— Usar coluna fazenda_nome da planilha —</option>
                       {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>
+                    <label data-arato-label="true" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>
                       Depósito <span style={{ color: "#888", fontWeight: 400 }}>(opcional — substitui coluna da planilha)</span>
                     </label>
-                    <select
+                    <SelectField
                       value={insumoDepSel}
                       onChange={e => setInsumoDepSel(e.target.value)}
                       disabled={!insumoFazSel}
@@ -3309,7 +3310,7 @@ function ImportacaoInner() {
                     >
                       <option value="">— Sem depósito específico —</option>
                       {insumoDepositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                    </select>
+                    </SelectField>
                     {insumoFazSel && insumoDepositos.length === 0 && (
                       <span style={{ fontSize: 11, color: "#888", marginTop: 4, display: "block" }}>
                         Nenhum depósito cadastrado para esta fazenda
@@ -3378,10 +3379,10 @@ function ImportacaoInner() {
 
                 {/* Botões */}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-                  <button onClick={limpar} style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
+                  <button data-arato-button="secondary" onClick={limpar} style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
                     Limpar
                   </button>
-                  <button
+                  <button data-arato-button="primary"
                     onClick={importarPacote}
                     disabled={loadingPacote || (pkgFazendasRows.filter(r => r._status === "ok").length + pkgMatriculasRows.filter(r => r._status === "ok").length + pkgTalhoesRows.filter(r => r._status === "ok").length) === 0}
                     style={{
@@ -3420,8 +3421,8 @@ function ImportacaoInner() {
             {aba !== "propriedades_pkg" && totalRows > 0 && (
               <>
                 {aba === "insumos" && dupRows > 0 && (
-                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#FFFBE0", border: "0.5px solid #C9921B", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
+                  <div data-arato-panel="true" style={{ marginTop: 16, padding: "10px 14px", background: "#FFFBE0", border: "0.5px solid #C9921B", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
                       <input type="checkbox" checked={modoAtualizacaoInsumos} onChange={e => setModoAtualizacaoInsumos(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#C9921B", cursor: "pointer" }} />
                       <span>
                         <strong style={{ color: "#7A5C00" }}>Modo Atualização</strong>
@@ -3432,8 +3433,8 @@ function ImportacaoInner() {
                 )}
 
                 {aba === "contratos_fin" && dupRows > 0 && (
-                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
+                  <div data-arato-panel="true" style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
                       <input type="checkbox" checked={modoAtualizacaoContratoFin} onChange={e => {
                           const novoModo = e.target.checked;
                           setModoAtualizacaoContratoFin(novoModo);
@@ -3457,8 +3458,8 @@ function ImportacaoInner() {
                 )}
 
                 {aba === "contratos_venda" && dupRows > 0 && (
-                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
+                  <div data-arato-panel="true" style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
                       <input type="checkbox" checked={modoAtualizacaoContratoVenda} onChange={e => {
                           const novoModo = e.target.checked;
                           setModoAtualizacaoContratoVenda(novoModo);
@@ -3554,13 +3555,13 @@ function ImportacaoInner() {
                     {okRows   > 0 && <span style={{ marginLeft: 10, color: "#16A34A", fontWeight: 600 }}>{okRows} prontas para importar</span>}
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={limpar}
                       style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}
                     >
                       Limpar
                     </button>
-                    <button
+                    <button data-arato-button="toggle"
                       onClick={cfg.onImport}
                       disabled={cfg.loading || okRows === 0}
                       style={{
@@ -3596,7 +3597,7 @@ function ImportacaoInner() {
                 <div style={{ fontWeight: 700, color: "#7A1A1A", marginBottom: 8 }}>
                   ✗ {resultInsumosErros.length} linha{resultInsumosErros.length !== 1 ? "s" : ""} com erro na importação — verifique os nomes de fazenda e depósito
                 </div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                   <thead>
                     <tr style={{ background: "#FECACA" }}>
                       <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "#7A1A1A" }}>Insumo</th>

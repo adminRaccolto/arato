@@ -49,44 +49,44 @@ export default function ConcederFeriasModal({ func, fazendaId, fer, onClose, onD
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
-      <div style={{ background: "var(--bg-card, #fff)", borderRadius: 12, padding: "22px 26px", width: "min(96vw,560px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Conceder férias — {func.nome}</div>
-        <div style={{ fontSize: 12, color: "#666", margin: "2px 0 14px" }}>Período aquisitivo {fer.periodo_inicio} → {fer.periodo_fim} · salário de referência {fmt(salario)}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <div><label style={lbl}>Início do gozo *</label><InputData type="date" style={inp} value={inicio} onChange={e => setInicio(e.target.value)} /></div>
-          <div><label style={lbl}>Dias de gozo</label><input style={inp} value={dias} onChange={e => setDias(e.target.value)} /></div>
-          <div><label style={lbl}>Fim do gozo</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} value={fim ? fim.split("-").reverse().join("/") : ""} readOnly /></div>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
+      <div data-arato-dialog="page" style={{ background: "var(--bg-card, #fff)", borderRadius: 12, padding: "22px 26px", width: "min(96vw,560px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700 }}>Conceder férias — {func.nome}</div>
+        <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", margin: "2px 0 14px" }}>Período aquisitivo {fer.periodo_inicio} → {fer.periodo_fim} · salário de referência {fmt(salario)}</div>
+        <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Início do gozo *</label><InputData type="date" style={inp} value={inicio} onChange={e => setInicio(e.target.value)} /></div>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Dias de gozo</label><input style={inp} value={dias} onChange={e => setDias(e.target.value)} /></div>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Fim do gozo</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} value={fim ? fim.split("-").reverse().join("/") : ""} readOnly /></div>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 4px", fontSize: 12 }}>
+        <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 4px", fontSize: 12 }}>
           <input type="checkbox" checked={abono} onChange={e => { setAbono(e.target.checked); if (e.target.checked && num(dias) > 20) setDias("20"); }} />
           Abono pecuniário (vender até 1/3 das férias)
         </label>
-        {abono && <div style={{ maxWidth: 160 }}><label style={lbl}>Dias de abono</label><input style={inp} value={diasAbono} onChange={e => setDiasAbono(e.target.value)} /></div>}
+        {abono && <div style={{ maxWidth: 160 }}><label data-arato-label="true" style={lbl}>Dias de abono</label><input style={inp} value={diasAbono} onChange={e => setDiasAbono(e.target.value)} /></div>}
 
-        <div style={{ marginTop: 14, border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 10, padding: 14, background: "var(--bg-page, #F4F6FA)" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Valores calculados</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 12px", fontSize: 12 }}>
+        <div data-arato-dialog-body="true" data-arato-panel="true" style={{ marginTop: 14, border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 10, padding: 14, background: "var(--bg-page, #F4F6FA)" }}>
+          <div data-arato-dialog-body="true" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Valores calculados</div>
+          <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 12px", fontSize: 12 }}>
             <span>Férias ({nDias} dias)</span><span>{fmt(calc.ferias)}</span>
             <span>1/3 constitucional</span><span>{fmt(calc.tercoFerias)}</span>
             {abono && <><span>Abono pecuniário ({nAbono} dias) + 1/3</span><span>{fmt(calc.totalAbono)}</span></>}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: abono ? "1fr 1fr" : "1fr", gap: 12, marginTop: 12 }}>
-            <div><label style={lbl}>Valor das férias a lançar (R$)</label><input style={{ ...inp, fontWeight: 700 }} value={vFerias ?? mask(calc.totalFerias)} onChange={e => setVFerias(e.target.value)} /></div>
-            {abono && <div><label style={lbl}>Valor do abono a lançar (R$)</label><input style={{ ...inp, fontWeight: 700 }} value={vAbono ?? mask(calc.totalAbono)} onChange={e => setVAbono(e.target.value)} /></div>}
+          <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: abono ? "1fr 1fr" : "1fr", gap: 12, marginTop: 12 }}>
+            <div><label data-arato-label="true" style={lbl}>Valor das férias a lançar (R$)</label><input style={{ ...inp, fontWeight: 700 }} value={vFerias ?? mask(calc.totalFerias)} onChange={e => setVFerias(e.target.value)} /></div>
+            {abono && <div><label data-arato-label="true" style={lbl}>Valor do abono a lançar (R$)</label><input style={{ ...inp, fontWeight: 700 }} value={vAbono ?? mask(calc.totalAbono)} onChange={e => setVAbono(e.target.value)} /></div>}
           </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 8 }}>Valores brutos (INSS, IRRF e FGTS de 8% seguem pelas guias, como na folha). Você pode ajustar o valor se o contador calcular diferente.</div>
+          <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#888", marginTop: 8 }}>Valores brutos (INSS, IRRF e FGTS de 8% seguem pelas guias, como na folha). Você pode ajustar o valor se o contador calcular diferente.</div>
         </div>
 
-        <div style={{ marginTop: 12, maxWidth: 240 }}>
-          <label style={lbl}>Vencimento do pagamento (até 2 dias antes)</label>
+        <div data-arato-dialog-body="true" style={{ marginTop: 12, maxWidth: 240 }}>
+          <label data-arato-label="true" style={lbl}>Vencimento do pagamento (até 2 dias antes)</label>
           <InputData type="date" style={inp} value={vencPagto} onChange={e => setPagto(e.target.value)} />
         </div>
-        <div style={{ fontSize: 11, color: "#16A34A", marginTop: 10 }}>Ao confirmar, o sistema lança automaticamente {fmt(valorFerias + valorAbono)} no Contas a Pagar, com a operação gerencial de férias.</div>
+        <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#16A34A", marginTop: 10 }}>Ao confirmar, o sistema lança automaticamente {fmt(valorFerias + valorAbono)} no Contas a Pagar, com a operação gerencial de férias.</div>
         {erro && <div style={{ color: "#E24B4A", fontSize: 12, marginTop: 10 }}>{erro}</div>}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-          <button onClick={confirmar} disabled={saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{saving ? "Lançando…" : "Conceder e lançar no financeiro"}</button>
+        <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+          <button data-arato-button="secondary" onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+          <button data-arato-button="primary" onClick={confirmar} disabled={saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{saving ? "Lançando…" : "Conceder e lançar no financeiro"}</button>
         </div>
       </div>
     </div>

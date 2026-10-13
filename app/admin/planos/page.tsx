@@ -45,7 +45,7 @@ export default function PlanosPage() {
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>Planos & Módulos</h1>
+        <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>Planos & Módulos</h1>
         <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
           Para alterar preços, edite <code style={{ background: "var(--bg-page)", padding: "1px 6px", borderRadius: 4 }}>lib/planos.ts</code> e faça deploy.
           Cobrança e links de pagamento são gerenciados pelo <strong>Mentorasys</strong>.
@@ -58,7 +58,7 @@ export default function PlanosPage() {
           const p = PLANOS_DEFAULT[pid];
           const cor = COR[pid];
           return (
-            <div key={pid} style={{
+            <div data-arato-statistic="display" key={pid} style={{
               background: "var(--bg-card)",
               border: `1.5px solid ${cor.borda}40`,
               borderRadius: 14,
@@ -74,7 +74,7 @@ export default function PlanosPage() {
                   ★ Destaque
                 </div>
               )}
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>{p.nome}</h2>
+              <h2 data-arato-h2="true" style={{ fontSize: 18, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>{p.nome}</h2>
               <p style={{ fontSize: 12, color: "#666", margin: "0 0 16px", lineHeight: 1.5 }}>{p.descricao}</p>
               <div style={{ marginBottom: 4 }}>
                 <span style={{ fontSize: 26, fontWeight: 900, color: "#0D0D0D" }}>{fmtPreco(p.preco_mensal)}</span>
@@ -102,10 +102,10 @@ export default function PlanosPage() {
       {/* Tabela comparativa */}
       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>Tabela Comparativa de Módulos</h2>
+          <h2 data-arato-h2="true" style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>Tabela Comparativa de Módulos</h2>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg-card)" }}>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", width: 220 }}>Módulo</th>

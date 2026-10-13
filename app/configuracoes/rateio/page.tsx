@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -272,17 +273,17 @@ export default function RateioPage() {
 
   // ─── Render ───────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1 }}>
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Regras de Rateio</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Regras de Rateio</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>
               N1 = distribuição entre fazendas · N2 = distribuição entre ciclos dentro da fazenda
             </p>
           </div>
-          <button style={btnV} onClick={tab === "n2" ? abrirNovoN2 : abrirNovoN1}>
+          <button data-arato-button="primary" style={btnV} onClick={tab === "n2" ? abrirNovoN2 : abrirNovoN1}>
             + Nova Regra
           </button>
         </header>
@@ -290,7 +291,7 @@ export default function RateioPage() {
         {/* Tabs */}
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 0 }}>
           {(["n2", "n1"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
+            <button data-arato-button="toggle" key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t ? 700 : 400, color: tab === t ? "#2A2A2A" : "var(--text-2)", borderBottom: tab === t ? "2px solid #2A2A2A" : "2px solid transparent" }}
             >
               {t === "n2" ? "Nível 2 — Fazenda → Ciclos" : "Nível 1 — Global → Fazendas"}
@@ -312,20 +313,20 @@ export default function RateioPage() {
               </div>
 
               {/* Filtros */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>Filtrar:</span>
-                <select style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                <SelectField style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                   value={filtroFazN2} onChange={e => setFiltroFazN2(e.target.value)}>
                   <option value="">Todas as fazendas</option>
                   {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
-                <select style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                </SelectField>
+                <SelectField style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                   value={filtroAnoN2} onChange={e => setFiltroAnoN2(e.target.value)}>
                   <option value="">Todos os anos</option>
                   {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
+                </SelectField>
                 {(filtroAnoN2 || filtroFazN2) && (
-                  <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => { setFiltroAnoN2(""); setFiltroFazN2(""); }}>Limpar</button>
+                  <button data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => { setFiltroAnoN2(""); setFiltroFazN2(""); }}>Limpar</button>
                 )}
                 <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
                   {regrasN2Filtradas.length} regra{regrasN2Filtradas.length !== 1 ? "s" : ""}
@@ -389,8 +390,8 @@ export default function RateioPage() {
                             )}
                           </div>
                           <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                            <button style={btnR} onClick={() => abrirEditarN2(r)}>Editar</button>
-                            <button style={btnX} onClick={async () => { if (confirm(`Excluir regra "${r.nome}"?`)) { await excluirRateioRegra(r.id); await carregar(); } }}>✕</button>
+                            <button data-arato-button="secondary" style={btnR} onClick={() => abrirEditarN2(r)}>Editar</button>
+                            <button data-arato-button="danger" style={btnX} onClick={async () => { if (confirm(`Excluir regra "${r.nome}"?`)) { await excluirRateioRegra(r.id); await carregar(); } }}>✕</button>
                           </div>
                         </div>
                       </div>
@@ -463,8 +464,8 @@ export default function RateioPage() {
                             )}
                           </div>
                           <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                            <button style={btnR} onClick={() => abrirEditarN1(r)}>Editar</button>
-                            <button style={btnX} onClick={async () => { if (confirm(`Excluir regra "${r.nome}"?`)) { await excluirRateioGlobal(r.id); await carregar(); } }}>✕</button>
+                            <button data-arato-button="secondary" style={btnR} onClick={() => abrirEditarN1(r)}>Editar</button>
+                            <button data-arato-button="danger" style={btnX} onClick={async () => { if (confirm(`Excluir regra "${r.nome}"?`)) { await excluirRateioGlobal(r.id); await carregar(); } }}>✕</button>
                           </div>
                         </div>
                       </div>
@@ -481,22 +482,22 @@ export default function RateioPage() {
           MODAL — Regra N2 (Fazenda → Ciclos)
       ══════════════════════════════════════════════════════════ */}
       {modalN2 && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 780, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{editN2Id ? "Editar Regra N2" : "Nova Regra N2 — Fazenda → Ciclos"}</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Distribui um custo entre os ciclos de uma fazenda</div>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: 780, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15 }}>{editN2Id ? "Editar Regra N2" : "Nova Regra N2 — Fazenda → Ciclos"}</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Distribui um custo entre os ciclos de uma fazenda</div>
               </div>
-              <button onClick={() => setModalN2(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalN2(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
-            <div style={{ padding: 22 }}>
+            <div data-arato-dialog-body="true" style={{ padding: 22 }}>
 
               {/* Tipo de distribuição */}
-              <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
+              <div data-arato-dialog-body="true" style={{ marginBottom: 16, display: "flex", gap: 10 }}>
                 {(["atribuido", "area_plantada"] as const).map(t => (
-                  <button key={t} onClick={() => setFN2(p => ({ ...p, tipo: t }))}
+                  <button data-arato-button="toggle" key={t} onClick={() => setFN2(p => ({ ...p, tipo: t }))}
                     style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1.5px solid ${fN2.tipo === t ? "#2A2A2A" : "var(--border-table)"}`, background: fN2.tipo === t ? "#E8E8E8" : "var(--bg-page)", cursor: "pointer", textAlign: "left" }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: fN2.tipo === t ? "#0D0D0D" : "var(--text-1)" }}>
                       {t === "atribuido" ? "Atribuído" : "Por Área Plantada"}
@@ -509,38 +510,38 @@ export default function RateioPage() {
               </div>
 
               {/* Campos principais */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Fazenda *</label>
-                  <select style={inp} value={fN2.fazenda_id} onChange={e => setFN2(p => ({ ...p, fazenda_id: e.target.value, centros_custo_ids: [] }))}>
+                  <label data-arato-label="true" style={lbl}>Fazenda *</label>
+                  <SelectField style={inp} value={fN2.fazenda_id} onChange={e => setFN2(p => ({ ...p, fazenda_id: e.target.value, centros_custo_ids: [] }))}>
                     <option value="">— Selecionar —</option>
                     {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Ano Safra *</label>
-                  <select style={{ ...inp, borderColor: !fN2.ano_safra_id ? "#E24B4A80" : "var(--border-table)" }} value={fN2.ano_safra_id} onChange={e => setFN2(p => ({ ...p, ano_safra_id: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+                  <SelectField style={{ ...inp, borderColor: !fN2.ano_safra_id ? "#E24B4A80" : "var(--border-table)" }} value={fN2.ano_safra_id} onChange={e => setFN2(p => ({ ...p, ano_safra_id: e.target.value }))}>
                     <option value="">— Selecionar —</option>
                     {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Nome da Regra *</label>
+                  <label data-arato-label="true" style={lbl}>Nome da Regra *</label>
                   <input style={inp} value={fN2.nome} onChange={e => setFN2(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Regra Soja 25/26" />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 16 }}>
                 <div>
-                  <label style={lbl}>
+                  <label data-arato-label="true" style={lbl}>
                     Centros de Custo *
                     {fN2.centros_custo_ids.length > 0 && (
                       <span style={{ marginLeft: 6, fontSize: 10, background: "#2A2A2A", color: "#fff", borderRadius: 10, padding: "1px 7px" }}>{fN2.centros_custo_ids.length}</span>
                     )}
                   </label>
-                  <div style={{ border: fN2.centros_custo_ids.length === 0 ? "0.5px solid #E24B4A80" : "0.5px solid var(--border-table)", borderRadius: 7, maxHeight: 130, overflowY: "auto", background: "var(--bg-page)", padding: "6px 10px" }}>
+                  <div data-arato-panel="true" style={{ border: fN2.centros_custo_ids.length === 0 ? "0.5px solid #E24B4A80" : "0.5px solid var(--border-table)", borderRadius: 7, maxHeight: 130, overflowY: "auto", background: "var(--bg-page)", padding: "6px 10px" }}>
                     {ccs.filter(c => c.parent_id).map(cc => (
-                      <label key={cc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 2px", cursor: "pointer" }}>
+                      <label data-arato-label="true" key={cc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 2px", cursor: "pointer" }}>
                         <input type="checkbox" checked={fN2.centros_custo_ids.includes(cc.id)}
                           onChange={e => {
                             const ids = e.target.checked ? [...fN2.centros_custo_ids, cc.id] : fN2.centros_custo_ids.filter(id => id !== cc.id);
@@ -553,7 +554,7 @@ export default function RateioPage() {
                   </div>
                 </div>
                 <div>
-                  <label style={lbl}>Descrição</label>
+                  <label data-arato-label="true" style={lbl}>Descrição</label>
                   <input style={inp} value={fN2.descricao} onChange={e => setFN2(p => ({ ...p, descricao: e.target.value }))} placeholder="Opcional" />
                 </div>
               </div>
@@ -596,24 +597,24 @@ export default function RateioPage() {
                   </div>
 
                   {/* Linhas de ciclos */}
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
+                    <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>Destinos *</span>
-                      <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addLinhaN2}>+ Ciclo</button>
+                      <button data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addLinhaN2}>+ Ciclo</button>
                     </div>
                     {linhasN2.map((l, i) => (
-                      <div key={i} style={{ display: "grid", gridTemplateColumns: "16px 2fr 80px 2fr 32px", gap: 8, alignItems: "center", marginBottom: i < linhasN2.length - 1 ? 8 : 0 }}>
+                      <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "16px 2fr 80px 2fr 32px", gap: 8, alignItems: "center", marginBottom: i < linhasN2.length - 1 ? 8 : 0 }}>
                         <div style={{ width: 12, height: 12, borderRadius: 3, background: CORES[i % CORES.length] }} />
-                        <select style={inp} value={l.ciclo_id} onChange={e => setLinhaFieldN2(i, "ciclo_id", e.target.value)}>
+                        <SelectField style={inp} value={l.ciclo_id} onChange={e => setLinhaFieldN2(i, "ciclo_id", e.target.value)}>
                           <option value="">— Ciclo —</option>
                           {ciclosModalN2.map(c => <option key={c.id} value={c.id}>{CULT[c.cultura] ?? c.cultura}</option>)}
-                        </select>
+                        </SelectField>
                         <div style={{ position: "relative" }}>
                           <InputNumerico style={{ ...inp, paddingRight: 20 }} min="0" max="100" placeholder="0" value={l.percentual} onChange={v => setPctLinhaN2(i, v)} />
                           <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", pointerEvents: "none" }}>%</span>
                         </div>
                         <input style={inp} placeholder="Observação" value={l.descricao} onChange={e => setLinhaFieldN2(i, "descricao", e.target.value)} />
-                        <button style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeLinhaN2(i)} disabled={linhasN2.length <= 1}>✕</button>
+                        <button data-arato-button="danger" style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeLinhaN2(i)} disabled={linhasN2.length <= 1}>✕</button>
                       </div>
                     ))}
                     {linhasN2.length > 0 && (
@@ -625,15 +626,15 @@ export default function RateioPage() {
                 </>
               )}
 
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", marginBottom: 16 }}>
+              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", marginBottom: 16 }}>
                 <input type="checkbox" checked={fN2.ativo} onChange={e => setFN2(p => ({ ...p, ativo: e.target.checked }))} />
                 Regra ativa
               </label>
 
               {erroN2 && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>{erroN2}</div>}
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button style={btnR} onClick={() => setModalN2(false)}>Cancelar</button>
-                <button
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalN2(false)}>Cancelar</button>
+                <button data-arato-button="primary"
                   style={{ ...btnV, opacity: salvandoN2 || !fN2.nome.trim() || !fN2.ano_safra_id || !fN2.fazenda_id || !fN2.centros_custo_ids.length || !somaOkN2 ? 0.5 : 1 }}
                   disabled={salvandoN2 || !fN2.nome.trim() || !fN2.ano_safra_id || !fN2.fazenda_id || !fN2.centros_custo_ids.length || !somaOkN2}
                   onClick={salvarN2}
@@ -650,22 +651,22 @@ export default function RateioPage() {
           MODAL — Regra N1 (Global → Fazendas)
       ══════════════════════════════════════════════════════════ */}
       {modalN1 && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 820, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{editN1Id ? "Editar Regra N1" : "Nova Regra N1 — Global → Fazendas"}</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Distribui um custo entre todas as fazendas da conta</div>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: 820, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15 }}>{editN1Id ? "Editar Regra N1" : "Nova Regra N1 — Global → Fazendas"}</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Distribui um custo entre todas as fazendas da conta</div>
               </div>
-              <button onClick={() => setModalN1(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalN1(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
-            <div style={{ padding: 22 }}>
+            <div data-arato-dialog-body="true" style={{ padding: 22 }}>
 
               {/* Tipo de distribuição */}
-              <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
+              <div data-arato-dialog-body="true" style={{ marginBottom: 16, display: "flex", gap: 10 }}>
                 {(["atribuido", "area_ciclos"] as const).map(t => (
-                  <button key={t} onClick={() => setFN1(p => ({ ...p, tipo: t }))}
+                  <button data-arato-button="toggle" key={t} onClick={() => setFN1(p => ({ ...p, tipo: t }))}
                     style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1.5px solid ${fN1.tipo === t ? "#C9921B" : "var(--border-table)"}`, background: fN1.tipo === t ? "#FBF3E0" : "var(--bg-page)", cursor: "pointer", textAlign: "left" }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: fN1.tipo === t ? "#633806" : "var(--text-1)" }}>
                       {t === "atribuido" ? "Atribuído" : "Por Área dos Ciclos"}
@@ -678,43 +679,43 @@ export default function RateioPage() {
               </div>
 
               {/* Cabeçalho */}
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 12, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 12, marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Nome da Regra *</label>
+                  <label data-arato-label="true" style={lbl}>Nome da Regra *</label>
                   <input style={inp} value={fN1.nome} onChange={e => setFN1(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Colheitadeira JD S780 — Safra 25/26" />
                 </div>
                 <div>
-                  <label style={lbl}>Ano Safra *</label>
-                  <select style={{ ...inp, borderColor: !fN1.ano_safra_id ? "#E24B4A80" : "var(--border-table)" }} value={fN1.ano_safra_id} onChange={e => setFN1(p => ({ ...p, ano_safra_id: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+                  <SelectField style={{ ...inp, borderColor: !fN1.ano_safra_id ? "#E24B4A80" : "var(--border-table)" }} value={fN1.ano_safra_id} onChange={e => setFN1(p => ({ ...p, ano_safra_id: e.target.value }))}>
                     <option value="">— Selecionar —</option>
                     {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Descrição / Justificativa</label>
+                  <label data-arato-label="true" style={lbl}>Descrição / Justificativa</label>
                   <input style={inp} value={fN1.descricao} onChange={e => setFN1(p => ({ ...p, descricao: e.target.value }))} placeholder="Opcional" />
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, marginBottom: 20, alignItems: "flex-end" }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, marginBottom: 20, alignItems: "flex-end" }}>
                 <div>
-                  <label style={lbl}>Centro de Custo de Origem (opcional)</label>
-                  <select style={inp} value={fN1.centro_custo_id} onChange={e => setFN1(p => ({ ...p, centro_custo_id: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Centro de Custo de Origem (opcional)</label>
+                  <SelectField style={inp} value={fN1.centro_custo_id} onChange={e => setFN1(p => ({ ...p, centro_custo_id: e.target.value }))}>
                     <option value="">— Sem vínculo —</option>
                     {ccs.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", paddingBottom: 2 }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", paddingBottom: 2 }}>
                   <input type="checkbox" checked={fN1.ativo} onChange={e => setFN1(p => ({ ...p, ativo: e.target.checked }))} />
                   Regra ativa
                 </label>
               </div>
 
               {/* Distribuição entre fazendas */}
-              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#C9921B", textTransform: "uppercase" }}>Fazendas Participantes</div>
-                    <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
+              <div data-arato-dialog-body="true" data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div data-arato-dialog-body="true">
+                    <div data-arato-dialog-body="true" style={{ fontSize: 12, fontWeight: 700, color: "#C9921B", textTransform: "uppercase" }}>Fazendas Participantes</div>
+                    <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                       {fN1.tipo === "area_ciclos"
                         ? "Selecione quais fazendas participam do rateio — proporções calculadas automaticamente"
                         : "Defina o % de cada fazenda — soma deve ser 100%"
@@ -722,7 +723,7 @@ export default function RateioPage() {
                     </div>
                   </div>
                   {todasFazendas.length > fazLinhas.length && (
-                    <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addFazLinha}>+ Fazenda</button>
+                    <button data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addFazLinha}>+ Fazenda</button>
                   )}
                 </div>
 
@@ -741,12 +742,12 @@ export default function RateioPage() {
                 )}
 
                 {fazLinhas.map((faz, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: `16px 1fr ${fN1.tipo === "atribuido" ? "100px" : "auto"} 32px`, gap: 8, alignItems: "center", marginBottom: i < fazLinhas.length - 1 ? 8 : 0 }}>
+                  <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: `16px 1fr ${fN1.tipo === "atribuido" ? "100px" : "auto"} 32px`, gap: 8, alignItems: "center", marginBottom: i < fazLinhas.length - 1 ? 8 : 0 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 3, background: CORES[i % CORES.length] }} />
-                    <select style={inp} value={faz.fazenda_id} onChange={e => setFazLinhas(p => p.map((l, j) => j === i ? { ...l, fazenda_id: e.target.value } : l))}>
+                    <SelectField style={inp} value={faz.fazenda_id} onChange={e => setFazLinhas(p => p.map((l, j) => j === i ? { ...l, fazenda_id: e.target.value } : l))}>
                       <option value="">— Fazenda —</option>
                       {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                    </select>
+                    </SelectField>
                     {fN1.tipo === "atribuido" ? (
                       <div style={{ position: "relative" }}>
                         <InputNumerico style={{ ...inp, paddingRight: 20 }} min="0" max="100" placeholder="0" value={faz.percentual} onChange={v => setPctFazenda(i, v)} />
@@ -755,7 +756,7 @@ export default function RateioPage() {
                     ) : (
                       <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>auto</span>
                     )}
-                    <button style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeFazLinha(i)} disabled={fazLinhas.length <= 1}>✕</button>
+                    <button data-arato-button="danger" style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeFazLinha(i)} disabled={fazLinhas.length <= 1}>✕</button>
                   </div>
                 ))}
 
@@ -773,9 +774,9 @@ export default function RateioPage() {
               </div>
 
               {erroN1 && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>{erroN1}</div>}
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button style={btnR} onClick={() => setModalN1(false)}>Cancelar</button>
-                <button
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalN1(false)}>Cancelar</button>
+                <button data-arato-button="primary"
                   style={{ ...btnV, background: "#C9921B", opacity: salvandoN1 || !n1Valido ? 0.5 : 1 }}
                   disabled={salvandoN1 || !n1Valido}
                   onClick={salvarN1}

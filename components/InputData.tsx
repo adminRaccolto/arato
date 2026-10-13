@@ -113,7 +113,7 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
         </span>
       )}
       {!disabled && !readOnly && (
-        <button className="input-data-hoje" type="button" onClick={e => { e.stopPropagation(); marcarHoje(); }} title={type === "month" ? "Preencher com o mês atual" : type === "date" ? "Preencher com a data de hoje" : "Preencher com a data e hora atuais"}
+        <button data-arato-button="secondary" className="input-data-hoje" type="button" onClick={e => { e.stopPropagation(); marcarHoje(); }} title={type === "month" ? "Preencher com o mês atual" : type === "date" ? "Preencher com a data de hoje" : "Preencher com a data e hora atuais"}
           disabled={calendario && !dentroDoPeriodo(dataLocalAgora(type))}
           style={{ padding: "2px 6px", fontSize: 10, fontWeight: 600, borderRadius: 5, border: "1px solid var(--border-control)", background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
           {type === "month" ? "Atual" : type === "date" ? "Hoje" : "Agora"}

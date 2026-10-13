@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -365,12 +366,12 @@ export default function AbastecimentoPage() {
       <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Abastecimento de Máquinas</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Abastecimento de Máquinas</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Consumo de combustível das bombas da fazenda — dedução de estoque e custo</p>
           </div>
-          <button
+          <button data-arato-button="primary"
             onClick={abrirModal}
             style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
           >
@@ -386,7 +387,7 @@ export default function AbastecimentoPage() {
             { label: "Custo no Mês",       valor: fmtBRL(totalCustoMes),           sub: "a pagar / pago",        cor: "#9D4900", bg: "#FFF4E5" },
             { label: "Abastecimentos",     valor: String(totalAbastMes),           sub: "no período",            cor: "var(--text-2)",   bg: "#F3F4F6" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, padding: "16px 20px", border: "0.5px solid var(--border)" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, padding: "16px 20px", border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.valor}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -395,7 +396,7 @@ export default function AbastecimentoPage() {
         </div>
 
         {/* Estoque das bombas */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 20px", marginBottom: 20 }}>
+        <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 20px", marginBottom: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 14 }}>Bombas e Tanques — Estoque Atual</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
             {bombas.length === 0 && (
@@ -406,7 +407,7 @@ export default function AbastecimentoPage() {
               const [cbg, ccl] = COMB_COR[b.combustivel] ?? ["#F1EFE8", "var(--text-2)"];
               const baixo = pct !== null && pct < 20;
               return (
-                <div key={b.id} style={{ border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px", background: baixo ? "#FFF4E5" : "#FAFBFC" }}>
+                <div data-arato-statistic="display" key={b.id} style={{ border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px", background: baixo ? "#FFF4E5" : "#FAFBFC" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{b.nome}<span style={{ fontWeight: 400, color: "var(--text-3)" }}>{sufFaz(b.fazenda_id)}</span></div>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: cbg, color: ccl, fontWeight: 600 }}>
@@ -432,21 +433,21 @@ export default function AbastecimentoPage() {
         </div>
 
         {/* Filtros do histórico */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
           <InputData
             type="month"
             value={filtroMes}
             onChange={e => setFiltroMes(e.target.value)}
             style={{ ...inp, width: 160 }}
           />
-          <select
+          <SelectField
             value={filtroBomba}
             onChange={e => setFiltroBomba(e.target.value)}
             style={{ ...inp, width: 200 }}
           >
             <option value="">Todas as bombas</option>
             {bombas.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
-          </select>
+          </SelectField>
           <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>
             {historico.length} registro{historico.length !== 1 ? "s" : ""}
           </div>
@@ -461,7 +462,7 @@ export default function AbastecimentoPage() {
               Nenhum abastecimento no período selecionado.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["Data", "Bomba / Combustível", "Veículo / Máquina", "Safra / Ciclo", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
@@ -510,7 +511,7 @@ export default function AbastecimentoPage() {
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => abrirEditar(h)}
                             title="Editar abastecimento"
                             style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
@@ -519,7 +520,7 @@ export default function AbastecimentoPage() {
                           >
                             ✏
                           </button>
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => excluir(h)}
                             title="Excluir abastecimento (e CP/pendência vinculados)"
                             style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
@@ -551,28 +552,28 @@ export default function AbastecimentoPage() {
 
       {/* ── Modal de lançamento ─────────────────────────────────────────────── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Abastecimento" : "Registrar Abastecimento"}</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{editando ? "Atualize os dados do abastecimento" : "Consumo da bomba da fazenda"}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Abastecimento" : "Registrar Abastecimento"}</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{editando ? "Atualize os dados do abastecimento" : "Consumo da bomba da fazenda"}</div>
               </div>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* Bomba */}
-              <div>
-                <label style={lbl}>Bomba / Tanque *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Bomba / Tanque *</label>
                 {editando ? (
                   <div style={{ ...inp, background: "var(--bg-card)", color: "var(--text-2)", cursor: "default" }}>
                     {bombaSelecionada?.nome ?? editando.bomba_nome ?? "—"}
                     {bombaSelecionada && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-3)" }}>({COMB_LABEL[bombaSelecionada.combustivel] ?? bombaSelecionada.combustivel})</span>}
                   </div>
                 ) : (
-                  <select
+                  <SelectField
                     value={fBomba}
                     onChange={e => setFBomba(e.target.value)}
                     style={inp}
@@ -583,7 +584,7 @@ export default function AbastecimentoPage() {
                         {b.nome}{sufFaz(b.fazenda_id)} — {COMB_LABEL[b.combustivel]} · {fmtNum(b.estoque_atual_l, 0)} L disponíveis
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                 )}
                 {bombaSelecionada && !editando && (
                   <div style={{ marginTop: 6, padding: "8px 12px", background: "#F0F8FF", borderRadius: 8, fontSize: 12, color: "#0D0D0D" }}>
@@ -607,11 +608,11 @@ export default function AbastecimentoPage() {
               </div>
 
               {/* Destino */}
-              <div>
-                <label style={lbl}>Destino do Combustível *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Destino do Combustível *</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   {(["maquina", "funcionario", "livre"] as const).map(t => (
-                    <button
+                    <button data-arato-button="toggle"
                       key={t}
                       type="button"
                       onClick={() => setFDestTipo(t)}
@@ -637,12 +638,12 @@ export default function AbastecimentoPage() {
                   />
                 )}
                 {fDestTipo === "funcionario" && (
-                  <select value={fFuncionario} onChange={e => setFFuncionario(e.target.value)} style={inp}>
+                  <SelectField value={fFuncionario} onChange={e => setFFuncionario(e.target.value)} style={inp}>
                     <option value="">Selecione o funcionário...</option>
                     {funcionarios.filter(f => f.ativo).map(f => (
                       <option key={f.id} value={f.id}>{f.nome} — {f.funcao ?? f.tipo}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 )}
                 {fDestTipo === "livre" && (
                   <input
@@ -655,8 +656,8 @@ export default function AbastecimentoPage() {
               </div>
 
               {/* Safra / Ciclo — pra separar custo de combustível por safra no DRE/Orçamento */}
-              <div>
-                <label style={lbl}>Safra / Ciclo</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Safra / Ciclo</label>
                 <CascadeSelector
                   contaId={contaId}
                   fazendaIdFallback={fazendaId}
@@ -668,20 +669,20 @@ export default function AbastecimentoPage() {
               </div>
 
               {/* Data + Quantidade + Valor */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Data *</label>
+                  <label data-arato-label="true" style={lbl}>Data *</label>
                   <InputData type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Quantidade (L) *</label>
+                  <label data-arato-label="true" style={lbl}>Quantidade (L) *</label>
                   <InputNumerico
                     min="0" placeholder="0,00"
                     value={fQuantidade} onChange={v => setFQuantidade(v)} style={inp}
                   />
                 </div>
                 <div>
-                  <label style={lbl}>Valor por Litro (R$) *</label>
+                  <label data-arato-label="true" style={lbl}>Valor por Litro (R$) *</label>
                   <InputNumerico
                     decimais={4} min="0" placeholder="6,0000"
                     value={fValUnit} onChange={v => setFValUnit(v)} style={inp}
@@ -690,8 +691,8 @@ export default function AbastecimentoPage() {
               </div>
 
               {/* Horímetro / Odômetro */}
-              <div>
-                <label style={lbl}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>
                   {fDestTipo === "maquina"
                     ? (maquinas.find(m => m.id === fMaquina)?.tipo === "caminhao" ? "Odômetro (km)" : "Horímetro (h)")
                     : "Odômetro / Horímetro"}
@@ -721,8 +722,8 @@ export default function AbastecimentoPage() {
               )}
 
               {/* Gerar CP */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
                   <input
                     type="checkbox"
                     checked={fGerarCP}
@@ -734,15 +735,15 @@ export default function AbastecimentoPage() {
                 </label>
                 {fGerarCP && (
                   <div>
-                    <label style={lbl}>Vencimento do CP</label>
+                    <label data-arato-label="true" style={lbl}>Vencimento do CP</label>
                     <InputData type="date" value={fVencimento} onChange={e => setFVencimento(e.target.value)} style={{ ...inp, maxWidth: 200 }} />
                   </div>
                 )}
               </div>
 
               {/* Observação */}
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input
                   placeholder="Ex: Abasteceu no campo Sul, hodômetro 12.450 km..."
                   value={fObs}
@@ -757,11 +758,11 @@ export default function AbastecimentoPage() {
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button onClick={fecharModal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, paddingTop: 4 }}>
+                <button data-arato-button="secondary" onClick={fecharModal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
                   Cancelar
                 </button>
-                <button
+                <button data-arato-button="toggle"
                   onClick={salvar}
                   disabled={salvando}
                   style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}

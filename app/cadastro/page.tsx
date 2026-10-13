@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -149,7 +150,7 @@ function CadastroInner() {
         {/* ── PASSO 1 — Seleção de plano ── */}
         {step === 1 && (
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 6px" }}>Escolha seu plano</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 6px" }}>Escolha seu plano</h1>
             <p style={{ fontSize: 14, color: "var(--text-2)", margin: "0 0 24px" }}>14 dias grátis, sem cartão de crédito</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -158,7 +159,7 @@ function CadastroInner() {
                 const cc = COR_PLANO[pid];
                 const selecionado = plano === pid;
                 return (
-                  <div key={pid} onClick={() => setPlano(pid)} style={{
+                  <div data-arato-statistic="action" key={pid} onClick={() => setPlano(pid)} style={{
                     border: `${selecionado ? "2px" : "0.5px"} solid ${selecionado ? cc.borda : "var(--border-table)"}`,
                     borderRadius: 12, padding: "16px 20px", cursor: "pointer",
                     background: selecionado ? (pid === "gestao" ? "#F0F7FF" : pid === "performance" ? "#FEFCF5" : "#F8FAFF") : "#fff",
@@ -192,7 +193,7 @@ function CadastroInner() {
               })}
             </div>
 
-            <button
+            <button data-arato-button="secondary"
               onClick={() => setStep(2)}
               style={{
                 width: "100%", marginTop: 24, padding: "14px 0",
@@ -220,11 +221,11 @@ function CadastroInner() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D" }}>{fmtPreco(p.preco_mensal)}/mês</span>
-                <button onClick={() => setStep(1)} style={{ fontSize: 12, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>Trocar</button>
+                <button data-arato-button="secondary" onClick={() => setStep(1)} style={{ fontSize: 12, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>Trocar</button>
               </div>
             </div>
 
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 6px" }}>Seus dados</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 6px" }}>Seus dados</h1>
             <p style={{ fontSize: 14, color: "var(--text-2)", margin: "0 0 24px" }}>Crie sua conta — leva menos de 2 minutos</p>
 
             {erros.geral && (
@@ -235,7 +236,7 @@ function CadastroInner() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Campo label="Seu nome completo *" erro={erros.nome}>
                   <input value={form.nome} onChange={e => setF("nome", e.target.value)}
                     placeholder="João Silva" style={inputStyle(!!erros.nome)} />
@@ -246,7 +247,7 @@ function CadastroInner() {
                 </Campo>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Campo label="Senha *" erro={erros.senha}>
                   <input type="password" value={form.senha} onChange={e => setF("senha", e.target.value)}
                     placeholder="Mínimo 8 caracteres" style={inputStyle(!!erros.senha)} />
@@ -257,7 +258,7 @@ function CadastroInner() {
                 </Campo>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Campo label="CPF ou CNPJ *" erro={erros.cpf_cnpj}>
                   <input value={form.cpf_cnpj}
                     onChange={e => setF("cpf_cnpj", mascaraCpfCnpj(e.target.value))}
@@ -279,21 +280,21 @@ function CadastroInner() {
                   placeholder="Fazenda Santa Fé" style={inputStyle(!!erros.nome_fazenda)} />
               </Campo>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 12 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 12 }}>
                 <Campo label="Cidade">
                   <input value={form.cidade} onChange={e => setF("cidade", e.target.value)}
                     placeholder="Nova Mutum" style={inputStyle(false)} />
                 </Campo>
                 <Campo label="Estado">
-                  <select value={form.estado} onChange={e => setF("estado", e.target.value)} style={{ ...inputStyle(false), appearance: "none" }}>
+                  <SelectField value={form.estado} onChange={e => setF("estado", e.target.value)} style={{ ...inputStyle(false), appearance: "none" }}>
                     {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                  </select>
+                  </SelectField>
                 </Campo>
               </div>
 
             </div>
 
-            <button
+            <button data-arato-button="toggle"
               onClick={enviar}
               disabled={loading}
               style={{
@@ -316,10 +317,10 @@ function CadastroInner() {
         {step === 3 && resultado?.ok && (
           <div>
             <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>
+              <div data-arato-statistic="display" style={{ width: 60, height: 60, borderRadius: "50%", background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28 }}>
                 ✓
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 8px" }}>Conta criada com sucesso!</h1>
+              <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 8px" }}>Conta criada com sucesso!</h1>
               <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0 }}>
                 Seu trial de <strong>{resultado.trial_dias} dias</strong> começa agora.
                 {resultado.trial_fim && ` Vence em ${new Date(resultado.trial_fim + "T12:00:00").toLocaleDateString("pt-BR")}.`}
@@ -328,7 +329,7 @@ function CadastroInner() {
 
             {/* PIX */}
             {resultado.pix_payload ? (
-              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+              <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <span style={{ fontSize: 20 }}>💳</span>
                   <div>
@@ -339,7 +340,7 @@ function CadastroInner() {
                 <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 11, fontFamily: "monospace", color: "#333", wordBreak: "break-all", marginBottom: 10, lineHeight: 1.5 }}>
                   {resultado.pix_payload}
                 </div>
-                <button onClick={copiarPix} style={{
+                <button data-arato-button="toggle" onClick={copiarPix} style={{
                   width: "100%", padding: "10px 0",
                   background: pixCopiado ? "#16A34A" : "#111111",
                   color: "#fff", border: "none", borderRadius: 8,
@@ -372,7 +373,7 @@ function CadastroInner() {
               </ul>
             </div>
 
-            <button
+            <button data-arato-button="secondary"
               onClick={() => router.push("/login")}
               style={{
                 width: "100%", padding: "14px 0",
@@ -401,7 +402,7 @@ export default function CadastroPage() {
 function Campo({ label, erro, children }: { label: string; erro?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 5 }}>{label}</label>
+      <label data-arato-label="true" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 5 }}>{label}</label>
       {children}
       {erro && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 3 }}>{erro}</div>}
     </div>

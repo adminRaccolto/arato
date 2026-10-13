@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
@@ -215,7 +216,7 @@ export default function PadroesPage() {
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Padrões do Sistema</div>
-          <button
+          <button data-arato-button="secondary"
             onClick={carregarPadroes}
             disabled={seeding}
             style={{ padding: "8px 18px", background: "#FBF3E0", color: "#7A5A10", border: "0.5px solid #C9921B", borderRadius: 8, fontWeight: 600, cursor: seeding ? "not-allowed" : "pointer", fontSize: 13, opacity: seeding ? 0.6 : 1 }}
@@ -232,7 +233,7 @@ export default function PadroesPage() {
       {syncBanner && (
         <div style={{ background: "#EAF3DE", border: "0.5px solid #2D7A3A", borderRadius: 8, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <span style={{ fontSize: 13, color: "#1A5C38", fontWeight: 500 }}>{syncBanner}</span>
-          <button onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid #2D7A3A", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A5C38" }}>
+          <button data-arato-button="secondary" onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid #2D7A3A", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A5C38" }}>
             OK
           </button>
         </div>
@@ -258,7 +259,7 @@ export default function PadroesPage() {
         {/* ── COLUNA ESQUERDA: Template ── */}
         <div>
           {/* Toolbar */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+          <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
             <input
               value={busca}
               onChange={e => setBusca(e.target.value)}
@@ -266,7 +267,7 @@ export default function PadroesPage() {
               style={{ ...inp, maxWidth: 280 }}
             />
             {(["todos","receita","despesa"] as const).map(t => (
-              <button key={t} onClick={() => setFiltroTipo(t)} style={{
+              <button data-arato-button="toggle" key={t} onClick={() => setFiltroTipo(t)} style={{
                 padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
                 borderColor: filtroTipo === t ? "#111111" : "var(--border-table)",
                 background: filtroTipo === t ? "#E8E8E8" : "transparent",
@@ -277,7 +278,7 @@ export default function PadroesPage() {
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            <button onClick={abrirNovo} style={{ ...btnP, fontSize: 12, padding: "7px 16px" }}>
+            <button data-arato-button="primary" onClick={abrirNovo} style={{ ...btnP, fontSize: 12, padding: "7px 16px" }}>
               + Nova Operação
             </button>
           </div>
@@ -289,10 +290,10 @@ export default function PadroesPage() {
               <div style={{ padding: 40, textAlign: "center" }}>
                 <div style={{ fontSize: 14, color: "var(--text-3)", marginBottom: 8 }}>Nenhum template cadastrado</div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Crie as operações gerenciais padrão que serão sincronizadas com os clientes.</div>
-                <button onClick={abrirNovo} style={btnP}>+ Criar primeira operação</button>
+                <button data-arato-button="primary" onClick={abrirNovo} style={btnP}>+ Criar primeira operação</button>
               </div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Código", "Descrição", "Tipo", "LCDPR", "Débito", "Crédito", ""].map((h, i) => (
@@ -329,13 +330,13 @@ export default function PadroesPage() {
                           {op.conta_credito || "—"}
                         </td>
                         <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                          <button onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
+                          <button data-arato-button="secondary" onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
                           </button>
-                          <button onClick={() => duplicar(op)} title="Duplicar — cria uma nova operação com a mesma configuração" style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
+                          <button data-arato-button="secondary" onClick={() => duplicar(op)} title="Duplicar — cria uma nova operação com a mesma configuração" style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             ⧉ Duplicar
                           </button>
-                          <button
+                          <button data-arato-button="icon"
                             onClick={() => excluir(op.id)}
                             disabled={deletandoId === op.id}
                             style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}
@@ -375,17 +376,17 @@ export default function PadroesPage() {
               {/* Selecionar fazendas */}
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+                  <label data-arato-label="true" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                     Fazendas ({fazendas.length})
                   </label>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={() => setSyncSelect(new Set(fazendas.map(f => f.id)))}
                       style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
                       Todas
                     </button>
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={() => setSyncSelect(new Set())}
                       style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
@@ -397,7 +398,7 @@ export default function PadroesPage() {
                   {fazendas.length === 0 ? (
                     <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhuma fazenda encontrada</div>
                   ) : fazendas.map(f => (
-                    <label key={f.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", cursor: "pointer", borderBottom: "0.5px solid #F0F2F7", background: syncSelect.has(f.id) ? "#EEF5FD" : "transparent" }}>
+                    <label data-arato-label="true" key={f.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", cursor: "pointer", borderBottom: "0.5px solid #F0F2F7", background: syncSelect.has(f.id) ? "#EEF5FD" : "transparent" }}>
                       <input
                         type="checkbox"
                         checked={syncSelect.has(f.id)}
@@ -435,7 +436,7 @@ export default function PadroesPage() {
                 </div>
               )}
 
-              <button
+              <button data-arato-button="primary"
                 onClick={sincronizar}
                 disabled={syncing || templates.length === 0}
                 style={{ ...btnP, width: "100%", opacity: (syncing || templates.length === 0) ? 0.6 : 1, cursor: (syncing || templates.length === 0) ? "not-allowed" : "pointer" }}
@@ -476,17 +477,17 @@ export default function PadroesPage() {
           MODAL CRUD — Nova / Editar Operação
       ══════════════════════════════════════════════════════ */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
                 {modal === "novo" ? "Nova Operação — Template" : `Editar: ${form.classificacao}`}
               </div>
-              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ padding: 24 }}>
+            <div data-arato-dialog-body="true" style={{ padding: 24 }}>
               {formErr && (
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 16 }}>
                   {formErr}
@@ -494,40 +495,40 @@ export default function PadroesPage() {
               )}
 
               {/* Identificação */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Código *</label>
+                  <label data-arato-label="true" style={lbl}>Código *</label>
                   <input value={form.classificacao ?? ""} onChange={e => setForm(p => ({ ...p, classificacao: e.target.value }))} placeholder="1.01.001" style={{ ...inp, fontFamily: "monospace" }} />
                 </div>
                 <div>
-                  <label style={lbl}>Descrição *</label>
+                  <label data-arato-label="true" style={lbl}>Descrição *</label>
                   <input value={form.descricao ?? ""} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Nome da operação" style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Tipo *</label>
-                  <select value={form.tipo ?? "despesa"} onChange={e => setForm(p => ({ ...p, tipo: e.target.value as "receita" | "despesa" }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Tipo *</label>
+                  <SelectField value={form.tipo ?? "despesa"} onChange={e => setForm(p => ({ ...p, tipo: e.target.value as "receita" | "despesa" }))} style={inp}>
                     <option value="despesa">Despesa</option>
                     <option value="receita">Receita</option>
-                  </select>
+                  </SelectField>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Conta Pai (Parent)</label>
-                  <select value={form.parent_id ?? ""} onChange={e => setForm(p => ({ ...p, parent_id: e.target.value || undefined }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Conta Pai (Parent)</label>
+                  <SelectField value={form.parent_id ?? ""} onChange={e => setForm(p => ({ ...p, parent_id: e.target.value || undefined }))} style={inp}>
                     <option value="">— Raiz (sem pai) —</option>
                     {templates.filter(t => !form.id || t.id !== form.id).map(t => (
                       <option key={t.id} value={t.id}>{t.classificacao} — {t.descricao}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>LCDPR (código)</label>
+                  <label data-arato-label="true" style={lbl}>LCDPR (código)</label>
                   <input value={form.tipo_lcdpr ?? ""} onChange={e => setForm(p => ({ ...p, tipo_lcdpr: e.target.value }))} placeholder="ex: 201" style={inp} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
+                  <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
                     <input type="checkbox" checked={form.inativo ?? false} onChange={e => setForm(p => ({ ...p, inativo: e.target.checked }))} />
                     Inativo
                   </label>
@@ -535,9 +536,9 @@ export default function PadroesPage() {
               </div>
 
               {/* Permissões */}
-              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", marginBottom: 10, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Permite usar em</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px" }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px" }}>
                   {([
                     ["permite_notas_fiscais",     "Notas Fiscais"],
                     ["permite_cp_cr",             "CP / CR"],
@@ -552,7 +553,7 @@ export default function PadroesPage() {
                     ["gerar_financeiro",          "Gerar CP/CR"],
                     ["gerar_depreciacao",         "Gerar Depreciação"],
                   ] as [keyof OperacaoGerencial, string][]).map(([field, label]) => (
-                    <label key={field} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
+                    <label data-arato-label="true" key={field} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}>
                       <input
                         type="checkbox"
                         checked={Boolean(form[field])}
@@ -566,20 +567,20 @@ export default function PadroesPage() {
               </div>
 
               {/* Contabilidade */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Conta Débito (SPED)</label>
+                  <label data-arato-label="true" style={lbl}>Conta Débito (SPED)</label>
                   <input value={form.conta_debito ?? ""} onChange={e => setForm(p => ({ ...p, conta_debito: e.target.value }))} placeholder="ex: 3.1.01.001" style={{ ...inp, fontFamily: "monospace" }} />
                 </div>
                 <div>
-                  <label style={lbl}>Conta Crédito (SPED)</label>
+                  <label data-arato-label="true" style={lbl}>Conta Crédito (SPED)</label>
                   <input value={form.conta_credito ?? ""} onChange={e => setForm(p => ({ ...p, conta_credito: e.target.value }))} placeholder="ex: 1.1.01.002" style={{ ...inp, fontFamily: "monospace" }} />
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button style={btnS} onClick={() => setModal(null)}>Cancelar</button>
-                <button style={{ ...btnP, opacity: saving ? 0.7 : 1 }} onClick={salvar} disabled={saving}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button data-arato-button="secondary" style={btnS} onClick={() => setModal(null)}>Cancelar</button>
+                <button data-arato-button="primary" style={{ ...btnP, opacity: saving ? 0.7 : 1 }} onClick={salvar} disabled={saving}>
                   {saving ? "Salvando…" : modal === "novo" ? "Criar Operação" : "Salvar Alterações"}
                 </button>
               </div>

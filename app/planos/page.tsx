@@ -43,7 +43,7 @@ export default async function PlanosPage() {
           <div style={{ display: "inline-block", padding: "4px 14px", background: "#E8E8E8", borderRadius: 20, fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 16 }}>
             🌱 14 dias grátis — sem cartão
           </div>
-          <h1 style={{ margin: "0 0 16px", fontSize: 38, fontWeight: 800, color: "#0D0D0D", lineHeight: 1.2 }}>
+          <h1 data-arato-h1="true" style={{ margin: "0 0 16px", fontSize: 38, fontWeight: 800, color: "#0D0D0D", lineHeight: 1.2 }}>
             Escolha o plano certo<br />para a sua fazenda
           </h1>
           <p style={{ margin: "0 auto 0", fontSize: 16, color: "var(--text-2)", maxWidth: 540, lineHeight: 1.6 }}>
@@ -138,9 +138,9 @@ export default async function PlanosPage() {
         {/* ── Comparativo completo ── */}
         <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 64 }}>
           <div style={{ padding: "24px 32px", borderBottom: "0.5px solid #E4E9F0" }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0D0D0D" }}>Comparativo completo</h2>
+            <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0D0D0D" }}>Comparativo completo</h2>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 <th style={{ padding: "12px 24px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-2)", width: "40%" }}>Funcionalidade</th>
@@ -191,7 +191,7 @@ export default async function PlanosPage() {
 
         {/* ── FAQ ── */}
         <div style={{ maxWidth: 680, margin: "0 auto", marginBottom: 64 }}>
-          <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0D0D0D", marginBottom: 32 }}>Perguntas frequentes</h2>
+          <h2 data-arato-h2="true" style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0D0D0D", marginBottom: 32 }}>Perguntas frequentes</h2>
           {[
             ["Como funciona o período de teste gratuito?", "Você tem 14 dias para testar todas as funcionalidades do plano escolhido, sem precisar de cartão de crédito. Ao final do trial, você receberá um link de pagamento via PIX."],
             ["Posso mudar de plano depois?", "Sim. Você pode fazer upgrade ou downgrade a qualquer momento pelo painel Configurações > Plano. O valor é ajustado na próxima mensalidade."],
@@ -210,7 +210,7 @@ export default async function PlanosPage() {
 
         {/* ── CTA final ── */}
         <div style={{ textAlign: "center", background: "#111111", borderRadius: 16, padding: "48px 32px", color: "#fff" }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 800 }}>Comece hoje, gratuitamente</h2>
+          <h2 data-arato-h2="true" style={{ margin: "0 0 12px", fontSize: 26, fontWeight: 800 }}>Comece hoje, gratuitamente</h2>
           <p style={{ margin: "0 0 28px", fontSize: 15, opacity: 0.8 }}>14 dias de teste sem cartão. Configure em minutos.</p>
           <Link href="/cadastro" style={{
             display: "inline-block", padding: "14px 40px",

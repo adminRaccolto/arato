@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -389,12 +390,12 @@ export default function TransferenciaMaquinasPage() {
     <>
       <TopNav />
       <main style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Transferência de Máquinas e Equipamentos</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Transferência de Máquinas e Equipamentos</h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>Remessa e retorno de ativo imobilizado — conserto, transferência entre fazendas, comodato dado/recebido, equipamento de prestador de serviço</p>
           </div>
-          <button style={btnV} onClick={abrirNova}>+ Nova Movimentação</button>
+          <button data-arato-button="primary" style={btnV} onClick={abrirNova}>+ Nova Movimentação</button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
@@ -403,25 +404,25 @@ export default function TransferenciaMaquinasPage() {
             { label: "Retornadas",      value: String(totalRetornadas), bg: "#E8F5E9", cl: "#1A6B3C" },
             { label: "Valor Total",     value: fmtBRL(valorTotal), bg: "#F4F6FA", cl: "#1a1a1a" },
           ].map(k => (
-            <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px" }}>
               <div style={{ fontSize: 11, color: k.cl, fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: k.cl }}>{k.value}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por máquina, destinatário, nº NF…" style={{ ...inp, maxWidth: 320 }} />
-          <select value={filtroSt} onChange={e => setFiltroSt(e.target.value)} style={{ ...inp, maxWidth: 180 }}>
+          <SelectField value={filtroSt} onChange={e => setFiltroSt(e.target.value)} style={{ ...inp, maxWidth: 180 }}>
             <option value="">Todos os status</option>
             <option value="emitida">Emitida</option>
             <option value="retornada">Retornada</option>
             <option value="cancelada">Cancelada</option>
-          </select>
+          </SelectField>
         </div>
 
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["Máquina/Equip.", "Direção", "Motivo", "Contraparte", "NF Remessa", "Valor", "Status", ""].map(h => (
@@ -453,7 +454,7 @@ export default function TransferenciaMaquinasPage() {
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right" }}>
                       {i.status === "emitida" && motivoCfgLinha.temEtapa2 && (
-                        <button onClick={() => { setModalRet(i); setRetErro(""); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                        <button data-arato-button="primary" onClick={() => { setModalRet(i); setRetErro(""); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                           {labelBotaoRetorno}
                         </button>
                       )}
@@ -468,20 +469,20 @@ export default function TransferenciaMaquinasPage() {
 
       {/* ── Modal Nova Transferência ── */}
       {modalNova && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px" }}>
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{MOTIVOS[f.motivo].direcao === "entrada" ? "Novo Registro — Bem de Terceiro" : "Nova Transferência de Máquina/Equipamento"}</div>
-              <button onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{MOTIVOS[f.motivo].direcao === "entrada" ? "Novo Registro — Bem de Terceiro" : "Nova Transferência de Máquina/Equipamento"}</div>
+              <button data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {erro && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{erro}</div>}
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Máquina própria ou de terceiro?</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Máquina própria ou de terceiro?</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([["saida", "Própria (sai da fazenda)"], ["entrada", "De terceiro (entra na fazenda)"]] as const).map(([dir, label]) => (
-                    <button key={dir} type="button"
+                    <button data-arato-button="toggle" key={dir} type="button"
                       onClick={() => setF(p => ({ ...p, motivo: (dir === "saida" ? "conserto" : "comodato_recebido") as MotivoTransferenciaMaquina, maquina_id: "", maquina_nome_livre: "" }))}
                       style={{
                         flex: 1, padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
@@ -495,19 +496,19 @@ export default function TransferenciaMaquinasPage() {
                 </div>
               </div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Emitente da NF (de quem é a máquina)</label>
-                <select value={emitenteSel} onChange={e => setEmitenteSel(e.target.value)} style={inp}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Emitente da NF (de quem é a máquina)</label>
+                <SelectField value={emitenteSel} onChange={e => setEmitenteSel(e.target.value)} style={inp}>
                   <option value="">{emitentes.length === 1 ? `${emitentes[0].nome} — ${emitentes[0].cpf}` : emitentes.length ? "— Selecione o emitente —" : "Nenhum emitente fiscal configurado"}</option>
                   {emitentes.length > 1 && emitentes.map(e => <option key={`${e.modulo}|${e.fazenda_id}`} value={`${e.modulo}|${e.fazenda_id}`}>{e.nome} — {e.cpf}{e.ie ? ` · IE ${e.ie}` : ""}</option>)}
-                </select>
+                </SelectField>
               </div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Motivo</label>
-                <select value={f.motivo} onChange={e => setF(p => ({ ...p, motivo: e.target.value as MotivoTransferenciaMaquina }))} style={inp}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Motivo</label>
+                <SelectField value={f.motivo} onChange={e => setF(p => ({ ...p, motivo: e.target.value as MotivoTransferenciaMaquina }))} style={inp}>
                   {Object.entries(MOTIVOS).filter(([, v]) => v.direcao === MOTIVOS[f.motivo].direcao).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+                </SelectField>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                   {MOTIVOS[f.motivo].cfopEtapa1
                     ? <>CFOP {MOTIVOS[f.motivo].direcao === "entrada" ? "de entrada (referência)" : "de saída"}: <strong>{MOTIVOS[f.motivo].cfopEtapa1}</strong></>
@@ -516,8 +517,8 @@ export default function TransferenciaMaquinasPage() {
                 </div>
               </div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Máquina / Equipamento</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Máquina / Equipamento</label>
                 {MOTIVOS[f.motivo].direcao === "entrada" ? (
                   <input value={f.maquina_nome_livre} onChange={e => setF(p => ({ ...p, maquina_nome_livre: e.target.value }))}
                     style={inp} placeholder="Ex: Colhedora John Deere S780 — placa/patrimônio do proprietário" />
@@ -528,8 +529,8 @@ export default function TransferenciaMaquinasPage() {
                 )}
               </div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>
                   {MOTIVOS[f.motivo].direcao === "entrada" ? "Proprietário / Prestador de serviço" : "Destinatário"}
                   {f.motivo === "transferencia_fazenda" ? " (empresa/produtor da fazenda de destino)" : ""}
                 </label>
@@ -538,17 +539,17 @@ export default function TransferenciaMaquinasPage() {
                   options={pessoas.map(ps => ({ value: ps.id, label: `${ps.nome}${ps.cpf_cnpj ? " · " + ps.cpf_cnpj : ""}` }))} />
               </div>
 
-              <div>
-                <label style={lbl}>Valor do Bem (R$)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Valor do Bem (R$)</label>
                 <input value={f.valor_bem} onChange={e => setF(p => ({ ...p, valor_bem: e.target.value }))} style={inp} placeholder="0,00" />
               </div>
-              <div>
-                <label style={lbl}>NCM</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>NCM</label>
                 <input value={f.ncm} onChange={e => setF(p => ({ ...p, ncm: e.target.value.replace(/\D/g, "") }))} style={inp} maxLength={8} />
               </div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Motorista (opcional)</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Motorista (opcional)</label>
                 {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
                 <input list="transf-maq-motoristas" value={f.motorista_nome}
                   onChange={e => {
@@ -564,7 +565,7 @@ export default function TransferenciaMaquinasPage() {
 
               {MOTIVOS[f.motivo].temEtapa2 && (
                 <div>
-                  <label style={lbl}>{MOTIVOS[f.motivo].direcao === "entrada" ? "Devolução prevista" : "Retorno previsto"}</label>
+                  <label data-arato-label="true" style={lbl}>{MOTIVOS[f.motivo].direcao === "entrada" ? "Devolução prevista" : "Retorno previsto"}</label>
                   <InputData type="date" value={f.data_retorno_prevista} onChange={e => setF(p => ({ ...p, data_retorno_prevista: e.target.value }))} style={inp} />
                 </div>
               )}
@@ -575,28 +576,28 @@ export default function TransferenciaMaquinasPage() {
                     Se o proprietário emitiu NF de remessa pra esse comodato, informe abaixo (opcional — só pra rastreabilidade, não somos nós quem emite essa nota).
                   </div>
                   <div>
-                    <label style={lbl}>Nº da NF do proprietário</label>
+                    <label data-arato-label="true" style={lbl}>Nº da NF do proprietário</label>
                     <input value={f.nf_terceiro_numero} onChange={e => setF(p => ({ ...p, nf_terceiro_numero: e.target.value }))} style={inp} />
                   </div>
                   <div>
-                    <label style={lbl}>Data da NF</label>
+                    <label data-arato-label="true" style={lbl}>Data da NF</label>
                     <InputData type="date" value={f.nf_terceiro_data} onChange={e => setF(p => ({ ...p, nf_terceiro_data: e.target.value }))} style={inp} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={lbl}>Chave de acesso (44 dígitos)</label>
+                    <label data-arato-label="true" style={lbl}>Chave de acesso (44 dígitos)</label>
                     <input value={f.nf_terceiro_chave} onChange={e => setF(p => ({ ...p, nf_terceiro_chave: e.target.value.replace(/\D/g, "") }))} style={inp} maxLength={44} />
                   </div>
                 </>
               )}
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <textarea value={f.observacao} onChange={e => setF(p => ({ ...p, observacao: e.target.value }))} style={{ ...inp, minHeight: 60, resize: "vertical" }} />
               </div>
             </div>
-            <div style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
-              <button onClick={emitirRemessa} disabled={salvando} style={{ ...btnV, cursor: salvando ? "default" : "pointer" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
+              <button data-arato-button="primary" onClick={emitirRemessa} disabled={salvando} style={{ ...btnV, cursor: salvando ? "default" : "pointer" }}>
                 {salvando ? "Salvando…" : (MOTIVOS[f.motivo].emiteNfEtapa1 ? "Emitir NF de Remessa" : "Registrar Entrada")}
               </button>
             </div>
@@ -609,24 +610,24 @@ export default function TransferenciaMaquinasPage() {
         const motivoCfgRet = MOTIVOS[modalRet.motivo];
         const titulo = !motivoCfgRet.emiteNfEtapa2 ? "Registrar Saída" : (modalRet.direcao === "entrada" ? "Registrar Devolução" : "Registrar Retorno");
         return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 460 }}>
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{titulo}</div>
-              <button onClick={() => setModalRet(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, width: 460 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{titulo}</div>
+              <button data-arato-button="icon" onClick={() => setModalRet(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 24px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>
               {retErro && <div style={{ marginBottom: 14, background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{retErro}</div>}
-              <div style={{ fontSize: 13, marginBottom: 8 }}><strong>{modalRet.maquina_nome}</strong></div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>{modalRet.direcao === "entrada" ? "Proprietário" : "Destinatário original"}: {modalRet.destinatario_nome}</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 13, marginBottom: 8 }}><strong>{modalRet.maquina_nome}</strong></div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>{modalRet.direcao === "entrada" ? "Proprietário" : "Destinatário original"}: {modalRet.destinatario_nome}</div>
               {modalRet.nf_saida_numero && <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>NF de remessa: {modalRet.nf_saida_numero} — {fmtData(modalRet.nf_saida_data)}</div>}
               {motivoCfgRet.emiteNfEtapa2
                 ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>CFOP {modalRet.direcao === "entrada" ? "de devolução (nossa NF de saída)" : "de retorno"}: <strong>{modalRet.cfop_retorno}</strong></div>
                 : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Sem NF nesta etapa — só fecha o registro de controle.</div>}
             </div>
-            <div style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalRet(null)}>Cancelar</button>
-              <button onClick={emitirRetorno} disabled={retSalvando} style={{ ...btnV, background: "#1A6B3C", cursor: retSalvando ? "default" : "pointer" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalRet(null)}>Cancelar</button>
+              <button data-arato-button="primary" onClick={emitirRetorno} disabled={retSalvando} style={{ ...btnV, background: "#1A6B3C", cursor: retSalvando ? "default" : "pointer" }}>
                 {retSalvando ? "Salvando…" : (motivoCfgRet.emiteNfEtapa2 ? "Emitir NF" : "Confirmar Saída")}
               </button>
             </div>

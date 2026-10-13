@@ -48,7 +48,7 @@ export default function RaccotloHub() {
 
       {/* Saudação */}
       <div style={{ marginBottom: 40, textAlign: "center" }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#fff" }}>
+        <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#fff" }}>
           Olá{nomeUsuario ? `, ${nomeUsuario.split(" ")[0]}` : ""}
         </h1>
         <p style={{ margin: "8px 0 0", fontSize: 14, color: "rgba(255,255,255,0.5)" }}>
@@ -61,7 +61,7 @@ export default function RaccotloHub() {
 
         {/* Gestão Arato — somente Gestor */}
         {raccotloGestor && (
-          <button
+          <button data-arato-button="secondary"
             onClick={() => router.push("/admin")}
             style={{
               width: 300, padding: "32px 28px", background: "rgba(201,146,27,0.12)",
@@ -89,7 +89,7 @@ export default function RaccotloHub() {
         )}
 
         {/* Área de Clientes — todos */}
-        <button
+        <button data-arato-button="secondary"
           onClick={() => router.push("/seletor-cliente")}
           style={{
             width: 300, padding: "32px 28px", background: "rgba(201,146,27,0.12)",
@@ -129,7 +129,7 @@ export default function RaccotloHub() {
       </div>
 
       {/* Sair */}
-      <button
+      <button data-arato-button="secondary"
         onClick={signOut}
         style={{
           marginTop: 28, background: "none", border: "0.5px solid var(--border)",

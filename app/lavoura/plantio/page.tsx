@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -150,26 +151,26 @@ export default function PlantioPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
-        <header style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Plantio</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Plantio</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {fazendas.length > 1 && (
-              <select
+              <SelectField
                 value={fazendaFiltro}
                 onChange={e => setFazendaFiltro(e.target.value)}
                 style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }}
               >
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
+            <button data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
           </div>
         </header>
 
@@ -180,7 +181,7 @@ export default function PlantioPage() {
             { label: "Área total plantada", valor: totalArea.toLocaleString("pt-BR"), unidade: "ha", cor: "#C9921B" },
             { label: "Receita esperada total", valor: fmtBRL(plantios.reduce((s, p) => s + ((p.produtividade_esperada_sc_ha ?? 0) * p.area_ha * (p.preco_esperado_sc ?? 0)), 0)), cor: "#111111" },
           ].map((s, i) => (
-            <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+            <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
               <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>
                 {s.valor}{"unidade" in s && s.unidade && <span style={{ fontSize: 12, color: "var(--text-2)", marginLeft: 4 }}>{s.unidade}</span>}
@@ -195,8 +196,8 @@ export default function PlantioPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Safra / Talhão</th>
@@ -250,7 +251,7 @@ export default function PlantioPage() {
                             return (
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                                 <span style={{ color: "#C9921B", fontWeight: 600 }}>{fmtBRL(calc)}</span>
-                                <button
+                                <button data-arato-button="secondary"
                                   style={{ fontSize: 10, padding: "1px 6px", border: "0.5px solid #C9921B", borderRadius: 4, background: "#FBF3E0", color: "#7A5A0A", cursor: "pointer" }}
                                   onClick={() => recalcularCusto(p)}
                                   title="Salvar custo calculado no registro"
@@ -264,7 +265,7 @@ export default function PlantioPage() {
                         })()}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPlantio(p.id).then(() => setPlantios(x => x.filter(r => r.id !== p.id))); }}>✕</button>
+                        <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPlantio(p.id).then(() => setPlantios(x => x.filter(r => r.id !== p.id))); }}>✕</button>
                       </td>
                     </tr>
                   ))}
@@ -276,15 +277,15 @@ export default function PlantioPage() {
       </main>
 
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Plantio</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Plantio</div>
             </div>
 
             {/* Hierarquia: Fazenda → Safra → Ciclo → Talhão — Produtor/IE não se aplicam a
                 lançamento de operação de campo (são dados fiscais, não de lavoura). */}
-            <div style={{ marginBottom: 14 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
@@ -298,7 +299,7 @@ export default function PlantioPage() {
             </div>
 
             {/* Automação info */}
-            <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
+            <div data-arato-dialog-body="true" style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
               ⟳ Ao salvar: baixa automática do estoque de semente + lançamento CP "Custo de Sementes" no financeiro.
             </div>
 
@@ -310,37 +311,37 @@ export default function PlantioPage() {
 
 
             {/* Semente */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Semente / Cultivar</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Semente / Cultivar</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>
                   Semente (estoque)
                   {sementeItem && <span style={{ color: "#111111", marginLeft: 6 }}>Estoque: {fmtN(sementeItem.estoque)} {sementeItem.unidade}</span>}
                 </label>
-                <select style={inp} value={f.insumo_id} onChange={e => setF(p => ({ ...p, insumo_id: e.target.value }))}>
+                <SelectField style={inp} value={f.insumo_id} onChange={e => setF(p => ({ ...p, insumo_id: e.target.value }))}>
                   <option value="">— Selecionar semente —</option>
                   {sementes.map(s => <option key={s.id} value={s.id}>{s.nome} · {fmtN(s.estoque)} {s.unidade}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Cultivar / Variedade</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Cultivar / Variedade</label>
                 <input style={inp} placeholder="Ex: M 5947 IPRO" value={f.variedade} onChange={e => setF(p => ({ ...p, variedade: e.target.value }))} />
               </div>
-              <div>
-                <label style={lbl}>Dose (kg/ha)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Dose (kg/ha)</label>
                 <InputMonetario style={inp} placeholder="Ex: 55" value={f.dose_kg_ha} onChange={v => setF(p => ({ ...p, dose_kg_ha: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Lote (de qual saiu)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Lote (de qual saiu)</label>
                 {lotesDisponiveis.length > 0 ? (() => {
                   const loteSel = lotesDisponiveis.find(l => l.lote === f.lote_semente);
                   const excedeSaldo = loteSel && qtdKg && qtdKg > loteSel.saldo + 0.01;
                   return (
                     <>
-                      <select style={{ ...inp, borderColor: excedeSaldo ? "#E24B4A" : undefined }} value={f.lote_semente} onChange={e => setF(p => ({ ...p, lote_semente: e.target.value }))}>
+                      <SelectField style={{ ...inp, borderColor: excedeSaldo ? "#E24B4A" : undefined }} value={f.lote_semente} onChange={e => setF(p => ({ ...p, lote_semente: e.target.value }))}>
                         <option value="">— Selecionar lote —</option>
                         {lotesDisponiveis.map(l => <option key={l.lote} value={l.lote}>{l.lote} — {l.saldo.toLocaleString("pt-BR")} kg</option>)}
-                      </select>
+                      </SelectField>
                       {excedeSaldo && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>Excede o saldo do lote ({loteSel!.saldo.toLocaleString("pt-BR")} kg)</div>}
                     </>
                   );
@@ -351,39 +352,39 @@ export default function PlantioPage() {
             </div>
 
             {/* Área e datas */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Área e Datas</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Área (ha) *</label>
+            <div data-arato-dialog-body="true" style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Área e Datas</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Área (ha) *</label>
                 <InputNumerico style={inp} placeholder="Ex: 150" value={f.area_ha} onChange={v => setF(p => ({ ...p, area_ha: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Data de Plantio *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data de Plantio *</label>
                 <InputData calendario style={inp} type="date" value={f.data_plantio} onChange={e => setF(p => ({ ...p, data_plantio: e.target.value }))} />
               </div>
-              <div>
-                <label style={lbl}>Colheita Prevista</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Colheita Prevista</label>
                 <InputData calendario style={inp} type="date" value={f.data_colheita_prevista} onChange={e => setF(p => ({ ...p, data_colheita_prevista: e.target.value }))} />
               </div>
-              <div></div>
+              <div data-arato-dialog-body="true"></div>
             </div>
 
             {/* Projeção financeira */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Projeção de Colheita</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Produtividade Esperada (sc/ha)</label>
+            <div data-arato-dialog-body="true" style={{ fontSize: 11, fontWeight: 600, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Projeção de Colheita</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Produtividade Esperada (sc/ha)</label>
                 <InputNumerico style={inp} placeholder="Ex: 65,0" value={f.produtividade_esperada_sc_ha} onChange={v => setF(p => ({ ...p, produtividade_esperada_sc_ha: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Moeda</label>
-                <select style={inp} value={f.moeda} onChange={e => setF(p => ({ ...p, moeda: e.target.value as "BRL" | "USD" }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Moeda</label>
+                <SelectField style={inp} value={f.moeda} onChange={e => setF(p => ({ ...p, moeda: e.target.value as "BRL" | "USD" }))}>
                   <option value="BRL">Real (R$)</option>
                   <option value="USD">Dólar (US$)</option>
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Preço Esperado ({f.moeda === "USD" ? "US$/sc" : "R$/sc"})</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Preço Esperado ({f.moeda === "USD" ? "US$/sc" : "R$/sc"})</label>
                 <InputMonetario style={inp} placeholder={f.moeda === "USD" ? "Ex: 10,50" : "Ex: 130,00"} value={f.preco_esperado_sc} onChange={v => setF(p => ({ ...p, preco_esperado_sc: v }))} />
               </div>
               {/* Preview */}
@@ -398,14 +399,14 @@ export default function PlantioPage() {
               )}
             </div>
 
-            <div>
-              <label style={lbl}>Observação</label>
+            <div data-arato-dialog-body="true">
+              <label data-arato-label="true" style={lbl}>Observação</label>
               <input style={inp} value={f.observacao} onChange={e => setF(p => ({ ...p, observacao: e.target.value }))} />
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio ? 0.5 : 1 }}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
+              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio}
                 onClick={salvar}>{salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}</button>
             </div>

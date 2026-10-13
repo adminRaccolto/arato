@@ -63,7 +63,7 @@ export default function ClipDocumentos({ origemTabela, lancamentoId, tipo, zInde
 
   return (
     <>
-      <button onClick={abrir} title="Documentos vinculados"
+      <button data-arato-button="secondary" onClick={abrir} title="Documentos vinculados"
         style={{ padding: "4px 8px", fontSize: 13, cursor: "pointer", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "#fff" }}>
         📎
       </button>

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
@@ -811,11 +812,11 @@ function FaturamentoInner() {
   function renderAba() {
     switch (tabNFe) {
       case "produtor": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           {/* Seletor de fazenda emitente — explícito, obrigatório */}
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={lbl}>Fazenda Emitente *</label>
-            <select style={{ ...inp, fontWeight:600, color:"#111111" }} value={fazNFe}
+            <label data-arato-label="true" style={lbl}>Fazenda Emitente *</label>
+            <SelectField style={{ ...inp, fontWeight:600, color:"#111111" }} value={fazNFe}
               onChange={e => setFazNFe(e.target.value)}>
               <option value="">— selecione a fazenda que emite a nota —</option>
               {fazendas.map(f => (
@@ -823,17 +824,17 @@ function FaturamentoInner() {
                   {f.nome}{f.municipio ? ` — ${f.municipio}` : ""}{f.estado ? `/${f.estado}` : ""}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Tipo de Nota</label>
-            <select style={inp} value={fVenda.tipo_nota} onChange={e => fv({ tipo_nota: e.target.value as "propria"|"terceiros" })}>
+            <label data-arato-label="true" style={lbl}>Tipo de Nota</label>
+            <SelectField style={inp} value={fVenda.tipo_nota} onChange={e => fv({ tipo_nota: e.target.value as "propria"|"terceiros" })}>
               <option value="propria">Produção Própria</option>
               <option value="terceiros">Mercadoria de Terceiros</option>
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Produtor *</label>
+            <label data-arato-label="true" style={lbl}>Produtor *</label>
             <ProdutorCombo
               produtores={produtores}
               value={fVenda.produtor_id}
@@ -842,10 +843,10 @@ function FaturamentoInner() {
             />
             {iesProdutor.length > 0 && (
               <div style={{ marginTop: 6 }}>
-                <label style={{ ...lbl, color: iesProdutor.length > 1 ? "#C9921B" : "#555" }}>
+                <label data-arato-label="true" style={{ ...lbl, color: iesProdutor.length > 1 ? "#C9921B" : "#555" }}>
                   IE do Produtor{iesProdutor.length > 1 ? " *" : ""}
                 </label>
-                <select
+                <SelectField
                   style={{ ...inp, borderColor: iesProdutor.length > 1 && !fVenda.ie_id ? "#E24B4A" : undefined }}
                   value={fVenda.ie_id}
                   onChange={e => fv({ ie_id: e.target.value })}
@@ -856,16 +857,16 @@ function FaturamentoInner() {
                       {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
                     </option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             )}
           </div>
           <div>
-            <label style={lbl}>Safra / Ano</label>
-            <select style={inp} value={fVenda.safra_id} onChange={e => fv({ safra_id: e.target.value })}>
+            <label data-arato-label="true" style={lbl}>Safra / Ano</label>
+            <SelectField style={inp} value={fVenda.safra_id} onChange={e => fv({ safra_id: e.target.value })}>
               <option value="">— selecione —</option>
               {anosSafra.map(s => <option key={s.id} value={s.id}>{s.descricao}</option>)}
-            </select>
+            </SelectField>
           </div>
           {fVenda.contrato_numero && (
             <div style={{ gridColumn:"1/-1" }}>
@@ -878,11 +879,11 @@ function FaturamentoInner() {
       );
 
       case "destinatario": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           {/* Select de clientes do cadastro */}
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={lbl}>Selecionar do Cadastro de Clientes</label>
-            <select style={inp} value=""
+            <label data-arato-label="true" style={lbl}>Selecionar do Cadastro de Clientes</label>
+            <SelectField style={inp} value=""
               onChange={e => {
                 const p = pessoas.find(x => x.id === e.target.value);
                 if (!p) return;
@@ -921,45 +922,45 @@ function FaturamentoInner() {
                   {p.nome}{p.cpf_cnpj ? ` · ${p.cpf_cnpj}` : ""}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
           <div style={{ gridColumn:"1/3" }}>
-            <label style={lbl}>Destinatário (Razão Social / Nome) *</label>
+            <label data-arato-label="true" style={lbl}>Destinatário (Razão Social / Nome) *</label>
             <input style={inp} value={fVenda.destinatario} onChange={e => fv({ destinatario: e.target.value })} placeholder="Nome ou razão social" />
           </div>
           <div>
-            <label style={lbl}>Tipo de Pessoa</label>
-            <select style={inp} value={fVenda.dest_tipo_pessoa} onChange={e => fv({ dest_tipo_pessoa: e.target.value as "fisica"|"juridica" })}>
+            <label data-arato-label="true" style={lbl}>Tipo de Pessoa</label>
+            <SelectField style={inp} value={fVenda.dest_tipo_pessoa} onChange={e => fv({ dest_tipo_pessoa: e.target.value as "fisica"|"juridica" })}>
               <option value="juridica">Pessoa Jurídica</option>
               <option value="fisica">Pessoa Física</option>
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>{fVenda.dest_tipo_pessoa === "juridica" ? "CNPJ" : "CPF"}</label>
+            <label data-arato-label="true" style={lbl}>{fVenda.dest_tipo_pessoa === "juridica" ? "CNPJ" : "CPF"}</label>
             <input style={inp} value={fVenda.cnpj} onChange={e => fv({ cnpj: e.target.value })} placeholder={fVenda.dest_tipo_pessoa === "juridica" ? "00.000.000/0001-00" : "000.000.000-00"} />
           </div>
           <div>
-            <label style={lbl}>Inscrição Estadual</label>
+            <label data-arato-label="true" style={lbl}>Inscrição Estadual</label>
             <input style={inp} value={fVenda.dest_ie} onChange={e => fv({ dest_ie: e.target.value })} placeholder="IE ou ISENTO" />
           </div>
           <div style={{ gridColumn:"1/3" }}>
-            <label style={lbl}>Logradouro</label>
+            <label data-arato-label="true" style={lbl}>Logradouro</label>
             <input style={inp} value={fVenda.dest_endereco} onChange={e => fv({ dest_endereco: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Número</label>
+            <label data-arato-label="true" style={lbl}>Número</label>
             <input style={inp} value={fVenda.dest_numero} onChange={e => fv({ dest_numero: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Cidade</label>
+            <label data-arato-label="true" style={lbl}>Cidade</label>
             <input style={inp} value={fVenda.dest_cidade} onChange={e => fv({ dest_cidade: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>UF</label>
+            <label data-arato-label="true" style={lbl}>UF</label>
             <input style={inp} value={fVenda.dest_uf} onChange={e => fv({ dest_uf: e.target.value })} maxLength={2} placeholder="MT" />
           </div>
           <div>
-            <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
+            <label data-arato-label="true" style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
               Cód. IBGE *
               {!fVenda.dest_municipio_ibge && <span style={{ color:"#E24B4A", fontSize:10, fontWeight:700 }}>⚠ obrigatório</span>}
             </label>
@@ -972,7 +973,7 @@ function FaturamentoInner() {
             />
           </div>
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
+            <label data-arato-label="true" style={{ ...lbl, display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
               <input type="checkbox" checked={fVenda.dest_deposito} onChange={e => fv({ dest_deposito: e.target.checked })} />
               Destinatário é depósito / armazém de terceiros
             </label>
@@ -981,10 +982,10 @@ function FaturamentoInner() {
       );
 
       case "operacoes": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 80px 80px 120px 120px", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 100px 80px 80px 120px 120px", gap:12 }}>
           <div style={{ gridColumn:"1/3" }}>
-            <label style={lbl}>Natureza da Operação</label>
-            <select style={inp} value={fVenda.cfop}
+            <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
+            <SelectField style={inp} value={fVenda.cfop}
               onChange={e => {
                 const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === e.target.value);
                 fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat ? textoNat(nat) : "" });
@@ -1002,37 +1003,37 @@ function FaturamentoInner() {
               <optgroup label="Devoluções">
                 {NATUREZAS_DEVOLUCAO.map(n => <option key={n.codigo} value={n.codigo}>{n.descricao}</option>)}
               </optgroup>
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>CFOP</label>
+            <label data-arato-label="true" style={lbl}>CFOP</label>
             <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
           <div>
-            <label style={lbl}>Modelo</label>
-            <select style={inp} value={fVenda.modelo_nf} onChange={e => fv({ modelo_nf: e.target.value })}>
+            <label data-arato-label="true" style={lbl}>Modelo</label>
+            <SelectField style={inp} value={fVenda.modelo_nf} onChange={e => fv({ modelo_nf: e.target.value })}>
               <option value="55">55 — NF-e</option>
               <option value="65">65 — NFC-e</option>
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>Série</label>
+            <label data-arato-label="true" style={lbl}>Série</label>
             <input style={{ ...inp, background:"var(--bg-page)" }} value="Auto" disabled title="A série e o número vêm de Parâmetros → Fiscal do emitente (e da IE) escolhido" />
           </div>
           <div>
-            <label style={lbl}>Data Emissão</label>
+            <label data-arato-label="true" style={lbl}>Data Emissão</label>
             <InputData style={inp} type="date" value={fVenda.data_emissao} onChange={e => fv({ data_emissao: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Data Saída</label>
+            <label data-arato-label="true" style={lbl}>Data Saída</label>
             <InputData style={inp} type="date" value={fVenda.data_saida} onChange={e => fv({ data_saida: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Hora Saída</label>
+            <label data-arato-label="true" style={lbl}>Hora Saída</label>
             <input style={inp} type="time" step="1" value={fVenda.hora_saida} onChange={e => fv({ hora_saida: e.target.value })} />
           </div>
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
+            <label data-arato-label="true" style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
               <input type="checkbox" checked={fVenda.uso_imediato} onChange={e => fv({ uso_imediato: e.target.checked })} />
               Uso / Consumo Imediato
               <input type="checkbox" checked={fVenda.nota_livre} onChange={e => fv({ nota_livre: e.target.checked })} style={{ marginLeft:20 }} />
@@ -1056,60 +1057,60 @@ function FaturamentoInner() {
       );
 
       case "transportador": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px 1fr 80px", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 100px 1fr 80px", gap:12 }}>
           <div style={{ gridColumn:"1/3" }}>
-            <label style={lbl}>Transportadora</label>
+            <label data-arato-label="true" style={lbl}>Transportadora</label>
             <input style={inp} value={fVenda.transportadora} onChange={e => fv({ transportadora: e.target.value })} placeholder="Razão social da transportadora" />
           </div>
           <div>
-            <label style={lbl}>Frete por conta</label>
-            <select style={inp} value={fVenda.frete_conta} onChange={e => fv({ frete_conta: e.target.value })}>
+            <label data-arato-label="true" style={lbl}>Frete por conta</label>
+            <SelectField style={inp} value={fVenda.frete_conta} onChange={e => fv({ frete_conta: e.target.value })}>
               {FRETES.map(f => <option key={f.v} value={f.v}>{f.l}</option>)}
-            </select>
+            </SelectField>
           </div>
           <div>
-            <label style={lbl}>CNPJ/CPF Transp.</label>
+            <label data-arato-label="true" style={lbl}>CNPJ/CPF Transp.</label>
             <input style={inp} value={fVenda.transp_cpf_cnpj} onChange={e => fv({ transp_cpf_cnpj: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>IE Transp.</label>
+            <label data-arato-label="true" style={lbl}>IE Transp.</label>
             <input style={inp} value={fVenda.transp_ie} onChange={e => fv({ transp_ie: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Placa do Veículo</label>
+            <label data-arato-label="true" style={lbl}>Placa do Veículo</label>
             <input style={inp} value={fVenda.placa} onChange={e => fv({ placa: e.target.value.toUpperCase() })} placeholder="ABC1234" maxLength={8} />
           </div>
           <div>
-            <label style={lbl}>UF da Placa</label>
+            <label data-arato-label="true" style={lbl}>UF da Placa</label>
             <input style={inp} value={fVenda.uf_placa} onChange={e => fv({ uf_placa: e.target.value.toUpperCase() })} maxLength={2} placeholder="MT" />
           </div>
           <div>
-            <label style={lbl}>Espécie</label>
+            <label data-arato-label="true" style={lbl}>Espécie</label>
             <input style={inp} value={fVenda.especie} onChange={e => fv({ especie: e.target.value })} placeholder="Granel / Saco" />
           </div>
           <div>
-            <label style={lbl}>Peso Bruto (kg)</label>
+            <label data-arato-label="true" style={lbl}>Peso Bruto (kg)</label>
             <input style={inp} value={fVenda.peso_bruto} onChange={e => fv({ peso_bruto: aplicarMascara(e.target.value) })} placeholder="0,00" />
           </div>
           <div>
-            <label style={lbl}>Peso Líquido (kg)</label>
+            <label data-arato-label="true" style={lbl}>Peso Líquido (kg)</label>
             <input style={inp} value={fVenda.peso_liquido} onChange={e => fv({ peso_liquido: aplicarMascara(e.target.value) })} placeholder="0,00" />
           </div>
           <div>
-            <label style={lbl}>Qtd. Volumes</label>
+            <label data-arato-label="true" style={lbl}>Qtd. Volumes</label>
             <input style={inp} value={fVenda.qt_volumes} onChange={e => fv({ qt_volumes: e.target.value })} placeholder="0" />
           </div>
         </div>
       );
 
       case "retirada": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
           <div>
-            <label style={lbl}>Local de Retirada (quando diferente do emitente)</label>
+            <label data-arato-label="true" style={lbl}>Local de Retirada (quando diferente do emitente)</label>
             <textarea style={{ ...inp, height:80, resize:"vertical" }} value={fVenda.local_retirada} onChange={e => fv({ local_retirada: e.target.value })} placeholder="Endereço do local onde a mercadoria será retirada..." />
           </div>
           <div>
-            <label style={lbl}>Local de Entrega (quando diferente do destinatário)</label>
+            <label data-arato-label="true" style={lbl}>Local de Entrega (quando diferente do destinatário)</label>
             <textarea style={{ ...inp, height:80, resize:"vertical" }} value={fVenda.local_entrega} onChange={e => fv({ local_entrega: e.target.value })} placeholder="Endereço do local onde a mercadoria será entregue..." />
           </div>
         </div>
@@ -1118,15 +1119,15 @@ function FaturamentoInner() {
       case "fiscal": return (
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
           {(fVenda.cfop === "6.923" || fVenda.cfop === "6.117") && (
-            <div style={{ background: fVenda.cfop === "6.923" ? "#F2F2F2" : "#FBF3E0", border:`0.5px solid ${fVenda.cfop === "6.923" ? "#93C5FD" : "#C9921B50"}`, borderRadius:10, padding:"14px 16px" }}>
+            <div data-arato-panel="true" style={{ background: fVenda.cfop === "6.923" ? "#F2F2F2" : "#FBF3E0", border:`0.5px solid ${fVenda.cfop === "6.923" ? "#93C5FD" : "#C9921B50"}`, borderRadius:10, padding:"14px 16px" }}>
               <div style={{ fontSize:12, fontWeight:700, color: fVenda.cfop === "6.923" ? "#1E40AF" : "#7A5A12", marginBottom:10 }}>
                 {fVenda.cfop === "6.923"
                   ? "🔄 Venda a Ordem — Referência de NF Obrigatória (NFref / art. 129 RICMS/MT)"
                   : "📦 Entrega Futura — Referência de NF Simbólica Obrigatória (NFref)"}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12 }}>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12 }}>
                 <div>
-                  <label style={lbl}>
+                  <label data-arato-label="true" style={lbl}>
                     {fVenda.cfop === "6.923"
                       ? "Chave da NF 6.101 Simbólica (44 dígitos)"
                       : "Chave da NF 6.117 Simbólica (44 dígitos)"}
@@ -1138,7 +1139,7 @@ function FaturamentoInner() {
                   )}
                 </div>
                 <div>
-                  <label style={lbl}>Número da NF referenciada</label>
+                  <label data-arato-label="true" style={lbl}>Número da NF referenciada</label>
                   <input style={inp} value={fVenda.nf_ref_numero} onChange={e => fv({ nf_ref_numero: e.target.value })} placeholder="Ex: 000123" />
                 </div>
               </div>
@@ -1149,33 +1150,33 @@ function FaturamentoInner() {
               </div>
             </div>
           )}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+          <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           <div>
-            <label style={lbl}>Nº Guia ICMS</label>
+            <label data-arato-label="true" style={lbl}>Nº Guia ICMS</label>
             <input style={inp} value={fVenda.nr_guia_icms} onChange={e => fv({ nr_guia_icms: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>NF do Produtor — Número</label>
+            <label data-arato-label="true" style={lbl}>NF do Produtor — Número</label>
             <input style={inp} value={fVenda.num_nfp} onChange={e => fv({ num_nfp: e.target.value })} placeholder="Nº da nota física do produtor" />
           </div>
           <div>
-            <label style={lbl}>Série NF Produtor</label>
+            <label data-arato-label="true" style={lbl}>Série NF Produtor</label>
             <input style={inp} value={fVenda.serie_nfp} onChange={e => fv({ serie_nfp: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Data NF Produtor</label>
+            <label data-arato-label="true" style={lbl}>Data NF Produtor</label>
             <InputData style={inp} type="date" value={fVenda.data_nfp} onChange={e => fv({ data_nfp: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Nota Substituída</label>
+            <label data-arato-label="true" style={lbl}>Nota Substituída</label>
             <input style={inp} value={fVenda.nota_substituida} onChange={e => fv({ nota_substituida: e.target.value })} placeholder="Chave da NF-e substituída" />
           </div>
           <div>
-            <label style={lbl}>Nota Substituta</label>
+            <label data-arato-label="true" style={lbl}>Nota Substituta</label>
             <input style={inp} value={fVenda.nota_substituta} onChange={e => fv({ nota_substituta: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Situação Fiscal</label>
+            <label data-arato-label="true" style={lbl}>Situação Fiscal</label>
             <input style={inp} value={fVenda.situacao} onChange={e => fv({ situacao: e.target.value })} placeholder="Normal / Devolução / Complementar…" />
           </div>
           </div>
@@ -1183,46 +1184,46 @@ function FaturamentoInner() {
       );
 
       case "obs": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           <div>
-            <label style={lbl}>Grupo Vendedor</label>
+            <label data-arato-label="true" style={lbl}>Grupo Vendedor</label>
             <input style={inp} value={fVenda.grupo_vendedor} onChange={e => fv({ grupo_vendedor: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Comprador / Contato</label>
+            <label data-arato-label="true" style={lbl}>Comprador / Contato</label>
             <input style={inp} value={fVenda.comprador} onChange={e => fv({ comprador: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Propriedade</label>
+            <label data-arato-label="true" style={lbl}>Propriedade</label>
             <input style={inp} value={fVenda.propriedade} onChange={e => fv({ propriedade: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Empreendimento / Ciclo</label>
+            <label data-arato-label="true" style={lbl}>Empreendimento / Ciclo</label>
             <input style={inp} value={fVenda.empreendimento} onChange={e => fv({ empreendimento: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Critério de Rateio</label>
+            <label data-arato-label="true" style={lbl}>Critério de Rateio</label>
             <input style={inp} value={fVenda.criterio_rateio} onChange={e => fv({ criterio_rateio: e.target.value })} />
           </div>
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={lbl}>Observação Legal (rodapé da NF) — preenchida automaticamente pela natureza</label>
+            <label data-arato-label="true" style={lbl}>Observação Legal (rodapé da NF) — preenchida automaticamente pela natureza</label>
             <textarea style={{ ...inp, height:72, resize:"vertical", fontSize:11 }} value={fVenda.observacao} onChange={e => fv({ observacao: e.target.value })} />
           </div>
           <div style={{ gridColumn:"1/-1" }}>
-            <label style={lbl}>Observação Manual (complementar)</label>
+            <label data-arato-label="true" style={lbl}>Observação Manual (complementar)</label>
             <textarea style={{ ...inp, height:56, resize:"vertical", fontSize:11 }} value={fVenda.obs_manual} onChange={e => fv({ obs_manual: e.target.value })} placeholder="Informações adicionais que aparecerão na nota…" />
           </div>
         </div>
       );
 
       case "pontualidade": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           <div>
-            <label style={lbl}>Data do Lançamento</label>
+            <label data-arato-label="true" style={lbl}>Data do Lançamento</label>
             <InputData style={inp} type="date" value={fVenda.data_lancamento} onChange={e => fv({ data_lancamento: e.target.value })} />
           </div>
           <div>
-            <label style={lbl}>Referência de Contrato</label>
+            <label data-arato-label="true" style={lbl}>Referência de Contrato</label>
             <input style={inp} value={fVenda.contrato_numero} onChange={e => fv({ contrato_numero: e.target.value })} placeholder="Nº do contrato de venda" />
           </div>
           <div style={{ gridColumn:"1/-1", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, padding:"10px 14px", fontSize:11, color:"var(--text-2)" }}>
@@ -1237,23 +1238,23 @@ function FaturamentoInner() {
 
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ background:"var(--bg-page)", minHeight:"100vh", fontFamily:"system-ui,sans-serif" }}>
+    <div data-arato-page="true" style={{ background:"var(--bg-page)", minHeight:"100vh", fontFamily:"system-ui,sans-serif" }}>
       <TopNav />
 
       <div style={{ maxWidth:1280, margin:"0 auto", padding:"24px 24px" }}>
         {/* Header */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+        <div data-arato-page-heading="true" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
-            <h1 style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>Faturamento — NF-e de Saída</h1>
+            <h1 data-arato-h1="true" style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>Faturamento — NF-e de Saída</h1>
             <p style={{ fontSize:13, color:"#666", margin:"4px 0 0" }}>Emita notas por contrato de venda ou avulsa (remessa, devolução, retorno)</p>
           </div>
-          <button style={btnV} onClick={abrirModal}>+ Nova NF-e</button>
+          <button data-arato-button="primary" style={btnV} onClick={abrirModal}>+ Nova NF-e</button>
         </div>
 
         {/* Filtros */}
-        <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
           {(["todas","processando","autorizadas","rejeitadas","canceladas"] as const).map(a => (
-            <button key={a} onClick={() => setFiltroAba(a)}
+            <button data-arato-button="toggle" key={a} onClick={() => setFiltroAba(a)}
               style={{ padding:"5px 14px", borderRadius:20, border:"0.5px solid", fontSize:12, cursor:"pointer", fontWeight: filtroAba===a ? 600 : 400,
                 background: filtroAba===a ? "#111111" : "var(--bg-page)", color: filtroAba===a ? "#fff" : "var(--text-2)", borderColor: filtroAba===a ? "#111111" : "var(--border-table)" }}>
               {a === "todas" ? "Todas" : a === "processando" ? "Processando" : a === "autorizadas" ? "Autorizadas" : a === "rejeitadas" ? "Rejeitadas" : "Canceladas"}
@@ -1264,7 +1265,7 @@ function FaturamentoInner() {
 
         {/* Tabela */}
         <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:12, overflow:"hidden" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+          <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ background:"var(--bg-card)" }}>
                 {["Nº / Série","Data Emissão","Destinatário","CFOP","Valor Total","Status","Ações"].map((h, i) => (
@@ -1278,7 +1279,7 @@ function FaturamentoInner() {
               ) : notasFiltradas.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding:40, textAlign:"center", color:"#999", fontSize:13 }}>
                   Nenhuma NF-e de saída encontrada.<br />
-                  <button style={{ ...btnV, marginTop:12, fontSize:12 }} onClick={abrirModal}>Emitir a primeira nota</button>
+                  <button data-arato-button="primary" style={{ ...btnV, marginTop:12, fontSize:12 }} onClick={abrirModal}>Emitir a primeira nota</button>
                 </td></tr>
               ) : notasFiltradas.map(nota => {
                 const st = corStatus(nota.status);
@@ -1298,7 +1299,7 @@ function FaturamentoInner() {
                     </td>
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
-                        <button
+                        <button data-arato-button="secondary"
                           style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#111111", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           DANFE
@@ -1309,7 +1310,7 @@ function FaturamentoInner() {
                               ✓ Retornada
                             </span>
                           ) : nota.status === "autorizada" && (
-                            <button
+                            <button data-arato-button="secondary"
                               style={{ padding:"4px 10px", fontSize:11, background:"#EBF4FB", color:"#0B2D50", border:"0.5px solid #1A487050", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
                               onClick={() => abrirRetornoDoGrid(nota)}>
                               ↩ Retorno
@@ -1317,7 +1318,7 @@ function FaturamentoInner() {
                           )
                         )}
                         {nota.status === "em_digitacao" && (
-                          <button
+                          <button data-arato-button="primary"
                             style={{ padding:"4px 10px", fontSize:11, background:"#2A2A2A", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
@@ -1380,7 +1381,7 @@ function FaturamentoInner() {
                           </button>
                         )}
                         {["autorizada","em_digitacao"].includes(nota.status) && (
-                          <button
+                          <button data-arato-button="danger"
                             style={{ padding:"4px 10px", fontSize:11, background:"#FCEBEB", color:"#791F1F", border:"0.5px solid #E24B4A50", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               const motivo = window.prompt("Motivo do cancelamento (min. 15 caracteres):");
@@ -1412,15 +1413,15 @@ function FaturamentoInner() {
       {/* MODAL DE EMISSÃO                                                   */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {modalAberto && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div data-arato-overlay="true" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
 
           {/* ── PASSO 1: Origem ── */}
           {passo === "origem" && (
-            <div style={{ background:"var(--bg-card)", borderRadius:14, padding:32, width:560, boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-statistic="action" style={{ background:"var(--bg-card)", borderRadius:14, padding:32, width:560, boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
               <div style={{ fontSize:17, fontWeight:700, color:"var(--text-1)", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
               <div style={{ fontSize:13, color:"#666", marginBottom:24 }}>Como deseja iniciar a emissão?</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
-                <button
+                <button data-arato-button="secondary"
                   onClick={() => setPasso("contrato")}
                   style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#E8E8E8")}
@@ -1429,7 +1430,7 @@ function FaturamentoInner() {
                   <div style={{ fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:4 }}>Por Contrato</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Selecione um contrato de venda. Destinatário, CFOP, itens e observações legais são preenchidos automaticamente.</div>
                 </button>
-                <button
+                <button data-arato-button="toggle"
                   onClick={() => { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
@@ -1438,7 +1439,7 @@ function FaturamentoInner() {
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Avulsa — Venda</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Nota de venda sem vínculo de contrato. Você preenche todos os dados.</div>
                 </button>
-                <button
+                <button data-arato-button="toggle"
                   onClick={() => { setTipoAvulsa("remessa"); preencherAvulsa("remessa", "6.905"); }}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
@@ -1447,7 +1448,7 @@ function FaturamentoInner() {
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Remessa</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Depósito em armazém (6.905), entrega futura (6.117) ou venda à ordem (6.119).</div>
                 </button>
-                <button
+                <button data-arato-button="secondary"
                   onClick={() => setPasso("retorno_origem")}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
@@ -1460,7 +1461,7 @@ function FaturamentoInner() {
               <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:16 }}>
                 Devolução de mercadoria comprada ou vendida não é emitida aqui — veja Documentos Fiscais → Notas de Terceiro.
               </div>
-              <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
             </div>
           )}
 
@@ -1477,7 +1478,7 @@ function FaturamentoInner() {
                 ) : notas
                     .filter(n => ["6.905","5.905","6905","5905"].includes(n.cfop) && n.status === "autorizada" && !(n.dados_nf_json as Record<string, unknown> | undefined)?.retornada)
                     .map(n => (
-                      <button key={n.id} onClick={() => abrirRetornoDoGrid(n)}
+                      <button data-arato-button="secondary" key={n.id} onClick={() => abrirRetornoDoGrid(n)}
                         style={{ display:"flex", justifyContent:"space-between", alignItems:"center", width:"100%", padding:"12px 14px", marginBottom:6, border:"0.5px solid var(--border-table)", borderRadius:10, background:"var(--bg-page)", cursor:"pointer", textAlign:"left" }}>
                         <div>
                           <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>Remessa nº {n.numero} — {n.destinatario}</div>
@@ -1489,7 +1490,7 @@ function FaturamentoInner() {
                 }
               </div>
               <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end" }}>
-                <button style={btnR} onClick={() => setPasso("origem")}>Voltar</button>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setPasso("origem")}>Voltar</button>
               </div>
             </div>
           )}
@@ -1498,7 +1499,7 @@ function FaturamentoInner() {
           {passo === "contrato" && (
             <div style={{ background:"var(--bg-card)", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
-                <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</button>
+                <button data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</button>
                 <div>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Contrato de Venda</div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>Clique no contrato para pré-preencher a nota</div>
@@ -1551,16 +1552,16 @@ function FaturamentoInner() {
                 })}
               </div>
               <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", gap:10 }}>
-                <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
               </div>
             </div>
           )}
 
           {/* ── PASSO 2b: Selecionar Romaneio ── */}
           {passo === "romaneio" && contratoSelecionado && (
-            <div style={{ background:"var(--bg-card)", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+            <div data-arato-statistic="action" style={{ background:"var(--bg-card)", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
-                <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
+                <button data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)", display:"flex", alignItems:"center", gap:10 }}>
                     Selecionar Carga (Romaneio)
@@ -1583,7 +1584,7 @@ function FaturamentoInner() {
 
               <div style={{ overflowY:"auto", flex:1 }}>
                 {romaneios.length === 0 ? (
-                  <div style={{ padding:40, textAlign:"center" }}>
+                  <div data-arato-statistic="display" style={{ padding:40, textAlign:"center" }}>
                     <div style={{ fontSize:32, marginBottom:12 }}>🚛</div>
                     <div style={{ fontSize:14, color:"var(--text-2)", fontWeight:600, marginBottom:8 }}>Nenhum romaneio registrado para este contrato</div>
                     <div style={{ fontSize:12, color:"var(--text-3)" }}>Registre as cargas em Comercial → Contratos de Grãos antes de emitir a NF-e.</div>
@@ -1659,7 +1660,7 @@ function FaturamentoInner() {
                 )}
               </div>
               <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", gap:10 }}>
-                <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
               </div>
             </div>
           )}
@@ -1670,7 +1671,7 @@ function FaturamentoInner() {
 
               {/* Barra de título */}
               <div style={{ background:"#111111", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <button style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</button>
+                <button data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</button>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
                     {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
@@ -1680,13 +1681,13 @@ function FaturamentoInner() {
                     {fVenda.contrato_numero && " · dados pré-carregados do contrato"}
                   </div>
                 </div>
-                <button style={{ background:"none", border:"0.5px solid rgba(255,255,255,0.3)", color:"rgba(255,255,255,0.7)", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer" }} onClick={() => setModalAberto(false)}>✕ Fechar</button>
+                <button data-arato-button="secondary" style={{ background:"none", border:"0.5px solid rgba(255,255,255,0.3)", color:"rgba(255,255,255,0.7)", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer" }} onClick={() => setModalAberto(false)}>✕ Fechar</button>
               </div>
 
               {/* Abas */}
-              <div style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
+              <div data-arato-grid-container="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
                 {ABAS_NOTA.map(a => (
-                  <button key={a.id} onClick={() => setTabNFe(a.id)}
+                  <button data-arato-button="toggle" key={a.id} onClick={() => setTabNFe(a.id)}
                     style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #2A2A2A" : "2.5px solid transparent", background:"transparent",
                       color: tabNFe === a.id ? "#2A2A2A" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
                     {a.label}
@@ -1703,10 +1704,10 @@ function FaturamentoInner() {
               <div style={{ borderTop:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0 }}>
                 <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota</span>
-                  <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</button>
+                  <button data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</button>
                 </div>
-                <div style={{ overflowX:"auto", maxHeight:160 }}>
-                  <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <div data-arato-grid-container="true" style={{ overflowX:"auto", maxHeight:160 }}>
+                  <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead>
                       <tr style={{ background:"#F0F4F8" }}>
                         {["Tipo","Item / Produto","NCM","Qtd","Unid","Valor Unit.","Valor Total",""].map((h, i) => (
@@ -1720,9 +1721,9 @@ function FaturamentoInner() {
                       ) : nfeItens.map((it, idx) => (
                         <tr key={it.id} style={{ borderBottom:"0.5px solid #eee" }}>
                           <td style={{ padding:"5px 8px", width:80 }}>
-                            <select style={{ ...inp, fontSize:11 }} value={it.tipo_item} onChange={e => atualizarItem(idx, "tipo_item", e.target.value)}>
+                            <SelectField style={{ ...inp, fontSize:11 }} value={it.tipo_item} onChange={e => atualizarItem(idx, "tipo_item", e.target.value)}>
                               <option>Produto</option><option>Serviço</option>
-                            </select>
+                            </SelectField>
                           </td>
                           <td style={{ padding:"5px 8px", minWidth:120 }}>
                             <input style={{ ...inp, fontSize:12 }} value={it.item} onChange={e => atualizarItem(idx, "item", e.target.value)} />
@@ -1734,9 +1735,9 @@ function FaturamentoInner() {
                             <input style={{ ...inp, textAlign:"right", fontSize:12 }} value={it.quantidade} onChange={e => atualizarItem(idx, "quantidade", e.target.value)} placeholder="0" />
                           </td>
                           <td style={{ padding:"5px 8px", width:60 }}>
-                            <select style={{ ...inp, fontSize:11 }} value={it.unidade} onChange={e => atualizarItem(idx, "unidade", e.target.value)}>
+                            <SelectField style={{ ...inp, fontSize:11 }} value={it.unidade} onChange={e => atualizarItem(idx, "unidade", e.target.value)}>
                               {["sc","kg","ton","@","cx","un"].map(u => <option key={u}>{u}</option>)}
-                            </select>
+                            </SelectField>
                           </td>
                           <td style={{ padding:"5px 8px", width:110 }}>
                             <input style={{ ...inp, textAlign:"right", fontSize:12 }} value={it.valor_unitario}
@@ -1746,7 +1747,7 @@ function FaturamentoInner() {
                             <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }} value={fmtR$(it.valor_total)} readOnly />
                           </td>
                           <td style={{ padding:"5px 8px", width:30 }}>
-                            <button style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
+                            <button data-arato-button="danger" style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
                               onClick={() => setNfeItens(p => p.filter((_, i) => i !== idx))}>✕</button>
                           </td>
                         </tr>
@@ -1768,8 +1769,8 @@ function FaturamentoInner() {
                   </div>
                 )}
                 <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
-                  <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
-                  <button
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+                  <button data-arato-button="toggle"
                     style={{ ...btnR, borderColor:"#2A2A2A", color:"#2A2A2A" }}
                     onClick={() => {
                       const tabs: TabNFe[] = ["produtor","destinatario","operacoes","transportador","retirada","fiscal","obs","pontualidade"];
@@ -1778,7 +1779,7 @@ function FaturamentoInner() {
                     }}>
                     Próxima aba →
                   </button>
-                  <button style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo}>
+                  <button data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo}>
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
                   </button>
                 </div>
@@ -1788,10 +1789,10 @@ function FaturamentoInner() {
 
           {/* ── PASSO 4: Conclusão — NF vinculada (Venda a Ordem / Entrega Futura) ── */}
           {passo === "nf_vinculada" && nfEmitida && (
-            <div style={{ background:"var(--bg-card)", borderRadius:14, width:640, display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
-              <div style={{ padding:"24px 28px 18px", borderBottom:"0.5px solid var(--border-table)" }}>
+            <div data-arato-statistic="action" style={{ background:"var(--bg-card)", borderRadius:14, width:640, display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+              <div data-arato-statistic="display" style={{ padding:"24px 28px 18px", borderBottom:"0.5px solid var(--border-table)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:6 }}>
-                  <div style={{ width:40, height:40, borderRadius:20, background:"#D5F0E4", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>✅</div>
+                  <div data-arato-statistic="display" style={{ width:40, height:40, borderRadius:20, background:"#D5F0E4", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>✅</div>
                   <div>
                     <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>NF-e {nfEmitida.numero} emitida com sucesso</div>
                     <div style={{ fontSize:12, color:"#666" }}>CFOP {nfEmitida.cfop}</div>
@@ -1833,7 +1834,7 @@ function FaturamentoInner() {
 
               <div style={{ padding:"14px 24px", display:"flex", gap:10, justifyContent:"flex-end" }}>
                 {nfEmitida.venda_a_ordem && (
-                  <button
+                  <button data-arato-button="primary"
                     style={{ ...btnV, background:"#2A2A2A" }}
                     onClick={() => {
                       setFVenda({ ...FVENDA_INICIAL, cfop:"6.923", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
@@ -1844,7 +1845,7 @@ function FaturamentoInner() {
                   </button>
                 )}
                 {nfEmitida.entrega_futura && (
-                  <button
+                  <button data-arato-button="primary"
                     style={{ ...btnV, background:"#C9921B" }}
                     onClick={() => {
                       setFVenda({ ...FVENDA_INICIAL, cfop:"6.101", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
@@ -1854,7 +1855,7 @@ function FaturamentoInner() {
                     Emitir NF 6.101 (saída física) →
                   </button>
                 )}
-                <button style={btnR} onClick={() => { setModalAberto(false); setNfEmitida(null); }}>Concluir</button>
+                <button data-arato-button="secondary" style={btnR} onClick={() => { setModalAberto(false); setNfEmitida(null); }}>Concluir</button>
               </div>
             </div>
           )}

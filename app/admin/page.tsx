@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -98,22 +99,22 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
 
         {/* Header */}
-        <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>{conta.nome}</div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>{conta.id}</div>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div data-arato-dialog-body="true">
+            <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>{conta.nome}</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>{conta.id}</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #E4E9F0", padding: "0 24px" }}>
+        <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #E4E9F0", padding: "0 24px" }}>
           {(["geral", "assinatura"] as const).map(t => (
-            <button key={t} onClick={() => setAba(t)} style={{
+            <button data-arato-button="toggle" key={t} onClick={() => setAba(t)} style={{
               padding: "10px 16px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === t ? 700 : 400,
               color: aba === t ? "#0B1E35" : "var(--text-3)",
@@ -124,34 +125,34 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
           ))}
         </div>
 
-        <div style={{ padding: "20px 24px" }}>
+        <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>
 
           {aba === "geral" && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Nome da conta *</label>
+                  <label data-arato-label="true" style={lbl}>Nome da conta *</label>
                   <input style={inp} value={form.nome ?? ""} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
                 </div>
                 <div>
-                  <label style={lbl}>E-mail contato</label>
+                  <label data-arato-label="true" style={lbl}>E-mail contato</label>
                   <input style={inp} type="email" value={form.email_contato ?? ""} onChange={e => setForm(f => ({ ...f, email_contato: e.target.value }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Telefone / WhatsApp</label>
+                  <label data-arato-label="true" style={lbl}>Telefone / WhatsApp</label>
                   <input style={inp} value={form.telefone ?? ""} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Tipo de conta</label>
-                  <select style={inp} value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as Conta["tipo"] }))}>
+                  <label data-arato-label="true" style={lbl}>Tipo de conta</label>
+                  <SelectField style={inp} value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as Conta["tipo"] }))}>
                     <option value="pf">Pessoa Física</option>
                     <option value="pj">Pessoa Jurídica</option>
                     <option value="grupo">Grupo / Holding</option>
-                  </select>
+                  </SelectField>
                 </div>
               </div>
               <div>
-                <label style={lbl}>Observações internas</label>
+                <label data-arato-label="true" style={lbl}>Observações internas</label>
                 <textarea style={{ ...inp, height: 80, resize: "vertical" } as React.CSSProperties}
                   value={form.obs_admin ?? ""}
                   onChange={e => setForm(f => ({ ...f, obs_admin: e.target.value }))}
@@ -163,18 +164,18 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
           {aba === "assinatura" && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Status *</label>
-                  <select style={inp} value={form.status ?? "trial"} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusCliente }))}>
+                  <label data-arato-label="true" style={lbl}>Status *</label>
+                  <SelectField style={inp} value={form.status ?? "trial"} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusCliente }))}>
                     {(Object.keys(STATUS_CFG) as StatusCliente[]).map(s => (
                       <option key={s} value={s}>{STATUS_CFG[s].label}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Pacote</label>
-                  <select style={inp} value={form.pacote ?? ""} onChange={e => {
+                  <label data-arato-label="true" style={lbl}>Pacote</label>
+                  <SelectField style={inp} value={form.pacote ?? ""} onChange={e => {
                     const v = e.target.value as PacoteCliente | "";
                     if (v) setForm(f => ({ ...f, pacote: v, valor_mensalidade: PACOTE_CFG[v].valor }));
                     else setForm(f => ({ ...f, pacote: undefined }));
@@ -183,24 +184,24 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
                     {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => (
                       <option key={p} value={p}>{PACOTE_CFG[p].label}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Mensalidade (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Mensalidade (R$)</label>
                   <InputNumerico style={inp} value={form.valor_mensalidade ?? ""} onChange={v => setForm(f => ({ ...f, valor_mensalidade: Number(v) || undefined }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Data início</label>
+                  <label data-arato-label="true" style={lbl}>Data início</label>
                   <InputData style={inp} type="date" value={form.data_inicio ?? ""} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Data vencimento</label>
+                  <label data-arato-label="true" style={lbl}>Data vencimento</label>
                   <InputData style={inp} type="date" value={form.data_vencimento ?? ""} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} />
                 </div>
               </div>
               {form.status === "pro_bono" && (
                 <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Motivo pro bono</label>
+                  <label data-arato-label="true" style={lbl}>Motivo pro bono</label>
                   <input style={inp} value={form.pro_bono_motivo ?? ""} onChange={e => setForm(f => ({ ...f, pro_bono_motivo: e.target.value }))} placeholder="Ex: parceiro estratégico, projeto piloto..." />
                 </div>
               )}
@@ -209,9 +210,9 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
           {erro && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, color: "#991B1B", fontSize: 12, marginBottom: 12 }}>{erro}</div>}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
-            <button style={btnSecondary} onClick={onClose}>Cancelar</button>
-            <button style={btnPrimary} onClick={salvar} disabled={salvando || !form.nome}>
+          <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
+            <button data-arato-button="secondary" style={btnSecondary} onClick={onClose}>Cancelar</button>
+            <button data-arato-button="primary" style={btnPrimary} onClick={salvar} disabled={salvando || !form.nome}>
               {salvando ? "Salvando…" : "Salvar alterações"}
             </button>
           </div>
@@ -350,7 +351,7 @@ export default function AdminOverview() {
 
       {/* Page header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+        <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           Painel Administrativo
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
@@ -361,7 +362,7 @@ export default function AdminOverview() {
       {/* Tabs */}
       <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 24 }}>
         {ABAS.map(a => (
-          <button key={a.key} onClick={() => setAba(a.key)} style={{
+          <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
             padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
             fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
             color: aba === a.key ? "#0B1E35" : "#666",
@@ -379,7 +380,7 @@ export default function AdminOverview() {
           {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 24 }}>
             {kpis.map(k => (
-              <div key={k.label} style={{
+              <div data-arato-statistic="display" key={k.label} style={{
                 background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)",
                 padding: "16px 18px",
               }}>
@@ -468,11 +469,11 @@ export default function AdminOverview() {
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35" }}>Todas as Contas</div>
-              <button onClick={() => setAba("clientes")} style={{ fontSize: 12, color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+              <button data-arato-button="toggle" onClick={() => setAba("clientes")} style={{ fontSize: 12, color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                 Ver lista completa →
               </button>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Conta", "Pacote", "Status", "Vencimento", "Mensalidade"].map((h, i) => (
@@ -532,17 +533,17 @@ export default function AdminOverview() {
       {aba === "clientes" && (
         <div>
           {/* Filtros */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input style={{ ...inp, width: 240 }} placeholder="Buscar cliente..." value={busca} onChange={e => setBusca(e.target.value)} />
-            <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusCliente | "")}>
+            <SelectField style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusCliente | "")}>
               <option value="">Todos os status</option>
               {(Object.keys(STATUS_CFG) as StatusCliente[]).map(s => <option key={s} value={s}>{STATUS_CFG[s].label}</option>)}
-            </select>
-            <select style={{ ...inp, width: 160 }} value={filtroPacote} onChange={e => setFiltroPacote(e.target.value as PacoteCliente | "")}>
+            </SelectField>
+            <SelectField style={{ ...inp, width: 160 }} value={filtroPacote} onChange={e => setFiltroPacote(e.target.value as PacoteCliente | "")}>
               <option value="">Todos os pacotes</option>
               {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => <option key={p} value={p}>{PACOTE_CFG[p].label}</option>)}
-            </select>
-            <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
+            </SelectField>
+            <button data-arato-button="secondary" style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
             <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>{clientesFiltrados.length} de {clientes.length} clientes</div>
           </div>
 
@@ -553,7 +554,7 @@ export default function AdminOverview() {
             ) : clientesFiltrados.length === 0 ? (
               <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Nenhum cliente encontrado</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-card)" }}>
                     {["Conta", "Pacote", "Status", "Desde", "Vencimento", "Mensalidade", "Fazendas", ""].map((h, i) => (
@@ -613,7 +614,7 @@ export default function AdminOverview() {
                         <td style={{ padding: "11px 14px", textAlign: "center" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
                             {c.onboarding_ativo ? (
-                              <button
+                              <button data-arato-button="secondary"
                                 onClick={() => liberarOnboarding(c.id, c.nome)}
                                 disabled={liberandoOnb === c.id}
                                 title="Liberar acesso — desativar onboarding"
@@ -622,7 +623,7 @@ export default function AdminOverview() {
                                 {liberandoOnb === c.id ? "…" : "🔓 Liberar"}
                               </button>
                             ) : (
-                              <button
+                              <button data-arato-button="secondary"
                                 onClick={() => ativarImplantacao(c.id, c.nome)}
                                 disabled={liberandoOnb === c.id}
                                 title="Ativar modo de implantação"
@@ -631,7 +632,7 @@ export default function AdminOverview() {
                                 {liberandoOnb === c.id ? "…" : "🔧 Implantar"}
                               </button>
                             )}
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={() => setModalEdit(c)}
                               style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 11, color: "#0B1E35", fontWeight: 600 }}
                             >
@@ -655,7 +656,7 @@ export default function AdminOverview() {
           {/* Header com link para gestão completa */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div>
-              <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#0B1E35" }}>Planos & Preços</h2>
+              <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#0B1E35" }}>Planos & Preços</h2>
               <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Preços carregados do banco de dados em tempo real.</p>
             </div>
             <a href="/admin/planos" style={{
@@ -669,7 +670,7 @@ export default function AdminOverview() {
             {ORDEM_PLANOS.map(pid => {
               const p = PLANOS_DEFAULT[pid];
               return (
-                <div key={pid} style={{ background: "var(--bg-card)", borderRadius: 12, border: pid === "gestao" ? "2px solid #0B1E35" : "0.5px solid var(--border-table)", padding: "20px 22px" }}>
+                <div data-arato-statistic="display" key={pid} style={{ background: "var(--bg-card)", borderRadius: 12, border: pid === "gestao" ? "2px solid #0B1E35" : "0.5px solid var(--border-table)", padding: "20px 22px" }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35", marginBottom: 4 }}>{p.nome}</div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>{p.descricao}</div>
                   <div style={{ fontSize: 26, fontWeight: 800, color: "#0B1E35", marginBottom: 4 }}>{fmtPreco(p.preco_mensal)}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/mês</span></div>
@@ -691,7 +692,7 @@ export default function AdminOverview() {
             <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35" }}>Comparativo de Módulos</div>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", width: "40%" }}>Módulo</th>

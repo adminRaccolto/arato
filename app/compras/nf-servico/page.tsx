@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -842,7 +843,7 @@ export default function NfServicoPage() {
   // ── Render ───────────────────────────────────────────────────
   if (!podeAcessarPlano("nf_servico")) return <PlanoGate modulo="nf_servico" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <main style={{ flex: 1, padding: "24px 28px", width: "100%" }}>
 
@@ -854,12 +855,12 @@ export default function NfServicoPage() {
               Notas Fiscais de Serviços (NFS-e) · {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
             </div>
           </div>
-          <button style={btnV} onClick={abrirNovo}>+ Nova NF de Serviço</button>
+          <button data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Nova NF de Serviço</button>
         </div>
 
         {/* ── Painel SIEG ── */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 18px", marginBottom: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 18px", marginBottom: 18 }}>
+          <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginRight: 4 }}>⟳ Sincronizar SIEG — NFS-e</span>
             {siegProdutores.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -867,9 +868,9 @@ export default function NfServicoPage() {
                 {siegProdutores.length === 1 ? (
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{siegProdutores[0].nome}</span>
                 ) : (
-                  <select style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }}>
+                  <SelectField style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }}>
                     {siegProdutores.map(p => <option key={p.cnpj} value={p.cnpj}>{p.nome}</option>)}
-                  </select>
+                  </SelectField>
                 )}
               </div>
             )}
@@ -881,11 +882,11 @@ export default function NfServicoPage() {
               <InputData type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
                 style={{ padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)", background: "var(--bg-input)" }} />
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", userSelect: "none" }}>
+            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", userSelect: "none" }}>
               <input type="checkbox" checked={siegForceReimport} onChange={e => setSiegForceReimport(e.target.checked)} style={{ cursor: "pointer" }} />
               Forçar re-importação
             </label>
-            <button onClick={sincronizarSiegNfse} disabled={siegSyncing}
+            <button data-arato-button="toggle" onClick={sincronizarSiegNfse} disabled={siegSyncing}
               style={{ padding: "6px 18px", background: siegSyncing ? "var(--border-table)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
             </button>
@@ -916,7 +917,7 @@ export default function NfServicoPage() {
             { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
             { label: "Canceladas",     value: String(nfs.filter(n=>n.status==="cancelada").length),  bg: "#FCEBEB" },
           ].map(({ label, value, bg }) => (
-            <div key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
+            <div data-arato-statistic="display" key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
             </div>
@@ -924,33 +925,33 @@ export default function NfServicoPage() {
         </div>
 
         {/* ── Filtros — mesmo padrão da NF-e ── */}
-        <div style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <input
             placeholder="Buscar por nº, prestador ou CPF/CNPJ do tomador…"
             value={busca} onChange={e => setBusca(e.target.value)}
             style={{ ...inp, width: 260 }}
           />
-          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 148 }}>
+          <SelectField value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={{ ...inp, width: 148 }}>
             <option value="">Todos os status</option>
             {Object.entries(STATUS_META).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-          <select value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={{ ...inp, width: 120 }}>
+          </SelectField>
+          <SelectField value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={{ ...inp, width: 120 }}>
             <option value="">Toda origem</option>
             <option value="manual">Manual</option>
             <option value="api">SIEG</option>
-          </select>
+          </SelectField>
           {fazendas.length > 1 && (
-            <select value={filtroFazenda} onChange={e => setFiltroFazenda(e.target.value)} style={{ ...inp, width: 180 }}>
+            <SelectField value={filtroFazenda} onChange={e => setFiltroFazenda(e.target.value)} style={{ ...inp, width: 180 }}>
               <option value="">Todas as fazendas</option>
               {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-            </select>
+            </SelectField>
           )}
           {(produtores.length > 0 || empresas.length > 0) && (
-            <select value={filtroTomador} onChange={e => setFiltroTomador(e.target.value)} style={{ ...inp, width: 220 }}>
+            <SelectField value={filtroTomador} onChange={e => setFiltroTomador(e.target.value)} style={{ ...inp, width: 220 }}>
               <option value="">Todos os produtores/tomadores</option>
               {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
               {empresas.map(e => <option key={e.id} value={e.id}>{e.nome ?? e.razao_social}{e.cpf_cnpj ? ` — ${e.cpf_cnpj}` : ""}</option>)}
-            </select>
+            </SelectField>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Competência:</span>
@@ -960,7 +961,7 @@ export default function NfServicoPage() {
             <InputData type="month" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             {(filtroDataDe || filtroDataAte) && (
-              <button onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
+              <button data-arato-button="icon" onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
                 style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro">✕</button>
             )}
           </div>
@@ -973,7 +974,7 @@ export default function NfServicoPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
               {selectedNfs.size} NFS-e selecionada{selectedNfs.size > 1 ? "s" : ""}
             </span>
-            <button
+            <button data-arato-button="secondary"
               onClick={() => {
                 const sel = nfsFilt.filter(n => selectedNfs.has(n.id));
                 if (!sel.length) return;
@@ -1012,7 +1013,7 @@ export default function NfServicoPage() {
             >
               🖨 Imprimir
             </button>
-            <button
+            <button data-arato-button="secondary"
               onClick={() => setSelectedNfs(new Set())}
               style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
             >
@@ -1028,8 +1029,8 @@ export default function NfServicoPage() {
               Nenhuma NF de Serviço. Clique em &ldquo;+ Nova NF de Serviço&rdquo; para começar.
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1060 }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1060 }}>
               <colgroup>
                 <col style={{ width: 36 }} />   {/* checkbox */}
                 <col style={{ width: 100 }} />  {/* Nº/Série */}
@@ -1134,7 +1135,7 @@ export default function NfServicoPage() {
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ display: "flex", gap: 7, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
                           {/* Ver — abre em modo somente leitura */}
-                          <button onClick={() => abrirEditar(nf, true)} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-1)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          <button data-arato-button="secondary" onClick={() => abrirEditar(nf, true)} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-1)", fontWeight: 600, whiteSpace: "nowrap" }}>
                             Ver
                           </button>
                           {/* Recibo — comprovante interno imprimível (NFS-e não tem layout
@@ -1147,25 +1148,25 @@ export default function NfServicoPage() {
                           </a>
                           {/* Proc — processa (pendente/digitando) */}
                           {(nf.status === "pendente" || nf.status === "digitando") && (
-                            <button onClick={() => abrirEditar(nf, false)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            <button data-arato-button="primary" onClick={() => abrirEditar(nf, false)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Proc
                             </button>
                           )}
                           {/* Estornar — processada */}
                           {nf.status === "processada" && (
-                            <button onClick={() => estornarNf(nf)} title="Estornar NFS-e" style={{ padding: "4px 7px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 13, color: "#7A4800", lineHeight: 1 }}>
+                            <button data-arato-button="secondary" onClick={() => estornarNf(nf)} title="Estornar NFS-e" style={{ padding: "4px 7px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 13, color: "#7A4800", lineHeight: 1 }}>
                               ↺
                             </button>
                           )}
                           {/* Cancelar — pendente/digitando */}
                           {(nf.status === "pendente" || nf.status === "digitando") && (
-                            <button onClick={() => cancelarNf(nf)} title="Cancelar" style={{ padding: "4px 7px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                            <button data-arato-button="icon" onClick={() => cancelarNf(nf)} title="Cancelar" style={{ padding: "4px 7px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
                               ✕
                             </button>
                           )}
                           {/* Excluir — ícone lixeira */}
                           {nf.status !== "cancelada" && (
-                            <button onClick={() => iniciarExclusao(nf)} title="Excluir" style={{ padding: "4px 7px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
+                            <button data-arato-button="danger" onClick={() => iniciarExclusao(nf)} title="Excluir" style={{ padding: "4px 7px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
                               🗑
                             </button>
                           )}
@@ -1185,21 +1186,21 @@ export default function NfServicoPage() {
           WIZARD MODAL
       ══════════════════════════════════════════════════════ */}
       {wizard && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 860, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 860, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Header modal */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {nfEdit ? `NF Serviço ${nfEdit.numero_nf}` : "Nova NF de Serviço"}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {etapa === "prestador" ? "Passo 1 — Prestador & Data" : etapa === "servico" ? "Passo 2 — Serviço & Discriminação" : "Passo 3 — Tributação & Lançamento"}
                 </div>
               </div>
               {/* Stepper */}
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {(["prestador", "servico", "tributacao"] as Etapa[]).map((e, i) => {
                   const ordem = ["prestador", "servico", "tributacao"];
                   const ativo = etapa === e;
@@ -1214,14 +1215,14 @@ export default function NfServicoPage() {
                   );
                 })}
               </div>
-              <button onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <button data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
-            <div style={{ padding: 24 }}>
+            <div data-arato-dialog-body="true" style={{ padding: 24 }}>
               {viewOnly && (
-                <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div data-arato-dialog-heading="true" style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span>🔒 Modo visualização — clique em <strong>Editar</strong> para fazer alterações</span>
-                  <button onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
+                  <button data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
                 </div>
               )}
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{err}</div>}
@@ -1231,39 +1232,39 @@ export default function NfServicoPage() {
                 <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   {fazendas.length > 1 && (
                     <div style={{ marginBottom: 14 }}>
-                      <label style={lbl}>Esta NF pertence a *</label>
-                      <select value={cab.fazenda_id} onChange={e => setCab(p => ({ ...p, fazenda_id: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Esta NF pertence a *</label>
+                      <SelectField value={cab.fazenda_id} onChange={e => setCab(p => ({ ...p, fazenda_id: e.target.value }))} style={inp}>
                         <option value="">— Selecionar —</option>
                         {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                   )}
                   {/* Prestador */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Prestador — do cadastro</label>
-                      <select value={cab.prestador_id} onChange={e => onPrestadorChange(e.target.value)} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Prestador — do cadastro</label>
+                      <SelectField value={cab.prestador_id} onChange={e => onPrestadorChange(e.target.value)} style={inp}>
                         <option value="">Selecionar do cadastro…</option>
                         {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Nome do Prestador *</label>
+                      <label data-arato-label="true" style={lbl}>Nome do Prestador *</label>
                       <input value={cab.prestador_nome} onChange={e => setCab(p=>({...p,prestador_nome:e.target.value}))} style={inp} />
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>CNPJ / CPF do Prestador</label>
+                      <label data-arato-label="true" style={lbl}>CNPJ / CPF do Prestador</label>
                       <input value={cab.prestador_cnpj} onChange={e => setCab(p=>({...p,prestador_cnpj:e.target.value}))} placeholder="00.000.000/0001-00" style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Município de Prestação</label>
+                      <label data-arato-label="true" style={lbl}>Município de Prestação</label>
                       <input value={cab.municipio_prestacao} onChange={e => setCab(p=>({...p,municipio_prestacao:e.target.value}))} placeholder="Ex: Nova Mutum - MT" style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Chave NFS-e (opcional)</label>
+                      <label data-arato-label="true" style={lbl}>Chave NFS-e (opcional)</label>
                       <input value={cab.chave_nfse} onChange={e => setCab(p=>({...p,chave_nfse:e.target.value.replace(/\D/g,"")}))} maxLength={44} placeholder="44 dígitos" style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
                     </div>
                   </div>
@@ -1272,10 +1273,10 @@ export default function NfServicoPage() {
 
                   {/* Tomador do Serviço */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Tomador do Serviço (Destinatário)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Tomador — do cadastro</label>
-                      <select value={cab.tomador_id} onChange={e => onTomadorChange(e.target.value)} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Tomador — do cadastro</label>
+                      <SelectField value={cab.tomador_id} onChange={e => onTomadorChange(e.target.value)} style={inp}>
                         <option value="">Selecionar do cadastro…</option>
                         {produtores.length > 0 && (
                           <optgroup label="Produtores">
@@ -1290,16 +1291,16 @@ export default function NfServicoPage() {
                         <optgroup label="Pessoas (terceiros)">
                           {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                         </optgroup>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Nome do Tomador</label>
+                      <label data-arato-label="true" style={lbl}>Nome do Tomador</label>
                       <input value={cab.tomador_nome} onChange={e => setCab(p=>({...p,tomador_nome:e.target.value}))} placeholder="Razão social ou nome" style={inp} />
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>CNPJ / CPF do Tomador</label>
+                      <label data-arato-label="true" style={lbl}>CNPJ / CPF do Tomador</label>
                       <input value={cab.tomador_cnpj} onChange={e => setCab(p=>({...p,tomador_cnpj:e.target.value}))} placeholder="00.000.000/0001-00" style={inp} />
                     </div>
                   </div>
@@ -1308,32 +1309,32 @@ export default function NfServicoPage() {
 
                   {/* Identificação da NF */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Identificação da Nota</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Número NF / RPS *</label>
+                      <label data-arato-label="true" style={lbl}>Número NF / RPS *</label>
                       <input value={cab.numero_nf} onChange={e => setCab(p=>({...p,numero_nf:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Série</label>
+                      <label data-arato-label="true" style={lbl}>Série</label>
                       <input value={cab.serie} onChange={e => setCab(p=>({...p,serie:e.target.value}))} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Data da Prestação *</label>
+                      <label data-arato-label="true" style={lbl}>Data da Prestação *</label>
                       <InputData type="date" value={cab.data_prestacao} onChange={e => {
                         const dt = e.target.value;
                         setCab(p => ({ ...p, data_prestacao: dt, competencia: dt.substring(0, 7) }));
                       }} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Competência (mês)</label>
+                      <label data-arato-label="true" style={lbl}>Competência (mês)</label>
                       <InputData type="month" value={cab.competencia} onChange={e => setCab(p=>({...p,competencia:e.target.value}))} style={inp} />
                     </div>
                   </div>
 
                 </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                  <button style={btnR} onClick={() => setWizard(false)}>Fechar</button>
-                  {!viewOnly && <button style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>}
+                <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                  {!viewOnly && <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>}
                 </div>
                 </>
               )}
@@ -1342,23 +1343,23 @@ export default function NfServicoPage() {
               {etapa === "servico" && (
                 <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação do Serviço</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Código de Serviço — Lei Complementar 116/2003</label>
-                      <select value={cab.codigo_servico} onChange={e => setCab(p=>({...p,codigo_servico:e.target.value}))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Código de Serviço — Lei Complementar 116/2003</label>
+                      <SelectField value={cab.codigo_servico} onChange={e => setCab(p=>({...p,codigo_servico:e.target.value}))} style={inp}>
                         <option value="">Selecionar código…</option>
                         {LC116.map(c => <option key={c.codigo} value={c.codigo}>{c.descricao}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
                       {cab.codigo_servico === "outros" ? (
                         <>
-                          <label style={lbl}>Código de Serviço (manual)</label>
+                          <label data-arato-label="true" style={lbl}>Código de Serviço (manual)</label>
                           <input value={codigoLivre} onChange={e => setCodigoLivre(e.target.value)} placeholder="Ex: 7.05" style={inp} />
                         </>
                       ) : (
                         <>
-                          <label style={lbl}>Código CNAE (opcional)</label>
+                          <label data-arato-label="true" style={lbl}>Código CNAE (opcional)</label>
                           <input value={cab.cnae} onChange={e => setCab(p=>({...p,cnae:e.target.value}))} placeholder="Ex: 0111-3/01" style={inp} />
                         </>
                       )}
@@ -1366,7 +1367,7 @@ export default function NfServicoPage() {
                   </div>
 
                   <div style={{ marginBottom: 14 }}>
-                    <label style={lbl}>Discriminação do Serviço *</label>
+                    <label data-arato-label="true" style={lbl}>Discriminação do Serviço *</label>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
                       Descreva detalhadamente o serviço prestado. Esse texto irá para a NFS-e e serve como prova fiscal.
                     </div>
@@ -1383,11 +1384,11 @@ export default function NfServicoPage() {
                   </div>
 
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
-                  <button style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button style={btnR} onClick={() => setWizard(false)}>Fechar</button>
-                    {!viewOnly && <button style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>}
+                <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+                  <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
+                  <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                    <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                    {!viewOnly && <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>}
                   </div>
                 </div>
                 </>
@@ -1398,33 +1399,33 @@ export default function NfServicoPage() {
                 <><div style={{ pointerEvents: viewOnly ? "none" : undefined, opacity: viewOnly ? 0.85 : undefined }}>
                   {/* Valores */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Valores e ISS</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Valor do Serviço (R$) *</label>
+                      <label data-arato-label="true" style={lbl}>Valor do Serviço (R$) *</label>
                       <InputMonetario value={cab.valor_servico} onChange={v => setCab(p => ({ ...p, valor_servico: String(v) }))} placeholder="0,00" style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Deduções — materiais/subempreitadas (R$)</label>
+                      <label data-arato-label="true" style={lbl}>Deduções — materiais/subempreitadas (R$)</label>
                       <InputMonetario value={cab.valor_deducoes} onChange={v => setCab(p => ({ ...p, valor_deducoes: String(v) }))} placeholder="0,00" style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Base de Cálculo ISS (R$)</label>
+                      <label data-arato-label="true" style={lbl}>Base de Cálculo ISS (R$)</label>
                       <input value={fmtBRL(vBase)} readOnly style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)" }} />
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Alíquota ISS (%)</label>
+                      <label data-arato-label="true" style={lbl}>Alíquota ISS (%)</label>
                       <InputMonetario min="0" max="5" value={cab.aliquota_iss} onChange={v => setCab(p => ({ ...p, aliquota_iss: String(v) }))} style={inp} />
                     </div>
                     <div>
-                      <label style={lbl}>Valor do ISS (R$)</label>
+                      <label data-arato-label="true" style={lbl}>Valor do ISS (R$)</label>
                       <input value={fmtBRL(vISS)} readOnly style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)" }} />
                     </div>
                     <div>
-                      <label style={lbl}>ISS Retido pelo Tomador?</label>
+                      <label data-arato-label="true" style={lbl}>ISS Retido pelo Tomador?</label>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                        <button
+                        <button data-arato-button="toggle"
                           onClick={() => setCab(p=>({...p, iss_retido: !p.iss_retido}))}
                           style={{ ...toggle, background: cab.iss_retido ? "#E24B4A" : "var(--border-table)" }}
                         >
@@ -1438,19 +1439,19 @@ export default function NfServicoPage() {
                   </div>
 
                   {/* Retenções federais */}
-                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 14 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10 }}>Retenções Federais (se houver)</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>INSS Retido (R$)</label>
+                        <label data-arato-label="true" style={lbl}>INSS Retido (R$)</label>
                         <InputMonetario value={cab.valor_inss} onChange={v => setCab(p => ({ ...p, valor_inss: String(v) }))} placeholder="0,00" style={inp} />
                       </div>
                       <div>
-                        <label style={lbl}>IR Retido (R$)</label>
+                        <label data-arato-label="true" style={lbl}>IR Retido (R$)</label>
                         <InputMonetario value={cab.valor_ir} onChange={v => setCab(p => ({ ...p, valor_ir: String(v) }))} placeholder="0,00" style={inp} />
                       </div>
                       <div>
-                        <label style={lbl}>Outras Retenções — CSLL/PIS/COFINS (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Outras Retenções — CSLL/PIS/COFINS (R$)</label>
                         <InputMonetario value={cab.valor_outras_retencoes} onChange={v => setCab(p => ({ ...p, valor_outras_retencoes: String(v) }))} placeholder="0,00" style={inp} />
                       </div>
                     </div>
@@ -1475,9 +1476,9 @@ export default function NfServicoPage() {
 
                   {/* Classificação gerencial */}
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação Gerencial</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Operação Gerencial *</label>
+                      <label data-arato-label="true" style={lbl}>Operação Gerencial *</label>
                       <SelectBusca
                         value={cab.operacao_gerencial_id}
                         onChange={id => setCab(p => ({ ...p, operacao_gerencial_id: id }))}
@@ -1487,17 +1488,17 @@ export default function NfServicoPage() {
                       />
                     </div>
                     <div>
-                      <label style={lbl}>Centro de Custo</label>
-                      <select value={cab.centro_custo_id} onChange={e => setCab(p=>({...p,centro_custo_id:e.target.value}))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Centro de Custo</label>
+                      <SelectField value={cab.centro_custo_id} onChange={e => setCab(p=>({...p,centro_custo_id:e.target.value}))} style={inp}>
                         <option value="">Sem centro de custo</option>
                         {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Forma de Pagamento</label>
-                      <select value={cab.forma_pagamento} onChange={e => setCab(p=>({...p,forma_pagamento:e.target.value}))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Forma de Pagamento</label>
+                      <SelectField value={cab.forma_pagamento} onChange={e => setCab(p=>({...p,forma_pagamento:e.target.value}))} style={inp}>
                         <option value="">— selecionar —</option>
                         <option value="a_vista">À Vista</option>
                         <option value="prazo_boleto">A Prazo — Boleto</option>
@@ -1506,70 +1507,70 @@ export default function NfServicoPage() {
                         <option value="prazo_cheque">A Prazo — Cheque</option>
                         <option value="financiamento">Financiamento</option>
                         <option value="outros">Outros</option>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Ano Safra (para rateio)</label>
-                      <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p,ano_safra_id:e.target.value}))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Ano Safra (para rateio)</label>
+                      <SelectField value={cab.ano_safra_id} onChange={e => setCab(p=>({...p,ano_safra_id:e.target.value}))} style={inp}>
                         <option value="">Opcional</option>
                         {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Pedido de Compra vinculado</label>
-                      <select value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Pedido de Compra vinculado</label>
+                      <SelectField value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
                         <option value="">Sem pedido</option>
                         {pedidos.map(p => <option key={p.id} value={p.id}>{p.nr_pedido ?? p.id.substring(0,8)} — {p.status}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º venc.)</span>}</label>
+                      <label data-arato-label="true" style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º venc.)</span>}</label>
                       <InputData type="date" value={cab.data_vencimento_cp} onChange={e => { setCab(p=>({...p,data_vencimento_cp:e.target.value})); setNfParcelas([]); }} style={inp} />
                     </div>
                   </div>
 
                   {empresas.length > 0 && (
                     <div style={{ marginBottom: 14 }}>
-                      <label style={lbl}>Empresa Tomadora (para vínculo na CP)</label>
-                      <select value={cab.empresa_id} onChange={e => setCab(p=>({...p,empresa_id:e.target.value}))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Empresa Tomadora (para vínculo na CP)</label>
+                      <SelectField value={cab.empresa_id} onChange={e => setCab(p=>({...p,empresa_id:e.target.value}))} style={inp}>
                         <option value="">Sem vínculo de empresa</option>
                         {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
-                      </select>
+                      </SelectField>
                       <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Define qual empresa contratou o serviço — aparece no CP em Financeiro → Empresas</div>
                     </div>
                   )}
 
                   {/* ── Parcelamento ── */}
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
+                    <label data-arato-label="true" style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
                     <div style={{ display: "flex", gap: 6, marginBottom: nfCondicao === "prazo" ? 10 : 0 }}>
                       {(["avista", "prazo"] as const).map(v => (
-                        <button key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
+                        <button data-arato-button="toggle" key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
                           style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${nfCondicao === v ? "#1A4870" : "var(--border-table)"}`, background: nfCondicao === v ? "#1A4870" : "var(--bg-card)", color: nfCondicao === v ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                           {v === "avista" ? "À Vista" : "Parcelado"}
                         </button>
                       ))}
                     </div>
                     {nfCondicao === "prazo" && (
-                      <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
+                      <div data-arato-panel="true" style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px" }}>
                         <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: nfParcelas.length > 0 ? 12 : 0 }}>
                           <div>
-                            <label style={lbl}>Nº de Parcelas</label>
+                            <label data-arato-label="true" style={lbl}>Nº de Parcelas</label>
                             <input type="number" min="2" max="120" value={nfQtdParcelas}
                               onChange={e => { setNfQtdParcelas(e.target.value); setNfParcelas([]); }}
                               style={{ ...inp, width: 80 }} />
                           </div>
                           <div>
-                            <label style={lbl}>Intervalo (meses)</label>
-                            <select value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
+                            <label data-arato-label="true" style={lbl}>Intervalo (meses)</label>
+                            <SelectField value={nfFreq} onChange={e => { setNfFreq(e.target.value); setNfParcelas([]); }} style={{ ...inp, width: 120 }}>
                               <option value="1">Mensal</option>
                               <option value="2">Bimestral</option>
                               <option value="3">Trimestral</option>
                               <option value="6">Semestral</option>
                               <option value="12">Anual</option>
-                            </select>
+                            </SelectField>
                           </div>
-                          <button onClick={gerarParcelasServico}
+                          <button data-arato-button="primary" onClick={gerarParcelasServico}
                             style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                             Gerar parcelas
                           </button>
@@ -1582,7 +1583,7 @@ export default function NfServicoPage() {
                               <span />
                             </div>
                             {nfParcelas.map((p, i) => (
-                              <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
+                              <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 28px", gap: 4, marginBottom: 4, alignItems: "center" }}>
                                 <InputData type="date" value={p.data}
                                   onChange={e => setNfParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
                                   style={{ ...inp, fontSize: 12 }} />
@@ -1615,20 +1616,20 @@ export default function NfServicoPage() {
                   </div>
 
                   <div style={{ marginBottom: 14 }}>
-                    <label style={lbl}>Observações</label>
+                    <label data-arato-label="true" style={lbl}>Observações</label>
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
 
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
-                  <button style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+                  <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
+                  <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                    <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</button>
                     {!viewOnly && <>
-                      <button style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
+                      <button data-arato-button="secondary" style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
                         {saving ? "Salvando…" : "Salvar como Pendente"}
                       </button>
-                      <button style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
+                      <button data-arato-button="toggle" style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
                         {saving ? "Processando…" : "✓ Processar NF"}
                       </button>
                     </>}
@@ -1643,8 +1644,8 @@ export default function NfServicoPage() {
 
       {/* ── Modal de Exclusão ───────────────────────────────── */}
       {modalExcluir && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
             {modalExcluir.verificando ? (
               <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-2)", fontSize: 13 }}>Verificando lançamentos…</div>
             ) : modalExcluir.bloqueado ? (
@@ -1653,8 +1654,8 @@ export default function NfServicoPage() {
                 <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20, lineHeight: 1.6 }}>
                   A NFS-e <strong>{modalExcluir.nf.numero_nf}</strong> possui um lançamento financeiro que já foi <strong>baixado (pago)</strong>. Não é possível excluir — estorne o pagamento no Contas a Pagar primeiro.
                 </div>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
+                <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
                 </div>
               </>
             ) : (
@@ -1672,9 +1673,9 @@ export default function NfServicoPage() {
                   </ul>
                 </div>
 
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
-                  <button
+                <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
+                  <button data-arato-button="toggle"
                     onClick={confirmarExclusao}
                     disabled={modalExcluir.excluindo}
                     style={{ padding: "8px 18px", background: modalExcluir.excluindo ? "var(--text-muted)" : "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: modalExcluir.excluindo ? "default" : "pointer", fontSize: 13 }}

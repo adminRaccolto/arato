@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -48,13 +49,13 @@ function badge(status: AdiantamentoFornecedor["status"]) {
 
 function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-        <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
         </div>
-        <div style={{ padding: "20px 24px" }}>{children}</div>
+        <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>{children}</div>
       </div>
     </div>
   );
@@ -218,7 +219,7 @@ export default function AdiantamentosPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 24px" }}>
 
@@ -230,11 +231,11 @@ export default function AdiantamentosPage() {
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
+            <button data-arato-button="primary" style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
               + Novo Adiantamento
             </button>
           </div>
@@ -250,7 +251,7 @@ export default function AdiantamentosPage() {
             { label: "Saldo Disponível",         valor: fmtBRL(saldoDisp),      cor: saldoDisp > 0 ? "#7A5520" : "var(--text-2)", bg: saldoDisp > 0 ? "#FBF3E0" : "var(--bg-page)" },
             { label: "Fornecedores c/ saldo",    valor: String(nFornecedores),  cor: "var(--text-2)", bg: "var(--bg-page)" },
           ].map(c => (
-            <div key={c.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border)" }}>
+            <div data-arato-statistic="display" key={c.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{c.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: c.cor }}>{c.valor}</div>
               <div style={{ height: 3, borderRadius: 2, background: c.bg, marginTop: 8 }} />
@@ -262,10 +263,10 @@ export default function AdiantamentosPage() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
 
           {/* Tabs + Busca */}
-          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div data-arato-filters="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {TABS.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
+                <button data-arato-button="toggle" key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
                   {t.label}
                   <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>
                     ({t.key === "todos" ? adiantamentos.length : adiantamentos.filter(a => a.status === t.key).length})
@@ -283,7 +284,7 @@ export default function AdiantamentosPage() {
               {tab === "em_aberto" ? "Nenhum adiantamento em aberto." : "Nenhum registro encontrado."}
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Fornecedor", "Descrição", "Nº Doc", "Emissão", "Previsão Entrega", "Valor", "Aplicado", "Saldo", "Status", ""].map((h, i) => (
@@ -326,15 +327,15 @@ export default function AdiantamentosPage() {
                       <td style={tdS}>{badge(a.status)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</button>
+                          <button data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</button>
                           {(a.status === "em_aberto" || a.status === "parcial") && (
-                            <button style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
+                            <button data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
                               onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: new Date().toISOString().slice(0,10) }); setErro(""); }}>
                               Aplicar
                             </button>
                           )}
                           {a.status === "em_aberto" && (
-                            <button style={btnSmX} onClick={() => handleCancelar(a.id)}>Cancelar</button>
+                            <button data-arato-button="danger" style={btnSmX} onClick={() => handleCancelar(a.id)}>Cancelar</button>
                           )}
                         </div>
                       </td>
@@ -350,74 +351,74 @@ export default function AdiantamentosPage() {
       {/* ── Modal Novo Adiantamento ─────────────────────────────── */}
       {modalNovo && (
         <Modal titulo="Novo Adiantamento a Fornecedor" onClose={() => setModalNovo(false)} width={720}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Fornecedor</label>
-              <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Fornecedor</label>
+              <SelectField style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                 <option value="">— selecione —</option>
                 {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-              </select>
+              </SelectField>
             </div>
 
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Descrição *</label>
+              <label data-arato-label="true" style={lbl}>Descrição *</label>
               <input style={inp} placeholder="Ex: Adiantamento Insumos Safra 25/26 — Bayer" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
             </div>
 
             <div>
-              <label style={lbl}>Nº Documento / Pedido</label>
+              <label data-arato-label="true" style={lbl}>Nº Documento / Pedido</label>
               <input style={inp} placeholder="Ex: PED-2025-001" value={form.nr_documento} onChange={e => setForm(p => ({ ...p, nr_documento: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Data de Emissão *</label>
+              <label data-arato-label="true" style={lbl}>Data de Emissão *</label>
               <InputData style={inp} type="date" value={form.data_emissao} onChange={e => setForm(p => ({ ...p, data_emissao: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Previsão de Entrega</label>
+              <label data-arato-label="true" style={lbl}>Previsão de Entrega</label>
               <InputData style={inp} type="date" value={form.data_previsao} onChange={e => setForm(p => ({ ...p, data_previsao: e.target.value }))} />
             </div>
 
             <div>
-              <label style={lbl}>Valor *</label>
+              <label data-arato-label="true" style={lbl}>Valor *</label>
               <InputMonetario style={inp} placeholder="0,00" value={form.valor} onChange={v => setForm(p => ({ ...p, valor: String(v) }))} />
             </div>
             <div>
-              <label style={lbl}>Moeda</label>
-              <select style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda }))}>
+              <label data-arato-label="true" style={lbl}>Moeda</label>
+              <SelectField style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda }))}>
                 <option value="BRL">BRL — Real</option>
                 <option value="USD">USD — Dólar</option>
-              </select>
+              </SelectField>
             </div>
             {form.moeda === "USD" && (
               <div>
-                <label style={lbl}>Cotação USD (R$)</label>
+                <label data-arato-label="true" style={lbl}>Cotação USD (R$)</label>
                 <InputMonetario style={inp} placeholder="5,90" value={form.cotacao_usd} onChange={v => setForm(p => ({ ...p, cotacao_usd: String(v) }))} />
               </div>
             )}
 
             <div>
-              <label style={lbl}>Conta Bancária</label>
-              <select style={inp} value={form.conta_bancaria_id} onChange={e => setForm(p => ({ ...p, conta_bancaria_id: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Conta Bancária</label>
+              <SelectField style={inp} value={form.conta_bancaria_id} onChange={e => setForm(p => ({ ...p, conta_bancaria_id: e.target.value }))}>
                 <option value="">— selecione —</option>
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Ano Safra *</label>
-              <select style={{ ...inp, borderColor: form.ano_safra_id ? undefined : "#E24B4A" }} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+              <SelectField style={{ ...inp, borderColor: form.ano_safra_id ? undefined : "#E24B4A" }} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value }))}>
                 <option value="">— selecione —</option>
                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-              </select>
+              </SelectField>
             </div>
 
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Observação</label>
+              <label data-arato-label="true" style={lbl}>Observação</label>
               <input style={inp} placeholder="Opcional — notas internas" value={form.observacao} onChange={e => setForm(p => ({ ...p, observacao: e.target.value }))} />
             </div>
 
-            <div style={{ gridColumn: "1/-1", background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div data-arato-panel="true" style={{ gridColumn: "1/-1", background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <input type="checkbox" id="jaQuitado" checked={form.ja_quitado} onChange={e => setForm(p => ({ ...p, ja_quitado: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
-              <label htmlFor="jaQuitado" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>
+              <label data-arato-label="true" htmlFor="jaQuitado" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>
                 Pagamento já realizado — gera CP como <strong>baixado</strong> (saída de caixa já ocorreu)
               </label>
             </div>
@@ -425,8 +426,8 @@ export default function AdiantamentosPage() {
 
           {erro && <div style={{ marginTop: 12, background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", color: "#791F1F", fontSize: 12 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => { setModalNovo(false); setErro(""); }}>Cancelar</button>
-            <button style={{ ...btnAzul }}
+            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalNovo(false); setErro(""); }}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnAzul }}
               disabled={salvando}
               onClick={salvarNovo}>{salvando ? "Salvando…" : "Salvar Adiantamento"}</button>
           </div>
@@ -442,28 +443,28 @@ export default function AdiantamentosPage() {
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Saldo Disponível</div><div style={{ fontWeight: 700, color: "#7A5520", fontSize: 16 }}>{fmtBRL(modalApliq.valor - (modalApliq.valor_aplicado ?? 0))}</div></div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Valor a Aplicar *</label>
+              <label data-arato-label="true" style={lbl}>Valor a Aplicar *</label>
               <InputMonetario style={inp} placeholder="0,00" value={fApliq.valor_aplicado} onChange={v => setFApliq(p => ({ ...p, valor_aplicado: String(v) }))} />
             </div>
             <div>
-              <label style={lbl}>Data de Aplicação *</label>
+              <label data-arato-label="true" style={lbl}>Data de Aplicação *</label>
               <InputData style={inp} type="date" value={fApliq.data_aplicacao} onChange={e => setFApliq(p => ({ ...p, data_aplicacao: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Descrição *</label>
+              <label data-arato-label="true" style={lbl}>Descrição *</label>
               <input style={inp} placeholder="Ex: Aplicado na NF de Insumos 001234" value={fApliq.descricao} onChange={e => setFApliq(p => ({ ...p, descricao: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Nº da NF / Referência</label>
+              <label data-arato-label="true" style={lbl}>Nº da NF / Referência</label>
               <input style={inp} placeholder="Ex: NF 001234 — Bayer Brasil" value={fApliq.nr_nf} onChange={e => setFApliq(p => ({ ...p, nr_nf: e.target.value }))} />
             </div>
           </div>
 
           {/* Botão "Aplicar Tudo" */}
           {(modalApliq.valor - (modalApliq.valor_aplicado ?? 0)) > 0 && (
-            <button style={{ ...btnSm, marginTop: 8, color: "#7A5520", background: "#FBF3E0", border: "0.5px solid #C9921B40" }}
+            <button data-arato-button="secondary" style={{ ...btnSm, marginTop: 8, color: "#7A5520", background: "#FBF3E0", border: "0.5px solid #C9921B40" }}
               onClick={() => setFApliq(p => ({ ...p, valor_aplicado: String(modalApliq.valor - (modalApliq.valor_aplicado ?? 0)) }))}>
               Aplicar saldo total ({fmtBRL(modalApliq.valor - (modalApliq.valor_aplicado ?? 0))})
             </button>
@@ -471,8 +472,8 @@ export default function AdiantamentosPage() {
 
           {erro && <div style={{ marginTop: 12, background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", color: "#791F1F", fontSize: 12 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => { setModalApliq(null); setErro(""); }}>Cancelar</button>
-            <button style={{ ...btnV }}
+            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalApliq(null); setErro(""); }}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV }}
               disabled={salvando}
               onClick={salvarApliq}>{salvando ? "Salvando…" : "Confirmar Aplicação"}</button>
           </div>
@@ -519,7 +520,7 @@ export default function AdiantamentosPage() {
           ) : aplicacoes.length === 0 ? (
             <div style={{ color: "var(--text-3)", fontSize: 13, padding: "12px 0" }}>Nenhuma aplicação registrada.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Data", "Descrição", "NF / Ref.", "Valor Aplicado"].map((h, i) => (

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -145,20 +146,20 @@ export default function LogSistema() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Log do Sistema</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Log do Sistema</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Rastreamento completo de inserções, edições e exclusões por usuário</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
+              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
                 style={{ padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}>
                 <option value="__todas">Todas as fazendas do cliente</option>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button
+            <button data-arato-button="primary"
               onClick={() => {
                 const csv = [
                   ["Data/Hora","Fazenda","Usuário","Módulo","Ação","Descrição","Entidade","IP"],
@@ -185,8 +186,8 @@ export default function LogSistema() {
               { label: "Edições",           valor: kpis.update, cor: "#C9921B", bg: "#FBF3E0" },
               { label: "Exclusões",         valor: kpis.delete, cor: "#E24B4A", bg: "#FCEBEB" },
             ].map((k, i) => (
-              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: k.cor }}>
+              <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div data-arato-statistic="display" style={{ width: 40, height: 40, borderRadius: 10, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: k.cor }}>
                   {k.valor.toLocaleString("pt-BR")}
                 </div>
                 <div>
@@ -200,44 +201,44 @@ export default function LogSistema() {
           </div>
 
           {/* Filtros */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+          <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10, color: "var(--text-2)" }}>Início</label>
+              <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-2)" }}>Início</label>
               <InputData type="date" value={filtro.inicio} onChange={e => setF({ inicio: e.target.value })} style={{ ...inputStyle, width: 130 }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10, color: "var(--text-2)" }}>Fim</label>
+              <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-2)" }}>Fim</label>
               <InputData type="date" value={filtro.fim} onChange={e => setF({ fim: e.target.value })} style={{ ...inputStyle, width: 130 }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10, color: "var(--text-2)" }}>Módulo</label>
-              <select value={filtro.modulo} onChange={e => setF({ modulo: e.target.value })} style={{ ...inputStyle, width: 150 }}>
+              <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-2)" }}>Módulo</label>
+              <SelectField value={filtro.modulo} onChange={e => setF({ modulo: e.target.value })} style={{ ...inputStyle, width: 150 }}>
                 <option value="">Todos</option>
                 {MODULOS_LISTA.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10, color: "var(--text-2)" }}>Ação</label>
-              <select value={filtro.acao} onChange={e => setF({ acao: e.target.value })} style={{ ...inputStyle, width: 140 }}>
+              <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-2)" }}>Ação</label>
+              <SelectField value={filtro.acao} onChange={e => setF({ acao: e.target.value })} style={{ ...inputStyle, width: 140 }}>
                 <option value="">Todas</option>
                 {(Object.keys(ACAO_META) as AcaoLog[]).map(a => (
                   <option key={a} value={a}>{ACAO_META[a].label}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 10, color: "var(--text-2)" }}>Usuário</label>
-              <select value={filtro.usuario} onChange={e => setF({ usuario: e.target.value })} style={{ ...inputStyle, width: 180 }}>
+              <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-2)" }}>Usuário</label>
+              <SelectField value={filtro.usuario} onChange={e => setF({ usuario: e.target.value })} style={{ ...inputStyle, width: 180 }}>
                 <option value="">Todos</option>
                 {usuariosUnicos.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 160 }}>
-              <label style={{ fontSize: 10, color: "var(--text-2)" }}>Busca</label>
+              <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-2)" }}>Busca</label>
               <input value={filtro.busca} onChange={e => setF({ busca: e.target.value })}
                 placeholder="Descrição, entidade…" style={{ ...inputStyle, width: "100%" }} />
             </div>
-            <button onClick={() => { setFiltro({ modulo: "", acao: "", usuario: "", inicio: "", fim: hoje, busca: "" }); setPagina(1); }}
+            <button data-arato-button="secondary" onClick={() => { setFiltro({ modulo: "", acao: "", usuario: "", inicio: "", fim: hoje, busca: "" }); setPagina(1); }}
               style={{ padding: "7px 14px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
               Limpar
             </button>
@@ -251,10 +252,10 @@ export default function LogSistema() {
               </span>
               {totalPaginas > 1 && (
                 <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-                  <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
+                  <button data-arato-button="icon" onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
                     style={{ padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", cursor: pagina === 1 ? "not-allowed" : "pointer", opacity: pagina === 1 ? 0.4 : 1 }}>‹</button>
                   <span style={{ color: "var(--text-2)" }}>Página {pagina} de {totalPaginas}</span>
-                  <button onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}
+                  <button data-arato-button="icon" onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}
                     style={{ padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", cursor: pagina === totalPaginas ? "not-allowed" : "pointer", opacity: pagina === totalPaginas ? 0.4 : 1 }}>›</button>
                 </div>
               )}
@@ -271,8 +272,8 @@ export default function LogSistema() {
                 Nenhum log encontrado para os filtros selecionados.
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Data / Hora", "Fazenda", "Usuário", "Módulo", "Ação", "Descrição", "Entidade", ""].map(h => (
@@ -301,7 +302,7 @@ export default function LogSistema() {
                           <td style={{ padding: "8px 14px", color: "#666", fontSize: 11 }}>{l.entidade ?? "—"}</td>
                           <td style={{ padding: "8px 14px" }}>
                             {(l.dados_antes || l.dados_depois) && (
-                              <button onClick={() => setDetalhe(l)}
+                              <button data-arato-button="secondary" onClick={() => setDetalhe(l)}
                                 style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "3px 8px", fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                                 Detalhes
                               </button>
@@ -349,18 +350,18 @@ CREATE POLICY logs_leitura ON logs_sistema FOR SELECT USING (fazenda_id = curren
 
       {/* Modal detalhe */}
       {detalhe && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 700, maxWidth: "95vw", maxHeight: "85vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Detalhe do Log</div>
-                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{fmtDt(detalhe.created_at)} · {detalhe.usuario_nome ?? detalhe.usuario_email ?? "Sistema"}</div>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: 700, maxWidth: "95vw", maxHeight: "85vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Detalhe do Log</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{fmtDt(detalhe.created_at)} · {detalhe.usuario_nome ?? detalhe.usuario_email ?? "Sistema"}</div>
               </div>
-              <button onClick={() => setDetalhe(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+              <button data-arato-button="icon" onClick={() => setDetalhe(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
             </div>
-            <div style={{ padding: "16px 22px", display: "grid", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "16px 22px", display: "grid", gap: 14 }}>
+              <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {[
                   { label: "Módulo",   valor: detalhe.modulo },
                   { label: "Ação",     valor: ACAO_META[detalhe.acao]?.label ?? detalhe.acao },

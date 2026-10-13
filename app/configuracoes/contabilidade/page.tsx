@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -142,12 +143,12 @@ export default function ContabilidadePage() {
   const ABA_LABELS = { pf: "Produtor / Pessoa Física", pj: "Empresa / Pessoa Jurídica" };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>Configuração Contábil</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>Configuração Contábil</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Parâmetros para geração do SPED ECD (Escrituração Contábil Digital).
             Cada entidade — Produtor Rural (PF) e Empresa (PJ) — tem seu próprio livro contábil.
@@ -167,7 +168,7 @@ export default function ContabilidadePage() {
         {/* Abas PF / PJ */}
         <div style={{ display: "flex", gap: 2, marginBottom: 24 }}>
           {(["pf","pj"] as const).map(e => (
-            <button
+            <button data-arato-button="toggle"
               key={e}
               onClick={() => mudarAba(e)}
               style={{
@@ -184,80 +185,80 @@ export default function ContabilidadePage() {
         </div>
 
         {/* ── Identificação da Entidade ── */}
-        <div style={card}>
+        <div data-arato-panel="true" style={card}>
           <div style={secTitle}>Identificação da Entidade</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px 20px" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px 20px" }}>
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>Nome / Razão Social</label>
+              <label data-arato-label="true" style={lbl}>Nome / Razão Social</label>
               <input style={inp} value={form.nome_empresarial} onChange={e => set("nome_empresarial", e.target.value)} placeholder={aba === "pf" ? "Nome completo do produtor" : "Razão social da empresa"} />
             </div>
             <div>
-              <label style={lbl}>Situação Inicial</label>
-              <select style={inp} value={form.ind_sit_ini ?? "0"} onChange={e => set("ind_sit_ini", e.target.value)}>
+              <label data-arato-label="true" style={lbl}>Situação Inicial</label>
+              <SelectField style={inp} value={form.ind_sit_ini ?? "0"} onChange={e => set("ind_sit_ini", e.target.value)}>
                 {Object.entries(SIT_INI_LABELS).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              </SelectField>
             </div>
 
             {aba === "pj" ? (
               <div>
-                <label style={lbl}>CNPJ</label>
+                <label data-arato-label="true" style={lbl}>CNPJ</label>
                 <input style={inp} value={form.cnpj ?? ""} onChange={e => set("cnpj", e.target.value)} placeholder="00.000.000/0001-00" />
               </div>
             ) : (
               <div>
-                <label style={lbl}>CPF</label>
+                <label data-arato-label="true" style={lbl}>CPF</label>
                 <input style={inp} value={form.cpf ?? ""} onChange={e => set("cpf", e.target.value)} placeholder="000.000.000-00" />
               </div>
             )}
             <div>
-              <label style={lbl}>Inscrição Estadual</label>
+              <label data-arato-label="true" style={lbl}>Inscrição Estadual</label>
               <input style={inp} value={form.ie ?? ""} onChange={e => set("ie", e.target.value)} placeholder="Opcional" />
             </div>
             <div>
-              <label style={lbl}>NIRE</label>
+              <label data-arato-label="true" style={lbl}>NIRE</label>
               <input style={inp} value={form.nire ?? ""} onChange={e => set("nire", e.target.value)} placeholder="Opcional (Junta Comercial)" />
             </div>
 
             <div>
-              <label style={lbl}>UF</label>
-              <select style={inp} value={form.uf ?? ""} onChange={e => set("uf", e.target.value)}>
+              <label data-arato-label="true" style={lbl}>UF</label>
+              <SelectField style={inp} value={form.uf ?? ""} onChange={e => set("uf", e.target.value)}>
                 <option value="">Selecione</option>
                 {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Município</label>
+              <label data-arato-label="true" style={lbl}>Município</label>
               <input style={inp} value={form.nome_municipio ?? ""} onChange={e => set("nome_municipio", e.target.value)} placeholder="Ex: Nova Mutum" />
             </div>
             <div>
-              <label style={lbl}>Código IBGE do Município</label>
+              <label data-arato-label="true" style={lbl}>Código IBGE do Município</label>
               <input style={inp} value={form.cod_municipio_ibge ?? ""} onChange={e => set("cod_municipio_ibge", e.target.value)} placeholder="7 dígitos — ex: 5106224" />
             </div>
           </div>
         </div>
 
         {/* ── Livro Contábil ── */}
-        <div style={card}>
+        <div data-arato-panel="true" style={card}>
           <div style={secTitle}>Livro Contábil</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px 20px" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px 20px" }}>
             <div>
-              <label style={lbl}>Método de Escrituração</label>
-              <select style={inp} value={form.tipo_escrituracao} onChange={e => set("tipo_escrituracao", e.target.value)}>
+              <label data-arato-label="true" style={lbl}>Método de Escrituração</label>
+              <SelectField style={inp} value={form.tipo_escrituracao} onChange={e => set("tipo_escrituracao", e.target.value)}>
                 {Object.entries(ESCRITURACAO_LABELS).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Nº do Livro</label>
+              <label data-arato-label="true" style={lbl}>Nº do Livro</label>
               <input style={inp} value={form.nr_livro ?? ""} onChange={e => set("nr_livro", e.target.value)} placeholder="Ex: 1" />
             </div>
             <div>
-              <label style={lbl}>Tipo do Livro</label>
-              <select style={inp} value={form.nr_tipo_livro ?? "1"} onChange={e => set("nr_tipo_livro", e.target.value)}>
+              <label data-arato-label="true" style={lbl}>Tipo do Livro</label>
+              <SelectField style={inp} value={form.nr_tipo_livro ?? "1"} onChange={e => set("nr_tipo_livro", e.target.value)}>
                 {Object.entries(TIPO_LIVRO_LABELS).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div style={{ gridColumn: "1 / 4" }}>
-              <label style={lbl}>Nome do Livro</label>
+              <label data-arato-label="true" style={lbl}>Nome do Livro</label>
               <input style={inp} value={form.nome_livro ?? ""} onChange={e => set("nome_livro", e.target.value)} placeholder="Ex: Livro Diário — Produtor Rural — Exercício 2025" />
             </div>
           </div>
@@ -271,38 +272,38 @@ export default function ContabilidadePage() {
         </div>
 
         {/* ── Responsável Técnico ── */}
-        <div style={card}>
+        <div data-arato-panel="true" style={card}>
           <div style={secTitle}>Responsável Técnico (Contador)</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px 20px" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px 20px" }}>
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>Nome Completo do Contador</label>
+              <label data-arato-label="true" style={lbl}>Nome Completo do Contador</label>
               <input style={inp} value={form.resp_nome ?? ""} onChange={e => set("resp_nome", e.target.value)} placeholder="Nome do contador responsável" />
             </div>
             <div>
-              <label style={lbl}>CPF do Contador</label>
+              <label data-arato-label="true" style={lbl}>CPF do Contador</label>
               <input style={inp} value={form.resp_cpf ?? ""} onChange={e => set("resp_cpf", e.target.value)} placeholder="000.000.000-00" />
             </div>
             <div>
-              <label style={lbl}>CRC</label>
+              <label data-arato-label="true" style={lbl}>CRC</label>
               <input style={inp} value={form.resp_crc ?? ""} onChange={e => set("resp_crc", e.target.value)} placeholder="Ex: MT-012345/O-8" />
             </div>
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>E-mail do Contador</label>
+              <label data-arato-label="true" style={lbl}>E-mail do Contador</label>
               <input style={inp} type="email" value={form.resp_email ?? ""} onChange={e => set("resp_email", e.target.value)} placeholder="contador@escritorio.com.br" />
             </div>
           </div>
         </div>
 
         {/* ── Termos ── */}
-        <div style={card}>
+        <div data-arato-panel="true" style={card}>
           <div style={secTitle}>Termos do Livro</div>
           <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>
             Os termos de abertura e encerramento são incluídos no arquivo SPED ECD.
             Se deixados em branco, será gerado um termo padrão com os dados acima.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 20px" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 20px" }}>
             <div>
-              <label style={lbl}>Termo de Abertura</label>
+              <label data-arato-label="true" style={lbl}>Termo de Abertura</label>
               <textarea
                 style={{ ...inp, height: 120, resize: "vertical" as const }}
                 value={form.termo_abertura ?? ""}
@@ -311,7 +312,7 @@ export default function ContabilidadePage() {
               />
             </div>
             <div>
-              <label style={lbl}>Termo de Encerramento</label>
+              <label data-arato-label="true" style={lbl}>Termo de Encerramento</label>
               <textarea
                 style={{ ...inp, height: 120, resize: "vertical" as const }}
                 value={form.termo_encerramento ?? ""}
@@ -324,7 +325,7 @@ export default function ContabilidadePage() {
 
         {/* Rodapé de ação */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
+          <button data-arato-button="primary"
             onClick={salvar}
             disabled={saving}
             style={{ padding: "10px 28px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}

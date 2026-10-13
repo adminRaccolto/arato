@@ -170,7 +170,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
           display: "flex", justifyContent: "space-between", alignItems: "center"
         }}>
           {erro}
-          <button onClick={() => setErro(null)} style={{ border: "none", background: "none", cursor: "pointer", color: "#991B1B", fontSize: 14, padding: 0 }}>×</button>
+          <button data-arato-button="icon" onClick={() => setErro(null)} style={{ border: "none", background: "none", cursor: "pointer", color: "#991B1B", fontSize: 14, padding: 0 }}>×</button>
         </div>
       )}
 
@@ -179,7 +179,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
         <div style={{ marginBottom: 14 }}>
           <input ref={fileRef} type="file" style={{ display: "none" }} onChange={handleUpload}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt,.xml" />
-          <button
+          <button data-arato-button="toggle"
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             style={{
@@ -206,7 +206,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {anexos.map(a => (
-            <div key={a.id} style={{
+            <div data-arato-statistic="action" key={a.id} style={{
               display: "flex", alignItems: "center", gap: 10,
               background: "var(--bg-page)", borderRadius: 8, padding: "8px 12px",
               border: "0.5px solid var(--border)"
@@ -235,7 +235,7 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
                     Abrir
                   </a>
                 )}
-                <button
+                <button data-arato-button="danger"
                   onClick={() => handleExcluir(a.id, a.nome_original)}
                   disabled={excluindo === a.id}
                   style={{

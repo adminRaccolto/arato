@@ -99,21 +99,21 @@ export default function ControllerPage() {
   const totalAtivos = alertas.filter(a => !a.resolved_at).length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Controller</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Controller</h1>
             <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
               Monitoramento automático de inconsistências e alertas operacionais
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {msg && <span style={{ fontSize: 12, color: "var(--text-2)", fontStyle: "italic" }}>{msg}</span>}
-            <button
+            <button data-arato-button="primary"
               onClick={executarVerificacoes}
               disabled={executando}
               style={{
@@ -130,7 +130,7 @@ export default function ControllerPage() {
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
           {(["critico", "alto", "medio", "baixo"] as Severidade[]).map(sev => (
-            <button
+            <button data-arato-button="toggle"
               key={sev}
               onClick={() => setFiltroSev(filtroSev === sev ? "todos" : sev)}
               style={{
@@ -147,12 +147,12 @@ export default function ControllerPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600 }}>FILTRAR:</span>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {(["todos", "Fiscal", "Financeiro", "Contratos", "Lavoura", "Cadastros", "Estoque", "Arrendamentos"] as (Categoria | "todos")[]).map(cat => (
-              <button
+              <button data-arato-button="toggle"
                 key={cat}
                 onClick={() => setFiltroCat(cat)}
                 style={{
@@ -175,7 +175,7 @@ export default function ControllerPage() {
               onChange={e => setMostrarResolvidos(e.target.checked)}
               style={{ cursor: "pointer" }}
             />
-            <label htmlFor="mostrar-resolvidos" style={{ fontSize: 12, color: "var(--text-3)", cursor: "pointer" }}>
+            <label data-arato-label="true" htmlFor="mostrar-resolvidos" style={{ fontSize: 12, color: "var(--text-3)", cursor: "pointer" }}>
               Mostrar resolvidos
             </label>
           </div>
@@ -185,7 +185,7 @@ export default function ControllerPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#999", fontSize: 14 }}>Carregando alertas...</div>
         ) : alertasFiltrados.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
+          <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{totalAtivos === 0 ? "✅" : "🔍"}</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: totalAtivos === 0 ? "#16A34A" : "#111111" }}>
               {totalAtivos === 0 ? "Tudo em ordem!" : "Nenhum alerta para os filtros selecionados"}
@@ -202,7 +202,7 @@ export default function ControllerPage() {
               const resolved = !!a.resolved_at;
               const acked = !!a.acknowledged_at;
               return (
-                <div
+                <div data-arato-statistic="action"
                   key={a.id}
                   style={{
                     background: resolved ? "#F9FAFB" : SEV_BG[a.severidade],
@@ -255,7 +255,7 @@ export default function ControllerPage() {
                     {!resolved && (
                       <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
                         {!acked && (
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => ackAlerta(a.id)}
                             style={{
                               background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 6,
@@ -266,7 +266,7 @@ export default function ControllerPage() {
                             Reconhecer
                           </button>
                         )}
-                        <button
+                        <button data-arato-button="primary"
                           onClick={() => fecharAlerta(a.id)}
                           style={{
                             background: "#16A34A", border: "none", borderRadius: 6,

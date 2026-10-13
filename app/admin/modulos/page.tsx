@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
 import { PLANOS_DEFAULT } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
@@ -202,7 +203,7 @@ export default function ModulosPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+        <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           Módulos por Conta
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
@@ -218,21 +219,21 @@ export default function ModulosPage() {
       )}
 
       {/* Seleção de conta */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "flex-end" }}>
+      <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
+        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "flex-end" }}>
           <div>
-            <label style={lbl}>Selecionar conta *</label>
-            <select style={inp} value={contaId} onChange={e => selecionarConta(e.target.value)}>
+            <label data-arato-label="true" style={lbl}>Selecionar conta *</label>
+            <SelectField style={inp} value={contaId} onChange={e => selecionarConta(e.target.value)}>
               <option value="">— Selecione uma conta —</option>
               {contas.map(c => (
                 <option key={c.id} value={c.id}>
                   {c.nome}{c.pacote ? ` (${c.pacote})` : ""}{c.status === "trial" ? " [Trial]" : ""}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
           {contaId && (
-            <button style={btnSecondary} onClick={resetarParaPadrao}>
+            <button data-arato-button="secondary" style={btnSecondary} onClick={resetarParaPadrao}>
               ↺ Resetar para padrão
             </button>
           )}
@@ -342,8 +343,8 @@ export default function ModulosPage() {
             )}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4 }}>
-              <button style={btnSecondary} onClick={resetarParaPadrao}>Resetar para padrão</button>
-              <button style={btnPrimary} onClick={salvarAlteracoes} disabled={salvando}>
+              <button data-arato-button="secondary" style={btnSecondary} onClick={resetarParaPadrao}>Resetar para padrão</button>
+              <button data-arato-button="primary" style={btnPrimary} onClick={salvarAlteracoes} disabled={salvando}>
                 {salvando ? "Salvando…" : "Salvar alterações"}
               </button>
             </div>
@@ -360,7 +361,7 @@ export default function ModulosPage() {
       )}
 
       {!contaId && (
-        <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-muted)" }}>
+        <div data-arato-statistic="display" style={{ padding: "60px 0", textAlign: "center", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⬡</div>
           <div style={{ fontSize: 14, color: "var(--text-3)" }}>Selecione uma conta para gerenciar seus módulos</div>
         </div>

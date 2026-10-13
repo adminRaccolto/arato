@@ -189,19 +189,19 @@ export default function IdentidadePage() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: 0 }}>Identidade Arato</h1>
+        <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: 0 }}>Identidade Arato</h1>
         <p style={{ fontSize: 13, color: "#666", margin: "6px 0 0" }}>
           Configurações visuais e de infraestrutura do produto. Alterações são salvas no Supabase.
         </p>
       </div>
 
       {/* ── Logo ── */}
-      <div style={{
+      <div data-arato-panel="true" style={{
         background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: "0 0 16px" }}>Logo do Produto</h2>
+        <h2 data-arato-h2="true" style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: "0 0 16px" }}>Logo do Produto</h2>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
           <div style={{
             width: 200, height: 80, border: "0.5px dashed var(--border)",
@@ -219,7 +219,7 @@ export default function IdentidadePage() {
               Formatos aceitos: PNG, SVG, WebP. Tamanho ideal: 280×80px.
             </div>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={uploadLogo} />
-            <button
+            <button data-arato-button="secondary"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
               style={{
@@ -245,16 +245,16 @@ export default function IdentidadePage() {
       </div>
 
       {/* ── Paleta de Cores ── */}
-      <div style={{
+      <div data-arato-panel="true" style={{
         background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>Paleta de Cores</h2>
+          <h2 data-arato-h2="true" style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>Paleta de Cores</h2>
           <div style={{ display: "flex", gap: 8 }}>
             {paletaAlterada && (
-              <button
+              <button data-arato-button="secondary"
                 onClick={cancelarPaleta}
                 style={{
                   padding: "7px 14px", borderRadius: 8,
@@ -265,7 +265,7 @@ export default function IdentidadePage() {
                 Cancelar
               </button>
             )}
-            <button
+            <button data-arato-button="toggle"
               onClick={paletaAlterada ? salvarPaleta : undefined}
               disabled={!paletaAlterada || paletaSaving}
               style={{
@@ -284,7 +284,7 @@ export default function IdentidadePage() {
           Clique em qualquer cor para editar o valor hexadecimal. As cores afetam o design system do app.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {paleta.map((cor, idx) => {
             const editando = paletaEditIdx === idx;
             return (
@@ -359,13 +359,13 @@ export default function IdentidadePage() {
       </div>
 
       {/* ── Identificação do Produto ── */}
-      <div style={{
+      <div data-arato-panel="true" style={{
         background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>
+          <h2 data-arato-h2="true" style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: 0 }}>
             Identificação do Produto
             {identidadeSaved && (
               <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, marginLeft: 10 }}>✓ Salvo</span>
@@ -374,7 +374,7 @@ export default function IdentidadePage() {
           <div style={{ display: "flex", gap: 8 }}>
             {identidadeEdit ? (
               <>
-                <button
+                <button data-arato-button="secondary"
                   onClick={() => { setIdentidadeEdit(false); carregar(); }}
                   style={{
                     padding: "7px 14px", borderRadius: 8,
@@ -384,7 +384,7 @@ export default function IdentidadePage() {
                 >
                   Cancelar
                 </button>
-                <button
+                <button data-arato-button="primary"
                   onClick={salvarIdentidade}
                   disabled={identidadeSaving}
                   style={{
@@ -397,7 +397,7 @@ export default function IdentidadePage() {
                 </button>
               </>
             ) : (
-              <button
+              <button data-arato-button="secondary"
                 onClick={() => setIdentidadeEdit(true)}
                 style={{
                   padding: "7px 16px", borderRadius: 8,
@@ -411,9 +411,9 @@ export default function IdentidadePage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {CAMPOS_IDENTIDADE.map(({ key, label, tipo }) => (
-            <div key={key} style={{
+            <div data-arato-panel="true" key={key} style={{
               background: identidadeEdit ? "#fff" : "var(--bg-card)",
               borderRadius: 8,
               border: identidadeEdit ? "1px solid #11111140" : "0.5px solid var(--border)",
@@ -453,11 +453,11 @@ export default function IdentidadePage() {
         border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: "0 0 4px" }}>Variáveis de Ambiente</h2>
+        <h2 data-arato-h2="true" style={{ fontSize: 15, fontWeight: 700, color: "#0D0D0D", margin: "0 0 4px" }}>Variáveis de Ambiente</h2>
         <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 16px" }}>
           Configure em <strong>Vercel → Settings → Environment Variables</strong>. Obrigatórias bloqueiam o funcionamento se ausentes.
         </p>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--bg-card)" }}>
               <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Variável</th>

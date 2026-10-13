@@ -1,5 +1,6 @@
 "use client";
 import { PALETTES, MODES, type PaletteId } from "../lib/appearance";
+import LayoutSettings from "./LayoutSettings";
 import { useAppearance } from "./AppearanceProvider";
 
 export default function AppearanceSettings({ compact = false }: { compact?: boolean }) {
@@ -7,6 +8,7 @@ export default function AppearanceSettings({ compact = false }: { compact?: bool
   return (
     <section className={`appearance-settings${compact ? " appearance-compact" : ""}`} aria-label="Aparência do sistema">
       {!compact && <><h2>Tema de cores</h2><p className="appearance-description">Escolha uma paleta e o modo de exibição. A preferência fica salva neste navegador.</p></>}
+      <LayoutSettings density />
       <div className="appearance-mode" role="group" aria-label="Modo de exibição">
         {MODES.map(item => <button type="button" key={item.id} aria-pressed={mode === item.id} onClick={() => setMode(item.id)}>{item.label}</button>)}
       </div>

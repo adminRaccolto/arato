@@ -47,13 +47,13 @@ export default function ConfirmarAcaoHost() {
   const corBotao = pedido.perigo ? "#B91C1C" : "var(--c-primary)";
 
   return (
-    <div onClick={() => responder(false)} style={{ position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, padding: "20px 22px", boxShadow: "var(--shadow-modal)", fontFamily: "inherit" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: pedido.perigo ? "var(--status-danger-text)" : "var(--text-1)", marginBottom: 8 }}>{pedido.titulo}</div>
-        <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{pedido.mensagem}</div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-          <button autoFocus onClick={() => responder(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border-control)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-          <button onClick={() => responder(true)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: corBotao, color: pedido.perigo ? "#fff" : "var(--on-primary)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{pedido.textoConfirmar ?? (pedido.perigo ? "Excluir" : "Confirmar")}</button>
+    <div data-arato-overlay="true" onClick={() => responder(false)} style={{ position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div data-arato-dialog="confirmation" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, padding: "20px 22px", boxShadow: "var(--shadow-modal)", fontFamily: "inherit" }}>
+        <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: pedido.perigo ? "var(--status-danger-text)" : "var(--text-1)", marginBottom: 8 }}>{pedido.titulo}</div>
+        <div data-arato-dialog-body="true" style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, whiteSpace: "pre-line" }}>{pedido.mensagem}</div>
+        <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+          <button data-arato-button="secondary" autoFocus onClick={() => responder(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border-control)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+          <button data-arato-button="secondary" onClick={() => responder(true)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: corBotao, color: pedido.perigo ? "#fff" : "var(--on-primary)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{pedido.textoConfirmar ?? (pedido.perigo ? "Excluir" : "Confirmar")}</button>
         </div>
       </div>
     </div>

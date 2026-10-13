@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -227,26 +228,26 @@ export default function AdubacaoBasePage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Adubação de Base</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Adubação de Base</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>NPK, micronutrientes, adubação foliar e fertirrigação</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {fazendas.length > 1 && (
-              <select
+              <SelectField
                 value={fazendaFiltro}
                 onChange={e => setFazendaFiltro(e.target.value)}
                 style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }}
               >
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button style={btnV} onClick={() => { setCascade({}); setEditandoId(null); setModal(true); }}>+ Registrar Aplicação</button>
+            <button data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setEditandoId(null); setModal(true); }}>+ Registrar Aplicação</button>
           </div>
         </header>
 
@@ -258,7 +259,7 @@ export default function AdubacaoBasePage() {
               { label: "Área total adubada",     valor: `${registros.reduce((s, r) => s + r.area_ha, 0).toLocaleString("pt-BR")} ha`,       cor: "#C9921B" },
               { label: "Custo total fertilizantes", valor: fmtBRL(registros.reduce((s, r) => s + (r.custo_total ?? 0), 0)),                cor: "#E24B4A" },
             ].map((s, i) => (
-              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+              <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                 <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>{s.valor}</div>
               </div>
@@ -271,7 +272,7 @@ export default function AdubacaoBasePage() {
             </div>
           ) : (
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Fazenda", "Ano Safra", "Ciclo", "Talhão", "Modalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
@@ -298,8 +299,8 @@ export default function AdubacaoBasePage() {
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={{ ...btnX, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }} onClick={() => abrirEditar(r)}>✎ Editar</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</button>
+                            <button data-arato-button="danger" style={{ ...btnX, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }} onClick={() => abrirEditar(r)}>✎ Editar</button>
+                            <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</button>
                           </div>
                         </td>
                       </tr>
@@ -314,17 +315,17 @@ export default function AdubacaoBasePage() {
 
       {/* ── Modal ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ marginBottom: 4 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>{editandoId ? "✎ Editar Adubação de Base" : "Registrar Adubação de Base"}</div>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 4 }}>
+              <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>{editandoId ? "✎ Editar Adubação de Base" : "Registrar Adubação de Base"}</div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>NPK, micronutrientes, adubação foliar e fertirrigação</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>NPK, micronutrientes, adubação foliar e fertirrigação</div>
 
             {/* Hierarquia: Fazenda → Safra → Ciclo → Talhão — Produtor/IE não se aplicam a
                 lançamento de operação de campo (são dados fiscais, não de lavoura). */}
-            <div style={{ marginBottom: 14 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
@@ -337,38 +338,38 @@ export default function AdubacaoBasePage() {
               />
             </div>
 
-            <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
+            <div data-arato-dialog-body="true" style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
               ⟳ Ao salvar: baixa automática do estoque dos fertilizantes + lançamento CP "Insumos / Fertilizantes" no financeiro.
             </div>
 
             {erro && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>{erro}</div>}
 
             {/* Identificação */}
-            <div style={secTit}>Identificação</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 4 }}>
-              <div>
-                <label style={lbl}>Modalidade *</label>
-                <select style={inp} value={f.modalidade} onChange={e => setF(p => ({ ...p, modalidade: e.target.value as AdubacaoBase["modalidade"] }))}>
+            <div data-arato-dialog-body="true" style={secTit}>Identificação</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 4 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Modalidade *</label>
+                <SelectField style={inp} value={f.modalidade} onChange={e => setF(p => ({ ...p, modalidade: e.target.value as AdubacaoBase["modalidade"] }))}>
                   {Object.entries(MODALIDADES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Área (ha) *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Área (ha) *</label>
                 <InputNumerico style={inp} placeholder="Ex: 440" value={f.area_ha} onChange={v => setF(p => ({ ...p, area_ha: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Data de Aplicação *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data de Aplicação *</label>
                 <InputData calendario style={inp} type="date" value={f.data_aplicacao} onChange={e => setF(p => ({ ...p, data_aplicacao: e.target.value }))} />
               </div>
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input style={inp} placeholder="Ex: Adubação em sulco no plantio" value={f.observacao} onChange={e => setF(p => ({ ...p, observacao: e.target.value }))} />
               </div>
             </div>
 
             {/* Produtos */}
-            <div style={secTit}>Fertilizantes Aplicados</div>
-            <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr 1fr 1fr auto", gap: 8, marginBottom: 6, padding: "0 2px" }}>
+            <div data-arato-dialog-body="true" style={secTit}>Fertilizantes Aplicados</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "3fr 2fr 1fr 1fr auto", gap: 8, marginBottom: 6, padding: "0 2px" }}>
               {["Produto / Insumo", "Produto (se não estiver no estoque)", "Dose (kg/ha)", "Total (kg)", ""].map((h, i) => (
                 <div key={i} style={{ fontSize: 10, color: "#666", fontWeight: 600 }}>{h}</div>
               ))}
@@ -378,11 +379,11 @@ export default function AdubacaoBasePage() {
               const dose = parseFloat(it.dose_kg_ha) || 0;
               const qtd = dose * areaHa;
               return (
-                <div key={idx} style={{ display: "grid", gridTemplateColumns: "3fr 2fr 1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                  <select style={inp} value={it.insumo_id} onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, insumo_id: e.target.value, produto_nome: "" } : x))}>
+                <div data-arato-item-grid="true" key={idx} style={{ display: "grid", gridTemplateColumns: "3fr 2fr 1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                  <SelectField style={inp} value={it.insumo_id} onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, insumo_id: e.target.value, produto_nome: "" } : x))}>
                     <option value="">— Selecionar do estoque —</option>
                     {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} · {fmtN(i.estoque, 0)} {i.unidade}</option>)}
-                  </select>
+                  </SelectField>
                   <input style={{ ...inp, opacity: it.insumo_id ? 0.4 : 1 }} placeholder="Nome livre" value={it.produto_nome} disabled={!!it.insumo_id}
                     onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, produto_nome: e.target.value } : x))} />
                   <InputNumerico style={inp} decimais={3} placeholder="Ex: 350,125" value={it.dose_kg_ha}
@@ -390,14 +391,14 @@ export default function AdubacaoBasePage() {
                   <div style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)", textAlign: "center" as const }}>
                     {qtd > 0 ? fmtN(qtd, 3) : "—"} kg
                   </div>
-                  <button style={btnX} onClick={() => removeItem(idx)}>✕</button>
+                  <button data-arato-button="danger" style={btnX} onClick={() => removeItem(idx)}>✕</button>
                   {ins && <div style={{ gridColumn: "1/-1", fontSize: 10, color: "#111111", marginTop: -4 }}>
                     Estoque atual: {fmtN(ins.estoque, 0)} {ins.unidade} · Custo médio: {fmtBRL(ins.custo_medio ?? ins.valor_unitario ?? 0)}/{ins.unidade || "kg"}
                   </div>}
                 </div>
               );
             })}
-            <button style={{ ...btnR, fontSize: 12, padding: "5px 12px" }} onClick={addItem}>+ Adicionar fertilizante</button>
+            <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12, padding: "5px 12px" }} onClick={addItem}>+ Adicionar fertilizante</button>
 
             {/* Preview custo */}
             {custoTotal > 0 && (
@@ -414,9 +415,9 @@ export default function AdubacaoBasePage() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button style={btnR} onClick={() => { setModal(false); setEditandoId(null); }}>Cancelar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => { setModal(false); setEditandoId(null); }}>Cancelar</button>
+              <button data-arato-button="primary"
                 style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_aplicacao ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.area_ha || !f.data_aplicacao}
                 onClick={salvar}>
@@ -429,38 +430,38 @@ export default function AdubacaoBasePage() {
 
       {/* ── Popup de detalhe da operação ── */}
       {detalhe && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
           onClick={() => setDetalhe(null)}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw", maxHeight: "88vh", overflowY: "auto" }}
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw", maxHeight: "88vh", overflowY: "auto" }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Detalhe da Aplicação</div>
-              <button style={{ ...btnR, padding: "4px 10px", fontSize: 12 }} onClick={() => setDetalhe(null)}>✕</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Detalhe da Aplicação</div>
+              <button data-arato-button="icon" style={{ ...btnR, padding: "4px 10px", fontSize: 12 }} onClick={() => setDetalhe(null)}>✕</button>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>
               {MODALIDADES[detalhe.modalidade].label} · {fmtData(detalhe.data_aplicacao)}
             </div>
 
-            <div style={secTit}>Identificação</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12, marginBottom: 4 }}>
-              <div><span style={{ color: "var(--text-2)" }}>Fazenda:</span> <strong>{fazendaLabel(detalhe.fazenda_id)}</strong></div>
-              <div><span style={{ color: "var(--text-2)" }}>Ano Safra:</span> <strong>{anoSafraLabel(detalhe.ciclo_id)}</strong></div>
-              <div><span style={{ color: "var(--text-2)" }}>Ciclo:</span> <strong>{cicloLabel(detalhe.ciclo_id)}</strong></div>
-              <div><span style={{ color: "var(--text-2)" }}>Talhão:</span> <strong>{talhaoLabel(detalhe.talhao_id)}</strong></div>
-              <div><span style={{ color: "var(--text-2)" }}>Área:</span> <strong>{fmtN(detalhe.area_ha)} ha</strong></div>
-              <div><span style={{ color: "var(--text-2)" }}>Custo Total:</span> <strong style={{ color: "#E24B4A" }}>{detalhe.custo_total ? fmtBRL(detalhe.custo_total) : "—"}</strong></div>
+            <div data-arato-dialog-body="true" style={secTit}>Identificação</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12, marginBottom: 4 }}>
+              <div data-arato-dialog-body="true"><span style={{ color: "var(--text-2)" }}>Fazenda:</span> <strong>{fazendaLabel(detalhe.fazenda_id)}</strong></div>
+              <div data-arato-dialog-body="true"><span style={{ color: "var(--text-2)" }}>Ano Safra:</span> <strong>{anoSafraLabel(detalhe.ciclo_id)}</strong></div>
+              <div data-arato-dialog-body="true"><span style={{ color: "var(--text-2)" }}>Ciclo:</span> <strong>{cicloLabel(detalhe.ciclo_id)}</strong></div>
+              <div data-arato-dialog-body="true"><span style={{ color: "var(--text-2)" }}>Talhão:</span> <strong>{talhaoLabel(detalhe.talhao_id)}</strong></div>
+              <div data-arato-dialog-body="true"><span style={{ color: "var(--text-2)" }}>Área:</span> <strong>{fmtN(detalhe.area_ha)} ha</strong></div>
+              <div data-arato-dialog-body="true"><span style={{ color: "var(--text-2)" }}>Custo Total:</span> <strong style={{ color: "#E24B4A" }}>{detalhe.custo_total ? fmtBRL(detalhe.custo_total) : "—"}</strong></div>
             </div>
             {detalhe.observacao && (
               <div style={{ fontSize: 12, marginTop: 8 }}><span style={{ color: "var(--text-2)" }}>Observação:</span> {detalhe.observacao}</div>
             )}
 
-            <div style={secTit}>Produtos Aplicados</div>
+            <div data-arato-dialog-body="true" style={secTit}>Produtos Aplicados</div>
             {detalheCarregando ? (
               <div style={{ fontSize: 12, color: "var(--text-2)" }}>Carregando…</div>
             ) : detalheItens.length === 0 ? (
               <div style={{ fontSize: 12, color: "var(--text-2)" }}>Nenhum produto registrado.</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr>
                     {["Produto", "Dose (kg/ha)", "Qtd. Total", "Custo"].map((h, i) => (
@@ -481,10 +482,10 @@ export default function AdubacaoBasePage() {
               </table>
             )}
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-              <button style={{ ...btnR, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+              <button data-arato-button="secondary" style={{ ...btnR, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}
                 onClick={() => { const r = detalhe; setDetalhe(null); abrirEditar(r); }}>✎ Editar</button>
-              <button style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
             </div>
           </div>
         </div>

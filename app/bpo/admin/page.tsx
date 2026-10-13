@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
@@ -230,11 +231,11 @@ export default function BpoAdmin() {
           <span style={{ fontSize: 13, color: "#888" }}>Administração BPO</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => router.push("/bpo/seletor-cliente")}
+          <button data-arato-button="secondary" onClick={() => router.push("/bpo/seletor-cliente")}
             style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#555" }}>
             ← Selecionar cliente
           </button>
-          <button onClick={() => supabase.auth.signOut()}
+          <button data-arato-button="secondary" onClick={() => supabase.auth.signOut()}
             style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#555" }}>
             Sair
           </button>
@@ -250,7 +251,7 @@ export default function BpoAdmin() {
             { label: "Fazendas geridas", valor: clientes.reduce((s, c) => s + (c.fazendas_count ?? 0), 0) },
             { label: "Usuários BPO", valor: usuarios.filter(u => u.ativo).length || "—" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 24px", flex: 1 }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 24px", flex: 1 }}>
               <div style={{ fontSize: 22, fontWeight: 700, color: "#1A4870" }}>{k.valor}</div>
               <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{k.label}</div>
             </div>
@@ -260,7 +261,7 @@ export default function BpoAdmin() {
         {/* Abas */}
         <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
           {(["clientes", "usuarios"] as const).map(t => (
-            <button key={t} onClick={() => setAba(t)}
+            <button data-arato-button="toggle" key={t} onClick={() => setAba(t)}
               style={{
                 background: "none", border: "none", borderBottom: aba === t ? "2px solid #1A4870" : "2px solid transparent",
                 padding: "10px 20px", cursor: "pointer", fontSize: 13,
@@ -276,7 +277,7 @@ export default function BpoAdmin() {
         {aba === "clientes" && (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-              <button onClick={() => { setModalCliente(true); setResultadoCli(null); }}
+              <button data-arato-button="primary" onClick={() => { setModalCliente(true); setResultadoCli(null); }}
                 style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
                 + Novo cliente
               </button>
@@ -293,7 +294,7 @@ export default function BpoAdmin() {
               ) : listaCli.length === 0 ? (
                 <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhum cliente cadastrado ainda.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F8FAFD" }}>
                       {["Cliente", "Fazendas", ""].map(h => (
@@ -307,7 +308,7 @@ export default function BpoAdmin() {
                         <td style={{ padding: "10px 16px", fontSize: 13, color: "#1a1a1a", fontWeight: 500 }}>{c.nome}</td>
                         <td style={{ padding: "10px 16px", fontSize: 12, color: "#666" }}>{c.fazendas_count ?? 0}</td>
                         <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                          <button onClick={() => { localStorage.setItem("raccotlo_cliente_conta_id", c.id); router.push("/bpo/seletor-cliente"); }}
+                          <button data-arato-button="secondary" onClick={() => { localStorage.setItem("raccotlo_cliente_conta_id", c.id); router.push("/bpo/seletor-cliente"); }}
                             style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: "#1A4870" }}>
                             Acessar
                           </button>
@@ -325,7 +326,7 @@ export default function BpoAdmin() {
         {aba === "usuarios" && (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-              <button onClick={() => { setModalUsuario(true); setResultadoUsr(null); setFormUsuario(FORM_USUARIO_VAZIO); }}
+              <button data-arato-button="primary" onClick={() => { setModalUsuario(true); setResultadoUsr(null); setFormUsuario(FORM_USUARIO_VAZIO); }}
                 style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
                 + Novo usuário
               </button>
@@ -343,7 +344,7 @@ export default function BpoAdmin() {
                   Nenhum usuário cadastrado ainda. Use o botão "+ Novo usuário" para adicionar.
                 </div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F8FAFD" }}>
                       {["Nome", "E-mail", "Perfil", "Status", ""].map(h => (
@@ -375,7 +376,7 @@ export default function BpoAdmin() {
                           </span>
                         </td>
                         <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => toggleAtivo(u)}
                             disabled={togglingUsr === u.user_id}
                             style={{
@@ -400,11 +401,11 @@ export default function BpoAdmin() {
 
       {/* ──── Modal Novo Cliente ──── */}
       {modalCliente && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", padding: 28 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Novo cliente</h2>
-              <button onClick={() => setModalCliente(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", padding: 28 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Novo cliente</h2>
+              <button data-arato-button="icon" onClick={() => setModalCliente(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
             </div>
 
             {resultadoCli && (
@@ -414,13 +415,13 @@ export default function BpoAdmin() {
             )}
 
             <form onSubmit={salvarNovoCliente}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
 
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Tipo de produtor</label>
+                  <label data-arato-label="true" style={lbl}>Tipo de produtor</label>
                   <div style={{ display: "flex", gap: 8 }}>
                     {(["pf", "pj"] as const).map(t => (
-                      <label key={t} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                      <label data-arato-label="true" key={t} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                         <input type="radio" checked={formCliente.tipo === t} onChange={() => updCliente("tipo", t)} />
                         {t === "pf" ? "Pessoa Física" : "Pessoa Jurídica"}
                       </label>
@@ -429,27 +430,27 @@ export default function BpoAdmin() {
                 </div>
 
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Nome do produtor *</label>
+                  <label data-arato-label="true" style={lbl}>Nome do produtor *</label>
                   <input required value={formCliente.nome} onChange={e => updCliente("nome", e.target.value)} style={inp} placeholder="Ex: João da Silva" />
                 </div>
 
                 <div>
-                  <label style={lbl}>{formCliente.tipo === "pf" ? "CPF" : "CNPJ"}</label>
+                  <label data-arato-label="true" style={lbl}>{formCliente.tipo === "pf" ? "CPF" : "CNPJ"}</label>
                   <input value={formCliente.cpf_cnpj} onChange={e => updCliente("cpf_cnpj", e.target.value)} style={inp} placeholder={formCliente.tipo === "pf" ? "000.000.000-00" : "00.000.000/0000-00"} />
                 </div>
 
                 <div>
-                  <label style={lbl}>E-mail do produtor</label>
+                  <label data-arato-label="true" style={lbl}>E-mail do produtor</label>
                   <input type="email" value={formCliente.email_cliente} onChange={e => updCliente("email_cliente", e.target.value)} style={inp} />
                 </div>
 
                 <div>
-                  <label style={lbl}>Município</label>
+                  <label data-arato-label="true" style={lbl}>Município</label>
                   <input value={formCliente.municipio_cliente} onChange={e => updCliente("municipio_cliente", e.target.value)} style={inp} />
                 </div>
 
                 <div>
-                  <label style={lbl}>Estado</label>
+                  <label data-arato-label="true" style={lbl}>Estado</label>
                   <input value={formCliente.estado_cliente} onChange={e => updCliente("estado_cliente", e.target.value)} style={inp} maxLength={2} />
                 </div>
 
@@ -458,22 +459,22 @@ export default function BpoAdmin() {
                 </div>
 
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Nome da fazenda *</label>
+                  <label data-arato-label="true" style={lbl}>Nome da fazenda *</label>
                   <input required value={formCliente.fazenda_nome} onChange={e => updCliente("fazenda_nome", e.target.value)} style={inp} placeholder="Ex: Fazenda Santa Maria" />
                 </div>
 
                 <div>
-                  <label style={lbl}>Município da fazenda</label>
+                  <label data-arato-label="true" style={lbl}>Município da fazenda</label>
                   <input value={formCliente.fazenda_municipio} onChange={e => updCliente("fazenda_municipio", e.target.value)} style={inp} />
                 </div>
 
                 <div>
-                  <label style={lbl}>Estado da fazenda</label>
+                  <label data-arato-label="true" style={lbl}>Estado da fazenda</label>
                   <input value={formCliente.fazenda_estado} onChange={e => updCliente("fazenda_estado", e.target.value)} style={inp} maxLength={2} />
                 </div>
 
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Área total (ha)</label>
+                  <label data-arato-label="true" style={lbl}>Área total (ha)</label>
                   <input type="number" min="0" step="0.01" value={formCliente.fazenda_area} onChange={e => updCliente("fazenda_area", e.target.value)} style={inp} />
                 </div>
 
@@ -482,27 +483,27 @@ export default function BpoAdmin() {
                 </div>
 
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Nome completo *</label>
+                  <label data-arato-label="true" style={lbl}>Nome completo *</label>
                   <input required value={formCliente.user_nome} onChange={e => updCliente("user_nome", e.target.value)} style={inp} />
                 </div>
 
                 <div>
-                  <label style={lbl}>E-mail de acesso *</label>
+                  <label data-arato-label="true" style={lbl}>E-mail de acesso *</label>
                   <input required type="email" value={formCliente.user_email} onChange={e => updCliente("user_email", e.target.value)} style={inp} />
                 </div>
 
                 <div>
-                  <label style={lbl}>Senha provisória *</label>
+                  <label data-arato-label="true" style={lbl}>Senha provisória *</label>
                   <input required value={formCliente.user_senha} onChange={e => updCliente("user_senha", e.target.value)} style={inp} placeholder="Mínimo 8 caracteres" minLength={8} />
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                <button type="button" onClick={() => setModalCliente(false)}
+              <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                <button data-arato-button="secondary" type="button" onClick={() => setModalCliente(false)}
                   style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "9px 20px", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={salvandoCli}
+                <button data-arato-button="primary" type="submit" disabled={salvandoCli}
                   style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoCli ? .6 : 1 }}>
                   {salvandoCli ? "Salvando..." : "Cadastrar cliente"}
                 </button>
@@ -514,11 +515,11 @@ export default function BpoAdmin() {
 
       {/* ──── Modal Novo Usuário BPO ──── */}
       {modalUsuario && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 480, padding: 28 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Novo usuário BPO</h2>
-              <button onClick={() => setModalUsuario(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div data-arato-dialog="form" style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 480, padding: 28 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Novo usuário BPO</h2>
+              <button data-arato-button="icon" onClick={() => setModalUsuario(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
             </div>
 
             {resultadoUsr && (
@@ -531,27 +532,27 @@ export default function BpoAdmin() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
                 <div>
-                  <label style={lbl}>Nome completo *</label>
+                  <label data-arato-label="true" style={lbl}>Nome completo *</label>
                   <input required value={formUsuario.nome} onChange={e => updUsuario("nome", e.target.value)} style={inp} placeholder="Ex: Maria Oliveira" />
                 </div>
 
                 <div>
-                  <label style={lbl}>E-mail de acesso *</label>
+                  <label data-arato-label="true" style={lbl}>E-mail de acesso *</label>
                   <input required type="email" value={formUsuario.email} onChange={e => updUsuario("email", e.target.value)} style={inp} />
                 </div>
 
                 <div>
-                  <label style={lbl}>Senha provisória *</label>
+                  <label data-arato-label="true" style={lbl}>Senha provisória *</label>
                   <input required value={formUsuario.senha} onChange={e => updUsuario("senha", e.target.value)} style={inp} placeholder="Mínimo 8 caracteres" minLength={8} />
                 </div>
 
                 <div>
-                  <label style={lbl}>Perfil de acesso *</label>
-                  <select value={formUsuario.bpo_nivel} onChange={e => updUsuario("bpo_nivel", e.target.value)} style={{ ...inp, appearance: "auto" }}>
+                  <label data-arato-label="true" style={lbl}>Perfil de acesso *</label>
+                  <SelectField value={formUsuario.bpo_nivel} onChange={e => updUsuario("bpo_nivel", e.target.value)} style={{ ...inp, appearance: "auto" }}>
                     {(["admin", "operacional", "consultor"] as const).map(n => (
                       <option key={n} value={n}>{NIVEL_LABEL[n]}</option>
                     ))}
-                  </select>
+                  </SelectField>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
                     {NIVEL_DESC[formUsuario.bpo_nivel]}
                   </div>
@@ -559,12 +560,12 @@ export default function BpoAdmin() {
 
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
-                <button type="button" onClick={() => setModalUsuario(false)}
+              <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
+                <button data-arato-button="secondary" type="button" onClick={() => setModalUsuario(false)}
                   style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "9px 20px", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={salvandoUsr}
+                <button data-arato-button="primary" type="submit" disabled={salvandoUsr}
                   style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoUsr ? .6 : 1 }}>
                   {salvandoUsr ? "Criando..." : "Criar usuário"}
                 </button>

@@ -170,13 +170,13 @@ export default function ContextMenuColunas({
 
               {/* Botões ↑↓ */}
               <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
-                <button
+                <button data-arato-button="secondary"
                   onClick={e => { e.stopPropagation(); mover(idx, -1); }}
                   disabled={idx === 0}
                   style={{ width: 16, height: 12, fontSize: 8, padding: 0, border: "none", background: "transparent", cursor: idx === 0 ? "default" : "pointer", color: idx === 0 ? "var(--text-muted)" : "var(--text-2)", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
                   title="Mover para cima"
                 >▲</button>
-                <button
+                <button data-arato-button="secondary"
                   onClick={e => { e.stopPropagation(); mover(idx, 1); }}
                   disabled={idx === opcionais.length - 1}
                   style={{ width: 16, height: 12, fontSize: 8, padding: 0, border: "none", background: "transparent", cursor: idx === opcionais.length - 1 ? "default" : "pointer", color: idx === opcionais.length - 1 ? "var(--text-muted)" : "var(--text-2)", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -190,20 +190,20 @@ export default function ContextMenuColunas({
 
       {/* Rodapé */}
       <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "6px 10px", display: "flex", gap: 6, flexShrink: 0 }}>
-        <button
+        <button data-arato-button="primary"
           onClick={() => { opcionais.forEach(c => { if (visiveis[c.key] === false) onToggle(c.key); }); }}
           style={{ flex: 1, padding: "5px 0", fontSize: 11, color: "#1A4870", background: "#D5E8F5", border: "none", borderRadius: 5, cursor: "pointer", fontWeight: 600 }}
         >
           Mostrar todas
         </button>
-        <button
+        <button data-arato-button="secondary"
           onClick={onResetar}
           style={{ flex: 1, padding: "5px 0", fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 5, cursor: "pointer" }}
           title="Restaurar ordem e visibilidade padrão"
         >
           Resetar
         </button>
-        <button
+        <button data-arato-button="icon"
           onClick={onClose}
           style={{ padding: "5px 10px", fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 5, cursor: "pointer" }}
         >

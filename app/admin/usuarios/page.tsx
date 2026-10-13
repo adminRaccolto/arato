@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -172,14 +173,14 @@ const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-p
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
         </div>
-        <div style={{ padding: "20px 22px" }}>{children}</div>
+        <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>{children}</div>
       </div>
     </div>
   );
@@ -213,8 +214,8 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
   };
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
             <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border-row)" }}>Módulo</th>
@@ -243,7 +244,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                     return (
                       <td key={acao} style={{ padding: "6px 10px", textAlign: "center" }}>
                         {modsComAcao.length > 0 ? (
-                          <button
+                          <button data-arato-button="toggle"
                             onClick={() => toggleGrupo(grupo, acao)}
                             title={`${todosOn ? "Desativar" : "Ativar"} "${ACAO_META[acao].label}" em todo o grupo ${grupo}`}
                             style={{ width: 20, height: 20, borderRadius: 5, border: `0.5px solid ${todosOn ? ACAO_META[acao].cor : algumOn ? ACAO_META[acao].cor + "80" : "var(--border-table)"}`, background: todosOn ? ACAO_META[acao].bg : algumOn ? ACAO_META[acao].bg + "80" : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
@@ -268,7 +269,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                         return (
                           <td key={acao} style={{ padding: "7px 10px", textAlign: "center" }}>
                             {disponivel ? (
-                              <button
+                              <button data-arato-button="toggle"
                                 onClick={() => toggle(mod.id, acao)}
                                 title={`${ativo ? "Remover" : "Conceder"} permissão "${ACAO_META[acao].label}" em ${mod.label}`}
                                 style={{ width: 22, height: 22, borderRadius: 6, border: `0.5px solid ${ativo ? ACAO_META[acao].cor : "var(--border-table)"}`, background: ativo ? ACAO_META[acao].bg : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: ativo ? ACAO_META[acao].cor : "#bbb", transition: "all 0.1s" }}>
@@ -281,7 +282,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                         );
                       })}
                       <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                        <button
+                        <button data-arato-button="secondary"
                           onClick={() => toggleTudo(mod.id)}
                           style={{ fontSize: 10, color: tudo ? "#E24B4A" : "#16A34A", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                           {tudo ? "Nenhum" : "Tudo"}
@@ -554,20 +555,20 @@ export default function AdminUsuarios() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Equipe Raccotlo</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Equipe Raccotlo</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Usuários internos da Raccotlo e seus níveis de acesso ao HUB</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {userRole === "raccotlo" && (
-              <button
+              <button data-arato-button="primary"
                 onClick={() => { setModalNovoCliente(true); setResultCliente(null); }}
                 style={{ ...btnV, fontSize: 12, background: "#16A34A" }}>
                 + Novo Cliente
               </button>
             )}
-            <button onClick={() => abrirModalUser()} style={{ ...btnV, fontSize: 12 }}>
+            <button data-arato-button="primary" onClick={() => abrirModalUser()} style={{ ...btnV, fontSize: 12 }}>
               + Novo Usuário
             </button>
           </div>
@@ -577,7 +578,7 @@ export default function AdminUsuarios() {
 
           {erro && (
             <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 16px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>
-              ⚠ {erro} <button onClick={() => setErro(null)} style={{ background: "none", border: "none", color: "#791F1F", cursor: "pointer", marginLeft: 8 }}>✕</button>
+              ⚠ {erro} <button data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", color: "#791F1F", cursor: "pointer", marginLeft: 8 }}>✕</button>
             </div>
           )}
 
@@ -605,7 +606,7 @@ export default function AdminUsuarios() {
                   { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
                   { key: "usuarios", label: `Usuários (${usuarios.length})`        },
                 ] as { key: typeof aba; label: string }[]).map(a => (
-                  <button key={a.key} onClick={() => setAba(a.key)} style={{
+                  <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                     color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
@@ -625,7 +626,7 @@ export default function AdminUsuarios() {
               {carregando ? (
                 <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Nome", "E-mail", "Acesso HUB", "Status", ""].map(h => (
@@ -636,7 +637,7 @@ export default function AdminUsuarios() {
                   <tbody>
                     {usuarios.length === 0 && (
                       <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                        Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                        Nenhum usuário cadastrado. <button data-arato-button="secondary" onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
                       </td></tr>
                     )}
                     {usuarios.map((u, i) => {
@@ -667,16 +668,16 @@ export default function AdminUsuarios() {
                           <td style={{ padding: "11px 16px", textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               {hub !== "raccotlo" && hub !== null && (
-                                <button onClick={() => abrirModalClientes(u)}
+                                <button data-arato-button="secondary" onClick={() => abrirModalClientes(u)}
                                   style={{ padding: "4px 12px", background: "#F2F2F2", border: "0.5px solid #93C5FD", borderRadius: 6, fontSize: 11, color: "#444444", cursor: "pointer", fontWeight: 600 }}>
                                   Clientes
                                 </button>
                               )}
-                              <button onClick={() => abrirModalUser(u)}
+                              <button data-arato-button="secondary" onClick={() => abrirModalUser(u)}
                                 style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                                 Editar
                               </button>
-                              <button onClick={() => excluirUser(u.id)}
+                              <button data-arato-button="danger" onClick={() => excluirUser(u.id)}
                                 style={{ padding: "4px 10px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, fontSize: 11, color: "#E24B4A", cursor: "pointer" }}>
                                 ✕
                               </button>
@@ -711,7 +712,7 @@ export default function AdminUsuarios() {
                   : `${contasSelecionadas.size} de ${contasDisponiveis.length} cliente${contasDisponiveis.length !== 1 ? "s" : ""} selecionado${contasSelecionadas.size !== 1 ? "s" : ""}`}
               </span>
               {contasSelecionadas.size > 0 && (
-                <button
+                <button data-arato-button="secondary"
                   onClick={() => setContasSelecionadas(new Set())}
                   style={{ background: "none", border: "none", fontSize: 11, color: "#E24B4A", cursor: "pointer", fontWeight: 600 }}>
                   Limpar seleção
@@ -726,7 +727,7 @@ export default function AdminUsuarios() {
               {contasDisponiveis.map(c => {
                 const sel = contasSelecionadas.has(c.id);
                 return (
-                  <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, background: sel ? "#F2F2F2" : "var(--bg-page)", border: `0.5px solid ${sel ? "#93C5FD" : "var(--border-table)"}`, cursor: "pointer" }}>
+                  <label data-arato-label="true" key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, background: sel ? "#F2F2F2" : "var(--bg-page)", border: `0.5px solid ${sel ? "#93C5FD" : "var(--border-table)"}`, cursor: "pointer" }}>
                     <input type="checkbox" checked={sel} onChange={() => {
                       setContasSelecionadas(prev => {
                         const next = new Set(prev);
@@ -741,8 +742,8 @@ export default function AdminUsuarios() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button style={btnR} onClick={() => setModalClientes(null)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvandoClientes ? 0.6 : 1 }} disabled={salvandoClientes} onClick={salvarClientes}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalClientes(null)}>Cancelar</button>
+              <button data-arato-button="primary" style={{ ...btnV, opacity: salvandoClientes ? 0.6 : 1 }} disabled={salvandoClientes} onClick={salvarClientes}>
                 {salvandoClientes ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -763,17 +764,17 @@ export default function AdminUsuarios() {
                   ? `E-mail de boas-vindas enviado para ${fUser.email}.`
                   : "E-mail não enviado (RESEND_API_KEY não configurado)."}
               </div>
-              <button onClick={() => setModalUser(false)} style={{ ...btnV, marginTop: 12, fontSize: 12 }}>Fechar</button>
+              <button data-arato-button="primary" onClick={() => setModalUser(false)} style={{ ...btnV, marginTop: 12, fontSize: 12 }}>Fechar</button>
             </div>
           )}
 
           {!resultadoCriacao?.ok && (
             <>
-              <div style={{ display: "grid", gap: 14 }}>
-                <div><label style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
-                <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} placeholder="joao@fazenda.com.br" /></div>
+              <div data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
+                <div><label data-arato-label="true" style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
+                <div><label data-arato-label="true" style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} placeholder="joao@fazenda.com.br" /></div>
                 <div>
-                  <label style={lbl}>WhatsApp (assistente IA)</label>
+                  <label data-arato-label="true" style={lbl}>WhatsApp (assistente IA)</label>
                   <input
                     style={inp}
                     type="tel"
@@ -788,7 +789,7 @@ export default function AdminUsuarios() {
                 {/* Senha — só para novo usuário */}
                 {!editUser && (
                   <div>
-                    <label style={lbl}>Senha provisória *</label>
+                    <label data-arato-label="true" style={lbl}>Senha provisória *</label>
                     <div style={{ position: "relative" }}>
                       <input
                         style={{ ...inp, paddingRight: 40 }}
@@ -797,7 +798,7 @@ export default function AdminUsuarios() {
                         onChange={e => setFUser(p => ({ ...p, senha: e.target.value }))}
                         placeholder="Mín. 6 caracteres"
                       />
-                      <button
+                      <button data-arato-button="secondary"
                         type="button"
                         onClick={() => setSenhaVisivel(v => !v)}
                         style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}
@@ -812,12 +813,12 @@ export default function AdminUsuarios() {
                 )}
 
                 <div>
-                  <label style={lbl}>Acesso HUB Raccotlo *</label>
-                  <select style={inp} value={fUser.hub_acesso} onChange={e => setFUser(p => ({ ...p, hub_acesso: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Acesso HUB Raccotlo *</label>
+                  <SelectField style={inp} value={fUser.hub_acesso} onChange={e => setFUser(p => ({ ...p, hub_acesso: e.target.value }))}>
                     <option value="raccotlo_gestor">Hub Completo (Gestão Arato + Seletor de Clientes)</option>
                     <option value="raccotlo_seletor">Seletor de Clientes apenas</option>
                     <option value="client">Sem Acesso Interno</option>
-                  </select>
+                  </SelectField>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
                     {fUser.hub_acesso === "raccotlo_gestor" && "Acessa o painel admin (Gestão Arato) e pode visualizar ambientes de clientes."}
                     {fUser.hub_acesso === "raccotlo_seletor" && "Pode acessar ambientes de clientes via Seletor, mas não acessa o painel admin."}
@@ -827,12 +828,12 @@ export default function AdminUsuarios() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input type="checkbox" id="ativo" checked={fUser.ativo} onChange={e => setFUser(p => ({ ...p, ativo: e.target.checked }))} />
-                  <label htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Usuário ativo</label>
+                  <label data-arato-label="true" htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Usuário ativo</label>
                 </div>
 
                 {/* Enviar email — só para novo usuário */}
                 {!editUser && (
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <input
                         type="checkbox"
@@ -841,7 +842,7 @@ export default function AdminUsuarios() {
                         onChange={e => setFUser(p => ({ ...p, enviarEmail: e.target.checked }))}
                         style={{ marginTop: 2 }}
                       />
-                      <label htmlFor="enviarEmail" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
+                      <label data-arato-label="true" htmlFor="enviarEmail" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
                         <span style={{ fontWeight: 600 }}>Enviar e-mail de boas-vindas</span>
                         <span style={{ display: "block", fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                           Envia e-mail para <strong>{fUser.email || "o endereço acima"}</strong> com as credenciais de acesso.
@@ -854,8 +855,8 @@ export default function AdminUsuarios() {
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center", marginTop: 20 }}>
                 {erro && <span style={{ fontSize: 12, color: "#E24B4A", flex: 1 }}>{erro}</span>}
-                <button style={btnR} onClick={() => { setModalUser(false); setErro(null); }}>Cancelar</button>
-                <button
+                <button data-arato-button="secondary" style={btnR} onClick={() => { setModalUser(false); setErro(null); }}>Cancelar</button>
+                <button data-arato-button="primary"
                   style={{ ...btnV }}
                   disabled={salvando}
                   onClick={salvarUser}
@@ -872,7 +873,7 @@ export default function AdminUsuarios() {
       {modalNovoCliente && (
         <Modal titulo="Criar Novo Cliente" onClose={() => setModalNovoCliente(false)} width={720}>
           {resultCliente ? (
-            <div style={{ padding: "32px 24px", textAlign: "center" }}>
+            <div data-arato-statistic="action" style={{ padding: "32px 24px", textAlign: "center" }}>
               {resultCliente.ok ? (
                 <>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
@@ -880,7 +881,7 @@ export default function AdminUsuarios() {
                   <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20 }}>
                     Usuário <strong>{resultCliente.email}</strong> criado com acesso ao Arato.
                   </div>
-                  <button style={btnV} onClick={() => { setModalNovoCliente(false); setResultCliente(null); setFCliente({ tipo: "pj", nome: "", cpf_cnpj: "", email_cliente: "", telefone: "", municipio_cliente: "", estado_cliente: "", fazenda_nome: "", fazenda_municipio: "", fazenda_estado: "", fazenda_area: "", user_nome: "", user_email: "", user_senha: "Arato@123" }); }}>
+                  <button data-arato-button="primary" style={btnV} onClick={() => { setModalNovoCliente(false); setResultCliente(null); setFCliente({ tipo: "pj", nome: "", cpf_cnpj: "", email_cliente: "", telefone: "", municipio_cliente: "", estado_cliente: "", fazenda_nome: "", fazenda_municipio: "", fazenda_estado: "", fazenda_area: "", user_nome: "", user_email: "", user_senha: "Arato@123" }); }}>
                     Fechar
                   </button>
                 </>
@@ -891,7 +892,7 @@ export default function AdminUsuarios() {
                   <div style={{ fontSize: 12, color: "var(--text-2)", background: "#FFF0F0", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 20, textAlign: "left", wordBreak: "break-word" }}>
                     {resultCliente.erro}
                   </div>
-                  <button style={btnR} onClick={() => setResultCliente(null)}>Tentar novamente</button>
+                  <button data-arato-button="secondary" style={btnR} onClick={() => setResultCliente(null)}>Tentar novamente</button>
                 </>
               )}
             </div>
@@ -901,36 +902,36 @@ export default function AdminUsuarios() {
               {/* Produtor */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Produtor / Empresa</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={lbl}>Tipo *</label>
-                    <select value={fCliente.tipo} onChange={e => setFCliente(p => ({ ...p, tipo: e.target.value }))} style={inp}>
+                    <label data-arato-label="true" style={lbl}>Tipo *</label>
+                    <SelectField value={fCliente.tipo} onChange={e => setFCliente(p => ({ ...p, tipo: e.target.value }))} style={inp}>
                       <option value="pf">Pessoa Física</option>
                       <option value="pj">Pessoa Jurídica</option>
-                    </select>
+                    </SelectField>
                   </div>
                   <div style={{ gridColumn: "span 2" }}>
-                    <label style={lbl}>Nome / Razão Social *</label>
+                    <label data-arato-label="true" style={lbl}>Nome / Razão Social *</label>
                     <input style={inp} value={fCliente.nome} onChange={e => setFCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Fazenda São João Ltda" />
                   </div>
                   <div>
-                    <label style={lbl}>CPF / CNPJ</label>
+                    <label data-arato-label="true" style={lbl}>CPF / CNPJ</label>
                     <input style={inp} value={fCliente.cpf_cnpj} onChange={e => setFCliente(p => ({ ...p, cpf_cnpj: e.target.value }))} placeholder="00.000.000/0001-00" />
                   </div>
                   <div>
-                    <label style={lbl}>E-mail do produtor</label>
+                    <label data-arato-label="true" style={lbl}>E-mail do produtor</label>
                     <input style={inp} type="email" value={fCliente.email_cliente} onChange={e => setFCliente(p => ({ ...p, email_cliente: e.target.value }))} placeholder="produtor@fazenda.com" />
                   </div>
                   <div>
-                    <label style={lbl}>Telefone</label>
+                    <label data-arato-label="true" style={lbl}>Telefone</label>
                     <input style={inp} value={fCliente.telefone} onChange={e => setFCliente(p => ({ ...p, telefone: e.target.value }))} placeholder="(65) 99999-0000" />
                   </div>
                   <div>
-                    <label style={lbl}>Município</label>
+                    <label data-arato-label="true" style={lbl}>Município</label>
                     <input style={inp} value={fCliente.municipio_cliente} onChange={e => setFCliente(p => ({ ...p, municipio_cliente: e.target.value }))} placeholder="Nova Mutum" />
                   </div>
                   <div>
-                    <label style={lbl}>Estado</label>
+                    <label data-arato-label="true" style={lbl}>Estado</label>
                     <input style={inp} value={fCliente.estado_cliente} onChange={e => setFCliente(p => ({ ...p, estado_cliente: e.target.value }))} placeholder="MT" maxLength={2} />
                   </div>
                 </div>
@@ -939,21 +940,21 @@ export default function AdminUsuarios() {
               {/* Fazenda */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Fazenda</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div style={{ gridColumn: "span 2" }}>
-                    <label style={lbl}>Nome da Fazenda *</label>
+                    <label data-arato-label="true" style={lbl}>Nome da Fazenda *</label>
                     <input style={inp} value={fCliente.fazenda_nome} onChange={e => setFCliente(p => ({ ...p, fazenda_nome: e.target.value }))} placeholder="Fazenda Santa Cruz" />
                   </div>
                   <div>
-                    <label style={lbl}>Área Total (ha)</label>
+                    <label data-arato-label="true" style={lbl}>Área Total (ha)</label>
                     <InputNumerico style={inp} decimais={0} value={fCliente.fazenda_area} onChange={v => setFCliente(p => ({ ...p, fazenda_area: v }))} placeholder="1500" />
                   </div>
                   <div>
-                    <label style={lbl}>Município da Fazenda</label>
+                    <label data-arato-label="true" style={lbl}>Município da Fazenda</label>
                     <input style={inp} value={fCliente.fazenda_municipio} onChange={e => setFCliente(p => ({ ...p, fazenda_municipio: e.target.value }))} placeholder="Sorriso" />
                   </div>
                   <div>
-                    <label style={lbl}>Estado</label>
+                    <label data-arato-label="true" style={lbl}>Estado</label>
                     <input style={inp} value={fCliente.fazenda_estado} onChange={e => setFCliente(p => ({ ...p, fazenda_estado: e.target.value }))} placeholder="MT" maxLength={2} />
                   </div>
                 </div>
@@ -962,17 +963,17 @@ export default function AdminUsuarios() {
               {/* Usuário de acesso */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Usuário de Acesso ao Arato</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={lbl}>Nome do usuário *</label>
+                    <label data-arato-label="true" style={lbl}>Nome do usuário *</label>
                     <input style={inp} value={fCliente.user_nome} onChange={e => setFCliente(p => ({ ...p, user_nome: e.target.value }))} placeholder="João da Silva" />
                   </div>
                   <div>
-                    <label style={lbl}>E-mail de login *</label>
+                    <label data-arato-label="true" style={lbl}>E-mail de login *</label>
                     <input style={inp} type="email" value={fCliente.user_email} onChange={e => setFCliente(p => ({ ...p, user_email: e.target.value }))} placeholder="joao@fazenda.com" />
                   </div>
                   <div>
-                    <label style={lbl}>Senha provisória *</label>
+                    <label data-arato-label="true" style={lbl}>Senha provisória *</label>
                     <input style={inp} value={fCliente.user_senha} onChange={e => setFCliente(p => ({ ...p, user_senha: e.target.value }))} placeholder="Arato@123" />
                   </div>
                 </div>
@@ -982,8 +983,8 @@ export default function AdminUsuarios() {
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 4 }}>
-                <button style={btnR} onClick={() => { setModalNovoCliente(false); setResultCliente(null); }}>Cancelar</button>
-                <button
+                <button data-arato-button="secondary" style={btnR} onClick={() => { setModalNovoCliente(false); setResultCliente(null); }}>Cancelar</button>
+                <button data-arato-button="primary"
                   style={{ ...btnV, background: "#16A34A" }}
                   disabled={criandoCliente}
                   onClick={criarNovoCliente}

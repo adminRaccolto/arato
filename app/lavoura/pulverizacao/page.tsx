@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -160,26 +161,26 @@ export default function PulverizacaoPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
-        <header style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pulverização</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pulverização</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {fazendas.length > 1 && (
-              <select
+              <SelectField
                 value={fazendaFiltro}
                 onChange={e => setFazendaFiltro(e.target.value)}
                 style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }}
               >
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+            <button data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
           </div>
         </header>
 
@@ -190,7 +191,7 @@ export default function PulverizacaoPage() {
             { label: "Custo total defensivos", valor: fmtBRL(pulverizacoes.reduce((s, p) => s + (p.custo_total ?? 0), 0)), cor: "#E24B4A" },
             { label: "Área total tratada", valor: `${pulverizacoes.reduce((s, p) => s + p.area_ha, 0).toLocaleString("pt-BR")} ha`, cor: "#C9921B" },
           ].map((s, i) => (
-            <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+            <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
               <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>{s.valor}</div>
             </div>
@@ -203,8 +204,8 @@ export default function PulverizacaoPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Safra / Talhão</th>
@@ -243,7 +244,7 @@ export default function PulverizacaoPage() {
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={async () => {
+                            <button data-arato-button="secondary" style={btnE} onClick={async () => {
                               const itensList = await listarPulverizacaoItens(p.id);
                               // Recalcula com preço atual quando custo armazenado é zero
                               const itensRecalc = itensList.map(it => {
@@ -257,7 +258,7 @@ export default function PulverizacaoPage() {
                               });
                               setDetalhe({ pulv: p, itens: itensRecalc });
                             }}>Produtos</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPulverizacao(p.id).then(() => setPulverizacoes(x => x.filter(r => r.id !== p.id))); }}>✕</button>
+                            <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPulverizacao(p.id).then(() => setPulverizacoes(x => x.filter(r => r.id !== p.id))); }}>✕</button>
                           </div>
                         </td>
                       </tr>
@@ -272,10 +273,10 @@ export default function PulverizacaoPage() {
 
       {/* Modal Detalhe Produtos */}
       {detalhe && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
-            <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) ? 8 : 18 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+            <div data-arato-dialog-body="true" style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) ? 8 : 18 }}>
               {TIPOS[detalhe.pulv.tipo].label} · {fmtData(detalhe.pulv.data_inicio)} · {fmtN(detalhe.pulv.area_ha)} ha
             </div>
             {detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) && (
@@ -283,8 +284,8 @@ export default function PulverizacaoPage() {
                 ⚠️ Custo recalculado com o preço atual do insumo — valor original era R$0,00 (insumo sem preço no momento do registro).
               </div>
             )}
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Produto", "Dose/ha", "Total Consumido", "Valor Unit.", "Custo/ha", "Custo Total"].map((h, i) => (
                     <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -311,8 +312,8 @@ export default function PulverizacaoPage() {
                 </tfoot>
               </table>
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
-              <button style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
             </div>
           </div>
         </div>
@@ -320,15 +321,15 @@ export default function PulverizacaoPage() {
 
       {/* Modal Registrar Aplicação */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 740, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 740, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
+              <div data-arato-dialog-body="true" style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
             </div>
 
             {/* Hierarquia: Fazenda → Safra → Ciclo → Talhão — Produtor/IE não se aplicam a
                 lançamento de operação de campo (são dados fiscais, não de lavoura). */}
-            <div style={{ marginBottom: 14 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
@@ -341,7 +342,7 @@ export default function PulverizacaoPage() {
               />
             </div>
 
-            <div style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
+            <div data-arato-dialog-body="true" style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
               ⟳ Ao salvar: baixa automática do estoque de cada produto + lançamento CP "Defensivos Agrícolas" no financeiro.
             </div>
 
@@ -352,60 +353,60 @@ export default function PulverizacaoPage() {
             )}
 
             {/* Identificação */}
-            <div style={secTit}>Identificação</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Tipo de Aplicação *</label>
-                <select style={inp} value={f.tipo} onChange={e => setF(p => ({ ...p, tipo: e.target.value as PulverizacaoOp["tipo"] }))}>
+            <div data-arato-dialog-body="true" style={secTit}>Identificação</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo de Aplicação *</label>
+                <SelectField style={inp} value={f.tipo} onChange={e => setF(p => ({ ...p, tipo: e.target.value as PulverizacaoOp["tipo"] }))}>
                   {Object.entries(TIPOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Pré / Pós Emergência</label>
-                <select style={inp} value={f.pre_pos} onChange={e => setF(p => ({ ...p, pre_pos: e.target.value as "" | "pre" | "pos" | "dessecacao" }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Pré / Pós Emergência</label>
+                <SelectField style={inp} value={f.pre_pos} onChange={e => setF(p => ({ ...p, pre_pos: e.target.value as "" | "pre" | "pos" | "dessecacao" }))}>
                   <option value="">—</option>
                   <option value="pre">Pré-emergência</option>
                   <option value="pos">Pós-emergência</option>
                   <option value="dessecacao">Dessecação</option>
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Estádio Fenológico</label>
-                <select style={inp} value={f.estadio_fenologico} onChange={e => setF(p => ({ ...p, estadio_fenologico: e.target.value }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Estádio Fenológico</label>
+                <SelectField style={inp} value={f.estadio_fenologico} onChange={e => setF(p => ({ ...p, estadio_fenologico: e.target.value }))}>
                   <option value="">—</option>
                   {ESTADIOS.map(e => <option key={e} value={e}>{e}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Área (ha) *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Área (ha) *</label>
                 <InputNumerico style={inp} placeholder="Ex: 500" value={f.area_ha} onChange={v => setF(p => ({ ...p, area_ha: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Data Início *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data Início *</label>
                 <InputData calendario style={inp} type="date" value={f.data_inicio} onChange={e => setF(p => ({ ...p, data_inicio: e.target.value }))} />
               </div>
-              <div>
-                <label style={lbl}>Data Término</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data Término</label>
                 <InputData calendario style={inp} type="date" value={f.data_fim} onChange={e => setF(p => ({ ...p, data_fim: e.target.value }))} />
               </div>
             </div>
 
             {/* Calda */}
-            <div style={secTit}>Calda / Pulverizador</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Cap. Tanque (L)</label>
+            <div data-arato-dialog-body="true" style={secTit}>Calda / Pulverizador</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Cap. Tanque (L)</label>
                 <InputNumerico style={inp} decimais={0} placeholder="Ex: 2000" value={f.cap_tanque_l} onChange={v => setF(p => ({ ...p, cap_tanque_l: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Vazão (L/ha)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Vazão (L/ha)</label>
                 <InputNumerico style={inp} placeholder="Ex: 100" value={f.vazao_l_ha} onChange={v => setF(p => ({ ...p, vazao_l_ha: v }))} />
               </div>
-              <div>
-                <label style={lbl}>Nº de Tanques</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nº de Tanques</label>
                 <InputNumerico style={inp} decimais={0} placeholder="Ex: 25" value={f.num_tanques} onChange={v => setF(p => ({ ...p, num_tanques: v }))} />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 {caldaTotal !== null && (
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
                     <div style={{ color: "var(--text-2)", fontSize: 10, marginBottom: 2 }}>Calda Total</div>
@@ -416,9 +417,9 @@ export default function PulverizacaoPage() {
             </div>
 
             {/* Produtos */}
-            <div style={secTit}>Produtos Aplicados</div>
-            <div style={{ overflowX: "auto", marginBottom: 10 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div data-arato-dialog-body="true" style={secTit}>Produtos Aplicados</div>
+            <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ overflowX: "auto", marginBottom: 10 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Produto (estoque)", "Un.", "Dose/ha", "Total", "Custo/ha", "Custo Total", ""].map((h, i) => (
                     <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -435,10 +436,10 @@ export default function PulverizacaoPage() {
                     return (
                       <tr key={idx} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                         <td style={{ padding: "6px 8px" }}>
-                          <select style={{ ...inp, fontSize: 12 }} value={it.insumo_id} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, insumo_id: e.target.value, unidade: insumos.find(i => i.id === e.target.value)?.unidade ?? "L" } : x))}>
+                          <SelectField style={{ ...inp, fontSize: 12 }} value={it.insumo_id} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, insumo_id: e.target.value, unidade: insumos.find(i => i.id === e.target.value)?.unidade ?? "L" } : x))}>
                             <option value="">— Produto —</option>
                             {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}{i.subgrupo ? ` (${i.subgrupo})` : ""} · Estoq: {fmtN(i.estoque)} {i.unidade}</option>)}
-                          </select>
+                          </SelectField>
                         </td>
                         <td style={{ padding: "6px 8px", width: 70 }}>
                           {it.insumo_id ? (
@@ -447,9 +448,9 @@ export default function PulverizacaoPage() {
                               {it.unidade}
                             </div>
                           ) : (
-                            <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
+                            <SelectField style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
                               {["L","kg","mL","g","sc","t","un"].map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                            </SelectField>
                           )}
                         </td>
                         <td style={{ padding: "6px 8px", width: 90 }}>
@@ -473,7 +474,7 @@ export default function PulverizacaoPage() {
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{custoTot > 0 ? fmtBRL(custoTot) : "—"}</td>
                         <td style={{ padding: "6px 8px", width: 40 }}>
-                          {itens.length > 1 && <button style={btnX} onClick={() => setItens(p => p.filter((_, j) => j !== idx))}>✕</button>}
+                          {itens.length > 1 && <button data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_, j) => j !== idx))}>✕</button>}
                         </td>
                       </tr>
                     );
@@ -481,8 +482,8 @@ export default function PulverizacaoPage() {
                 </tbody>
               </table>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <button style={{ ...btnR, fontSize: 12 }} onClick={() => setItens(p => [...p, { insumo_id: "", dose_ha: "", unidade: "L" }])}>+ Produto</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12 }} onClick={() => setItens(p => [...p, { insumo_id: "", dose_ha: "", unidade: "L" }])}>+ Produto</button>
               {custoTotal > 0 && (
                 <div style={{ fontSize: 12, color: "var(--text-2)" }}>
                   Custo total: <strong style={{ color: "#E24B4A" }}>{fmtBRL(custoTotal)}</strong>
@@ -491,20 +492,20 @@ export default function PulverizacaoPage() {
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, alignItems: "end" }}>
-              <div>
-                <label style={lbl}>Observação</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, alignItems: "end" }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input style={inp} value={f.observacao} onChange={e => setF(p => ({ ...p, observacao: e.target.value }))} />
               </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, paddingBottom: 2 }}>
+              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, paddingBottom: 2 }}>
                 <input type="checkbox" checked={f.fiscal} onChange={e => setF(p => ({ ...p, fiscal: e.target.checked }))} />
                 Fiscal
               </label>
             </div>
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-              <button style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_inicio ? 0.5 : 1 }}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
+              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_inicio ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.area_ha || !f.data_inicio}
                 onClick={salvar}>{salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}</button>
             </div>

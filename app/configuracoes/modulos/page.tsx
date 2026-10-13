@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, Suspense } from "react";
@@ -59,7 +60,7 @@ interface Motorista {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const campo = (label: string, children: React.ReactNode, required?: boolean) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+    <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
       {label}{required && <span style={{ color: "#E24B4A", marginLeft: 2 }}>*</span>}
     </label>
     {children}
@@ -71,7 +72,7 @@ const inp = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
 );
 
 const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%", ...props.style }} />
+  <SelectField {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%", ...props.style }} />
 );
 
 const txta = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
@@ -885,7 +886,7 @@ function ParametrosSistemaContent() {
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Operações Fiscais</h2>
+          <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Operações Fiscais</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Define o perfil fiscal de cada tipo de saída — CFOP, ICMS, PIS/COFINS e IBS/CBS.
             Ao emitir uma NF-e o usuário escolhe a operação; o sistema aplica automaticamente o tratamento correto.
@@ -901,24 +902,24 @@ function ParametrosSistemaContent() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button onClick={carregarOperacoesPresets} disabled={carregandoOps}
+          <button data-arato-button="primary" onClick={carregarOperacoesPresets} disabled={carregandoOps}
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {carregandoOps ? "Carregando..." : "Carregar Operações Padrão (MT)"}
           </button>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => window.print()} className="no-print"
+            <button data-arato-button="secondary" onClick={() => window.print()} className="no-print"
               style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               🖨 Imprimir
             </button>
-            <button onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
+            <button data-arato-button="primary" onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
               style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               + Nova Operação
             </button>
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["Operação","CFOP int.","CFOP ext.","ICMS interno","ICMS externo","Alíq%","B.Red%","PIS","COFINS","IBS/CBS","Status",""].map(h => (
@@ -961,8 +962,8 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setModalOp(op)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
-                        <button onClick={() => excluirOp(op.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
+                        <button data-arato-button="secondary" onClick={() => setModalOp(op)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                        <button data-arato-button="icon" onClick={() => excluirOp(op.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
                       </div>
                     </td>
                   </tr>
@@ -1014,7 +1015,7 @@ function ParametrosSistemaContent() {
     <div>
       {renderFieldsGrid(modulo, fields)}
       <div style={{ marginTop: 20 }}>
-        <button
+        <button data-arato-button="toggle"
           onClick={() => salvar(modulo, fazendaIdAlvo)}
           disabled={salvando === modulo}
           style={{ padding: "9px 22px", background: ok === modulo ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
@@ -1097,7 +1098,7 @@ function ParametrosSistemaContent() {
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
+          <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço e certificado próprios.
             A tributação por produto é configurada na aba <strong>Tributação NCM</strong>.
@@ -1119,7 +1120,7 @@ function ParametrosSistemaContent() {
               {(["homologacao", "producao"] as const).map(v => {
                 const ativo = ambienteGlobal === v;
                 return (
-                  <button
+                  <button data-arato-button="toggle"
                     key={v}
                     onClick={async () => {
                       const newCfg = { ...(cfgs["fiscal_global"] ?? {}), ambiente: v };
@@ -1153,7 +1154,7 @@ function ParametrosSistemaContent() {
         </div>
 
         {emitters.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", border: "0.5px dashed var(--border)", borderRadius: 10, padding: "40px 24px", textAlign: "center", color: "var(--text-3)" }}>
+          <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px dashed var(--border)", borderRadius: 10, padding: "40px 24px", textAlign: "center", color: "var(--text-3)" }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
             <div style={{ fontWeight: 600, marginBottom: 6, color: "var(--text-2)" }}>Nenhum emitente cadastrado</div>
             <div style={{ fontSize: 12, marginBottom: 16 }}>
@@ -1211,7 +1212,7 @@ function ParametrosSistemaContent() {
                         const atual = (c.ambiente as string) || "homologacao";
                         const ativo = atual === v;
                         return (
-                          <button
+                          <button data-arato-button="toggle"
                             key={v}
                             onClick={async () => {
                               const newCfg = { ...(cfgs[emitter.moduloKey] ?? {}), ambiente: v };
@@ -1242,7 +1243,7 @@ function ParametrosSistemaContent() {
                       <span style={{ fontSize: 12, color: "var(--text-1)" }}>
                         Os dados de identificação e endereço podem ser preenchidos automaticamente a partir do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
                       </span>
-                      <button
+                      <button data-arato-button="toggle"
                         onClick={() => autoPreencherDoCadastro(emitter, true)}
                         disabled={salvando === emitter.moduloKey}
                         style={{ padding: "5px 14px", background: ok === emitter.moduloKey ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -1312,7 +1313,7 @@ function ParametrosSistemaContent() {
                         <div style={{ marginBottom: 24 }}>
                           {secHeader("Inscrições Estaduais por UF (quando possui IE em mais de um estado)")}
                           {iesPorUf.length > 0 && (
-                            <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 32px", gap: "8px 10px", marginBottom: 10, alignItems: "center" }}>
+                            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "80px 1fr 32px", gap: "8px 10px", marginBottom: 10, alignItems: "center" }}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>UF</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>Inscrição Estadual</div>
                               <div />
@@ -1324,13 +1325,13 @@ function ParametrosSistemaContent() {
                                   <input key={`ie-${i}`} value={row.ie}
                                     onChange={e => { const n = [...iesPorUf]; n[i] = { ...n[i], ie: e.target.value }; setIes(n); }}
                                     placeholder="Número da IE" style={{ padding: "6px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box" as const }} />
-                                  <button key={`rm-${i}`} onClick={() => setIes(iesPorUf.filter((_, j) => j !== i))}
+                                  <button data-arato-button="icon" key={`rm-${i}`} onClick={() => setIes(iesPorUf.filter((_, j) => j !== i))}
                                     style={{ background: "none", border: "0.5px solid #E24B4A", borderRadius: 5, color: "#E24B4A", fontSize: 14, cursor: "pointer", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                                 </>
                               ))}
                             </div>
                           )}
-                          <button onClick={() => setIes([...iesPorUf, { uf: "", ie: "" }])}
+                          <button data-arato-button="secondary" onClick={() => setIes([...iesPorUf, { uf: "", ie: "" }])}
                             style={{ fontSize: 12, padding: "5px 12px", border: "0.5px solid var(--border)", borderRadius: 6, background: "var(--bg-page)", cursor: "pointer", color: "var(--text-1)" }}>
                             + Adicionar IE por UF
                           </button>
@@ -1401,7 +1402,7 @@ function ParametrosSistemaContent() {
                       {certCorrectPath && certPathInvalid && (
                         <div style={{ marginBottom: 14, padding: "10px 14px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
                           <span style={{ color: "#166534", flex: 1 }}>Certificado cadastrado: <code>{certCorrectPath}</code></span>
-                          <button
+                          <button data-arato-button="primary"
                             onClick={() => salvarComValor(emitter.moduloKey, { ...(cfgs[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: certCorrectPath })}
                             style={{ padding: "4px 14px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                             ✓ Usar caminho correto
@@ -1416,14 +1417,14 @@ function ParametrosSistemaContent() {
                         const certNomeAtual = certPath ? certPath.split("/").pop() ?? certPath : "";
                         const certVenc = String((cfgs[emitter.moduloKey] as Record<string,unknown>)?.cert_a1_vencimento ?? (certMeta as Record<string,unknown>)?.data_vencimento ?? "");
                         return (
-                          <div style={{ marginBottom: 14, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
+                          <div data-arato-panel="true" style={{ marginBottom: 14, padding: "14px 16px", background: "#F8FAFC", border: "0.5px solid #CBD5E1", borderRadius: 8 }}>
                             {/* Status atual */}
                             {hasCert && !certPathInvalid && !(cfgs[emitter.moduloKey] as Record<string, unknown>)?.cert_a1_senha ? (
                               <div style={{ marginBottom: 12, padding: "8px 12px", background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 6, fontSize: 12, color: "#92400E", fontWeight: 600 }}>
                                 Arquivo do certificado enviado, mas a SENHA não está salva — a NF-e não pode ser emitida. Envie o certificado de novo informando a senha (abaixo).
                               </div>
                             ) : hasCert && !certPathInvalid ? (
-                              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 6, display: "flex", alignItems: "center", gap: 10 }}>
+                              <div data-arato-statistic="display" style={{ marginBottom: 12, padding: "8px 12px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 6, display: "flex", alignItems: "center", gap: 10 }}>
                                 <span style={{ fontSize: 18 }}>✓</span>
                                 <div>
                                   <div style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>Certificado configurado</div>
@@ -1436,11 +1437,11 @@ function ParametrosSistemaContent() {
                               </div>
                             )}
                             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>{hasCert ? "Atualizar certificado" : "Enviar certificado A1 (.pfx)"}</div>
-                            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                            <div data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                               <div>
                                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Arquivo .pfx / .p12</div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <label style={{ padding: "6px 14px", background: "#111111", color: "#fff", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                                  <label data-arato-label="true" style={{ padding: "6px 14px", background: "#111111", color: "#fff", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
                                     Selecionar arquivo
                                     <input type="file" accept=".pfx,.p12,.cer" style={{ display: "none" }}
                                       onChange={e => setCertField(emitter.moduloKey, { file: e.target.files?.[0] ?? null })} />
@@ -1454,7 +1455,7 @@ function ParametrosSistemaContent() {
                                   placeholder="Senha do .pfx"
                                   style={{ padding: "7px 10px", border: "0.5px solid #CBD5E1", borderRadius: 6, fontSize: 13, width: 180 }} />
                               </div>
-                              <button
+                              <button data-arato-button="toggle"
                                 disabled={!cs.file || !cs.senha.trim() || cs.loading}
                                 onClick={() => fazerUploadCert({ id: emitter.id, moduloKey: emitter.moduloKey, cpf_cnpj: emitter.cpf_cnpj, nome: emitter.nome })}
                                 style={{ padding: "7px 20px", background: cs.loading ? "#94A3B8" : (!cs.file || !cs.senha.trim() ? "#CBD5E1" : "#111111"), color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: cs.loading || !cs.file || !cs.senha.trim() ? "not-allowed" : "pointer" }}>
@@ -1476,7 +1477,7 @@ function ParametrosSistemaContent() {
 
                       {/* Botão pré-preencher MT */}
                       <div style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                        <button
+                        <button data-arato-button="secondary"
                           onClick={() => {
                             setCfg(emitter.moduloKey, "inf_cpl_icms_diferido", "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.");
                             setCfg(emitter.moduloKey, "inf_cpl_funrural", "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.");
@@ -1491,9 +1492,9 @@ function ParametrosSistemaContent() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
                         {/* Toggle Funrural */}
-                        <div style={{ background: "#F8F9FB", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
+                        <div data-arato-panel="true" style={{ background: "#F8F9FB", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: c.funrural_retido === "true" ? 10 : 0 }}>
-                            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
+                            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
                               <input
                                 type="checkbox"
                                 checked={c.funrural_retido === "true"}
@@ -1519,9 +1520,9 @@ function ParametrosSistemaContent() {
                         </div>
 
                         {/* Toggle ICMS Diferido */}
-                        <div style={{ background: "#F8F9FB", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
+                        <div data-arato-panel="true" style={{ background: "#F8F9FB", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: c.icms_diferido_ativo === "true" ? 10 : 0 }}>
-                            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
+                            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
                               <input
                                 type="checkbox"
                                 checked={c.icms_diferido_ativo === "true"}
@@ -1655,7 +1656,7 @@ function ParametrosSistemaContent() {
 
                     {/* Salvar */}
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                      <button
+                      <button data-arato-button="toggle"
                         onClick={() => salvar(emitter.moduloKey)}
                         disabled={salvando === emitter.moduloKey}
                         style={{ padding: "9px 28px", background: ok === emitter.moduloKey ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
@@ -1692,7 +1693,7 @@ function ParametrosSistemaContent() {
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Tributação por NCM</h2>
+          <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Tributação por NCM</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Define ICMS, PIS, COFINS, IBS e CBS para cada NCM. O sistema busca automaticamente essa tabela ao gerar uma NF-e.
           </p>
@@ -1705,14 +1706,14 @@ function ParametrosSistemaContent() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button
+          <button data-arato-button="primary"
             onClick={carregarPresetsMT}
             disabled={carregandoPresets}
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             {carregandoPresets ? "Carregando..." : "Carregar Padrões MT (soja, milho, algodão, sorgo, trigo)"}
           </button>
-          <button
+          <button data-arato-button="primary"
             onClick={() => setModalNcm({ ...NCM_MODAL_VAZIO })}
             style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
@@ -1720,8 +1721,8 @@ function ParametrosSistemaContent() {
           </button>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["NCM","Descrição","ICMS Interno","ICMS Externo","Alíq%","B.Red%","Efetiva","PIS","COFINS","IBS+CBS (c/red.)","infCpl",""].map(h => (
@@ -1770,8 +1771,8 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setModalNcm(n)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
-                        <button onClick={() => excluirNcm(n.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
+                        <button data-arato-button="secondary" onClick={() => setModalNcm(n)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                        <button data-arato-button="icon" onClick={() => excluirNcm(n.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
                       </div>
                     </td>
                   </tr>
@@ -1794,7 +1795,7 @@ function ParametrosSistemaContent() {
     <div>
       <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {(["transportadoras", "veiculos", "motoristas"] as const).map(s => (
-          <button key={s} onClick={() => setSubAba(s)} style={{
+          <button data-arato-button="toggle" key={s} onClick={() => setSubAba(s)} style={{
             padding: "6px 16px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13,
             fontWeight: subAba === s ? 700 : 400, background: subAba === s ? "#111111" : "var(--bg-card)",
             color: subAba === s ? "#fff" : "#333", cursor: "pointer",
@@ -1807,9 +1808,9 @@ function ParametrosSistemaContent() {
       {subAba === "transportadoras" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button onClick={() => setModalT({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Nova Transportadora</button>
+            <button data-arato-button="primary" onClick={() => setModalT({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Nova Transportadora</button>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["CNPJ","Razão Social","RNTRC","UF","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
@@ -1827,7 +1828,7 @@ function ParametrosSistemaContent() {
                       {t.ativa ? "Ativa" : "Inativa"}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 12px" }}><button onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                  <td style={{ padding: "8px 12px" }}><button data-arato-button="secondary" onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                 </tr>
               ))}
               {transportadoras.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhuma transportadora cadastrada</td></tr>}
@@ -1839,9 +1840,9 @@ function ParametrosSistemaContent() {
       {subAba === "veiculos" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button onClick={() => setModalV({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Veículo</button>
+            <button data-arato-button="primary" onClick={() => setModalV({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Veículo</button>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Placa","Tipo Veículo","Propriedade","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
@@ -1868,7 +1869,7 @@ function ParametrosSistemaContent() {
                         {v.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 12px" }}><button onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                    <td style={{ padding: "8px 12px" }}><button data-arato-button="secondary" onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                   </tr>
                 );
               })}
@@ -1881,9 +1882,9 @@ function ParametrosSistemaContent() {
       {subAba === "motoristas" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button onClick={() => setModalM({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Motorista</button>
+            <button data-arato-button="primary" onClick={() => setModalM({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Motorista</button>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Nome","CPF","Tipo","CNH","Validade CNH","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
@@ -1911,7 +1912,7 @@ function ParametrosSistemaContent() {
                         {m.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 12px" }}><button onClick={() => setModalM(m)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                    <td style={{ padding: "8px 12px" }}><button data-arato-button="secondary" onClick={() => setModalM(m)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                   </tr>
                 );
               })}
@@ -1964,14 +1965,14 @@ function ParametrosSistemaContent() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
 
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Configurações</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros do Sistema</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros do Sistema</h1>
             <span style={{ fontSize: 12, background: "#FBF3E0", color: "#C9921B", padding: "2px 10px", borderRadius: 12, fontWeight: 600, border: "0.5px solid #C9921B" }}>Configurações externas — sem código</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-2)" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
@@ -1979,7 +1980,7 @@ function ParametrosSistemaContent() {
 
         <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setAba(t.id)} style={{
+            <button data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
               padding: "8px 18px", border: "none", borderRadius: "8px 8px 0 0",
               fontWeight: aba === t.id ? 700 : 400, fontSize: 13,
               background: aba === t.id ? "var(--bg-card)" : "transparent",
@@ -1990,7 +1991,7 @@ function ParametrosSistemaContent() {
           ))}
         </div>
 
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, border: "0.5px solid var(--border)" }}>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, border: "0.5px solid var(--border)" }}>
 
           {aba === "aparencia" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
@@ -2000,11 +2001,11 @@ function ParametrosSistemaContent() {
               {/* ── Identidade Visual ────────────────────────────────── */}
               <div>
                 <div style={{ marginBottom: 24 }}>
-                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Identidade Visual</h2>
+                  <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Identidade Visual</h2>
                   <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
                 </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "start" }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "start" }}>
                 {/* Preview */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 160, height: 100, border: "1.5px dashed var(--border)", borderRadius: 12, background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
@@ -2014,7 +2015,7 @@ function ParametrosSistemaContent() {
                     }
                   </div>
                   {logoUrl && (
-                    <button onClick={removerLogo} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    <button data-arato-button="secondary" onClick={removerLogo} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                       Remover
                     </button>
                   )}
@@ -2026,7 +2027,7 @@ function ParametrosSistemaContent() {
                     <p style={{ margin: "0 0 6px", fontSize: 13, color: "#333" }}>
                       Formatos aceitos: <strong>PNG, JPG, SVG, WebP</strong> · Tamanho recomendado: 400 × 200 px · Fundo transparente (PNG/SVG).
                     </p>
-                    <label style={{
+                    <label data-arato-label="true" style={{
                       display: "inline-flex", alignItems: "center", gap: 8,
                       padding: "10px 20px", borderRadius: 8, cursor: "pointer",
                       background: logoUploading ? "var(--border)" : "#111111", color: "#fff",
@@ -2069,14 +2070,14 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
                 <div>
-                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros CT-e 4.00 — por Emitente</h2>
+                  <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros CT-e 4.00 — por Emitente</h2>
                   <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
                     Cada empresa emissora tem sua própria série, numeração, RNTRC e certificado.
                     Autorizador por UF (MT → SVMT, outros → SVRS/SVSP).
                   </p>
                 </div>
                 <div style={{ flexShrink: 0 }}>
-                  <button onClick={testarConexaoSefaz} disabled={cteTestando || !fazendaId}
+                  <button data-arato-button="secondary" onClick={testarConexaoSefaz} disabled={cteTestando || !fazendaId}
                     style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                     {cteTestando ? "⏳ Testando..." : "🔌 Testar Conexão SEFAZ"}
                   </button>
@@ -2129,30 +2130,30 @@ function ParametrosSistemaContent() {
                     {aberto && (
                       <div style={{ padding: "20px 22px", borderTop: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
                         {/* Linha 1: Ambiente + Série + Próx. Número + RNTRC */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Ambiente CT-e</label>
-                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Ambiente CT-e</label>
+                            <SelectField style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                               value={String(c.ambiente ?? "homologacao")}
                               onChange={e => setCfg(mk, "ambiente", e.target.value)}>
                               <option value="homologacao">Homologação</option>
                               <option value="producao">Produção</option>
-                            </select>
+                            </SelectField>
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Série CT-e</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Série CT-e</label>
                             <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.serie_cte ?? "001")} placeholder="001"
                               onChange={e => setCfg(mk, "serie_cte", e.target.value)} />
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Próx. Número CT-e</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Próx. Número CT-e</label>
                             <input type="number" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.numero_inicial ?? "1")} placeholder="1"
                               onChange={e => setCfg(mk, "numero_inicial", e.target.value)} />
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>RNTRC (Transportador)</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>RNTRC (Transportador)</label>
                             <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.rntrc ?? "")} placeholder="12345678"
                               onChange={e => setCfg(mk, "rntrc", e.target.value)} />
@@ -2199,10 +2200,10 @@ function ParametrosSistemaContent() {
                         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingTop: 4, borderTop: "0.5px solid var(--border)" }}>
                           Pagamento do frete (obrigatório em carga lotação — SEFAZ 302)
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                           {MDFE_PAGAMENTO_FIELDS.map(f => (
                             <div key={f.key}>
-                              <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
+                              <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
                               <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                                 value={String(c[f.key] ?? "")} placeholder={f.placeholder}
                                 onChange={e => setCfg(mk, f.key, e.target.value)} />
@@ -2210,7 +2211,7 @@ function ParametrosSistemaContent() {
                           ))}
                         </div>
 
-                        <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
+                        <button data-arato-button="primary" onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                           {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
                         </button>
@@ -2225,7 +2226,7 @@ function ParametrosSistemaContent() {
           {aba === "mdfe" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros MDF-e — por Emitente</h2>
+                <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros MDF-e — por Emitente</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Manifesto Eletrônico de Documentos Fiscais — obrigatório no transporte interestadual de grãos.</p>
               </div>
 
@@ -2262,49 +2263,49 @@ function ParametrosSistemaContent() {
 
                     {aberto && (
                       <div style={{ padding: "20px 22px", borderTop: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Ambiente MDF-e</label>
-                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Ambiente MDF-e</label>
+                            <SelectField style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                               value={String(c.ambiente ?? "homologacao")}
                               onChange={e => setCfg(mk, "ambiente", e.target.value)}>
                               <option value="homologacao">Homologação</option>
                               <option value="producao">Produção</option>
-                            </select>
+                            </SelectField>
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Série MDF-e</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Série MDF-e</label>
                             <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.serie_mdfe ?? "001")} placeholder="001"
                               onChange={e => setCfg(mk, "serie_mdfe", e.target.value)} />
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Próx. Número MDF-e</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Próx. Número MDF-e</label>
                             <input type="number" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.numero_inicial ?? "1")} placeholder="1"
                               onChange={e => setCfg(mk, "numero_inicial", e.target.value)} />
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>RNTRC (Emitente)</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>RNTRC (Emitente)</label>
                             <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.rntrc ?? "")} placeholder="12345678"
                               onChange={e => setCfg(mk, "rntrc", e.target.value)} />
                           </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                           <div>
                             {/* Rótulo corrigido 23/09/2026 — esse campo é o Tipo de TRANSPORTADOR (tpTransp:
                                 TAC/ETC/CTC), não o "Tipo Emitente" real do MDF-e (que é Prestador de Serviço ×
                                 Carga Própria, ver campo novo ao lado). Nome do campo no banco não mudou. */}
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Tipo de Transportador (ANTT)</label>
-                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Tipo de Transportador (ANTT)</label>
+                            <SelectField style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                               value={String(c.tpEmit ?? "2")}
                               onChange={e => setCfg(mk, "tpEmit", e.target.value)}>
                               <option value="1">1 – Transp. Autônomo (TAC)</option>
                               <option value="2">2 – ETC</option>
                               <option value="3">3 – CTC</option>
-                            </select>
+                            </SelectField>
                           </div>
                           <div>
                             {/* Novo 23/09/2026: emitente que transporta a própria carga (sem cobrar frete de
@@ -2312,22 +2313,22 @@ function ParametrosSistemaContent() {
                                 obrigado a ter Seguro da Carga (RCTR-C), diferente de quem presta serviço
                                 remunerado a terceiros. Achado real: cliente com transportadora própria sem
                                 apólice, MDF-e sempre rejeitado exigindo seguro que não se aplica ao caso. */}
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Este transporte é</label>
-                            <select style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Este transporte é</label>
+                            <SelectField style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                               value={String(c.carga_propria ?? "false")}
                               onChange={e => setCfg(mk, "carga_propria", e.target.value)}>
                               <option value="false">Prestação de serviço (cobra frete) — exige Seguro da Carga</option>
                               <option value="true">Carga própria (mesmo grupo, sem cobrar frete) — sem exigência de seguro</option>
-                            </select>
+                            </SelectField>
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>UF Início padrão</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>UF Início padrão</label>
                             <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.uf_ini ?? "MT")} placeholder="MT"
                               onChange={e => setCfg(mk, "uf_ini", e.target.value)} />
                           </div>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>UF Fim padrão</label>
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>UF Fim padrão</label>
                             <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                               value={String(c.uf_fim ?? "")} placeholder="PR"
                               onChange={e => setCfg(mk, "uf_fim", e.target.value)} />
@@ -2349,10 +2350,10 @@ function ParametrosSistemaContent() {
                             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingTop: 4, borderTop: "0.5px solid var(--border)" }}>
                               Seguro da Carga (RCTR-C) — obrigatório pra transmitir de verdade
                             </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+                            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                               {MDFE_SEGURO_FIELDS.map(f => (
                                 <div key={f.key}>
-                                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
+                                  <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>{f.label}</label>
                                   <input style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", boxSizing: "border-box" }}
                                     value={String(c[f.key] ?? "")} placeholder={f.placeholder}
                                     onChange={e => setCfg(mk, f.key, e.target.value)} />
@@ -2362,7 +2363,7 @@ function ParametrosSistemaContent() {
                           </>
                         )}
 
-                        <button onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
+                        <button data-arato-button="primary" onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                           {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
                         </button>
@@ -2377,7 +2378,7 @@ function ParametrosSistemaContent() {
           {aba === "transportes" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Transportes</h2>
+                <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Transportes</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Transportadoras, frota própria e motoristas. Usados na expedição e MDF-e.</p>
               </div>
               {renderTransportes()}
@@ -2387,7 +2388,7 @@ function ParametrosSistemaContent() {
           {aba === "integracoes" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Integrações Externas</h2>
+                <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Integrações Externas</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Credenciais de serviços externos. Armazenadas com segurança no banco — RLS por fazenda.</p>
               </div>
               <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#7A5A12" }}>
@@ -2400,7 +2401,7 @@ function ParametrosSistemaContent() {
           {aba === "expedicao" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros de Expedição</h2>
+                <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros de Expedição</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Configurações do módulo de expedição de grãos — pesos, tolerâncias e comportamento automático.</p>
               </div>
               {renderFields("expedicao", EXPEDICAO_FIELDS)}
@@ -2411,27 +2412,27 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Operação Fiscal ── */}
       {modalOp !== null && (
-        <div style={modalStyle}>
-          <div style={{ ...boxStyle, width: 780 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalOp.id ? "Editar Operação Fiscal" : "Nova Operação Fiscal"}</h3>
-              <button onClick={() => setModalOp(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={modalStyle}>
+          <div data-arato-dialog="page" style={{ ...boxStyle, width: 780 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalOp.id ? "Editar Operação Fiscal" : "Nova Operação Fiscal"}</h3>
+              <button data-arato-button="icon" onClick={() => setModalOp(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Identificação */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
-              <div style={{ gridColumn: "1 / -1" }}>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 {campo("Nome da Operação *", inp({ value: modalOp.nome ?? "", placeholder: "Ex: Venda para Industrialização", onChange: e => setModalOp(p => ({ ...p!, nome: e.target.value })) }))}
               </div>
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 {campo("Descrição / Uso", inp({ value: modalOp.descricao ?? "", placeholder: "Quando usar esta operação...", onChange: e => setModalOp(p => ({ ...p!, descricao: e.target.value })) }))}
               </div>
               {campo("CFOP — Mesmo Estado *", inp({ value: modalOp.cfop_interno ?? "", placeholder: "5101", maxLength: 4, onChange: e => setModalOp(p => ({ ...p!, cfop_interno: e.target.value })) }))}
               {campo("CFOP — Outro Estado / Exterior", inp({ value: modalOp.cfop_externo ?? "", placeholder: "6101 ou 7101", maxLength: 4, onChange: e => setModalOp(p => ({ ...p!, cfop_externo: e.target.value })) }))}
             </div>
 
-            <div style={{ marginBottom: 14 }}>{secHeader("ICMS")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("ICMS")}</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CST Interno", sel({ value: modalOp.icms_cst_interno ?? "051", onChange: e => setModalOp(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("CST Interestadual", sel({ value: modalOp.icms_cst_externo ?? "020", onChange: e => setModalOp(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.icms_aliq ?? 12, onChange: e => setModalOp(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
@@ -2439,24 +2440,24 @@ function ParametrosSistemaContent() {
               {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
-            <div style={{ marginBottom: 14 }}>{secHeader("PIS / COFINS")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("PIS / COFINS")}</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("PIS CST", sel({ value: modalOp.pis_cst ?? "06", onChange: e => setModalOp(p => ({ ...p!, pis_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("PIS Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.pis_aliq ?? 0, onChange: e => setModalOp(p => ({ ...p!, pis_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("COFINS CST", sel({ value: modalOp.cofins_cst ?? "06", onChange: e => setModalOp(p => ({ ...p!, cofins_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("COFINS Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.cofins_aliq ?? 0, onChange: e => setModalOp(p => ({ ...p!, cofins_aliq: parseFloat(e.target.value) || 0 })) }))}
             </div>
 
-            <div style={{ marginBottom: 14 }}>{secHeader("IBS / CBS — Reforma Tributária")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("IBS / CBS — Reforma Tributária")}</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Imunidade (exportação)", sel({ value: modalOp.ibs_cbs_imune ? "sim" : "nao", onChange: e => setModalOp(p => ({ ...p!, ibs_cbs_imune: e.target.value === "sim", ibs_cbs_reducao_pct: e.target.value === "sim" ? 100 : (p?.ibs_cbs_reducao_pct ?? 0) })), children: [<option key="nao" value="nao">Não</option>, <option key="sim" value="sim">Sim — Art. 149-B CF (exportação)</option>] as React.ReactNode }))}
               {campo("Redução %", sel({ value: String(modalOp.ibs_cbs_reducao_pct ?? 0), onChange: e => setModalOp(p => ({ ...p!, ibs_cbs_reducao_pct: parseFloat(e.target.value) })), children: [["0","0% — sem redução"],["60","60% — produção rural"],["100","100% — imune/zero"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Status", sel({ value: modalOp.ativa === false ? "inativa" : "ativa", onChange: e => setModalOp(p => ({ ...p!, ativa: e.target.value === "ativa" })), children: [<option key="ativa" value="ativa">Ativa</option>, <option key="inativa" value="inativa">Inativa</option>] as React.ReactNode }))}
             </div>
 
-            <div style={{ marginBottom: 14 }}>{secHeader("Texto Complementar (infCpl) — template")}</div>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>{secHeader("Texto Complementar (infCpl) — template")}</div>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
                 Use <code>[CONTRATO]</code>, <code>[RE_NUMERO]</code>, <code>[DUE_NUMERO]</code> como variáveis — o sistema substitui ao emitir a NF-e.
               </div>
               {campo("Template infCpl",
@@ -2464,9 +2465,9 @@ function ParametrosSistemaContent() {
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarOp} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarOp} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
         </div>
@@ -2474,22 +2475,22 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal NCM ── */}
       {modalNcm !== null && (
-        <div style={modalStyle}>
-          <div style={{ ...boxStyle, width: 820 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalNcm.id ? "Editar Tributação NCM" : "Nova Tributação NCM"}</h3>
-              <button onClick={() => setModalNcm(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={modalStyle}>
+          <div data-arato-dialog="page" style={{ ...boxStyle, width: 820 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalNcm.id ? "Editar Tributação NCM" : "Nova Tributação NCM"}</h3>
+              <button data-arato-button="icon" onClick={() => setModalNcm(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("NCM (8 dígitos) *", inp({ value: modalNcm.ncm ?? "", maxLength: 8, placeholder: "12019000", onChange: e => setModalNcm(p => ({ ...p!, ncm: e.target.value.replace(/\D/g,"") })) }))}
-              <div style={{ gridColumn: "2 / 4" }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "2 / 4" }}>
                 {campo("Descrição *", inp({ value: modalNcm.descricao ?? "", placeholder: "Soja em grão", onChange: e => setModalNcm(p => ({ ...p!, descricao: e.target.value })) }))}
               </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>{secHeader("ICMS")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("ICMS")}</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CST Interno", sel({ value: modalNcm.icms_cst_interno ?? "051", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_interno: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.icms_aliq ?? 12, onChange: e => setModalNcm(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
@@ -2497,20 +2498,20 @@ function ParametrosSistemaContent() {
               {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
-            <div style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("PIS CST", sel({ value: modalNcm.pis_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, pis_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("PIS Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.pis_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, pis_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("COFINS CST", sel({ value: modalNcm.cofins_cst ?? "06", onChange: e => setModalNcm(p => ({ ...p!, cofins_cst: e.target.value })), children: [["01","Tributada (01)"],["06","Alíq. Zero (06)"],["07","Isenta (07)"],["08","Sem Incidência (08)"],["09","Suspensão (09)"],["49","Outras Saídas (49)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("COFINS Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.cofins_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, cofins_aliq: parseFloat(e.target.value) || 0 })) }))}
             </div>
 
-            <div style={{ marginBottom: 16 }}>{secHeader("IBS / CBS — Reforma Tributária (LC 214/2025)")}</div>
-            <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#7A5A12" }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("IBS / CBS — Reforma Tributária (LC 214/2025)")}</div>
+            <div data-arato-dialog-body="true" style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#7A5A12" }}>
               Taxas finais (vigência plena a partir de 2033). Em 2026 são aplicadas taxas-teste menores. Produtos agropecuários têm redução de 60%.
               IBS/CBS = 0% para exportações (CFOP 7xxx) — imunidade constitucional.
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("IBS Estadual %", inp({ type: "number", step: "0.01", value: modalNcm.ibs_estadual_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, ibs_estadual_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("IBS Municipal %", inp({ type: "number", step: "0.01", value: modalNcm.ibs_municipal_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, ibs_municipal_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("CBS %", inp({ type: "number", step: "0.01", value: modalNcm.cbs_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, cbs_aliq: parseFloat(e.target.value) || 0 })) }))}
@@ -2519,28 +2520,28 @@ function ParametrosSistemaContent() {
                 {(((modalNcm.ibs_estadual_aliq ?? 0) + (modalNcm.ibs_municipal_aliq ?? 0) + (modalNcm.cbs_aliq ?? 0)) * (1 - (modalNcm.ibs_cbs_reducao_pct ?? 0) / 100)).toFixed(2)}%
               </div>)}
             </div>
-            <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#791F1F" }}>
+            <div data-arato-dialog-body="true" style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#791F1F" }}>
               CST e cClassTrib do IBS/CBS são códigos oficiais da Tabela de Classificação Tributária do Comitê Gestor — o padrão do sistema é CST 410 / cClassTrib 410999 (sem valores de IBS/CBS), definido pelo contador em 24/09/2026. <strong>Confirme com o contador antes de confiar, principalmente em NCMs com redução</strong> (o código correto muda conforme o benefício).
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CST IBS/CBS", inp({ value: modalNcm.ibs_cbs_cst ?? "410", maxLength: 3, placeholder: "410", onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_cst: e.target.value.replace(/\D/g, "").slice(0, 3) })) }))}
               {campo("cClassTrib", inp({ value: modalNcm.ibs_cbs_cclasstrib ?? "410999", maxLength: 6, placeholder: "410999", onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_cclasstrib: e.target.value.replace(/\D/g, "").slice(0, 6) })) }))}
             </div>
 
-            <div style={{ marginBottom: 16 }}>{secHeader("CFOPs e Texto Complementar")}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 16 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>{secHeader("CFOPs e Texto Complementar")}</div>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 16 }}>
               {campo("CFOP dentro do Estado (override)", inp({ value: modalNcm.cfop_dentro ?? "", placeholder: "Deixar vazio = usa o do emitente", onChange: e => setModalNcm(p => ({ ...p!, cfop_dentro: e.target.value })) }))}
               {campo("CFOP outro Estado (override)", inp({ value: modalNcm.cfop_fora ?? "", placeholder: "Deixar vazio = usa o do emitente", onChange: e => setModalNcm(p => ({ ...p!, cfop_fora: e.target.value })) }))}
             </div>
-            <div style={{ marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
               {campo("Texto complementar (infCpl) — específico para este NCM",
                 txta({ rows: 4, value: modalNcm.inf_cpl ?? "", placeholder: "Texto legal que aparece apenas em NF-e com este NCM...", onChange: e => setModalNcm(p => ({ ...p!, inf_cpl: e.target.value })) })
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarNcm} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarNcm} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
         </div>
@@ -2548,13 +2549,13 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Transportadora ── */}
       {modalT !== null && (
-        <div style={modalStyle}>
-          <div style={boxStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalT.id ? "Editar Transportadora" : "Nova Transportadora"}</h3>
-              <button onClick={() => setModalT(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={modalStyle}>
+          <div data-arato-dialog="confirmation" style={boxStyle}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalT.id ? "Editar Transportadora" : "Nova Transportadora"}</h3>
+              <button data-arato-button="icon" onClick={() => setModalT(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CNPJ *", inp({ value: modalT.cnpj ?? "", onChange: e => setModalT(p => ({ ...p!, cnpj: e.target.value })), placeholder: "00.000.000/0001-00" }))}
               {campo("Razão Social *", inp({ value: modalT.razao_social ?? "", onChange: e => setModalT(p => ({ ...p!, razao_social: e.target.value })) }))}
               {campo("Nome Fantasia", inp({ value: modalT.nome_fantasia ?? "", onChange: e => setModalT(p => ({ ...p!, nome_fantasia: e.target.value })) }))}
@@ -2562,9 +2563,9 @@ function ParametrosSistemaContent() {
               {campo("UF", inp({ value: modalT.uf ?? "", onChange: e => setModalT(p => ({ ...p!, uf: e.target.value })), maxLength: 2 }))}
               {campo("Status", sel({ value: modalT.ativa === false ? "inativo" : "ativo", onChange: e => setModalT(p => ({ ...p!, ativa: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativa</option>, <option key="inativo" value="inativo">Inativa</option>] as React.ReactNode }))}
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarTransportadora} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarTransportadora} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
         </div>
@@ -2572,13 +2573,13 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Veículo ── */}
       {modalV !== null && (
-        <div style={modalStyle}>
-          <div style={boxStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalV.id ? "Editar Veículo" : "Novo Veículo"}</h3>
-              <button onClick={() => setModalV(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={modalStyle}>
+          <div data-arato-dialog="confirmation" style={boxStyle}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalV.id ? "Editar Veículo" : "Novo Veículo"}</h3>
+              <button data-arato-button="icon" onClick={() => setModalV(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Placa *", inp({ value: modalV.placa ?? "", onChange: e => setModalV(p => ({ ...p!, placa: e.target.value.toUpperCase() })), placeholder: "AAA-0000" }))}
               {campo("Tipo *", sel({ value: modalV.tipo ?? "", onChange: e => setModalV(p => ({ ...p!, tipo: e.target.value })), children: [<option key="" value="">— selecione —</option>, <option key="toco" value="Toco">Toco</option>, <option key="truck" value="Truck">Truck</option>, <option key="bitruck" value="Bi-Truck">Bi-Truck</option>, <option key="ls" value="LS / Cavalo">LS / Cavalo</option>, <option key="carreta" value="Carreta">Carreta</option>, <option key="bitrem" value="Bitrem">Bitrem</option>] as React.ReactNode }))}
               {campo("Propriedade *", sel({ value: modalV.proprietario_tipo ?? "proprio", onChange: e => setModalV(p => ({ ...p!, proprietario_tipo: e.target.value as "proprio" | "terceiro", proprietario_id: e.target.value === "proprio" ? undefined : p?.proprietario_id })), children: [<option key="proprio" value="proprio">Próprio (frota da fazenda)</option>, <option key="terceiro" value="terceiro">Terceiro (caminhão autônomo)</option>] as React.ReactNode }))}
@@ -2591,9 +2592,9 @@ function ParametrosSistemaContent() {
               {campo("RNTRC", inp({ value: modalV.rntrc ?? "", onChange: e => setModalV(p => ({ ...p!, rntrc: e.target.value })) }))}
               {campo("Status", sel({ value: modalV.ativo === false ? "inativo" : "ativo", onChange: e => setModalV(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarVeiculo} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarVeiculo} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
         </div>
@@ -2601,13 +2602,13 @@ function ParametrosSistemaContent() {
 
       {/* ── Modal Motorista ── */}
       {modalM !== null && (
-        <div style={modalStyle}>
-          <div style={boxStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalM.id ? "Editar Motorista" : "Novo Motorista"}</h3>
-              <button onClick={() => setModalM(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={modalStyle}>
+          <div data-arato-dialog="form" style={boxStyle}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalM.id ? "Editar Motorista" : "Novo Motorista"}</h3>
+              <button data-arato-button="icon" onClick={() => setModalM(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Nome *", inp({ value: modalM.nome ?? "", onChange: e => setModalM(p => ({ ...p!, nome: e.target.value })) }))}
               {campo("CPF *", inp({ value: modalM.cpf ?? "", onChange: e => setModalM(p => ({ ...p!, cpf: e.target.value })), placeholder: "000.000.000-00" }))}
               {campo("Tipo *", sel({ value: modalM.tipo ?? "clt", onChange: e => setModalM(p => ({ ...p!, tipo: e.target.value })), children: [<option key="clt" value="clt">CLT — Frota própria (isento de CIOT)</option>, <option key="tac" value="tac">TAC — Autônomo (CIOT obrigatório)</option>] as React.ReactNode }))}
@@ -2616,9 +2617,9 @@ function ParametrosSistemaContent() {
               {campo("Validade CNH", <InputData type="date" value={modalM.cnh_validade ?? ""} onChange={e => setModalM(p => ({ ...p!, cnh_validade: e.target.value }))} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box" }} />)}
               {campo("Status", sel({ value: modalM.ativo === false ? "inativo" : "ativo", onChange: e => setModalM(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarMotorista} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarMotorista} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
         </div>

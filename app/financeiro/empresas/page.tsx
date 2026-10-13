@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -152,36 +153,36 @@ export default function DREEmpresasPage() {
   const empresasFiltradas = fEmpresa ? empresas.filter(e => e.id === fEmpresa) : empresas;
 
   return (
-    <div style={S.page}>
+    <div data-arato-page="true" style={S.page}>
       <TopNav />
       <div style={S.body}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>DRE por Empresa</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>DRE por Empresa</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Demonstrativo de Resultado por empresa não-rural no período</p>
           </div>
-          <button style={S.btn("#555")} onClick={() => window.print()}>Imprimir</button>
+          <button data-arato-button="secondary" style={S.btn("#555")} onClick={() => window.print()}>Imprimir</button>
         </div>
 
         {/* filtros */}
         <div style={{ ...S.card, padding: 14, marginBottom: 20 }}>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div data-arato-filters="true" style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div style={{ flex: "0 0 220px" }}>
-              <label style={S.label}>Empresa</label>
-              <select style={S.inp} value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}>
+              <label data-arato-label="true" style={S.label}>Empresa</label>
+              <SelectField style={S.inp} value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}>
                 <option value="">Todas as empresas</option>
                 {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div style={{ flex: "0 0 150px" }}>
-              <label style={S.label}>De (competência)</label>
+              <label data-arato-label="true" style={S.label}>De (competência)</label>
               <InputData type="month" style={S.inp} value={fDe} onChange={e => setFDe(e.target.value)} />
             </div>
             <div style={{ flex: "0 0 150px" }}>
-              <label style={S.label}>Até (competência)</label>
+              <label data-arato-label="true" style={S.label}>Até (competência)</label>
               <InputData type="month" style={S.inp} value={fAte} onChange={e => setFAte(e.target.value)} />
             </div>
-            <button style={{ ...S.btn("#1A4870"), alignSelf: "flex-end" }} onClick={carregar}>Atualizar</button>
+            <button data-arato-button="secondary" style={{ ...S.btn("#1A4870"), alignSelf: "flex-end" }} onClick={carregar}>Atualizar</button>
           </div>
         </div>
 
@@ -203,7 +204,7 @@ export default function DREEmpresasPage() {
             <div key={emp.id} style={{ ...S.card, marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                 <div>
-                  <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{emp.nome}</h2>
+                  <h2 data-arato-h2="true" style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>{emp.nome}</h2>
                   {emp.cnpj && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>CNPJ: {emp.cnpj}</div>}
                   <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Período: {nomeMes(fDe)} a {nomeMes(fAte)}</div>
                 </div>
@@ -214,7 +215,7 @@ export default function DREEmpresasPage() {
                     { label: "Lucro Líquido", val: lucLiq,   color: lucLiq  >= 0 ? "#16A34A" : "#E24B4A" },
                     { label: "Margem Líq.",   val: margem,   color: margem  >= 0 ? "#16A34A" : "#E24B4A", pct: true },
                   ].map(k => (
-                    <div key={k.label} style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 16px", minWidth: 140 }}>
+                    <div data-arato-statistic="display" key={k.label} style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 16px", minWidth: 140 }}>
                       <div style={{ fontSize: 10, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{k.label}</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", marginTop: 2 }}>
                         {(k as any).pct ? `${k.val.toFixed(1)}%` : moeda(k.val)}
@@ -224,8 +225,8 @@ export default function DREEmpresasPage() {
                 </div>
               </div>
 
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       <th style={{ padding: "8px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#555", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA", textAlign: "left" }}>Conta</th>
@@ -276,7 +277,7 @@ export default function DREEmpresasPage() {
               </div>
 
               {/* Análise rápida */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, marginTop: 16, padding: 14, background: "#F4F6FA", borderRadius: 8 }}>
+              <div data-arato-statistic="display" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, marginTop: 16, padding: 14, background: "#F4F6FA", borderRadius: 8 }}>
                 <div>
                   <div style={{ fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Margem EBITDA</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: ebitda >= 0 ? "#1A4870" : "#E24B4A" }}>

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -343,9 +344,9 @@ export default function Kardex() {
 
         {/* ── Cabeçalho ── */}
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)", padding: "18px 32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1800, margin: "0 auto" }}>
+          <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1800, margin: "0 auto" }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>
+              <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>
                 Kardex — Ficha de Estoque
               </h1>
               <p style={{ margin: "2px 0 0", fontSize: 13, color: "#666" }}>
@@ -354,8 +355,8 @@ export default function Kardex() {
             </div>
             {gerado && (
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={exportarPDF} style={btnSec}>🖨 Imprimir / PDF</button>
-                <button onClick={exportarXLSX} style={btnSec}>📊 Exportar XLSX</button>
+                <button data-arato-button="secondary" onClick={exportarPDF} style={btnSec}>🖨 Imprimir / PDF</button>
+                <button data-arato-button="secondary" onClick={exportarXLSX} style={btnSec}>📊 Exportar XLSX</button>
               </div>
             )}
           </div>
@@ -364,12 +365,12 @@ export default function Kardex() {
         <div style={{ maxWidth: 1800, margin: "0 auto", padding: "24px 32px" }}>
 
           {/* ── Filtros ── */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 24, marginBottom: 20 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 180px 180px auto", gap: 16, alignItems: "end" }}>
+          <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 24, marginBottom: 20 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 180px 180px auto", gap: 16, alignItems: "end" }}>
 
               {/* Produto */}
               <div style={{ position: "relative" }}>
-                <label style={lbl}>Produto *</label>
+                <label data-arato-label="true" style={lbl}>Produto *</label>
                 <input
                   type="text"
                   placeholder="Buscar produto…"
@@ -397,24 +398,24 @@ export default function Kardex() {
 
               {/* Depósito */}
               <div>
-                <label style={lbl}>Depósito</label>
-                <select value={depositoId} onChange={e => setDepositoId(e.target.value)} style={inp}>
+                <label data-arato-label="true" style={lbl}>Depósito</label>
+                <SelectField value={depositoId} onChange={e => setDepositoId(e.target.value)} style={inp}>
                   <option value="">Todos os depósitos</option>
                   {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
 
               {/* Período */}
               <div>
-                <label style={lbl}>Data Início</label>
+                <label data-arato-label="true" style={lbl}>Data Início</label>
                 <InputData type="date" value={dataIni} onChange={e => setDataIni(e.target.value)} style={inp} />
               </div>
               <div>
-                <label style={lbl}>Data Fim</label>
+                <label data-arato-label="true" style={lbl}>Data Fim</label>
                 <InputData type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} style={inp} />
               </div>
 
-              <button
+              <button data-arato-button="toggle"
                 onClick={gerarKardex}
                 disabled={!insumoId || carregando}
                 style={{ background: insumoId ? "#111111" : "#C0CAD6", color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: insumoId ? "pointer" : "not-allowed", height: 40, whiteSpace: "nowrap" }}
@@ -468,8 +469,8 @@ export default function Kardex() {
                   </div>
                 </div>
 
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={{ ...th, width: 95 }}>Data</th>
@@ -599,7 +600,7 @@ export default function Kardex() {
                                   🔒
                                 </a>
                               ) : (
-                                <button
+                                <button data-arato-button="secondary"
                                   onClick={() => excluirMovimento(l.id!, insumoId)}
                                   disabled={excluindo.has(l.id)}
                                   title="Excluir lançamento"
@@ -645,7 +646,7 @@ export default function Kardex() {
           )}
 
           {!gerado && !carregando && (
-            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 48, textAlign: "center" }}>
+            <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 48, textAlign: "center" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
               <div style={{ fontSize: 14, color: "var(--text-3)" }}>
                 Selecione um produto e o período para gerar a ficha de estoque (Kardex).

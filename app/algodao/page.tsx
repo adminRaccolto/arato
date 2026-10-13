@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -422,28 +423,28 @@ export default function AlgodaoPage() {
     <div style={{ padding: "24px 28px", fontFamily: "system-ui, sans-serif", fontSize: 13, background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* ── Cabeçalho ── */}
-      <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      <div data-arato-page-heading="true" data-arato-filters="true" style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+          <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Módulo Algodão
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>Lavoura · Bicudo · Módulos · Algodoeira · HVI · Posição</p>
         </div>
         {/* Seletor de Ciclo */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <label style={{ ...lbl, marginBottom: 2 }}>Ciclo de Algodão *</label>
-            <select value={cicloSel} onChange={e => setCicloSel(e.target.value)} style={{ ...inp, width: 240, fontWeight: 600 }}>
+            <label data-arato-label="true" style={{ ...lbl, marginBottom: 2 }}>Ciclo de Algodão *</label>
+            <SelectField value={cicloSel} onChange={e => setCicloSel(e.target.value)} style={{ ...inp, width: 240, fontWeight: 600 }}>
               <option value="">— selecionar ciclo —</option>
               {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}{c.cultura && ` — ${c.cultura}`}</option>)}
-            </select>
+            </SelectField>
           </div>
         </div>
       </div>
 
       {/* ── Preço algodão ao vivo ── */}
       {precos && (
-        <div style={{ ...card, marginBottom: 16, display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", background: "#0B1E35", color: "#fff", padding: "12px 20px" }}>
+        <div data-arato-statistic="display" style={{ ...card, marginBottom: 16, display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", background: "#0B1E35", color: "#fff", padding: "12px 20px" }}>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1 }}>Algodão Mercado</div>
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
             <div>
@@ -473,7 +474,7 @@ export default function AlgodaoPage() {
 
       {/* Alerta bicudo */}
       {alertasBicudo.length > 0 && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <div data-arato-statistic="display" style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
           <span style={{ fontSize: 18 }}>⚠️</span>
           <div>
             <div style={{ fontWeight: 700, color: "#B91C1C", marginBottom: 2 }}>Alerta de Bicudo do Algodoeiro</div>
@@ -488,7 +489,7 @@ export default function AlgodaoPage() {
       {/* ── Abas ── */}
       <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
         {ABAS.map(a => (
-          <button key={a.key} onClick={() => setAba(a.key)} style={{
+          <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
             padding: "9px 16px", border: "none", cursor: "pointer",
             fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
             color: aba === a.key ? "#111111" : "#666",
@@ -518,7 +519,7 @@ export default function AlgodaoPage() {
                   { label: "Fardos Produzidos", valor: fmtN(totalFardos), sub: `${fmtN(totalPlumaKg / 1000, 1)} ton pluma` },
                   { label: "Rendimento Médio", valor: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—", sub: "pluma / caroço" },
                 ].map(c => (
-                  <div key={c.label} style={{ ...card }}>
+                  <div data-arato-statistic="display" key={c.label} style={{ ...card }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{c.label}</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: "#0B1E35" }}>{c.valor}</div>
                     <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.sub}</div>
@@ -530,12 +531,12 @@ export default function AlgodaoPage() {
               <div style={{ ...card }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35" }}>Operações Especiais do Algodão</div>
-                  <button style={btnPrimary} onClick={() => setModalOp({})}>+ Nova Operação</button>
+                  <button data-arato-button="primary" style={btnPrimary} onClick={() => setModalOp({})}>+ Nova Operação</button>
                 </div>
                 {operacoes.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhuma operação registrada. Registre reguladores de crescimento e defolhações.</div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Tipo","Data","Talhão","Produto","Dose","Área (ha)","NAWF / Alt. (cm)","Açab. Maçãs","Ações"].map(h => (
@@ -559,7 +560,7 @@ export default function AlgodaoPage() {
                           <td style={{ padding: "8px 10px" }}>{o.nawf != null ? `${o.nawf} NAWF` : o.altura_planta_cm != null ? `${o.altura_planta_cm} cm` : "—"}</td>
                           <td style={{ padding: "8px 10px" }}>{o.abertura_macas_pct != null ? `${o.abertura_macas_pct}%` : "—"}</td>
                           <td style={{ padding: "8px 10px" }}>
-                            <button style={{ ...btnSec, padding: "4px 10px", fontSize: 12 }} onClick={() => setModalOp(o)}>✏️</button>
+                            <button data-arato-button="secondary" style={{ ...btnSec, padding: "4px 10px", fontSize: 12 }} onClick={() => setModalOp(o)}>✏️</button>
                           </td>
                         </tr>
                       ))}
@@ -578,12 +579,12 @@ export default function AlgodaoPage() {
                 <div style={{ ...card }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35" }}>Armadilhas Cadastradas</div>
-                    <button style={btnPrimary} onClick={() => setModalArm({})}>+ Nova Armadilha</button>
+                    <button data-arato-button="primary" style={btnPrimary} onClick={() => setModalArm({})}>+ Nova Armadilha</button>
                   </div>
                   {armadilhas.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhuma armadilha cadastrada.</div>
                   ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Armadilha","Talhão","Última leitura","Capturas","Status",""].map(h => (
@@ -609,8 +610,8 @@ export default function AlgodaoPage() {
                                 <span style={{ color: a.ativa ? "#16A34A" : "var(--text-muted)", fontSize: 11 }}>{a.ativa ? "Ativa" : "Inativa"}</span>
                               </td>
                               <td style={{ padding: "8px 10px" }}>
-                                <button style={{ ...btnSec, padding: "4px 8px", fontSize: 11, marginRight: 4 }} onClick={() => setModalCap({ armadilha_id: a.id, armadilha_nome: a.nome })}>+ Leitura</button>
-                                <button style={{ ...btnSec, padding: "4px 8px", fontSize: 11 }} onClick={() => setModalArm(a)}>✏️</button>
+                                <button data-arato-button="secondary" style={{ ...btnSec, padding: "4px 8px", fontSize: 11, marginRight: 4 }} onClick={() => setModalCap({ armadilha_id: a.id, armadilha_nome: a.nome })}>+ Leitura</button>
+                                <button data-arato-button="secondary" style={{ ...btnSec, padding: "4px 8px", fontSize: 11 }} onClick={() => setModalArm(a)}>✏️</button>
                               </td>
                             </tr>
                           );
@@ -629,7 +630,7 @@ export default function AlgodaoPage() {
                   {capturas.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Sem leituras registradas.</div>
                   ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Data","Armadilha","Capturas","Situação"].map(h => (
@@ -668,7 +669,7 @@ export default function AlgodaoPage() {
             <div style={{ ...card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35" }}>Módulos de Algodão em Caroço</div>
-                <button style={btnPrimary} onClick={() => setModalMod({})}>+ Novo Módulo</button>
+                <button data-arato-button="primary" style={btnPrimary} onClick={() => setModalMod({})}>+ Novo Módulo</button>
               </div>
 
               {/* Status cards */}
@@ -676,13 +677,13 @@ export default function AlgodaoPage() {
                 {Object.entries(STATUS_MODULO_LABEL).map(([k, v]) => {
                   const cnt = modulos.filter(m => m.status === k).length;
                   return (
-                    <div key={k} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: `4px solid ${v.cor}` }}>
+                    <div data-arato-statistic="display" key={k} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: `4px solid ${v.cor}` }}>
                       <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{v.label}</div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: v.cor }}>{cnt}</div>
                     </div>
                   );
                 })}
-                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #111111" }}>
+                <div data-arato-statistic="display" style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #111111" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>Peso Estimado Total</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#111111" }}>{fmtN(pesoEstimadoKg / 1000, 1)} ton</div>
                 </div>
@@ -691,7 +692,7 @@ export default function AlgodaoPage() {
               {modulos.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhum módulo registrado.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Nº","Talhão","Data Colheita","Peso Est. (kg)","Status","Algodoeira","Entrega","Romaneio","Ações"].map(h => (
@@ -715,7 +716,7 @@ export default function AlgodaoPage() {
                           <td style={{ padding: "8px 10px" }}>{fmtDt(m.data_entrega)}</td>
                           <td style={{ padding: "8px 10px" }}>{m.romaneio_algodoeira ?? "—"}</td>
                           <td style={{ padding: "8px 10px" }}>
-                            <button style={{ ...btnSec, padding: "4px 10px", fontSize: 12 }} onClick={() => setModalMod(m)}>✏️</button>
+                            <button data-arato-button="secondary" style={{ ...btnSec, padding: "4px 10px", fontSize: 12 }} onClick={() => setModalMod(m)}>✏️</button>
                           </td>
                         </tr>
                       );
@@ -731,7 +732,7 @@ export default function AlgodaoPage() {
             <div style={{ ...card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35" }}>Beneficiamento na Algodoeira</div>
-                <button style={btnPrimary} onClick={() => setModalBenef({})}>+ Novo Beneficiamento</button>
+                <button data-arato-button="primary" style={btnPrimary} onClick={() => setModalBenef({})}>+ Novo Beneficiamento</button>
               </div>
 
               {/* Resumo */}
@@ -743,7 +744,7 @@ export default function AlgodaoPage() {
                   { l: "Rend. Médio", v: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—" },
                   { l: "Valor Pluma", v: fmtR(valorEstoqueR) },
                 ].map(c => (
-                  <div key={c.l} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
+                  <div data-arato-statistic="display" key={c.l} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{c.l}</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "#0B1E35" }}>{c.v}</div>
                   </div>
@@ -753,7 +754,7 @@ export default function AlgodaoPage() {
               {beneficiamentos.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhum beneficiamento registrado.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Algodoeira","Entrada","Benefic.","Módulos","Peso Caroço (kg)","Fardos","Pluma (kg)","Rend.%","Caroço Ret. (kg)","Custo","Status","Ações"].map(h => (
@@ -784,7 +785,7 @@ export default function AlgodaoPage() {
                             <span style={{ padding: "2px 7px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: st.cor + "20", color: st.cor }}>{st.label}</span>
                           </td>
                           <td style={{ padding: "8px 8px" }}>
-                            <button style={{ ...btnSec, padding: "4px 10px", fontSize: 12 }} onClick={() => setModalBenef(b)}>✏️</button>
+                            <button data-arato-button="secondary" style={{ ...btnSec, padding: "4px 10px", fontSize: 12 }} onClick={() => setModalBenef(b)}>✏️</button>
                           </td>
                         </tr>
                       );
@@ -803,7 +804,7 @@ export default function AlgodaoPage() {
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35" }}>Laudos HVI por Lote</div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>🟢 Excelente  🟡 Bom  🔴 Abaixo da referência MT</div>
                 </div>
-                <button style={btnPrimary} onClick={() => setModalHVI({ beneficiamento_id: "" })}>+ Registrar Laudo</button>
+                <button data-arato-button="primary" style={btnPrimary} onClick={() => setModalHVI({ beneficiamento_id: "" })}>+ Registrar Laudo</button>
               </div>
 
               {/* Referências */}
@@ -815,8 +816,8 @@ export default function AlgodaoPage() {
               {laudosHVI.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhum laudo HVI registrado.</div>
               ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Algodoeira","Fardos","Tipo","Compr.\n(mm)","Unif.\n(%)","Resist.\n(g/tex)","Micro\n(μg/pol)","Elongação","Rd (%)","Amar.\n(+b)","SFI\n(%)","Neps","Prêmio/\nDesconto",""].map(h => (
@@ -858,7 +859,7 @@ export default function AlgodaoPage() {
                               ) : "—"}
                             </td>
                             <td style={{ padding: "7px 8px" }}>
-                              <button style={{ ...btnSec, padding: "4px 8px", fontSize: 11 }} onClick={() => setModalHVI(h)}>✏️</button>
+                              <button data-arato-button="secondary" style={{ ...btnSec, padding: "4px 8px", fontSize: 11 }} onClick={() => setModalHVI(h)}>✏️</button>
                             </td>
                           </tr>
                         );
@@ -881,7 +882,7 @@ export default function AlgodaoPage() {
                   { l: "Preço Hoje (@)", v: fmtR(preco_arroba), cor: "#111111", sub: `${fmtN(preco_cbot_cents, 2)} ¢/lb (ICE/CBOT)` },
                   { l: "Rendimento Médio", v: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—", cor: "#C9921B", sub: "pluma / algodão caroço" },
                 ].map(c => (
-                  <div key={c.l} style={{ ...card, borderTop: `4px solid ${c.cor}` }}>
+                  <div data-arato-statistic="display" key={c.l} style={{ ...card, borderTop: `4px solid ${c.cor}` }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{c.l}</div>
                     <div style={{ fontSize: 24, fontWeight: 800, color: c.cor }}>{c.v}</div>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{c.sub}</div>
@@ -910,7 +911,7 @@ export default function AlgodaoPage() {
                 </div>
 
                 {/* Análise de preço e custo */}
-                <div style={{ ...card }}>
+                <div data-arato-statistic="display" style={{ ...card }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35", marginBottom: 14 }}>Análise de Mercado</div>
 
                   <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
@@ -935,7 +936,7 @@ export default function AlgodaoPage() {
                     </div>
                   </div>
 
-                  <div style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+                  <div data-arato-statistic="display" style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: "#166534", fontWeight: 700, marginBottom: 6 }}>Valor do Estoque de Pluma</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: "#15803D" }}>{fmtR(valorEstoqueR)}</div>
                     <div style={{ fontSize: 11, color: "#16A34A" }}>
@@ -973,7 +974,7 @@ export default function AlgodaoPage() {
                       por[k].caroco_kg += b.peso_caroco_retorno_kg ?? 0;
                     });
                     return (
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Algodoeira","Fardos","Pluma (ton)","Caroço (ton)","Valor Estimado"].map(h => (
@@ -1008,66 +1009,66 @@ export default function AlgodaoPage() {
 
       {/* ── Modal: Operação Especial ── */}
       {modalOp !== null && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 600, maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 600, maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 data-arato-h2="true" style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalOp.id ? "Editar Operação" : "Nova Operação Especial"}
             </h2>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div><label style={lbl}>Tipo *</label>
-                <select style={inp} value={modalOp.tipo ?? ""} onChange={e => setModalOp(p => ({ ...p, tipo: e.target.value }))}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Tipo *</label>
+                <SelectField style={inp} value={modalOp.tipo ?? ""} onChange={e => setModalOp(p => ({ ...p, tipo: e.target.value }))}>
                   <option value="">— selecionar —</option>
                   <option value="regulador_crescimento">Regulador de Crescimento</option>
                   <option value="defoliacao">Defolhação</option>
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Data *</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data *</label>
                 <InputData type="date" style={inp} value={modalOp.data_aplicacao ?? ""} onChange={e => setModalOp(p => ({ ...p, data_aplicacao: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Talhão</label>
-                <select style={inp} value={modalOp.talhao_id ?? ""} onChange={e => setModalOp(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Talhão</label>
+                <SelectField style={inp} value={modalOp.talhao_id ?? ""} onChange={e => setModalOp(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
                   <option value="">— todos —</option>
                   {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Produto</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Produto</label>
                 <input type="text" style={inp} placeholder="ex: Pix, Dropp, Finish..." value={modalOp.produto ?? ""} onChange={e => setModalOp(p => ({ ...p, produto: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Dose</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Dose</label>
                 <input type="number" style={inp} placeholder="0,0" value={modalOp.dose_ha ?? ""} onChange={e => setModalOp(p => ({ ...p, dose_ha: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Unidade</label>
-                <select style={inp} value={modalOp.unidade_dose ?? "L/ha"} onChange={e => setModalOp(p => ({ ...p, unidade_dose: e.target.value }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Unidade</label>
+                <SelectField style={inp} value={modalOp.unidade_dose ?? "L/ha"} onChange={e => setModalOp(p => ({ ...p, unidade_dose: e.target.value }))}>
                   <option value="L/ha">L/ha</option>
                   <option value="kg/ha">kg/ha</option>
                   <option value="g/ha">g/ha</option>
                   <option value="mL/ha">mL/ha</option>
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Área (ha)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Área (ha)</label>
                 <input type="number" style={inp} value={modalOp.area_ha ?? ""} onChange={e => setModalOp(p => ({ ...p, area_ha: parseFloat(e.target.value) || undefined }))} />
               </div>
               {modalOp.tipo === "regulador_crescimento" && <>
-                <div><label style={lbl}>NAWF (nós acima flor branca)</label>
+                <div><label data-arato-label="true" style={lbl}>NAWF (nós acima flor branca)</label>
                   <input type="number" style={inp} value={modalOp.nawf ?? ""} onChange={e => setModalOp(p => ({ ...p, nawf: parseInt(e.target.value) || undefined }))} />
                 </div>
-                <div><label style={lbl}>Altura da planta (cm)</label>
+                <div><label data-arato-label="true" style={lbl}>Altura da planta (cm)</label>
                   <input type="number" style={inp} value={modalOp.altura_planta_cm ?? ""} onChange={e => setModalOp(p => ({ ...p, altura_planta_cm: parseFloat(e.target.value) || undefined }))} />
                 </div>
               </>}
               {modalOp.tipo === "defoliacao" && (
-                <div><label style={lbl}>% Abertura de maçãs</label>
+                <div><label data-arato-label="true" style={lbl}>% Abertura de maçãs</label>
                   <input type="number" style={inp} placeholder="ex: 75" value={modalOp.abertura_macas_pct ?? ""} onChange={e => setModalOp(p => ({ ...p, abertura_macas_pct: parseFloat(e.target.value) || undefined }))} />
                 </div>
               )}
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Observações</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Observações</label>
                 <input type="text" style={inp} value={modalOp.obs ?? ""} onChange={e => setModalOp(p => ({ ...p, obs: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
-              <button style={btnSec} onClick={() => { setModalOp(null); setMsg(null); }}>Cancelar</button>
-              <button style={btnPrimary} disabled={salvando} onClick={salvarOperacao}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" style={btnSec} onClick={() => { setModalOp(null); setMsg(null); }}>Cancelar</button>
+              <button data-arato-button="primary" style={btnPrimary} disabled={salvando} onClick={salvarOperacao}>{salvando ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -1075,35 +1076,35 @@ export default function AlgodaoPage() {
 
       {/* ── Modal: Armadilha ── */}
       {modalArm !== null && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 520 }}>
-            <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 520 }}>
+            <h2 data-arato-h2="true" style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalArm.id ? "Editar Armadilha" : "Nova Armadilha de Bicudo"}
             </h2>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome / Identificação *</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Nome / Identificação *</label>
                 <input type="text" style={inp} placeholder="ex: A1, Norte, Bloco 3..." value={modalArm.nome ?? ""} onChange={e => setModalArm(p => ({ ...p, nome: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Talhão</label>
-                <select style={inp} value={modalArm.talhao_id ?? ""} onChange={e => setModalArm(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Talhão</label>
+                <SelectField style={inp} value={modalArm.talhao_id ?? ""} onChange={e => setModalArm(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
                   <option value="">— todos —</option>
                   {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Data de Instalação</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data de Instalação</label>
                 <InputData type="date" style={inp} value={modalArm.data_instalacao ?? ""} onChange={e => setModalArm(p => ({ ...p, data_instalacao: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Latitude</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Latitude</label>
                 <input type="number" style={inp} step="0.000001" value={modalArm.latitude ?? ""} onChange={e => setModalArm(p => ({ ...p, latitude: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Longitude</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Longitude</label>
                 <input type="number" style={inp} step="0.000001" value={modalArm.longitude ?? ""} onChange={e => setModalArm(p => ({ ...p, longitude: parseFloat(e.target.value) || undefined }))} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
-              <button style={btnSec} onClick={() => { setModalArm(null); setMsg(null); }}>Cancelar</button>
-              <button style={btnPrimary} disabled={salvando} onClick={salvarArmadilha}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" style={btnSec} onClick={() => { setModalArm(null); setMsg(null); }}>Cancelar</button>
+              <button data-arato-button="primary" style={btnPrimary} disabled={salvando} onClick={salvarArmadilha}>{salvando ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -1111,10 +1112,10 @@ export default function AlgodaoPage() {
 
       {/* ── Modal: Leitura Semanal ── */}
       {modalCap !== null && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 400 }}>
-            <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>Registrar Leitura</h2>
-            <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>Armadilha: <strong>{modalCap.armadilha_nome}</strong></div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 400 }}>
+            <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>Registrar Leitura</h2>
+            <div data-arato-dialog-body="true" style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>Armadilha: <strong>{modalCap.armadilha_nome}</strong></div>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
             <CapForm
               armadilhaId={modalCap.armadilha_id}
@@ -1129,57 +1130,57 @@ export default function AlgodaoPage() {
 
       {/* ── Modal: Módulo ── */}
       {modalMod !== null && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 640, maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 640, maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 data-arato-h2="true" style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalMod.id ? "Editar Módulo" : "Novo Módulo de Algodão"}
             </h2>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <div><label style={lbl}>Número *</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Número *</label>
                 <input type="number" style={inp} value={modalMod.numero ?? ""} onChange={e => setModalMod(p => ({ ...p, numero: parseInt(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Talhão</label>
-                <select style={inp} value={modalMod.talhao_id ?? ""} onChange={e => setModalMod(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Talhão</label>
+                <SelectField style={inp} value={modalMod.talhao_id ?? ""} onChange={e => setModalMod(p => ({ ...p, talhao_id: e.target.value || undefined }))}>
                   <option value="">—</option>
                   {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Data da Colheita</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data da Colheita</label>
                 <InputData type="date" style={inp} value={modalMod.data_colheita ?? ""} onChange={e => setModalMod(p => ({ ...p, data_colheita: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Peso Estimado (kg)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Peso Estimado (kg)</label>
                 <input type="number" style={inp} value={modalMod.peso_estimado_kg ?? ""} onChange={e => setModalMod(p => ({ ...p, peso_estimado_kg: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Localização (campo)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Localização (campo)</label>
                 <input type="text" style={inp} value={modalMod.localizacao_campo ?? ""} onChange={e => setModalMod(p => ({ ...p, localizacao_campo: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Status</label>
-                <select style={inp} value={modalMod.status ?? "campo"} onChange={e => setModalMod(p => ({ ...p, status: e.target.value }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Status</label>
+                <SelectField style={inp} value={modalMod.status ?? "campo"} onChange={e => setModalMod(p => ({ ...p, status: e.target.value }))}>
                   <option value="campo">No campo</option>
                   <option value="em_transporte">Em transporte</option>
                   <option value="entregue">Entregue na algodoeira</option>
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Algodoeira</label>
-                <select style={inp} value={modalMod.algodoeira_id ?? ""} onChange={e => setModalMod(p => ({ ...p, algodoeira_id: e.target.value || undefined }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Algodoeira</label>
+                <SelectField style={inp} value={modalMod.algodoeira_id ?? ""} onChange={e => setModalMod(p => ({ ...p, algodoeira_id: e.target.value || undefined }))}>
                   <option value="">—</option>
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Data de Entrega</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data de Entrega</label>
                 <InputData type="date" style={inp} value={modalMod.data_entrega ?? ""} onChange={e => setModalMod(p => ({ ...p, data_entrega: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Romaneio Algodoeira</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Romaneio Algodoeira</label>
                 <input type="text" style={inp} value={modalMod.romaneio_algodoeira ?? ""} onChange={e => setModalMod(p => ({ ...p, romaneio_algodoeira: e.target.value }))} />
               </div>
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Obs.</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Obs.</label>
                 <input type="text" style={inp} value={modalMod.obs ?? ""} onChange={e => setModalMod(p => ({ ...p, obs: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
-              <button style={btnSec} onClick={() => { setModalMod(null); setMsg(null); }}>Cancelar</button>
-              <button style={btnPrimary} disabled={salvando} onClick={salvarModulo}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" style={btnSec} onClick={() => { setModalMod(null); setMsg(null); }}>Cancelar</button>
+              <button data-arato-button="primary" style={btnPrimary} disabled={salvando} onClick={salvarModulo}>{salvando ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -1187,65 +1188,65 @@ export default function AlgodaoPage() {
 
       {/* ── Modal: Beneficiamento ── */}
       {modalBenef !== null && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 data-arato-h2="true" style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalBenef.id ? "Editar Beneficiamento" : "Novo Lote de Beneficiamento"}
             </h2>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Algodoeira *</label>
-                <select style={inp} value={modalBenef.algodoeira_id ?? ""} onChange={e => setModalBenef(p => ({ ...p, algodoeira_id: e.target.value || undefined }))}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Algodoeira *</label>
+                <SelectField style={inp} value={modalBenef.algodoeira_id ?? ""} onChange={e => setModalBenef(p => ({ ...p, algodoeira_id: e.target.value || undefined }))}>
                   <option value="">— selecionar —</option>
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Data de Entrada</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data de Entrada</label>
                 <InputData type="date" style={inp} value={modalBenef.data_entrada ?? ""} onChange={e => setModalBenef(p => ({ ...p, data_entrada: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Data do Beneficiamento</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data do Beneficiamento</label>
                 <InputData type="date" style={inp} value={modalBenef.data_beneficiamento ?? ""} onChange={e => setModalBenef(p => ({ ...p, data_beneficiamento: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Qtd. Módulos Entregues</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Qtd. Módulos Entregues</label>
                 <input type="number" style={inp} value={modalBenef.num_modulos ?? ""} onChange={e => setModalBenef(p => ({ ...p, num_modulos: parseInt(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Peso Bruto Caroço (kg)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Peso Bruto Caroço (kg)</label>
                 <input type="number" style={inp} value={modalBenef.peso_bruto_caroco_kg ?? ""} onChange={e => setModalBenef(p => ({ ...p, peso_bruto_caroco_kg: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Nº de Fardos Produzidos</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Nº de Fardos Produzidos</label>
                 <input type="number" style={inp} value={modalBenef.num_fardos ?? ""} onChange={e => setModalBenef(p => ({ ...p, num_fardos: parseInt(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Peso Total Pluma (kg)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Peso Total Pluma (kg)</label>
                 <input type="number" style={inp} value={modalBenef.peso_pluma_kg ?? ""} onChange={e => setModalBenef(p => ({ ...p, peso_pluma_kg: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Rendimento Pluma (%)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Rendimento Pluma (%)</label>
                 <input type="number" style={inp} step="0.1" placeholder="ex: 39.5" value={modalBenef.rendimento_pluma_pct ?? ""} onChange={e => setModalBenef(p => ({ ...p, rendimento_pluma_pct: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Caroço Retornado (kg)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Caroço Retornado (kg)</label>
                 <input type="number" style={inp} value={modalBenef.peso_caroco_retorno_kg ?? ""} onChange={e => setModalBenef(p => ({ ...p, peso_caroco_retorno_kg: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Custo Beneficiamento (R$)</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Custo Beneficiamento (R$)</label>
                 <input type="number" style={inp} value={modalBenef.custo_beneficiamento ?? ""} onChange={e => setModalBenef(p => ({ ...p, custo_beneficiamento: parseFloat(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Nº Fardo Inicial</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Nº Fardo Inicial</label>
                 <input type="text" style={inp} value={modalBenef.num_fardo_inicial ?? ""} onChange={e => setModalBenef(p => ({ ...p, num_fardo_inicial: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Nº Fardo Final</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Nº Fardo Final</label>
                 <input type="text" style={inp} value={modalBenef.num_fardo_final ?? ""} onChange={e => setModalBenef(p => ({ ...p, num_fardo_final: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Status</label>
-                <select style={inp} value={modalBenef.status ?? "em_processamento"} onChange={e => setModalBenef(p => ({ ...p, status: e.target.value }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Status</label>
+                <SelectField style={inp} value={modalBenef.status ?? "em_processamento"} onChange={e => setModalBenef(p => ({ ...p, status: e.target.value }))}>
                   <option value="em_processamento">Em processamento</option>
                   <option value="concluido">Concluído</option>
-                </select>
+                </SelectField>
               </div>
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Obs.</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Obs.</label>
                 <input type="text" style={inp} value={modalBenef.obs ?? ""} onChange={e => setModalBenef(p => ({ ...p, obs: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
-              <button style={btnSec} onClick={() => { setModalBenef(null); setMsg(null); }}>Cancelar</button>
-              <button style={btnPrimary} disabled={salvando} onClick={salvarBeneficiamento}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" style={btnSec} onClick={() => { setModalBenef(null); setMsg(null); }}>Cancelar</button>
+              <button data-arato-button="primary" style={btnPrimary} disabled={salvando} onClick={salvarBeneficiamento}>{salvando ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -1253,34 +1254,34 @@ export default function AlgodaoPage() {
 
       {/* ── Modal: Laudo HVI ── */}
       {modalHVI !== null && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
+            <h2 data-arato-h2="true" style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalHVI.id ? "Editar Laudo HVI" : "Registrar Laudo HVI"}
             </h2>
-            <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>Referências MT: Comp ≥ 28,5mm · Unif ≥ 82% · Resist ≥ 30 g/tex · Micro 3,5–4,9 · Rd ≥ 72% · +b &lt; 9 · SFI &lt; 10%</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>Referências MT: Comp ≥ 28,5mm · Unif ≥ 82% · Resist ≥ 30 g/tex · Micro 3,5–4,9 · Rd ≥ 72% · +b &lt; 9 · SFI &lt; 10%</div>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Beneficiamento *</label>
-                <select style={inp} value={modalHVI.beneficiamento_id ?? ""} onChange={e => setModalHVI(p => ({ ...p, beneficiamento_id: e.target.value }))}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Beneficiamento *</label>
+                <SelectField style={inp} value={modalHVI.beneficiamento_id ?? ""} onChange={e => setModalHVI(p => ({ ...p, beneficiamento_id: e.target.value }))}>
                   <option value="">— selecionar —</option>
                   {beneficiamentos.map(b => <option key={b.id} value={b.id}>{b.algodoeira_nome ?? "Algodoeira"} — {fmtDt(b.data_beneficiamento)} — {b.num_fardos ?? 0} fardos</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={lbl}>Fardo Inicial</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Fardo Inicial</label>
                 <input type="text" style={inp} value={modalHVI.num_fardo_inicio ?? ""} onChange={e => setModalHVI(p => ({ ...p, num_fardo_inicio: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Fardo Final</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Fardo Final</label>
                 <input type="text" style={inp} value={modalHVI.num_fardo_fim ?? ""} onChange={e => setModalHVI(p => ({ ...p, num_fardo_fim: e.target.value }))} />
               </div>
-              <div><label style={lbl}>Nº Fardos no Laudo</label>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Nº Fardos no Laudo</label>
                 <input type="number" style={inp} value={modalHVI.num_fardos ?? ""} onChange={e => setModalHVI(p => ({ ...p, num_fardos: parseInt(e.target.value) || undefined }))} />
               </div>
-              <div><label style={lbl}>Tipo Classificação</label>
-                <select style={inp} value={modalHVI.tipo_classificacao ?? ""} onChange={e => setModalHVI(p => ({ ...p, tipo_classificacao: e.target.value }))}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Tipo Classificação</label>
+                <SelectField style={inp} value={modalHVI.tipo_classificacao ?? ""} onChange={e => setModalHVI(p => ({ ...p, tipo_classificacao: e.target.value }))}>
                   <option value="">—</option>
                   {["Tipo 1","Tipo 2","Tipo 3","Tipo 4","Tipo 5","Tipo 6","Tipo 7","Tipo 8"].map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                </SelectField>
               </div>
               {/* Parâmetros HVI */}
               {[
@@ -1297,19 +1298,19 @@ export default function AlgodaoPage() {
                 { f: "premium_desconto_pct",l: "Prêmio/Desconto (%)",   ref: "+ prêmio / – desconto", step: "0.1" },
               ].map(({ f, l, ref, step }) => (
                 <div key={f}>
-                  <label style={lbl}>{l}{ref && <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 4 }}>{ref}</span>}</label>
+                  <label data-arato-label="true" style={lbl}>{l}{ref && <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 4 }}>{ref}</span>}</label>
                   <input type="number" step={step} style={inp}
                     value={(modalHVI as Record<string, unknown>)[f] as number ?? ""}
                     onChange={e => setModalHVI(p => ({ ...p, [f]: parseFloat(e.target.value) || undefined }))} />
                 </div>
               ))}
-              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Obs.</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Obs.</label>
                 <input type="text" style={inp} value={modalHVI.obs ?? ""} onChange={e => setModalHVI(p => ({ ...p, obs: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
-              <button style={btnSec} onClick={() => { setModalHVI(null); setMsg(null); }}>Cancelar</button>
-              <button style={btnPrimary} disabled={salvando} onClick={salvarHVI}>{salvando ? "Salvando…" : "Salvar Laudo"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" style={btnSec} onClick={() => { setModalHVI(null); setMsg(null); }}>Cancelar</button>
+              <button data-arato-button="primary" style={btnPrimary} disabled={salvando} onClick={salvarHVI}>{salvando ? "Salvando…" : "Salvar Laudo"}</button>
             </div>
           </div>
         </div>
@@ -1336,11 +1337,11 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
   const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <div><label style={lbl}>Data da Leitura *</label>
+      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div><label data-arato-label="true" style={lbl}>Data da Leitura *</label>
           <InputData type="date" style={inp} value={data} onChange={e => setData(e.target.value)} />
         </div>
-        <div><label style={lbl}>Capturas *</label>
+        <div><label data-arato-label="true" style={lbl}>Capturas *</label>
           <input type="number" style={inp} min={0} value={qtd} onChange={e => setQtd(parseInt(e.target.value) || 0)} />
         </div>
       </div>
@@ -1350,8 +1351,8 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
         </div>
       )}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button style={{ padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
-        <button style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }} disabled={salvando} onClick={() => onSalvar(armadilhaId, data, qtd)}>
+        <button data-arato-button="secondary" style={{ padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
+        <button data-arato-button="primary" style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }} disabled={salvando} onClick={() => onSalvar(armadilhaId, data, qtd)}>
           {salvando ? "Salvando…" : "Salvar Leitura"}
         </button>
       </div>

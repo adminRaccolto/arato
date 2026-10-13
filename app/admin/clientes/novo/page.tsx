@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -197,7 +198,7 @@ export default function NovoClientePage() {
   if (resultado) {
     return (
       <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13, maxWidth: 640 }}>
-        <div style={{ background: "#F0FDF4", border: "0.5px solid #16A34A40", borderRadius: 14, padding: "28px 32px", textAlign: "center" }}>
+        <div data-arato-statistic="action" style={{ background: "#F0FDF4", border: "0.5px solid #16A34A40", borderRadius: 14, padding: "28px 32px", textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#16A34A", marginBottom: 6 }}>
             Cliente criado com sucesso!
@@ -240,7 +241,7 @@ export default function NovoClientePage() {
               style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}>
               ← Ver todos os clientes
             </a>
-            <button style={btnPrimary} onClick={criarOutro}>
+            <button data-arato-button="primary" style={btnPrimary} onClick={criarOutro}>
               + Criar outro cliente
             </button>
           </div>
@@ -254,9 +255,9 @@ export default function NovoClientePage() {
     <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+      <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+          <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Novo Cliente
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
@@ -272,37 +273,37 @@ export default function NovoClientePage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
         {/* Linha 1 — Dados do cliente + Fazenda (lado a lado) */}
-        <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16 }}>
+        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16 }}>
 
           {/* Seção 1 — Dados do cliente */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
+          <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
             <div style={secTitle}>Identificação do Cliente</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
-                <label style={lbl}>Tipo de conta *</label>
-                <select style={inp} value={form.tipo} onChange={e => set("tipo", e.target.value as TipoConta)}>
+                <label data-arato-label="true" style={lbl}>Tipo de conta *</label>
+                <SelectField style={inp} value={form.tipo} onChange={e => set("tipo", e.target.value as TipoConta)}>
                   <option value="pf">Pessoa Física</option>
                   <option value="pj">Pessoa Jurídica</option>
                   <option value="grupo">Grupo / Holding</option>
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>{form.tipo === "pf" ? "CPF" : "CNPJ"}</label>
+                <label data-arato-label="true" style={lbl}>{form.tipo === "pf" ? "CPF" : "CNPJ"}</label>
                 <input style={inp} placeholder={form.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"}
                   value={form.cpf_cnpj} onChange={e => set("cpf_cnpj", e.target.value)} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Nome completo / Razão Social *</label>
+                <label data-arato-label="true" style={lbl}>Nome completo / Razão Social *</label>
                 <input style={inp} placeholder="Ex: João Silva ou Fazenda São João Ltda"
                   value={form.nome} onChange={e => set("nome", e.target.value)} />
               </div>
               <div>
-                <label style={lbl}>E-mail *</label>
+                <label data-arato-label="true" style={lbl}>E-mail *</label>
                 <input style={inp} type="email" placeholder="cliente@email.com"
                   value={form.email_cliente} onChange={e => set("email_cliente", e.target.value)} />
               </div>
               <div>
-                <label style={lbl}>Telefone / WhatsApp</label>
+                <label data-arato-label="true" style={lbl}>Telefone / WhatsApp</label>
                 <input style={inp} placeholder="(65) 99999-0000"
                   value={form.telefone} onChange={e => set("telefone", e.target.value)} />
               </div>
@@ -310,69 +311,69 @@ export default function NovoClientePage() {
           </div>
 
           {/* Seção 2 — Fazenda */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
+          <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
             <div style={secTitle}>Fazenda Principal</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Nome da fazenda *</label>
+                <label data-arato-label="true" style={lbl}>Nome da fazenda *</label>
                 <input style={inp} placeholder="Ex: Fazenda Santa Rosa"
                   value={form.fazenda_nome} onChange={e => set("fazenda_nome", e.target.value)} />
               </div>
               <div>
-                <label style={lbl}>Município</label>
+                <label data-arato-label="true" style={lbl}>Município</label>
                 <input style={inp} placeholder="Ex: Nova Mutum"
                   value={form.fazenda_municipio} onChange={e => set("fazenda_municipio", e.target.value)} />
               </div>
               <div>
-                <label style={lbl}>Estado</label>
-                <select style={inp} value={form.fazenda_estado} onChange={e => set("fazenda_estado", e.target.value)}>
+                <label data-arato-label="true" style={lbl}>Estado</label>
+                <SelectField style={inp} value={form.fazenda_estado} onChange={e => set("fazenda_estado", e.target.value)}>
                   {ESTADOS_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
           </div>
         </div>
 
         {/* Linha 2 — Acesso & Assinatura (largura total) */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
           <div style={secTitle}>Acesso & Assinatura</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>Senha inicial *</label>
+              <label data-arato-label="true" style={lbl}>Senha inicial *</label>
               <input style={inp} type="password" placeholder="Mín. 8 caracteres"
                 value={form.user_senha} onChange={e => set("user_senha", e.target.value)} />
             </div>
             <div style={{ gridColumn: "3 / 5" }}>
-              <label style={lbl}>Confirmar senha *</label>
+              <label data-arato-label="true" style={lbl}>Confirmar senha *</label>
               <input style={inp} type="password" placeholder="Repita a senha"
                 value={form.user_senha_conf} onChange={e => set("user_senha_conf", e.target.value)} />
             </div>
             <div style={{ gridColumn: "5 / 7" }}>
-              <label style={lbl}>Plano</label>
-              <select style={inp} value={form.plano} onChange={e => set("plano", e.target.value as Pacote | "")}>
+              <label data-arato-label="true" style={lbl}>Plano</label>
+              <SelectField style={inp} value={form.plano} onChange={e => set("plano", e.target.value as Pacote | "")}>
                 <option value="">— Sem plano —</option>
                 {(Object.keys(PLANOS_CFG) as Pacote[]).map(p => (
                   <option key={p} value={p}>{PLANOS_CFG[p].label}</option>
                 ))}
-              </select>
+              </SelectField>
             </div>
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>Status inicial</label>
-              <select style={inp} value={form.status} onChange={e => set("status", e.target.value as StatusInicial)}>
+              <label data-arato-label="true" style={lbl}>Status inicial</label>
+              <SelectField style={inp} value={form.status} onChange={e => set("status", e.target.value as StatusInicial)}>
                 <option value="trial">Trial (14 dias)</option>
                 <option value="ativo">Ativo</option>
-              </select>
+              </SelectField>
             </div>
             <div style={{ gridColumn: "3 / 5" }}>
-              <label style={lbl}>Data de início</label>
+              <label data-arato-label="true" style={lbl}>Data de início</label>
               <InputData style={inp} type="date" value={form.data_inicio} onChange={e => set("data_inicio", e.target.value)} />
             </div>
             <div style={{ gridColumn: "5 / 7" }}>
-              <label style={lbl}>Data de vencimento</label>
+              <label data-arato-label="true" style={lbl}>Data de vencimento</label>
               <InputData style={inp} type="date" value={form.data_vencimento} onChange={e => set("data_vencimento", e.target.value)} />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={lbl}>Observação interna</label>
+              <label data-arato-label="true" style={lbl}>Observação interna</label>
               <textarea style={{ ...inp, height: 70, resize: "vertical" } as React.CSSProperties}
                 placeholder="Ex: cliente indicado por fulano, acordou desconto por 3 meses..."
                 value={form.observacao} onChange={e => set("observacao", e.target.value)} />
@@ -394,7 +395,7 @@ export default function NovoClientePage() {
         <a href="/admin/clientes" style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}>
           Cancelar
         </a>
-        <button style={btnPrimary} onClick={criar} disabled={salvando}>
+        <button data-arato-button="primary" style={btnPrimary} onClick={criar} disabled={salvando}>
           {salvando ? "Criando cliente…" : "Criar Cliente"}
         </button>
       </div>

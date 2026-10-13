@@ -55,17 +55,17 @@ export default function IBSCBS() {
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>IBS / CBS — Reforma Tributária 2027</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>IBS / CBS — Reforma Tributária 2027</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Lei Complementar nº 214/2024 · Emenda Constitucional nº 132/2023</p>
           </div>
-          <div style={{ background: diasAte2027 <= 180 ? "#FCEBEB" : "#FBF3E0", border: `0.5px solid ${diasAte2027 <= 180 ? "#E24B4A" : "#C9921B"}40`, borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
+          <div data-arato-statistic="display" style={{ background: diasAte2027 <= 180 ? "#FCEBEB" : "#FBF3E0", border: `0.5px solid ${diasAte2027 <= 180 ? "#E24B4A" : "#C9921B"}40`, borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: diasAte2027 <= 180 ? "#E24B4A" : "#C9921B" }}>{diasAte2027.toLocaleString("pt-BR")}</div>
             <div style={{ fontSize: 10, color: "var(--text-2)" }}>dias até 01/01/2027</div>
           </div>
@@ -82,7 +82,7 @@ export default function IBSCBS() {
                 ["impacto",    "Agro — Reduções"],
                 ["cronograma", "Cronograma"],
               ] as [Aba, string][]).map(([key, label]) => (
-                <button key={key} onClick={() => setAba(key)} style={{
+                <button data-arato-button="toggle" key={key} onClick={() => setAba(key)} style={{
                   padding: "10px 20px", border: "none",
                   background: aba === key ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",
@@ -184,17 +184,17 @@ export default function IBSCBS() {
             {/* ── ABA: CALCULADORA ── */}
             {aba === "calculo" && (
               <div style={{ padding: 24 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
 
                   <div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 16 }}>Simulação IBS/CBS — sua propriedade</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
-                        <label style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Receita bruta anual estimada (R$)</label>
+                        <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Receita bruta anual estimada (R$)</label>
                         <InputNumerico decimais={0} value={receitaAnual || ""} onChange={v => setReceitaAnual(Number(v))} placeholder="Ex: 5.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", boxSizing: "border-box" }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Total de insumos e serviços comprados com nota (R$)</label>
+                        <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Total de insumos e serviços comprados com nota (R$)</label>
                         <InputNumerico decimais={0} value={creditosInsumos || ""} onChange={v => setCreditosInsumos(Number(v))} placeholder="Ex: 2.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", boxSizing: "border-box" }} />
                       </div>
 
@@ -206,7 +206,7 @@ export default function IBSCBS() {
                           { label: "IBS municipal", val: aliqIBSmun, set: setAliqIBSmun },
                         ].map((r, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                            <label style={{ fontSize: 12, color: "var(--text-2)", width: 130, flexShrink: 0 }}>{r.label}</label>
+                            <label data-arato-label="true" style={{ fontSize: 12, color: "var(--text-2)", width: 130, flexShrink: 0 }}>{r.label}</label>
                             <InputNumerico value={r.val} onChange={v => r.set(Number(v))} style={{ width: 80, padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 12, color: "var(--text-1)" }} />
                             <span style={{ fontSize: 11, color: "var(--text-3)" }}>%</span>
                           </div>
@@ -251,7 +251,7 @@ export default function IBSCBS() {
                 <div style={{ marginBottom: 14, fontSize: 12, color: "var(--text-2)", background: "#EAF3DE", border: "0.5px solid #1A5C3840", borderRadius: 8, padding: "10px 14px" }}>
                   <strong style={{ color: "#1A5C38" }}>Agronegócio beneficiado:</strong> A Reforma Tributária manteve tratamento favorecido para insumos agropecuários (alíquota zero) e grãos (redução de 60%). Isso representa grande vantagem competitiva para o produtor rural.
                 </div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["NCM", "Produto / Insumo", "Redução", "Alíquota efetiva", "Observação"].map((h, i) => (

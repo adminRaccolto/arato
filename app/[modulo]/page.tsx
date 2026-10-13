@@ -96,7 +96,7 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
 
   if (!info) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+      <div data-arato-statistic="display" data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
         <TopNav />
         <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center", color: "#444" }}>
@@ -113,16 +113,16 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
   const totalCount = info.funcionalidades.length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
 
       <TopNav />
 
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>{info.titulo}</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>{info.titulo}</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>{info.descricao}</p>
           </div>
           <span style={{ background: "#FBF0D8", color: "#7A5A12", fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "0.5px solid #C9921B50" }}>
@@ -130,11 +130,11 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
           </span>
         </header>
 
-        <div style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
+        <div data-arato-statistic="display" style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 
           {/* Banner */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "28px 32px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
-            <div style={{ width: 64, height: 64, background: "#E8E8E8", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
+          <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "28px 32px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
+            <div data-arato-statistic="display" style={{ width: 64, height: 64, background: "#E8E8E8", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
               {info.icone}
             </div>
             <div style={{ flex: 1 }}>

@@ -98,7 +98,7 @@ export default function OnboardingPanel() {
                       ))}
                     </ol>
                     <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-                      <button
+                      <button data-arato-button="primary"
                         onClick={() => router.push(step.path)}
                         style={{
                           background: "#111111",
@@ -113,7 +113,7 @@ export default function OnboardingPanel() {
                       >
                         {step.pathLabel}
                       </button>
-                      <button
+                      <button data-arato-button="secondary"
                         onClick={refetchOnboarding}
                         style={{
                           background: "transparent",

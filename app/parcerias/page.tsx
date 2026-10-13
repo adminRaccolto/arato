@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -88,23 +89,23 @@ function Modal({ titulo, subtitulo, children, onClose, width = 760 }: {
   onClose: () => void; width?: number;
 }) {
   return (
-    <div style={{
+    <div data-arato-overlay="true" style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
     }}>
-      <div style={{
+      <div data-arato-dialog="form" style={{
         background: C.branco, borderRadius: 12, width: "min(98vw, " + width + "px)",
         maxHeight: "90vh", display: "flex", flexDirection: "column",
         boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
       }}>
-        <div style={{ padding: "20px 24px 14px", borderBottom: `1px solid ${C.borda}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.txt }}>{titulo}</div>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 14px", borderBottom: `1px solid ${C.borda}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div data-arato-dialog-body="true">
+            <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: C.txt }}>{titulo}</div>
             {subtitulo && <div style={{ fontSize: 12, color: C.ter, marginTop: 2 }}>{subtitulo}</div>}
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.ter, lineHeight: 1 }}>✕</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.ter, lineHeight: 1 }}>✕</button>
         </div>
-        <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>{children}</div>
+        <div data-arato-dialog-body="true" style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>{children}</div>
       </div>
     </div>
   );
@@ -620,15 +621,15 @@ export default function ParceriasPage() {
   const totalPct = participants.reduce((s, p) => s + Number(p.percentual || 0), 0);
 
   return (
-    <div style={{ background: C.fundo, minHeight: "100vh" }}>
+    <div data-arato-page="true" style={{ background: C.fundo, minHeight: "100vh" }}>
       <TopNav />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.mostr, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>FISCAL / CADASTROS</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: C.txt, margin: 0 }}>Parcerias & Grupos Econômicos</h1>
+              <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 700, color: C.txt, margin: 0 }}>Parcerias & Grupos Econômicos</h1>
               <p style={{ fontSize: 13, color: C.ter, margin: "4px 0 0" }}>
                 Lei 4.504/1964 (Estatuto da Terra) · LCDPR IN RFB 1.848/2018 · SPED ECD Leiaute 10
               </p>
@@ -642,7 +643,7 @@ export default function ParceriasPage() {
             const labels = { parcerias: "Parcerias Agrícolas", grupos: "Grupos Econômicos", apuracao: "Apuração & SPED" };
             const ativo = aba === a;
             return (
-              <button key={a} onClick={() => setAba(a)} style={{
+              <button data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
                 padding: "8px 18px", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer",
                 borderRadius: "6px 6px 0 0", background: ativo ? C.branco : "transparent",
                 color: ativo ? C.azul : C.sub,
@@ -659,13 +660,13 @@ export default function ParceriasPage() {
               <div style={{ fontSize: 13, color: C.ter }}>
                 {parcerias.length} parceria{parcerias.length !== 1 ? "s" : ""} cadastrada{parcerias.length !== 1 ? "s" : ""}
               </div>
-              <button onClick={() => abrirModalParceria()} style={btn(C.verde)}>+ Nova Parceria</button>
+              <button data-arato-button="secondary" onClick={() => abrirModalParceria()} style={btn(C.verde)}>+ Nova Parceria</button>
             </div>
 
             {loadingParc ? (
               <div style={{ textAlign: "center", padding: 40, color: C.ter }}>Carregando…</div>
             ) : parcerias.length === 0 ? (
-              <div style={{ background: C.branco, borderRadius: 12, padding: 48, textAlign: "center" }}>
+              <div data-arato-statistic="display" style={{ background: C.branco, borderRadius: 12, padding: 48, textAlign: "center" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>🤝</div>
                 <div style={{ fontWeight: 600, color: C.txt, marginBottom: 4 }}>Nenhuma parceria cadastrada</div>
                 <div style={{ fontSize: 13, color: C.ter }}>Parcerias agrícolas permitem dividir produção e custos entre produtores (Lei 4.504/1964).</div>
@@ -692,11 +693,11 @@ export default function ParceriasPage() {
                       {p.descricao && <div style={{ fontSize: 12, color: C.ter, marginTop: 2 }}>{p.descricao}</div>}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button onClick={e => { e.stopPropagation(); abrirApuracao(p.id, p.nome); }}
+                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirApuracao(p.id, p.nome); }}
                         style={btn(C.mostrClr, C.mostr, { fontSize: 12, padding: "5px 10px" })}>Apurar</button>
-                      <button onClick={e => { e.stopPropagation(); abrirModalParceria(p); }}
+                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirModalParceria(p); }}
                         style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</button>
-                      <button onClick={e => { e.stopPropagation(); excluirParceria(p.id, p.nome); }}
+                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); excluirParceria(p.id, p.nome); }}
                         style={btn(C.vermClr, C.verm, { fontSize: 12, padding: "5px 10px" })}>Excluir</button>
                       <span style={{ color: C.ter }}>{aberto ? "▲" : "▼"}</span>
                     </div>
@@ -759,7 +760,7 @@ export default function ParceriasPage() {
                       {(apurMap[p.id] ?? []).length > 0 && (
                         <div style={{ marginTop: 16, borderTop: `1px solid ${C.borda}`, paddingTop: 14 }}>
                           <div style={{ ...lbl, marginBottom: 8 }}>Apurações de Resultado</div>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                             <thead>
                               <tr>
                                 {["Data", "Receita Total", "Custo Total", "Resultado", "Status", ""].map(h => (
@@ -782,7 +783,7 @@ export default function ParceriasPage() {
                                     </span>
                                   </td>
                                   <td style={{ padding: "8px 10px" }}>
-                                    <button
+                                    <button data-arato-button="secondary"
                                       onClick={async () => {
                                         const txt = gerarSpedParceria(p, ptcMap[p.id] ?? [], [a]);
                                         const blob = new Blob([txt], { type: "text/plain" });
@@ -805,7 +806,7 @@ export default function ParceriasPage() {
                       {/* LCDPR */}
                       {(ptcMap[p.id] ?? []).length > 0 && (apurMap[p.id] ?? []).length > 0 && (
                         <div style={{ marginTop: 12 }}>
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => {
                               const txt = gerarLcdprParticipante(p, ptcMap[p.id] ?? [], apurMap[p.id] ?? []);
                               const blob = new Blob([txt], { type: "text/plain" });
@@ -835,13 +836,13 @@ export default function ParceriasPage() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ fontSize: 13, color: C.ter }}>{grupos.length} grupo{grupos.length !== 1 ? "s" : ""} cadastrado{grupos.length !== 1 ? "s" : ""}</div>
-              <button onClick={() => abrirModalGrupo()} style={btn(C.verde)}>+ Novo Grupo</button>
+              <button data-arato-button="secondary" onClick={() => abrirModalGrupo()} style={btn(C.verde)}>+ Novo Grupo</button>
             </div>
 
             {loadingGrp ? (
               <div style={{ textAlign: "center", padding: 40, color: C.ter }}>Carregando…</div>
             ) : grupos.length === 0 ? (
-              <div style={{ background: C.branco, borderRadius: 12, padding: 48, textAlign: "center" }}>
+              <div data-arato-statistic="display" style={{ background: C.branco, borderRadius: 12, padding: 48, textAlign: "center" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>🏢</div>
                 <div style={{ fontWeight: 600, color: C.txt, marginBottom: 4 }}>Nenhum grupo econômico cadastrado</div>
               </div>
@@ -861,9 +862,9 @@ export default function ParceriasPage() {
                       {g.cnpj_controlador && <div style={{ fontSize: 12, color: C.ter }}>CNPJ Controladora: {g.cnpj_controlador}</div>}
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={e => { e.stopPropagation(); abrirModalGrupo(g); }}
+                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirModalGrupo(g); }}
                         style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</button>
-                      <button onClick={async e => {
+                      <button data-arato-button="secondary" onClick={async e => {
                         e.stopPropagation();
                         if (!confirm(`Excluir grupo "${g.nome}"?`)) return;
                         await supabase.from("grupos_economicos").delete().eq("id", g.id);
@@ -878,7 +879,7 @@ export default function ParceriasPage() {
                       {(membrosMap[g.id] ?? []).length === 0 ? (
                         <div style={{ fontSize: 13, color: C.ter }}>Nenhum membro. Edite o grupo para adicionar.</div>
                       ) : (
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                           <thead>
                             <tr>
                               {["Entidade", "CPF / CNPJ", "Papel", "Participação %"].map(h => (
@@ -918,7 +919,7 @@ export default function ParceriasPage() {
         {/* ── ABA APURAÇÃO & SPED ───────────────────────── */}
         {aba === "apuracao" && (
           <div style={{ background: C.branco, borderRadius: 12, padding: 28 }}>
-            <h3 style={{ margin: "0 0 6px", fontSize: 16, color: C.txt }}>Apuração de Resultado e Integração SPED</h3>
+            <h3 data-arato-h3="true" style={{ margin: "0 0 6px", fontSize: 16, color: C.txt }}>Apuração de Resultado e Integração SPED</h3>
             <p style={{ fontSize: 13, color: C.ter, marginTop: 0, marginBottom: 24 }}>
               Selecione uma parceria na aba "Parcerias Agrícolas" e clique em "Apurar" para registrar os resultados por safra.
               Após a apuração, os arquivos SPED ECD e LCDPR são gerados automaticamente.
@@ -964,7 +965,7 @@ export default function ParceriasPage() {
             {(["geral", "participantes", "distribuicao"] as const).map(a => {
               const labels = { geral: "Dados Gerais", participantes: `Participantes (${participants.length})`, distribuicao: `Distribuição de Custos (${distribs.length})` };
               return (
-                <button key={a} onClick={() => setAbaMod(a)} style={{
+                <button data-arato-button="toggle" key={a} onClick={() => setAbaMod(a)} style={{
                   padding: "7px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
                   borderRadius: "5px 5px 0 0", background: abaMod === a ? C.branco : "transparent",
                   color: abaMod === a ? C.azul : C.sub,
@@ -983,10 +984,10 @@ export default function ParceriasPage() {
                     onChange={e => setParcForm(f => f && { ...f, nome: e.target.value })} />
                 </Campo>
                 <Campo label="Tipo">
-                  <select style={inp()} value={parcForm.tipo}
+                  <SelectField style={inp()} value={parcForm.tipo}
                     onChange={e => setParcForm(f => f && { ...f, tipo: e.target.value as ParceriaTipo })}>
                     {Object.entries(TIPO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  </SelectField>
                 </Campo>
               </Grid>
               <Campo label="Descrição">
@@ -1003,19 +1004,19 @@ export default function ParceriasPage() {
                     onChange={e => setParcForm(f => f && { ...f, data_fim: e.target.value })} />
                 </Campo>
                 <Campo label="Status">
-                  <select style={inp()} value={parcForm.ativa ? "ativa" : "inativa"}
+                  <SelectField style={inp()} value={parcForm.ativa ? "ativa" : "inativa"}
                     onChange={e => setParcForm(f => f && { ...f, ativa: e.target.value === "ativa" })}>
                     <option value="ativa">Ativa</option>
                     <option value="inativa">Inativa</option>
-                  </select>
+                  </SelectField>
                 </Campo>
               </Grid>
               <Campo label="Modelo de Emissão NF-e">
-                <select style={inp()} value={parcForm.modelo_nfe}
+                <SelectField style={inp()} value={parcForm.modelo_nfe}
                   onChange={e => setParcForm(f => f && { ...f, modelo_nfe: e.target.value as "centralizado" | "fracionado" })}>
                   <option value="centralizado">Centralizado — um parceiro emite 100% e reparte internamente</option>
                   <option value="fracionado">Fracionado — cada parceiro emite sua cota individualmente</option>
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="Observação">
                 <textarea style={{ ...inp(), resize: "vertical", minHeight: 60 }} value={parcForm.observacao}
@@ -1035,7 +1036,7 @@ export default function ParceriasPage() {
                   </span>
                   {Math.abs(totalPct - 100) < 0.1 && <span style={{ color: C.verde, marginLeft: 6 }}>✓ OK</span>}
                 </div>
-                <button onClick={() => setParticipants(p => [...p, {
+                <button data-arato-button="secondary" onClick={() => setParticipants(p => [...p, {
                   nome: "", cpf_cnpj: "", percentual: "", papel: "parceiro", responsavel_nfe: false, observacao: ""
                 }])} style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Participante</button>
               </div>
@@ -1047,10 +1048,10 @@ export default function ParceriasPage() {
               )}
 
               {participants.map((pt, i) => (
-                <div key={i} style={{ background: C.fundo, borderRadius: 8, padding: 14, marginBottom: 10, border: `0.5px solid ${C.borda}` }}>
+                <div data-arato-panel="true" key={i} style={{ background: C.fundo, borderRadius: 8, padding: 14, marginBottom: 10, border: `0.5px solid ${C.borda}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <span style={{ fontWeight: 600, fontSize: 13, color: C.sub }}>Participante {i + 1}</span>
-                    <button onClick={() => setParticipants(p => p.filter((_, j) => j !== i))}
+                    <button data-arato-button="secondary" onClick={() => setParticipants(p => p.filter((_, j) => j !== i))}
                       style={{ background: "none", border: "none", color: C.verm, cursor: "pointer", fontSize: 13 }}>Remover</button>
                   </div>
                   <Grid cols={3}>
@@ -1069,17 +1070,17 @@ export default function ParceriasPage() {
                   </Grid>
                   <Grid cols={2}>
                     <Campo label="Papel na Parceria">
-                      <select style={inp()} value={pt.papel}
+                      <SelectField style={inp()} value={pt.papel}
                         onChange={e => setParticipants(p => p.map((x, j) => j === i ? { ...x, papel: e.target.value as PapelParceiro } : x))}>
                         {Object.entries(PAPEL_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
+                      </SelectField>
                     </Campo>
                     <Campo label="Emite NF-e?">
-                      <select style={inp()} value={pt.responsavel_nfe ? "sim" : "nao"}
+                      <SelectField style={inp()} value={pt.responsavel_nfe ? "sim" : "nao"}
                         onChange={e => setParticipants(p => p.map((x, j) => j === i ? { ...x, responsavel_nfe: e.target.value === "sim" } : x))}>
                         <option value="nao">Não (recebe repasse)</option>
                         <option value="sim">Sim (emitente da NF-e)</option>
-                      </select>
+                      </SelectField>
                     </Campo>
                   </Grid>
                 </div>
@@ -1118,7 +1119,7 @@ export default function ParceriasPage() {
                 Por padrão, todos os custos são divididos proporcionalmente ao % de cada participante. Adicione regras abaixo <strong>apenas quando houver exceção</strong> (ex.: sementes 100% do parceiro A, outros 50/50).
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                <button onClick={() => setDistribs(d => [...d, { participante_idx: 0, tipo_custo: "todos", percentual: "" }])}
+                <button data-arato-button="secondary" onClick={() => setDistribs(d => [...d, { participante_idx: 0, tipo_custo: "todos", percentual: "" }])}
                   style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Regra de Exceção</button>
               </div>
               {distribs.length === 0 ? (
@@ -1126,24 +1127,24 @@ export default function ParceriasPage() {
                   Nenhuma regra de exceção. Todos os custos seguem o % geral de cada participante.
                 </div>
               ) : distribs.map((d, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 3fr 1fr auto", gap: 10, alignItems: "flex-end", marginBottom: 8 }}>
+                <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "2fr 3fr 1fr auto", gap: 10, alignItems: "flex-end", marginBottom: 8 }}>
                   <Campo label="Participante">
-                    <select style={inp()} value={d.participante_idx}
+                    <SelectField style={inp()} value={d.participante_idx}
                       onChange={e => setDistribs(ds => ds.map((x, j) => j === i ? { ...x, participante_idx: Number(e.target.value) } : x))}>
                       {participants.map((pt, pi) => <option key={pi} value={pi}>{pt.nome || `Participante ${pi + 1}`}</option>)}
-                    </select>
+                    </SelectField>
                   </Campo>
                   <Campo label="Tipo de Custo">
-                    <select style={inp()} value={d.tipo_custo}
+                    <SelectField style={inp()} value={d.tipo_custo}
                       onChange={e => setDistribs(ds => ds.map((x, j) => j === i ? { ...x, tipo_custo: e.target.value } : x))}>
                       {TIPOS_CUSTO.map(tc => <option key={tc.v} value={tc.v}>{tc.l}</option>)}
-                    </select>
+                    </SelectField>
                   </Campo>
                   <Campo label="% Deste Participante">
                     <InputNumerico min={0} max={100} style={inp()} value={d.percentual} placeholder="50.00"
                       onChange={v => setDistribs(ds => ds.map((x, j) => j === i ? { ...x, percentual: v } : x))} />
                   </Campo>
-                  <button onClick={() => setDistribs(ds => ds.filter((_, j) => j !== i))}
+                  <button data-arato-button="icon" onClick={() => setDistribs(ds => ds.filter((_, j) => j !== i))}
                     style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", fontSize: 13, marginTop: 18 }}>✕</button>
                 </div>
               ))}
@@ -1153,8 +1154,8 @@ export default function ParceriasPage() {
           {errMsg && <div style={{ background: C.vermClr, color: C.verm, padding: "8px 12px", borderRadius: 6, fontSize: 13, marginTop: 12 }}>{errMsg}</div>}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, borderTop: `1px solid ${C.borda}`, paddingTop: 16 }}>
-            <button onClick={() => setModalParc(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
-            <button onClick={salvarParceria} disabled={salvando} style={btn(C.verde, "#fff", { opacity: salvando ? 0.6 : 1 })}>
+            <button data-arato-button="secondary" onClick={() => setModalParc(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
+            <button data-arato-button="secondary" onClick={salvarParceria} disabled={salvando} style={btn(C.verde, "#fff", { opacity: salvando ? 0.6 : 1 })}>
               {salvando ? "Salvando…" : "Salvar Parceria"}
             </button>
           </div>
@@ -1171,13 +1172,13 @@ export default function ParceriasPage() {
                   onChange={e => setGrupoForm(f => f && { ...f, nome: e.target.value })} />
               </Campo>
               <Campo label="Tipo">
-                <select style={inp()} value={grupoForm.tipo}
+                <SelectField style={inp()} value={grupoForm.tipo}
                   onChange={e => setGrupoForm(f => f && { ...f, tipo: e.target.value as GrupoNovo["tipo"] })}>
                   <option value="familiar">Familiar</option>
                   <option value="empresarial">Empresarial</option>
                   <option value="cooperativa">Cooperativa</option>
                   <option value="condominio">Condomínio</option>
-                </select>
+                </SelectField>
               </Campo>
             </Grid>
             <Campo label="CNPJ da Controladora">
@@ -1189,11 +1190,11 @@ export default function ParceriasPage() {
             <div style={{ borderTop: `1px solid ${C.borda}`, paddingTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ ...lbl }}>Membros do Grupo</div>
-                <button onClick={() => setMembros(m => [...m, { nome_entidade: "", cpf_cnpj: "", papel: "subsidiaria", percentual_participacao: "" }])}
+                <button data-arato-button="secondary" onClick={() => setMembros(m => [...m, { nome_entidade: "", cpf_cnpj: "", papel: "subsidiaria", percentual_participacao: "" }])}
                   style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Membro</button>
               </div>
               {membros.map((m, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "3fr 2fr 2fr 1fr auto", gap: 10, alignItems: "flex-end", marginBottom: 8 }}>
+                <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "3fr 2fr 2fr 1fr auto", gap: 10, alignItems: "flex-end", marginBottom: 8 }}>
                   <Campo label="Nome / Razão Social">
                     <input style={inp()} value={m.nome_entidade} placeholder="Fazenda XYZ Ltda"
                       onChange={e => setMembros(ms => ms.map((x, j) => j === i ? { ...x, nome_entidade: e.target.value } : x))} />
@@ -1203,24 +1204,24 @@ export default function ParceriasPage() {
                       onChange={e => setMembros(ms => ms.map((x, j) => j === i ? { ...x, cpf_cnpj: e.target.value } : x))} />
                   </Campo>
                   <Campo label="Papel">
-                    <select style={inp()} value={m.papel}
+                    <SelectField style={inp()} value={m.papel}
                       onChange={e => setMembros(ms => ms.map((x, j) => j === i ? { ...x, papel: e.target.value as PapelGrupo } : x))}>
                       {Object.entries(PAPELGRP_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
+                    </SelectField>
                   </Campo>
                   <Campo label="% Part.">
                     <InputNumerico min={0} max={100} style={inp()} value={m.percentual_participacao}
                       onChange={v => setMembros(ms => ms.map((x, j) => j === i ? { ...x, percentual_participacao: v } : x))} />
                   </Campo>
-                  <button onClick={() => setMembros(ms => ms.filter((_, j) => j !== i))}
+                  <button data-arato-button="icon" onClick={() => setMembros(ms => ms.filter((_, j) => j !== i))}
                     style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", marginTop: 18 }}>✕</button>
                 </div>
               ))}
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, borderTop: `1px solid ${C.borda}`, paddingTop: 16 }}>
-            <button onClick={() => setModalGrp(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
-            <button onClick={salvarGrupo} style={btn(C.verde)}>Salvar Grupo</button>
+            <button data-arato-button="secondary" onClick={() => setModalGrp(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
+            <button data-arato-button="secondary" onClick={salvarGrupo} style={btn(C.verde)}>Salvar Grupo</button>
           </div>
         </Modal>
       )}
@@ -1231,11 +1232,11 @@ export default function ParceriasPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Grid cols={2}>
               <Campo label="Ciclo / Safra">
-                <select style={inp()} value={apurForm.ciclo_id}
+                <SelectField style={inp()} value={apurForm.ciclo_id}
                   onChange={e => setApurForm(f => ({ ...f, ciclo_id: e.target.value }))}>
                   <option value="">Todos os ciclos</option>
                   {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-                </select>
+                </SelectField>
               </Campo>
               <Campo label="Data da Apuração">
                 <InputData type="date" style={inp()} value={apurForm.data_apuracao}
@@ -1250,7 +1251,7 @@ export default function ParceriasPage() {
 
             <div>
               <div style={{ ...lbl, marginBottom: 8 }}>Custos por Categoria (R$)</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {["semente", "fertilizante", "defensivo", "correcao_solo", "operacao_mecanizada", "arrendamento", "mao_obra", "administrativo"].map(tc => (
                   <div key={tc}>
                     <div style={{ fontSize: 11, color: C.ter, marginBottom: 3 }}>{CUSTO_LABEL[tc]}</div>
@@ -1266,7 +1267,7 @@ export default function ParceriasPage() {
                 onChange={e => setApurForm(f => ({ ...f, observacao: e.target.value }))} />
             </Campo>
 
-            <button onClick={calcularApuracao} style={btn(C.azul, "#fff", { fontSize: 14, padding: "10px 20px" })}>
+            <button data-arato-button="secondary" onClick={calcularApuracao} style={btn(C.azul, "#fff", { fontSize: 14, padding: "10px 20px" })}>
               Calcular Distribuição das Cotas
             </button>
 
@@ -1274,7 +1275,7 @@ export default function ParceriasPage() {
             {calculado && apurCotas.length > 0 && (
               <div style={{ background: C.fundo, borderRadius: 8, padding: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: C.txt, marginBottom: 12 }}>Resultado por Participante</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr>
                       {["Participante", "%", "Receita Cota", "Custo Cota", "Resultado", "Conta D", "Conta C"].map(h => (
@@ -1313,9 +1314,9 @@ export default function ParceriasPage() {
             )}
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, borderTop: `1px solid ${C.borda}`, paddingTop: 16 }}>
-            <button onClick={() => setApurModal(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
+            <button data-arato-button="secondary" onClick={() => setApurModal(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
             {calculado && (
-              <button onClick={salvarApuracaoFinal} style={btn(C.verde)}>Salvar Apuração</button>
+              <button data-arato-button="secondary" onClick={salvarApuracaoFinal} style={btn(C.verde)}>Salvar Apuração</button>
             )}
           </div>
         </Modal>

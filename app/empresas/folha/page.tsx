@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -415,38 +416,38 @@ export default function FolhaEmpresaPage() {
   const empresaAtual = empresas.find(e => e.id === empresaSel);
 
   return (
-    <div style={S.page}>
+    <div data-arato-page="true" style={S.page}>
       <TopNav />
       <div style={S.body}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento — Empresa</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento — Empresa</h1>
             <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>Processamento mensal para funcionários da empresa</p>
           </div>
         </div>
 
         {msg && (
           <div style={{ background: msg.startsWith("Erro") ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${msg.startsWith("Erro") ? "#FECACA" : "#BBF7D0"}`, borderRadius: 6, padding: "10px 16px", marginBottom: 12, fontSize: 13, color: msg.startsWith("Erro") ? "#B91C1C" : "#166534" }}>
-            {msg} <button onClick={()=>setMsg("")} style={{ float:"right", background:"none", border:"none", cursor:"pointer", fontSize:15 }}>×</button>
+            {msg} <button data-arato-button="icon" onClick={()=>setMsg("")} style={{ float:"right", background:"none", border:"none", cursor:"pointer", fontSize:15 }}>×</button>
           </div>
         )}
 
         {/* Seletor de empresa */}
-        <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+        <div data-arato-filters="true" style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Empresa</div>
-          <select value={empresaSel} onChange={e => setEmpresaSel(e.target.value)} style={{ ...S.inp, minWidth: 280 }}>
+          <SelectField value={empresaSel} onChange={e => setEmpresaSel(e.target.value)} style={{ ...S.inp, minWidth: 280 }}>
             <option value="">— Selecionar empresa —</option>
             {empresas.map(e => <option key={e.id} value={e.id}>{e.nome || e.razao_social}</option>)}
-          </select>
+          </SelectField>
           {empresaAtual && (
             <span style={{ fontSize: 12, color: "#888" }}>{empresaAtual.cpf_cnpj}</span>
           )}
         </div>
 
         {!empresaSel ? (
-          <div style={{ ...S.card, padding: 40, textAlign: "center", color: "#888" }}>
+          <div data-arato-statistic="display" style={{ ...S.card, padding: 40, textAlign: "center", color: "#888" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🏢</div>
             <div>Selecione uma empresa para visualizar a folha.</div>
           </div>
@@ -455,32 +456,32 @@ export default function FolhaEmpresaPage() {
             {/* Abas */}
             <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
               {([["processamento","📋 Processamento"],["adiantamentos","💵 Adiantamentos"],["gratificacoes","⭐ Gratificações"]] as [Aba,string][]).map(([k,l]) => (
-                <button key={k} onClick={()=>setAba(k)} style={{ padding:"10px 20px", background:"none", border:"none", borderBottom:aba===k?"2px solid #1A4870":"2px solid transparent", fontWeight:aba===k?700:400, color:aba===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>{l}</button>
+                <button data-arato-button="toggle" key={k} onClick={()=>setAba(k)} style={{ padding:"10px 20px", background:"none", border:"none", borderBottom:aba===k?"2px solid #1A4870":"2px solid transparent", fontWeight:aba===k?700:400, color:aba===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>{l}</button>
               ))}
             </div>
 
             {/* ══ ABA PROCESSAMENTO ══ */}
             {aba === "processamento" && (
               <>
-                <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                <div data-arato-filters="true" style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   <div>
-                    <label style={S.label}>Competência</label>
+                    <label data-arato-label="true" style={S.label}>Competência</label>
                     <InputData type="month" value={fComp} onChange={e=>setFComp(e.target.value)} style={{ ...S.inp, width:160 }} />
                   </div>
                   <div style={{ marginLeft:"auto" }}>
-                    <button onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>+ Nova Folha</button>
+                    <button data-arato-button="secondary" onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>+ Nova Folha</button>
                   </div>
                 </div>
                 {loading ? <div style={{ textAlign:"center", padding:40, color:"#888" }}>Carregando...</div>
                   : folhasFiltradas.length === 0 ? (
-                    <div style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}>
+                    <div data-arato-statistic="action" style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
                       <div>Nenhuma folha para {fComp ? nomeMes(fComp) : "o período"}.</div>
-                      <button onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop:12 }}>Criar Folha</button>
+                      <button data-arato-button="secondary" onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop:12 }}>Criar Folha</button>
                     </div>
                   ) : (
                     <div style={S.card}>
-                      <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                         <thead><tr>{["Competência","Funcionários","Bruto Total","Líquido Total","Encargos Patronais","Status",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                         <tbody>
                           {folhasFiltradas.map(f => (
@@ -492,8 +493,8 @@ export default function FolhaEmpresaPage() {
                               <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_patronal??0)}</td>
                               <td style={S.td}><span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[f.status], background:ST_COLOR[f.status]+"18", borderRadius:4, padding:"2px 8px" }}>{ST_LABEL[f.status]}</span></td>
                               <td style={{ ...S.td, whiteSpace:"nowrap" }}>
-                                <button onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</button>
-                                {f.status === "rascunho" && <button onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</button>}
+                                <button data-arato-button="secondary" onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</button>
+                                {f.status === "rascunho" && <button data-arato-button="secondary" onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</button>}
                               </td>
                             </tr>
                           ))}
@@ -509,13 +510,13 @@ export default function FolhaEmpresaPage() {
               <>
                 <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
-                  <div style={{ marginLeft:"auto" }}><button onClick={()=>{ setAdiEdit({ data:new Date().toISOString().slice(0,10), competencia_ref:compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>+ Novo Adiantamento</button></div>
+                  <div style={{ marginLeft:"auto" }}><button data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data:new Date().toISOString().slice(0,10), competencia_ref:compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>+ Novo Adiantamento</button></div>
                 </div>
                 {adiantamentos.length === 0 ? (
-                  <div style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>💵</div><div>Nenhum adiantamento registrado.</div></div>
+                  <div data-arato-statistic="display" style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>💵</div><div>Nenhum adiantamento registrado.</div></div>
                 ) : (
                   <div style={S.card}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead><tr>{["Funcionário","Data","Valor","Descontar em","Descrição","Status",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {adiantamentos.map(a => (
@@ -526,7 +527,7 @@ export default function FolhaEmpresaPage() {
                             <td style={S.td}>{a.competencia_ref ? nomeMes(a.competencia_ref) : "—"}</td>
                             <td style={{ ...S.td, color:"#888" }}>{a.descricao || "—"}</td>
                             <td style={S.td}><span style={{ fontSize:11, fontWeight:700, color:ADI_COLOR[a.status], background:ADI_COLOR[a.status]+"18", borderRadius:4, padding:"2px 8px" }}>{ADI_LABEL[a.status]}</span></td>
-                            <td style={S.td}>{a.status==="pendente" && <button onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>}</td>
+                            <td style={S.td}>{a.status==="pendente" && <button data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -541,13 +542,13 @@ export default function FolhaEmpresaPage() {
               <>
                 <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   <span style={{ fontSize:13, color:"#555" }}>{premiacoes.length} gratificação(ões) registradas</span>
-                  <div style={{ marginLeft:"auto" }}><button onClick={()=>{ setPremEdit({ mes_referencia:compAtual() }); setModalPrem(true); }} style={S.btn("#C9921B")}>+ Nova Gratificação</button></div>
+                  <div style={{ marginLeft:"auto" }}><button data-arato-button="secondary" onClick={()=>{ setPremEdit({ mes_referencia:compAtual() }); setModalPrem(true); }} style={S.btn("#C9921B")}>+ Nova Gratificação</button></div>
                 </div>
                 {premiacoes.length === 0 ? (
-                  <div style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>⭐</div><div>Nenhuma gratificação registrada.</div></div>
+                  <div data-arato-statistic="display" style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>⭐</div><div>Nenhuma gratificação registrada.</div></div>
                 ) : (
                   <div style={S.card}>
-                    <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead><tr>{["Funcionário","Mês Ref.","Descrição","Valor","Incluída na Folha",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {premiacoes.map(p => (
@@ -557,7 +558,7 @@ export default function FolhaEmpresaPage() {
                             <td style={S.td}>{p.descricao}</td>
                             <td style={{ ...S.td, fontWeight:700, color:"#C9921B", fontVariantNumeric:"tabular-nums" }}>{moeda(p.valor)}</td>
                             <td style={S.td}>{p.lancado_financeiro ? <span style={{ fontSize:11, color:"#16A34A", fontWeight:700 }}>✓ Sim</span> : <span style={{ fontSize:11, color:"#888" }}>Pendente</span>}</td>
-                            <td style={S.td}>{!p.lancado_financeiro && <button onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</button>}</td>
+                            <td style={S.td}>{!p.lancado_financeiro && <button data-arato-button="secondary" onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</button>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -575,13 +576,13 @@ export default function FolhaEmpresaPage() {
         <div style={S.overlay} onClick={()=>setModalFolha(false)}>
           <div style={{ ...S.modal, width:"min(96vw,1100px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <h2 style={{ margin:0, fontSize:17, color:"#0B2D50" }}>Folha de Pagamento</h2>
-              <button onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:17, color:"#0B2D50" }}>Folha de Pagamento</h2>
+              <button data-arato-button="icon" onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             {/* Competência editável no modal — permite retroativo */}
-            <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
+            <div data-arato-panel="true" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
               <div>
-                <label style={{ ...S.label, marginBottom:2 }}>Competência</label>
+                <label data-arato-label="true" style={{ ...S.label, marginBottom:2 }}>Competência</label>
                 {folhaEdit.id
                   ? <span style={{ fontSize:14, fontWeight:700, color:"#0B2D50" }}>{nomeMes(folhaEdit.competencia ?? "")}</span>
                   : <InputData type="month" value={folhaEdit.competencia ?? ""} onChange={e => setFolhaEdit(p => ({ ...p, competencia: e.target.value }))} style={{ ...S.inp, fontSize:13 }} />
@@ -591,7 +592,7 @@ export default function FolhaEmpresaPage() {
             </div>
             <div style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
               {([["funcionarios","Funcionários"],["resumo","Resumo"]] as const).map(([k,l])=>(
-                <button key={k} onClick={()=>setAbaModal(k)} style={{ padding:"8px 18px", background:"none", border:"none", borderBottom:abaModal===k?"2px solid #1A4870":"2px solid transparent", fontWeight:abaModal===k?700:400, color:abaModal===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>{l}</button>
+                <button data-arato-button="toggle" key={k} onClick={()=>setAbaModal(k)} style={{ padding:"8px 18px", background:"none", border:"none", borderBottom:abaModal===k?"2px solid #1A4870":"2px solid transparent", fontWeight:abaModal===k?700:400, color:abaModal===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>{l}</button>
               ))}
             </div>
             {abaModal === "funcionarios" && (
@@ -599,8 +600,8 @@ export default function FolhaEmpresaPage() {
                 {(folhaEdit.funcionarios ?? []).length === 0 ? (
                   <div style={{ textAlign:"center", padding:24, color:"#888" }}>Nenhum funcionário vinculado a esta empresa. Cadastre funcionários com esta empresa em Cadastros → Funcionários.</div>
                 ) : (
-                  <div style={{ overflowX:"auto" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                  <div data-arato-grid-container="true" style={{ overflowX:"auto" }}>
+                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                       <thead><tr>{["","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Outros Desc.","Benefícios","Líquido"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {(folhaEdit.funcionarios ?? []).map((f, idx) => {
@@ -609,7 +610,7 @@ export default function FolhaEmpresaPage() {
                           return (
                             <>
                               <tr key={idx} style={{ background:idx%2===0?"#fff":"#FAFBFD" }}>
-                                <td style={{ ...S.td, width:28 }}><button onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#1A4870", padding:"0 4px" }}>{expanded?"▾":"▸"}</button></td>
+                                <td style={{ ...S.td, width:28 }}><button data-arato-button="secondary" onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:"#1A4870", padding:"0 4px" }}>{expanded?"▾":"▸"}</button></td>
                                 <td style={{ ...S.td, fontWeight:600, minWidth:160 }}>{f.nome_funcionario}</td>
                                 <td style={S.td}><input type="number" value={f.salario_base} onChange={e=>setFuncField(idx,"salario_base",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:100, textAlign:"right" }} /></td>
                                 <td style={S.td}><input type="number" value={f.gratificacao} onChange={e=>setFuncField(idx,"gratificacao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:90, textAlign:"right", borderColor:f.gratificacao>0?"#C9921B":"#DDE2EE" }} /></td>
@@ -623,13 +624,13 @@ export default function FolhaEmpresaPage() {
                               {expanded && (
                                 <tr key={`${idx}-d`} style={{ background:"#F8FAFD" }}>
                                   <td colSpan={10} style={{ padding:"12px 16px 16px 44px" }}>
-                                    <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
-                                      <div><label style={S.label}>Vale Transporte</label><input type="number" value={f.vale_transporte} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
-                                      <div><label style={S.label}>Vale Refeição</label><input type="number" value={f.vale_refeicao} onChange={e=>setFuncField(idx,"vale_refeicao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
-                                      <div><label style={S.label}>Outros Benefícios</label><input type="number" value={f.outros_beneficios} onChange={e=>setFuncField(idx,"outros_beneficios",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
-                                      <div><label style={S.label}>Outros Descontos (desc.)</label><input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descrição..." /></div>
-                                      <div><label style={S.label}>INSS Patronal</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.inss_patronal)}</span></div>
-                                      <div><label style={S.label}>FGTS</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.fgts)}</span></div>
+                                    <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
+                                      <div><label data-arato-label="true" style={S.label}>Vale Transporte</label><input type="number" value={f.vale_transporte} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
+                                      <div><label data-arato-label="true" style={S.label}>Vale Refeição</label><input type="number" value={f.vale_refeicao} onChange={e=>setFuncField(idx,"vale_refeicao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
+                                      <div><label data-arato-label="true" style={S.label}>Outros Benefícios</label><input type="number" value={f.outros_beneficios} onChange={e=>setFuncField(idx,"outros_beneficios",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
+                                      <div><label data-arato-label="true" style={S.label}>Outros Descontos (desc.)</label><input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descrição..." /></div>
+                                      <div><label data-arato-label="true" style={S.label}>INSS Patronal</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.inss_patronal)}</span></div>
+                                      <div><label data-arato-label="true" style={S.label}>FGTS</label><span style={{ fontSize:13, color:"#888" }}>{moeda(f.fgts)}</span></div>
                                     </div>
                                   </td>
                                 </tr>
@@ -644,7 +645,7 @@ export default function FolhaEmpresaPage() {
               </div>
             )}
             {abaModal === "resumo" && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <div style={{ border:"0.5px solid #DDE2EE", borderRadius:8, padding:16 }}>
                   <div style={{ fontSize:12, color:"#888", marginBottom:12, fontWeight:700 }}>CUSTO DO TRABALHADOR</div>
                   {[["Total Bruto",moeda(totalBrutoFolhaEdit),"#0B2D50"],["(−) INSS Trabalhador",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.inss_trabalhador,0)??0),"#888"],["(−) IRRF",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.irrf,0)??0),"#888"],["(−) Adiantamentos",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.adiantamento,0)??0),"#EF9F27"],["(−) Outros Descontos",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.outros_descontos,0)??0),"#888"],["(+) Benefícios",moeda(folhaEdit.funcionarios?.reduce((s,f)=>s+f.vale_transporte+f.vale_refeicao+f.outros_beneficios,0)??0),"#16A34A"]].map(([l,v,c])=>(
@@ -660,7 +661,7 @@ export default function FolhaEmpresaPage() {
                   <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0 0", fontSize:14, fontWeight:700 }}><span>Custo Total Empresa</span><span style={{ color:"#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(totalBrutoFolhaEdit+totalINSSPatFolhaEdit)}</span></div>
                 </div>
                 <div style={{ gridColumn:"1/-1" }}>
-                  <label style={S.label}>Observações da Folha</label>
+                  <label data-arato-label="true" style={S.label}>Observações da Folha</label>
                   <textarea rows={3} value={folhaEdit.obs??""} onChange={e=>setFolhaEdit(p=>({...p,obs:e.target.value}))} style={{ ...S.inp, width:"100%", resize:"vertical" }} />
                 </div>
               </div>
@@ -668,12 +669,12 @@ export default function FolhaEmpresaPage() {
             <div style={{ display:"flex", justifyContent:"space-between", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <div>
                 {folhaEdit.id && (
-                  <button onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>↻ Replicar Folha</button>
+                  <button data-arato-button="secondary" onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>↻ Replicar Folha</button>
                 )}
               </div>
               <div style={{ display:"flex", gap:8 }}>
-                <button onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-                <button onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Salvar Folha"}</button>
+                <button data-arato-button="secondary" onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+                <button data-arato-button="secondary" onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Salvar Folha"}</button>
               </div>
             </div>
           </div>
@@ -685,32 +686,32 @@ export default function FolhaEmpresaPage() {
         <div style={S.overlay} onClick={()=>setModalAdi(false)}>
           <div style={{ ...S.modal, width:"min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Novo Adiantamento Salarial</h2>
-              <button onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Novo Adiantamento Salarial</h2>
+              <button data-arato-button="icon" onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado automaticamente na data do adiantamento.</p>
-            <div style={{ display:"grid", gap:14 }}>
+            <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
               <div>
-                <label style={S.label}>Funcionário *</label>
-                <select value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
+                <label data-arato-label="true" style={S.label}>Funcionário *</label>
+                <SelectField value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                <div><label style={S.label}>Data *</label><InputData type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
-                <div><label style={S.label}>Valor (R$) *</label><input type="number" value={adiEdit.valor??""} onChange={e=>setAdiEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div><label data-arato-label="true" style={S.label}>Data *</label><InputData type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label data-arato-label="true" style={S.label}>Valor (R$) *</label><input type="number" value={adiEdit.valor??""} onChange={e=>setAdiEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
               </div>
               <div>
-                <label style={S.label}>Descontar na competência</label>
+                <label data-arato-label="true" style={S.label}>Descontar na competência</label>
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
               </div>
-              <div><label style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label><select value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}><option value="">Selecionar...</option>{contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</select><span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span></div>
-              <div><label style={S.label}>Descrição / Motivo</label><input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" /></div>
+              <div><label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label><SelectField value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}><option value="">Selecionar...</option>{contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField><span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span></div>
+              <div><label data-arato-label="true" style={S.label}>Descrição / Motivo</label><input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" /></div>
             </div>
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Registrar e Gerar CP"}</button>
+              <button data-arato-button="secondary" onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving?"Salvando...":"Registrar e Gerar CP"}</button>
             </div>
           </div>
         </div>
@@ -721,14 +722,14 @@ export default function FolhaEmpresaPage() {
         <div style={S.overlay} onClick={()=>setModalRep(false)}>
           <div style={{ ...S.modal, width:"min(96vw,440px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Replicar Folha</h2>
-              <button onClick={()=>setModalRep(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Replicar Folha</h2>
+              <button data-arato-button="icon" onClick={()=>setModalRep(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:13, color:"#555", marginTop:-8, marginBottom:16 }}>
               Copia a estrutura da folha de <strong>{nomeMes(repFolha.competencia)}</strong> (salários, benefícios e encargos) para as próximas competências como rascunho. Adiantamentos são zerados.
             </p>
             <div style={{ marginBottom:20 }}>
-              <label style={S.label}>Replicar para as próximas</label>
+              <label data-arato-label="true" style={S.label}>Replicar para as próximas</label>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <input type="number" min={1} max={12} value={repNMeses} onChange={e=>setRepNMeses(Math.min(12,Math.max(1,parseInt(e.target.value)||1)))} style={{ ...S.inp, width:80, textAlign:"center", fontSize:16, fontWeight:700 }} />
                 <span style={{ fontSize:13, color:"#555" }}>competência{repNMeses>1?"s":""}</span>
@@ -750,8 +751,8 @@ export default function FolhaEmpresaPage() {
               );
             })()}
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalRep(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={replicarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Replicando...":"Replicar"}</button>
+              <button data-arato-button="secondary" onClick={()=>setModalRep(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={replicarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Replicando...":"Replicar"}</button>
             </div>
           </div>
         </div>
@@ -762,27 +763,27 @@ export default function FolhaEmpresaPage() {
         <div style={S.overlay} onClick={()=>setModalPrem(false)}>
           <div style={{ ...S.modal, width:"min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Nova Gratificação</h2>
-              <button onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Nova Gratificação</h2>
+              <button data-arato-button="icon" onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>Incluída no bruto do mês de referência e carregada ao criar a folha.</p>
-            <div style={{ display:"grid", gap:14 }}>
+            <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
               <div>
-                <label style={S.label}>Funcionário *</label>
-                <select value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
+                <label data-arato-label="true" style={S.label}>Funcionário *</label>
+                <SelectField value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                <div><label style={S.label}>Mês de referência *</label><InputData type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
-                <div><label style={S.label}>Valor (R$) *</label><input type="number" value={premEdit.valor??""} onChange={e=>setPremEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div><label data-arato-label="true" style={S.label}>Mês de referência *</label><InputData type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} /></div>
+                <div><label data-arato-label="true" style={S.label}>Valor (R$) *</label><input type="number" value={premEdit.valor??""} onChange={e=>setPremEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" /></div>
               </div>
-              <div><label style={S.label}>Descrição *</label><input type="text" value={premEdit.descricao??""} onChange={e=>setPremEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Gratificação de produtividade..." /></div>
+              <div><label data-arato-label="true" style={S.label}>Descrição *</label><input type="text" value={premEdit.descricao??""} onChange={e=>setPremEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Gratificação de produtividade..." /></div>
             </div>
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving?"Salvando...":"Salvar Gratificação"}</button>
+              <button data-arato-button="secondary" onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving?"Salvando...":"Salvar Gratificação"}</button>
             </div>
           </div>
         </div>

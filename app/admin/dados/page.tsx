@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -157,7 +158,7 @@ export default function DadosAdminPage() {
 
   if (!raccotloGestor) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
+      <div data-arato-statistic="display" style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
         <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Acesso restrito a Gestores</div>
       </div>
@@ -358,7 +359,7 @@ export default function DadosAdminPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Dados & Limpeza de Clientes</h1>
+          <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Dados & Limpeza de Clientes</h1>
           <span style={{ padding: "2px 10px", background: "#E24B4A", color: "white", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>ZONA DE PERIGO</span>
         </div>
         <p style={{ margin: 0, fontSize: 13, color: "#666" }}>Ações irreversíveis de gestão de dados. Todas as exclusões são permanentes e não podem ser desfeitas.</p>
@@ -371,7 +372,7 @@ export default function DadosAdminPage() {
           { id: "limpar_dados"    as Aba, icon: "🧹", label: "Limpar Dados",     desc: "Selecione exatamente quais dados excluir" },
           { id: "manutencao"      as Aba, icon: "🔧", label: "Manutenção",       desc: "Corrigir dados faltantes em massa (IBGE, etc.)" },
         ]).map(a => (
-          <button key={a.id} onClick={() => { setAba(a.id); setResultadoCliente(null); setResultadoLimpeza(null); }}
+          <button data-arato-button="toggle" key={a.id} onClick={() => { setAba(a.id); setResultadoCliente(null); setResultadoLimpeza(null); }}
             style={{ padding: "12px 20px", borderRadius: 10, cursor: "pointer", border: `2px solid ${aba === a.id ? "#E24B4A" : "var(--border)"}`, background: aba === a.id ? "#FFF0F0" : "white", textAlign: "left", minWidth: 220 }}>
             <div style={{ fontSize: 18, marginBottom: 4 }}>{a.icon}</div>
             <div style={{ fontWeight: 700, fontSize: 13, color: aba === a.id ? "#E24B4A" : "var(--text-1)" }}>{a.label}</div>
@@ -383,15 +384,15 @@ export default function DadosAdminPage() {
       {/* ─── ABA: EXCLUIR CLIENTE ───────────────────────────────────────────── */}
       {aba === "excluir_cliente" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ ...card, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div data-arato-panel="true" style={{ ...card, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>1. Cliente</span>
-            <select value={contaSelecionada}
+            <SelectField value={contaSelecionada}
               onChange={e => { setContaSelecionada(e.target.value); setConfirmaTexto(""); setResultadoCliente(null); }}
               style={{ flex: 1, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
               <option value="">— selecione —</option>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.fazendas.length} faz.)</option>)}
-            </select>
-            <button onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
+            </SelectField>
+            <button data-arato-button="secondary" onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
               {carregandoContas ? "⏳" : "↺"}
             </button>
           </div>
@@ -417,12 +418,12 @@ export default function DadosAdminPage() {
                   )}
                   <div style={{ marginTop: 10, fontSize: 11, color: "#999" }}>Usuários de autenticação NÃO são excluídos — remova-os em Supabase → Authentication se necessário.</div>
                 </div>
-                <div style={{ ...card, padding: "18px 22px" }}>
+                <div data-arato-panel="true" style={{ ...card, padding: "18px 22px" }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>Para confirmar, digite exatamente o nome da conta:</div>
                   <code style={{ display: "block", background: "var(--bg-page)", padding: "6px 12px", borderRadius: 6, fontSize: 14, color: "#111111", fontWeight: 700, marginBottom: 10 }}>{contaExcluirObj.nome}</code>
                   <input value={confirmaTexto} onChange={e => setConfirmaTexto(e.target.value)} placeholder="Digite o nome da conta aqui..."
                     style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaTexto === contaExcluirObj.nome ? "#E24B4A" : "var(--border)"}`, borderRadius: 8, outline: "none" }} />
-                  <button onClick={excluirClienteCompleto} disabled={confirmaTexto !== contaExcluirObj.nome || deletandoCliente}
+                  <button data-arato-button="toggle" onClick={excluirClienteCompleto} disabled={confirmaTexto !== contaExcluirObj.nome || deletandoCliente}
                     style={{ marginTop: 14, width: "100%", padding: "11px 0", borderRadius: 8, border: "none", background: confirmaTexto !== contaExcluirObj.nome ? "var(--border)" : "#E24B4A", color: confirmaTexto !== contaExcluirObj.nome ? "var(--text-3)" : "white", fontWeight: 700, fontSize: 14, cursor: confirmaTexto !== contaExcluirObj.nome ? "default" : "pointer" }}>
                     {deletandoCliente ? "⏳ Excluindo..." : `🗑️ Excluir "${contaExcluirObj.nome}" permanentemente`}
                   </button>
@@ -443,32 +444,32 @@ export default function DadosAdminPage() {
 
       {/* ─── ABA: LIMPAR DADOS ─────────────────────────────────────────────── */}
       {aba === "limpar_dados" && (
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 20, alignItems: "flex-start" }}>
+        <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 20, alignItems: "flex-start" }}>
 
           {/* Painel esquerdo */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ ...card, padding: "14px 16px" }}>
+            <div data-arato-panel="true" style={{ ...card, padding: "14px 16px" }}>
               <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>1. Cliente</div>
-              <select value={contaLimpar}
+              <SelectField value={contaLimpar}
                 onChange={e => { setContaLimpar(e.target.value); setFazendaLimpar(""); setContagens({}); setSubSelecionados(new Set()); setResultadoLimpeza(null); }}
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
                 <option value="">— selecione —</option>
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.fazendas.length} faz.)</option>)}
-              </select>
+              </SelectField>
             </div>
 
             {contaLimparObj && (
-              <div style={{ ...card, padding: "14px 16px" }}>
+              <div data-arato-panel="true" style={{ ...card, padding: "14px 16px" }}>
                 <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>2. Fazenda</div>
-                <select value={fazendaLimpar}
+                <SelectField value={fazendaLimpar}
                   onChange={e => { setFazendaLimpar(e.target.value); setContagens({}); setSubSelecionados(new Set()); setResultadoLimpeza(null); }}
                   style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
                   <option value="">— selecione —</option>
                   {contaLimparObj.fazendas.length > 1 && <option value="todas">Todas as fazendas</option>}
                   {contaLimparObj.fazendas.map(f => <option key={f.id} value={f.id}>{f.nome} ({f.municipio}/{f.estado})</option>)}
-                </select>
+                </SelectField>
                 {fazendaLimpar && (
-                  <button onClick={carregarContagens} disabled={carregandoContagens}
+                  <button data-arato-button="secondary" onClick={carregarContagens} disabled={carregandoContagens}
                     style={{ marginTop: 10, width: "100%", padding: "7px 0", border: "0.5px solid #111111", borderRadius: 8, background: "white", color: "#111111", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                     {carregandoContagens ? "⏳ Contando..." : "↺ Carregar contagens"}
                   </button>
@@ -522,11 +523,11 @@ export default function DadosAdminPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={selecionarTudo}
+                    <button data-arato-button="secondary" onClick={selecionarTudo}
                       style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                       Marcar tudo
                     </button>
-                    <button onClick={() => { setSubSelecionados(new Set()); setGruposExpandidos(new Set()); }}
+                    <button data-arato-button="secondary" onClick={() => { setSubSelecionados(new Set()); setGruposExpandidos(new Set()); }}
                       style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                       Limpar
                     </button>
@@ -574,7 +575,7 @@ export default function DadosAdminPage() {
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             {expandido && (
-                              <button
+                              <button data-arato-button="toggle"
                                 onClick={e => { e.stopPropagation(); toggleGrupoTudo(grupo); }}
                                 style={{ padding: "3px 9px", border: `0.5px solid ${grupo.cor}`, borderRadius: 6, fontSize: 11, background: todosSelecionados ? grupo.cor : "white", color: todosSelecionados ? "white" : grupo.cor, cursor: "pointer", fontWeight: 600 }}
                               >
@@ -640,13 +641,13 @@ export default function DadosAdminPage() {
 
                 {/* Confirmação */}
                 {subSelecionados.size > 0 && (
-                  <div style={{ ...card, border: "1.5px solid #E24B4A", padding: "18px 22px" }}>
+                  <div data-arato-panel="true" style={{ ...card, border: "1.5px solid #E24B4A", padding: "18px 22px" }}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>
                       Digite <code style={{ background: "var(--bg-page)", padding: "2px 7px", borderRadius: 4, color: "#E24B4A", fontWeight: 700 }}>CONFIRMO</code> para habilitar:
                     </div>
                     <input value={confirmaDeletar} onChange={e => setConfirmaDeletar(e.target.value)} placeholder="Digite CONFIRMO"
                       style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaDeletar === "CONFIRMO" ? "#E24B4A" : "var(--border)"}`, borderRadius: 8, outline: "none" }} />
-                    <button onClick={executarLimpeza} disabled={confirmaDeletar !== "CONFIRMO" || deletandoDados}
+                    <button data-arato-button="toggle" onClick={executarLimpeza} disabled={confirmaDeletar !== "CONFIRMO" || deletandoDados}
                       style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 8, border: "none", background: confirmaDeletar !== "CONFIRMO" ? "var(--border)" : "#E24B4A", color: confirmaDeletar !== "CONFIRMO" ? "var(--text-3)" : "white", fontWeight: 700, fontSize: 14, cursor: confirmaDeletar !== "CONFIRMO" ? "default" : "pointer" }}>
                       {deletandoDados
                         ? "⏳ Limpando..."
@@ -699,7 +700,7 @@ export default function DadosAdminPage() {
                   Necessário para emissão de NF-e em produção.
                 </div>
               </div>
-              <button
+              <button data-arato-button="toggle"
                 onClick={async () => {
                   if (!window.confirm("Corrigir IBGE de todos os compradores sem código? Isso pode levar alguns segundos.")) return;
                   setCorrigindoIbge(true);
@@ -731,7 +732,7 @@ export default function DadosAdminPage() {
                   {resultadoIbge.erros > 0 && <span style={{ fontSize: 13, color: "#E24B4A", fontWeight: 700 }}>✗ Erros: {resultadoIbge.erros}</span>}
                 </div>
                 <div style={{ maxHeight: 320, overflowY: "auto", border: "0.5px solid var(--border)", borderRadius: 8 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "#F4F6FA", borderBottom: "0.5px solid var(--border)" }}>
                         <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Pessoa</th>

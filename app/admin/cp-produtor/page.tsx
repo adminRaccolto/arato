@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import { supabase as sb } from "../../../lib/supabase";
 
@@ -286,8 +287,8 @@ export default function CpProdutorPage() {
       </div>
 
       {/* Seletor de conta */}
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
-        <select
+      <div data-arato-filters="true" style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20, flexWrap: "wrap" }}>
+        <SelectField
           value={contaId}
           onChange={e => setContaId(e.target.value)}
           style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #DDE2EE", fontSize: 13, minWidth: 300 }}
@@ -296,11 +297,11 @@ export default function CpProdutorPage() {
           {contas.map(c => (
             <option key={c.id} value={c.id}>{c.nome} — {c.tipo.toUpperCase()}</option>
           ))}
-        </select>
+        </SelectField>
 
         {contaId && !carregando && lancamentos.length > 0 && (
           <>
-            <button
+            <button data-arato-button="primary"
               onClick={processarTudoAuto}
               disabled={processandoAuto || processando}
               style={{ padding: "8px 18px", background: "#7C2D12", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: (processandoAuto || processando) ? "not-allowed" : "pointer", opacity: (processandoAuto || processando) ? 0.7 : 1 }}
@@ -308,7 +309,7 @@ export default function CpProdutorPage() {
               {processandoAuto ? "⏳ Processando tudo..." : `🤖 Processar tudo automaticamente (${lancamentos.length})`}
             </button>
 
-            <button
+            <button data-arato-button="primary"
               onClick={processarLoteIA}
               disabled={processando}
               style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: processando ? "not-allowed" : "pointer", opacity: processando ? 0.7 : 1 }}
@@ -317,7 +318,7 @@ export default function CpProdutorPage() {
             </button>
 
             {comSugestao > 0 && (
-              <button
+              <button data-arato-button="primary"
                 onClick={confirmarTodos}
                 style={{ padding: "8px 18px", background: "#166534", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
               >
@@ -326,7 +327,7 @@ export default function CpProdutorPage() {
             )}
 
             {confirmados > 0 && (
-              <button
+              <button data-arato-button="primary"
                 onClick={salvarConfirmados}
                 disabled={salvando}
                 style={{ padding: "8px 18px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: salvando ? "not-allowed" : "pointer", opacity: salvando ? 0.7 : 1 }}
@@ -342,7 +343,7 @@ export default function CpProdutorPage() {
       {totalPaginas > 1 && (
         <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
           {Array.from({ length: totalPaginas }, (_, i) => (
-            <button
+            <button data-arato-button="toggle"
               key={i}
               onClick={() => setPagina(i)}
               style={{
@@ -370,8 +371,8 @@ export default function CpProdutorPage() {
 
       {/* Tabela */}
       {loteAtual.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "#F4F6FA", borderBottom: "1.5px solid #DDE2EE" }}>
                 <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "#555" }}>Data</th>
@@ -430,7 +431,7 @@ export default function CpProdutorPage() {
                     )}
                   </td>
                   <td style={{ padding: "9px 12px" }}>
-                    <select
+                    <SelectField
                       value={l.selecionado ?? ""}
                       onChange={e => alterarProdutor(l.id, e.target.value)}
                       style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #DDE2EE", fontSize: 12, width: "100%", minWidth: 150 }}
@@ -441,13 +442,13 @@ export default function CpProdutorPage() {
                           {p.nome}{p.fazenda_nome ? ` (${p.fazenda_nome})` : ""}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   </td>
                   <td style={{ padding: "9px 12px", textAlign: "center" }}>
                     {l.confirmado ? (
                       <span style={{ color: "#166534", fontWeight: 700, fontSize: 16 }}>✓</span>
                     ) : (
-                      <button
+                      <button data-arato-button="toggle"
                         onClick={() => confirmarIndividual(l.id)}
                         disabled={!l.selecionado}
                         style={{

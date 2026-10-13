@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -157,49 +158,49 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 480, boxShadow: "0 12px 48px #0004" }}>
-        <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>Registrar Pagamento Manual</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: 480, boxShadow: "0 12px 48px #0004" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>Registrar Pagamento Manual</div>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
         </div>
-        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={lbl}>Conta *</label>
-            <select style={inp} value={form.conta_id} onChange={e => setForm(f => ({ ...f, conta_id: e.target.value }))}>
+        <div data-arato-dialog-body="true" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Conta *</label>
+            <SelectField style={inp} value={form.conta_id} onChange={e => setForm(f => ({ ...f, conta_id: e.target.value }))}>
               <option value="">Selecione a conta</option>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            </SelectField>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Valor (R$) *</label>
+              <label data-arato-label="true" style={lbl}>Valor (R$) *</label>
               <InputNumerico style={inp} min="0"
                 value={form.valor} onChange={v => setForm(f => ({ ...f, valor: v }))} />
             </div>
             <div>
-              <label style={lbl}>Data do pagamento</label>
+              <label data-arato-label="true" style={lbl}>Data do pagamento</label>
               <InputData style={inp} type="date" value={form.data_pagamento}
                 onChange={e => setForm(f => ({ ...f, data_pagamento: e.target.value }))} />
             </div>
           </div>
-          <div>
-            <label style={lbl}>Método</label>
-            <select style={inp} value={form.metodo_pagamento} onChange={e => setForm(f => ({ ...f, metodo_pagamento: e.target.value as MetodoPagamento }))}>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Método</label>
+            <SelectField style={inp} value={form.metodo_pagamento} onChange={e => setForm(f => ({ ...f, metodo_pagamento: e.target.value as MetodoPagamento }))}>
               {(Object.keys(METODO_LABEL) as MetodoPagamento[]).map(m => (
                 <option key={m} value={m}>{METODO_LABEL[m]}</option>
               ))}
-            </select>
+            </SelectField>
           </div>
-          <div>
-            <label style={lbl}>Observação</label>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Observação</label>
             <input style={inp} placeholder="Ex: pagamento via depósito, contrato especial..."
               value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
           </div>
           {erro && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, color: "#991B1B", fontSize: 12 }}>{erro}</div>}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 8, borderTop: "0.5px solid var(--bg-tag)" }}>
-            <button style={btnSecondary} onClick={onClose}>Cancelar</button>
-            <button style={btnPrimary} onClick={salvar} disabled={salvando}>
+          <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 8, borderTop: "0.5px solid var(--bg-tag)" }}>
+            <button data-arato-button="secondary" style={btnSecondary} onClick={onClose}>Cancelar</button>
+            <button data-arato-button="primary" style={btnPrimary} onClick={salvar} disabled={salvando}>
               {salvando ? "Salvando…" : "Registrar"}
             </button>
           </div>
@@ -277,7 +278,7 @@ function AbaAssinaturas() {
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map(k => (
-          <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 16px" }}>
+          <div data-arato-statistic="display" key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: k.cor }}>{k.valor}</div>
           </div>
@@ -285,19 +286,19 @@ function AbaAssinaturas() {
       </div>
 
       {/* Filtros */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input style={{ ...inp, width: 220 }} placeholder="Buscar por conta..." value={busca} onChange={e => setBusca(e.target.value)} />
-        <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusAssinatura | "")}>
+        <SelectField style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusAssinatura | "")}>
           <option value="">Todos os status</option>
           {(Object.keys(STATUS_ASS) as StatusAssinatura[]).map(s => (
             <option key={s} value={s}>{STATUS_ASS[s].label}</option>
           ))}
-        </select>
-        <select style={{ ...inp, width: 160 }} value={filtroPlano} onChange={e => setFiltroPlano(e.target.value)}>
+        </SelectField>
+        <SelectField style={{ ...inp, width: 160 }} value={filtroPlano} onChange={e => setFiltroPlano(e.target.value)}>
           <option value="">Todos os planos</option>
           {planosDistintos.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
+        </SelectField>
+        <button data-arato-button="secondary" style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
         <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>{filtradas.length} de {lista.length}</div>
       </div>
 
@@ -308,7 +309,7 @@ function AbaAssinaturas() {
         ) : filtradas.length === 0 ? (
           <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Nenhuma assinatura encontrada</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg-card)" }}>
                 {["Conta", "Plano", "Período", "Preço", "Status", "Início", "Vencimento", "Próx. Cobr.", ""].map((h, i) => (
@@ -346,7 +347,7 @@ function AbaAssinaturas() {
                     <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--text-2)", textAlign: "center" }}>{fmtDate(a.data_proximo_pagamento)}</td>
                     <td style={{ padding: "11px 14px", textAlign: "center" }}>
                       {a.status !== "cancelada" && (
-                        <button
+                        <button data-arato-button="danger"
                           onClick={() => cancelarAssinatura(a.id, a.asaas_subscription_id)}
                           disabled={cancelando === a.id}
                           style={{ padding: "4px 10px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FEF2F2", cursor: "pointer", fontSize: 11, color: "#E24B4A", fontWeight: 600 }}
@@ -414,26 +415,26 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
       )}
 
       {/* Filtros */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusPagamento | "")}>
+      <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <SelectField style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusPagamento | "")}>
           <option value="">Todos os status</option>
           {(Object.keys(STATUS_PAG) as StatusPagamento[]).map(s => (
             <option key={s} value={s}>{STATUS_PAG[s].label}</option>
           ))}
-        </select>
-        <select style={{ ...inp, width: 140 }} value={filtroMetodo} onChange={e => setFiltroMetodo(e.target.value as MetodoPagamento | "")}>
+        </SelectField>
+        <SelectField style={{ ...inp, width: 140 }} value={filtroMetodo} onChange={e => setFiltroMetodo(e.target.value as MetodoPagamento | "")}>
           <option value="">Todos os métodos</option>
           {(Object.keys(METODO_LABEL) as MetodoPagamento[]).map(m => (
             <option key={m} value={m}>{METODO_LABEL[m]}</option>
           ))}
-        </select>
+        </SelectField>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <InputData style={{ ...inp, width: 140 }} type="date" value={periodoIni} onChange={e => setPeriodoIni(e.target.value)} placeholder="De" />
           <span style={{ color: "var(--text-muted)", fontSize: 12 }}>até</span>
           <InputData style={{ ...inp, width: 140 }} type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} placeholder="Até" />
         </div>
-        <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
-        <button style={{ ...btnPrimary, padding: "7px 14px", fontSize: 12, marginLeft: "auto" }} onClick={() => setShowModal(true)}>
+        <button data-arato-button="secondary" style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
+        <button data-arato-button="primary" style={{ ...btnPrimary, padding: "7px 14px", fontSize: 12, marginLeft: "auto" }} onClick={() => setShowModal(true)}>
           + Registrar Manual
         </button>
       </div>
@@ -445,7 +446,7 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
         ) : filtrados.length === 0 ? (
           <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Nenhum pagamento encontrado</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg-card)" }}>
                 {["Vencimento", "Conta", "Valor", "Status", "Método", "Data Pag.", "Invoice"].map((h, i) => (
@@ -551,15 +552,15 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
     <div>
       {/* Sumário */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-        <div style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
+        <div data-arato-statistic="display" style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
           <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Total pendente</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{fmtBRL(totalPendente)}</div>
         </div>
-        <div style={{ background: "#FFF7ED", borderRadius: 12, border: "0.5px solid #EF9F2730", padding: "14px 16px" }}>
+        <div data-arato-statistic="display" style={{ background: "#FFF7ED", borderRadius: 12, border: "0.5px solid #EF9F2730", padding: "14px 16px" }}>
           <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Cobranças abertas</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#EF9F27" }}>{lista.filter(p => p.status === "pendente").length}</div>
         </div>
-        <div style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
+        <div data-arato-statistic="display" style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
           <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Vencidas</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{lista.filter(p => p.status === "vencido").length}</div>
         </div>
@@ -576,7 +577,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
+        <button data-arato-button="secondary" style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
       </div>
 
       {loading ? (
@@ -597,7 +598,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
                 {fmtBRL(grupo.pagamentos.reduce((s, p) => s + (p.valor ?? 0), 0))}
               </div>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#FAFBFD" }}>
                   {["Vencimento", "Valor", "Status", "Descrição", ""].map((h, i) => (
@@ -625,7 +626,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
                         {p.descricao ?? "—"}
                       </td>
                       <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                        <button
+                        <button data-arato-button="primary"
                           onClick={() => cobrarAsaas(p)}
                           disabled={cobrando === p.id}
                           style={{ padding: "4px 12px", border: "0.5px solid #0B1E35", borderRadius: 6, background: "#0B1E35", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}
@@ -670,7 +671,7 @@ export default function FaturamentoPage() {
 
       {/* Page header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+        <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           Faturamento
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
@@ -681,7 +682,7 @@ export default function FaturamentoPage() {
       {/* Tabs */}
       <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 24 }}>
         {ABAS.map(a => (
-          <button key={a.key} onClick={() => setAba(a.key)} style={{
+          <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
             padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
             fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
             color: aba === a.key ? "#0B1E35" : "#666",

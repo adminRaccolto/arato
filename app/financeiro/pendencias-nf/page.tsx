@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -299,9 +300,9 @@ export default function PendenciasNfPage() {
       <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências SIEG</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências SIEG</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               NFs importadas automaticamente que aguardam classificação de insumo / categoria
             </p>
@@ -324,7 +325,7 @@ export default function PendenciasNfPage() {
             { label: "Ignoradas", valor: totIgnoradas, sub: "sem movimentação", cor: "var(--text-3)", bg: "var(--bg-page)" },
             { label: "Total importado", valor: nfs.length, sub: "últimos 30 dias", cor: "#111111", bg: "#EEEEEE" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
               <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: k.cor }}>{k.valor}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -333,9 +334,9 @@ export default function PendenciasNfPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {["pendente", "classificada", "cancelada", "ignorada", "todas"].map(s => (
-            <button
+            <button data-arato-button="toggle"
               key={s}
               onClick={() => setFiltroStatus(s)}
               style={{
@@ -363,7 +364,7 @@ export default function PendenciasNfPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)", fontSize: 13 }}>Carregando…</div>
         ) : nfsFiltradas.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 48, textAlign: "center", color: "var(--text-3)" }}>
+          <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 48, textAlign: "center", color: "var(--text-3)" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
             <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-2)" }}>
               {filtroStatus === "pendente" ? "Nenhuma NF pendente — tudo classificado!" : "Nenhuma NF encontrada"}
@@ -371,7 +372,7 @@ export default function PendenciasNfPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["NF", "Fornecedor", "CNPJ Emitente", "Emissão", "Valor Total", "Status", ""].map(h => (
@@ -404,7 +405,7 @@ export default function PendenciasNfPage() {
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
-                      <button
+                      <button data-arato-button="secondary"
                         onClick={() => abrirModal(nf)}
                         style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #111111", background: "transparent", color: "#111111", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                       >
@@ -421,29 +422,29 @@ export default function PendenciasNfPage() {
 
       {/* ── Modal Classificação ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 16px", overflowY: "auto" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(900px, 97vw)", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 16px", overflowY: "auto" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(900px, 97vw)", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Header */}
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
                   NF {modal.numero}/{modal.serie} — {modal.nome_emitente || "—"}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {fmtDate(modal.data_emissao)} · {fmt(modal.valor_total ?? 0)} · CNPJ {(modal.cnpj_emitente || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
                 {modal.status === "pendente" && (
                   <>
-                    <button
+                    <button data-arato-button="primary"
                       onClick={() => { setModal(null); abrirVincular(modal); }}
                       style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     >
                       📎 Vincular a Previsão
                     </button>
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={() => ignorarNf(modal.id)}
                       style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     >
@@ -451,14 +452,14 @@ export default function PendenciasNfPage() {
                     </button>
                   </>
                 )}
-                <button onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                <button data-arato-button="primary" onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Fechar
                 </button>
               </div>
             </div>
 
             {/* Itens */}
-            <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
+            <div data-arato-dialog-body="true" style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
               {loadingItens ? (
                 <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando itens…</div>
               ) : !modal.itens?.length ? (
@@ -471,7 +472,7 @@ export default function PendenciasNfPage() {
                     const c = classif[item.id] ?? { insumo_id: "", categoria: "", centro_custo_id: "" };
                     const classificado = item.status_item === "classificado";
                     return (
-                      <div
+                      <div data-arato-panel="true"
                         key={item.id}
                         style={{
                           border: `0.5px solid ${classificado ? "#86EFAC" : "var(--border)"}`,
@@ -525,22 +526,22 @@ export default function PendenciasNfPage() {
                         </div>
 
                         {/* Seletores de classificação */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
-                            <select
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
+                            <SelectField
                               value={c.categoria}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, categoria: e.target.value } }))}
                               style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12 }}
                             >
                               <option value="">— Selecionar —</option>
                               {CATEGORIAS.map(cat => <option key={cat} value={cat}>{CAT_LABEL[cat]}</option>)}
-                            </select>
+                            </SelectField>
                           </div>
 
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
-                            <select
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
+                            <SelectField
                               value={c.insumo_id}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, insumo_id: e.target.value } }))}
                               style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12 }}
@@ -550,22 +551,22 @@ export default function PendenciasNfPage() {
                                 .filter(ins => !c.categoria || ins.categoria === c.categoria)
                                 .map(ins => <option key={ins.id} value={ins.id}>{ins.nome}</option>)
                               }
-                            </select>
+                            </SelectField>
                           </div>
 
                           <div>
-                            <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
-                            <select
+                            <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
+                            <SelectField
                               value={c.centro_custo_id}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, centro_custo_id: e.target.value } }))}
                               style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12 }}
                             >
                               <option value="">— Nenhum —</option>
                               {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
-                            </select>
+                            </SelectField>
                           </div>
 
-                          <button
+                          <button data-arato-button="toggle"
                             onClick={() => salvarItemClassif(item)}
                             disabled={!c.categoria && !c.insumo_id}
                             style={{
@@ -591,24 +592,24 @@ export default function PendenciasNfPage() {
 
       {/* ── Modal Vincular a Previsão ── */}
       {modalVincular && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(660px, 97vw)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(660px, 97vw)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
 
             {/* Header */}
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>📎 Vincular NF a Previsão</div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>📎 Vincular NF a Previsão</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
                 NF {modalVincular.numero}/{modalVincular.serie} · {modalVincular.nome_emitente} · {(modalVincular.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </div>
             </div>
 
             {/* Explicação */}
-            <div style={{ padding: "12px 24px", background: "#EFF6FF", borderBottom: "0.5px solid #BFDBFE", fontSize: 12, color: "#1D4ED8" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "12px 24px", background: "#EFF6FF", borderBottom: "0.5px solid #BFDBFE", fontSize: 12, color: "#1D4ED8" }}>
               Selecione um lançamento de <strong>previsão</strong> para confirmar com os dados desta NF. O lançamento será convertido em CP real e a CP gerada automaticamente pelo SIEG será cancelada.
             </div>
 
             {/* Busca */}
-            <div style={{ padding: "12px 24px 0" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "12px 24px 0" }}>
               <input
                 value={buscaPrevisao}
                 onChange={e => setBuscaPrevisao(e.target.value)}
@@ -618,7 +619,7 @@ export default function PendenciasNfPage() {
             </div>
 
             {/* Lista de previsões */}
-            <div style={{ flex: 1, overflow: "auto", padding: "12px 24px" }}>
+            <div data-arato-dialog-body="true" style={{ flex: 1, overflow: "auto", padding: "12px 24px" }}>
               {previsoes.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 32, color: "var(--text-3)", fontSize: 13 }}>
                   Nenhuma previsão (lançamento com natureza=previsão) encontrada.
@@ -674,14 +675,14 @@ export default function PendenciasNfPage() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary"
                 onClick={() => setModalVincular(null)}
                 style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancelar
               </button>
-              <button
+              <button data-arato-button="toggle"
                 onClick={confirmarVinculo}
                 disabled={!previsaoSel || vinculando}
                 style={{
@@ -700,23 +701,23 @@ export default function PendenciasNfPage() {
 
       {/* ── Modal Criar Regra ── */}
       {modalRegra && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(520px, 97vw)", padding: 28 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>💡 Criar Regra Automática?</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(520px, 97vw)", padding: 28 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>💡 Criar Regra Automática?</div>
             <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 20px", lineHeight: 1.6 }}>
               Deseja que o sistema classifique automaticamente nas próximas importações itens de
               {" "}<strong>{modalRegra.nomeEmit || modalRegra.cnpj}</strong>{" "}
               com o NCM <strong>{modalRegra.item.ncm || "(qualquer)"}</strong>?
             </p>
 
-            <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
-              <div><strong>Fornecedor:</strong> {modalRegra.nomeEmit} ({(modalRegra.cnpj || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")})</div>
-              <div><strong>NCM:</strong> {modalRegra.item.ncm || "—"} · <strong>Produto:</strong> {modalRegra.item.descricao}</div>
-              <div><strong>Classificação:</strong> {CAT_LABEL[classif[modalRegra.item.id]?.categoria || modalRegra.item.categoria || ""] || "—"} {insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome ? `→ ${insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome}` : ""}</div>
+            <div data-arato-dialog-body="true" style={{ background: "var(--bg-card)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
+              <div data-arato-dialog-body="true"><strong>Fornecedor:</strong> {modalRegra.nomeEmit} ({(modalRegra.cnpj || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")})</div>
+              <div data-arato-dialog-body="true"><strong>NCM:</strong> {modalRegra.item.ncm || "—"} · <strong>Produto:</strong> {modalRegra.item.descricao}</div>
+              <div data-arato-dialog-body="true"><strong>Classificação:</strong> {CAT_LABEL[classif[modalRegra.item.id]?.categoria || modalRegra.item.categoria || ""] || "—"} {insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome ? `→ ${insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome}` : ""}</div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Nome da regra (opcional)</label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Nome da regra (opcional)</label>
               <input
                 value={nomeRegra}
                 onChange={e => setNomeRegra(e.target.value)}
@@ -725,14 +726,14 @@ export default function PendenciasNfPage() {
               />
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary"
                 onClick={() => { setModalRegra(null); setNomeRegra(""); }}
                 style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Não, obrigado
               </button>
-              <button
+              <button data-arato-button="primary"
                 onClick={criarRegra}
                 disabled={criandoRegra}
                 style={{ padding: "8px 20px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}

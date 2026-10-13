@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
@@ -307,22 +308,22 @@ export default function AcertoFretePage() {
     };
 
     return (
-      <div style={modalStyle}>
-        <div style={boxStyle}>
+      <div data-arato-overlay="true" style={modalStyle}>
+        <div data-arato-dialog="page" style={boxStyle}>
           {/* Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Acerto de Frete</h2>
+          <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+            <div data-arato-dialog-body="true">
+              <div data-arato-dialog-body="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Acerto de Frete</h2>
                 {(() => { const st = STATUS_LABEL[acerto.status]; return <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 10, background: st.bg, color: st.color }}>{st.label}</span>; })()}
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-2)" }}>{acerto.motorista_nome} — {mesAno(acerto.periodo_mes, acerto.periodo_ano)}</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 13, color: "var(--text-2)" }}>{acerto.motorista_nome} — {mesAno(acerto.periodo_mes, acerto.periodo_ano)}</div>
             </div>
-            <button onClick={() => setModalData(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+            <button data-arato-button="icon" onClick={() => setModalData(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
           </div>
 
           {/* KPIs do acerto */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+          <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
               { l: "Valor Bruto (Fretes)", v: brl(acerto.valor_bruto ?? 0), c: "#1A4870" },
               { l: "Combustível", v: brl(acerto.valor_combustivel ?? 0), c: "#E24B4A" },
@@ -358,7 +359,7 @@ export default function AcertoFretePage() {
                       <div style={{ fontWeight: 700, color: "#1A4870", fontSize: 14 }}>{brl(cte.valor_frete ?? 0)}</div>
                       {importado
                         ? <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 700 }}>✓ Importado</span>
-                        : <button onClick={() => importarCte(cte)} style={{ fontSize: 11, padding: "4px 12px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>+ Importar</button>
+                        : <button data-arato-button="primary" onClick={() => importarCte(cte)} style={{ fontSize: 11, padding: "4px 12px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>+ Importar</button>
                       }
                     </div>
                   );
@@ -368,12 +369,12 @@ export default function AcertoFretePage() {
           )}
 
           {/* Itens do acerto */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Itens do Acerto</div>
+          <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Itens do Acerto</div>
             {itens.length === 0
               ? <div style={{ padding: "20px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum item adicionado</div>
               : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Tipo","Descrição","Data","Valor",""].map(h => (
@@ -406,7 +407,7 @@ export default function AcertoFretePage() {
                           </td>
                           <td style={{ padding: "7px 10px" }}>
                             {acerto.status === "aberto" && (
-                              <button onClick={() => removerItem(item.id)} style={{ background: "none", border: "0.5px solid #E24B4A40", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>Remover</button>
+                              <button data-arato-button="secondary" onClick={() => removerItem(item.id)} style={{ background: "none", border: "0.5px solid #E24B4A40", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>Remover</button>
                             )}
                           </td>
                         </tr>
@@ -427,37 +428,37 @@ export default function AcertoFretePage() {
 
           {/* Adicionar item manual */}
           {acerto.status === "aberto" && (
-            <div style={{ marginBottom: 24, padding: "16px", background: "var(--bg-page)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
+            <div data-arato-panel="true" style={{ marginBottom: 24, padding: "16px", background: "var(--bg-page)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 12 }}>Adicionar Item</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Tipo</label>
-                  <select value={novoTipo} onChange={e => setNovoTipo(e.target.value as AcertoFreteItem["tipo"])}
+                  <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Tipo</label>
+                  <SelectField value={novoTipo} onChange={e => setNovoTipo(e.target.value as AcertoFreteItem["tipo"])}
                     style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
                     <option value="combustivel">Combustível</option>
                     <option value="adiantamento">Adiantamento</option>
                     <option value="desconto">Desconto</option>
                     <option value="bonus">Bônus</option>
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Descrição</label>
+                  <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Descrição</label>
                   <input value={novoDesc} onChange={e => setNovoDesc(e.target.value)} placeholder="Ex: Adiantamento 01/08, diesel 200L..." style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Valor (R$)</label>
+                  <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Valor (R$)</label>
                   <input value={novoValor} onChange={e => setNovoValor(e.target.value)} placeholder="0,00" type="number" step="0.01" style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
-                <button onClick={adicionarItem} style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Adicionar</button>
+                <button data-arato-button="primary" onClick={adicionarItem} style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Adicionar</button>
               </div>
             </div>
           )}
 
           {/* Rodapé */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "0.5px solid var(--border)" }}>
-            <button onClick={() => setModalData(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+          <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "0.5px solid var(--border)" }}>
+            <button data-arato-button="secondary" onClick={() => setModalData(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
             {acerto.status === "aberto" && (
-              <button
+              <button data-arato-button="toggle"
                 onClick={fecharAcerto}
                 disabled={savingAcerto || liquido <= 0}
                 style={{ padding: "8px 24px", background: savingAcerto || liquido <= 0 ? "#ccc" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: savingAcerto || liquido <= 0 ? "not-allowed" : "pointer" }}>
@@ -474,41 +475,41 @@ export default function AcertoFretePage() {
   const anos = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Acerto de Frete</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Acerto de Frete</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-2)" }}>Fechamento mensal de motoristas TAC (autônomos) — fretes, combustível, adiantamentos</p>
           </div>
           {fazendasConta.length > 1 && (
-            <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
+            <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
               style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
               {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-            </select>
+            </SelectField>
           )}
         </div>
 
         {/* Filtros */}
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 24, flexWrap: "wrap" }}>
-          <select value={filtromes} onChange={e => setFiltroMes(Number(e.target.value))}
+        <div data-arato-filters="true" style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 24, flexWrap: "wrap" }}>
+          <SelectField value={filtromes} onChange={e => setFiltroMes(Number(e.target.value))}
             style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
             {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-          </select>
-          <select value={filtroAno} onChange={e => setFiltroAno(Number(e.target.value))}
+          </SelectField>
+          <SelectField value={filtroAno} onChange={e => setFiltroAno(Number(e.target.value))}
             style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
             {anos.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
+          </SelectField>
+          <SelectField value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
             style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
             <option value="todos">Todos os Status</option>
             <option value="aberto">Aberto</option>
             <option value="fechado">Fechado</option>
             <option value="pago">Pago</option>
-          </select>
+          </SelectField>
           <div style={{ flex: 1 }} />
           <div style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 600 }}>
             Período: {mesAno(filtromes, filtroAno)}
@@ -529,7 +530,7 @@ export default function AcertoFretePage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5400", marginBottom: 10 }}>MOTORISTAS TAC SEM ACERTO EM {mesAno(filtromes, filtroAno).toUpperCase()}</div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {motoristasSemAcerto.map(m => (
-                <button key={m.id} onClick={() => criarAcerto(m)}
+                <button data-arato-button="primary" key={m.id} onClick={() => criarAcerto(m)}
                   style={{ padding: "6px 14px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   + Abrir Acerto — {m.nome}
                 </button>
@@ -547,7 +548,7 @@ export default function AcertoFretePage() {
         {/* Tabela de acertos */}
         {acertos.length > 0 && (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   {["Motorista","Período","Fretes (Bruto)","Combustível","Adiantamentos","Líquido a Pagar","Status",""].map(h => (
@@ -572,7 +573,7 @@ export default function AcertoFretePage() {
                         <span style={{ padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700, background: st.bg, color: st.color }}>{st.label}</span>
                       </td>
                       <td style={{ padding: "10px 14px" }}>
-                        <button onClick={e => { e.stopPropagation(); abrirAcerto(a); }}
+                        <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirAcerto(a); }}
                           style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>
                           Abrir
                         </button>

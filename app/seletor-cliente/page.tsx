@@ -99,14 +99,14 @@ export default function SeletorCliente() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {raccotloGestor && (
-            <button
+            <button data-arato-button="secondary"
               onClick={() => router.push("/admin/clientes")}
               style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#111111", fontWeight: 600 }}
             >
               Gestão Arato →
             </button>
           )}
-          <button
+          <button data-arato-button="secondary"
             onClick={() => supabase.auth.signOut()}
             style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}
           >
@@ -117,7 +117,7 @@ export default function SeletorCliente() {
 
       {/* Conteúdo */}
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-1)", margin: "0 0 4px" }}>
+        <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 700, color: "var(--text-1)", margin: "0 0 4px" }}>
           Selecionar cliente
         </h1>
         <p style={{ fontSize: 13, color: "#666", margin: "0 0 24px" }}>
@@ -147,7 +147,7 @@ export default function SeletorCliente() {
           }}>
             {busca
               ? "Nenhum cliente encontrado para essa busca."
-              : <>Nenhum cliente com acesso ativo. <button onClick={() => router.push("/admin/clientes")} style={{ background: "none", border: "none", color: "#111111", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Ir para Gestão Arato →</button></>
+              : <>Nenhum cliente com acesso ativo. <button data-arato-button="secondary" onClick={() => router.push("/admin/clientes")} style={{ background: "none", border: "none", color: "#111111", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Ir para Gestão Arato →</button></>
             }
           </div>
         ) : (
@@ -157,7 +157,7 @@ export default function SeletorCliente() {
               const multiFazendas = c.fazendas.length > 1;
 
               return (
-                <button
+                <button data-arato-button="secondary"
                   key={c.conta_id}
                   onClick={() => acessarCliente(c)}
                   style={{

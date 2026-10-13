@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -323,16 +324,16 @@ export default function PragasPage() {
       <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Monitoramento de Pragas & Doenças</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Monitoramento de Pragas & Doenças</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Scouting por talhão · GPS georreferenciado · Fotos de campo</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a href="/campo/monitoramento" style={{ padding: "8px 14px", background: "#FBF3E0", color: "#C9921B", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
               📱 App Campo
             </a>
-            <button onClick={abrirModal} style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            <button data-arato-button="primary" onClick={abrirModal} style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
               + Novo Registro
             </button>
           </div>
@@ -346,7 +347,7 @@ export default function PragasPage() {
             { label: "Nível Alto",         valor: altos, sub: altos > 0 ? "monitorar de perto" : "nenhum",  cor: altos > 0 ? "#92400E" : "var(--text-3)", destaque: altos > 0 },
             { label: "Com Coordenadas GPS",valor: comGPS, sub: `de ${registros.length} registros`, cor: "#16A34A", destaque: false },
           ].map(kpi => (
-            <div key={kpi.label} style={{ background: kpi.destaque ? (kpi.cor === "#DC2626" ? "#FEF2F2" : "#FFFBEB") : "#fff", borderRadius: 12, padding: "16px 20px", border: `0.5px solid ${kpi.destaque ? "#FCA5A5" : "var(--border)"}` }}>
+            <div data-arato-statistic="display" key={kpi.label} style={{ background: kpi.destaque ? (kpi.cor === "#DC2626" ? "#FEF2F2" : "#FFFBEB") : "#fff", borderRadius: 12, padding: "16px 20px", border: `0.5px solid ${kpi.destaque ? "#FCA5A5" : "var(--border)"}` }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{kpi.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: kpi.cor }}>{kpi.valor}</div>
               <div style={{ fontSize: 11, color: kpi.cor === "var(--text-3)" ? "var(--text-3)" : kpi.cor, marginTop: 2 }}>{kpi.sub}</div>
@@ -356,7 +357,7 @@ export default function PragasPage() {
 
         {/* Alertas críticos */}
         {registros.filter(r => r.nivel === 4).slice(0, 3).map(r => (
-          <div key={r.id} style={{ background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 10, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+          <div data-arato-statistic="display" key={r.id} style={{ background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 10, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 20 }}>🚨</span>
             <div style={{ flex: 1 }}>
               <span style={{ fontWeight: 700, color: "#991B1B", fontSize: 13 }}>Crítico — {r.talhao_nome ?? "Talhão"}</span>
@@ -371,7 +372,7 @@ export default function PragasPage() {
         {/* Abas */}
         <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
           {(["lista", "mapa", "relatorio"] as const).map(a => (
-            <button key={a} onClick={() => setAba(a)} style={{
+            <button data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
               fontWeight: aba === a ? 700 : 400, color: aba === a ? "#111111" : "#666",
               borderBottom: aba === a ? "2.5px solid #111111" : "2.5px solid transparent",
@@ -384,32 +385,32 @@ export default function PragasPage() {
         {/* ── ABA LISTA ── */}
         {aba === "lista" && (
           <>
-            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-              <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ ...inp, width: 160 }}>
+            <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <SelectField value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ ...inp, width: 160 }}>
                 <option value="">Todos os tipos</option>
                 <option value="praga">🐛 Pragas</option>
                 <option value="doenca">🍂 Doenças</option>
                 <option value="planta_daninha">🌿 Plantas daninhas</option>
-              </select>
-              <select value={filtroNivel} onChange={e => setFiltroNivel(e.target.value)} style={{ ...inp, width: 140 }}>
+              </SelectField>
+              <SelectField value={filtroNivel} onChange={e => setFiltroNivel(e.target.value)} style={{ ...inp, width: 140 }}>
                 <option value="">Todos os níveis</option>
                 <option value="1">Baixo</option>
                 <option value="2">Médio</option>
                 <option value="3">Alto</option>
                 <option value="4">Crítico</option>
-              </select>
-              <select value={filtroTalhao} onChange={e => setFiltroTalhao(e.target.value)} style={{ ...inp, width: 180 }}>
+              </SelectField>
+              <SelectField value={filtroTalhao} onChange={e => setFiltroTalhao(e.target.value)} style={{ ...inp, width: 180 }}>
                 <option value="">Todos os talhões</option>
                 {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-              </select>
-              <select value={filtroCiclo} onChange={e => setFiltroCiclo(e.target.value)} style={{ ...inp, width: 180 }}>
+              </SelectField>
+              <SelectField value={filtroCiclo} onChange={e => setFiltroCiclo(e.target.value)} style={{ ...inp, width: 180 }}>
                 <option value="">Todos os ciclos</option>
                 {ciclos.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
                   </option>
                 ))}
-              </select>
+              </SelectField>
               <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)", alignSelf: "center" }}>
                 {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
               </div>
@@ -423,7 +424,7 @@ export default function PragasPage() {
                   Nenhum registro. Use "+ Novo Registro" para iniciar o monitoramento.
                 </div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                       {["Data","Talhão","Ciclo","Tipo","Ocorrência","Nível","% Pl.","Estágio","GPS","Foto","Ação Recomendada"].map(h => (
@@ -527,7 +528,7 @@ export default function PragasPage() {
 
             {/* Exportar CSV */}
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
+              <button data-arato-button="primary"
                 onClick={() => {
                   const rows = registros.filter(r => r.gps_lat !== null).map(r =>
                     `${r.talhao_nome ?? ""},${dataDisplay(r)},${r.tipo},${r.nome},${r.nivel},${r.gps_lat},${r.gps_lng},${r.gps_accuracy_m ?? ""},${r.percentual_plantas ?? ""},${r.acao_recomendada ?? ""}`
@@ -574,7 +575,7 @@ export default function PragasPage() {
               {relatorio.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-3)", fontSize: 13 }}>Nenhum dado ainda.</div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                       {["Talhão","Total","Crítico","Alto","Médio","Baixo","Últimas Ocorrências"].map(h => (
@@ -618,53 +619,53 @@ export default function PragasPage() {
 
       {/* ── Modal de novo registro ──────────────────────────────────────────── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "94vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "94vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Registrar Monitoramento</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Pragas, doenças ou plantas daninhas · GPS + fotos</div>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Registrar Monitoramento</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Pragas, doenças ou plantas daninhas · GPS + fotos</div>
               </div>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
               {/* Talhão + Ciclo + Data */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 160px", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 160px", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Talhão *</label>
-                  <select value={fTalhao} onChange={e => setFTalhao(e.target.value)} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Talhão *</label>
+                  <SelectField value={fTalhao} onChange={e => setFTalhao(e.target.value)} style={inp}>
                     <option value="">Selecione...</option>
                     {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}{t.area_ha ? ` (${t.area_ha} ha)` : ""}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Ciclo / Safra</label>
-                  <select value={fCiclo} onChange={e => setFCiclo(e.target.value)} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Ciclo / Safra</label>
+                  <SelectField value={fCiclo} onChange={e => setFCiclo(e.target.value)} style={inp}>
                     <option value="">Sem vínculo</option>
                     {ciclos.map(c => (
                       <option key={c.id} value={c.id}>
                         {c.cultura} {(c.ano_safra as unknown as { ano: string } | null)?.ano ?? ""}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Data *</label>
+                  <label data-arato-label="true" style={lbl}>Data *</label>
                   <InputData calendario type="date" value={fData} onChange={e => setFData(e.target.value)} style={inp} />
                 </div>
               </div>
 
               {/* Tipo */}
-              <div>
-                <label style={lbl}>Tipo de Ocorrência *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo de Ocorrência *</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {(["praga","doenca","planta_daninha"] as const).map(t => {
                     const tm = TIPO_META[t];
                     return (
-                      <button key={t} type="button" onClick={() => { setFTipo(t); setFNome(""); setFNomeCustom(""); }}
+                      <button data-arato-button="toggle" key={t} type="button" onClick={() => { setFTipo(t); setFNome(""); setFNomeCustom(""); }}
                         style={{ flex: 1, padding: "8px 6px", borderRadius: 8, border: `0.5px solid ${fTipo === t ? tm.cor : "var(--border-table)"}`, fontSize: 12, cursor: "pointer", fontWeight: fTipo === t ? 700 : 400, background: fTipo === t ? tm.bg : "var(--bg-card)", color: fTipo === t ? tm.cor : "var(--text-2)" }}>
                         {tm.icone} {tm.label}
                       </button>
@@ -674,25 +675,25 @@ export default function PragasPage() {
               </div>
 
               {/* Ocorrência */}
-              <div>
-                <label style={lbl}>Ocorrência *</label>
-                <select value={fNome} onChange={e => setFNome(e.target.value)} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Ocorrência *</label>
+                <SelectField value={fNome} onChange={e => setFNome(e.target.value)} style={inp}>
                   <option value="">Selecione...</option>
                   {CATALOGO[fTipo].map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                </SelectField>
                 {nomeEhCustom && (
                   <input style={{ ...inp, marginTop: 8 }} placeholder="Descreva a ocorrência..." value={fNomeCustom} onChange={e => setFNomeCustom(e.target.value)} />
                 )}
               </div>
 
               {/* Nível */}
-              <div>
-                <label style={lbl}>Nível de Infestação *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nível de Infestação *</label>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                   {([1,2,3,4] as const).map(n => {
                     const nm = NIVEL_META[n]; const sel = fNivel === n;
                     return (
-                      <button key={n} type="button" onClick={() => setFNivel(n)}
+                      <button data-arato-button="toggle" key={n} type="button" onClick={() => setFNivel(n)}
                         style={{ padding: "10px 6px", borderRadius: 10, border: `1.5px solid ${sel ? nm.border : "var(--border-table)"}`, background: sel ? nm.bg : "var(--bg-card)", cursor: "pointer", textAlign: "center", boxShadow: sel ? `0 0 0 2px ${nm.border}40` : "none" }}>
                         <div style={{ fontSize: 18, marginBottom: 4 }}>{n===1?"🟢":n===2?"🟡":n===3?"🟠":"🔴"}</div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: nm.cor }}>{nm.label}</div>
@@ -704,18 +705,18 @@ export default function PragasPage() {
               </div>
 
               {/* % Plantas + Estágio */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={lbl}>% de Plantas Afetadas</label>
+                  <label data-arato-label="true" style={lbl}>% de Plantas Afetadas</label>
                   <InputNumerico decimais={0} min="0" max="100" placeholder="Ex: 15" value={fPct} onChange={v => setFPct(v)} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Estágio da Cultura</label>
+                  <label data-arato-label="true" style={lbl}>Estágio da Cultura</label>
                   {fCiclo ? (
-                    <select value={fEstagio} onChange={e => setFEstagio(e.target.value)} style={inp}>
+                    <SelectField value={fEstagio} onChange={e => setFEstagio(e.target.value)} style={inp}>
                       <option value="">Selecione...</option>
                       {estagios.map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
+                    </SelectField>
                   ) : (
                     <input placeholder="Ex: R3, V5..." value={fEstagio} onChange={e => setFEstagio(e.target.value)} style={inp} />
                   )}
@@ -723,8 +724,8 @@ export default function PragasPage() {
               </div>
 
               {/* GPS — capturar coordenadas */}
-              <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14 }}>
-                <label style={{ ...lbl, marginBottom: 8 }}>📍 Coordenadas GPS</label>
+              <div data-arato-dialog-body="true" style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14 }}>
+                <label data-arato-label="true" style={{ ...lbl, marginBottom: 8 }}>📍 Coordenadas GPS</label>
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     {gpsLat !== null ? (
@@ -734,7 +735,7 @@ export default function PragasPage() {
                           {gpsLat.toFixed(7)}, {gpsLng?.toFixed(7)}
                         </div>
                         {gpsAcc && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Precisão: ±{Math.round(gpsAcc)}m</div>}
-                        <button type="button" onClick={() => { setGpsLat(null); setGpsLng(null); setGpsAcc(null); }}
+                        <button data-arato-button="secondary" type="button" onClick={() => { setGpsLat(null); setGpsLng(null); setGpsAcc(null); }}
                           style={{ marginTop: 6, fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                           Limpar
                         </button>
@@ -746,7 +747,7 @@ export default function PragasPage() {
                     )}
                     {gpsErro && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>{gpsErro}</div>}
                   </div>
-                  <button type="button" onClick={capturarGPS} disabled={gpsBusy}
+                  <button data-arato-button="toggle" type="button" onClick={capturarGPS} disabled={gpsBusy}
                     style={{ padding: "9px 14px", background: gpsBusy ? "var(--text-muted)" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gpsBusy ? "wait" : "pointer", whiteSpace: "nowrap" }}>
                     {gpsBusy ? "Aguarde..." : "Capturar GPS"}
                   </button>
@@ -754,20 +755,20 @@ export default function PragasPage() {
               </div>
 
               {/* Fotos */}
-              <div>
-                <label style={lbl}>📷 Fotos de Campo (máx. 3)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>📷 Fotos de Campo (máx. 3)</label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {fotos.map((url, i) => (
                     <div key={i} style={{ position: "relative" }}>
                       <img src={url} alt={`foto ${i+1}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "0.5px solid var(--border)" }} />
-                      <button type="button" onClick={() => setFotos(prev => prev.filter((_, j) => j !== i))}
+                      <button data-arato-button="danger" type="button" onClick={() => setFotos(prev => prev.filter((_, j) => j !== i))}
                         style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, background: "#E24B4A", color: "#fff", border: "none", borderRadius: "50%", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         ×
                       </button>
                     </div>
                   ))}
                   {fotos.length < 3 && (
-                    <button type="button" onClick={() => fileRef.current?.click()} disabled={fotoLoading}
+                    <button data-arato-button="secondary" type="button" onClick={() => fileRef.current?.click()} disabled={fotoLoading}
                       style={{ width: 80, height: 80, border: "1.5px dashed var(--border-table)", borderRadius: 8, background: "var(--bg-page)", cursor: "pointer", fontSize: 24, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
                       {fotoLoading ? <span style={{ fontSize: 11 }}>Enviando</span> : <>+<span style={{ fontSize: 10 }}>foto</span></>}
                     </button>
@@ -779,28 +780,28 @@ export default function PragasPage() {
               </div>
 
               {/* Ação + Recomendação vinculada */}
-              <div>
-                <label style={lbl}>Ação Recomendada</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Ação Recomendada</label>
                 <input placeholder="Ex: Aplicar inseticida à base de lambdacialotrina, 100 mL/ha..." value={fAcao} onChange={e => setFAcao(e.target.value)} style={inp} />
               </div>
 
               {recs.length > 0 && (
                 <div>
-                  <label style={lbl}>Vincular a Recomendação Agronômica</label>
-                  <select value={fRecId} onChange={e => setFRecId(e.target.value)} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Vincular a Recomendação Agronômica</label>
+                  <SelectField value={fRecId} onChange={e => setFRecId(e.target.value)} style={inp}>
                     <option value="">Sem vínculo</option>
                     {recs.map(r => (
                       <option key={r.id} value={r.id}>
                         {new Date(r.data_recomendacao + "T12:00").toLocaleDateString("pt-BR")} — {r.tipo}{r.agronomo_nome ? ` (${r.agronomo_nome})` : ""}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
               )}
 
               {/* Observações */}
-              <div>
-                <label style={lbl}>Observações</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observações</label>
                 <textarea rows={2} placeholder="Localização no talhão, condições do dia, tendência..." value={fObs} onChange={e => setFObs(e.target.value)} style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
               </div>
 
@@ -808,9 +809,9 @@ export default function PragasPage() {
                 <div style={{ padding: "9px 12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 13, border: "0.5px solid #FCA5A5" }}>{erro}</div>
               )}
 
-              <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button onClick={fecharModal} style={{ flex: 1, padding: 10, borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
-                <button onClick={salvar} disabled={salvando} style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, paddingTop: 4 }}>
+                <button data-arato-button="secondary" onClick={fecharModal} style={{ flex: 1, padding: 10, borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
+                <button data-arato-button="toggle" onClick={salvar} disabled={salvando} style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
                   {salvando ? "Salvando..." : "✓ Salvar Registro"}
                 </button>
               </div>

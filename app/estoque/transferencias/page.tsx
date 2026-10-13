@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -680,16 +681,16 @@ export default function TransferenciasEstoquePage() {
     <div style={{ padding: "24px 28px", width: "100%", boxSizing: "border-box", fontFamily: "system-ui, sans-serif" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Transferência entre Fazendas</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Transferência entre Fazendas</h1>
           <p style={{ fontSize: 13, color: "#888", margin: "3px 0 0" }}>NF de transferência de insumos · CFOP 5409 / 6409</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => carregar()} style={btn("#F4F6FA", "#555")} title="Atualizar lista">
+          <button data-arato-button="secondary" onClick={() => carregar()} style={btn("#F4F6FA", "#555")} title="Atualizar lista">
             🔄 Atualizar
           </button>
-          <button onClick={() => { resetForm(); setModal(true); }} style={btn("#111111")}>
+          <button data-arato-button="secondary" onClick={() => { resetForm(); setModal(true); }} style={btn("#111111")}>
             + Nova Transferência
           </button>
         </div>
@@ -703,7 +704,7 @@ export default function TransferenciasEstoquePage() {
           { label: "NFs Emitidas",            val: historico.filter(t => t.status === "emitida").length,             cor: "#111111" },
           { label: "Entradas Confirmadas",    val: historico.filter(t => t.status === "entrada_confirmada").length,  cor: "#16A34A" },
         ].map(k => (
-          <div key={k.label} style={{ ...card, borderLeft: `3px solid ${k.cor}`, padding: "14px 18px" }}>
+          <div data-arato-statistic="display" key={k.label} style={{ ...card, borderLeft: `3px solid ${k.cor}`, padding: "14px 18px" }}>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: k.cor }}>{k.val}</div>
           </div>
@@ -716,7 +717,7 @@ export default function TransferenciasEstoquePage() {
           { id: "solicitacoes", label: `Solicitações App Campo${solicitacoes.length > 0 ? ` (${solicitacoes.length})` : ""}` },
           { id: "lista",        label: `Transferências (${historico.length})` },
         ] as const).map(t => (
-          <button key={t.id} onClick={() => setAba(t.id)} style={{
+          <button data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
             padding: "10px 20px", border: "none", background: "transparent", cursor: "pointer",
             fontSize: 13, fontWeight: aba === t.id ? 700 : 400,
             color: aba === t.id ? "#111111" : "#666",
@@ -735,8 +736,8 @@ export default function TransferenciasEstoquePage() {
       {/* ── Aba Solicitações ──────────────────────────────────────────────── */}
       {aba === "solicitacoes" && (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
                   {["Data","Solicitante","Urgência","Origem","Destino","Itens","Depósito Origem","Depósito Destino","Ações"].map(h => (
@@ -770,15 +771,15 @@ export default function TransferenciasEstoquePage() {
                     <td style={{ ...td, color: "#666", fontSize: 12 }}>{t.deposito_destino_nome}</td>
                     <td style={td}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>Ver</button>
-                        <button
+                        <button data-arato-button="secondary" onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>Ver</button>
+                        <button data-arato-button="secondary"
                           onClick={() => emitirSolicitacao(t)}
                           disabled={acaoId === t.id}
                           style={btn("#111111")}
                         >
                           {acaoId === t.id ? "…" : "Emitir NF"}
                         </button>
-                        <button onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
+                        <button data-arato-button="secondary" onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
                           Cancelar
                         </button>
                       </div>
@@ -808,7 +809,7 @@ export default function TransferenciasEstoquePage() {
               { id: "emitidas",    label: `NFs Emitidas (${qtdEmitidas})` },
               { id: "canceladas",  label: `Canceladas (${qtdCanceladas})` },
             ] as const).map(s => (
-              <button key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
+              <button data-arato-button="toggle" key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
                 padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
                 borderColor: subAbaLista === s.id ? "#111111" : "#DDE2EE",
                 background: subAbaLista === s.id ? "#111111" : "transparent",
@@ -819,8 +820,8 @@ export default function TransferenciasEstoquePage() {
               </button>
             ))}
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
                   {["Nº","Data","Origem","Destino","CFOP","Status","Itens","NF Número","Ações"].map(h => (
@@ -870,16 +871,16 @@ export default function TransferenciasEstoquePage() {
                       </td>
                       <td style={td}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>
+                          <button data-arato-button="secondary" onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>
                             {t.status === "emitida" || t.status === "entrada_confirmada" ? "Visualizar NF" : "Visualizar"}
                           </button>
                           {t.status === "rascunho" && (
-                            <button onClick={() => abrirEditar(t)} style={btn("#1A4870")}>
+                            <button data-arato-button="secondary" onClick={() => abrirEditar(t)} style={btn("#1A4870")}>
                               Editar
                             </button>
                           )}
                           {t.status === "rascunho" && (
-                            <button onClick={() => emitirSolicitacao(t)} disabled={acaoId === t.id} style={btn("#111111")}>
+                            <button data-arato-button="secondary" onClick={() => emitirSolicitacao(t)} disabled={acaoId === t.id} style={btn("#111111")}>
                               {acaoId === t.id ? "…" : "Emitir NF"}
                             </button>
                           )}
@@ -894,7 +895,7 @@ export default function TransferenciasEstoquePage() {
                             </a>
                           )}
                           {semNfReal && (
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={() => emitirSolicitacao(t)}
                               disabled={acaoId === t.id}
                               title="Configure Parâmetros → Fiscal na fazenda de origem antes de tentar de novo"
@@ -904,16 +905,16 @@ export default function TransferenciasEstoquePage() {
                             </button>
                           )}
                           {t.status === "emitida" && !t.entrada_automatica && (
-                            <button onClick={() => confirmarEntrada(t)} disabled={acaoId === t.id} style={btn("#16A34A")}>
+                            <button data-arato-button="secondary" onClick={() => confirmarEntrada(t)} disabled={acaoId === t.id} style={btn("#16A34A")}>
                               {acaoId === t.id ? "…" : "Confirmar Entrada"}
                             </button>
                           )}
                           {(t.status === "rascunho" || t.status === "emitida") && (
-                            <button onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
+                            <button data-arato-button="secondary" onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
                               Cancelar
                             </button>
                           )}
-                          <button onClick={() => abrirReplica(t)} style={btn("#F4F6FA", "#555")} title="Abre uma cópia nova (rascunho) com os mesmos dados, pra editar e emitir de novo">
+                          <button data-arato-button="secondary" onClick={() => abrirReplica(t)} style={btn("#F4F6FA", "#555")} title="Abre uma cópia nova (rascunho) com os mesmos dados, pra editar e emitir de novo">
                             ⧉ Replicar
                           </button>
                         </div>
@@ -930,14 +931,14 @@ export default function TransferenciasEstoquePage() {
 
       {/* ── Modal Nova Transferência ─────────────────────────────────────── */}
       {modal && (
-        <div onClick={() => setModal(false)} style={{
+        <div data-arato-overlay="true" onClick={() => setModal(false)} style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000,
           display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "20px 12px", overflowY: "auto",
         }}>
-          <div onClick={e => e.stopPropagation()} style={{
+          <div data-arato-dialog="page" onClick={e => e.stopPropagation()} style={{
             ...card, width: 860, maxWidth: "98vw", boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
           }}>
-            <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700 }}>
+            <h3 data-arato-h3="true" style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700 }}>
               {editandoId ? "Editar Transferência de Insumos" : "Nova Transferência de Insumos"}
             </h3>
 
@@ -951,42 +952,42 @@ export default function TransferenciasEstoquePage() {
             )}
 
             {/* Origem / Destino */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               {/* Origem */}
-              <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
+              <div data-arato-dialog-body="true" data-arato-panel="true" style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Origem
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={lbl}>Fazenda Origem *</label>
-                  <select value={form.fazendaOrigemId} onChange={e => setForm(f => ({ ...f, fazendaOrigemId: e.target.value, depositoOrigemId: "", cpfCnpjOrigem: "", ieOrigem: "" }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Fazenda Origem *</label>
+                  <SelectField value={form.fazendaOrigemId} onChange={e => setForm(f => ({ ...f, fazendaOrigemId: e.target.value, depositoOrigemId: "", cpfCnpjOrigem: "", ieOrigem: "" }))} style={inp}>
                     <option value="">— Selecione —</option>
                     {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={lbl}>Depósito Origem *</label>
+                  <label data-arato-label="true" style={lbl}>Depósito Origem *</label>
                   {todosDepositos.length === 0 ? (
                     <p style={{ fontSize: 12, color: "#E24B4A", margin: 0 }}>
                       ⚠️ Nenhum depósito cadastrado. Cadastre em Cadastros → Depósitos antes de continuar.
                     </p>
                   ) : (
                     <>
-                      <select value={form.depositoOrigemId} onChange={e => setForm(f => ({ ...f, depositoOrigemId: e.target.value }))} style={inp}>
+                      <SelectField value={form.depositoOrigemId} onChange={e => setForm(f => ({ ...f, depositoOrigemId: e.target.value }))} style={inp}>
                         <option value="">— Selecione o depósito —</option>
                         {todosDepositos.map(d => (
                           <option key={d.id} value={d.id}>
                             {(d.fazenda_id === form.fazendaOrigemId ? "🟢 " : "🔴 ") + d.nome}
                           </option>
                         ))}
-                      </select>
+                      </SelectField>
                       <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>🟢 depósito da Fazenda Origem · 🔴 depósito de outra fazenda</p>
                     </>
                   )}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={lbl}>CNPJ/CPF Emitente</label>
+                    <label data-arato-label="true" style={lbl}>CNPJ/CPF Emitente</label>
                     <input
                       list="produtoresOrigemList"
                       value={form.cpfCnpjOrigem}
@@ -1002,7 +1003,7 @@ export default function TransferenciasEstoquePage() {
                     </datalist>
                   </div>
                   <div>
-                    <label style={lbl}>IE Emitente</label>
+                    <label data-arato-label="true" style={lbl}>IE Emitente</label>
                     <input
                       list="iesOrigemList"
                       value={form.ieOrigem}
@@ -1024,40 +1025,40 @@ export default function TransferenciasEstoquePage() {
               </div>
 
               {/* Destino */}
-              <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
+              <div data-arato-dialog-body="true" data-arato-panel="true" style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#C9921B", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Destino
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={lbl}>Fazenda Destino *</label>
-                  <select value={form.fazendaDestinoId} onChange={e => setForm(f => ({ ...f, fazendaDestinoId: e.target.value, depositoDestinoId: "", cpfCnpjDestino: "", ieDestino: "" }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Fazenda Destino *</label>
+                  <SelectField value={form.fazendaDestinoId} onChange={e => setForm(f => ({ ...f, fazendaDestinoId: e.target.value, depositoDestinoId: "", cpfCnpjDestino: "", ieDestino: "" }))} style={inp}>
                     <option value="">— Selecione —</option>
                     {todasFazendas.filter(f => f.id !== form.fazendaOrigemId).map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={lbl}>Depósito Destino *</label>
+                  <label data-arato-label="true" style={lbl}>Depósito Destino *</label>
                   {todosDepositos.length === 0 ? (
                     <p style={{ fontSize: 12, color: "#E24B4A", margin: 0 }}>
                       ⚠️ Nenhum depósito cadastrado. Cadastre em Cadastros → Depósitos antes de continuar.
                     </p>
                   ) : (
                     <>
-                      <select value={form.depositoDestinoId} onChange={e => setForm(f => ({ ...f, depositoDestinoId: e.target.value }))} style={inp}>
+                      <SelectField value={form.depositoDestinoId} onChange={e => setForm(f => ({ ...f, depositoDestinoId: e.target.value }))} style={inp}>
                         <option value="">— Selecione o depósito —</option>
                         {todosDepositos.map(d => (
                           <option key={d.id} value={d.id}>
                             {(d.fazenda_id === form.fazendaDestinoId ? "🟢 " : "🔴 ") + d.nome}
                           </option>
                         ))}
-                      </select>
+                      </SelectField>
                       <p style={{ fontSize: 10, color: "var(--text-3)", margin: "4px 0 0" }}>🟢 depósito da Fazenda Destino · 🔴 depósito de outra fazenda</p>
                     </>
                   )}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={lbl}>CNPJ/CPF Destinatário</label>
+                    <label data-arato-label="true" style={lbl}>CNPJ/CPF Destinatário</label>
                     <input
                       list="produtoresDestinoList"
                       value={form.cpfCnpjDestino}
@@ -1073,7 +1074,7 @@ export default function TransferenciasEstoquePage() {
                     </datalist>
                   </div>
                   <div>
-                    <label style={lbl}>IE Destinatário</label>
+                    <label data-arato-label="true" style={lbl}>IE Destinatário</label>
                     <input
                       list="iesDestinoList"
                       value={form.ieDestino}
@@ -1096,14 +1097,14 @@ export default function TransferenciasEstoquePage() {
             </div>
 
             {/* Config geral */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Data de Transferência</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data de Transferência</label>
                 <InputData type="date" value={form.dataTransferencia} onChange={e => setForm(f => ({ ...f, dataTransferencia: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>CFOP — <span style={{ color: "#1A4870", fontWeight: 700 }}>{cfopCalculado}</span></label>
-                <select
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>CFOP — <span style={{ color: "#1A4870", fontWeight: 700 }}>{cfopCalculado}</span></label>
+                <SelectField
                   value={form.cfopSufixo}
                   onChange={e => setForm(f => ({ ...f, cfopSufixo: e.target.value }))}
                   style={inp}
@@ -1112,11 +1113,11 @@ export default function TransferenciasEstoquePage() {
                   {CFOP_OPCOES.map(o => (
                     <option key={o.sufixo} value={o.sufixo}>{o.label}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <label style={lbl}>Opções</label>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginTop: 4 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column" }}>
+                <label data-arato-label="true" style={lbl}>Opções</label>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginTop: 4 }}>
                   <input
                     type="checkbox"
                     checked={form.entradaAutomatica}
@@ -1131,15 +1132,15 @@ export default function TransferenciasEstoquePage() {
             </div>
 
             {/* Itens */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Itens da Transferência</span>
-                <button onClick={addItem} style={{ ...btn("#F4F6FA", "#111111"), border: "0.5px solid #111111" }}>+ Adicionar Item</button>
+                <button data-arato-button="secondary" onClick={addItem} style={{ ...btn("#F4F6FA", "#111111"), border: "0.5px solid #111111" }}>+ Adicionar Item</button>
               </div>
               {/* overflowX auto (e não hidden): a tabela tem 8 colunas de largura fixa — com hidden
                   a coluna Lote e o botão remover eram cortados e sumiam do modal */}
-              <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       {["Insumo *","Qtd *","Unidade","Custo Unit. (R$)","Valor Total","Variedade","Lote",""].map(h => (
@@ -1207,12 +1208,12 @@ export default function TransferenciasEstoquePage() {
                               const excedeSaldo = loteSel && qtd > loteSel.saldo + 0.01;
                               return (
                                 <div>
-                                  <select value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={{ ...inp, width: 124, borderColor: excedeSaldo ? "#E24B4A" : undefined }}>
+                                  <SelectField value={it.lote_semente} onChange={e => updateItem(i, "lote_semente", e.target.value)} style={{ ...inp, width: 124, borderColor: excedeSaldo ? "#E24B4A" : undefined }}>
                                     <option value="">— Selecione o lote —</option>
                                     {lotes.map(l => (
                                       <option key={l.lote} value={l.lote}>{l.lote} — {l.saldo.toLocaleString("pt-BR")} kg</option>
                                     ))}
-                                  </select>
+                                  </SelectField>
                                   {excedeSaldo && (
                                     <div style={{ fontSize: 9, color: "#E24B4A", marginTop: 2 }}>Excede o saldo do lote ({loteSel!.saldo.toLocaleString("pt-BR")} kg)</div>
                                   )}
@@ -1222,7 +1223,7 @@ export default function TransferenciasEstoquePage() {
                           </td>
                           <td style={td}>
                             {itens.length > 1 && (
-                              <button onClick={() => removeItem(i)} style={btn("#FEF2F2", "#E24B4A")}>✕</button>
+                              <button data-arato-button="icon" onClick={() => removeItem(i)} style={btn("#FEF2F2", "#E24B4A")}>✕</button>
                             )}
                           </td>
                         </tr>
@@ -1234,22 +1235,22 @@ export default function TransferenciasEstoquePage() {
             </div>
 
             {/* Transporte */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6, marginBottom: 14 }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6, marginBottom: 14 }}>
                 Transporte (opcional)
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px", gap: "0 16px" }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px", gap: "0 16px" }}>
                 <div>
-                  <label style={lbl}>Transportadora</label>
-                  <select value={form.transportadoraId} onChange={e => setForm(f => ({ ...f, transportadoraId: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Transportadora</label>
+                  <SelectField value={form.transportadoraId} onChange={e => setForm(f => ({ ...f, transportadoraId: e.target.value }))} style={inp}>
                     <option value="">— Sem transportadora —</option>
                     {transportadoras.map(t => (
                       <option key={t.id} value={t.id}>{t.razao_social || t.nome}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Veículo / Placa</label>
+                  <label data-arato-label="true" style={lbl}>Veículo / Placa</label>
                   {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
                   <input list="transf-est-veiculos" value={form.veiculoPlaca}
                     onChange={e => {
@@ -1263,7 +1264,7 @@ export default function TransferenciasEstoquePage() {
                   </datalist>
                 </div>
                 <div>
-                  <label style={lbl}>Motorista</label>
+                  <label data-arato-label="true" style={lbl}>Motorista</label>
                   {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
                   <input list="transf-est-motoristas" value={form.motoristaNome}
                     onChange={e => {
@@ -1279,27 +1280,27 @@ export default function TransferenciasEstoquePage() {
                   </datalist>
                 </div>
                 <div>
-                  <label style={lbl}>Frete por conta</label>
-                  <select value={form.freteConta} onChange={e => setForm(f => ({ ...f, freteConta: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Frete por conta</label>
+                  <SelectField value={form.freteConta} onChange={e => setForm(f => ({ ...f, freteConta: e.target.value }))} style={inp}>
                     <option value="0">0 - Emitente</option>
                     <option value="1">1 - Destinatário</option>
                     <option value="2">2 - Terceiros</option>
                     <option value="9">9 - Sem frete</option>
-                  </select>
+                  </SelectField>
                 </div>
               </div>
             </div>
 
             {/* Observação */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={lbl}>Observação</label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <label data-arato-label="true" style={lbl}>Observação</label>
               <input type="text" value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} style={inp} placeholder="Motivo da transferência, referências…" />
             </div>
 
             {/* NF já emitida no sistema anterior — implantação de cliente */}
             {!editandoId && (
-              <div style={{ marginBottom: 20, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 14 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#333" }}>
+              <div data-arato-panel="true" style={{ marginBottom: 20, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 14 }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#333" }}>
                   <input type="checkbox" checked={form.historica} onChange={e => setForm(f => ({ ...f, historica: e.target.checked }))} />
                   📋 Esta NF de remessa já foi emitida no sistema anterior (implantação — não transmitir à SEFAZ)
                 </label>
@@ -1308,21 +1309,21 @@ export default function TransferenciasEstoquePage() {
                     <div style={{ fontSize: 11, color: "#666", marginTop: 6, marginBottom: 10 }}>
                       Registra só o histórico: cria a movimentação de estoque (saída na origem, entrada no destino) com os dados da nota que o cliente já tinha. Nenhuma NF-e é transmitida à SEFAZ pelo Arato.
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr 1fr", gap: 10 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr 1fr", gap: 10 }}>
                       <div>
-                        <label style={lbl}>Nº da NF</label>
+                        <label data-arato-label="true" style={lbl}>Nº da NF</label>
                         <input type="text" value={form.nfNumeroHistorico} onChange={e => setForm(f => ({ ...f, nfNumeroHistorico: e.target.value }))} style={inp} placeholder="Ex: 12345" />
                       </div>
                       <div>
-                        <label style={lbl}>Série</label>
+                        <label data-arato-label="true" style={lbl}>Série</label>
                         <input type="text" value={form.nfSerieHistorico} onChange={e => setForm(f => ({ ...f, nfSerieHistorico: e.target.value }))} style={inp} placeholder="Ex: 1" />
                       </div>
                       <div>
-                        <label style={lbl}>Chave de Acesso (opcional)</label>
+                        <label data-arato-label="true" style={lbl}>Chave de Acesso (opcional)</label>
                         <input type="text" value={form.nfChaveHistorico} onChange={e => setForm(f => ({ ...f, nfChaveHistorico: e.target.value.replace(/\D/g, "").slice(0, 44) }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="44 dígitos" maxLength={44} />
                       </div>
                       <div>
-                        <label style={lbl}>Data de Emissão</label>
+                        <label data-arato-label="true" style={lbl}>Data de Emissão</label>
                         <InputData type="date" value={form.dataEmissaoHistorica} onChange={e => setForm(f => ({ ...f, dataEmissaoHistorica: e.target.value }))} style={inp} />
                       </div>
                     </div>
@@ -1337,11 +1338,11 @@ export default function TransferenciasEstoquePage() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModal(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModal(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                 Cancelar
               </button>
-              <button onClick={() => salvar("rascunho")} disabled={salvando} style={btn(form.historica ? "#C9921B" : "#111111")}>
+              <button data-arato-button="secondary" onClick={() => salvar("rascunho")} disabled={salvando} style={btn(form.historica ? "#C9921B" : "#111111")}>
                 {salvando ? "…" : form.historica ? "📋 Registrar NF Histórica" : editandoId ? "Salvar Alterações" : "Salvar Transferência"}
               </button>
             </div>
@@ -1394,19 +1395,19 @@ export default function TransferenciasEstoquePage() {
         const destEndereco = [d.logradouro, d.numero, d.bairro].filter(Boolean).join(", ");
 
         return (
-          <div onClick={() => setDetalhe(null)} style={{
+          <div data-arato-overlay="true" onClick={() => setDetalhe(null)} style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000,
             display: "flex", alignItems: "flex-start", justifyContent: "center",
             padding: "20px 8px", overflowY: "auto",
           }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: "min(860px, 99vw)", fontFamily: "Arial, sans-serif", fontSize: 11, color: "#000" }}>
+            <div data-arato-dialog="page" onClick={e => e.stopPropagation()} style={{ width: "min(860px, 99vw)", fontFamily: "Arial, sans-serif", fontSize: 11, color: "#000" }}>
 
               {/* Barra do sistema (fora do DANFE) */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: isRascunho ? "#C9921B" : "#15803D", padding: "3px 10px", borderRadius: 4 }}>
                   {isRascunho ? "PRÉ-VISUALIZAÇÃO — RASCUNHO" : "NF-e AUTORIZADA"}
                 </span>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   {detalhe.nf_chave && (
                     <a href={`/api/fiscal/danfe?chave=${detalhe.nf_chave}&fazenda_id=${detalhe.fazenda_origem_id}`}
                        target="_blank" rel="noopener noreferrer"
@@ -1414,15 +1415,15 @@ export default function TransferenciasEstoquePage() {
                       DANFE PDF
                     </a>
                   )}
-                  <button onClick={() => setDetalhe(null)} style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#fff", lineHeight: 1 }}>✕</button>
+                  <button data-arato-button="icon" onClick={() => setDetalhe(null)} style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#fff", lineHeight: 1 }}>✕</button>
                 </div>
               </div>
 
               {/* ── DANFE ── */}
-              <div style={{ background: "#fff", border: B, boxShadow: "0 4px 24px rgba(0,0,0,0.25)" }}>
+              <div data-arato-dialog-body="true" style={{ background: "#fff", border: B, boxShadow: "0 4px 24px rgba(0,0,0,0.25)" }}>
 
                 {/* Bloco 1: Cabeçalho — Emitente | DANFE | NF Número */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 180px 160px", borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 180px 160px", borderBottom: B }}>
                   {/* Emitente */}
                   <div style={{ padding: "8px 10px", borderRight: B }}>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{c.razao_social || detalhe.fazenda_origem_nome}</div>
@@ -1455,7 +1456,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 2: Natureza da Operação | Protocolo */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: B }}>
                   {box("NATUREZA DA OPERAÇÃO", "Transferência de Insumos entre Estabelecimentos")}
                   <div style={{ padding: "4px 6px" }}>
                     <span style={lbl}>PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
@@ -1464,7 +1465,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 3: Chave de Acesso */}
-                <div style={{ padding: "4px 8px", borderBottom: B, background: "#f9f9f9" }}>
+                <div data-arato-dialog-body="true" style={{ padding: "4px 8px", borderBottom: B, background: "#f9f9f9" }}>
                   <span style={lbl}>CHAVE DE ACESSO</span>
                   <span style={{ fontSize: 10, fontFamily: "monospace", letterSpacing: 1, color: "#000" }}>
                     {detalhe.nf_chave
@@ -1474,7 +1475,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 4: Destinatário */}
-                <div style={{ borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ borderBottom: B }}>
                   <div style={{ padding: "3px 8px", background: "#eee", borderBottom: B }}>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>DESTINATÁRIO / REMETENTE</span>
                   </div>
@@ -1498,7 +1499,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 5: Cálculo do Imposto */}
-                <div style={{ borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ borderBottom: B }}>
                   <div style={{ padding: "3px 8px", background: "#eee", borderBottom: B }}>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>CÁLCULO DO IMPOSTO</span>
                   </div>
@@ -1514,7 +1515,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 6: Transportador */}
-                <div style={{ borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ borderBottom: B }}>
                   <div style={{ padding: "3px 8px", background: "#eee", borderBottom: B }}>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>TRANSPORTADOR / VOLUMES TRANSPORTADOS</span>
                   </div>
@@ -1533,12 +1534,12 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 7: Dados dos Produtos */}
-                <div style={{ borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ borderBottom: B }}>
                   <div style={{ padding: "3px 8px", background: "#eee", borderBottom: B }}>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>DADOS DOS PRODUTOS / SERVIÇOS</span>
                   </div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+                  <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
                       <thead>
                         <tr>
                           {["CÓD.","DESCRIÇÃO DO PRODUTO / SERVIÇO","NCM/SH","O/CST","CFOP","UN","QTD","VLR UNIT.","VLR TOTAL","BC ICMS","VLR ICMS","VLR IPI","AL ICMS","AL IPI"].map((h, i) => (
@@ -1584,7 +1585,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 8: Totais dos Produtos */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: B }}>
+                <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: B }}>
                   {box("BC ICMS", "0,00")}
                   {box("VLR ICMS", "0,00")}
                   {box("BC ICMS ST", "0,00")}
@@ -1598,7 +1599,7 @@ export default function TransferenciasEstoquePage() {
                 </div>
 
                 {/* Bloco 9: Informações Complementares */}
-                <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", borderBottom: "none" }}>
+                <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "3fr 1fr", borderBottom: "none" }}>
                   <div style={{ padding: "6px 8px", borderRight: B }}>
                     <span style={lbl}>INFORMAÇÕES COMPLEMENTARES</span>
                     {infCpl ? (
@@ -1620,13 +1621,13 @@ export default function TransferenciasEstoquePage() {
               </div>
 
               {/* Botões do sistema */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 10 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 10 }}>
                 {isRascunho && (
-                  <button onClick={() => { setDetalhe(null); abrirEditar(detalhe); }} style={{ ...btn("#1A4870") }}>
+                  <button data-arato-button="secondary" onClick={() => { setDetalhe(null); abrirEditar(detalhe); }} style={{ ...btn("#1A4870") }}>
                     Editar Rascunho
                   </button>
                 )}
-                <button onClick={() => setDetalhe(null)} style={{ padding: "8px 20px", background: "#fff", border: "1px solid #ccc", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "#333" }}>
+                <button data-arato-button="secondary" onClick={() => setDetalhe(null)} style={{ padding: "8px 20px", background: "#fff", border: "1px solid #ccc", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "#333" }}>
                   Fechar
                 </button>
               </div>

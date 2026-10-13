@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { listarNfRemessasLogisticas, atualizarNfRemessaLogistica, listarPessoasDaConta } from "../../../lib/db";
@@ -179,9 +180,9 @@ export default function RemessasLogisticasPage() {
       <TopNav />
       <main style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px" }}>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas Logísticas</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas Logísticas</h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>NFs 5905/6905 emitidas para armazenagem em condomínio logístico e respectivos retornos 5906/6906</p>
           </div>
         </div>
@@ -194,7 +195,7 @@ export default function RemessasLogisticasPage() {
             { label: "Retornadas",       value: String(totalRetornadas),              bg: "#E8F5E9", cl: "#1A6B3C" },
             { label: "Valor Total",      value: fmtBRL(totalValor),                  bg: "#F4F6FA", cl: "#1a1a1a" },
           ].map(k => (
-            <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px" }}>
               <div style={{ fontSize: 11, color: k.cl, fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: k.cl }}>{k.value}</div>
             </div>
@@ -202,14 +203,14 @@ export default function RemessasLogisticasPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
           <input style={{ ...inp, maxWidth: 320 }} placeholder="Buscar por destinatário ou chave NF…" value={busca} onChange={e => setBusca(e.target.value)} />
-          <select style={{ ...inp, maxWidth: 180 }} value={filtroSt} onChange={e => setFiltroSt(e.target.value)}>
+          <SelectField style={{ ...inp, maxWidth: 180 }} value={filtroSt} onChange={e => setFiltroSt(e.target.value)}>
             <option value="">Todos os status</option>
             <option value="emitida">Emitida</option>
             <option value="retornada">Retornada</option>
             <option value="cancelada">Cancelada</option>
-          </select>
+          </SelectField>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{filtradas.length} registro{filtradas.length !== 1 ? "s" : ""}</span>
         </div>
 
@@ -222,8 +223,8 @@ export default function RemessasLogisticasPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-nav)", borderBottom: "0.5px solid var(--border)" }}>
                     <th style={{ padding: "11px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Destinatário</th>
@@ -283,7 +284,7 @@ export default function RemessasLogisticasPage() {
                         </td>
                         <td style={{ padding: "10px 10px", textAlign: "center" }}>
                           {r.status === "emitida" && (
-                            <button onClick={() => abrirRetorno(r)}
+                            <button data-arato-button="secondary" onClick={() => abrirRetorno(r)}
                               style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 7, background: "transparent", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                               Emitir Retorno →
                             </button>
@@ -301,16 +302,16 @@ export default function RemessasLogisticasPage() {
 
       {/* ── Modal de Retorno ── */}
       {modalRetorno && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 580, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Retorno</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 580, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Retorno</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   Remessa original: {modalRetorno.nf_remessa_numero} — {modalRetorno.destinatario_nome}
                 </div>
               </div>
-              <button onClick={() => setModalRetorno(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalRetorno(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
             {retOk ? (
@@ -319,7 +320,7 @@ export default function RemessasLogisticasPage() {
                 <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>NF de Retorno Emitida!</div>
                 <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 4 }}>Número: <strong>{retOk.numero}</strong></div>
                 <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-3)", wordBreak: "break-all", marginBottom: 20 }}>{retOk.chave}</div>
-                <button onClick={() => setModalRetorno(null)} style={btnV}>Fechar</button>
+                <button data-arato-button="primary" onClick={() => setModalRetorno(null)} style={btnV}>Fechar</button>
               </div>
             ) : (
               <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
@@ -338,13 +339,13 @@ export default function RemessasLogisticasPage() {
 
                 {/* Natureza */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Natureza da Operação</label>
+                  <label data-arato-label="true" style={lbl}>Natureza da Operação</label>
                   <input style={inp} value={retForm.natureza} onChange={e => setRetForm(p => ({ ...p, natureza: e.target.value }))} />
                 </div>
 
                 {/* Obs */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={lbl}>Observações complementares (opcional)</label>
+                  <label data-arato-label="true" style={lbl}>Observações complementares (opcional)</label>
                   <textarea style={{ ...inp, minHeight: 56, resize: "vertical" }}
                     value={retForm.obs} onChange={e => setRetForm(p => ({ ...p, obs: e.target.value }))}
                     placeholder="Ex: Retorno integral, produto em bom estado…" />
@@ -361,9 +362,9 @@ export default function RemessasLogisticasPage() {
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                  <button onClick={() => setModalRetorno(null)} style={btnR}>Cancelar</button>
-                  <button onClick={emitirRetorno} disabled={retEmitindo}
+                <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button data-arato-button="secondary" onClick={() => setModalRetorno(null)} style={btnR}>Cancelar</button>
+                  <button data-arato-button="primary" onClick={emitirRetorno} disabled={retEmitindo}
                     style={{ ...btnV, opacity: retEmitindo ? 0.6 : 1 }}>
                     {retEmitindo ? "Emitindo…" : "Emitir NF de Retorno →"}
                   </button>

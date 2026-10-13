@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -1007,22 +1008,22 @@ export default function LCDPR() {
 
   // ═════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* ── Cabeçalho ── */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>LCDPR — Livro Caixa Digital do Produtor Rural</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>LCDPR — Livro Caixa Digital do Produtor Rural</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)" }}>Regime de caixa · Pessoa Física · Leiaute 1.3 — Anexo ao ADE COPES nº 1/2020</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <select value={anoSel} onChange={e => setAnoSel(Number(e.target.value))}
+            <SelectField value={anoSel} onChange={e => setAnoSel(Number(e.target.value))}
               style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", cursor: "pointer" }}>
               {ANOS.map(a => <option key={a}>{a}</option>)}
-            </select>
-            <button onClick={() => setModalManual(true)}
+            </SelectField>
+            <button data-arato-button="primary" onClick={() => setModalManual(true)}
               style={{ padding: "8px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
               + Lançamento manual
             </button>
@@ -1053,7 +1054,7 @@ export default function LCDPR() {
               {fazendasSemCaepf.length > 0 && (
                 <span style={{ color: "#7A5A12" }}>
                   ⚠ <strong>{fazendasSemCaepf.length}</strong> fazenda{fazendasSemCaepf.length !== 1 ? "s" : ""} sem CAEPF cadastrado — o registro 0040 sairá com esse campo em branco. Configure em{" "}
-                  <button onClick={() => setAba("cadastro")} style={{ background: "none", border: "none", color: "#C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12, padding: 0, textDecoration: "underline" }}>Cadastro LCDPR</button>.
+                  <button data-arato-button="toggle" onClick={() => setAba("cadastro")} style={{ background: "none", border: "none", color: "#C9921B", cursor: "pointer", fontWeight: 600, fontSize: 12, padding: 0, textDecoration: "underline" }}>Cadastro LCDPR</button>.
                 </span>
               )}
               {fazendasColetivas.length > 0 && (
@@ -1065,7 +1066,7 @@ export default function LCDPR() {
           )}
 
           {/* ── Barra de info: prazo + saldo inicial ── */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 16px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, fontSize: 12 }}>
+          <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 16px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, fontSize: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ color: "var(--text-2)" }}>📅 Prazo de entrega:</span>
               <strong style={{ color: "var(--text-1)" }}>30/04/{anoSel + 1}</strong>
@@ -1084,7 +1085,7 @@ export default function LCDPR() {
 
           {/* ── Abas ── */}
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", overflowX: "auto" }}>
+            <div data-arato-grid-container="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", overflowX: "auto" }}>
               {([
                 ["livro",         "Livro Caixa"],
                 ["participacoes", "Produtores e Participações"],
@@ -1093,7 +1094,7 @@ export default function LCDPR() {
                 ["importacao",    "Importação"],
                 ["exportacao",    "Exportação"],
               ] as [Aba, string][]).map(([k, lbl]) => (
-                <button key={k} onClick={() => setAba(k)} style={{
+                <button data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{
                   padding: "10px 18px", border: "none",
                   background: aba === k ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === k ? "2px solid #1A5C38" : "2px solid transparent",
@@ -1119,7 +1120,7 @@ export default function LCDPR() {
                 {loading ? (
                   <div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>Carregando lançamentos…</div>
                 ) : entradas.length === 0 ? (
-                  <div style={{ padding: 48, textAlign: "center", color: "var(--text-2)" }}>
+                  <div data-arato-statistic="display" style={{ padding: 48, textAlign: "center", color: "var(--text-2)" }}>
                     <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum lançamento baixado em {anoSel}</div>
                     <div style={{ fontSize: 12, color: "#666", lineHeight: 1.7 }}>
@@ -1128,8 +1129,8 @@ export default function LCDPR() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
+                  <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Data", "Tipo", "Histórico", "Doc.", "CPF/CNPJ contraparte", "Receita", "Despesa", "Saldo", ""].map((h, i) => (
@@ -1159,13 +1160,13 @@ export default function LCDPR() {
                                   <div style={{ fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.historico}</div>
                                 </td>
                                 <td style={{ padding: "4px 8px" }}>
-                                  <select
+                                  <SelectField
                                     value={e.tipoDoc}
                                     onChange={ev => atualizarTipoDoc(e.id, ev.target.value)}
                                     style={{ fontSize: 11, padding: "3px 5px", border: "0.5px solid var(--border-table)", borderRadius: 5, color: "var(--text-1)", background: "var(--bg-card)", maxWidth: 150 }}
                                   >
                                     {Object.entries(TIPO_DOC_LABEL).map(([k, v]) => <option key={k} value={k}>{k} — {v}</option>)}
-                                  </select>
+                                  </SelectField>
                                 </td>
                                 <td style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{e.cpfCnpj || "—"}</td>
                                 <td style={{ padding: "8px 12px", textAlign: "right", color: e.receita > 0 ? "#1A5C38" : "#ccc", fontWeight: e.receita > 0 ? 600 : 400, fontVariantNumeric: "tabular-nums" }}>
@@ -1179,7 +1180,7 @@ export default function LCDPR() {
                                 </td>
                                 <td style={{ padding: "8px 6px", textAlign: "center" }}>
                                   {e.origem !== "auto" ? (
-                                    <button onClick={() => removerLancamento(e.id)} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 6, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>✕</button>
+                                    <button data-arato-button="danger" onClick={() => removerLancamento(e.id)} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 6, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>✕</button>
                                   ) : (
                                     <span title="Originado de baixa financeira — não pode ser excluído" style={{ fontSize: 14, cursor: "default", opacity: 0.35 }}>🔒</span>
                                   )}
@@ -1217,7 +1218,7 @@ export default function LCDPR() {
                   </div>
 
                   {produtoresLcdpr.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 40, color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 10 }}>
+                    <div data-arato-statistic="display" style={{ textAlign: "center", padding: 40, color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 10 }}>
                       <div style={{ fontSize: 32, marginBottom: 10 }}>👤</div>
                       <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum produtor (CPF) encontrado na conta</div>
                       <div style={{ fontSize: 12 }}>Cadastre produtores em <strong>Cadastros → Produtores</strong>.</div>
@@ -1225,7 +1226,7 @@ export default function LCDPR() {
                   ) : (
                     <>
                       <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <thead>
                             <tr style={{ background: "var(--bg-page)" }}>
                               {["CPF", "Nome do Produtor", "Quota-parte (%)", "Situação"].map((h, i) => (
@@ -1321,15 +1322,15 @@ export default function LCDPR() {
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
-                    <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
+                    <div data-arato-statistic="display" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: "var(--text-3)" }}>Total pago no período ({auditoriaLcdpr.length} lançamentos)</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(totalPago)}</div>
                     </div>
-                    <div style={{ background: "#E8F5E9", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "12px 16px" }}>
+                    <div data-arato-statistic="display" style={{ background: "#E8F5E9", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: "#1A6B3C" }}>✓ No LCDPR ({qtdInclu})</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#1A6B3C" }}>{fmtBRL(totalInclu)}</div>
                     </div>
-                    <div style={{ background: qtdExcl > 0 ? "#FCEBEB" : "var(--bg-page)", border: `0.5px solid ${qtdExcl > 0 ? "#F5C6C6" : "var(--border-table)"}`, borderRadius: 10, padding: "12px 16px" }}>
+                    <div data-arato-statistic="display" style={{ background: qtdExcl > 0 ? "#FCEBEB" : "var(--bg-page)", border: `0.5px solid ${qtdExcl > 0 ? "#F5C6C6" : "var(--border-table)"}`, borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: qtdExcl > 0 ? "#791F1F" : "var(--text-3)" }}>✗ Fora do LCDPR ({qtdExcl})</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: qtdExcl > 0 ? "#791F1F" : "var(--text-1)" }}>{fmtBRL(totalExcl)}</div>
                     </div>
@@ -1347,7 +1348,7 @@ export default function LCDPR() {
 
                   <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
                     {([["excluidos", "Fora do LCDPR"], ["incluidos", "No LCDPR"], ["todos", "Todos"]] as const).map(([v, lbl]) => (
-                      <button key={v} onClick={() => setFiltroAuditoria(v)} style={{
+                      <button data-arato-button="toggle" key={v} onClick={() => setFiltroAuditoria(v)} style={{
                         padding: "6px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)",
                         background: filtroAuditoria === v ? "#1A5C38" : "var(--bg-card)",
                         color: filtroAuditoria === v ? "#fff" : "var(--text-2)",
@@ -1356,7 +1357,7 @@ export default function LCDPR() {
                         {lbl}
                       </button>
                     ))}
-                    <select value={mesAuditoria} onChange={e => setMesAuditoria(e.target.value)} style={{
+                    <SelectField value={mesAuditoria} onChange={e => setMesAuditoria(e.target.value)} style={{
                       padding: "6px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)",
                       background: "var(--bg-card)", color: "var(--text-2)", fontSize: 12, marginLeft: 8,
                     }}>
@@ -1364,7 +1365,7 @@ export default function LCDPR() {
                       {mesesDisponiveis.map(m => (
                         <option key={m} value={m}>{fmtData(`${m}-01`).slice(3)}</option>
                       ))}
-                    </select>
+                    </SelectField>
                   </div>
 
                   {lista.length === 0 ? (
@@ -1372,8 +1373,8 @@ export default function LCDPR() {
                       Nenhum lançamento nessa condição em {anoSel}.
                     </div>
                   ) : (
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ borderBottom: "0.5px solid var(--border-table)" }}>
                             {["Data", "Produtor", "Descrição", "Valor", "Status LCDPR", "Motivo(s)"].map(h => (
@@ -1416,7 +1417,7 @@ export default function LCDPR() {
 
                 <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 10 }}>Imóveis (fazendas)</div>
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 24 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Fazenda", "CAEPF", "Tipo de Exploração", "Participação (%)", ""].map((h, i) => (
@@ -1440,9 +1441,9 @@ export default function LCDPR() {
                                 style={{ ...inpS, fontFamily: "monospace" }} />
                             </td>
                             <td style={{ padding: "6px 12px" }}>
-                              <select value={tipoExp} onChange={e => editarFaz(f.id, { tipo_exploracao: Number(e.target.value) })} style={inpS}>
+                              <SelectField value={tipoExp} onChange={e => editarFaz(f.id, { tipo_exploracao: Number(e.target.value) })} style={inpS}>
                                 {Object.entries(TIPO_EXPLORACAO_LABEL).map(([k, v]) => <option key={k} value={k}>{k} — {v}</option>)}
-                              </select>
+                              </SelectField>
                             </td>
                             <td style={{ padding: "6px 12px", width: 110 }}>
                               <input type="number" min={0} max={100} step={0.01} value={participacao}
@@ -1451,7 +1452,7 @@ export default function LCDPR() {
                             </td>
                             <td style={{ padding: "6px 10px", textAlign: "center" }}>
                               {mudou && (
-                                <button onClick={() => salvarFaz(f.id)} disabled={savingFazIds.has(f.id)}
+                                <button data-arato-button="primary" onClick={() => salvarFaz(f.id)} disabled={savingFazIds.has(f.id)}
                                   style={{ padding: "4px 12px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer", fontSize: 11 }}>
                                   {savingFazIds.has(f.id) ? "…" : "Salvar"}
                                 </button>
@@ -1466,7 +1467,7 @@ export default function LCDPR() {
 
                 <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 10 }}>Contas bancárias (registro 0050)</div>
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 24, fontSize: 12 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Conta", "Banco", "Agência", "Nº Conta", "Tipo"].map((h, i) => (
@@ -1498,29 +1499,29 @@ export default function LCDPR() {
                 </div>
 
                 <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 10 }}>Contador responsável (registro 9999)</div>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1fr", gap: 12, maxWidth: 700 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1fr", gap: 12, maxWidth: 700 }}>
                   <div>
-                    <label style={lblS}>Nome</label>
+                    <label data-arato-label="true" style={lblS}>Nome</label>
                     <input value={contador.nome} onChange={e => setContador(p => ({ ...p, nome: e.target.value }))} style={inpS} />
                   </div>
                   <div>
-                    <label style={lblS}>CPF/CNPJ</label>
+                    <label data-arato-label="true" style={lblS}>CPF/CNPJ</label>
                     <input value={contador.cpf_cnpj} onChange={e => setContador(p => ({ ...p, cpf_cnpj: e.target.value.replace(/\D/g, "") }))} style={{ ...inpS, fontFamily: "monospace" }} />
                   </div>
                   <div>
-                    <label style={lblS}>CRC</label>
+                    <label data-arato-label="true" style={lblS}>CRC</label>
                     <input value={contador.crc} onChange={e => setContador(p => ({ ...p, crc: e.target.value }))} style={inpS} />
                   </div>
                   <div>
-                    <label style={lblS}>E-mail</label>
+                    <label data-arato-label="true" style={lblS}>E-mail</label>
                     <input value={contador.email} onChange={e => setContador(p => ({ ...p, email: e.target.value }))} style={inpS} />
                   </div>
                   <div>
-                    <label style={lblS}>Telefone</label>
+                    <label data-arato-label="true" style={lblS}>Telefone</label>
                     <input value={contador.telefone} onChange={e => setContador(p => ({ ...p, telefone: e.target.value }))} style={inpS} />
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-end" }}>
-                    <button onClick={salvarContador} disabled={savingContador}
+                    <button data-arato-button="primary" onClick={salvarContador} disabled={savingContador}
                       style={{ padding: "8px 16px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
                       {savingContador ? "Salvando…" : "Salvar contador"}
                     </button>
@@ -1532,18 +1533,18 @@ export default function LCDPR() {
             {/* ═══ ABA: IMPORTAÇÃO ═══ */}
             {aba === "importacao" && (
               <div style={{ padding: 24 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+                <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>Importar lançamentos via planilha</div>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 16 }}>
                       Para lançamentos históricos ou oriundos de outro sistema. Os dados importados ficam na sessão atual
                       e são incluídos no arquivo exportado junto com os lançamentos automáticos do Financeiro.
                     </div>
-                    <button onClick={baixarModelo}
+                    <button data-arato-button="secondary" onClick={baixarModelo}
                       style={{ padding: "7px 14px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
                       ⬇ Baixar modelo Excel
                     </button>
-                    <div onClick={() => importRef.current?.click()}
+                    <div data-arato-statistic="action" onClick={() => importRef.current?.click()}
                       onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor = "#1A5C38"; }}
                       onDragLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-table)"; }}
                       onDrop={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor = "var(--border-table)"; const f = e.dataTransfer.files[0]; if (f) handleImportFile(f); }}
@@ -1584,13 +1585,13 @@ export default function LCDPR() {
                         Preview — {importRows.length} linha{importRows.length !== 1 ? "s" : ""}
                         {" "}({importRows.filter(r => r._status === "ok").length} válidas, {importRows.filter(r => r._status === "erro").length} com erro)
                       </div>
-                      <button onClick={confirmarImport} disabled={!importRows.some(r => r._status === "ok")}
+                      <button data-arato-button="primary" onClick={confirmarImport} disabled={!importRows.some(r => r._status === "ok")}
                         style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, opacity: importRows.some(r => r._status === "ok") ? 1 : 0.5 }}>
                         Confirmar importação
                       </button>
                     </div>
-                    <div style={{ overflowX: "auto", border: "0.5px solid var(--border-table)", borderRadius: 10 }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto", border: "0.5px solid var(--border-table)", borderRadius: 10 }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Status", "Data", "Histórico", "Tipo", "Valor", "Erro"].map((h, i) => (
@@ -1625,39 +1626,39 @@ export default function LCDPR() {
                     <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 16 }}>Configurar exportação</div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <label style={lblS}>Produtor</label>
-                      <select value={produtorFiltro} onChange={e => setProdutorFiltro(e.target.value)} style={inpS}>
+                      <label data-arato-label="true" style={lblS}>Produtor</label>
+                      <SelectField value={produtorFiltro} onChange={e => setProdutorFiltro(e.target.value)} style={inpS}>
                         <option value="todos">Todos os produtores (sem aplicar quota-parte)</option>
                         {produtoresLcdpr.map(p => <option key={p.cpf} value={p.cpf}>{fmtCPF(p.cpf)} — {p.nome}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <label style={lblS}>Período</label>
+                      <label data-arato-label="true" style={lblS}>Período</label>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => setModoExport("anual")} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${modoExport === "anual" ? "#1A5C38" : "var(--border-table)"}`, background: modoExport === "anual" ? "#EAF3DE" : "var(--bg-card)", color: modoExport === "anual" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>Ano inteiro ({anoSel})</button>
-                        <button onClick={() => setModoExport("mensal")} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${modoExport === "mensal" ? "#1A5C38" : "var(--border-table)"}`, background: modoExport === "mensal" ? "#EAF3DE" : "var(--bg-card)", color: modoExport === "mensal" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>Um mês</button>
+                        <button data-arato-button="toggle" onClick={() => setModoExport("anual")} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${modoExport === "anual" ? "#1A5C38" : "var(--border-table)"}`, background: modoExport === "anual" ? "#EAF3DE" : "var(--bg-card)", color: modoExport === "anual" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>Ano inteiro ({anoSel})</button>
+                        <button data-arato-button="toggle" onClick={() => setModoExport("mensal")} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${modoExport === "mensal" ? "#1A5C38" : "var(--border-table)"}`, background: modoExport === "mensal" ? "#EAF3DE" : "var(--bg-card)", color: modoExport === "mensal" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>Um mês</button>
                       </div>
                       {modoExport === "mensal" && (
-                        <select value={mesExport} onChange={e => setMesExport(Number(e.target.value))} style={{ ...inpS, marginTop: 8 }}>
+                        <SelectField value={mesExport} onChange={e => setMesExport(Number(e.target.value))} style={{ ...inpS, marginTop: 8 }}>
                           {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>{new Date(anoSel, i, 1).toLocaleString("pt-BR", { month: "long" })}</option>
                           ))}
-                        </select>
+                        </SelectField>
                       )}
                     </div>
 
                     <div style={{ marginBottom: 20 }}>
-                      <label style={lblS}>Formato</label>
+                      <label data-arato-label="true" style={lblS}>Formato</label>
                       <div style={{ display: "flex", gap: 8 }}>
                         {([["txt", "📄 .txt (LCDPR)"], ["xlsx", "📊 Excel"], ["pdf", "📑 Relatório PDF"]] as [typeof formatoExport, string][])
                           .map(([f, lbl]) => (
-                          <button key={f} onClick={() => setFormatoExport(f)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${formatoExport === f ? "#1A5C38" : "var(--border-table)"}`, background: formatoExport === f ? "#EAF3DE" : "var(--bg-card)", color: formatoExport === f ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>{lbl}</button>
+                          <button data-arato-button="toggle" key={f} onClick={() => setFormatoExport(f)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${formatoExport === f ? "#1A5C38" : "var(--border-table)"}`, background: formatoExport === f ? "#EAF3DE" : "var(--bg-card)", color: formatoExport === f ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>{lbl}</button>
                         ))}
                       </div>
                     </div>
 
-                    <button onClick={exportar}
+                    <button data-arato-button="primary" onClick={exportar}
                       style={{ width: "100%", padding: "12px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
                       ⬇ Gerar e baixar
                     </button>
@@ -1665,7 +1666,7 @@ export default function LCDPR() {
 
                   <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border-table)" }}>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Resumo mensal — {anoSel}</div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <tbody>
                         {mesesResumo.map((m, i) => (
                           <tr key={i} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
@@ -1686,33 +1687,33 @@ export default function LCDPR() {
 
       {/* ── Modal: lançamento manual ── */}
       {modalManual && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 24, width: 460 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 16 }}>Lançamento manual (histórico / fora do Financeiro)</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setFManual(p => ({ ...p, tipo: "receita" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "receita" ? "#1A5C38" : "var(--border-table)"}`, background: fManual.tipo === "receita" ? "#EAF3DE" : "var(--bg-card)", color: fManual.tipo === "receita" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Receita</button>
-                <button onClick={() => setFManual(p => ({ ...p, tipo: "despesa" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "despesa" ? "#E24B4A" : "var(--border-table)"}`, background: fManual.tipo === "despesa" ? "#FCEBEB" : "var(--bg-card)", color: fManual.tipo === "despesa" ? "#E24B4A" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Despesa</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 24, width: 460 }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 16 }}>Lançamento manual (histórico / fora do Financeiro)</div>
+            <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
+                <button data-arato-button="toggle" onClick={() => setFManual(p => ({ ...p, tipo: "receita" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "receita" ? "#1A5C38" : "var(--border-table)"}`, background: fManual.tipo === "receita" ? "#EAF3DE" : "var(--bg-card)", color: fManual.tipo === "receita" ? "#1A5C38" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Receita</button>
+                <button data-arato-button="toggle" onClick={() => setFManual(p => ({ ...p, tipo: "despesa" }))} style={{ flex: 1, padding: 8, borderRadius: 8, border: `1px solid ${fManual.tipo === "despesa" ? "#E24B4A" : "var(--border-table)"}`, background: fManual.tipo === "despesa" ? "#FCEBEB" : "var(--bg-card)", color: fManual.tipo === "despesa" ? "#E24B4A" : "var(--text-2)", fontWeight: 600, cursor: "pointer" }}>Despesa</button>
               </div>
-              <div><label style={lblS}>Data</label><InputData type="date" value={fManual.data} onChange={e => setFManual(p => ({ ...p, data: e.target.value }))} style={inpS} /></div>
-              <div><label style={lblS}>Histórico</label><input value={fManual.historico} onChange={e => setFManual(p => ({ ...p, historico: e.target.value }))} style={inpS} placeholder="Ex: Venda de 100 sacas de milho" /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lblS}>Data</label><InputData type="date" value={fManual.data} onChange={e => setFManual(p => ({ ...p, data: e.target.value }))} style={inpS} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lblS}>Histórico</label><input value={fManual.historico} onChange={e => setFManual(p => ({ ...p, historico: e.target.value }))} style={inpS} placeholder="Ex: Venda de 100 sacas de milho" /></div>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label style={lblS}>Documento</label>
-                  <select value={fManual.tipoDoc} onChange={e => setFManual(p => ({ ...p, tipoDoc: e.target.value }))} style={inpS}>
+                  <label data-arato-label="true" style={lblS}>Documento</label>
+                  <SelectField value={fManual.tipoDoc} onChange={e => setFManual(p => ({ ...p, tipoDoc: e.target.value }))} style={inpS}>
                     {Object.entries(TIPO_DOC_LABEL).map(([k, v]) => <option key={k} value={k}>{k} — {v}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
-                <div><label style={lblS}>CPF/CNPJ contraparte</label><input value={fManual.cpfCnpj} onChange={e => setFManual(p => ({ ...p, cpfCnpj: e.target.value.replace(/\D/g, "") }))} style={inpS} /></div>
+                <div><label data-arato-label="true" style={lblS}>CPF/CNPJ contraparte</label><input value={fManual.cpfCnpj} onChange={e => setFManual(p => ({ ...p, cpfCnpj: e.target.value.replace(/\D/g, "") }))} style={inpS} /></div>
               </div>
-              <div>
-                <label style={lblS}>Valor</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lblS}>Valor</label>
                 <InputNumerico value={fManual.valor} onChange={v => setFManual(p => ({ ...p, valor: Number(v) }))} style={inpS} />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={adicionarManual} style={{ padding: "8px 20px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Adicionar</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+              <button data-arato-button="secondary" onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={adicionarManual} style={{ padding: "8px 20px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Adicionar</button>
             </div>
           </div>
         </div>

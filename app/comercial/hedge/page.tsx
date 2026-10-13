@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -66,11 +67,11 @@ function badge(txt: string, bg: string, cl: string) {
 
 function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "var(--bg-card,#fff)", borderRadius: 14, padding: 28, width, maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1,#1a1a1a)" }}>{titulo}</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card,#fff)", borderRadius: 14, padding: 28, width, maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1,#1a1a1a)" }}>{titulo}</div>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
         </div>
         {children}
       </div>
@@ -479,7 +480,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
           {/* Toggle moeda */}
           <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 8, overflow: "hidden" }}>
             {(["BRL","USD"] as const).map(m => (
-              <button key={m} onClick={() => setMoeda(m)} style={{ padding: "6px 14px", background: moeda === m ? "#111111" : "transparent", color: moeda === m ? "#fff" : "#666", border: "none", fontSize: 12, fontWeight: moeda === m ? 600 : 400, cursor: "pointer" }}>{m}</button>
+              <button data-arato-button="toggle" key={m} onClick={() => setMoeda(m)} style={{ padding: "6px 14px", background: moeda === m ? "#111111" : "transparent", color: moeda === m ? "#fff" : "#666", border: "none", fontSize: 12, fontWeight: moeda === m ? 600 : 400, cursor: "pointer" }}>{m}</button>
             ))}
           </div>
           {isSuperadmin && badge("Superadmin — módulo em desenvolvimento", "#FBF3E0", "#8B5A00")}
@@ -487,12 +488,12 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       {/* Seletor de Ciclo */}
-      <div style={{ ...card, marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
+      <div data-arato-panel="true" style={{ ...card, marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2,#555)", whiteSpace: "nowrap" }}>Ciclo / Cultura</div>
-        <select style={{ ...inp, maxWidth: 360 }} value={cicloId} onChange={e => setCicloId(e.target.value)}>
+        <SelectField style={{ ...inp, maxWidth: 360 }} value={cicloId} onChange={e => setCicloId(e.target.value)}>
           <option value="">— Selecione um ciclo —</option>
           {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao} · {c.area_ha.toLocaleString("pt-BR")} ha · {c.cultura}</option>)}
-        </select>
+        </SelectField>
         {cicloSel && (
           <>
             <div style={{ fontSize: 12, color: "var(--text-2,#555)" }}>Produção estimada:</div>
@@ -505,7 +506,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       {/* Abas */}
       <div style={{ display: "flex", gap: 0, background: "var(--bg-card,#fff)", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
         {ABAS.map(a => (
-          <button key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: "11px 8px", border: "none", borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 12, fontWeight: aba === a.key ? 700 : 400, color: aba === a.key ? "#111111" : "var(--text-2,#555)", cursor: "pointer" }}>
+          <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: "11px 8px", border: "none", borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 12, fontWeight: aba === a.key ? 700 : 400, color: aba === a.key ? "#111111" : "var(--text-2,#555)", cursor: "pointer" }}>
             {a.label}
           </button>
         ))}
@@ -523,7 +524,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               { comp: "CAMBIO" as const, label: "CÂMBIO",       valor: mediaFixada("CAMBIO"), uni: "R$/USD",pct: pctC, cor: "#444444", info: precoAoVivo ? `PTAX: ${precoAoVivo.usd_brl.toFixed(4)}` : "—" },
               { comp: "FRETE"  as const, label: "FRETE",        valor: mediaFixada("FRETE"),  uni: "R$/sc", pct: pctF, cor: "#C9921B", info: "Médio das rotas" },
             ].map(bl => (
-              <div key={bl.comp} style={{ ...card }}>
+              <div data-arato-statistic="display" key={bl.comp} style={{ ...card }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: bl.cor, letterSpacing: 1, marginBottom: 6 }}>{bl.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-1,#1a1a1a)" }}>
                   {bl.valor !== null ? `${bl.valor.toLocaleString("pt-BR",{maximumFractionDigits:2})} ${bl.uni}` : "—"}
@@ -536,7 +537,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
           {/* Margem consolidada */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div style={{ ...card }}>
+            <div data-arato-statistic="display" style={{ ...card }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2,#555)", marginBottom: 6 }}>Preço líquido (parâmetros atuais)</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: "#111111" }}>
                 {moeda === "BRL" ? `R$ ${calc.precLiqFinal.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}/sc`
@@ -544,14 +545,14 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               </div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Porto: R$ {calc.precPorto.toFixed(2)}/sc · Frete: R$ {frete_n.toFixed(0)}/sc</div>
             </div>
-            <div style={{ ...card }}>
+            <div data-arato-statistic="display" style={{ ...card }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2,#555)", marginBottom: 6 }}>Margem sobre custo (R$ {custo_n.toFixed(2)}/sc)</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: margem_n >= 0 ? "#16A34A" : "#E24B4A" }}>
                 R$ {margem_n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}/sc
               </div>
               <div style={{ fontSize: 12, color: margem_n >= 0 ? "#16A34A" : "#E24B4A", fontWeight: 600 }}>{margem_pct.toFixed(1)}% sobre custo</div>
             </div>
-            <div style={{ ...card }}>
+            <div data-arato-statistic="display" style={{ ...card }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2,#555)", marginBottom: 6 }}>Exposição aberta (câmbio)</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: pctC < 30 ? "#E24B4A" : pctC < 70 ? "#EF9F27" : "#16A34A" }}>
                 {prodEstimada > 0 ? `${((1-pctC/100)*prodEstimada).toLocaleString("pt-BR",{maximumFractionDigits:0})} sc` : "—"}
@@ -566,12 +567,12 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
           <div style={{ ...card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 700 }}>Fixações registradas</div>
-              <button style={btnM} onClick={() => setModalFix(true)}>+ Nova Fixação</button>
+              <button data-arato-button="primary" style={btnM} onClick={() => setModalFix(true)}>+ Nova Fixação</button>
             </div>
             {fixacoes.length === 0 ? (
               <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhuma fixação registrada para este ciclo.</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead><tr style={{ borderBottom: "0.5px solid var(--border-table,#DDE2EE)" }}>
                   {["Data","Componente","Instrumento","Qtd (sc)","Valor","Ref.",""].map((h,i) => <th key={i} style={{ padding: "8px 10px", textAlign: i > 3 ? "right" : "left", color: "var(--text-2,#555)", fontWeight: 600 }}>{h}</th>)}
                 </tr></thead>
@@ -588,7 +589,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                         <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700 }}>{f.valor.toLocaleString("pt-BR",{maximumFractionDigits:4})} <span style={{ fontSize:10, color:"#888" }}>{f.unidade}</span></td>
                         <td style={{ padding: "8px 10px", textAlign: "right", color: "#555" }}>{f.vencimento_ref ?? "—"}</td>
                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          <button style={{ ...btnR, padding: "3px 8px", fontSize: 11 }} onClick={() => { if (confirm("Excluir?")) sb.from("fixacoes_hedge").delete().eq("id",f.id).then(() => setFixacoes(x => x.filter(r => r.id !== f.id))); }}>✕</button>
+                          <button data-arato-button="icon" style={{ ...btnR, padding: "3px 8px", fontSize: 11 }} onClick={() => { if (confirm("Excluir?")) sb.from("fixacoes_hedge").delete().eq("id",f.id).then(() => setFixacoes(x => x.filter(r => r.id !== f.id))); }}>✕</button>
                         </td>
                       </tr>
                     );
@@ -602,18 +603,18 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
       {/* ══ PRECIFICADOR ══ */}
       {aba === "precificador" && (
-        <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
 
           {/* Inputs */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ ...card }}>
+            <div data-arato-panel="true" style={{ ...card }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>Parâmetros das 4 Pernas</div>
 
               <div style={{ marginBottom: 10 }}>
-                <label style={lbl}>Cultura</label>
+                <label data-arato-label="true" style={lbl}>Cultura</label>
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["soja","milho"] as const).map(c => (
-                    <button key={c} onClick={() => setPCultura(c)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: `0.5px solid ${pCultura===c?"#111111":"var(--border-table,#DDE2EE)"}`, background: pCultura===c?"#E8E8E8":"transparent", color: pCultura===c?"#0D0D0D":"#666", fontSize: 13, fontWeight: pCultura===c?700:400, cursor: "pointer" }}>
+                    <button data-arato-button="toggle" key={c} onClick={() => setPCultura(c)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, border: `0.5px solid ${pCultura===c?"#111111":"var(--border-table,#DDE2EE)"}`, background: pCultura===c?"#E8E8E8":"transparent", color: pCultura===c?"#0D0D0D":"#666", fontSize: 13, fontWeight: pCultura===c?700:400, cursor: "pointer" }}>
                       {c.charAt(0).toUpperCase()+c.slice(1)} (×{c==="soja"?FATOR_SOJA.toFixed(4):FATOR_MILHO.toFixed(4)})
                     </button>
                   ))}
@@ -622,11 +623,11 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
               {/* Bloco de vencimento CME */}
               <div style={{ marginBottom: 10 }}>
-                <label style={lbl}>Bloco / Vencimento CME</label>
-                <select style={inp} value={blocoVenc} onChange={e => setBlocoVenc(e.target.value)}>
+                <label data-arato-label="true" style={lbl}>Bloco / Vencimento CME</label>
+                <SelectField style={inp} value={blocoVenc} onChange={e => setBlocoVenc(e.target.value)}>
                   <option value="">— Manual (sem auto-fill CBOT) —</option>
                   {gerarBlocos(pCultura).map(b => <option key={b.code} value={b.code}>{b.label}</option>)}
-                </select>
+                </SelectField>
                 {blocoVenc && (
                   <div style={{ fontSize: 10, marginTop: 2, color: cbotFetching ? "#C9921B" : cbotFonte === "cme_live" ? "#16A34A" : "#C9921B" }}>
                     {cbotFetching
@@ -650,15 +651,15 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                 );
                 return (
                   <div style={{ marginBottom: 10 }}>
-                    <label style={lbl}>Rota / Região</label>
-                    <select style={inp} value={rotaId} onChange={e => setRotaId(e.target.value)}>
+                    <label data-arato-label="true" style={lbl}>Rota / Região</label>
+                    <SelectField style={inp} value={rotaId} onChange={e => setRotaId(e.target.value)}>
                       <option value="">— Manual (sem auto-fill frete) —</option>
                       {rotas.map(r => (
                         <option key={r.id} value={r.id}>
                           {r.descricao}{r.destino ? ` → ${r.destino}` : ""} — R$ {r.valor_brl_sc.toFixed(2)}/sc
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                     {portoDest && <div style={{ fontSize: 10, color: "#16A34A", marginTop: 2 }}>Porto: {portoDest} · frete e despesas preenchidos automaticamente</div>}
                   </div>
                 );
@@ -669,7 +670,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               {/* 4 Pernas */}
               {/* BOARD */}
               <div style={{ marginBottom: 10 }}>
-                <label style={lbl}>BOARD — CBOT Futuro (¢/bu)</label>
+                <label data-arato-label="true" style={lbl}>BOARD — CBOT Futuro (¢/bu)</label>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <input
                     type="number" step="0.25"
@@ -678,7 +679,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                     onChange={e => { setPCbot(e.target.value); setCbotFonte("manual"); }}
                   />
                   {blocoVenc && (
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={() => setCbotTrigger(t => t + 1)}
                       disabled={cbotFetching}
                       title={`Buscar ${CME_ROOT[pCultura] ?? "ZS"}${blocoVenc}=F na CME agora`}
@@ -707,11 +708,11 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
               {/* PRÊMIO — com sugestão CEPEA */}
               <div style={{ marginBottom: 10 }}>
-                <label style={lbl}>PRÊMIO — Base {portoDest || "Paranaguá"} (¢/bu)</label>
+                <label data-arato-label="true" style={lbl}>PRÊMIO — Base {portoDest || "Paranaguá"} (¢/bu)</label>
                 <div style={{ display: "flex", gap: 6 }}>
                   <input type="number" step="1" style={{ ...inp, flex: 1 }} value={pPremio} onChange={e => setPPremio(e.target.value)} />
                   {precoAoVivo?.premio_implicito != null && (
-                    <button
+                    <button data-arato-button="primary"
                       style={{ ...btnM, whiteSpace: "nowrap", fontSize: 11 }}
                       onClick={() => setPPremio(String(precoAoVivo.premio_implicito))}
                       title="Usar prêmio implícito derivado do CEPEA"
@@ -729,14 +730,14 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
               {/* CÂMBIO */}
               <div style={{ marginBottom: 10 }}>
-                <label style={lbl}>CÂMBIO — USD/BRL</label>
+                <label data-arato-label="true" style={lbl}>CÂMBIO — USD/BRL</label>
                 <input type="number" step="0.05" style={inp} value={pCambio} onChange={e => setPCambio(e.target.value)} />
                 {precoAoVivo && <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>PTAX hoje: {precoAoVivo.usd_brl.toFixed(4)}</div>}
               </div>
 
               {/* FRETE */}
               <div style={{ marginBottom: 10 }}>
-                <label style={lbl}>FRETE — Fazenda → Porto (R$/sc)</label>
+                <label data-arato-label="true" style={lbl}>FRETE — Fazenda → Porto (R$/sc)</label>
                 <input type="number" step="1" style={inp} value={pFrete} onChange={e => setPFrete(e.target.value)} />
                 <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
                   {rotaId ? `${despesas.find(d => d.id === rotaId)?.descricao ?? "Rota"} → ${portoDest}` : "Selecione uma rota acima ou insira manualmente"}
@@ -744,15 +745,15 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               <div style={{ borderTop: "0.5px solid var(--border-table,#DDE2EE)", paddingTop: 12, marginTop: 4 }}>
-                <label style={lbl}>Custo de produção (R$/sc)</label>
+                <label data-arato-label="true" style={lbl}>Custo de produção (R$/sc)</label>
                 <input type="number" style={inp} value={pCusto} onChange={e => setPCusto(e.target.value)} />
               </div>
               <div style={{ marginTop: 10 }}>
-                <label style={lbl}>Funrural + SENAR (1,7% — somente PF)</label>
-                <select style={inp} value={pFunrural} onChange={e => setPFunrural(e.target.value)}>
+                <label data-arato-label="true" style={lbl}>Funrural + SENAR (1,7% — somente PF)</label>
+                <SelectField style={inp} value={pFunrural} onChange={e => setPFunrural(e.target.value)}>
                   <option value="true">Sim — descontar 1,7%</option>
                   <option value="false">Não — PJ ou já no custo</option>
-                </select>
+                </SelectField>
               </div>
             </div>
           </div>
@@ -783,12 +784,12 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div style={{ ...card, textAlign: "center" }}>
+              <div data-arato-statistic="display" style={{ ...card, textAlign: "center" }}>
                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Margem em %</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: margem_n>=0?"#16A34A":"#E24B4A" }}>{margem_pct.toFixed(1)}%</div>
                 <div style={{ fontSize: 11, color: "#888" }}>sobre o custo de produção</div>
               </div>
-              <div style={{ ...card, textAlign: "center" }}>
+              <div data-arato-statistic="display" style={{ ...card, textAlign: "center" }}>
                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Em USD/sc</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: "#111111" }}>USD {usd_sc.toFixed(2)}</div>
                 <div style={{ fontSize: 11, color: "#888" }}>câmbio {cambio_n.toFixed(2)}</div>
@@ -815,16 +816,16 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       {aba === "sensibilidade" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Seletor de eixos */}
-          <div style={{ ...card, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div data-arato-panel="true" data-arato-filters="true" style={{ ...card, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
             {[
               { id:"eixoX", label:"Eixo X (colunas)", val:sensiEixoX, set:(v: string) => setSensiEixoX(v as typeof sensiEixoX), opts:[{v:"cbot",l:"CBOT (¢/bu)"},{v:"cambio",l:"Câmbio (R$/USD)"},{v:"premio",l:"Prêmio (¢/bu)"}] },
               { id:"eixoY", label:"Eixo Y (linhas)",  val:sensiEixoY, set:(v: string) => setSensiEixoY(v as typeof sensiEixoY), opts:[{v:"cambio",l:"Câmbio (R$/USD)"},{v:"cbot",l:"CBOT (¢/bu)"},{v:"frete",l:"Frete (R$/sc)"}] },
             ].map(s => (
               <div key={s.id}>
-                <label style={lbl}>{s.label}</label>
-                <select style={{ ...inp, width: 200 }} value={s.val} onChange={e => s.set(e.target.value)}>
+                <label data-arato-label="true" style={lbl}>{s.label}</label>
+                <SelectField style={{ ...inp, width: 200 }} value={s.val} onChange={e => s.set(e.target.value)}>
                   {s.opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-                </select>
+                </SelectField>
               </div>
             ))}
             <div style={{ fontSize: 11, color: "#555", padding: "8px 0" }}>Resultado: <strong>Margem R$/sc</strong> · Custo: R$ {custo_n.toFixed(2)}/sc · {pCultura}</div>
@@ -841,8 +842,8 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
           </div>
 
           {/* Matriz */}
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 500 }}>
+          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+            <table data-arato-grid="true" style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 500 }}>
               <thead>
                 <tr>
                   <th style={{ padding: "8px 12px", background: "#F4F6FA", border: "0.5px solid #DDE2EE", fontSize: 11, color: "#555" }}>
@@ -881,21 +882,21 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
       {/* ══ BUSCA DE MARGEM ══ */}
       {aba === "busca_margem" && (
-        <div style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 20 }}>
-          <div style={{ ...card }}>
+        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 20 }}>
+          <div data-arato-panel="true" style={{ ...card }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16 }}>Definir Meta de Margem</div>
             <div style={{ marginBottom: 12 }}>
-              <label style={lbl}>Margem desejada (R$/sc)</label>
+              <label data-arato-label="true" style={lbl}>Margem desejada (R$/sc)</label>
               <input type="number" style={inp} value={buscaMargem} onChange={e => setBuscaMargem(e.target.value)} />
               {custo_n > 0 && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>= {(parseFloat(buscaMargem)/custo_n*100).toFixed(1)}% sobre custo de R$ {custo_n.toFixed(2)}/sc</div>}
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={lbl}>Travar via qual perna</label>
-              <select style={inp} value={buscaTravar} onChange={e => setBuscaTravar(e.target.value as typeof buscaTravar)}>
+              <label data-arato-label="true" style={lbl}>Travar via qual perna</label>
+              <SelectField style={inp} value={buscaTravar} onChange={e => setBuscaTravar(e.target.value as typeof buscaTravar)}>
                 <option value="cbot">CBOT (board)</option>
                 <option value="cambio">Câmbio</option>
                 <option value="ambos">Combinação CBOT + Câmbio</option>
-              </select>
+              </SelectField>
             </div>
             <div style={{ fontSize: 11, color: "#555", background: "#F4F6FA", padding: 10, borderRadius: 8 }}>
               Premissas fixas: Prêmio {premio_n} ¢ · Frete R$ {frete_n}/sc · {funr?"Funrural 1,7%":"sem Funrural"}
@@ -905,7 +906,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* CBOT necessário */}
             {(buscaTravar === "cbot" || buscaTravar === "ambos") && (
-              <div style={{ ...card, borderLeft: "4px solid #111111" }}>
+              <div data-arato-statistic="display" style={{ ...card, borderLeft: "4px solid #111111" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Via BOARD (câmbio fixo em {cambio_n.toFixed(2)})</div>
                 <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
                   <div>
@@ -932,7 +933,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
             {/* Câmbio necessário */}
             {(buscaTravar === "cambio" || buscaTravar === "ambos") && (
-              <div style={{ ...card, borderLeft: "4px solid #444444" }}>
+              <div data-arato-statistic="display" style={{ ...card, borderLeft: "4px solid #444444" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Via CÂMBIO (CBOT fixo em {cbot_n} ¢/bu)</div>
                 <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
                   <div>
@@ -985,7 +986,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               <div style={{ fontSize: 11, color: "#8B5A00", marginBottom: 10 }}>
                 Meta R$ {buscaMargem}/sc · CBOT necessário: {cbotNecessario.toFixed(0)} ¢ · Câmbio necessário: R$ {cambioNecessario.toFixed(4)} · Posição BOARD: {pctB}% fixado
               </div>
-              <button style={btnM} onClick={() => setAba("cockpit")}>← Registrar fixação via Cockpit</button>
+              <button data-arato-button="toggle" style={btnM} onClick={() => setAba("cockpit")}>← Registrar fixação via Cockpit</button>
             </div>
           </div>
         </div>
@@ -999,17 +1000,17 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
           ) : (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-                <div style={{ ...card }}>
+                <div data-arato-statistic="display" style={{ ...card }}>
                   <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Produção estimada</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: "#111111" }}>{prodEstimada.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc</div>
                   <div style={{ fontSize: 11, color: "#888" }}>{cicloSel.area_ha.toLocaleString("pt-BR")} ha × {cicloSel.produtividade_esperada_sc_ha ?? 60} sc/ha</div>
                 </div>
-                <div style={{ ...card }}>
+                <div data-arato-statistic="display" style={{ ...card }}>
                   <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Board fixado</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: pctB >= 50 ? "#16A34A" : pctB >= 25 ? "#EF9F27" : "#E24B4A" }}>{pctB}%</div>
                   <div style={{ fontSize: 11, color: "#888" }}>{Math.round(pctB/100*prodEstimada).toLocaleString("pt-BR")} sc</div>
                 </div>
-                <div style={{ ...card }}>
+                <div data-arato-statistic="display" style={{ ...card }}>
                   <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Câmbio fixado</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: pctC >= 50 ? "#16A34A" : pctC >= 25 ? "#EF9F27" : "#E24B4A" }}>{pctC}%</div>
                   <div style={{ fontSize: 11, color: "#888" }}>{Math.round(pctC/100*prodEstimada).toLocaleString("pt-BR")} sc</div>
@@ -1077,13 +1078,13 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               <div style={{ fontSize: 13, fontWeight: 700 }}>Histórico de Preços</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Entrada manual · {curvas.length} registros</div>
             </div>
-            <button style={btnM} onClick={() => { setFCurva({ instrumento: "CBOT_SOJA", vencimento: "", data_referencia: new Date().toISOString().slice(0,10), valor: "", unidade: "cents_bu", fonte: "MANUAL", boletim: "fechamento" }); setModalCurva(true); }}>+ Novo Registro</button>
+            <button data-arato-button="primary" style={btnM} onClick={() => { setFCurva({ instrumento: "CBOT_SOJA", vencimento: "", data_referencia: new Date().toISOString().slice(0,10), valor: "", unidade: "cents_bu", fonte: "MANUAL", boletim: "fechamento" }); setModalCurva(true); }}>+ Novo Registro</button>
           </div>
           <div style={{ ...card }}>
             {curvas.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Nenhum registro histórico. Adicione preços de CBOT, prêmio, câmbio ou frete para construir a base histórica.</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead><tr style={{ borderBottom: "0.5px solid var(--border-table,#DDE2EE)" }}>
                   {["Data Ref.","Instrumento","Vencimento","Valor","Unidade","Fonte",""].map((h,i) => <th key={i} style={{ padding: "8px 10px", textAlign: i > 3 ? "right" : "left", color: "#555", fontWeight: 600 }}>{h}</th>)}
                 </tr></thead>
@@ -1097,7 +1098,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                       <td style={{ padding: "8px 10px", textAlign: "right", color: "#888" }}>{c.unidade}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right" }}>{badge(c.fonte, "#F1F5F9","#475569")}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                        <button style={{ ...btnR, padding: "3px 8px", fontSize: 11 }} onClick={() => { if (confirm("Excluir?")) sb.from("curva_mercado").delete().eq("id",c.id).then(() => setCurvas(x => x.filter(r => r.id !== c.id))); }}>✕</button>
+                        <button data-arato-button="icon" style={{ ...btnR, padding: "3px 8px", fontSize: 11 }} onClick={() => { if (confirm("Excluir?")) sb.from("curva_mercado").delete().eq("id",c.id).then(() => setCurvas(x => x.filter(r => r.id !== c.id))); }}>✕</button>
                       </td>
                     </tr>
                   ))}
@@ -1116,13 +1117,13 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               <div style={{ fontSize: 13, fontWeight: 700 }}>Estrutura de Despesas de Originação</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Frete, taxas portuárias, classificação, quebra, comissão — por rota/porto</div>
             </div>
-            <button style={btnM} onClick={() => { setFDesp({ tipo: "frete", descricao: "", cultura: "", destino: "", valor_brl_sc: "" }); setModalDesp(true); }}>+ Nova Despesa</button>
+            <button data-arato-button="primary" style={btnM} onClick={() => { setFDesp({ tipo: "frete", descricao: "", cultura: "", destino: "", valor_brl_sc: "" }); setModalDesp(true); }}>+ Nova Despesa</button>
           </div>
           <div style={{ ...card }}>
             {despesas.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Nenhuma despesa cadastrada. Configure frete por rota, taxas portuárias, etc.</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead><tr style={{ borderBottom: "0.5px solid #DDE2EE" }}>
                   {["Tipo","Descrição","Cultura","Destino","R$/sc",""].map((h,i) => <th key={i} style={{ padding: "8px 10px", textAlign: i > 3 ? "right" : "left", color: "#555", fontWeight: 600 }}>{h}</th>)}
                 </tr></thead>
@@ -1135,7 +1136,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                       <td style={{ padding: "8px 10px", color: "#555" }}>{d.destino ?? "—"}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700 }}>R$ {d.valor_brl_sc.toFixed(2)}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                        <button style={{ ...btnR, padding: "3px 8px", fontSize: 11 }} onClick={() => { if (confirm("Excluir?")) sb.from("estrutura_despesa_hedge").delete().eq("id",d.id).then(() => setDespesas(x => x.filter(r => r.id !== d.id))); }}>✕</button>
+                        <button data-arato-button="icon" style={{ ...btnR, padding: "3px 8px", fontSize: 11 }} onClick={() => { if (confirm("Excluir?")) sb.from("estrutura_despesa_hedge").delete().eq("id",d.id).then(() => setDespesas(x => x.filter(r => r.id !== d.id))); }}>✕</button>
                       </td>
                     </tr>
                   ))}
@@ -1158,10 +1159,10 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       {/* Modal Nova Fixação */}
       {modalFix && (
         <Modal titulo="Registrar Fixação" onClose={() => setModalFix(false)} width={620}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Componente *</label>
-              <select style={inp} value={fFix.componente} onChange={e => {
+              <label data-arato-label="true" style={lbl}>Componente *</label>
+              <SelectField style={inp} value={fFix.componente} onChange={e => {
                 const comp = e.target.value as FixacaoHedge["componente"];
                 const uni = comp === "FRETE" ? "brl_sc" : comp === "CAMBIO" ? "brl_usd" : "cents_bu";
                 setFFix(p => ({ ...p, componente: comp, unidade: uni }));
@@ -1170,40 +1171,40 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                 <option value="PREMIO">PRÊMIO (Basis)</option>
                 <option value="CAMBIO">CÂMBIO (USD/BRL)</option>
                 <option value="FRETE">FRETE (R$/sc)</option>
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Instrumento</label>
-              <select style={inp} value={fFix.instrumento_hedge} onChange={e => setFFix(p => ({ ...p, instrumento_hedge: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Instrumento</label>
+              <SelectField style={inp} value={fFix.instrumento_hedge} onChange={e => setFFix(p => ({ ...p, instrumento_hedge: e.target.value }))}>
                 {INSTRUMENTOS_HEDGE.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Quantidade (sc) *</label>
+              <label data-arato-label="true" style={lbl}>Quantidade (sc) *</label>
               <input type="number" style={inp} placeholder="Ex: 5000" value={fFix.quantidade_sc} onChange={e => setFFix(p => ({ ...p, quantidade_sc: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Valor *</label>
+              <label data-arato-label="true" style={lbl}>Valor *</label>
               <input type="number" step="0.01" style={inp} placeholder={fFix.componente==="CAMBIO"?"Ex: 5.4200":fFix.componente==="FRETE"?"Ex: 48.00":"Ex: 1420.00"} value={fFix.valor} onChange={e => setFFix(p => ({ ...p, valor: e.target.value }))} />
               <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Unidade: {fFix.unidade}</div>
             </div>
             <div>
-              <label style={lbl}>Data da fixação *</label>
+              <label data-arato-label="true" style={lbl}>Data da fixação *</label>
               <InputData type="date" style={inp} value={fFix.data_fixacao} onChange={e => setFFix(p => ({ ...p, data_fixacao: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Ref. de vencimento</label>
+              <label data-arato-label="true" style={lbl}>Ref. de vencimento</label>
               <input style={inp} placeholder="Ex: SX26, ZX26" value={fFix.vencimento_ref} onChange={e => setFFix(p => ({ ...p, vencimento_ref: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Observação</label>
+              <label data-arato-label="true" style={lbl}>Observação</label>
               <input style={inp} placeholder="Opcional" value={fFix.observacao} onChange={e => setFFix(p => ({ ...p, observacao: e.target.value }))} />
             </div>
           </div>
           {erro && <div style={{ color: "#E24B4A", fontSize: 12, marginTop: 10 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalFix(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarFixacao}>{salvando ? "Salvando…" : "Registrar"}</button>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalFix(false)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarFixacao}>{salvando ? "Salvando…" : "Registrar"}</button>
           </div>
         </Modal>
       )}
@@ -1211,10 +1212,10 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       {/* Modal Nova Curva */}
       {modalCurva && (
         <Modal titulo="Registrar Preço Histórico" onClose={() => setModalCurva(false)} width={560}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Instrumento *</label>
-              <select style={inp} value={fCurva.instrumento} onChange={e => {
+              <label data-arato-label="true" style={lbl}>Instrumento *</label>
+              <SelectField style={inp} value={fCurva.instrumento} onChange={e => {
                 const inst = e.target.value;
                 const uni = inst.includes("DOL") || inst.includes("PREMIO") || inst.includes("CBOT") ? (inst.includes("CBOT")?"cents_bu":"brl_usd") : inst.includes("FRETE") ? "brl_sc" : "brl_usd";
                 setFCurva(p => ({ ...p, instrumento: inst, unidade: uni }));
@@ -1226,45 +1227,45 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
                 <option value="DOL_FUT">Câmbio Futuro DOL (R$/USD)</option>
                 <option value="PTAX_BCB">PTAX BCB (R$/USD)</option>
                 <option value="FRETE_ROTA">Frete por Rota (R$/sc)</option>
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Data de referência *</label>
+              <label data-arato-label="true" style={lbl}>Data de referência *</label>
               <InputData type="date" style={inp} value={fCurva.data_referencia} onChange={e => setFCurva(p => ({ ...p, data_referencia: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Valor *</label>
+              <label data-arato-label="true" style={lbl}>Valor *</label>
               <input type="number" step="0.0001" style={inp} value={fCurva.valor} onChange={e => setFCurva(p => ({ ...p, valor: e.target.value }))} />
               <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Unidade: {fCurva.unidade}</div>
             </div>
             <div>
-              <label style={lbl}>Vencimento (se futuro)</label>
+              <label data-arato-label="true" style={lbl}>Vencimento (se futuro)</label>
               <InputData type="date" style={inp} value={fCurva.vencimento} onChange={e => setFCurva(p => ({ ...p, vencimento: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Fonte</label>
-              <select style={inp} value={fCurva.fonte} onChange={e => setFCurva(p => ({ ...p, fonte: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Fonte</label>
+              <SelectField style={inp} value={fCurva.fonte} onChange={e => setFCurva(p => ({ ...p, fonte: e.target.value }))}>
                 <option value="MANUAL">Manual</option>
                 <option value="BCB_PTAX">BCB PTAX</option>
                 <option value="BARCHART">Barchart</option>
                 <option value="STONEX">StoneX</option>
                 <option value="HPOIN">hEDGEpoint</option>
                 <option value="YAHOO">Yahoo Finance</option>
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Boletim PTAX</label>
-              <select style={inp} value={fCurva.boletim} onChange={e => setFCurva(p => ({ ...p, boletim: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Boletim PTAX</label>
+              <SelectField style={inp} value={fCurva.boletim} onChange={e => setFCurva(p => ({ ...p, boletim: e.target.value }))}>
                 <option value="fechamento">Fechamento</option>
                 <option value="abertura">Abertura</option>
                 <option value="intermediario">Intermediário</option>
-              </select>
+              </SelectField>
             </div>
           </div>
           {erro && <div style={{ color: "#E24B4A", fontSize: 12, marginTop: 10 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalCurva(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCurva}>{salvando ? "Salvando…" : "Registrar"}</button>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalCurva(false)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCurva}>{salvando ? "Salvando…" : "Registrar"}</button>
           </div>
         </Modal>
       )}
@@ -1272,39 +1273,39 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       {/* Modal Nova Despesa */}
       {modalDesp && (
         <Modal titulo="Nova Despesa de Originação" onClose={() => setModalDesp(false)} width={520}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Tipo *</label>
-              <select style={inp} value={fDesp.tipo} onChange={e => setFDesp(p => ({ ...p, tipo: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Tipo *</label>
+              <SelectField style={inp} value={fDesp.tipo} onChange={e => setFDesp(p => ({ ...p, tipo: e.target.value }))}>
                 {TIPOS_DESPESA.map(t => <option key={t} value={t}>{t.replace("_"," ")}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Cultura</label>
-              <select style={inp} value={fDesp.cultura} onChange={e => setFDesp(p => ({ ...p, cultura: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Cultura</label>
+              <SelectField style={inp} value={fDesp.cultura} onChange={e => setFDesp(p => ({ ...p, cultura: e.target.value }))}>
                 <option value="">Todas</option>
                 <option value="soja">Soja</option>
                 <option value="milho">Milho</option>
-              </select>
+              </SelectField>
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Descrição *</label>
+              <label data-arato-label="true" style={lbl}>Descrição *</label>
               <input style={inp} placeholder="Ex: Frete Sorriso → Paranaguá" value={fDesp.descricao} onChange={e => setFDesp(p => ({ ...p, descricao: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Destino / Porto</label>
+              <label data-arato-label="true" style={lbl}>Destino / Porto</label>
               <input list="portos-list" style={inp} placeholder="Ex: Paranaguá (PNG)" value={fDesp.destino} onChange={e => setFDesp(p => ({ ...p, destino: e.target.value }))} />
               <datalist id="portos-list">{PORTOS.map(p => <option key={p} value={p} />)}</datalist>
             </div>
             <div>
-              <label style={lbl}>Valor (R$/sc) *</label>
+              <label data-arato-label="true" style={lbl}>Valor (R$/sc) *</label>
               <input type="number" step="0.01" style={inp} placeholder="Ex: 48.00" value={fDesp.valor_brl_sc} onChange={e => setFDesp(p => ({ ...p, valor_brl_sc: e.target.value }))} />
             </div>
           </div>
           {erro && <div style={{ color: "#E24B4A", fontSize: 12, marginTop: 10 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalDesp(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarDespesa}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalDesp(false)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarDespesa}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}

@@ -49,13 +49,13 @@ export default function Propriedades() {
   const areaTalhoes  = fazendas.reduce((s, f) => s + f.talhoes.reduce((st, t) => st + (t.area_ha ?? 0), 0), 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Propriedades e Talhões</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Propriedades e Talhões</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Visão geral das fazendas e talhões cadastrados</p>
           </div>
           <Link href="/cadastros?tab=fazendas"
@@ -69,7 +69,7 @@ export default function Propriedades() {
           {erro && (
             <div style={{ background: "#FDECEA", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#8B1A1A", display: "flex", gap: 8 }}>
               ✕ {erro}
-              <button onClick={carregar} style={{ marginLeft: "auto", fontSize: 11, color: "#8B1A1A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
+              <button data-arato-button="secondary" onClick={carregar} style={{ marginLeft: "auto", fontSize: 11, color: "#8B1A1A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
             </div>
           )}
 
@@ -84,7 +84,7 @@ export default function Propriedades() {
                   { label: "Talhões",           valor: String(totalTalhoes),              cor: "#C9921B" },
                   { label: "Georreferenciados", valor: `${comGps}/${totalTalhoes}`,       cor: comGps === totalTalhoes && totalTalhoes > 0 ? "#111111" : "#EF9F27" },
                 ].map((s, i) => (
-                  <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                     <div style={{ fontSize: 22, fontWeight: 600, color: s.cor }}>{s.valor}</div>
                   </div>
@@ -99,7 +99,7 @@ export default function Propriedades() {
               )}
 
               {fazendas.length === 0 && (
-                <div style={{ textAlign: "center", padding: 48, color: "#444" }}>
+                <div data-arato-statistic="action" style={{ textAlign: "center", padding: 48, color: "#444" }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>⬡</div>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: "#666" }}>Nenhuma fazenda cadastrada</div>
                   <Link href="/cadastros?tab=fazendas" style={{ fontSize: 12, color: "#111111", fontWeight: 600 }}>Ir para Cadastros → Fazendas</Link>
@@ -114,8 +114,8 @@ export default function Propriedades() {
 
                   return (
                     <div key={fazenda.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => toggle(fazenda.id)}>
-                        <div style={{ width: 40, height: 40, background: "#E8E8E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⬡</div>
+                      <div data-arato-statistic="action" style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => toggle(fazenda.id)}>
+                        <div data-arato-statistic="display" style={{ width: 40, height: 40, background: "#E8E8E8", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⬡</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 2 }}>{fazenda.nome}</div>
                           <div style={{ fontSize: 11, color: "var(--text-2)" }}>{fazenda.municipio} · {fazenda.estado} · {(fazenda.area_total_ha ?? 0).toLocaleString("pt-BR")} ha</div>
@@ -152,7 +152,7 @@ export default function Propriedades() {
                           </div>
 
                           {fazenda.talhoes.length > 0 ? (
-                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Talhão", "Área (ha)", "Solo", "Safra Ativa", "GPS"].map((h, i) => (

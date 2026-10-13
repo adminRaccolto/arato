@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
@@ -544,7 +545,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
   );
 
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
         <tr style={{ background: "var(--bg-page)" }}>
           {["Número", "Data", "Destinatário / Remetente", "Natureza / CFOP", "Valor Total", "Status", "Origem", ""].map((h, i) => (
@@ -613,16 +614,16 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       {nota.status === "autorizada" && (
                         <>
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={(e) => { e.stopPropagation(); onImprimirDanfe?.(nota); }}
                             style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                             🖨 Imprimir DANFE
                           </button>
                           {nota.xml_url && (
-                            <button style={{ padding: "5px 12px", border: "0.5px solid #444444", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</button>
+                            <button data-arato-button="secondary" style={{ padding: "5px 12px", border: "0.5px solid #444444", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</button>
                           )}
                           {onCancelar && (
-                            <button
+                            <button data-arato-button="danger"
                               onClick={(e) => { e.stopPropagation(); onCancelar(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
@@ -630,7 +631,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                             </button>
                           )}
                           {onComplementar && (
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={(e) => { e.stopPropagation(); onComplementar(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
@@ -638,7 +639,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                             </button>
                           )}
                           {onCorrigir && (
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={(e) => { e.stopPropagation(); onCorrigir(nota); }}
                               title="Corrigir um dado que não afeta valor, tributo nem identificação das partes"
                               style={{ padding: "5px 12px", border: "0.5px solid #378ADD", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
@@ -651,7 +652,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                             const fc = String(dj.frete_conta ?? "");
                             const ehCif = fc === "0" || fc === "";
                             return ehCif ? (
-                              <button
+                              <button data-arato-button="primary"
                                 onClick={(e) => { e.stopPropagation(); onManifestarNF(nota); }}
                                 style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#111111", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                               >
@@ -664,13 +665,13 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                       {(nota.status === "rejeitada" || nota.status === "denegada") && (
                         <>
                           {onRetransmitir && (
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                               ↺ Corrigir e retransmitir
                             </button>
                           )}
-                          <button
+                          <button data-arato-button="secondary"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const erroInfo = (nota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string | undefined;
@@ -685,7 +686,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                         const isRascunho = (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
                         if (isRascunho && onRetransmitir) {
                           return (
-                            <button onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
+                            <button data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                               ▶ Transmitir →
                             </button>
@@ -693,7 +694,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                         }
                         if (!isRascunho && onConsultarSefaz) {
                           return (
-                            <button onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }}
+                            <button data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #EF9F27", borderRadius: 6, background: "#FAEEDA", color: "#633806", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                               ⟳ Consultar SEFAZ
                             </button>
@@ -1867,18 +1868,18 @@ function FiscalInner() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
 
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* Header */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Fiscal — Documentos Eletrônicos</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Fiscal — Documentos Eletrônicos</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>NF-e, devolução, cancelamento, complemento · certificado A1 · SEFAZ</p>
           </div>
           {botaoNovo[aba] && (
-            <button
+            <button data-arato-button="primary"
               onClick={botaoNovo[aba]!.onClick}
               style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
@@ -1901,7 +1902,7 @@ function FiscalInner() {
                   { label: "Certificado A1",       valor: certDiasMin !== null ? `${certDiasMin}d` : "—",  cor: certDiasMin !== null && certDiasMin <= 15 ? "#E24B4A" : "#EF9F27", sub: certs.length === 0 ? "Nenhum certificado" : `${certs.length} certificado(s)` },
                   { label: "Pendências",           valor: String(totalRejeitadas + totalProcessando), cor: totalRejeitadas > 0 ? "#E24B4A" : "#EF9F27", sub: `${totalRejeitadas} rejeitada(s) · ${totalProcessando} processando` },
                 ].map((s, i) => (
-                  <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                  <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                     <div style={{ fontSize: 20, fontWeight: 600, color: s.cor, marginBottom: 4 }}>{s.valor}</div>
                     <div style={{ fontSize: 10, color: "#444" }}>{s.sub}</div>
@@ -1914,13 +1915,13 @@ function FiscalInner() {
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: "#791F1F", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 16 }}>⚠</span>
                   <span style={{ flex: 1 }}><strong>Certificado A1 vencendo em {certDiasMin} dias</strong> — sem ele, nenhuma NF-e pode ser transmitida à SEFAZ.</span>
-                  <button onClick={() => setAba("certificado")} style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "var(--bg-card)", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>Ver certificado</button>
+                  <button data-arato-button="toggle" onClick={() => setAba("certificado")} style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "var(--bg-card)", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>Ver certificado</button>
                 </div>
               )}
 
               {/* Banner de contingência ativo */}
               {modoContingencia && (
-                <div style={{ background: "#FEF3C7", border: "0.5px solid #D97706", borderRadius: 8, padding: "10px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                <div data-arato-statistic="action" style={{ background: "#FEF3C7", border: "0.5px solid #D97706", borderRadius: 8, padding: "10px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontSize: 20 }}>⚡</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E" }}>MODO DE CONTINGÊNCIA ATIVO — SVC-AN (tpEmis=5)</div>
@@ -1931,11 +1932,11 @@ function FiscalInner() {
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     {notasContingencia.length > 0 && (
-                      <button onClick={() => setAba("contingencia")} style={{ padding: "5px 12px", border: "0.5px solid #D97706", borderRadius: 6, background: "var(--bg-card)", color: "#92400E", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      <button data-arato-button="toggle" onClick={() => setAba("contingencia")} style={{ padding: "5px 12px", border: "0.5px solid #D97706", borderRadius: 6, background: "var(--bg-card)", color: "#92400E", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                         Ver {notasContingencia.length} pendente(s) →
                       </button>
                     )}
-                    <button onClick={desativarContingencia} style={{ padding: "5px 12px", border: "0.5px solid #92400E", borderRadius: 6, background: "#92400E", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <button data-arato-button="primary" onClick={desativarContingencia} style={{ padding: "5px 12px", border: "0.5px solid #92400E", borderRadius: 6, background: "#92400E", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                       Desativar
                     </button>
                   </div>
@@ -1945,7 +1946,7 @@ function FiscalInner() {
               {/* Abas */}
               <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 12 }}>
                 {ABAS.map(a => (
-                  <button key={a.key} onClick={() => setAba(a.key)} style={{
+                  <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                     color: a.alert ? "#92400E" : (aba === a.key ? "var(--text-1)" : "var(--text-2)"),
@@ -1973,7 +1974,7 @@ function FiscalInner() {
                     ].map(f => {
                       const ativo = filtroStatusVenda === f.filter;
                       return (
-                        <button key={f.label} onClick={() => setFiltroStatusVenda(ativo ? null : f.filter)}
+                        <button data-arato-button="toggle" key={f.label} onClick={() => setFiltroStatusVenda(ativo ? null : f.filter)}
                           style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${ativo ? "#111111" : "var(--border-table)"}`, fontSize: 12, color: ativo ? "#fff" : "#666", background: ativo ? "#111111" : "transparent", cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
                           {f.label} {(f.count ?? 0) > 0 && <span style={{ fontSize: 10, background: ativo ? "rgba(255,255,255,0.25)" : "var(--border-row)", color: ativo ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>{f.count}</span>}
                         </button>
@@ -2010,7 +2011,7 @@ function FiscalInner() {
 
               {/* ── ABA: NOTA DE DEVOLUÇÃO ── */}
               {aba === "devolucao" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
                       A <strong>Nota de Devolução</strong> é emitida quando o comprador devolve mercadoria anteriormente vendida.
@@ -2019,11 +2020,11 @@ function FiscalInner() {
                     </div>
                   </div>
                   {notasDevolucao.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
+                    <div data-arato-statistic="action" style={{ padding: 40, textAlign: "center", color: "#666" }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>↩</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma devolução registrada</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF-e de Devolução" para registrar uma devolução de mercadoria.</div>
-                      <button onClick={() => setModalDevolucao(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      <button data-arato-button="primary" onClick={() => setModalDevolucao(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         ◈ Nova NF-e de Devolução
                       </button>
                     </div>
@@ -2035,7 +2036,7 @@ function FiscalInner() {
 
               {/* ── ABA: NF DE TRANSFERÊNCIA ── */}
               {aba === "transferencia" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)" }}>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
                       A <strong>NF de Transferência</strong> é emitida para movimentação de mercadorias entre estabelecimentos do mesmo produtor rural.
@@ -2044,11 +2045,11 @@ function FiscalInner() {
                     </div>
                   </div>
                   {notasTransferencia.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
+                    <div data-arato-statistic="action" style={{ padding: 40, textAlign: "center", color: "#666" }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>⇄</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma NF de Transferência</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF de Transferência" para emitir.</div>
-                      <button onClick={() => setModalTransferencia(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      <button data-arato-button="primary" onClick={() => setModalTransferencia(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         ◈ Nova NF de Transferência
                       </button>
                     </div>
@@ -2060,7 +2061,7 @@ function FiscalInner() {
 
               {/* ── ABA: CANCELAMENTO ── */}
               {aba === "cancelamento" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#FFF7ED" }}>
                     <div style={{ fontSize: 12, color: "#633806", lineHeight: 1.6 }}>
                       <strong>⚠ Regras para cancelamento:</strong> NF-e pode ser cancelada em até <strong>24 horas</strong> após autorização sem justificativa especial.
@@ -2091,7 +2092,7 @@ function FiscalInner() {
                               <div style={{ fontSize: 11, color: dentroJanela ? "#16A34A" : "#EF9F27", fontWeight: 600, marginBottom: 4 }}>
                                 {dentroJanela ? "✓ Dentro da janela de 24h" : "⚠ Fora da janela de 24h"}
                               </div>
-                              <button
+                              <button data-arato-button="danger"
                                 onClick={() => setModalCancelamento(n)}
                                 style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                               >
@@ -2115,7 +2116,7 @@ function FiscalInner() {
                   )}
 
                   {notasAutorizadas.length === 0 && notasCanceladas.length === 0 && (
-                    <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
+                    <div data-arato-statistic="display" style={{ padding: 40, textAlign: "center", color: "#666" }}>
                       <div style={{ fontSize: 32, marginBottom: 12 }}>○</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma nota para cancelar</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)" }}>Só aparecem aqui as NF-e autorizadas que ainda podem ser canceladas.</div>
@@ -2157,7 +2158,7 @@ function FiscalInner() {
                                     {fmtData(n.data_emissao)} · CFOP {n.cfop} · {fmtMoeda(n.valor_total)}
                                   </div>
                                 </div>
-                                <button style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                                <button data-arato-button="primary" style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
                                   Complementar →
                                 </button>
                               </div>
@@ -2170,21 +2171,21 @@ function FiscalInner() {
                       <div>
                         <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0D0D0D" }}>
                           <strong>Complementando:</strong> NF-e {modalComplemento.numero} — {modalComplemento.destinatario} · {fmtMoeda(modalComplemento.valor_total)} · CFOP {modalComplemento.cfop}
-                          <button onClick={() => setModalComplemento(null)} style={{ marginLeft: 12, fontSize: 11, color: "var(--text-2)", background: "none", border: "0.5px solid #ccc", borderRadius: 4, padding: "1px 7px", cursor: "pointer" }}>Trocar</button>
+                          <button data-arato-button="secondary" onClick={() => setModalComplemento(null)} style={{ marginLeft: 12, fontSize: 11, color: "var(--text-2)", background: "none", border: "0.5px solid #ccc", borderRadius: 4, padding: "1px 7px", cursor: "pointer" }}>Trocar</button>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
                           <div>
-                            <label style={labelSt}>Motivo do complemento *</label>
-                            <select style={inputSt} value={fComp.motivo} onChange={e => setFComp(p => ({ ...p, motivo: e.target.value }))}>
+                            <label data-arato-label="true" style={labelSt}>Motivo do complemento *</label>
+                            <SelectField style={inputSt} value={fComp.motivo} onChange={e => setFComp(p => ({ ...p, motivo: e.target.value }))}>
                               <option value="diferenca_peso">Diferença de peso (balança destino)</option>
                               <option value="diferenca_preco">Ajuste de preço por renegociação</option>
                               <option value="diferenca_qualidade">Desconto de classificação</option>
                               <option value="outros">Outros</option>
-                            </select>
+                            </SelectField>
                           </div>
                           <div>
-                            <label style={labelSt}>Valor do complemento (R$) *</label>
+                            <label data-arato-label="true" style={labelSt}>Valor do complemento (R$) *</label>
                             <input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0,00"
                               value={fComp.valorComplemento}
                               onChange={e => setFComp(p => ({ ...p, valorComplemento: aplicarMascara(e.target.value) }))} />
@@ -2193,7 +2194,7 @@ function FiscalInner() {
                         </div>
 
                         <div style={{ marginBottom: 14 }}>
-                          <label style={labelSt}>Observações adicionais</label>
+                          <label data-arato-label="true" style={labelSt}>Observações adicionais</label>
                           <textarea style={{ ...inputSt, height: 60, resize: "vertical", fontSize: 12 }}
                             value={fComp.observacao}
                             onChange={e => setFComp(p => ({ ...p, observacao: e.target.value }))}
@@ -2205,8 +2206,8 @@ function FiscalInner() {
                         </div>
 
                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                          <button onClick={() => setModalComplemento(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                          <button
+                          <button data-arato-button="secondary" onClick={() => setModalComplemento(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                          <button data-arato-button="toggle"
                             onClick={emitirComplemento}
                             disabled={!fComp.valorComplemento || salvando}
                             style={{ padding: "8px 18px", background: !fComp.valorComplemento || salvando ? "#666" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
@@ -2226,7 +2227,7 @@ function FiscalInner() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Certificados Digitais A1</div>
-                      <button onClick={() => {
+                      <button data-arato-button="primary" onClick={() => {
                         const total = produtores.length + empresasCert.length;
                         setCertProdId(total === 1
                           ? (produtores.length === 1 ? produtores[0].id : empresasCert[0].id)
@@ -2287,7 +2288,7 @@ function FiscalInner() {
                                   ⚠ Renove antes de {cert.data_vencimento ? fmtData(cert.data_vencimento) : "—"}. Após o vencimento todas as transmissões serão bloqueadas.
                                 </div>
                               )}
-                              <button onClick={() => { setCertProdId(cert.produtor_id); setModalCert(true); }}
+                              <button data-arato-button="danger" onClick={() => { setCertProdId(cert.produtor_id); setModalCert(true); }}
                                 style={{ marginTop: 10, width: "100%", padding: "7px 0", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                                 Atualizar certificado
                               </button>
@@ -2342,12 +2343,12 @@ function FiscalInner() {
                       )}
                     </div>
                     {modoContingencia ? (
-                      <button onClick={desativarContingencia}
+                      <button data-arato-button="primary" onClick={desativarContingencia}
                         style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
                         ✓ Desativar Contingência
                       </button>
                     ) : (
-                      <button onClick={() => { setMotivoContAtivacao(""); setModalContingencia(true); }}
+                      <button data-arato-button="primary" onClick={() => { setMotivoContAtivacao(""); setModalContingencia(true); }}
                         style={{ padding: "8px 16px", background: "#D97706", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
                         ⚡ Ativar Contingência
                       </button>
@@ -2360,7 +2361,7 @@ function FiscalInner() {
                       NF-e pendentes de transmissão ({notasContingencia.length})
                     </div>
                     {notasContingencia.length > 0 && (
-                      <button
+                      <button data-arato-button="toggle"
                         onClick={transmitirLoteContingencia}
                         disabled={transmitindoLote}
                         style={{ padding: "7px 16px", background: transmitindoLote ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: transmitindoLote ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
@@ -2370,7 +2371,7 @@ function FiscalInner() {
                   </div>
 
                   {notasContingencia.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
+                    <div data-arato-statistic="display" style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
                       <div style={{ fontSize: 28, marginBottom: 10 }}>⚡</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 6 }}>Nenhuma NF-e em contingência</div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
@@ -2380,7 +2381,7 @@ function FiscalInner() {
                       </div>
                     </div>
                   ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Número", "Destinatário", "CFOP", "Valor", "Emitida em", "Tempo decorrido", "Prazo (168h)", ""].map((h, i) => (
@@ -2411,7 +2412,7 @@ function FiscalInner() {
                                 </span>
                               </td>
                               <td style={{ padding: "10px 12px" }}>
-                                <button onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#111111", cursor: "pointer", fontSize: 11 }}>
+                                <button data-arato-button="secondary" onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#111111", cursor: "pointer", fontSize: 11 }}>
                                   DANFE
                                 </button>
                               </td>
@@ -2436,18 +2437,18 @@ function FiscalInner() {
 
       {/* ── MODAL: Ativar Contingência ── */}
       {modalContingencia && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 500, maxWidth: "92vw" }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#92400E", marginBottom: 4 }}>⚡ Ativar Modo de Contingência</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16, lineHeight: 1.6 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 500, maxWidth: "92vw" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "#92400E", marginBottom: 4 }}>⚡ Ativar Modo de Contingência</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16, lineHeight: 1.6 }}>
               Use somente quando a SEFAZ estiver indisponível. As NF-e serão emitidas com <strong>tpEmis=5 (SVC-AN)</strong> e deverão ser transmitidas à SEFAZ em até <strong>168 horas</strong>.
             </div>
-            <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 11, color: "#7A5A12", lineHeight: 1.6 }}>
+            <div data-arato-dialog-body="true" style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 11, color: "#7A5A12", lineHeight: 1.6 }}>
               <strong>Atenção:</strong> O DANFE emitido em contingência deve ser entregue ao destinatário com a tarja "EMITIDA EM CONTINGÊNCIA". Transmita o lote assim que a SEFAZ retornar ao normal.
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>Justificativa da contingência * <span style={{ color: "var(--text-3)" }}>(mín. 15 caracteres)</span></label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>
+              <label data-arato-label="true" style={labelSt}>Justificativa da contingência * <span style={{ color: "var(--text-3)" }}>(mín. 15 caracteres)</span></label>
               <textarea
                 style={{ ...inputSt, height: 80, resize: "vertical", fontSize: 12 }}
                 placeholder="Ex: SEFAZ MT indisponível — falha de conexão com o webservice às 14h35. Emissão em contingência SVC-AN."
@@ -2455,11 +2456,11 @@ function FiscalInner() {
                 onChange={e => setMotivoContAtivacao(e.target.value)}
                 autoFocus
               />
-              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{motivoContAtivacao.length} / 255 caracteres</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{motivoContAtivacao.length} / 255 caracteres</div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalContingencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalContingencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="toggle"
                 onClick={ativarContingencia}
                 disabled={motivoContAtivacao.trim().length < 15}
                 style={{ padding: "8px 18px", background: motivoContAtivacao.trim().length >= 15 ? "#D97706" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
@@ -2472,12 +2473,12 @@ function FiscalInner() {
 
       {/* ── MODAL: Certificado A1 ── */}
       {modalCert && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 460, maxWidth: "92vw" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
-            <div style={{ display: "grid", gap: 14 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 460, maxWidth: "92vw" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
               {(() => {
                 // Separa produtores por tipo de documento: CPF (11 dígitos) vs CNPJ (14 dígitos)
                 const prodCpf  = produtores.filter(p => (p.cpf_cnpj ?? "").replace(/\D/g, "").length !== 14);
@@ -2490,8 +2491,8 @@ function FiscalInner() {
                 const total = prodCpf.length + empresasTotal.length;
                 if (total > 1) return (
                   <div>
-                    <label style={labelSt}>Titular (Produtor ou Empresa) *</label>
-                    <select
+                    <label data-arato-label="true" style={labelSt}>Titular (Produtor ou Empresa) *</label>
+                    <SelectField
                       value={certProdId}
                       onChange={e => setCertProdId(e.target.value)}
                       style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
@@ -2511,7 +2512,7 @@ function FiscalInner() {
                           ))}
                         </optgroup>
                       )}
-                    </select>
+                    </SelectField>
                     {empresasTotal.length === 0 && (
                       <div style={{ marginTop: 6, fontSize: 11, color: "#666", background: "#F4F6FA", borderRadius: 6, padding: "7px 10px", lineHeight: 1.5 }}>
                         Para adicionar e-CNPJ (empresa): <strong>Cadastros → Produtores → + Novo</strong> · preencha o CNPJ no campo CPF/CNPJ. A empresa aparecerá aqui automaticamente.
@@ -2538,8 +2539,8 @@ function FiscalInner() {
                 return null;
               })()}
               {/* Área de arquivo */}
-              <div>
-                <label style={labelSt}>Arquivo .pfx / .p12 *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Arquivo .pfx / .p12 *</label>
                 <input ref={certFileRef} type="file" accept=".pfx,.p12" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setCertFile(f); e.target.value = ""; }} />
                 {certFile ? (
                   <div style={{ border: "0.5px solid #28a745", borderRadius: 8, padding: "14px 16px", background: "#D4EDDA", display: "flex", alignItems: "center", gap: 10 }}>
@@ -2548,7 +2549,7 @@ function FiscalInner() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#155724", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{certFile.name}</div>
                       <div style={{ fontSize: 11, color: "#155724" }}>{(certFile.size / 1024).toFixed(1)} KB</div>
                     </div>
-                    <button onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#155724", fontSize: 16, padding: "2px 6px" }}>×</button>
+                    <button data-arato-button="icon" onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#155724", fontSize: 16, padding: "2px 6px" }}>×</button>
                   </div>
                 ) : (
                   <div onClick={() => certFileRef.current?.click()} onDragOver={e => { e.preventDefault(); setCertDrag(true); }} onDragLeave={() => setCertDrag(false)}
@@ -2561,15 +2562,15 @@ function FiscalInner() {
                 )}
               </div>
               {/* Senha */}
-              <div>
-                <label style={labelSt}>Senha do certificado *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Senha do certificado *</label>
                 <input style={inputSt} type="password" placeholder="Senha do .pfx / .p12" value={certSenha} onChange={e => setCertSenha(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && certFile && certSenha.trim()) salvarCertificado(); }} />
               </div>
             </div>
             {certOk && <div style={{ marginTop: 14, background: "#D4EDDA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#155724", fontWeight: 600 }}>✓ Certificado carregado com sucesso!</div>}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button onClick={fecharCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={salvarCertificado} disabled={!certFile || !certSenha.trim() || certLoading || certOk}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
+              <button data-arato-button="secondary" onClick={fecharCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarCertificado} disabled={!certFile || !certSenha.trim() || certLoading || certOk}
                 style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: !certFile || !certSenha.trim() || certLoading ? "not-allowed" : "pointer", opacity: !certFile || !certSenha.trim() || certLoading ? 0.5 : 1 }}>
                 {certLoading ? "Carregando..." : "🔒 Carregar certificado"}
               </button>
@@ -2582,7 +2583,7 @@ function FiscalInner() {
       {modalVenda && (() => {
         const inSt: React.CSSProperties = { ...inputSt, height: 28, padding: "3px 8px" };
         const chk = (checked: boolean, onChange: () => void, label: string) => (
-          <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#333", cursor: "pointer", userSelect: "none" }}>
+          <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#333", cursor: "pointer", userSelect: "none" }}>
             <input type="checkbox" checked={checked} onChange={onChange} style={{ cursor: "pointer" }} />
             {label}
           </label>
@@ -2605,11 +2606,11 @@ function FiscalInner() {
           const emModoLivre = value !== "" && !bateDeposito;
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <select style={inSt} value={emModoLivre ? OUTRO_LOCAL : value} onChange={e => onChange(e.target.value === OUTRO_LOCAL ? " " : e.target.value)}>
+              <SelectField style={inSt} value={emModoLivre ? OUTRO_LOCAL : value} onChange={e => onChange(e.target.value === OUTRO_LOCAL ? " " : e.target.value)}>
                 <option value="">— Selecionar —</option>
                 {depositos.map(d => <option key={d.id} value={d.nome}>{d.nome}</option>)}
                 <option value={OUTRO_LOCAL}>✎ Outro (digitar)</option>
-              </select>
+              </SelectField>
               {emModoLivre && (
                 <input style={inSt} value={value.trim()} onChange={e => onChange(e.target.value)} placeholder={placeholder} autoFocus />
               )}
@@ -2631,25 +2632,25 @@ function FiscalInner() {
         const prodSel = produtores.find(p => p.id === fVenda.produtor_id);
 
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-            <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+            <div data-arato-dialog="page" style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
               {/* Barra de título */}
-              <div style={{ background: modoContingencia ? "#92400E" : "#111111", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div data-arato-dialog-body="true" style={{ background: modoContingencia ? "#92400E" : "#111111", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>
                   Notas Fiscais de Saída — Itens / Serviços
                   {modoContingencia && <span style={{ marginLeft: 10, fontSize: 11, background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>⚡ MODO CONTINGÊNCIA ATIVO — SVC-AN</span>}
                 </span>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div data-arato-dialog-body="true" style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {emissores.length > 1 && (
-                    <select value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}
+                    <SelectField value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}
                       style={{ padding: "3px 8px", borderRadius: 5, border: "none", fontSize: 11, background: "#0D0D0D", color: "#fff" }}>
                       {emissores.map(op => <option key={op.key} value={op.key}>{op.label}</option>)}
-                    </select>
+                    </SelectField>
                   )}
                   {emissores.length === 1 && <span style={{ fontSize: 11, background: "var(--border)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
                   {emissores.length === 0 && <span style={{ fontSize: 11, background: "#E24B4A50", padding: "3px 8px", borderRadius: 5 }}>⚠ Configure Parâmetros Fiscais</span>}
-                  <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
+                  <button data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
                     style={{ background: "var(--border)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</button>
                 </div>
               </div>
@@ -2685,9 +2686,9 @@ function FiscalInner() {
               })()}
 
               {/* Abas */}
-              <div style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
+              <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
                 {tabCfg.map(t => (
-                  <button key={t.key} onClick={() => setTabNFe(t.key)}
+                  <button data-arato-button="toggle" key={t.key} onClick={() => setTabNFe(t.key)}
                     style={{ padding: "7px 14px", border: "none", background: tabNFe === t.key ? "#fff" : "transparent", color: tabNFe === t.key ? "#111111" : "#444", fontWeight: tabNFe === t.key ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", borderTop: tabNFe === t.key ? "2px solid #111111" : "2px solid transparent", borderRight: "0.5px solid #c8cdd8" }}>
                     {t.label}
                   </button>
@@ -2695,7 +2696,7 @@ function FiscalInner() {
               </div>
 
               {/* Conteúdo das abas */}
-              <div style={{ background: "var(--bg-card)", padding: "12px 16px", flexShrink: 0, minHeight: 200, maxHeight: 280, overflowY: "auto", borderBottom: "1px solid #d0d5de" }}>
+              <div data-arato-dialog-body="true" style={{ background: "var(--bg-card)", padding: "12px 16px", flexShrink: 0, minHeight: 200, maxHeight: 280, overflowY: "auto", borderBottom: "1px solid #d0d5de" }}>
 
                 {/* ── ABA: PRODUTOR ── */}
                 {tabNFe === "produtor" && (
@@ -2704,7 +2705,7 @@ function FiscalInner() {
                       field("Tipo de Nota",
                         <div style={{ display: "flex", gap: 16 }}>
                           {(["propria","terceiros"] as const).map(v => (
-                            <label key={v} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer" }}>
+                            <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer" }}>
                               <input type="radio" name="tipo_nota" checked={fVenda.tipo_nota === v} onChange={() => fv({tipo_nota:v})} /> {v === "propria" ? "Própria" : "Terceiros"}
                             </label>
                           ))}
@@ -2719,20 +2720,20 @@ function FiscalInner() {
                         />, "1 1 0"
                       ),
                       field("Safra",
-                        <select style={inSt} value={fVenda.safra_id} onChange={e => fv({safra_id: e.target.value})}>
+                        <SelectField style={inSt} value={fVenda.safra_id} onChange={e => fv({safra_id: e.target.value})}>
                           <option value="">— sem vínculo —</option>
                           {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                        </select>, "0 0 180px"
+                        </SelectField>, "0 0 180px"
                       ),
                     )}
                     {prodSel && (
-                      <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "8px 12px", background: "var(--bg-card)" }}>
+                      <div data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "8px 12px", background: "var(--bg-card)" }}>
                         <div style={{ fontSize: 10, color: "#666", marginBottom: 5, fontWeight: 600 }}>DADOS DO PRODUTOR</div>
                         {row(
                           field("Tipo Pessoa",
                             <div style={{ display: "flex", gap: 12, paddingTop: 4 }}>
                               {(["fisica","juridica"] as const).map(v => (
-                                <label key={v} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, cursor: "default" }}>
+                                <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, cursor: "default" }}>
                                   <input type="radio" readOnly checked={(prodSel.cpf_cnpj?.replace(/\D/g,"").length ?? 0) === (v==="fisica"?11:14)} /> {v==="fisica"?"Física":"Jurídica"}
                                 </label>
                               ))}
@@ -2741,7 +2742,7 @@ function FiscalInner() {
                           field("CPF/CNPJ", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.cpf_cnpj ?? ""} />, "0 0 160px"),
                           field("Inscrição Estadual",
                             iesProdutor.length > 1
-                              ? <select
+                              ? <SelectField
                                   style={{ ...inSt, borderColor: !fVenda.ie_selecionada ? "#E24B4A" : undefined }}
                                   value={fVenda.ie_selecionada}
                                   onChange={e => fv({ ie_selecionada: e.target.value })}
@@ -2752,7 +2753,7 @@ function FiscalInner() {
                                       {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
                                     </option>
                                   ))}
-                                </select>
+                                </SelectField>
                               : <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={fVenda.ie_selecionada || prodSel.inscricao_est || ""} />
                           , "0 0 200px"),
                           field("Endereço", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.logradouro ?? ""} />),
@@ -2885,7 +2886,7 @@ function FiscalInner() {
                       field("Tipo Pessoa",
                         <div style={{ display: "flex", gap: 12, paddingTop: 4 }}>
                           {(["fisica","juridica"] as const).map(v => (
-                            <label key={v} style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, cursor:"pointer" }}>
+                            <label data-arato-label="true" key={v} style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, cursor:"pointer" }}>
                               <input type="radio" name="dest_tipo" checked={fVenda.dest_tipo_pessoa===v} onChange={() => fv({dest_tipo_pessoa:v})} /> {v==="fisica"?"Física":"Jurídica"}
                             </label>
                           ))}
@@ -2906,19 +2907,19 @@ function FiscalInner() {
                           // Remessa pra armazém/depósito: só os CFOPs de remessa fazem sentido
                           // aqui — venda/exportação/devolução são de outro fluxo (Nota de Venda
                           // normal), só confundiam a escolha nesse modo.
-                          <select style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
+                          <SelectField style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
                             {NATUREZAS_VENDA.filter(o => ["6.905", "5.905", "6.117", "6.119"].includes(o.codigo))
                               .map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
-                          </select>
+                          </SelectField>
                         ) : (
-                          <select style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
+                          <SelectField style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
                             <optgroup label="Venda">
                               {NATUREZAS_VENDA.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
                             </optgroup>
                             <optgroup label="Devolução">
                               {NATUREZAS_DEVOLUCAO.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
                             </optgroup>
-                          </select>
+                          </SelectField>
                         ), "0 0 100px"),
                       field("Natureza de Operação",
                         <input style={inSt} value={fVenda.natureza_texto} onChange={e => fv({natureza_texto:e.target.value})} placeholder="Auto-preenchido pelo CFOP" />),
@@ -2926,11 +2927,11 @@ function FiscalInner() {
                     )}
                     {row(
                       field("Modelo NF",
-                        <select style={inSt} value={fVenda.modelo_nf} onChange={e => fv({modelo_nf:e.target.value})}>
+                        <SelectField style={inSt} value={fVenda.modelo_nf} onChange={e => fv({modelo_nf:e.target.value})}>
                           <option value="55">55 — NF-e</option>
                           <option value="57">57 — CT-e</option>
                           <option value="65">65 — NFC-e</option>
-                        </select>, "0 0 140px"),
+                        </SelectField>, "0 0 140px"),
                       field("Série", <input style={{ ...inSt, textAlign:"center", background:"var(--bg-page)" }} value="Auto" disabled title="A série e o número vêm de Parâmetros → Fiscal do emitente (e da IE) escolhido" />, "0 0 60px"),
                       field("Data Emissão", <InputData style={inSt} type="date" value={fVenda.data_emissao} onChange={e => fv({data_emissao:e.target.value})} />, "0 0 140px"),
                       field("Data Ent./Saída", <InputData style={inSt} type="date" value={fVenda.data_saida} onChange={e => fv({data_saida:e.target.value})} />, "0 0 140px"),
@@ -2954,9 +2955,9 @@ function FiscalInner() {
                         <div style={{paddingBottom:2}}>{chk(fVenda.transp_cadastrada, () => fv({transp_cadastrada:!fVenda.transp_cadastrada}), "Transportadora Cadastrada")}</div>, "0 0 200px"),
                       field("Transportadora", <input style={inSt} placeholder="Razão Social" value={fVenda.transportadora} onChange={e => fv({transportadora:e.target.value})} />),
                       field("Frete por conta",
-                        <select style={inSt} value={fVenda.frete_conta} onChange={e => fv({frete_conta:e.target.value})}>
+                        <SelectField style={inSt} value={fVenda.frete_conta} onChange={e => fv({frete_conta:e.target.value})}>
                           {FRETES.map(f => <option key={f.v} value={f.v}>{f.l}</option>)}
-                        </select>, "0 0 250px"),
+                        </SelectField>, "0 0 250px"),
                     )}
                     {row(
                       field("Endereço", <input style={inSt} value={fVenda.transp_endereco} onChange={e => fv({transp_endereco:e.target.value})} />),
@@ -2967,7 +2968,7 @@ function FiscalInner() {
                       field("Tipo Pessoa",
                         <div style={{display:"flex",gap:12,paddingTop:4}}>
                           {(["fisica","juridica"] as const).map(v => (
-                            <label key={v} style={{display:"flex",alignItems:"center",gap:4,fontSize:12,cursor:"pointer"}}>
+                            <label data-arato-label="true" key={v} style={{display:"flex",alignItems:"center",gap:4,fontSize:12,cursor:"pointer"}}>
                               <input type="radio" name="transp_tipo" checked={fVenda.transp_tipo_pessoa===v} onChange={() => fv({transp_tipo_pessoa:v})} /> {v==="fisica"?"Física":"Jurídica"}
                             </label>
                           ))}
@@ -3056,21 +3057,21 @@ function FiscalInner() {
               </div>
 
               {/* Grid de Itens */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div data-arato-dialog-body="true" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 {/* Sub-abas itens */}
-                <div style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
+                <div data-arato-dialog-body="true" style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
                   {(["itens","servicos","comissoes","impostos"] as const).map(t => (
-                    <button key={t} onClick={() => setSubTabItem(t)}
+                    <button data-arato-button="toggle" key={t} onClick={() => setSubTabItem(t)}
                       style={{ padding: "5px 14px", border: "none", background: subTabItem===t?"#fff":"transparent", color: subTabItem===t?"#111111":"var(--text-2)", fontWeight: subTabItem===t?600:400, fontSize: 12, cursor: "pointer", borderBottom: subTabItem===t?"1px solid #fff":"none" }}>
                       {t.charAt(0).toUpperCase()+t.slice(1)}
                     </button>
                   ))}
                 </div>
 
-                <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+                <div data-arato-dialog-body="true" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
                   {/* Tabela de itens */}
                   <div style={{ flex: 1, overflowY: "auto", background: "var(--bg-card)" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid #E0E4EE" }}>
                           {["Tipo Item","Item","NCM","Quantidade","Un.","Valor Unitário","Valor Total","Valor Financeiro","cClassTrib"].map(h => (
@@ -3083,25 +3084,25 @@ function FiscalInner() {
                         {/* Linha de adição rápida */}
                         <tr style={{ background: "#FFFBF0", borderBottom: "1px solid #E0E4EE" }}>
                           <td style={{ padding: "4px 6px" }}>
-                            <select style={{ ...inSt, width: "100%" }} value={novoItem.tipo_item} onChange={e => setNovoItem(p => ({...p, tipo_item:e.target.value}))}>
+                            <SelectField style={{ ...inSt, width: "100%" }} value={novoItem.tipo_item} onChange={e => setNovoItem(p => ({...p, tipo_item:e.target.value}))}>
                               {["Produto","Serviço","Combustível"].map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
+                            </SelectField>
                           </td>
                           <td style={{ padding: "4px 6px" }}>
                             <input style={{ ...inSt, width: "100%", minWidth: 140 }} placeholder="Descrição do item" value={novoItem.item} onChange={e => setNovoItem(p => ({...p, item:e.target.value}))} onKeyDown={e => { if (e.key === "Enter") addItem(); }} />
                           </td>
                           <td style={{ padding: "4px 6px" }}>
-                            <select style={{ ...inSt, width: "100%" }} value={novoItem.ncm} onChange={e => setNovoItem(p => ({...p, ncm:e.target.value}))}>
+                            <SelectField style={{ ...inSt, width: "100%" }} value={novoItem.ncm} onChange={e => setNovoItem(p => ({...p, ncm:e.target.value}))}>
                               {NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
-                            </select>
+                            </SelectField>
                           </td>
                           <td style={{ padding: "4px 6px" }}>
                             <input style={{ ...inSt, textAlign:"right", width: 70 }} placeholder="0" value={novoItem.quantidade} onChange={e => setNovoItem(p => ({...p, quantidade:e.target.value.replace(/\D/g,"")}))} />
                           </td>
                           <td style={{ padding: "4px 6px" }}>
-                            <select style={{ ...inSt, width: 55 }} value={novoItem.unidade} onChange={e => setNovoItem(p => ({...p, unidade:e.target.value}))}>
+                            <SelectField style={{ ...inSt, width: 55 }} value={novoItem.unidade} onChange={e => setNovoItem(p => ({...p, unidade:e.target.value}))}>
                               {["sc","kg","ton","@","L","cx","un"].map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
+                            </SelectField>
                           </td>
                           <td style={{ padding: "4px 6px" }}>
                             <input style={{ ...inSt, textAlign:"right", width: 90 }} placeholder="0,00" value={novoItem.valor_unitario} onChange={e => setNovoItem(p => ({...p, valor_unitario:aplicarMascara(e.target.value)}))} />
@@ -3114,7 +3115,7 @@ function FiscalInner() {
                             <input style={{ ...inSt, width: 60 }} value={novoItem.cclass_trib} onChange={e => setNovoItem(p => ({...p, cclass_trib:e.target.value}))} />
                           </td>
                           <td style={{ padding: "4px 6px", textAlign:"center" }}>
-                            <button onClick={addItem} title="Adicionar item"
+                            <button data-arato-button="primary" onClick={addItem} title="Adicionar item"
                               style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 4, width: 24, height: 24, cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: "1" }}>+</button>
                           </td>
                         </tr>
@@ -3133,9 +3134,9 @@ function FiscalInner() {
                             <td style={{ padding: "5px 10px", textAlign:"right" }}>{fmtMoeda(it.valor_financeiro)}</td>
                             <td style={{ padding: "5px 10px", color: "var(--text-2)", fontSize: 11 }}>{it.cclass_trib}</td>
                             <td style={{ padding: "4px 6px", textAlign:"center" }}>
-                              <button onClick={() => setEditItemModal({...it})} title="Editar"
+                              <button data-arato-button="secondary" onClick={() => setEditItemModal({...it})} title="Editar"
                                 style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0D0D0D", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</button>
-                              <button onClick={() => removeItem(it.id)} title="Remover"
+                              <button data-arato-button="danger" onClick={() => removeItem(it.id)} title="Remover"
                                 style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 4, color: "#791F1F", width: 22, height: 22, cursor: "pointer", fontSize: 11, marginLeft: 3 }}>−</button>
                             </td>
                           </tr>
@@ -3146,7 +3147,7 @@ function FiscalInner() {
                 </div>
 
                 {/* Footer totais */}
-                <div style={{ background: "var(--bg-page)", borderTop: "1px solid #D0D5DE", padding: "6px 16px", display: "flex", alignItems: "center", gap: 24, flexShrink: 0, fontSize: 12 }}>
+                <div data-arato-dialog-body="true" style={{ background: "var(--bg-page)", borderTop: "1px solid #D0D5DE", padding: "6px 16px", display: "flex", alignItems: "center", gap: 24, flexShrink: 0, fontSize: 12 }}>
                   <span style={{ color: "var(--text-2)" }}>Vl. Produtos: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalProdutos)}</strong></span>
                   <span style={{ color: "var(--text-2)" }}>Vr. Serviços: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalServicos)}</strong></span>
                   <span style={{ color: "var(--text-2)" }}>Vl. Financeiro: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalFinanceiro)}</strong></span>
@@ -3155,17 +3156,17 @@ function FiscalInner() {
               </div>
 
               {/* Barra de ações */}
-              <div style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
-                <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
+                <button data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
                   style={{ padding: "7px 18px", border: "0.5px solid #C8CDD8", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
                 </button>
                 {/* Salvar Rascunho — grava sem transmitir à SEFAZ */}
-                <button onClick={salvarRascunho} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                <button data-arato-button="primary" onClick={salvarRascunho} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
                   style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: fVenda.destinatario && moduloKeyAtivo && !salvando ? 1 : 0.5 }}>
                   {salvando ? "⟳ Salvando…" : "○ Salvar Rascunho"}
                 </button>
-                <button onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                <button data-arato-button="toggle" onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
                   style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#111111" : "var(--text-muted)", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   {salvando ? "⟳ Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
                 </button>
@@ -3177,27 +3178,27 @@ function FiscalInner() {
 
       {/* ── MODAL: Editar Item ── */}
       {editItemModal && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}>
-          <div style={{ background:"var(--bg-card)", borderRadius:10, padding:22, width:640, maxWidth:"96vw" }}>
-            <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Editar Item</div>
+        <div data-arato-overlay="true" style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}>
+          <div data-arato-dialog="form" style={{ background:"var(--bg-card)", borderRadius:10, padding:22, width:640, maxWidth:"96vw" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Editar Item</div>
             {[
-              { l:"Tipo Item",   node:<select style={inputSt} value={editItemModal.tipo_item} onChange={e => setEditItemModal(p=>p?({...p,tipo_item:e.target.value}):null)}>{["Produto","Serviço","Combustível"].map(v=><option key={v}>{v}</option>)}</select> },
+              { l:"Tipo Item",   node:<SelectField style={inputSt} value={editItemModal.tipo_item} onChange={e => setEditItemModal(p=>p?({...p,tipo_item:e.target.value}):null)}>{["Produto","Serviço","Combustível"].map(v=><option key={v}>{v}</option>)}</SelectField> },
               { l:"Descrição *", node:<input style={inputSt} value={editItemModal.item} onChange={e => setEditItemModal(p=>p?({...p,item:e.target.value}):null)} /> },
-              { l:"NCM",         node:<select style={inputSt} value={editItemModal.ncm} onChange={e => setEditItemModal(p=>p?({...p,ncm:e.target.value}):null)}>{NCM_OPTIONS.map(o=><option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</select> },
-            ].map(r => <div key={r.l} style={{marginBottom:10}}><label style={labelSt}>{r.l}</label>{r.node}</div>)}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 80px 120px 120px", gap:10, marginBottom:10 }}>
-              <div><label style={labelSt}>Descrição</label><input style={inputSt} readOnly value={editItemModal.item} /></div>
-              <div><label style={labelSt}>Un.</label>
-                <select style={inputSt} value={editItemModal.unidade} onChange={e => setEditItemModal(p=>p?({...p,unidade:e.target.value}):null)}>
+              { l:"NCM",         node:<SelectField style={inputSt} value={editItemModal.ncm} onChange={e => setEditItemModal(p=>p?({...p,ncm:e.target.value}):null)}>{NCM_OPTIONS.map(o=><option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</SelectField> },
+            ].map(r => <div key={r.l} style={{marginBottom:10}}><label data-arato-label="true" style={labelSt}>{r.l}</label>{r.node}</div>)}
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 80px 120px 120px", gap:10, marginBottom:10 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Descrição</label><input style={inputSt} readOnly value={editItemModal.item} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Un.</label>
+                <SelectField style={inputSt} value={editItemModal.unidade} onChange={e => setEditItemModal(p=>p?({...p,unidade:e.target.value}):null)}>
                   {["sc","kg","ton","@","L","cx","un"].map(v=><option key={v}>{v}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div><label style={labelSt}>Quantidade</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.quantidade} onChange={e => setEditItemModal(p=>p?({...p,quantidade:e.target.value.replace(/\D/g,"")}):null)} /></div>
-              <div><label style={labelSt}>Valor Unitário</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.valor_unitario} onChange={e => setEditItemModal(p=>p?({...p,valor_unitario:aplicarMascara(e.target.value)}):null)} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Quantidade</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.quantidade} onChange={e => setEditItemModal(p=>p?({...p,quantidade:e.target.value.replace(/\D/g,"")}):null)} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Valor Unitário</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.valor_unitario} onChange={e => setEditItemModal(p=>p?({...p,valor_unitario:aplicarMascara(e.target.value)}):null)} /></div>
             </div>
-            <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
-              <button onClick={() => setEditItemModal(null)} style={{ padding:"7px 16px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:13 }}>Cancelar</button>
-              <button onClick={() => { if (editItemModal) saveEditItem(editItemModal); }}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setEditItemModal(null)} style={{ padding:"7px 16px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:13 }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={() => { if (editItemModal) saveEditItem(editItemModal); }}
                 style={{ padding:"7px 16px", background:"#111111", color:"#fff", border:"none", borderRadius:6, fontWeight:600, fontSize:13, cursor:"pointer" }}>
                 Salvar
               </button>
@@ -3208,36 +3209,36 @@ function FiscalInner() {
 
       {/* ── MODAL: Nova NF-e de Devolução ── */}
       {modalDevolucao && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 780, maxWidth: "97vw", maxHeight: "95vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Nova NF-e de Devolução</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>Emitida quando o comprador devolve mercadoria. Deve referenciar a NF-e original.</div>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 780, maxWidth: "97vw", maxHeight: "95vh", overflowY: "auto" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Nova NF-e de Devolução</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>Emitida quando o comprador devolve mercadoria. Deve referenciar a NF-e original.</div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 14, marginBottom: 14 }}>
-              <div><label style={labelSt}>Remetente (quem devolve) *</label><input style={inputSt} placeholder="Bunge Alimentos S.A." value={fDev.remetente} onChange={e => setFDev(p => ({ ...p, remetente: e.target.value }))} /></div>
-              <div><label style={labelSt}>CNPJ / CPF</label><input style={inputSt} placeholder="00.000.000/0001-00" value={fDev.cnpj} onChange={e => setFDev(p => ({ ...p, cnpj: e.target.value }))} /></div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Remetente (quem devolve) *</label><input style={inputSt} placeholder="Bunge Alimentos S.A." value={fDev.remetente} onChange={e => setFDev(p => ({ ...p, remetente: e.target.value }))} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>CNPJ / CPF</label><input style={inputSt} placeholder="00.000.000/0001-00" value={fDev.cnpj} onChange={e => setFDev(p => ({ ...p, cnpj: e.target.value }))} /></div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div><label style={labelSt}>NF-e de referência (número)</label><input style={inputSt} placeholder="Ex: 001.001" value={fDev.nfe_ref} onChange={e => setFDev(p => ({ ...p, nfe_ref: e.target.value }))} /></div>
-              <div><label style={labelSt}>Chave de acesso (44 dígitos)</label><input style={inputSt} placeholder="00000000000000000000000000000000000000000000" value={fDev.chave_ref} onChange={e => setFDev(p => ({ ...p, chave_ref: e.target.value.replace(/\D/g, "").slice(0, 44) }))} /></div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>NF-e de referência (número)</label><input style={inputSt} placeholder="Ex: 001.001" value={fDev.nfe_ref} onChange={e => setFDev(p => ({ ...p, nfe_ref: e.target.value }))} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Chave de acesso (44 dígitos)</label><input style={inputSt} placeholder="00000000000000000000000000000000000000000000" value={fDev.chave_ref} onChange={e => setFDev(p => ({ ...p, chave_ref: e.target.value.replace(/\D/g, "").slice(0, 44) }))} /></div>
             </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelSt}>CFOP da devolução *</label>
-              <select style={inputSt} value={fDev.cfop} onChange={e => { const nat = NATUREZAS_DEVOLUCAO.find(n => n.codigo === e.target.value); setFDev(p => ({ ...p, cfop: e.target.value, observacao: nat?.obs ?? p.observacao })); }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
+              <label data-arato-label="true" style={labelSt}>CFOP da devolução *</label>
+              <SelectField style={inputSt} value={fDev.cfop} onChange={e => { const nat = NATUREZAS_DEVOLUCAO.find(n => n.codigo === e.target.value); setFDev(p => ({ ...p, cfop: e.target.value, observacao: nat?.obs ?? p.observacao })); }}>
                 {NATUREZAS_DEVOLUCAO.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
-              </select>
+              </SelectField>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 100px 100px 160px", gap: 14, marginBottom: 14 }}>
-              <div><label style={labelSt}>NCM *</label><select style={inputSt} value={fDev.ncm} onChange={e => setFDev(p => ({ ...p, ncm: e.target.value }))}>{NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</select></div>
-              <div><label style={labelSt}>Quantidade *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0" value={fDev.quantidade} onChange={e => setFDev(p => ({ ...p, quantidade: e.target.value.replace(/\D/g, "") }))} /></div>
-              <div><label style={labelSt}>Unidade</label><select style={inputSt} value={fDev.unidade} onChange={e => setFDev(p => ({ ...p, unidade: e.target.value }))}><option value="sc">sc</option><option value="kg">kg</option><option value="ton">ton</option></select></div>
-              <div><label style={labelSt}>Valor unit. (R$) *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0,00" value={fDev.valorUnitario} onChange={e => setFDev(p => ({ ...p, valorUnitario: aplicarMascara(e.target.value) }))} /></div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 100px 100px 160px", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>NCM *</label><SelectField style={inputSt} value={fDev.ncm} onChange={e => setFDev(p => ({ ...p, ncm: e.target.value }))}>{NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</SelectField></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Quantidade *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0" value={fDev.quantidade} onChange={e => setFDev(p => ({ ...p, quantidade: e.target.value.replace(/\D/g, "") }))} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Unidade</label><SelectField style={inputSt} value={fDev.unidade} onChange={e => setFDev(p => ({ ...p, unidade: e.target.value }))}><option value="sc">sc</option><option value="kg">kg</option><option value="ton">ton</option></SelectField></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Valor unit. (R$) *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0,00" value={fDev.valorUnitario} onChange={e => setFDev(p => ({ ...p, valorUnitario: aplicarMascara(e.target.value) }))} /></div>
             </div>
             {(() => { const v = fDev.quantidade && fDev.valorUnitario ? Math.round(Number(fDev.quantidade) * desmascarar(fDev.valorUnitario) * 100) / 100 : 0; if (!v) return null; return <div style={{ background: "#FAEEDA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#633806", marginBottom: 12 }}>Valor total da devolução: <strong style={{ fontSize: 15 }}>{fmtMoeda(v)}</strong></div>; })()}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalDevolucao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalDevolucao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Emitindo…" : "⟳ Emitir NF-e de Devolução"}
               </button>
             </div>
@@ -3247,104 +3248,104 @@ function FiscalInner() {
 
       {/* ── MODAL: NF de Transferência ── */}
       {modalTransferencia && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 640, maxWidth: "97vw", maxHeight: "90vh", overflow: "auto" }}>
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>NF de Transferência</div>
-                <div style={{ fontSize: 11, color: "#C9921B", marginTop: 2 }}>CFOP 5.152 / 6.152 — entre estabelecimentos do mesmo produtor</div>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: 640, maxWidth: "97vw", maxHeight: "90vh", overflow: "auto" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>NF de Transferência</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#C9921B", marginTop: 2 }}>CFOP 5.152 / 6.152 — entre estabelecimentos do mesmo produtor</div>
               </div>
-              <button onClick={() => setModalTransferencia(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <button data-arato-button="icon" onClick={() => setModalTransferencia(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
             </div>
 
-            <div style={{ padding: "18px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "18px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {/* Emitente */}
-              <div style={{ gridColumn: "1/-1" }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" }}>EMITENTE (ORIGEM)</div>
               </div>
-              <div>
-                <label style={labelSt}>Produtor / Emitente *</label>
-                <select style={inputSt} value={fTransf.produtor_id} onChange={e => setFTransf(p => ({ ...p, produtor_id: e.target.value, ie_selecionada: "" }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Produtor / Emitente *</label>
+                <SelectField style={inputSt} value={fTransf.produtor_id} onChange={e => setFTransf(p => ({ ...p, produtor_id: e.target.value, ie_selecionada: "" }))}>
                   <option value="">— Selecionar —</option>
                   {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={labelSt}>Natureza / CFOP *</label>
-                <select style={inputSt} value={fTransf.cfop} onChange={e => setFTransf(p => ({ ...p, cfop: e.target.value }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Natureza / CFOP *</label>
+                <SelectField style={inputSt} value={fTransf.cfop} onChange={e => setFTransf(p => ({ ...p, cfop: e.target.value }))}>
                   {NATUREZAS_TRANSFERENCIA.map(n => <option key={n.codigo} value={n.codigo}>{n.codigo} — {n.descricao.split("—")[0].trim()}</option>)}
-                </select>
+                </SelectField>
               </div>
 
               {/* Destino */}
-              <div style={{ gridColumn: "1/-1", marginTop: 6 }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1", marginTop: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" }}>DESTINATÁRIO (DESTINO)</div>
               </div>
-              <div style={{ gridColumn: "1/-1" }}>
-                <label style={labelSt}>Fazenda de Destino *</label>
-                <select style={inputSt} value={fTransf.fazenda_destino_id} onChange={e => setFTransf(p => ({ ...p, fazenda_destino_id: e.target.value }))}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}>
+                <label data-arato-label="true" style={labelSt}>Fazenda de Destino *</label>
+                <SelectField style={inputSt} value={fTransf.fazenda_destino_id} onChange={e => setFTransf(p => ({ ...p, fazenda_destino_id: e.target.value }))}>
                   <option value="">— Selecionar fazenda de destino —</option>
                   {fazendasConta.filter(f => f.id !== fazendaId).map(f => (
                     <option key={f.id} value={f.id}>{f.nome}{f.municipio ? ` — ${f.municipio}/${f.estado ?? ""}` : ""}</option>
                   ))}
-                </select>
+                </SelectField>
                 {fazendasConta.filter(f => f.id !== fazendaId).length === 0 && (
                   <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>⚠ Nenhuma outra fazenda cadastrada nesta conta. Cadastre em Cadastros → Fazendas.</div>
                 )}
               </div>
 
               {/* Mercadoria */}
-              <div style={{ gridColumn: "1/-1", marginTop: 6 }}>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1", marginTop: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border-table)" }}>MERCADORIA</div>
               </div>
-              <div>
-                <label style={labelSt}>NCM / Produto *</label>
-                <select style={inputSt} value={fTransf.ncm} onChange={e => setFTransf(p => ({ ...p, ncm: e.target.value }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>NCM / Produto *</label>
+                <SelectField style={inputSt} value={fTransf.ncm} onChange={e => setFTransf(p => ({ ...p, ncm: e.target.value }))}>
                   {NCM_OPTIONS.map(n => <option key={n.codigo} value={n.codigo}>{n.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
                 <div>
-                  <label style={labelSt}>Quantidade *</label>
+                  <label data-arato-label="true" style={labelSt}>Quantidade *</label>
                   <input style={inputSt} type="number" step="0.001" min="0" value={fTransf.quantidade}
                     onChange={e => setFTransf(p => ({ ...p, quantidade: e.target.value }))} placeholder="0,000" />
                 </div>
                 <div>
-                  <label style={labelSt}>Unidade</label>
-                  <select style={inputSt} value={fTransf.unidade} onChange={e => setFTransf(p => ({ ...p, unidade: e.target.value }))}>
+                  <label data-arato-label="true" style={labelSt}>Unidade</label>
+                  <SelectField style={inputSt} value={fTransf.unidade} onChange={e => setFTransf(p => ({ ...p, unidade: e.target.value }))}>
                     <option value="sc">sc</option>
                     <option value="KG">KG</option>
                     <option value="T">T</option>
                     <option value="@">@</option>
                     <option value="FD">FD</option>
-                  </select>
+                  </SelectField>
                 </div>
               </div>
-              <div>
-                <label style={labelSt}>Valor Unitário R$ * <span style={{ color: "var(--text-3)" }}>(base de cálculo)</span></label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Valor Unitário R$ * <span style={{ color: "var(--text-3)" }}>(base de cálculo)</span></label>
                 <input style={inputSt} value={fTransf.valor_unitario} placeholder="0,00"
                   onChange={e => setFTransf(p => ({ ...p, valor_unitario: aplicarMascara(e.target.value) }))} />
               </div>
-              <div>
-                <label style={labelSt}>Valor Total (calculado)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Valor Total (calculado)</label>
                 <input style={{ ...inputSt, background: "var(--bg-page)", color: "var(--text-2)" }} readOnly
                   value={(() => { const q = parseFloat(fTransf.quantidade.replace(",",".")) || 0; const v = desmascarar(fTransf.valor_unitario); return (q * v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); })()} />
               </div>
 
               {/* Datas */}
-              <div>
-                <label style={labelSt}>Data de Emissão *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Data de Emissão *</label>
                 <InputData style={inputSt} type="date" value={fTransf.data_emissao} onChange={e => setFTransf(p => ({ ...p, data_emissao: e.target.value }))} />
               </div>
-              <div>
-                <label style={labelSt}>Data de Saída</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={labelSt}>Data de Saída</label>
                 <InputData style={inputSt} type="date" value={fTransf.data_saida} onChange={e => setFTransf(p => ({ ...p, data_saida: e.target.value }))} />
               </div>
 
               {/* Obs. */}
-              <div style={{ gridColumn: "1/-1" }}>
-                <label style={labelSt}>Observação adicional (opcional)</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1/-1" }}>
+                <label data-arato-label="true" style={labelSt}>Observação adicional (opcional)</label>
                 <textarea style={{ ...inputSt, height: 64, resize: "vertical" }} value={fTransf.obs}
                   onChange={e => setFTransf(p => ({ ...p, obs: e.target.value }))}
                   placeholder="Complemento da observação legal — destino, lote, ciclo, etc." />
@@ -3359,11 +3360,11 @@ function FiscalInner() {
               ) : null; })()}
             </div>
 
-            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 11, color: "var(--text-3)" }}>Não gera recebimento financeiro · CFOP {fTransf.cfop}</div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setModalTransferencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                <button onClick={emitirTransferencia}
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)" }}>Não gera recebimento financeiro · CFOP {fTransf.cfop}</div>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                <button data-arato-button="secondary" onClick={() => setModalTransferencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button data-arato-button="toggle" onClick={emitirTransferencia}
                   disabled={!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf}
                   style={{ padding: "8px 18px", background: (!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf) ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                   {salvandoTransf ? "⟳ Emitindo…" : "⟳ Emitir NF de Transferência"}
@@ -3376,30 +3377,30 @@ function FiscalInner() {
 
       {/* ── MODAL: Cancelamento ── */}
       {modalCancelamento && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 520, maxWidth: "97vw" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Cancelar NF-e</div>
-            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 520, maxWidth: "97vw" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Cancelar NF-e</div>
+            <div data-arato-dialog-body="true" style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
               <strong>NF-e {modalCancelamento.numero}</strong> — {modalCancelamento.destinatario}<br />
               {fmtData(modalCancelamento.data_emissao)} · {fmtMoeda(modalCancelamento.valor_total)}
             </div>
-            <div style={{ background: "#FFF7ED", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#633806", marginBottom: 16 }}>
+            <div data-arato-dialog-body="true" style={{ background: "#FFF7ED", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#633806", marginBottom: 16 }}>
               ⚠ O cancelamento só é permitido dentro de 24h da autorização (sem circulação de mercadoria). Após isso, exige processo especial na SEFAZ.
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>Justificativa do cancelamento * <span style={{ color: "var(--text-3)" }}>(mín. 15 caracteres)</span></label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>
+              <label data-arato-label="true" style={labelSt}>Justificativa do cancelamento * <span style={{ color: "var(--text-3)" }}>(mín. 15 caracteres)</span></label>
               <textarea
                 style={{ ...inputSt, height: 80, resize: "vertical", fontSize: 12 }}
                 placeholder="Ex: Erro no valor unitário — contrato revisado com o comprador."
                 value={motivoCancelamento}
                 onChange={e => setMotivoCancelamento(e.target.value)}
               />
-              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{motivoCancelamento.length} caracteres</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{motivoCancelamento.length} caracteres</div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => { setModalCancelamento(null); setMotivoCancelamento(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => { setModalCancelamento(null); setMotivoCancelamento(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
+              <button data-arato-button="toggle"
                 onClick={solicitarCancelamento}
                 disabled={motivoCancelamento.length < 15 || salvando}
                 style={{ padding: "8px 18px", background: motivoCancelamento.length >= 15 && !salvando ? "#E24B4A" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
@@ -3412,14 +3413,14 @@ function FiscalInner() {
       )}
 
       {modalCorrecao && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carta de Correção Eletrônica (CC-e)</div>
-            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 560, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carta de Correção Eletrônica (CC-e)</div>
+            <div data-arato-dialog-body="true" style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
               <strong>NF-e {modalCorrecao.numero}</strong> — {modalCorrecao.destinatario}<br />
               {fmtData(modalCorrecao.data_emissao)} · {fmtMoeda(modalCorrecao.valor_total)}
             </div>
-            <div style={{ background: "#FFF7ED", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#633806", marginBottom: 16 }}>
+            <div data-arato-dialog-body="true" style={{ background: "#FFF7ED", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#633806", marginBottom: 16 }}>
               ⚠ A Carta de Correção NÃO pode alterar valor, tributo, quantidade, dados que identifiquem remetente/destinatário, nem a data de emissão/saída — só serve pra regularizar um erro que não afete o cálculo do imposto nem a operação em si (ex: erro de digitação numa descrição, endereço complementar, observação).
             </div>
             {historicoCorrecao.length > 0 && (
@@ -3433,8 +3434,8 @@ function FiscalInner() {
                 ))}
               </div>
             )}
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>Texto da correção * <span style={{ color: "var(--text-3)" }}>(15 a 1000 caracteres)</span></label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>
+              <label data-arato-label="true" style={labelSt}>Texto da correção * <span style={{ color: "var(--text-3)" }}>(15 a 1000 caracteres)</span></label>
               <textarea
                 style={{ ...inputSt, height: 100, resize: "vertical", fontSize: 12 }}
                 placeholder="Ex: Corrige o endereço complementar do destinatário para 'Galpão 2, fundos'."
@@ -3442,11 +3443,11 @@ function FiscalInner() {
                 onChange={e => setTextoCorrecao(e.target.value)}
                 maxLength={1000}
               />
-              <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{textoCorrecao.length} caracteres</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{textoCorrecao.length} caracteres</div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => { setModalCorrecao(null); setTextoCorrecao(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => { setModalCorrecao(null); setTextoCorrecao(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
+              <button data-arato-button="toggle"
                 onClick={enviarCartaCorrecao}
                 disabled={textoCorrecao.trim().length < 15 || enviandoCorrecao}
                 style={{ padding: "8px 18px", background: textoCorrecao.trim().length >= 15 && !enviandoCorrecao ? "#378ADD" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}

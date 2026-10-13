@@ -646,54 +646,54 @@ function RelFinClassInner() {
 
   // ── JSX ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Analítico: gastos por OG com os lançamentos · Sintético: total de cada OG no período</p>
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF / Imprimir</button>
-              <button onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Exportar Excel</button>
+              <button data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF / Imprimir</button>
+              <button data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Exportar Excel</button>
             </div>
           )}
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
 
           {/* Linha 1: Período + Tipo + Status + OG */}
-          <div style={{ display: "grid", gridTemplateColumns: "140px 140px 1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "140px 140px 1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
 
             {/* Data Início */}
             <div>
-              <label style={lbl}>Data Início (Vcto)</label>
+              <label data-arato-label="true" style={lbl}>Data Início (Vcto)</label>
               <InputData type="date" value={inicio} onChange={e => setInicio(e.target.value)} style={inp} />
             </div>
 
             {/* Data Fim */}
             <div>
-              <label style={lbl}>Data Fim (Vcto)</label>
+              <label data-arato-label="true" style={lbl}>Data Fim (Vcto)</label>
               <InputData type="date" value={fim} onChange={e => setFim(e.target.value)} style={inp} />
             </div>
 
             {/* Tipo — dropdown */}
             <div>
-              <label style={lbl}>Tipo</label>
+              <label data-arato-label="true" style={lbl}>Tipo</label>
               <div ref={tipoRef} style={{ position: "relative" }}>
-                <button onClick={() => setTipoOpen(v => !v)} style={dropTrigger}>
+                <button data-arato-button="toggle" onClick={() => setTipoOpen(v => !v)} style={dropTrigger}>
                   <Trigger open={tipoOpen} label={tipoLabel} count={tipoSel.size} total={2} />
                 </button>
                 {tipoOpen && (
                   <div style={dropPanel}>
                     <div style={{ padding: "4px 0" }}>
                       {(["pagar", "receber"] as const).map(t => (
-                        <label key={t} style={dropItem}>
+                        <label data-arato-label="true" key={t} style={dropItem}>
                           <input type="checkbox" checked={tipoSel.has(t)} onChange={() => toggleTipo(t)} style={ckbStyle} />
                           <span style={{ fontSize: 13, color: "var(--text-1)" }}>
                             {t === "pagar" ? "Contas a Pagar" : "Contas a Receber"}
@@ -708,20 +708,20 @@ function RelFinClassInner() {
 
             {/* Status — dropdown */}
             <div>
-              <label style={lbl}>Status</label>
+              <label data-arato-label="true" style={lbl}>Status</label>
               <div ref={statusRef} style={{ position: "relative" }}>
-                <button onClick={() => setStatusOpen(v => !v)} style={dropTrigger}>
+                <button data-arato-button="secondary" onClick={() => setStatusOpen(v => !v)} style={dropTrigger}>
                   <Trigger open={statusOpen} label={statusLabel} count={statusCount} total={Object.keys(STATUS_LABELS).length} />
                 </button>
                 {statusOpen && (
                   <div style={dropPanel}>
                     <div style={{ padding: "6px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 12 }}>
-                      <button onClick={() => setStatusSel(new Set(Object.keys(STATUS_LABELS)))} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todos</button>
-                      <button onClick={() => setStatusSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhum</button>
+                      <button data-arato-button="secondary" onClick={() => setStatusSel(new Set(Object.keys(STATUS_LABELS)))} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todos</button>
+                      <button data-arato-button="secondary" onClick={() => setStatusSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhum</button>
                     </div>
                     <div style={{ padding: "4px 0" }}>
                       {Object.entries(STATUS_LABELS).map(([s, l]) => (
-                        <label key={s} style={dropItem}>
+                        <label data-arato-label="true" key={s} style={dropItem}>
                           <input type="checkbox" checked={statusSel.has(s)} onChange={() => toggleStatus(s)} style={ckbStyle} />
                           <span style={{ fontSize: 13, color: STATUS_COR[s], fontWeight: 600 }}>{l}</span>
                         </label>
@@ -734,9 +734,9 @@ function RelFinClassInner() {
 
             {/* OG — dropdown */}
             <div>
-              <label style={lbl}>Operações Gerenciais</label>
+              <label data-arato-label="true" style={lbl}>Operações Gerenciais</label>
               <div ref={classifRef} style={{ position: "relative" }}>
-                <button onClick={() => setClassifOpen(v => !v)} style={dropTrigger}>
+                <button data-arato-button="secondary" onClick={() => setClassifOpen(v => !v)} style={dropTrigger}>
                   <Trigger open={classifOpen} label={ogLabel} count={ogSelCount} total={totalOpts} />
                 </button>
                 {classifOpen && (
@@ -745,14 +745,14 @@ function RelFinClassInner() {
                       <input type="text" placeholder="Buscar OG..." value={classifBusca} onChange={e => setClassifBusca(e.target.value)} style={{ ...inp, padding: "6px 10px" }} autoFocus />
                     </div>
                     <div style={{ padding: "6px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 12 }}>
-                      <button onClick={() => { setClassifSel(null); setClassifBusca(""); }} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todas</button>
-                      <button onClick={() => setClassifSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhuma</button>
+                      <button data-arato-button="secondary" onClick={() => { setClassifSel(null); setClassifBusca(""); }} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todas</button>
+                      <button data-arato-button="secondary" onClick={() => setClassifSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhuma</button>
                     </div>
                     <div style={{ maxHeight: 260, overflowY: "auto" }}>
                       {optsVisiveis.length === 0
                         ? <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--text-3)", textAlign: "center" }}>Nenhuma OG encontrada</div>
                         : optsVisiveis.map(o => (
-                          <label key={o.chave} style={dropItem}>
+                          <label data-arato-label="true" key={o.chave} style={dropItem}>
                             <input type="checkbox" checked={isOgChecked(o.chave)} onChange={() => toggleClassif(o.chave)} style={ckbStyle} />
                             <div>
                               {o.codigo && <div style={{ fontSize: 10, color: "var(--text-3)", fontFamily: "monospace" }}>{o.codigo}</div>}
@@ -762,7 +762,7 @@ function RelFinClassInner() {
                         ))}
                     </div>
                     <div style={{ padding: "8px 12px", borderTop: "0.5px solid var(--border)", textAlign: "right" }}>
-                      <button onClick={() => setClassifOpen(false)} style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Confirmar</button>
+                      <button data-arato-button="primary" onClick={() => setClassifOpen(false)} style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Confirmar</button>
                     </div>
                   </div>
                 )}
@@ -772,10 +772,10 @@ function RelFinClassInner() {
 
           {/* Tipo de relatório */}
           <div style={{ marginBottom: 16 }}>
-            <label style={lbl}>Tipo de relatório</label>
+            <label data-arato-label="true" style={lbl}>Tipo de relatório</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {([["analitico", "Analítico — gastos por OG com os lançamentos"], ["sintetico", "Sintético — só o total de cada OG no período"]] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setVisao(k)}
+                <button data-arato-button="toggle" key={k} onClick={() => setVisao(k)}
                   style={{ padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: visao === k ? "1.5px solid #111" : "0.5px solid var(--border-table)", background: visao === k ? "#111" : "var(--bg-input)", color: visao === k ? "#fff" : "var(--text-1)" }}>
                   {l}
                 </button>
@@ -785,7 +785,7 @@ function RelFinClassInner() {
 
           {/* Agrupadores (só no analítico: o sintético é sempre por OG) */}
           {visao === "analitico" && <div style={{ marginBottom: 16 }}>
-            <label style={lbl}>Agrupadores do relatório</label>
+            <label data-arato-label="true" style={lbl}>Agrupadores do relatório</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
 
               {agrupadores.map((agr, idx) => {
@@ -794,11 +794,11 @@ function RelFinClassInner() {
                   <div key={agr} style={{ display: "flex", alignItems: "center", gap: 3, background: "#1A4870", borderRadius: 8, padding: "5px 8px" }}>
                     <span style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginRight: 2, fontWeight: 700 }}>{idx + 1}</span>
                     <span style={{ fontSize: 12, color: "#fff", fontWeight: 600, marginRight: 2 }}>{info?.label}</span>
-                    <button onClick={() => moveAgr(idx, -1)} disabled={idx === 0}
+                    <button data-arato-button="secondary" onClick={() => moveAgr(idx, -1)} disabled={idx === 0}
                       style={{ background: "none", border: "none", color: idx === 0 ? "rgba(255,255,255,.25)" : "#fff", cursor: idx === 0 ? "default" : "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>↑</button>
-                    <button onClick={() => moveAgr(idx, 1)} disabled={idx === agrupadores.length - 1}
+                    <button data-arato-button="secondary" onClick={() => moveAgr(idx, 1)} disabled={idx === agrupadores.length - 1}
                       style={{ background: "none", border: "none", color: idx === agrupadores.length - 1 ? "rgba(255,255,255,.25)" : "#fff", cursor: idx === agrupadores.length - 1 ? "default" : "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>↓</button>
-                    <button onClick={() => removeAgr(agr)}
+                    <button data-arato-button="icon" onClick={() => removeAgr(agr)}
                       style={{ background: "none", border: "none", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 14, padding: "0 2px", lineHeight: 1, marginLeft: 2 }}>×</button>
                   </div>
                 );
@@ -806,14 +806,14 @@ function RelFinClassInner() {
 
               {agrDisponiveis.length > 0 && (
                 <div ref={agrRef} style={{ position: "relative" }}>
-                  <button onClick={() => setAgrDropOpen(v => !v)}
+                  <button data-arato-button="secondary" onClick={() => setAgrDropOpen(v => !v)}
                     style={{ padding: "5px 12px", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                     + Adicionar {agrDropOpen ? "▲" : "▼"}
                   </button>
                   {agrDropOpen && (
                     <div style={{ ...dropPanel, minWidth: 180, right: "auto" }}>
                       {agrDisponiveis.map(a => (
-                        <button key={a.key} onClick={() => { addAgr(a.key); setAgrDropOpen(false); }}
+                        <button data-arato-button="secondary" key={a.key} onClick={() => { addAgr(a.key); setAgrDropOpen(false); }}
                           style={{ display: "block", width: "100%", padding: "8px 14px", background: "none", border: "none", borderBottom: "0.5px solid var(--border-table)", textAlign: "left", fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>
                           {a.label}
                         </button>
@@ -824,7 +824,7 @@ function RelFinClassInner() {
               )}
 
               {agrupadores.length > 0 && (
-                <button onClick={() => setAgrupadores([])}
+                <button data-arato-button="secondary" onClick={() => setAgrupadores([])}
                   style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "4px 6px" }}>
                   Limpar tudo
                 </button>
@@ -840,7 +840,7 @@ function RelFinClassInner() {
 
           {/* Gerar */}
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={gerar} disabled={loading}
+            <button data-arato-button="primary" onClick={gerar} disabled={loading}
               style={{ padding: "10px 28px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {loading ? "Gerando..." : "Gerar Relatório"}
             </button>
@@ -874,8 +874,8 @@ function RelFinClassInner() {
               </div>
             ) : visao === "sintetico" ? (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Operação Gerencial", "Lançamentos", "Entradas", "Saídas", "Saldo"].map(h => (
@@ -906,8 +906,8 @@ function RelFinClassInner() {
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Vcto", "Descrição", "Fornecedor / Cliente", "Parcela", "Valor", "Status", "Baixa"].map(h => (

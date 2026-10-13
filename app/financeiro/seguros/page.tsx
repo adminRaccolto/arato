@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -476,14 +477,14 @@ export default function SegurosPage() {
 
   if (!podeAcessarPlano("fin_seguros")) return <PlanoGate modulo="fin_seguros" />;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Seguros</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Seguros</h1>
           <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Apólices, prêmios e sinistros — máquinas, agrícola, patrimonial, vida</p>
         </div>
 
@@ -495,7 +496,7 @@ export default function SegurosPage() {
             { label: "Prêmio Anual Total",   v: fmtBRL(totalAnual),             sub: "custo do seguro",  cor: "#C9921B" },
             { label: "Vencendo em 30 dias",  v: vencendoEm30.length.toString(), sub: `+ ${premiosVencidos.length} prêmios atrasados`, cor: vencendoEm30.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.cor }}>{k.v}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -522,7 +523,7 @@ export default function SegurosPage() {
             { id: "vencimentos", label: "Prêmios Pendentes" },
             { id: "sinistros",   label: "Sinistros" },
           ] as { id: typeof aba; label: string }[]).map(a => (
-            <button key={a.id} onClick={() => setAba(a.id)} style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, color: aba === a.id ? "#111" : "#666", borderBottom: aba === a.id ? "2.5px solid #111" : "2.5px solid transparent", marginBottom: -1 }}>{a.label}</button>
+            <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, color: aba === a.id ? "#111" : "#666", borderBottom: aba === a.id ? "2.5px solid #111" : "2.5px solid transparent", marginBottom: -1 }}>{a.label}</button>
           ))}
         </div>
 
@@ -530,7 +531,7 @@ export default function SegurosPage() {
         {aba === "apolices" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-              <button onClick={() => abrirApolice()} style={btnV}>+ Nova Apólice</button>
+              <button data-arato-button="primary" onClick={() => abrirApolice()} style={btnV}>+ Nova Apólice</button>
             </div>
             {apolices.length === 0 ? (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma apólice cadastrada.</div>
@@ -574,8 +575,8 @@ export default function SegurosPage() {
                           {a.arquivo_url && (
                             <a href={a.arquivo_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ padding: "4px 10px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>PDF</a>
                           )}
-                          <button onClick={e => { e.stopPropagation(); abrirSinistro(a); }} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Sinistro</button>
-                          <button onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+                          <button data-arato-button="danger" onClick={e => { e.stopPropagation(); abrirSinistro(a); }} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Sinistro</button>
+                          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
                         </div>
                       </div>
                       {exp && (
@@ -584,7 +585,7 @@ export default function SegurosPage() {
                           {apolSinistros.length === 0 ? (
                             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum sinistro registrado.</div>
                           ) : (
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr style={{ background: "var(--bg-tag)" }}>{["Ocorrência","Protocolo","Descrição","Reclamado","Indenizado","Status",""].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}</tr></thead>
                               <tbody>
                                 {apolSinistros.map(s => { const sm2 = STATUS_SINISTRO_META[s.status]; return (
@@ -595,7 +596,7 @@ export default function SegurosPage() {
                                     <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmtBRL(s.valor_reclamado)}</td>
                                     <td style={{ padding: "6px 10px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                                     <td style={{ padding: "6px 10px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
-                                    <td style={{ padding: "6px 10px" }}><button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</button></td>
+                                    <td style={{ padding: "6px 10px" }}><button data-arato-button="secondary" onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</button></td>
                                   </tr>
                                 ); })}
                               </tbody>
@@ -618,7 +619,7 @@ export default function SegurosPage() {
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum prêmio pendente.</div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead><tr style={{ background: "var(--bg-card)" }}>{["Vencimento","Apólice","Seguradora","Bem Segurado","Valor","Status",""].map(h => <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {premiosVisiveis.map(p => {
@@ -633,7 +634,7 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor)}</td>
                           <td style={{ padding: "10px 14px" }}>{p.pago ? badge("Pago","#E8F5E9","#1A6B3C") : vencido ? badge("Atrasado","#FCEBEB","#791F1F") : badge("Pendente","#FBF3E0","#7B4A00")}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            {!p.pago && <button onClick={() => { setModalPremio(p); setPremioData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Pagar</button>}
+                            {!p.pago && <button data-arato-button="secondary" onClick={() => { setModalPremio(p); setPremioData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Pagar</button>}
                           </td>
                         </tr>
                       );
@@ -652,7 +653,7 @@ export default function SegurosPage() {
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum sinistro registrado.</div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead><tr style={{ background: "var(--bg-card)" }}>{["Ocorrência","Apólice","Seguradora","Descrição","Reclamado","Indenizado","Status",""].map(h => <th key={h} style={{ padding: "10px 14px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {sinistrosVisiveis.map(s => {
@@ -667,7 +668,7 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>{fmtBRL(s.valor_reclamado)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                           <td style={{ padding: "10px 14px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
-                          <td style={{ padding: "10px 14px" }}>{ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</button>}</td>
+                          <td style={{ padding: "10px 14px" }}>{ap && <button data-arato-button="secondary" onClick={() => abrirSinistro(ap, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</button>}</td>
                         </tr>
                       );
                     })}
@@ -683,53 +684,53 @@ export default function SegurosPage() {
           MODAL APÓLICE
       ══════════════════════════════════════════════════════════════════════ */}
       {modalApolice && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.12)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.12)" }}>
             {/* Header */}
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{apoliceEdit ? "Editar Apólice" : "Nova Apólice"}</div>
-              <button onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{apoliceEdit ? "Editar Apólice" : "Nova Apólice"}</div>
+              <button data-arato-button="icon" onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Abas internas */}
-            <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--bg-tag)", padding: "0 22px" }}>
+            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--bg-tag)", padding: "0 22px" }}>
               {(["dados","cobertura","financeiro","anexo"] as const).map(t => (
-                <button key={t} onClick={() => setTabModal(t)} style={{ padding: "9px 18px", border: "none", borderBottom: tabModal === t ? "2.5px solid #111" : "2.5px solid transparent", background: "none", cursor: "pointer", fontSize: 12, fontWeight: tabModal === t ? 700 : 400, color: tabModal === t ? "#111" : "#666", marginBottom: -1 }}>
+                <button data-arato-button="toggle" key={t} onClick={() => setTabModal(t)} style={{ padding: "9px 18px", border: "none", borderBottom: tabModal === t ? "2.5px solid #111" : "2.5px solid transparent", background: "none", cursor: "pointer", fontSize: 12, fontWeight: tabModal === t ? 700 : 400, color: tabModal === t ? "#111" : "#666", marginBottom: -1 }}>
                   {t === "dados" ? "Dados" : t === "cobertura" ? "Cobertura / Bem" : t === "financeiro" ? "Financeiro" : "Anexo"}
                 </button>
               ))}
             </div>
 
-            <div style={{ padding: "20px 22px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
 
               {/* ── ABA DADOS ─────────────────────────────────────────────── */}
               {tabModal === "dados" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                  <div><label style={lbl}>Nº da Apólice *</label><input value={aForm.numero_apolice} onChange={e => setAForm(f => ({ ...f, numero_apolice: e.target.value }))} style={inp} placeholder="000.000.000-0" /></div>
-                  <div><label style={lbl}>Seguradora *</label><input value={aForm.seguradora} onChange={e => setAForm(f => ({ ...f, seguradora: e.target.value }))} style={inp} /></div>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div><label data-arato-label="true" style={lbl}>Nº da Apólice *</label><input value={aForm.numero_apolice} onChange={e => setAForm(f => ({ ...f, numero_apolice: e.target.value }))} style={inp} placeholder="000.000.000-0" /></div>
+                  <div><label data-arato-label="true" style={lbl}>Seguradora *</label><input value={aForm.seguradora} onChange={e => setAForm(f => ({ ...f, seguradora: e.target.value }))} style={inp} /></div>
                   <div>
-                    <label style={lbl}>Ramo *</label>
-                    <select value={aForm.ramo} onChange={e => setAForm(f => ({ ...f, ramo: e.target.value as RamoSeguro, bem_id: undefined, bem_tipo: undefined }))} style={inp}>
+                    <label data-arato-label="true" style={lbl}>Ramo *</label>
+                    <SelectField value={aForm.ramo} onChange={e => setAForm(f => ({ ...f, ramo: e.target.value as RamoSeguro, bem_id: undefined, bem_tipo: undefined }))} style={inp}>
                       {Object.entries(RAMO_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
-                  <div><label style={lbl}>Corretora</label><input value={aForm.corretora} onChange={e => setAForm(f => ({ ...f, corretora: e.target.value }))} style={inp} /></div>
-                  <div><label style={lbl}>Contato do Corretor</label><input value={aForm.corretor_contato} onChange={e => setAForm(f => ({ ...f, corretor_contato: e.target.value }))} style={inp} placeholder="(66) 9 9999-9999" /></div>
+                  <div><label data-arato-label="true" style={lbl}>Corretora</label><input value={aForm.corretora} onChange={e => setAForm(f => ({ ...f, corretora: e.target.value }))} style={inp} /></div>
+                  <div><label data-arato-label="true" style={lbl}>Contato do Corretor</label><input value={aForm.corretor_contato} onChange={e => setAForm(f => ({ ...f, corretor_contato: e.target.value }))} style={inp} placeholder="(66) 9 9999-9999" /></div>
                   <div>
-                    <label style={lbl}>Status</label>
-                    <select value={aForm.status} onChange={e => setAForm(f => ({ ...f, status: e.target.value as StatusApolice }))} style={inp}>
+                    <label data-arato-label="true" style={lbl}>Status</label>
+                    <SelectField value={aForm.status} onChange={e => setAForm(f => ({ ...f, status: e.target.value as StatusApolice }))} style={inp}>
                       {Object.entries(STATUS_APOLICE_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
-                  <div><label style={lbl}>Início Vigência *</label><InputData type="date" value={aForm.data_inicio_vigencia} onChange={e => setAForm(f => ({ ...f, data_inicio_vigencia: e.target.value }))} style={inp} /></div>
-                  <div><label style={lbl}>Fim Vigência *</label><InputData type="date" value={aForm.data_fim_vigencia} onChange={e => setAForm(f => ({ ...f, data_fim_vigencia: e.target.value }))} style={inp} /></div>
+                  <div><label data-arato-label="true" style={lbl}>Início Vigência *</label><InputData type="date" value={aForm.data_inicio_vigencia} onChange={e => setAForm(f => ({ ...f, data_inicio_vigencia: e.target.value }))} style={inp} /></div>
+                  <div><label data-arato-label="true" style={lbl}>Fim Vigência *</label><InputData type="date" value={aForm.data_fim_vigencia} onChange={e => setAForm(f => ({ ...f, data_fim_vigencia: e.target.value }))} style={inp} /></div>
                   <div></div>
                   <div style={{ gridColumn: "1/-1" }}>
-                    <label style={lbl}>Objeto Segurado (descrição livre)</label>
+                    <label data-arato-label="true" style={lbl}>Objeto Segurado (descrição livre)</label>
                     <input value={aForm.objeto_segurado} onChange={e => setAForm(f => ({ ...f, objeto_segurado: e.target.value }))} style={inp} placeholder="Deixe em branco para preencher automaticamente pelo bem vinculado" />
                   </div>
                   <div style={{ gridColumn: "1/-1" }}>
-                    <label style={lbl}>Observação</label>
+                    <label data-arato-label="true" style={lbl}>Observação</label>
                     <textarea value={aForm.observacao} onChange={e => setAForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
                 </div>
@@ -737,56 +738,56 @@ export default function SegurosPage() {
 
               {/* ── ABA COBERTURA / BEM ────────────────────────────────────── */}
               {tabModal === "cobertura" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div style={sep}>Bem Vinculado</div>
 
                   {/* Máquinas / Automóvel */}
                   {(aForm.ramo === "maquinas" || aForm.ramo === "automovel") && (
                     <div style={{ gridColumn: "1/-1" }}>
-                      <label style={lbl}>Máquina / Veículo</label>
-                      <select value={aForm.bem_id ?? ""} onChange={e => setAForm(f => ({ ...f, bem_id: e.target.value || undefined, bem_tipo: e.target.value ? "maquina" : undefined }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Máquina / Veículo</label>
+                      <SelectField value={aForm.bem_id ?? ""} onChange={e => setAForm(f => ({ ...f, bem_id: e.target.value || undefined, bem_tipo: e.target.value ? "maquina" : undefined }))} style={inp}>
                         <option value="">— selecione —</option>
                         {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.modelo ? ` ${m.modelo}` : ""}{m.ano ? ` (${m.ano})` : ""}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                   )}
 
                   {/* Rural / Agrícola */}
                   {aForm.ramo === "rural" && (<>
                     <div style={{ gridColumn: "1/-1" }}>
-                      <label style={lbl}>Fazenda</label>
-                      <select value={aForm.bem_id ?? ""} onChange={e => setAForm(f => ({ ...f, bem_id: e.target.value || undefined, bem_tipo: e.target.value ? "fazenda" : undefined }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Fazenda</label>
+                      <SelectField value={aForm.bem_id ?? ""} onChange={e => setAForm(f => ({ ...f, bem_id: e.target.value || undefined, bem_tipo: e.target.value ? "fazenda" : undefined }))} style={inp}>
                         <option value="">— selecione —</option>
                         {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}{fz.municipio ? ` — ${fz.municipio}` : ""}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div style={sep}>Dados do Seguro Agrícola</div>
-                    <div><label style={lbl}>Área Segurada (ha)</label><input type="number" step="0.01" value={aForm.area_ha ?? ""} onChange={e => setAForm(f => ({ ...f, area_ha: parseFloat(e.target.value) || undefined }))} style={inp} placeholder="0,00" /></div>
+                    <div><label data-arato-label="true" style={lbl}>Área Segurada (ha)</label><input type="number" step="0.01" value={aForm.area_ha ?? ""} onChange={e => setAForm(f => ({ ...f, area_ha: parseFloat(e.target.value) || undefined }))} style={inp} placeholder="0,00" /></div>
                     <div>
-                      <label style={lbl}>Cultura</label>
-                      <select value={aForm.cultura ?? ""} onChange={e => setAForm(f => ({ ...f, cultura: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Cultura</label>
+                      <SelectField value={aForm.cultura ?? ""} onChange={e => setAForm(f => ({ ...f, cultura: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {["Soja","Milho 1ª","Milho 2ª (Safrinha)","Algodão","Sorgo","Trigo","Arroz","Feijão","Girassol","Outra"].map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Modalidade</label>
-                      <select value={aForm.modalidade_seguro ?? ""} onChange={e => setAForm(f => ({ ...f, modalidade_seguro: e.target.value as ModalidadeSeguro || undefined }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Modalidade</label>
+                      <SelectField value={aForm.modalidade_seguro ?? ""} onChange={e => setAForm(f => ({ ...f, modalidade_seguro: e.target.value as ModalidadeSeguro || undefined }))} style={inp}>
                         <option value="">— selecione —</option>
                         <option value="proagro">PROAGRO</option>
                         <option value="proagro_mais">PROAGRO Mais</option>
                         <option value="app_privada">Apólice Privada</option>
-                      </select>
+                      </SelectField>
                     </div>
-                    <div><label style={lbl}>Produtividade Garantida (%)</label><input type="number" step="0.1" min="0" max="100" value={aForm.produtividade_garantida_pct ?? ""} onChange={e => setAForm(f => ({ ...f, produtividade_garantida_pct: parseFloat(e.target.value) || undefined }))} style={inp} placeholder="80" /></div>
-                    <div><label style={lbl}>Valor de Referência (R$/sc)</label><InputMonetario style={inp} value={aForm.valor_referencia_sc ?? 0} onChange={v => setAForm(f => ({ ...f, valor_referencia_sc: v || undefined }))} /></div>
+                    <div><label data-arato-label="true" style={lbl}>Produtividade Garantida (%)</label><input type="number" step="0.1" min="0" max="100" value={aForm.produtividade_garantida_pct ?? ""} onChange={e => setAForm(f => ({ ...f, produtividade_garantida_pct: parseFloat(e.target.value) || undefined }))} style={inp} placeholder="80" /></div>
+                    <div><label data-arato-label="true" style={lbl}>Valor de Referência (R$/sc)</label><InputMonetario style={inp} value={aForm.valor_referencia_sc ?? 0} onChange={v => setAForm(f => ({ ...f, valor_referencia_sc: v || undefined }))} /></div>
                   </>)}
 
                   {/* Vida */}
                   {aForm.ramo === "vida" && (<>
                     <div style={{ gridColumn: "1/-1" }}>
-                      <label style={lbl}>Segurado</label>
-                      <select
+                      <label data-arato-label="true" style={lbl}>Segurado</label>
+                      <SelectField
                         value={aForm.bem_id ? (aForm.bem_tipo === "produtor" ? `p:${aForm.bem_id}` : `f:${aForm.bem_id}`) : ""}
                         onChange={e => {
                           const v = e.target.value;
@@ -797,7 +798,7 @@ export default function SegurosPage() {
                         <option value="">— selecione —</option>
                         <optgroup label="Produtores">{produtores.map(p => <option key={p.id} value={`p:${p.id}`}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}</optgroup>
                         <optgroup label="Funcionários">{funcionarios.map(f => <option key={f.id} value={`f:${f.id}`}>{f.nome}</option>)}</optgroup>
-                      </select>
+                      </SelectField>
                     </div>
                     <div style={sep}>Coberturas</div>
                     {/* Coberturas listadas */}
@@ -805,29 +806,29 @@ export default function SegurosPage() {
                       <div key={i} style={{ gridColumn: "1/-1", display: "flex", gap: 10, alignItems: "center", padding: "8px 12px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
                         <span style={{ flex: 1, fontSize: 13 }}>{c.tipo}</span>
                         <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtBRL(c.capital)}</span>
-                        <button onClick={() => setAForm(f => ({ ...f, coberturas_vida: (f.coberturas_vida ?? []).filter((_, j) => j !== i) }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
+                        <button data-arato-button="icon" onClick={() => setAForm(f => ({ ...f, coberturas_vida: (f.coberturas_vida ?? []).filter((_, j) => j !== i) }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
                       </div>
                     ))}
                     {/* Adicionar cobertura */}
-                    <div style={{ gridColumn: "1/-1", display: "grid", gridTemplateColumns: "1fr 180px auto", gap: 8, alignItems: "flex-end" }}>
+                    <div data-arato-fields="true" style={{ gridColumn: "1/-1", display: "grid", gridTemplateColumns: "1fr 180px auto", gap: 8, alignItems: "flex-end" }}>
                       <div>
-                        <label style={lbl}>Tipo de Cobertura</label>
-                        <select value={novaCobertura.tipo} onChange={e => setNovaCobertura(c => ({ ...c, tipo: e.target.value }))} style={inp}>
+                        <label data-arato-label="true" style={lbl}>Tipo de Cobertura</label>
+                        <SelectField value={novaCobertura.tipo} onChange={e => setNovaCobertura(c => ({ ...c, tipo: e.target.value }))} style={inp}>
                           {["Morte","Invalidez Total e Permanente","Invalidez Parcial","Diária por Incapacidade (DIT)","Doenças Graves","Doenças Profissionais","Assistência Funeral"].map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Capital Segurado (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Capital Segurado (R$)</label>
                         <InputMonetario style={inp} value={novaCobertura.capital} onChange={v => setNovaCobertura(c => ({ ...c, capital: v }))} />
                       </div>
-                      <button onClick={() => { if (novaCobertura.capital > 0) { setAForm(f => ({ ...f, coberturas_vida: [...(f.coberturas_vida ?? []), { tipo: novaCobertura.tipo, capital: novaCobertura.capital }] })); setNovaCobertura({ tipo: "Morte", capital: 0 }); } }} style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }}>+ Add</button>
+                      <button data-arato-button="primary" onClick={() => { if (novaCobertura.capital > 0) { setAForm(f => ({ ...f, coberturas_vida: [...(f.coberturas_vida ?? []), { tipo: novaCobertura.tipo, capital: novaCobertura.capital }] })); setNovaCobertura({ tipo: "Morte", capital: 0 }); } }} style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }}>+ Add</button>
                     </div>
                   </>)}
 
                   {/* Patrimonial */}
                   {aForm.ramo === "patrimonial" && (
                     <div style={{ gridColumn: "1/-1" }}>
-                      <label style={lbl}>Descrição do Imóvel / Benfeitoria</label>
+                      <label data-arato-label="true" style={lbl}>Descrição do Imóvel / Benfeitoria</label>
                       <input value={aForm.objeto_segurado} onChange={e => setAForm(f => ({ ...f, objeto_segurado: e.target.value }))} style={inp} placeholder="Ex.: Sede da Fazenda — 450 m², galpão principal — 1.200 m²" />
                     </div>
                   )}
@@ -835,13 +836,13 @@ export default function SegurosPage() {
                   {/* Outros */}
                   {(aForm.ramo === "responsabilidade_civil" || aForm.ramo === "outro") && (
                     <div style={{ gridColumn: "1/-1" }}>
-                      <label style={lbl}>Descrição / Atividade Coberta</label>
+                      <label data-arato-label="true" style={lbl}>Descrição / Atividade Coberta</label>
                       <input value={aForm.objeto_segurado} onChange={e => setAForm(f => ({ ...f, objeto_segurado: e.target.value }))} style={inp} placeholder="Descreva o objeto ou atividade coberta" />
                     </div>
                   )}
 
                   <div style={sep}>Valores</div>
-                  <div><label style={lbl}>Importância Segurada (R$)</label><InputMonetario style={inp} value={aForm.importancia_segurada} onChange={v => setAForm(f => ({ ...f, importancia_segurada: v }))} /></div>
+                  <div><label data-arato-label="true" style={lbl}>Importância Segurada (R$)</label><InputMonetario style={inp} value={aForm.importancia_segurada} onChange={v => setAForm(f => ({ ...f, importancia_segurada: v }))} /></div>
                 </div>
               )}
 
@@ -849,15 +850,15 @@ export default function SegurosPage() {
               {tabModal === "financeiro" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={sep}>Prêmio</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div><label style={lbl}>Prêmio Anual (R$) *</label><InputMonetario style={inp} value={aForm.premio_anual} onChange={v => setAForm(f => ({ ...f, premio_anual: v }))} /></div>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label data-arato-label="true" style={lbl}>Prêmio Anual (R$) *</label><InputMonetario style={inp} value={aForm.premio_anual} onChange={v => setAForm(f => ({ ...f, premio_anual: v }))} /></div>
                   </div>
 
                   <div style={sep}>Pagamento do Prêmio</div>
                   {/* Toggle À vista / Parcelado */}
                   <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
                     {(["avista", "parcelado"] as const).map(opt => (
-                      <button key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); setParcelasAlteradas(true); }}
+                      <button data-arato-button="toggle" key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); setParcelasAlteradas(true); }}
                         style={{ padding: "7px 20px", fontSize: 13, fontWeight: premioCondicao === opt ? 600 : 400, background: premioCondicao === opt ? "#1A4870" : "var(--bg-card)", color: premioCondicao === opt ? "#fff" : "var(--text-2)", border: "none", cursor: "pointer" }}>
                         {opt === "avista" ? "À vista" : "Parcelado"}
                       </button>
@@ -875,22 +876,22 @@ export default function SegurosPage() {
 
                   {premioCondicao === "parcelado" && (
                     <>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
                         <div>
-                          <label style={lbl}>Nº de Parcelas</label>
+                          <label data-arato-label="true" style={lbl}>Nº de Parcelas</label>
                           <input type="number" min={2} max={24} value={premioQtd} onChange={e => { setPremioQtd(e.target.value); setParcelasSeguro([]); }} style={inp} />
                         </div>
                         <div>
-                          <label style={lbl}>Intervalo entre parcelas</label>
-                          <select value={premioFreq} onChange={e => { setPremioFreq(e.target.value); setParcelasSeguro([]); }} style={inp}>
+                          <label data-arato-label="true" style={lbl}>Intervalo entre parcelas</label>
+                          <SelectField value={premioFreq} onChange={e => { setPremioFreq(e.target.value); setParcelasSeguro([]); }} style={inp}>
                             <option value="1">Mensal (1 mês)</option>
                             <option value="2">Bimestral (2 meses)</option>
                             <option value="3">Trimestral (3 meses)</option>
                             <option value="6">Semestral (6 meses)</option>
                             <option value="12">Anual (12 meses)</option>
-                          </select>
+                          </SelectField>
                         </div>
-                        <button onClick={() => {
+                        <button data-arato-button="primary" onClick={() => {
                           const qtd = parseInt(premioQtd) || 2;
                           const freq = parseInt(premioFreq) || 1;
                           setParcelasSeguro(gerarParcelasSeguro(aForm.data_inicio_vigencia, qtd, freq, aForm.premio_anual));
@@ -903,7 +904,7 @@ export default function SegurosPage() {
                           <div style={sep}>Conferência de Parcelas (editável)</div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                             {parcelasSeguro.map((p, i) => (
-                              <div key={i} style={{ display: "grid", gridTemplateColumns: "32px 1fr 1fr", gap: 8, alignItems: "center", padding: "6px 10px", background: "var(--bg-page)", borderRadius: 6 }}>
+                              <div data-arato-panel="true" data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "32px 1fr 1fr", gap: 8, alignItems: "center", padding: "6px 10px", background: "var(--bg-page)", borderRadius: 6 }}>
                                 <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{i + 1}</span>
                                 <InputData type="date" value={p.data}
                                   onChange={e => setParcelasSeguro(ps => ps.map((x, j) => j === i ? { ...x, data: e.target.value } : x))}
@@ -962,11 +963,11 @@ export default function SegurosPage() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{aErr}</div>}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
-                <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, opacity: aSaving ? 0.6 : 1, cursor: aSaving ? "default" : "pointer" }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
+                <button data-arato-button="primary" onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, opacity: aSaving ? 0.6 : 1, cursor: aSaving ? "default" : "pointer" }}>
                   {aSaving ? "Salvando…" : "Salvar Apólice"}
                 </button>
               </div>
@@ -979,36 +980,36 @@ export default function SegurosPage() {
           MODAL SINISTRO
       ══════════════════════════════════════════════════════════════════════ */}
       {modalSinistro && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{sinistroEdit ? "Editar Sinistro" : "Registrar Sinistro"}</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Apólice {modalSinistro.numero_apolice} — {modalSinistro.seguradora}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{sinistroEdit ? "Editar Sinistro" : "Registrar Sinistro"}</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Apólice {modalSinistro.numero_apolice} — {modalSinistro.seguradora}</div>
               </div>
-              <button onClick={() => setModalSinistro(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalSinistro(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
               {sErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{sErr}</div>}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label style={lbl}>Data da Ocorrência</label><InputData type="date" value={sForm.data_ocorrencia} onChange={e => setSForm(f => ({ ...f, data_ocorrencia: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Data de Comunicação</label><InputData type="date" value={sForm.data_comunicacao ?? ""} onChange={e => setSForm(f => ({ ...f, data_comunicacao: e.target.value }))} style={inp} /></div>
-                <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição</label><textarea value={sForm.descricao} onChange={e => setSForm(f => ({ ...f, descricao: e.target.value }))} rows={3} style={{ ...inp, resize: "vertical" }} /></div>
-                <div><label style={lbl}>Valor Reclamado (R$)</label><InputMonetario style={inp} value={sForm.valor_reclamado} onChange={v => setSForm(f => ({ ...f, valor_reclamado: v }))} /></div>
-                <div><label style={lbl}>Valor Indenizado (R$)</label><InputMonetario style={inp} value={sForm.valor_indenizado} onChange={v => setSForm(f => ({ ...f, valor_indenizado: v }))} /></div>
-                <div><label style={lbl}>Nº Protocolo</label><input value={sForm.numero_protocolo} onChange={e => setSForm(f => ({ ...f, numero_protocolo: e.target.value }))} style={inp} /></div>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label data-arato-label="true" style={lbl}>Data da Ocorrência</label><InputData type="date" value={sForm.data_ocorrencia} onChange={e => setSForm(f => ({ ...f, data_ocorrencia: e.target.value }))} style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Data de Comunicação</label><InputData type="date" value={sForm.data_comunicacao ?? ""} onChange={e => setSForm(f => ({ ...f, data_comunicacao: e.target.value }))} style={inp} /></div>
+                <div style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Descrição</label><textarea value={sForm.descricao} onChange={e => setSForm(f => ({ ...f, descricao: e.target.value }))} rows={3} style={{ ...inp, resize: "vertical" }} /></div>
+                <div><label data-arato-label="true" style={lbl}>Valor Reclamado (R$)</label><InputMonetario style={inp} value={sForm.valor_reclamado} onChange={v => setSForm(f => ({ ...f, valor_reclamado: v }))} /></div>
+                <div><label data-arato-label="true" style={lbl}>Valor Indenizado (R$)</label><InputMonetario style={inp} value={sForm.valor_indenizado} onChange={v => setSForm(f => ({ ...f, valor_indenizado: v }))} /></div>
+                <div><label data-arato-label="true" style={lbl}>Nº Protocolo</label><input value={sForm.numero_protocolo} onChange={e => setSForm(f => ({ ...f, numero_protocolo: e.target.value }))} style={inp} /></div>
                 <div>
-                  <label style={lbl}>Status</label>
-                  <select value={sForm.status} onChange={e => setSForm(f => ({ ...f, status: e.target.value as StatusSinistro }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Status</label>
+                  <SelectField value={sForm.status} onChange={e => setSForm(f => ({ ...f, status: e.target.value as StatusSinistro }))} style={inp}>
                     {Object.entries(STATUS_SINISTRO_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
-                <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Observação</label><input value={sForm.observacao} onChange={e => setSForm(f => ({ ...f, observacao: e.target.value }))} style={inp} /></div>
+                <div style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Observação</label><input value={sForm.observacao} onChange={e => setSForm(f => ({ ...f, observacao: e.target.value }))} style={inp} /></div>
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalSinistro(null)}>Cancelar</button>
-              <button onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "var(--text-muted)" : "#E24B4A", opacity: sSaving ? 0.6 : 1 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalSinistro(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "var(--text-muted)" : "#E24B4A", opacity: sSaving ? 0.6 : 1 }}>
                 {sSaving ? "Registrando…" : "Salvar Sinistro"}
               </button>
             </div>
@@ -1020,25 +1021,25 @@ export default function SegurosPage() {
           MODAL PAGAR PRÊMIO
       ══════════════════════════════════════════════════════════════════════ */}
       {modalPremio && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>Confirmar Pagamento</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Venc. {fmtData(modalPremio.data_vencimento)} — {fmtBRL(modalPremio.valor)}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>Confirmar Pagamento</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Venc. {fmtData(modalPremio.data_vencimento)} — {fmtBRL(modalPremio.valor)}</div>
               </div>
-              <button onClick={() => setModalPremio(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalPremio(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px" }}>
-              <label style={lbl}>Data do Pagamento</label>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
+              <label data-arato-label="true" style={lbl}>Data do Pagamento</label>
               <InputData type="date" value={premioData} onChange={e => setPremioData(e.target.value)} style={inp} />
-              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
+              <div data-arato-dialog-body="true" style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
                 O pagamento será registrado em Contas a Pagar e o lançamento será baixado automaticamente.
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalPremio(null)}>Cancelar</button>
-              <button onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, opacity: premioSaving ? 0.6 : 1 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalPremio(null)}>Cancelar</button>
+              <button data-arato-button="primary" onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, opacity: premioSaving ? 0.6 : 1 }}>
                 {premioSaving ? "Salvando…" : "Confirmar Pagamento"}
               </button>
             </div>

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -187,64 +188,64 @@ function RelatorioRomaneios() {
       <TopNav />
       <div style={{ padding: "24px 28px", fontFamily: "system-ui, sans-serif", fontSize: 13, background: "var(--bg-page)", minHeight: "100vh" }}>
         <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Romaneios</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Romaneios</h1>
           <p style={{ fontSize: 13, color: "var(--text-2)", margin: "4px 0 0" }}>Romaneios de entrada (lavoura → armazém) e saída (entrega por contrato)</p>
         </div>
 
         {/* Abas */}
         <div style={{ display: "flex", gap: 6, marginBottom: 20, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 4, width: "fit-content" }}>
-          <button style={tabStyle(aba === "entrada")} onClick={() => setAba("entrada")}>Entrada (Lavoura → Armazém)</button>
-          <button style={tabStyle(aba === "saida")}   onClick={() => setAba("saida")}>Saída (Entrega por Contrato)</button>
+          <button data-arato-button="toggle" style={tabStyle(aba === "entrada")} onClick={() => setAba("entrada")}>Entrada (Lavoura → Armazém)</button>
+          <button data-arato-button="toggle" style={tabStyle(aba === "saida")}   onClick={() => setAba("saida")}>Saída (Entrega por Contrato)</button>
         </div>
 
         {/* Filtros */}
-        <div style={{ ...cardStyle, marginBottom: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12, alignItems: "end" }}>
+        <div data-arato-panel="true" style={{ ...cardStyle, marginBottom: 20 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12, alignItems: "end" }}>
             <div>
-              <label style={lbl}>Fazenda</label>
-              <select style={inp} value={filtFaz} onChange={e => setFiltFaz(e.target.value)}>
+              <label data-arato-label="true" style={lbl}>Fazenda</label>
+              <SelectField style={inp} value={filtFaz} onChange={e => setFiltFaz(e.target.value)}>
                 <option value="">Todas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Data Início</label>
+              <label data-arato-label="true" style={lbl}>Data Início</label>
               <InputData type="date" style={inp} value={filtDe} onChange={e => setFiltDe(e.target.value)} />
             </div>
             <div>
-              <label style={lbl}>Data Fim</label>
+              <label data-arato-label="true" style={lbl}>Data Fim</label>
               <InputData type="date" style={inp} value={filtAte} onChange={e => setFiltAte(e.target.value)} />
             </div>
             {aba === "entrada" && (<>
               <div>
-                <label style={lbl}>Ano Safra</label>
-                <select style={inp} value={filtAnoCiclo} onChange={e => { setFiltAnoCiclo(e.target.value); setFiltCiclo(""); }}>
+                <label data-arato-label="true" style={lbl}>Ano Safra</label>
+                <SelectField style={inp} value={filtAnoCiclo} onChange={e => { setFiltAnoCiclo(e.target.value); setFiltCiclo(""); }}>
                   <option value="">Todos</option>
                   {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>Ciclo</label>
-                <select style={inp} value={filtCiclo} onChange={e => setFiltCiclo(e.target.value)}>
+                <label data-arato-label="true" style={lbl}>Ciclo</label>
+                <SelectField style={inp} value={filtCiclo} onChange={e => setFiltCiclo(e.target.value)}>
                   <option value="">Todos</option>
                   {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>Status</label>
-                <select style={inp} value={filtStatus} onChange={e => setFiltStatus(e.target.value)}>
+                <label data-arato-label="true" style={lbl}>Status</label>
+                <SelectField style={inp} value={filtStatus} onChange={e => setFiltStatus(e.target.value)}>
                   <option value="">Todos</option>
                   <option value="confirmado">Confirmado</option>
                   <option value="rascunho">Rascunho</option>
-                </select>
+                </SelectField>
               </div>
             </>)}
             <div>
-              <label style={lbl}>Busca</label>
+              <label data-arato-label="true" style={lbl}>Busca</label>
               <input style={inp} placeholder="placa, motorista, produto…" value={filtBusca} onChange={e => setFiltBusca(e.target.value)} />
             </div>
             <div>
-              <button onClick={buscar} disabled={loading} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, width: "100%" }}>
+              <button data-arato-button="primary" onClick={buscar} disabled={loading} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, width: "100%" }}>
                 {loading ? "Buscando…" : "Buscar"}
               </button>
             </div>
@@ -261,7 +262,7 @@ function RelatorioRomaneios() {
               { label: "Peso Líquido Total", valor: `${fmt(totEntrada.pl / 1000, 1)} t`, cor: "#16A34A" },
               { label: "Total em Sacas", valor: fmt(totEntrada.sacas, 0), cor: "#C9921B" },
             ].map(k => (
-              <div key={k.label} style={{ ...cardStyle, textAlign: "center" }}>
+              <div data-arato-statistic="display" key={k.label} style={{ ...cardStyle, textAlign: "center" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: k.cor }}>{k.valor}</div>
               </div>
@@ -274,8 +275,8 @@ function RelatorioRomaneios() {
               <span style={{ fontWeight: 700 }}>Romaneios de Entrada</span>
               <span style={{ fontSize: 12, color: "var(--text-2)" }}>{entradaFilt.length} registros</span>
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     <TH>Data</TH>
@@ -346,7 +347,7 @@ function RelatorioRomaneios() {
               { label: "Peso Líquido Total", valor: `${fmt(totSaida.pl / 1000, 1)} t`, cor: "#16A34A" },
               { label: "Total em Sacas", valor: fmt(totSaida.sacas, 0), cor: "#C9921B" },
             ].map(k => (
-              <div key={k.label} style={{ ...cardStyle, textAlign: "center" }}>
+              <div data-arato-statistic="display" key={k.label} style={{ ...cardStyle, textAlign: "center" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600, marginBottom: 4 }}>{k.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: k.cor }}>{k.valor}</div>
               </div>
@@ -355,11 +356,11 @@ function RelatorioRomaneios() {
 
           {/* Controle agrupamento */}
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
               <input type="checkbox" checked={agrupar} onChange={e => setAgrupar(e.target.checked)} />
               Agrupar por contrato
             </label>
-            <button onClick={() => window.print()} style={{ marginLeft: "auto", padding: "6px 14px", background: "#0B1E35", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+            <button data-arato-button="primary" onClick={() => window.print()} style={{ marginLeft: "auto", padding: "6px 14px", background: "#0B1E35", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
               Imprimir
             </button>
           </div>
@@ -403,8 +404,8 @@ function RelatorioRomaneios() {
                       </div>
                     </div>
                     {exp && (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <thead>
                             <tr>
                               <TH>Data</TH>
@@ -463,8 +464,8 @@ function RelatorioRomaneios() {
                 <span style={{ fontWeight: 700 }}>Romaneios de Saída</span>
                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>{saidaFilt.length} registros</span>
               </div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       <TH>Data</TH>

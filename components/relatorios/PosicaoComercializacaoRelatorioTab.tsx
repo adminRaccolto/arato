@@ -12,6 +12,7 @@
 // (COALESCE pessoas.nome), ano safra e conta_id resolvidos, além de saldo_sc
 // já calculado (quantidade_sc - entregue_sc).
 // ═══════════════════════════════════════════════════════════════════════════
+import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
@@ -269,46 +270,46 @@ ${fTipo === "analitico" ? `
 
   return (
     <div style={{ padding: "16px 22px" }}>
-      <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 32, textAlign: "center" }}>
+      <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 32, textAlign: "center" }}>
         <div style={{ fontSize: 32, marginBottom: 10 }}>🌾</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>Posição de Comercialização</div>
         <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
           Filtre por produto, comprador, status, ano safra e período. Mostra contratado, entregue e saldo por commodity — gera direto em PDF (pra imprimir) ou XLSX (baixa), sintético ou analítico.
         </div>
-        <button onClick={abrirModal} style={btnV}>🔍 Abrir Filtro e Gerar</button>
+        <button data-arato-button="primary" onClick={abrirModal} style={btnV}>🔍 Abrir Filtro e Gerar</button>
       </div>
 
       {modalAberto && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => setModalAberto(false)}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>🌾 Posição de Comercialização</h2>
-              <button onClick={() => setModalAberto(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 620px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>🌾 Posição de Comercialização</h2>
+              <button data-arato-button="icon" onClick={() => setModalAberto(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Produto</label>
-                <select value={fProduto} onChange={e => setFProduto(e.target.value)} style={inp}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Produto</label>
+                <SelectField value={fProduto} onChange={e => setFProduto(e.target.value)} style={inp}>
                   <option value="">Todos os produtos</option>
                   {opcoesProduto.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Comprador</label>
-                <select value={fComprador} onChange={e => setFComprador(e.target.value)} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Comprador</label>
+                <SelectField value={fComprador} onChange={e => setFComprador(e.target.value)} style={inp}>
                   <option value="">Todos os compradores</option>
                   {opcoesComprador.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={lbl}>Status — marque quantos quiser (vazio = todos)</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
+              <label data-arato-label="true" style={lbl}>Status — marque quantos quiser (vazio = todos)</label>
+              <div data-arato-dialog-body="true" data-arato-panel="true" style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
                 {STATUS_OPCOES.map(st => (
-                  <label key={st} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer" }}>
+                  <label data-arato-label="true" key={st} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer" }}>
                     <input type="checkbox" checked={fStatus.has(st)} onChange={() => toggleStatus(st)} />
                     {STATUS_MAP[st].label}
                   </label>
@@ -316,41 +317,41 @@ ${fTipo === "analitico" ? `
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Ano Safra</label>
-                <select value={fAnoSafra} onChange={e => setFAnoSafra(e.target.value)} style={inp}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Ano Safra</label>
+                <SelectField value={fAnoSafra} onChange={e => setFAnoSafra(e.target.value)} style={inp}>
                   <option value="">Todas as safras</option>
                   {opcoesAnoSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Data contrato de</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data contrato de</label>
                 <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>até</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>até</label>
                 <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-              <div>
-                <label style={lbl}>Tipo</label>
-                <div style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo</label>
+                <div data-arato-panel="true" style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
                   {([["sintetico", "Sintético (só resumo)"], ["analitico", "Analítico (+ contratos)"]] as const).map(([v, label]) => (
-                    <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                    <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
                       <input type="checkbox" checked={fTipo === v} onChange={() => setFTipo(v)} />
                       {label}
                     </label>
                   ))}
                 </div>
               </div>
-              <div>
-                <label style={lbl}>Emissão</label>
-                <div style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Emissão</label>
+                <div data-arato-panel="true" style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
                   {([["pdf", "PDF (imprimir)"], ["xlsx", "XLSX (baixar)"]] as const).map(([v, label]) => (
-                    <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                    <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
                       <input type="checkbox" checked={fFormato === v} onChange={() => setFFormato(v)} />
                       {label}
                     </label>
@@ -365,9 +366,9 @@ ${fTipo === "analitico" ? `
               </div>
             )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-              <button onClick={() => setModalAberto(false)} style={btnR}>Cancelar</button>
-              <button onClick={gerar} disabled={gerando} style={{ ...btnV, opacity: gerando ? 0.6 : 1 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
+              <button data-arato-button="secondary" onClick={() => setModalAberto(false)} style={btnR}>Cancelar</button>
+              <button data-arato-button="primary" onClick={gerar} disabled={gerando} style={{ ...btnV, opacity: gerando ? 0.6 : 1 }}>
                 {gerando ? "Gerando..." : "Gerar Relatório"}
               </button>
             </div>

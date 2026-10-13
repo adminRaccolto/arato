@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, Suspense } from "react";
@@ -406,18 +407,18 @@ function FinanceiroRelatoriosInner() {
   if (!anosDispo.includes(String(anoAtual))) anosDispo.unshift(String(anoAtual));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
               {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", comercializacao: "Posição de Comercialização" }[aba]}
             </h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
           </div>
-          {aba !== "comercializacao" && <button onClick={() => {
+          {aba !== "comercializacao" && <button data-arato-button="primary" onClick={() => {
             const fazenda = nomeFazendaSelecionada ?? "";
             const opts = { orientation: "landscape" as const, fazenda };
 
@@ -606,7 +607,7 @@ function FinanceiroRelatoriosInner() {
         {/* ── Banner Apoio Financeiro (só exibe se addon ativo e aba fluxo) ── */}
         {temApoio && aba === "fluxo" && (
           <div style={{ background: incluirApoio ? "#F2F2F2" : "#F9FAFB", borderBottom: "0.5px solid #DDE2EE", padding: "8px 22px", display: "flex", alignItems: "center", gap: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: "#111111", fontWeight: 500 }}>
+            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 12, color: "#111111", fontWeight: 500 }}>
               <input
                 type="checkbox"
                 checked={incluirApoio}
@@ -878,86 +879,86 @@ function FinanceiroRelatoriosInner() {
                   <>
                     {/* Popup Simulador */}
                     {simPopupAberto && (
-                      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
                        >
-                        <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 1080, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-                          <div style={{ padding: "18px 28px", borderBottom: "0.5px solid #DDD6FE", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F5F3FF", borderRadius: "12px 12px 0 0" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#7C3AED" }} />
+                        <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: 1080, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+                          <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 28px", borderBottom: "0.5px solid #DDD6FE", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F5F3FF", borderRadius: "12px 12px 0 0" }}>
+                            <div data-arato-dialog-body="true" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div data-arato-dialog-body="true" style={{ width: 12, height: 12, borderRadius: "50%", background: "#7C3AED" }} />
                               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Simulador de Cenários</span>
                               {simEntries.length > 0 && <span style={{ fontSize: 12, background: "#EDE9FE", color: "#7C3AED", padding: "2px 10px", borderRadius: 10, fontWeight: 600 }}>{simEntries.length}</span>}
                             </div>
-                            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, alignItems: "center" }}>
                               {simEntries.some(s => s.ativo) && (
-                                <button onClick={() => alternarTodasSims(false)}
+                                <button data-arato-button="secondary" onClick={() => alternarTodasSims(false)}
                                   style={{ fontSize: 12, color: "#7C3AED", background: "#EDE9FE", border: "none", borderRadius: 7, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
                                   Desativar todas
                                 </button>
                               )}
                               {simEntries.some(s => !s.ativo) && (
-                                <button onClick={() => alternarTodasSims(true)}
+                                <button data-arato-button="primary" onClick={() => alternarTodasSims(true)}
                                   style={{ fontSize: 12, color: "#16A34A", background: "#DCFCE7", border: "none", borderRadius: 7, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
                                   Ativar todas
                                 </button>
                               )}
                               {simEntries.length > 0 && (
-                                <button onClick={limparTodasSims}
+                                <button data-arato-button="secondary" onClick={limparTodasSims}
                                   style={{ fontSize: 12, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                                   Limpar tudo
                                 </button>
                               )}
-                              <button onClick={() => setSimPopupAberto(false)}
+                              <button data-arato-button="icon" onClick={() => setSimPopupAberto(false)}
                                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "var(--text-2)", lineHeight: 1, marginLeft: 6 }}>✕</button>
                             </div>
                           </div>
-                          <div style={{ padding: "18px 28px", borderBottom: "0.5px solid #EDE9FE" }}>
-                            <div style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700, marginBottom: 12 }}>{simEditId ? "✎ Editar simulação" : "+ Nova simulação"}</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 150px 150px 110px auto", gap: 12, alignItems: "end" }}>
+                          <div data-arato-dialog-body="true" style={{ padding: "18px 28px", borderBottom: "0.5px solid #EDE9FE" }}>
+                            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700, marginBottom: 12 }}>{simEditId ? "✎ Editar simulação" : "+ Nova simulação"}</div>
+                            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 150px 150px 110px auto", gap: 12, alignItems: "end" }}>
                               <div>
-                                <label style={{ ...labelStyle, fontSize: 12 }}>Descrição</label>
+                                <label data-arato-label="true" style={{ ...labelStyle, fontSize: 12 }}>Descrição</label>
                                 <input value={simForm.descricao} onChange={e => setSimForm(f => ({ ...f, descricao: e.target.value }))}
                                   onKeyDown={e => e.key === "Enter" && salvarSim()}
                                   placeholder="Ex: Recebimento Bunge" style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }} />
                               </div>
                               <div>
-                                <label style={{ ...labelStyle, fontSize: 12 }}>Fornecedor / Pagador</label>
+                                <label data-arato-label="true" style={{ ...labelStyle, fontSize: 12 }}>Fornecedor / Pagador</label>
                                 <input value={simForm.fornecedor} onChange={e => setSimForm(f => ({ ...f, fornecedor: e.target.value }))}
                                   placeholder="Empresa ou pessoa" style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }} />
                               </div>
                               <div>
-                                <label style={{ ...labelStyle, fontSize: 12 }}>Valor (R$)</label>
+                                <label data-arato-label="true" style={{ ...labelStyle, fontSize: 12 }}>Valor (R$)</label>
                                 <input value={simForm.valor}
                                   onChange={e => setSimForm(f => ({ ...f, valor: aplicarMascara(e.target.value.replace(/\D/g, "")) }))}
                                   placeholder="0,00" style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }} />
                               </div>
                               <div>
-                                <label style={{ ...labelStyle, fontSize: 12 }}>Data</label>
+                                <label data-arato-label="true" style={{ ...labelStyle, fontSize: 12 }}>Data</label>
                                 <InputData type="date" value={simForm.data} onChange={e => setSimForm(f => ({ ...f, data: e.target.value }))} style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }} />
                               </div>
                               <div>
-                                <label style={{ ...labelStyle, fontSize: 12 }}>Tipo</label>
-                                <select value={simForm.tipo} onChange={e => setSimForm(f => ({ ...f, tipo: e.target.value as "entrada"|"saida" }))} style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }}>
+                                <label data-arato-label="true" style={{ ...labelStyle, fontSize: 12 }}>Tipo</label>
+                                <SelectField value={simForm.tipo} onChange={e => setSimForm(f => ({ ...f, tipo: e.target.value as "entrada"|"saida" }))} style={{ ...inputStyle, fontSize: 13, padding: "9px 11px" }}>
                                   <option value="entrada">Entrada</option>
                                   <option value="saida">Saída</option>
-                                </select>
+                                </SelectField>
                               </div>
                               <div style={{ display: "flex", gap: 8, paddingBottom: 1 }}>
-                                <button onClick={salvarSim}
+                                <button data-arato-button="toggle" onClick={salvarSim}
                                   style={{ padding: "10px 18px", background: simEditId ? "#7C3AED" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                   {simEditId ? "Salvar" : "+ Adicionar"}
                                 </button>
                                 {simEditId && (
-                                  <button onClick={() => { setSimEditId(null); setSimForm({ descricao: "", valor: "", data: "", tipo: "entrada", fornecedor: "" }); }}
+                                  <button data-arato-button="icon" onClick={() => { setSimEditId(null); setSimForm({ descricao: "", valor: "", data: "", tipo: "entrada", fornecedor: "" }); }}
                                     style={{ padding: "10px 12px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>✕</button>
                                 )}
                               </div>
                             </div>
                           </div>
-                          <div style={{ overflowY: "auto", flex: 1 }}>
+                          <div data-arato-dialog-body="true" style={{ overflowY: "auto", flex: 1 }}>
                             {simEntries.length === 0 ? (
                               <div style={{ padding: 48, textAlign: "center", color: "#999", fontSize: 14 }}>Nenhuma simulação cadastrada. Adicione acima.</div>
                             ) : (
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                                 <thead style={{ position: "sticky", top: 0, background: "#FAF5FF" }}>
                                   <tr>
                                     {["", "Data", "Fornecedor", "Descrição", "Tipo", "Valor", ""].map(h => (
@@ -987,9 +988,9 @@ function FinanceiroRelatoriosInner() {
                                       </td>
                                       <td style={{ padding: "11px 16px", width: 64 }}>
                                         <div style={{ display: "flex", gap: 8 }}>
-                                          <button onClick={() => { setSimEditId(s.id); setSimForm({ descricao: s.descricao, fornecedor: s.fornecedor, valor: aplicarMascara(String(Math.round(s.valor * 100))), data: s.data, tipo: s.tipo }); }}
+                                          <button data-arato-button="icon" onClick={() => { setSimEditId(s.id); setSimForm({ descricao: s.descricao, fornecedor: s.fornecedor, valor: aplicarMascara(String(Math.round(s.valor * 100))), data: s.data, tipo: s.tipo }); }}
                                             style={{ background: "none", border: "none", cursor: "pointer", color: "#7C3AED", fontSize: 15 }}>✎</button>
-                                          <button onClick={() => excluirSim(s.id)}
+                                          <button data-arato-button="icon" onClick={() => excluirSim(s.id)}
                                             style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}>✕</button>
                                         </div>
                                       </td>
@@ -1000,14 +1001,14 @@ function FinanceiroRelatoriosInner() {
                             )}
                           </div>
                           {simsAtivas.length > 0 && (
-                            <div style={{ padding: "14px 28px", borderTop: "0.5px solid #DDD6FE", background: "#F5F3FF", borderRadius: "0 0 12px 12px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
-                              <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+                            <div data-arato-dialog-heading="true" style={{ padding: "14px 28px", borderTop: "0.5px solid #DDD6FE", background: "#F5F3FF", borderRadius: "0 0 12px 12px", display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+                              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
                                 <span style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700 }}>Impacto ({simsAtivas.length} ativas):</span>
                                 <span style={{ fontSize: 14, color: "#111111", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
                                 <span style={{ fontSize: 14, color: "#C026D3", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#111111" : "#C026D3" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
                               </div>
-                              <button onClick={imprimirSimsCenarios}
+                              <button data-arato-button="primary" onClick={imprimirSimsCenarios}
                                 style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
                                 🖨 Imprimir relatório
                               </button>
@@ -1020,7 +1021,7 @@ function FinanceiroRelatoriosInner() {
                     {/* Sub-abas Diário / Mensal */}
                     <div className="no-print" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
                       {(["diario", "mensal", "anual"] as const).map(t => (
-                        <button key={t} onClick={() => setSubAbaFluxo(t)}
+                        <button data-arato-button="toggle" key={t} onClick={() => setSubAbaFluxo(t)}
                           style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #111111" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "var(--bg-card)", color: subAbaFluxo === t ? "#111111" : "var(--text-3)", transition: "all 0.15s" }}>
                           {t === "diario" ? "Diário" : t === "mensal" ? "Mensal" : "Anual"}
                         </button>
@@ -1031,24 +1032,24 @@ function FinanceiroRelatoriosInner() {
                     {subAbaFluxo === "diario" && (
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
                       {/* Filtros — linha 1: período + produtores */}
-                      <div className="no-print" style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                      <div data-arato-filters="true" className="no-print" style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <label style={labelStyle}>Início</label>
+                          <label data-arato-label="true" style={labelStyle}>Início</label>
                           <InputData type="date" value={filtro.inicio} onChange={e => setFiltro(f => ({ ...f, inicio: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <label style={labelStyle}>Fim</label>
+                          <label data-arato-label="true" style={labelStyle}>Fim</label>
                           <InputData type="date" value={filtro.fim} onChange={e => setFiltro(f => ({ ...f, fim: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end" }}>
-                          <label style={labelStyle}>&nbsp;</label>
-                          <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#111111" : "var(--border-table)"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#E8E8E8" : "var(--bg-card)", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0D0D0D" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          <label data-arato-label="true" style={labelStyle}>&nbsp;</label>
+                          <button data-arato-button="toggle" onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#111111" : "var(--border-table)"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#E8E8E8" : "var(--bg-card)", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0D0D0D" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                             ⊞ Produtores / Contas {filtro.produtoresSel.length + filtro.contasSel.length > 0 ? `(${filtro.produtoresSel.length + filtro.contasSel.length} selecionados)` : ""}
                           </button>
                         </div>
                         {saldoInicial !== 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 2, justifyContent: "flex-end" }}>
-                            <label style={labelStyle}>Saldo Inicial</label>
+                            <label data-arato-label="true" style={labelStyle}>Saldo Inicial</label>
                             <div style={{ padding: "7px 12px", background: saldoInicial >= 0 ? "#E8E8E8" : "#FCEBEB", borderRadius: 8, fontSize: 13, fontWeight: 700, color: saldoInicial >= 0 ? "#0D0D0D" : "#E24B4A", whiteSpace: "nowrap" }}>
                               {fmtBRL(saldoInicial, 2)}
                             </div>
@@ -1059,7 +1060,7 @@ function FinanceiroRelatoriosInner() {
                       <div className="no-print" style={{ padding: "8px 20px 10px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                         <span style={{ fontSize: 11, color: "var(--text-3)", marginRight: 2 }}>Tipo:</span>
                         {(["ambos", "previsto", "realizado"] as const).map(t => (
-                          <button key={t} onClick={() => setFiltro(f => ({ ...f, tipoVis: t }))}
+                          <button data-arato-button="toggle" key={t} onClick={() => setFiltro(f => ({ ...f, tipoVis: t }))}
                             style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.tipoVis === t ? "#111111" : "var(--border-table)"}`, background: filtro.tipoVis === t ? "#111111" : "var(--bg-card)", color: filtro.tipoVis === t ? "#fff" : "var(--text-2)" }}>
                             {t === "ambos" ? "Ambos" : t === "previsto" ? "Previsto" : "Realizado"}
                           </button>
@@ -1067,23 +1068,23 @@ function FinanceiroRelatoriosInner() {
                         <div style={{ width: 1, height: 22, background: "var(--border-table)", margin: "0 4px" }} />
                         <span style={{ fontSize: 11, color: "var(--text-3)", marginRight: 2 }}>Moeda:</span>
                         {(["BRL", "USD"] as const).map(m => (
-                          <button key={m} onClick={() => setFiltro(f => ({ ...f, moedasSel: f.moedasSel.includes(m) ? f.moedasSel.filter(x => x !== m) : [...f.moedasSel, m] }))}
+                          <button data-arato-button="toggle" key={m} onClick={() => setFiltro(f => ({ ...f, moedasSel: f.moedasSel.includes(m) ? f.moedasSel.filter(x => x !== m) : [...f.moedasSel, m] }))}
                             style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.moedasSel.includes(m) ? "#C9921B" : "var(--border-table)"}`, background: filtro.moedasSel.includes(m) ? "#FBF3E0" : "var(--bg-card)", color: filtro.moedasSel.includes(m) ? "#7A4300" : "var(--text-2)" }}>
                             {m}
                           </button>
                         ))}
                         <div style={{ width: 1, height: 22, background: "var(--border-table)", margin: "0 4px" }} />
                         {filtro.tipoVis !== "realizado" && (
-                          <button onClick={() => setIncluirPrevisoes(v => !v)}
+                          <button data-arato-button="toggle" onClick={() => setIncluirPrevisoes(v => !v)}
                             style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${incluirPrevisoes ? "#16A34A" : "var(--border-table)"}`, background: incluirPrevisoes ? "#F0FDF4" : "var(--bg-card)", color: incluirPrevisoes ? "#16A34A" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                             {incluirPrevisoes ? "✓" : "○"} Previsões
                           </button>
                         )}
-                        <button onClick={() => setSimulacoesAtivas(v => !v)}
+                        <button data-arato-button="toggle" onClick={() => setSimulacoesAtivas(v => !v)}
                           style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${simulacoesAtivas ? "#7C3AED" : "var(--border-table)"}`, background: simulacoesAtivas ? "#F5F3FF" : "var(--bg-card)", color: simulacoesAtivas ? "#7C3AED" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                           {simulacoesAtivas ? "✓" : "○"} Simulações
                         </button>
-                        <button onClick={() => setSimPopupAberto(true)}
+                        <button data-arato-button="secondary" onClick={() => setSimPopupAberto(true)}
                           style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                           ⟳ Gerenciar{simEntries.length > 0 ? ` (${simEntries.length})` : ""}
                         </button>
@@ -1091,20 +1092,20 @@ function FinanceiroRelatoriosInner() {
 
                       {/* Painel de checkboxes Produtores / Contas */}
                       {filtroAberto && (
-                        <div className="no-print" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", gap: 32, flexWrap: "wrap" }}>
+                        <div data-arato-filters="true" className="no-print" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", gap: 32, flexWrap: "wrap" }}>
                           {/* Produtores */}
                           {produtores.length > 0 && (
                             <div>
                               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: "#111111" }}>Produtores</div>
-                                <button onClick={() => setFiltro(f => ({ ...f, produtoresSel: produtores.map(p => p.id), contasSel: [] }))}
+                                <button data-arato-button="secondary" onClick={() => setFiltro(f => ({ ...f, produtoresSel: produtores.map(p => p.id), contasSel: [] }))}
                                   style={{ fontSize: 10, color: "#1A5CB8", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}>
                                   Selecionar Todos
                                 </button>
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                                 {produtores.map(p => (
-                                  <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
+                                  <label data-arato-label="true" key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
                                     <input type="checkbox" checked={filtro.produtoresSel.includes(p.id)}
                                       onChange={e => setFiltro(f => ({ ...f, produtoresSel: e.target.checked ? [...f.produtoresSel, p.id] : f.produtoresSel.filter(x => x !== p.id), contasSel: [] }))} />
                                     {p.nome} {p.cpf_cnpj && <span style={{ color: "var(--text-3)", fontSize: 10 }}>{p.cpf_cnpj}</span>}
@@ -1120,7 +1121,7 @@ function FinanceiroRelatoriosInner() {
                                 Contas Bancárias
                                 {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
                               </div>
-                              <button onClick={() => setFiltro(f => ({ ...f, contasSel: (f.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => c.id) }))}
+                              <button data-arato-button="secondary" onClick={() => setFiltro(f => ({ ...f, contasSel: (f.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => c.id) }))}
                                 style={{ fontSize: 10, color: "#1A5CB8", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", whiteSpace: "nowrap" }}>
                                 Selecionar Todas
                               </button>
@@ -1129,7 +1130,7 @@ function FinanceiroRelatoriosInner() {
                               {(filtro.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => {
                                 const tp = { corrente: "Corrente", investimento: "Invest.", caixa: "Caixa", transitoria: "Transit.", poupanca: "Poupança" }[c.tipo_conta ?? "corrente"] ?? "Corrente";
                                 return (
-                                  <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
+                                  <label data-arato-label="true" key={c.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
                                     <input type="checkbox" checked={filtro.contasSel.includes(c.id)}
                                       onChange={e => setFiltro(f => ({ ...f, contasSel: e.target.checked ? [...f.contasSel, c.id] : f.contasSel.filter(x => x !== c.id) }))} />
                                     {c.nome} <span style={{ fontSize: 10, color: "var(--text-3)" }}>{tp}{c.banco ? ` · ${c.banco}` : ""}</span>
@@ -1139,7 +1140,7 @@ function FinanceiroRelatoriosInner() {
                             </div>
                           </div>
                           <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end" }}>
-                            <button onClick={() => setFiltro(f => ({ ...f, produtoresSel: [], contasSel: [] }))}
+                            <button data-arato-button="secondary" onClick={() => setFiltro(f => ({ ...f, produtoresSel: [], contasSel: [] }))}
                               style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
                               Limpar seleção
                             </button>
@@ -1182,8 +1183,8 @@ function FinanceiroRelatoriosInner() {
                           Nenhum lançamento no período. Ajuste os filtros ou adicione simulações.
                         </div>
                       ) : (
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-page)" }}>
                                 <th style={{ padding: "7px 14px", width: 28 }} />
@@ -1412,12 +1413,12 @@ function FinanceiroRelatoriosInner() {
                       return (
                         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                           {/* Cabeçalho */}
-                          <div className="no-print" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                          <div data-arato-filters="true" className="no-print" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                             <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                               Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
                             </div>
-                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                              <button onClick={() => setIncluirPrevisoes(v => !v)}
+                            <div data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                              <button data-arato-button="toggle" onClick={() => setIncluirPrevisoes(v => !v)}
                                 style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer", background: incluirPrevisoes ? "#FBF3E0" : "var(--bg-page)", color: incluirPrevisoes ? "#7A4300" : "var(--text-2)", borderColor: incluirPrevisoes ? "#C9921B" : "var(--border-table)" }}>
                                 {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
                               </button>
@@ -1446,8 +1447,8 @@ function FinanceiroRelatoriosInner() {
                             ))}
                           </div>
                           {/* Tabela */}
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: Math.max(900, mensalMeses.length * 80 + 220) }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: Math.max(900, mensalMeses.length * 80 + 220) }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
@@ -1526,7 +1527,7 @@ function FinanceiroRelatoriosInner() {
                       ];
                       const inpA: React.CSSProperties = { padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" };
                       const barraFiltros = (
-                        <div className="no-print" style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div data-arato-filters="true" className="no-print" style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                           {/* Intervalo de vencimento */}
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Vencimento de</span>
@@ -1534,7 +1535,7 @@ function FinanceiroRelatoriosInner() {
                             <span style={{ fontSize: 11, color: "var(--text-2)" }}>até</span>
                             <InputData type="date" value={anualFim} onChange={e => setAnualFim(e.target.value)} style={inpA} />
                             {(anualInicio || anualFim) && (
-                              <button onClick={() => { setAnualInicio(""); setAnualFim(""); }}
+                              <button data-arato-button="icon" onClick={() => { setAnualInicio(""); setAnualFim(""); }}
                                 style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}>✕</button>
                             )}
                           </div>
@@ -1546,7 +1547,7 @@ function FinanceiroRelatoriosInner() {
                             {STATUS_OPTS.map(s => {
                               const ativo = anualStatus.has(s.key);
                               return (
-                                <button key={s.key} onClick={() => setAnualStatus(prev => {
+                                <button data-arato-button="toggle" key={s.key} onClick={() => setAnualStatus(prev => {
                                   const ns = new Set(prev);
                                   if (ns.has(s.key)) ns.delete(s.key); else ns.add(s.key);
                                   return ns;
@@ -1556,7 +1557,7 @@ function FinanceiroRelatoriosInner() {
                               );
                             })}
                             {anualStatus.size < ALL_STATUS_A.length && (
-                              <button onClick={() => setAnualStatus(new Set(ALL_STATUS_A))}
+                              <button data-arato-button="secondary" onClick={() => setAnualStatus(new Set(ALL_STATUS_A))}
                                 style={{ fontSize: 10, padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}>Todos</button>
                             )}
                           </div>
@@ -1713,8 +1714,8 @@ function FinanceiroRelatoriosInner() {
                             {(anualInicio || anualFim) && <> · Vencimento: {anualInicio || "…"} → {anualFim || "…"}</>}
                             {" · "}{descFiltroStatus}
                           </div>
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 220, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
@@ -1936,15 +1937,15 @@ function FinanceiroRelatoriosInner() {
                 // ── dropdown helper ───────────────────────────────────
                 const DD = ({ open, onToggle, label, children }: { open: boolean; onToggle: () => void; label: string; children: React.ReactNode }) => (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
-                    <label style={labelStyle}>{label}</label>
-                    <button onClick={onToggle} style={{ ...inputStyle, width: 170, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                    <label data-arato-label="true" style={labelStyle}>{label}</label>
+                    <button data-arato-button="secondary" onClick={onToggle} style={{ ...inputStyle, width: 170, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>{open ? "—" : "▼"}</span>
                     </button>
                     {open && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 220, maxHeight: 280, overflowY: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>{children}</div>}
                   </div>
                 );
                 const DDItem = ({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) => (
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
+                  <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
                     onMouseEnter={e=>(e.currentTarget.style.background="#F4F6FA")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
                     <input type="checkbox" checked={checked} onChange={onToggle} style={{ cursor: "pointer", accentColor: "#1A4870" }} />
                     {label}
@@ -1955,29 +1956,29 @@ function FinanceiroRelatoriosInner() {
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
 
                     {/* ── Filtros ── */}
-                    <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}
+                    <div data-arato-filters="true" style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}
                       onClick={() => { setStatusDDOpen(false); setCatDDOpen(false); setProdDDOpen(false); setCpcrColDDOpen(false); }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <label style={labelStyle}>Início</label>
+                        <label data-arato-label="true" style={labelStyle}>Início</label>
                         <InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <label style={labelStyle}>Fim</label>
+                        <label data-arato-label="true" style={labelStyle}>Fim</label>
                         <InputData type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} onClick={e=>e.stopPropagation()} />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <label style={labelStyle}>Tipo</label>
-                        <select value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: 170 }} onClick={e=>e.stopPropagation()}>
+                        <label data-arato-label="true" style={labelStyle}>Tipo</label>
+                        <SelectField value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: 170 }} onClick={e=>e.stopPropagation()}>
                           <option value="todos">Todos (CR + CP)</option>
                           <option value="receber">Contas a Receber (CR)</option>
                           <option value="pagar">Contas a Pagar (CP)</option>
-                        </select>
+                        </SelectField>
                       </div>
 
                       {/* Status */}
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }} onClick={e=>e.stopPropagation()}>
-                        <label style={labelStyle}>Status {statusCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({statusCPCR.size})</span>}</label>
-                        <button onClick={() => { setStatusDDOpen(p=>!p); setCatDDOpen(false); setProdDDOpen(false); }}
+                        <label data-arato-label="true" style={labelStyle}>Status {statusCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({statusCPCR.size})</span>}</label>
+                        <button data-arato-button="toggle" onClick={() => { setStatusDDOpen(p=>!p); setCatDDOpen(false); setProdDDOpen(false); }}
                           style={{ ...inputStyle, width: 160, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: statusCPCR.size > 0 ? "#EDF4FD" : "var(--bg-input)", borderColor: statusCPCR.size > 0 ? "#1A4870" : undefined }}>
                           <span style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{statusCPCR.size === 0 ? "Todos" : `${statusCPCR.size} selecionado(s)`}</span>
                           <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
@@ -1987,14 +1988,14 @@ function FinanceiroRelatoriosInner() {
                             <DDItem key={opt.v} checked={statusCPCR.has(opt.v)} onToggle={() => setStatusCPCR(prev => { const n=new Set(prev); n.has(opt.v)?n.delete(opt.v):n.add(opt.v); return n; })} label={opt.l} />
                           )}
                           <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
-                          <button onClick={() => { setStatusCPCR(new Set()); setStatusDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
+                          <button data-arato-button="secondary" onClick={() => { setStatusCPCR(new Set()); setStatusDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
                         </div>}
                       </div>
 
                       {/* Categoria */}
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }} onClick={e=>e.stopPropagation()}>
-                        <label style={labelStyle}>Categoria {catCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({catCPCR.size})</span>}</label>
-                        <button onClick={() => { setCatDDOpen(p=>!p); setStatusDDOpen(false); setProdDDOpen(false); }}
+                        <label data-arato-label="true" style={labelStyle}>Categoria {catCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({catCPCR.size})</span>}</label>
+                        <button data-arato-button="toggle" onClick={() => { setCatDDOpen(p=>!p); setStatusDDOpen(false); setProdDDOpen(false); }}
                           style={{ ...inputStyle, width: 190, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: catCPCR.size > 0 ? "#EDF4FD" : "var(--bg-input)", borderColor: catCPCR.size > 0 ? "#1A4870" : undefined }}>
                           <span style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catCPCR.size === 0 ? "Todas" : `${catCPCR.size} selecionada(s)`}</span>
                           <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
@@ -2002,14 +2003,14 @@ function FinanceiroRelatoriosInner() {
                         {catDDOpen && <div style={{ position: "absolute", top: "100%", left: 0, zIndex: 300, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 0", minWidth: 230, maxHeight: 280, overflowY: "auto", boxShadow: "0 4px 20px rgba(0,0,0,0.13)", marginTop: 2 }}>
                           {categorias.map(c => <DDItem key={c} checked={catCPCR.has(c)} onToggle={() => setCatCPCR(prev => { const n=new Set(prev); n.has(c)?n.delete(c):n.add(c); return n; })} label={c} />)}
                           <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
-                          <button onClick={() => { setCatCPCR(new Set()); setCatDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
+                          <button data-arato-button="secondary" onClick={() => { setCatCPCR(new Set()); setCatDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
                         </div>}
                       </div>
 
                       {/* Produtor */}
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }} onClick={e=>e.stopPropagation()}>
-                        <label style={labelStyle}>Produtor {prodCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({prodCPCR.size})</span>}</label>
-                        <button onClick={() => { setProdDDOpen(p=>!p); setStatusDDOpen(false); setCatDDOpen(false); }}
+                        <label data-arato-label="true" style={labelStyle}>Produtor {prodCPCR.size > 0 && <span style={{ color: "#1A4870", fontWeight: 700 }}>({prodCPCR.size})</span>}</label>
+                        <button data-arato-button="toggle" onClick={() => { setProdDDOpen(p=>!p); setStatusDDOpen(false); setCatDDOpen(false); }}
                           style={{ ...inputStyle, width: 190, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", background: prodCPCR.size > 0 ? "#EDF4FD" : "var(--bg-input)", borderColor: prodCPCR.size > 0 ? "#1A4870" : undefined }}>
                           <span style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prodCPCR.size === 0 ? "Todos" : `${prodCPCR.size} selecionado(s)`}</span>
                           <span style={{ fontSize: 10, color: "var(--text-3)" }}>▼</span>
@@ -2018,13 +2019,13 @@ function FinanceiroRelatoriosInner() {
                           {produtoresPresentes.map(p => <DDItem key={p.id} checked={prodCPCR.has(p.id)} onToggle={() => setProdCPCR(prev => { const n=new Set(prev); n.has(p.id)?n.delete(p.id):n.add(p.id); return n; })} label={p.nome} />)}
                           {produtoresPresentes.length === 0 && <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--text-3)" }}>Nenhum produtor vinculado</div>}
                           <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
-                          <button onClick={() => { setProdCPCR(new Set()); setProdDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
+                          <button data-arato-button="secondary" onClick={() => { setProdCPCR(new Set()); setProdDDOpen(false); }} style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Limpar</button>
                         </div>}
                       </div>
 
                       {/* Fornecedor — busca por nome */}
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }} onClick={e=>e.stopPropagation()}>
-                        <label style={labelStyle}>Fornecedor</label>
+                        <label data-arato-label="true" style={labelStyle}>Fornecedor</label>
                         <input
                           value={fornCPCR}
                           onChange={e => setFornCPCR(e.target.value)}
@@ -2037,7 +2038,7 @@ function FinanceiroRelatoriosInner() {
                         {/* Botão Colunas — só no modo plano */}
                         {agrupAtivos.length === 0 && (
                           <div style={{ position: "relative" }}>
-                            <button onClick={e => { e.stopPropagation(); setCpcrColDDOpen(v => !v); }}
+                            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setCpcrColDDOpen(v => !v); }}
                               style={{ padding: "7px 12px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                               ⚙ Colunas
                             </button>
@@ -2045,7 +2046,7 @@ function FinanceiroRelatoriosInner() {
                               <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 400, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 0", minWidth: 190, boxShadow: "0 4px 20px rgba(0,0,0,0.13)" }}>
                                 <div style={{ padding: "4px 14px 6px", fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>Mostrar / ocultar</div>
                                 {COLUNAS_CPCR_DEF.map(col => (
-                                  <label key={col.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
+                                  <label data-arato-label="true" key={col.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-1)" }}
                                     onMouseEnter={e=>(e.currentTarget.style.background="#F4F6FA")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
                                     <input type="checkbox" checked={cpcrColVis[col.key] !== false}
                                       onChange={() => saveCpcrColVis({ ...cpcrColVis, [col.key]: !(cpcrColVis[col.key] !== false) })}
@@ -2054,7 +2055,7 @@ function FinanceiroRelatoriosInner() {
                                   </label>
                                 ))}
                                 <div style={{ borderTop: "0.5px solid var(--border)", margin: "6px 0" }} />
-                                <button onClick={() => { saveCpcrColOrder(_defCPCROrder); saveCpcrColVis(_defCPCRVis); setCpcrColDDOpen(false); }}
+                                <button data-arato-button="secondary" onClick={() => { saveCpcrColOrder(_defCPCROrder); saveCpcrColVis(_defCPCRVis); setCpcrColDDOpen(false); }}
                                   style={{ width: "100%", padding: "5px 14px", textAlign: "left", background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>
                                   Restaurar padrão
                                 </button>
@@ -2062,7 +2063,7 @@ function FinanceiroRelatoriosInner() {
                             )}
                           </div>
                         )}
-                        <button onClick={exportarXLSX} disabled={lancsCPCR.length === 0}
+                        <button data-arato-button="toggle" onClick={exportarXLSX} disabled={lancsCPCR.length === 0}
                           style={{ padding: "7px 14px", background: lancsCPCR.length === 0 ? "#ccc" : "#16763A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: lancsCPCR.length === 0 ? "default" : "pointer" }}>
                           ⬇ Exportar XLSX
                         </button>
@@ -2081,11 +2082,11 @@ function FinanceiroRelatoriosInner() {
                             <div key={k} style={{ display: "flex", alignItems: "center", gap: 2, background: "#1A4870", borderRadius: 20, padding: "3px 5px 3px 10px", color: "#fff", fontSize: 12, fontWeight: 600 }}>
                               <span style={{ fontSize: 10, background: "rgba(255,255,255,0.22)", borderRadius: 10, padding: "0 5px", marginRight: 4, minWidth: 16, textAlign: "center" }}>{idx + 1}</span>
                               {conf?.label}
-                              <button onClick={() => moveAgrup(k, -1)} disabled={idx === 0}
+                              <button data-arato-button="secondary" onClick={() => moveAgrup(k, -1)} disabled={idx === 0}
                                 style={{ background: "none", border: "none", color: idx === 0 ? "rgba(255,255,255,0.3)" : "#fff", cursor: idx === 0 ? "default" : "pointer", padding: "0 3px", fontSize: 13, lineHeight: 1 }}>↑</button>
-                              <button onClick={() => moveAgrup(k, 1)} disabled={idx === agrupAtivos.length - 1}
+                              <button data-arato-button="secondary" onClick={() => moveAgrup(k, 1)} disabled={idx === agrupAtivos.length - 1}
                                 style={{ background: "none", border: "none", color: idx === agrupAtivos.length-1 ? "rgba(255,255,255,0.3)" : "#fff", cursor: idx === agrupAtivos.length-1 ? "default" : "pointer", padding: "0 3px", fontSize: 13, lineHeight: 1 }}>↓</button>
-                              <button onClick={() => remAgrup(k)}
+                              <button data-arato-button="icon" onClick={() => remAgrup(k)}
                                 style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", padding: "0 3px", fontSize: 15, lineHeight: 1, marginLeft: 2 }}>×</button>
                             </div>
                           );
@@ -2093,7 +2094,7 @@ function FinanceiroRelatoriosInner() {
 
                         {/* Disponíveis (não ativos) */}
                         {GRUPOS_CONF.filter(c => !agrupAtivos.includes(c.key)).map(c => (
-                          <button key={c.key} onClick={() => addAgrup(c.key)}
+                          <button data-arato-button="icon" key={c.key} onClick={() => addAgrup(c.key)}
                             style={{ background: "var(--bg-input)", border: "0.5px dashed var(--border-table)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "var(--text-3)", cursor: "pointer" }}>
                             + {c.label}
                           </button>
@@ -2102,7 +2103,7 @@ function FinanceiroRelatoriosInner() {
                         {agrupAtivos.length > 0 && (
                           <>
                             <span style={{ color: "var(--border-table)", margin: "0 4px" }}>|</span>
-                            <button onClick={() => { setAgrupAtivos([]); setGruposExpand(new Set()); }}
+                            <button data-arato-button="secondary" onClick={() => { setAgrupAtivos([]); setGruposExpand(new Set()); }}
                               style={{ background: "none", border: "none", fontSize: 11, color: "var(--text-3)", cursor: "pointer", textDecoration: "underline" }}>
                               Limpar agrupamentos
                             </button>
@@ -2131,8 +2132,8 @@ function FinanceiroRelatoriosInner() {
                       <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum lançamento no período com os filtros selecionados.</div>
                     ) : confAtivos.length > 0 ? (
                       /* Modo agrupado */
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: "var(--bg-page)" }}>
                               {["Agrupamento / Lançamento","Produtor","Vencimento","Categoria","Operação Gerencial","Status","CR","CP","Saldo"].map(h => (
@@ -2255,7 +2256,7 @@ function FinanceiroRelatoriosInner() {
                       const totalValorPago  = lancsCPCR.reduce((s, l) => s + (l.valor_pago ?? 0), 0);
 
                       return (
-                        <div style={{ overflowX: "auto" }}>
+                        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
                           <style>{`
                             @media print {
                               .cpcr-grid-table thead th { white-space: nowrap; font-size: 10px !important; padding: 5px 7px !important; }
@@ -2263,7 +2264,7 @@ function FinanceiroRelatoriosInner() {
                               .cpcr-grid-table .resize-handle { display: none; }
                             }
                           `}</style>
-                          <table className="cpcr-grid-table" style={{ borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+                          <table data-arato-grid="true" className="cpcr-grid-table" style={{ borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
                             <thead>
                               <tr style={{ background: "var(--bg-page)" }}>
                                 {colsVisiveis.map((col, ci) => (
@@ -2452,15 +2453,15 @@ function FinanceiroRelatoriosInner() {
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
 
                     {/* Cabeçalho */}
-                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                    <div data-arato-filters="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Fluxo de Caixa Mensal</div>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                           Estruturado por categoria · Entradas e saídas por mês
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                        <button
+                      <div data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <button data-arato-button="toggle"
                           onClick={() => setIncluirPrevisoes(v => !v)}
                           style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer",
                             background: incluirPrevisoes ? "#FBF3E0" : "var(--bg-page)",
@@ -2469,11 +2470,11 @@ function FinanceiroRelatoriosInner() {
                           {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
                         </button>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <label style={{ fontSize: 12, color: "var(--text-2)" }}>Exercício:</label>
-                          <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
+                          <label data-arato-label="true" style={{ fontSize: 12, color: "var(--text-2)" }}>Exercício:</label>
+                          <SelectField value={dfcAno} onChange={e => setDfcAno(e.target.value)}
                             style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                             {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
-                          </select>
+                          </SelectField>
                         </div>
                       </div>
                     </div>
@@ -2494,8 +2495,8 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     {/* Tabela horizontal */}
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, position: "sticky", left: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
@@ -2596,7 +2597,7 @@ function FinanceiroRelatoriosInner() {
                         { label: "Entradas Projetadas",      valor: fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0)), cor: "#16A34A" },
                         { label: "Saldo Projetado",          valor: fmtBRL(totalProj), cor: totalProj >= 0 ? "#111111" : "#E24B4A" },
                       ].map(k => (
-                        <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border-row)" }}>
+                        <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border-row)" }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                           <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                         </div>
@@ -2604,8 +2605,8 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     {/* Tabela por conta */}
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Conta", "Tipo", "Banco", "Saldo Inicial", "Entradas Realizadas", "Saídas Realizadas", "Saldo Atual", "Entradas Proj.", "Saídas Proj.", "Saldo Projetado"].map(h => (

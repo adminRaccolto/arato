@@ -274,7 +274,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
   const cfg = MARCA_CONFIG[marca];
 
   return (
-    <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+    <div data-arato-statistic="action" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -293,7 +293,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
         {!conectada && (
           <div style={{ display: "flex", gap: 4, background: "var(--bg-tag)", borderRadius: 8, padding: 3 }}>
             {([["bridge", "RJ45 (Bridge)"], ["serial", "USB Serial"]] as [Modo, string][]).map(([m, label]) => (
-              <button key={m} type="button" onClick={() => { setModo(m); setErro(null); }}
+              <button data-arato-button="toggle" key={m} type="button" onClick={() => { setModo(m); setErro(null); }}
                 disabled={m === "serial" && !temSerial}
                 style={{
                   fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "none",
@@ -310,12 +310,12 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
         )}
 
         {!conectada ? (
-          <button type="button" onClick={conectar}
+          <button data-arato-button="primary" type="button" onClick={conectar}
             style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 7, background: "#111111", color: "#fff", border: "none", cursor: "pointer" }}>
             Conectar
           </button>
         ) : (
-          <button type="button" onClick={desconectar}
+          <button data-arato-button="danger" type="button" onClick={desconectar}
             style={{ fontSize: 11, padding: "5px 14px", borderRadius: 7, background: "#FCEBEB", color: "#E24B4A", border: "0.5px solid #E24B4A40", cursor: "pointer" }}>
             Desconectar
           </button>
@@ -324,7 +324,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
 
       {/* Display + botões */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{
+        <div data-arato-statistic="display" style={{
           flex: 1, textAlign: "center", padding: "10px 0",
           background: conectada ? "#fff" : "#EBEDF2",
           border: "0.5px solid", borderColor: conectada ? "#11111140" : "var(--border-table)", borderRadius: 8,
@@ -335,7 +335,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>kg</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <button type="button" disabled={!conectada || pesoAtual == null}
+          <button data-arato-button="toggle" type="button" disabled={!conectada || pesoAtual == null}
             onClick={() => pesoAtual != null && onCapturarBruto(pesoAtual)}
             style={{
               fontSize: 11, fontWeight: 600, padding: "7px 14px", borderRadius: 7, border: "none", whiteSpace: "nowrap",
@@ -345,7 +345,7 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara, marca: 
             }}>
             ↓ Capturar Peso Bruto
           </button>
-          <button type="button" disabled={!conectada || pesoAtual == null}
+          <button data-arato-button="toggle" type="button" disabled={!conectada || pesoAtual == null}
             onClick={() => pesoAtual != null && onCapturarTara(pesoAtual)}
             style={{
               fontSize: 11, fontWeight: 600, padding: "7px 14px", borderRadius: 7, border: "none", whiteSpace: "nowrap",

@@ -176,7 +176,7 @@ function CardRecomendacao({
           </div>
         )}
 
-        <button onClick={() => onExecutar(rec)}
+        <button data-arato-button="secondary" onClick={() => onExecutar(rec)}
           style={{
             width: "100%", padding: "14px 0", background: cor, color: "#fff",
             border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700,
@@ -283,7 +283,7 @@ function TelaExecucao({
       {/* Header mobile */}
       <div style={{ background: cor, color: "#fff", padding: "16px 18px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-          <button onClick={onVoltar}
+          <button data-arato-button="secondary" onClick={onVoltar}
             style={{ background: "var(--border)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 16, cursor: "pointer" }}>
             ←
           </button>
@@ -320,7 +320,7 @@ function TelaExecucao({
             Talhões ({ajustes.filter(a => a.concluido).length}/{ajustes.length} concluídos)
           </div>
           {ajustes.map((a, i) => (
-            <div key={i} style={{
+            <div data-arato-panel="true" key={i} style={{
               background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", marginBottom: 10,
               border: `1.5px solid ${a.concluido ? "#16A34A" : "var(--border)"}`,
               boxShadow: a.concluido ? "0 0 0 3px #16A34A15" : "none",
@@ -369,7 +369,7 @@ function TelaExecucao({
         </div>
 
         {/* Operador e obs */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", marginBottom: 14, border: "0.5px solid var(--border)" }}>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", marginBottom: 14, border: "0.5px solid var(--border)" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", marginBottom: 10, textTransform: "uppercase" }}>Dados do operador</div>
           <input
             placeholder="Nome do operador"
@@ -389,12 +389,12 @@ function TelaExecucao({
       {/* Footer fixo com botões */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bg-card)", padding: "14px 16px", boxShadow: "0 -2px 12px rgba(0,0,0,0.1)", display: "flex", gap: 10 }}>
         {!todosFeitos && algumFeito && (
-          <button onClick={() => salvar(false)} disabled={saving}
+          <button data-arato-button="secondary" onClick={() => salvar(false)} disabled={saving}
             style={{ flex: 1, padding: "14px 0", background: "var(--bg-page)", color: "#111111", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Salvar Parcial
           </button>
         )}
-        <button onClick={() => salvar(true)} disabled={saving || !algumFeito}
+        <button data-arato-button="toggle" onClick={() => salvar(true)} disabled={saving || !algumFeito}
           style={{
             flex: 2, padding: "14px 0",
             background: algumFeito ? cor : "var(--border)",
@@ -509,9 +509,9 @@ export default function ExecucaoPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-statistic="action" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       {/* Header mobile */}
-      <div style={{ background: "#111111", color: "#fff", padding: "18px 18px 14px" }}>
+      <div data-arato-statistic="action" style={{ background: "#111111", color: "#fff", padding: "18px 18px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>Modo Campo</div>
@@ -519,7 +519,7 @@ export default function ExecucaoPage() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {offline > 0 && (
-              <button onClick={sincronizarOffline}
+              <button data-arato-button="primary" onClick={sincronizarOffline}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                 ↑ {offline} offline
               </button>
@@ -531,7 +531,7 @@ export default function ExecucaoPage() {
         </div>
       </div>
 
-      <div style={{ padding: "16px" }}>
+      <div data-arato-statistic="action" style={{ padding: "16px" }}>
         {offline > 0 && (
           <div style={{ background: "#FBF3E0", border: "1.5px solid #C9921B", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#7A5A12" }}>
@@ -546,7 +546,7 @@ export default function ExecucaoPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 16 }}>Carregando...</div>
         ) : recs.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60 }}>
+          <div data-arato-statistic="display" style={{ textAlign: "center", padding: 60 }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-2)" }}>Nenhuma tarefa pendente</div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Todas as recomendações foram executadas.</div>

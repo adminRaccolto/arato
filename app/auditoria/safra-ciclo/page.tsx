@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -277,40 +278,40 @@ export function AuditoriaSafraCicloPainel({ embedded = false }: { embedded?: boo
     <>
       {!embedded && <TopNav />}
       <main style={{ padding: embedded ? 0 : "20px 24px", maxWidth: 1400, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
-            <h1 style={{ fontSize: 17, fontWeight: 600, margin: 0, color: "var(--text-1)" }}>Auditoria por Ano Safra e Ciclo</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 17, fontWeight: 600, margin: 0, color: "var(--text-1)" }}>Auditoria por Ano Safra e Ciclo</h1>
             <p style={{ fontSize: 12, color: "var(--text-3)", margin: "2px 0 0" }}>
               Lançamentos financeiros, tesouraria, operações agrícolas, abastecimentos, estoque, compras e contratos — com o ano safra e o ciclo de cada um.
             </p>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={carregar} disabled={loading} style={chip(false)}>{loading ? "Carregando…" : "↻ Atualizar"}</button>
-            <button onClick={exportar} disabled={loading || filtradas.length === 0} style={{ ...chip(true), padding: "5px 12px" }}>Exportar XLSX</button>
+            <button data-arato-button="secondary" onClick={carregar} disabled={loading} style={chip(false)}>{loading ? "Carregando…" : "↻ Atualizar"}</button>
+            <button data-arato-button="secondary" onClick={exportar} disabled={loading || filtradas.length === 0} style={{ ...chip(true), padding: "5px 12px" }}>Exportar XLSX</button>
           </div>
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
-          <label style={{ fontSize: 11, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 3 }}>Ano Safra
-            <select value={fAno} onChange={e => setFAno(e.target.value)} style={sel}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, padding: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+          <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 3 }}>Ano Safra
+            <SelectField value={fAno} onChange={e => setFAno(e.target.value)} style={sel}>
               <option value="">Todos</option>
               {opcoesAno.map(a => <option key={a} value={a}>{a}</option>)}
               <option value={SEM}>(sem ano safra)</option>
-            </select>
+            </SelectField>
           </label>
-          <label style={{ fontSize: 11, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 3 }}>Ciclo
-            <select value={fCiclo} onChange={e => setFCiclo(e.target.value)} style={{ ...sel, minWidth: 220 }}>
+          <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 3 }}>Ciclo
+            <SelectField value={fCiclo} onChange={e => setFCiclo(e.target.value)} style={{ ...sel, minWidth: 220 }}>
               <option value="">Todos</option>
               {opcoesCiclo.map(c => <option key={c.id} value={c.id}>{cicloRotulo(c)}</option>)}
               <option value={SEM}>(sem ciclo)</option>
-            </select>
+            </SelectField>
           </label>
           <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--text-3)" }}>Tipo de lançamento
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              <button onClick={() => setFGrupos(new Set())} style={chip(fGrupos.size === 0)}>Todos</button>
+              <button data-arato-button="secondary" onClick={() => setFGrupos(new Set())} style={chip(fGrupos.size === 0)}>Todos</button>
               {GRUPOS.map(g => (
-                <button key={g} onClick={() => setFGrupos(prev => { const x = new Set(prev); if (x.has(g)) x.delete(g); else x.add(g); return x; })} style={chip(fGrupos.has(g))}>{g}</button>
+                <button data-arato-button="secondary" key={g} onClick={() => setFGrupos(prev => { const x = new Set(prev); if (x.has(g)) x.delete(g); else x.add(g); return x; })} style={chip(fGrupos.has(g))}>{g}</button>
               ))}
             </div>
           </div>
@@ -325,13 +326,13 @@ export function AuditoriaSafraCicloPainel({ embedded = false }: { embedded?: boo
         )}
 
         {/* Resumo por origem */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflowX: "auto", marginBottom: 12 }}>
+        <div data-arato-grid-container="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflowX: "auto", marginBottom: 12 }}>
           <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>
             <strong style={{ color: "var(--text-1)" }}>{filtradas.length.toLocaleString("pt-BR")}</strong> registros
             {" · "}<span style={{ color: semAnoTotal ? COR_NEG : undefined, fontWeight: semAnoTotal ? 700 : 400 }}>{semAnoTotal.toLocaleString("pt-BR")} sem ano safra</span>
             {" · "}<span style={{ color: semCicloTotal ? COR_NEG : undefined, fontWeight: semCicloTotal ? 700 : 400 }}>{semCicloTotal.toLocaleString("pt-BR")} sem ciclo</span>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr><th style={th}>Origem</th><th style={{ ...th, textAlign: "right" }}>Registros</th><th style={{ ...th, textAlign: "right" }}>Sem ciclo</th><th style={{ ...th, textAlign: "right" }}>Soma dos valores</th></tr></thead>
             <tbody>
               {resumo.map(([o, r]) => (
@@ -348,8 +349,8 @@ export function AuditoriaSafraCicloPainel({ embedded = false }: { embedded?: boo
         </div>
 
         {/* Lista */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
+        <div data-arato-grid-container="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflowX: "auto" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
             <thead>
               <tr>
                 <th style={th}>Ano safra</th><th style={th}>Ciclo</th><th style={th}>Origem</th><th style={th}>Data</th>
@@ -377,7 +378,7 @@ export function AuditoriaSafraCicloPainel({ embedded = false }: { embedded?: boo
           </table>
           {filtradas.length > limite && (
             <div style={{ padding: 10, textAlign: "center" }}>
-              <button onClick={() => setLimite(x => x + 500)} style={chip(false)}>Mostrar mais ({(filtradas.length - limite).toLocaleString("pt-BR")} restantes) — a exportação XLSX leva todos</button>
+              <button data-arato-button="secondary" onClick={() => setLimite(x => x + 500)} style={chip(false)}>Mostrar mais ({(filtradas.length - limite).toLocaleString("pt-BR")} restantes) — a exportação XLSX leva todos</button>
             </div>
           )}
         </div>

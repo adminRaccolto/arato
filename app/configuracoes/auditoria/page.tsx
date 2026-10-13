@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -271,13 +272,13 @@ export default function AuditoriaPage() {
   } as React.CSSProperties;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Monitor de Auditoria</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Monitor de Auditoria</h1>
           <p style={{ fontSize: 12, color: "#888", margin: "4px 0 0" }}>
             Histórico de inserções, alterações e exclusões nas tabelas críticas do sistema.
             Os registros começam a partir da ativação do monitor.
@@ -286,11 +287,11 @@ export default function AuditoriaPage() {
 
         {/* Stat cards */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-          <div style={card}>
+          <div data-arato-statistic="display" style={card}>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 4, fontWeight: 600 }}>EVENTOS HOJE</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#0B2D50" }}>{logsHoje.length}</div>
           </div>
-          <div style={{ ...card, background: deletesHoje > 0 ? "#FEF2F2" : "#fff", border: `0.5px solid ${deletesHoje > 0 ? "#FCA5A5" : "#DDE2EE"}` }}>
+          <div data-arato-statistic="display" style={{ ...card, background: deletesHoje > 0 ? "#FEF2F2" : "#fff", border: `0.5px solid ${deletesHoje > 0 ? "#FCA5A5" : "#DDE2EE"}` }}>
             <div style={{ fontSize: 10, color: deletesHoje > 0 ? "#B91C1C" : "#888", marginBottom: 4, fontWeight: 600 }}>EXCLUSÕES HOJE</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: deletesHoje > 0 ? "#B91C1C" : "#0B2D50" }}>{deletesHoje}</div>
           </div>
@@ -298,14 +299,14 @@ export default function AuditoriaPage() {
             <div style={{ fontSize: 10, color: "#888", marginBottom: 4, fontWeight: 600 }}>TABELA MAIS ATIVA</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0B2D50" }}>{tabelaMaisAtiva}</div>
           </div>
-          <div style={card}>
+          <div data-arato-statistic="display" style={card}>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 4, fontWeight: 600 }}>TOTAL NO PERÍODO</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#0B2D50" }}>{logs.length}</div>
           </div>
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: "0.5px solid #DDE2EE", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: "0.5px solid #DDE2EE", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>DE</div>
             <InputData type="date" value={fDe} onChange={e => setFDe(e.target.value)}
@@ -318,37 +319,37 @@ export default function AuditoriaPage() {
           </div>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>TABELA</div>
-            <select value={fTabela} onChange={e => setFTabela(e.target.value)}
+            <SelectField value={fTabela} onChange={e => setFTabela(e.target.value)}
               style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, color: "#333", background: "#fff" }}>
               <option value="">Todas</option>
               {Object.entries(TABELA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            </SelectField>
           </div>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>AÇÃO</div>
-            <select value={fAcao} onChange={e => setFAcao(e.target.value)}
+            <SelectField value={fAcao} onChange={e => setFAcao(e.target.value)}
               style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, color: "#333", background: "#fff" }}>
               <option value="">Todas</option>
               <option value="INSERT">Criação</option>
               <option value="UPDATE">Alteração</option>
               <option value="DELETE">Exclusão</option>
-            </select>
+            </SelectField>
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>BUSCA</div>
             <input placeholder="Buscar em dados, ID, usuário…" value={fBusca} onChange={e => setFBusca(e.target.value)}
               style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, color: "#333", width: "100%", boxSizing: "border-box" }} />
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}>
+          <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}>
             <input type="checkbox" checked={ocultarSistema} onChange={e => setOcultarSistema(e.target.checked)}
               style={{ width: 14, height: 14, accentColor: "#1A4870", cursor: "pointer" }} />
             <span style={{ fontSize: 12, color: "#555" }}>Ocultar Sistema</span>
           </label>
-          <button onClick={() => { setFDe(new Date(Date.now() - 7*86400000).toISOString().slice(0,10)); setFAte(hoje); setFTabela(""); setFAcao(""); setFBusca(""); }}
+          <button data-arato-button="secondary" onClick={() => { setFDe(new Date(Date.now() - 7*86400000).toISOString().slice(0,10)); setFAte(hoje); setFTabela(""); setFAcao(""); setFBusca(""); }}
             style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#666", background: "#F9FAFB", cursor: "pointer" }}>
             Limpar
           </button>
-          <button onClick={() => carregar(0)} disabled={loading}
+          <button data-arato-button="toggle" onClick={() => carregar(0)} disabled={loading}
             style={{ border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 700, color: "#fff", background: loading ? "#93A8C6" : "#1A4870", cursor: loading ? "default" : "pointer", whiteSpace: "nowrap" }}>
             {loading ? "Carregando…" : "↻ Atualizar"}
           </button>
@@ -364,8 +365,8 @@ export default function AuditoriaPage() {
               <span style={{ fontSize: 11, color: "#aaa" }}>Os triggers começam a gravar a partir de agora — eventos anteriores não são retroativos.</span>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>QUANDO</th>
@@ -457,7 +458,7 @@ export default function AuditoriaPage() {
           <div style={{ padding: "10px 16px", borderTop: "0.5px solid #F0F0F0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#888" }}>
             <span>Exibindo {logsFiltrados.length} eventos</span>
             {logs.length === PAGE * (pagina + 1) && (
-              <button onClick={() => carregar(pagina + 1)} disabled={loading}
+              <button data-arato-button="secondary" onClick={() => carregar(pagina + 1)} disabled={loading}
                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", fontWeight: 600 }}>
                 {loading ? "Carregando…" : "Carregar mais"}
               </button>

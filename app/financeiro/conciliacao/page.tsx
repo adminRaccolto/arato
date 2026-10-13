@@ -1,5 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
@@ -2100,7 +2101,7 @@ function ConciliacaoInner() {
     const negativo = lt ? lt.tipo === "pagar" : l.tipo === "pagar";
     return (
       <div key={r.key} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
-        <div
+        <div data-arato-item-grid="true"
           onClick={selecionavel ? () => alternarLinhaSis(r) : undefined}
           style={{
             display: "grid", gridTemplateColumns: modo === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, alignItems: "center",
@@ -2128,7 +2129,7 @@ function ConciliacaoInner() {
               )}
             </div>
             {lt ? (
-              <button onClick={e => { e.stopPropagation(); setLotesAbertos(prev => { const n = new Set(prev); if (n.has(lt.id)) n.delete(lt.id); else n.add(lt.id); return n; }); }}
+              <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setLotesAbertos(prev => { const n = new Set(prev); if (n.has(lt.id)) n.delete(lt.id); else n.add(lt.id); return n; }); }}
                 style={{ background: "none", border: "none", padding: 0, fontSize: 10, color: "#1A4870", cursor: "pointer", textDecoration: "underline" }}>
                 {expandido ? "ocultar títulos" : "ver títulos"}
               </button>
@@ -2218,7 +2219,7 @@ function ConciliacaoInner() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       {/* ── Modal Tesouraria ──────────────────────────────────────────────── */}
@@ -2236,13 +2237,13 @@ function ConciliacaoInner() {
             aviso: `Atenção: inclui lançamentos que já estavam baixados antes da importação e só foram conciliados por ela.${ex.conciliados > 0 ? ` Este OFX tem ${ex.conciliados} linha(s) conciliada(s).` : ""}` },
         ];
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalExcluir(null)}>
-            <div style={{ background: "var(--bg-card, #fff)", borderRadius: 12, padding: "22px 26px", width: "min(96vw,600px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>🗑 Excluir importação de OFX</div>
-              <div style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>{ex.conta_nome} · {fmtDt(ex.data_inicio)} a {fmtDt(ex.data_fim)} · {ex.total_linhas} transações · {ex.conciliados} conciliadas</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalExcluir(null)}>
+            <div data-arato-dialog="form" style={{ background: "var(--bg-card, #fff)", borderRadius: 12, padding: "22px 26px", width: "min(96vw,600px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>🗑 Excluir importação de OFX</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>{ex.conta_nome} · {fmtDt(ex.data_inicio)} a {fmtDt(ex.data_fim)} · {ex.total_linhas} transações · {ex.conciliados} conciliadas</div>
+              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {opcoes.map(o => (
-                  <label key={o.k} style={{ display: "flex", gap: 10, padding: "12px 14px", borderRadius: 10, cursor: "pointer", border: `${modoExcluir === o.k ? 1.5 : 0.5}px solid ${modoExcluir === o.k ? o.cor : "#DDE2EE"}`, background: modoExcluir === o.k ? "#F8FAFD" : "transparent" }}>
+                  <label data-arato-label="true" key={o.k} style={{ display: "flex", gap: 10, padding: "12px 14px", borderRadius: 10, cursor: "pointer", border: `${modoExcluir === o.k ? 1.5 : 0.5}px solid ${modoExcluir === o.k ? o.cor : "#DDE2EE"}`, background: modoExcluir === o.k ? "#F8FAFD" : "transparent" }}>
                     <input type="radio" name="modo-excluir" checked={modoExcluir === o.k} onChange={() => setModoExcluir(o.k)} style={{ marginTop: 3 }} />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: o.cor }}>{o.titulo}</div>
@@ -2252,10 +2253,10 @@ function ConciliacaoInner() {
                   </label>
                 ))}
               </div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 12 }}>Esta ação não pode ser desfeita.</div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-                <button onClick={() => setModalExcluir(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                <button onClick={executarExclusao} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: modoExcluir === "registro" ? "#1A4870" : modoExcluir === "completa" ? "#C9921B" : "#E24B4A", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Excluir</button>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#888", marginTop: 12 }}>Esta ação não pode ser desfeita.</div>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                <button data-arato-button="secondary" onClick={() => setModalExcluir(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button data-arato-button="toggle" onClick={executarExclusao} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: modoExcluir === "registro" ? "#1A4870" : modoExcluir === "completa" ? "#C9921B" : "#E24B4A", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Excluir</button>
               </div>
             </div>
           </div>
@@ -2263,20 +2264,20 @@ function ConciliacaoInner() {
       })()}
 
       {modalTes && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Lançamento de Tesouraria</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Criar lançamento e conciliar em um passo</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Lançamento de Tesouraria</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Criar lançamento e conciliar em um passo</div>
               </div>
-              <button onClick={() => setModalTes(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalTes(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
             {/* Linha OFX de referência */}
-            <div style={{ margin: "14px 20px 0", padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Transação no extrato</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div data-arato-dialog-body="true" style={{ margin: "14px 20px 0", padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Transação no extrato</div>
+              <div data-arato-dialog-body="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{modalTes.descricao}</div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{fmtDt(modalTes.data)} · FITID: {modalTes.id}</div>
@@ -2287,53 +2288,53 @@ function ConciliacaoInner() {
               </div>
             </div>
 
-            <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
               {fTes.tipo_op === "__transferencia__" ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Conta Origem (débito)</label>
-                    <select value={fTes.conta_origem} onChange={e => setFTes(f => ({ ...f, conta_origem: e.target.value }))}
+                    <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Conta Origem (débito)</label>
+                    <SelectField value={fTes.conta_origem} onChange={e => setFTes(f => ({ ...f, conta_origem: e.target.value }))}
                       style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${fTes.conta_origem ? "#1A4870" : "#E24B4A"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
                       <option value="">— Selecione —</option>
                       {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Conta Destino (crédito)</label>
-                    <select value={fTes.conta_destino} onChange={e => setFTes(f => ({ ...f, conta_destino: e.target.value }))}
+                    <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Conta Destino (crédito)</label>
+                    <SelectField value={fTes.conta_destino} onChange={e => setFTes(f => ({ ...f, conta_destino: e.target.value }))}
                       style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${fTes.conta_destino ? "#16A34A" : "#E24B4A"}`, borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
                       <option value="">— Selecione —</option>
                       {contas.filter(c => c.id !== fTes.conta_origem).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</label>
-                    <select value={fTes.tipo} onChange={e => setFTes(f => ({ ...f, tipo: e.target.value as "pagar"|"receber" }))}
+                    <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipo</label>
+                    <SelectField value={fTes.tipo} onChange={e => setFTes(f => ({ ...f, tipo: e.target.value as "pagar"|"receber" }))}
                       style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
                       <option value="pagar">Conta a Pagar (saída)</option>
                       <option value="receber">Conta a Receber (entrada)</option>
-                    </select>
+                    </SelectField>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor</label>
+                    <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Valor</label>
                     <input type="number" step="0.01" value={fTes.valor} onChange={e => setFTes(f => ({ ...f, valor: parseFloat(e.target.value) || 0 }))}
                       style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                   </div>
                 </div>
               )}
 
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
                 <input value={fTes.descricao} onChange={e => setFTes(f => ({ ...f, descricao: e.target.value }))}
                   style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
 
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação de Tesouraria</label>
-                <select
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação de Tesouraria</label>
+                <SelectField
                   value={fTes.tipo_op}
                   onChange={e => {
                     const op = [...OPS_TESOURARIA_PADRAO, ...opsCustom].find(o => o.id === e.target.value);
@@ -2358,11 +2359,11 @@ function ConciliacaoInner() {
                       ))}
                     </optgroup>
                   )}
-                </select>
+                </SelectField>
               </div>
 
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação Gerencial *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação Gerencial *</label>
                 <div style={{ marginTop: 4 }}>
                   {fTes.tipo_op === "__transferencia__" ? (
                     <div style={{ fontSize: 11, color: "var(--text-3)" }}>Transferência entre contas próprias não tem O.G. (não entra no LCDPR nem no DRE).</div>
@@ -2384,40 +2385,40 @@ function ConciliacaoInner() {
               </div>
 
               {migracaoOk && (
-                <div style={{ background: criarRegra.ativo ? "#E6F0FB" : "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "9px 12px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--text-1)", cursor: "pointer" }}>
+                <div data-arato-panel="true" style={{ background: criarRegra.ativo ? "#E6F0FB" : "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "9px 12px" }}>
+                  <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--text-1)", cursor: "pointer" }}>
                     <input type="checkbox" checked={criarRegra.ativo} onChange={e => setCriarRegra(c => ({ ...c, ativo: e.target.checked }))} />
                     Fazer o mesmo sempre que o extrato disser algo como isto
                   </label>
                   {criarRegra.ativo && (
-                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
+                    <div data-arato-item-grid="true" style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
                       <div>
                         <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2 }}>Texto que identifica (palavras contidas no histórico)</div>
                         <input value={criarRegra.texto} onChange={e => setCriarRegra(c => ({ ...c, texto: e.target.value }))}
                           style={{ width: "100%", padding: "6px 9px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", boxSizing: "border-box" }} />
                       </div>
-                      <select value={criarRegra.escopo} onChange={e => setCriarRegra(c => ({ ...c, escopo: e.target.value as "conta" | "todas" }))}
+                      <SelectField value={criarRegra.escopo} onChange={e => setCriarRegra(c => ({ ...c, escopo: e.target.value as "conta" | "todas" }))}
                         style={{ padding: "6px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, background: "var(--bg-card)" }}>
                         <option value="todas">Todas as contas</option>
                         <option value="conta">Só esta conta</option>
-                      </select>
+                      </SelectField>
                     </div>
                   )}
                 </div>
               )}
 
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Data</label>
                 <InputData type="date" value={fTes.data} onChange={e => setFTes(f => ({ ...f, data: e.target.value }))}
                   style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
 
-              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button onClick={() => setModalTes(null)} disabled={savingTes}
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <button data-arato-button="secondary" onClick={() => setModalTes(null)} disabled={savingTes}
                   style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>
                   Cancelar
                 </button>
-                <button onClick={salvarTesouraria} disabled={savingTes || fTes.valor <= 0 || (fTes.tipo_op === "__transferencia__" ? (!fTes.conta_origem || !fTes.conta_destino) : (!fTes.descricao || !fTes.og_id))}
+                <button data-arato-button="toggle" onClick={salvarTesouraria} disabled={savingTes || fTes.valor <= 0 || (fTes.tipo_op === "__transferencia__" ? (!fTes.conta_origem || !fTes.conta_destino) : (!fTes.descricao || !fTes.og_id))}
                   style={{ flex: 2, padding: "9px", border: "none", borderRadius: 8, background: savingTes ? "#999" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingTes ? "default" : "pointer" }}>
                   {savingTes ? "Salvando..." : "✓ Salvar e Conciliar"}
                 </button>
@@ -2429,10 +2430,10 @@ function ConciliacaoInner() {
 
       {/* ── Resumo da importação ───────────────────────────────────────────── */}
       {resumoImport && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 460, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", padding: "20px 22px" }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Importação concluída</div>
-            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2, marginBottom: 14 }}>{resumoImport.total} transações no arquivo{resumoImport.jaConciliadas > 0 ? ` · ${resumoImport.jaConciliadas} já estavam conciliadas` : ""}</div>
+        <div data-arato-statistic="action" data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 460, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", padding: "20px 22px" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Importação concluída</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2, marginBottom: 14 }}>{resumoImport.total} transações no arquivo{resumoImport.jaConciliadas > 0 ? ` · ${resumoImport.jaConciliadas} já estavam conciliadas` : ""}</div>
             {[
               { n: resumoImport.porRegra,  label: "conciliadas por regra",           dica: "lançadas e classificadas automaticamente", cor: "#1A4870", bg: "#E6F0FB" },
               { n: resumoImport.exatas,    label: "conciliadas por casamento exato", dica: "valor, conta, titular e data conferem",   cor: "#166534", bg: "#E4F6EA" },
@@ -2453,8 +2454,8 @@ function ConciliacaoInner() {
                 {resumoImport.falhas > 0 && <div>{resumoImport.falhas} falha(s) ao aplicar regras — ficaram pendentes.</div>}
               </div>
             )}
-            <div style={{ textAlign: "right", marginTop: 14 }}>
-              <button onClick={() => setResumoImport(null)} style={{ padding: "8px 22px", border: "none", borderRadius: 8, background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Revisar</button>
+            <div data-arato-dialog-body="true" style={{ textAlign: "right", marginTop: 14 }}>
+              <button data-arato-button="primary" onClick={() => setResumoImport(null)} style={{ padding: "8px 22px", border: "none", borderRadius: 8, background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Revisar</button>
             </div>
           </div>
         </div>
@@ -2467,54 +2468,54 @@ function ConciliacaoInner() {
         const valorTotal = linhasSel.reduce((s, l) => s + l.valor, 0);
         const dataComum = linhasSel[0]?.data;
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Lançamento CP/CR Agrupado</div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Um único lançamento, conciliado contra {linhasSel.length} linhas do extrato</div>
+          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div data-arato-dialog-body="true">
+                  <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Lançamento CP/CR Agrupado</div>
+                  <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Um único lançamento, conciliado contra {linhasSel.length} linhas do extrato</div>
                 </div>
-                <button onClick={() => setModalAgrupado(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+                <button data-arato-button="icon" onClick={() => setModalAgrupado(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
               </div>
 
-              <div style={{ margin: "14px 20px 0", padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>Linhas selecionadas — {fmtDt(dataComum)}</div>
+              <div data-arato-dialog-body="true" style={{ margin: "14px 20px 0", padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>Linhas selecionadas — {fmtDt(dataComum)}</div>
                 {linhasSel.map(l => (
                   <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-2)", padding: "2px 0" }}>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }}>{l.descricao}</span>
                     <span style={{ fontWeight: 600 }}>{fmtBRL(l.valor)}</span>
                   </div>
                 ))}
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: "var(--text-1)", borderTop: "0.5px solid var(--border)", marginTop: 6, paddingTop: 6 }}>
+                <div data-arato-dialog-body="true" style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: "var(--text-1)", borderTop: "0.5px solid var(--border)", marginTop: 6, paddingTop: 6 }}>
                   <span>Total ({tipoLanc === "pagar" ? "CP" : "CR"})</span>
                   <span>{fmtBRL(valorTotal)}</span>
                 </div>
               </div>
 
-              <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
+              <div data-arato-dialog-body="true" style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Descrição</label>
                   <input value={descAgrupado} onChange={e => setDescAgrupado(e.target.value)} placeholder="Ex: Pedágios do dia"
                     style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: `0.5px solid ${descAgrupado.trim() ? "var(--border)" : "#E24B4A"}`, borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
 
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação Gerencial (opcional)</label>
-                  <select value={ogAgrupado} onChange={e => setOgAgrupado(e.target.value)}
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Operação Gerencial (opcional)</label>
+                  <SelectField value={ogAgrupado} onChange={e => setOgAgrupado(e.target.value)}
                     style={{ width: "100%", marginTop: 4, padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
                     <option value="">— Sem vínculo —</option>
                     {ogsDisponiveis.filter(g => g.tipo === (tipoLanc === "pagar" ? "despesa" : "receita")).map(g => (
                       <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
 
-                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                  <button onClick={() => setModalAgrupado(false)} disabled={savingAgrupado}
+                <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button data-arato-button="secondary" onClick={() => setModalAgrupado(false)} disabled={savingAgrupado}
                     style={{ flex: 1, padding: "9px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>
                     Cancelar
                   </button>
-                  <button onClick={salvarLancamentoAgrupado} disabled={savingAgrupado || !descAgrupado.trim()}
+                  <button data-arato-button="toggle" onClick={salvarLancamentoAgrupado} disabled={savingAgrupado || !descAgrupado.trim()}
                     style={{ flex: 2, padding: "9px", border: "none", borderRadius: 8, background: savingAgrupado ? "#999" : "#1A5CB8", color: "#fff", fontSize: 13, fontWeight: 700, cursor: savingAgrupado ? "default" : "pointer" }}>
                     {savingAgrupado ? "Salvando..." : "✓ Lançar e Conciliar Todas"}
                   </button>
@@ -2528,27 +2529,27 @@ function ConciliacaoInner() {
       <div style={{ maxWidth: extrato ? "none" : 1700, margin: "0 auto", padding: extrato ? "10px 14px" : "18px 20px" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Financeiro</div>
-            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: "var(--text-1)" }}>Conciliação Bancária</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 21, fontWeight: 700, color: "var(--text-1)" }}>Conciliação Bancária</h1>
             <p style={{ margin: "3px 0 0", fontSize: 13, color: "#666" }}>
               Importe o OFX · o sistema concilia automaticamente · histórico salvo na nuvem
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <select value={contaSel} onChange={e => setContaSel(e.target.value)}
+              <SelectField value={contaSel} onChange={e => setContaSel(e.target.value)}
                 style={{ padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
                 <option value="">Todas as contas</option>
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {c.banco}</option>)}
-              </select>
-              <button onClick={() => inputRef.current?.click()} disabled={loading}
+              </SelectField>
+              <button data-arato-button="primary" onClick={() => inputRef.current?.click()} disabled={loading}
                 style={{ padding: "7px 18px", background: "#111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {loading ? "Processando..." : "Importar OFX"}
               </button>
               <input ref={inputRef} type="file" accept=".ofx,.OFX" onChange={handleOFX} style={{ display: "none" }} />
-              <button onClick={auditarDivergencias} disabled={auditando} title="Confere se o que está conciliado no extrato bate com o Contas a Pagar/Receber e corrige as diferenças"
+              <button data-arato-button="secondary" onClick={auditarDivergencias} disabled={auditando} title="Confere se o que está conciliado no extrato bate com o Contas a Pagar/Receber e corrige as diferenças"
                 style={{ padding: "7px 14px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {auditando ? "Verificando..." : "Verificar divergências"}
               </button>
@@ -2566,7 +2567,7 @@ function ConciliacaoInner() {
               ["inconsistencias", `Inconsistências${pendencias.length > 0 ? ` (${pendencias.length})` : ""}`],
               ["historico",       `Histórico (${extratos.length})`],
             ] as const).map(([k, lbl]) => (
-              <button key={k} onClick={() => setAbaAtiva(k)}
+              <button data-arato-button="toggle" key={k} onClick={() => setAbaAtiva(k)}
                 style={{
                   padding: "6px 16px", borderRadius: 8,
                   border: `0.5px solid ${abaAtiva === k ? (k === "inconsistencias" ? "#C9921B" : "#1A5CB8") : "var(--border)"}`,
@@ -2583,7 +2584,7 @@ function ConciliacaoInner() {
         {/* Banner: pendências por conta bancária — agregado de extrato_transacoes,
             fonte única e contínua (substitui a leitura por card de import). */}
         {!extrato && abaAtiva === "extrato" && !contaSel && pendPorConta.length > 0 && (
-          <div style={{ background: "#FEF3C7", border: "0.5px solid #F59E0B", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <div data-arato-statistic="action" style={{ background: "#FEF3C7", border: "0.5px solid #F59E0B", borderRadius: 10, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div style={{ fontSize: 20 }}>⏳</div>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
@@ -2595,7 +2596,7 @@ function ConciliacaoInner() {
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {pendPorConta.map(p => (
-                <button key={p.conta_bancaria_id} onClick={() => abrirContaPendente(p.conta_bancaria_id)}
+                <button data-arato-button="primary" key={p.conta_bancaria_id} onClick={() => abrirContaPendente(p.conta_bancaria_id)}
                   style={{ padding: "6px 14px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                   {p.conta_nome} ({p.pendentes}) →
                 </button>
@@ -2609,9 +2610,9 @@ function ConciliacaoInner() {
             semana; todas as transações do período aparecem juntas aqui, não
             importa quantos arquivos foram importados. */}
         {!extrato && abaAtiva === "extrato" && (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "22px 24px", marginBottom: 20 }}>
+          <div data-arato-statistic="action" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "22px 24px", marginBottom: 20 }}>
             {!contaSel ? (
-              <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 13, padding: "16px 0" }}>
+              <div data-arato-statistic="display" style={{ textAlign: "center", color: "var(--text-3)", fontSize: 13, padding: "16px 0" }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🏦</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Selecione uma conta bancária acima</div>
                 <div style={{ fontSize: 12 }}>A conciliação é contínua por conta — todas as transações do período selecionado aparecem juntas, não importa quantos OFX foram importados.</div>
@@ -2622,7 +2623,7 @@ function ConciliacaoInner() {
                   <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{contas.find(c => c.id === contaSel)?.nome ?? "—"}</div>
                   <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Abre todo o extrato já importado desta conta · para conciliar um arquivo novo, use "Importar OFX"</div>
                 </div>
-                <button
+                <button data-arato-button="primary"
                   onClick={() => abrirContaCompleta(contaSel)}
                   disabled={loading}
                   style={{ padding: "9px 20px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
@@ -2648,67 +2649,67 @@ function ConciliacaoInner() {
             </div>
 
             {/* Nova regra */}
-            <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr 1.2fr", gap: 10, alignItems: "end" }}>
+            <div data-arato-panel="true" data-arato-fields="true" style={{ background: "var(--bg-page)", borderRadius: 10, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr 1.2fr", gap: 10, alignItems: "end" }}>
               <div>
-                <label style={lblRegra}>Texto no histórico do extrato</label>
+                <label data-arato-label="true" style={lblRegra}>Texto no histórico do extrato</label>
                 <input value={fRegra.texto} onChange={e => setFRegra(f => ({ ...f, texto: e.target.value }))} placeholder="Ex.: cobranca de iof"
                   style={inpRegra} />
               </div>
               <div>
-                <label style={lblRegra}>Natureza</label>
-                <select value={fRegra.tipo} onChange={e => setFRegra(f => ({ ...f, tipo: e.target.value as "debito" | "credito", og_id: "" }))} style={inpRegra}>
+                <label data-arato-label="true" style={lblRegra}>Natureza</label>
+                <SelectField value={fRegra.tipo} onChange={e => setFRegra(f => ({ ...f, tipo: e.target.value as "debito" | "credito", og_id: "" }))} style={inpRegra}>
                   <option value="debito">Débito (saída)</option>
                   <option value="credito">Crédito (entrada)</option>
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lblRegra}>Conta bancária</label>
-                <select value={fRegra.conta_bancaria_id} onChange={e => setFRegra(f => ({ ...f, conta_bancaria_id: e.target.value }))} style={inpRegra}>
+                <label data-arato-label="true" style={lblRegra}>Conta bancária</label>
+                <SelectField value={fRegra.conta_bancaria_id} onChange={e => setFRegra(f => ({ ...f, conta_bancaria_id: e.target.value }))} style={inpRegra}>
                   <option value="">Todas as contas</option>
                   {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lblRegra}>O que fazer</label>
-                <select value={fRegra.acao} onChange={e => setFRegra(f => ({ ...f, acao: e.target.value as "lancar" | "transferencia" }))} style={inpRegra}>
+                <label data-arato-label="true" style={lblRegra}>O que fazer</label>
+                <SelectField value={fRegra.acao} onChange={e => setFRegra(f => ({ ...f, acao: e.target.value as "lancar" | "transferencia" }))} style={inpRegra}>
                   <option value="lancar">Lançar e conciliar</option>
                   <option value="transferencia">Transferência entre contas</option>
-                </select>
+                </SelectField>
               </div>
               {fRegra.acao === "lancar" ? (
                 <>
                   <div style={{ gridColumn: "1 / 3" }}>
-                    <label style={lblRegra}>Operação Gerencial *</label>
+                    <label data-arato-label="true" style={lblRegra}>Operação Gerencial *</label>
                     <SelectBusca value={fRegra.og_id} onChange={id => setFRegra(f => ({ ...f, og_id: id }))}
                       options={ogsDisponiveis.filter(g => g.tipo === (fRegra.tipo === "debito" ? "despesa" : "receita")).map(g => ({ value: g.id, label: `${g.classificacao} — ${g.descricao}`, group: (g.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
                       placeholder="Selecionar operação…" style={inpRegra} />
                   </div>
                   <div>
-                    <label style={lblRegra}>Centro de custo</label>
-                    <select value={fRegra.centro_custo_id} onChange={e => setFRegra(f => ({ ...f, centro_custo_id: e.target.value }))} style={inpRegra}>
+                    <label data-arato-label="true" style={lblRegra}>Centro de custo</label>
+                    <SelectField value={fRegra.centro_custo_id} onChange={e => setFRegra(f => ({ ...f, centro_custo_id: e.target.value }))} style={inpRegra}>
                       <option value="">Sem centro de custo</option>
                       {ccLista.filter(c => !ccLista.some(x => x.parent_id === c.id)).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                   <div>
-                    <label style={lblRegra}>Pessoa (favorecido)</label>
-                    <select value={fRegra.pessoa_id} onChange={e => setFRegra(f => ({ ...f, pessoa_id: e.target.value }))} style={inpRegra}>
+                    <label data-arato-label="true" style={lblRegra}>Pessoa (favorecido)</label>
+                    <SelectField value={fRegra.pessoa_id} onChange={e => setFRegra(f => ({ ...f, pessoa_id: e.target.value }))} style={inpRegra}>
                       <option value="">Nenhuma</option>
                       {pessoasLista.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                 </>
               ) : (
                 <div style={{ gridColumn: "1 / 3" }}>
-                  <label style={lblRegra}>Conta da outra ponta *</label>
-                  <select value={fRegra.conta_destino_id} onChange={e => setFRegra(f => ({ ...f, conta_destino_id: e.target.value }))} style={inpRegra}>
+                  <label data-arato-label="true" style={lblRegra}>Conta da outra ponta *</label>
+                  <SelectField value={fRegra.conta_destino_id} onChange={e => setFRegra(f => ({ ...f, conta_destino_id: e.target.value }))} style={inpRegra}>
                     <option value="">— Selecione —</option>
                     {contas.filter(c => c.id !== fRegra.conta_bancaria_id).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
               )}
               <div style={{ gridColumn: "3 / 5", textAlign: "right" }}>
-                <button onClick={salvarRegraForm}
+                <button data-arato-button="primary" onClick={salvarRegraForm}
                   disabled={savingRegra || !migracaoOk || normalizarTexto(fRegra.texto).length < 3 || (fRegra.acao === "lancar" ? !fRegra.og_id : !fRegra.conta_destino_id)}
                   style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: (savingRegra || !migracaoOk || normalizarTexto(fRegra.texto).length < 3 || (fRegra.acao === "lancar" ? !fRegra.og_id : !fRegra.conta_destino_id)) ? 0.5 : 1 }}>
                   {savingRegra ? "Salvando…" : "+ Salvar regra"}
@@ -2720,8 +2721,8 @@ function ConciliacaoInner() {
             {regras.length === 0 ? (
               <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 12, padding: "14px 0" }}>Nenhuma regra ainda.</div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr>{["Ativa", "Texto", "Natureza", "Conta", "Ação", "Centro de custo / Pessoa", "Usos", "Pega hoje", ""].map(h => (
                       <th key={h} style={{ ...thStyle, position: "static" }}>{h}</th>
@@ -2743,7 +2744,7 @@ function ConciliacaoInner() {
                         <td style={{ padding: "8px 10px", color: "var(--text-3)" }}>{r.usos}</td>
                         <td style={{ padding: "8px 10px", color: "var(--text-3)" }}>{contarBatidas(r)} pendente(s)</td>
                         <td style={{ padding: "8px 10px" }}>
-                          <button onClick={() => excluirRegra(r)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}>×</button>
+                          <button data-arato-button="icon" onClick={() => excluirRegra(r)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15 }}>×</button>
                         </td>
                       </tr>
                     ))}
@@ -2777,7 +2778,7 @@ function ConciliacaoInner() {
                   ["com_conta",     `OFX sem lançamento — por conta (${comConta.length})`],
                   ["sem_conta",     `OFX sem conta bancária (${semContaOFX.length})`],
                 ] as const).map(([k, lbl]) => (
-                  <button key={k} onClick={() => setSubInconsist(k)}
+                  <button data-arato-button="toggle" key={k} onClick={() => setSubInconsist(k)}
                     style={{ padding: "5px 13px", borderRadius: 7, border: `0.5px solid ${subInconsist === k ? "#C9921B" : "var(--border)"}`, background: subInconsist === k ? "#FBF3E0" : "var(--bg-card)", color: subInconsist === k ? "#92400E" : "var(--text-2)", fontSize: 12, fontWeight: subInconsist === k ? 700 : 400, cursor: "pointer" }}>
                     {lbl}
                   </button>
@@ -2787,7 +2788,7 @@ function ConciliacaoInner() {
               {/* OFX sem lançamento — por conta */}
               {subInconsist === "com_conta" && (
                 gruposList.length === 0 ? (
-                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                  <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                     <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
                     <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Sem inconsistências com conta bancária indicada</div>
                   </div>
@@ -2799,7 +2800,7 @@ function ConciliacaoInner() {
                           <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E" }}>🏦 {g.conta_nome}</div>
                           <span style={{ fontSize: 11, background: "#F59E0B", color: "#fff", borderRadius: 8, padding: "2px 8px", fontWeight: 600 }}>{g.itens.length} sem lançamento</span>
                         </div>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: "var(--bg-page)" }}>
                               {["Data", "Descrição no Extrato", "Valor", "Tipo", "Ação"].map(h => (
@@ -2821,7 +2822,7 @@ function ConciliacaoInner() {
                                   </span>
                                 </td>
                                 <td style={{ padding: "8px 12px" }}>
-                                  <button
+                                  <button data-arato-button="secondary"
                                     onClick={async () => {
                                       await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", p.id);
                                       setPendencias(prev => prev.filter(x => x.id !== p.id));
@@ -2844,7 +2845,7 @@ function ConciliacaoInner() {
               {/* OFX sem conta bancária */}
               {subInconsist === "sem_conta" && (
                 semContaOFX.length === 0 ? (
-                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                  <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                     <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
                     <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Todos os extratos foram importados com conta bancária selecionada</div>
                   </div>
@@ -2854,7 +2855,7 @@ function ConciliacaoInner() {
                       <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Transações OFX sem conta bancária indicada</div>
                       <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Esses itens foram importados sem selecionar uma conta — impossível conciliar corretamente</div>
                     </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Data", "Descrição", "Valor", "Tipo", ""].map(h => (
@@ -2876,7 +2877,7 @@ function ConciliacaoInner() {
                               </span>
                             </td>
                             <td style={{ padding: "8px 12px" }}>
-                              <button
+                              <button data-arato-button="secondary"
                                 onClick={async () => {
                                   await supabase.from("conciliacao_pendencias").update({ status: "ignorada" }).eq("id", p.id);
                                   setPendencias(prev => prev.filter(x => x.id !== p.id));
@@ -2936,7 +2937,7 @@ function ConciliacaoInner() {
               </div>
 
               {extratos.length === 0 ? (
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
                   <div style={{ fontWeight: 600, color: "var(--text-2)" }}>Nenhuma sessão de conciliação ainda</div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>Importe um arquivo OFX para iniciar a conciliação bancária.</div>
@@ -2979,7 +2980,7 @@ function ConciliacaoInner() {
                           {/* OFX download */}
                           <div>
                             {ex.ofx_storage_path ? (
-                              <button onClick={() => baixarOFX(ex)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                              <button data-arato-button="primary" onClick={() => baixarOFX(ex)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
                                 ↓ OFX
                               </button>
                             ) : (
@@ -2988,13 +2989,13 @@ function ConciliacaoInner() {
                           </div>
                           {/* Ações */}
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={() => reabrirExtrato(ex)}
                               style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#92400E", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}
                             >
                               Ver conciliação
                             </button>
-                            <button
+                            <button data-arato-button="secondary"
                               title="Excluir esta importação de OFX (remove as transações trazidas por ela)"
                               onClick={() => excluirExtrato(ex)}
                               style={{ fontSize: 11, padding: "5px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
@@ -3002,7 +3003,7 @@ function ConciliacaoInner() {
                               🗑
                             </button>
                             {movs.length > 0 && (
-                              <button
+                              <button data-arato-button="secondary"
                                 onClick={() => setExpandedHist(isOpen ? null : ex.id)}
                                 style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
                               >
@@ -3022,8 +3023,8 @@ function ConciliacaoInner() {
                                 {desvincl > 0 && <span style={{ color: "#E24B4A", fontWeight: 600 }}>{desvincl} desvinculadas</span>}
                               </span>
                             </div>
-                            <div style={{ overflowX: "auto" }}>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-page)" }}>
                                     {["Data", "Descrição OFX", "Valor", "Lançamento", "Ação"].map(col => (
@@ -3066,7 +3067,7 @@ function ConciliacaoInner() {
           <>
             {/* Cabeçalho compacto do extrato */}
             <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "8px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <button onClick={() => { setExtrato(null); setContaSel(""); setLinhaAtiva(null); setLancsSel(new Set()); }}
+              <button data-arato-button="secondary" onClick={() => { setExtrato(null); setContaSel(""); setLinhaAtiva(null); setLancsSel(new Set()); }}
                 style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--text-2)", fontSize: 14, padding: "2px 9px", lineHeight: 1.2 }}>←</button>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{extrato.conta_nome}</div>
@@ -3088,13 +3089,13 @@ function ConciliacaoInner() {
                 </div>
               )}
               {sugestoesPend.length > 0 && (
-                <button onClick={() => aceitarPares(sugestoesPend.map(x => ({ linha: x.linha, ids: x.ids, nivel: x.nivel })))} disabled={salvando}
+                <button data-arato-button="primary" onClick={() => aceitarPares(sugestoesPend.map(x => ({ linha: x.linha, ids: x.ids, nivel: x.nivel })))} disabled={salvando}
                   style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, fontWeight: 600, cursor: salvando ? "default" : "pointer" }}>
                   Aceitar todas as sugestões ({sugestoesPend.length})
                 </button>
               )}
               {migracaoOk && regras.some(r => r.ativa) && extrato.pendentes > 0 && (
-                <button onClick={aplicarRegrasNaConta} disabled={aplicandoRegras}
+                <button data-arato-button="secondary" onClick={aplicarRegrasNaConta} disabled={aplicandoRegras}
                   style={{ padding: "5px 12px", borderRadius: 7, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: aplicandoRegras ? "default" : "pointer", opacity: aplicandoRegras ? 0.6 : 1 }}>
                   {aplicandoRegras ? "Aplicando…" : "Aplicar regras às pendentes"}
                 </button>
@@ -3102,7 +3103,7 @@ function ConciliacaoInner() {
             </div>
 
             {/* ═══ TELA DIVIDIDA — esquerda: sistema (CP/CR) · direita: extrato OFX ═══ */}
-            <div style={{ display: "grid", gridTemplateColumns: abaSistema === "conferencia" ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 10, alignItems: "stretch", height: "calc(100vh - 176px)", minHeight: 440 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: abaSistema === "conferencia" ? "minmax(0,1fr)" : "minmax(0,1fr) minmax(0,1fr)", gap: 10, alignItems: "stretch", height: "calc(100vh - 176px)", minHeight: 440 }}>
 
               {/* ─── ESQUERDA: lançamentos do sistema ─────────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 10, border: `1px solid ${linhaAtiva ? "#1A4870" : "var(--border)"}`, overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -3115,30 +3116,30 @@ function ConciliacaoInner() {
                     ["abertos",     `CP/CR abertos (${linhasAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
                   ] as const).map(([k, lbl]) => (
-                    <button key={k} onClick={() => setAbaSistema(k)}
+                    <button data-arato-button="toggle" key={k} onClick={() => setAbaSistema(k)}
                       style={{ padding: "6px 12px", borderRadius: 8, border: `0.5px solid ${abaSistema === k ? "#1A4870" : "var(--border)"}`, background: abaSistema === k ? "#1A4870" : "var(--bg-card)", color: abaSistema === k ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: abaSistema === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
                       {lbl}
                     </button>
                   ))}
-                  <button onClick={recarregarLancamentos} title="Atualizar lançamentos" disabled={lancRefresh}
+                  <button data-arato-button="secondary" onClick={recarregarLancamentos} title="Atualizar lançamentos" disabled={lancRefresh}
                     style={{ marginLeft: "auto", background: "none", border: "0.5px solid var(--border)", borderRadius: 6, cursor: lancRefresh ? "default" : "pointer", fontSize: 13, color: "var(--text-2)", padding: "2px 8px", opacity: lancRefresh ? 0.5 : 1 }}>
                     {lancRefresh ? "…" : "↻"}
                   </button>
                 </div>
 
                 {/* Intervalo, tipo e busca */}
-                {abaSistema !== "sugeridos" && abaSistema !== "inconsistencias" && <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {abaSistema !== "sugeridos" && abaSistema !== "inconsistencias" && <div data-arato-filters="true" style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Período</span>
                   <InputData type="date" value={filtroLancDe} onChange={e => setFiltroLancDe(e.target.value)}
                     style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>até</span>
                   <InputData type="date" value={filtroLancAte} onChange={e => setFiltroLancAte(e.target.value)}
                     style={{ padding: "3px 6px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
-                  <button onClick={() => { setFiltroLancDe(extrato.data_inicio); setFiltroLancAte(extrato.data_fim); }} title="Voltar ao intervalo do OFX aberto"
+                  <button data-arato-button="secondary" onClick={() => { setFiltroLancDe(extrato.data_inicio); setFiltroLancAte(extrato.data_fim); }} title="Voltar ao intervalo do OFX aberto"
                     style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer" }}>Intervalo do OFX</button>
                   <div style={{ display: "flex", gap: 3, marginLeft: 4 }}>
                     {(["todos", "pagar", "receber"] as const).map(t => (
-                      <button key={t} onClick={() => setFiltroLancTipo(t)}
+                      <button data-arato-button="toggle" key={t} onClick={() => setFiltroLancTipo(t)}
                         style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: filtroLancTipo === t ? "#111" : "var(--bg-card)", color: filtroLancTipo === t ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
                         {t === "todos" ? "Todos" : t === "pagar" ? "CP" : "CR"}
                       </button>
@@ -3147,7 +3148,7 @@ function ConciliacaoInner() {
                   {abaSistema === "conciliados" && (
                     <div style={{ display: "flex", gap: 3 }} title="Situação da conciliação dos baixados">
                       {(["todos", "pendentes", "conciliados"] as const).map(t => (
-                        <button key={t} onClick={() => setFiltroBaixados(t)}
+                        <button data-arato-button="toggle" key={t} onClick={() => setFiltroBaixados(t)}
                           style={{ fontSize: 11, padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: filtroBaixados === t ? "#1A4870" : "var(--bg-card)", color: filtroBaixados === t ? "#fff" : "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
                           {t === "todos" ? "Todos" : t === "pendentes" ? "Pendentes" : "Conciliados"}
                         </button>
@@ -3171,13 +3172,13 @@ function ConciliacaoInner() {
 
                 {/* Conteúdo da aba */}
                 {abaSistema === "inconsistencias" ? (
-                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div data-arato-grid-container="true" style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 700, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: COLS_INC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", alignItems: "center" }}>
                         <div>Data OFX</div><div>Histórico do OFX</div><div>Baixado em outra conta</div><div style={{ textAlign: "right" }}>Valor</div>
                         <div style={{ textAlign: "right" }}>
                           {inconsistenciasLista.length > 0 && (
-                            <button disabled={salvando} onClick={() => corrigirInconsistencias(inconsistenciasLista.map(x => ({ linha: x.linha, row: x.escolhida })))}
+                            <button data-arato-button="primary" disabled={salvando} onClick={() => corrigirInconsistencias(inconsistenciasLista.map(x => ({ linha: x.linha, row: x.escolhida })))}
                               style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 10, fontWeight: 700, cursor: salvando ? "default" : "pointer", textTransform: "none" }}>
                               Corrigir todas ({inconsistenciasLista.length})
                             </button>
@@ -3188,15 +3189,15 @@ function ConciliacaoInner() {
                         {inconsistenciasLista.map(ic => {
                           const r = ic.escolhida, lt = r.lote, neg = ic.linha.tipo === "debito";
                           return (
-                            <div key={ic.linha.id} onMouseEnter={() => setParHover(ic.linha.id)} onMouseLeave={() => setParHover(null)} style={{ background: parHover === ic.linha.id ? "#EEF3F9" : "transparent", display: "grid", gridTemplateColumns: COLS_INC, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
+                            <div data-arato-item-grid="true" key={ic.linha.id} onMouseEnter={() => setParHover(ic.linha.id)} onMouseLeave={() => setParHover(null)} style={{ background: parHover === ic.linha.id ? "#EEF3F9" : "transparent", display: "grid", gridTemplateColumns: COLS_INC, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12, borderBottom: "0.5px solid var(--bg-tag)" }}>
                               <div style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(ic.linha.data)}</div>
                               <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }} title={ic.linha.descricao}>{ic.linha.descricao}</div>
                               <div style={{ minWidth: 0 }}>
                                 {ic.opcoes.length > 1 ? (
-                                  <select value={r.key} onChange={e => setInconsEscolha(prev => new Map(prev).set(ic.linha.id, e.target.value))}
+                                  <SelectField value={r.key} onChange={e => setInconsEscolha(prev => new Map(prev).set(ic.linha.id, e.target.value))}
                                     style={{ width: "100%", padding: "3px 5px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 11, background: "var(--bg-card)" }}>
                                     {ic.opcoes.map(o => <option key={o.key} value={o.key}>{o.lote ? `Borderô · ${o.comps.length} títulos` : fornecedorDe(o.l)} · {fmtDt(o.lote?.data_pagamento ?? o.l.data_baixa ?? o.l.data_vencimento).slice(0, 5)} · {contaNomeDe(o.lote?.conta_bancaria ?? o.l.conta_bancaria)}</option>)}
-                                  </select>
+                                  </SelectField>
                                 ) : (
                                   <div style={{ fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {lt && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#E3EAF3", color: "#1A4870", marginRight: 5 }}>BORDERÔ</span>}
@@ -3209,7 +3210,7 @@ function ConciliacaoInner() {
                               </div>
                               <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: neg ? COR_NEG : "var(--text-1)" }}>{neg ? "−" : "+"}{fmtBRL(ic.linha.valor)}</div>
                               <div style={{ textAlign: "right" }}>
-                                <button disabled={salvando} onClick={() => corrigirInconsistencias([{ linha: ic.linha, row: r }])}
+                                <button data-arato-button="primary" disabled={salvando} onClick={() => corrigirInconsistencias([{ linha: ic.linha, row: r }])}
                                   style={{ padding: "3px 9px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer" }}>Corrigir</button>
                               </div>
                             </div>
@@ -3222,13 +3223,13 @@ function ConciliacaoInner() {
                     </div>
                   </div>
                 ) : abaSistema === "sugeridos" ? (
-                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div data-arato-grid-container="true" style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 640, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: COLS_SUG, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", alignItems: "center" }}>
                         <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
                         <div style={{ textAlign: "right" }}>
                           {sugestoesLista.length > 0 && (
-                            <button disabled={salvando} onClick={() => aceitarPares(sugestoesLista.map(x => ({ linha: x.linha, ids: x.ids, nivel: x.nivel })))}
+                            <button data-arato-button="primary" disabled={salvando} onClick={() => aceitarPares(sugestoesLista.map(x => ({ linha: x.linha, ids: x.ids, nivel: x.nivel })))}
                               style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 10, fontWeight: 700, cursor: salvando ? "default" : "pointer", textTransform: "none" }}>
                               Aceitar todas ({sugestoesLista.length})
                             </button>
@@ -3261,9 +3262,9 @@ function ConciliacaoInner() {
                               </div>
                               <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: neg ? COR_NEG : "var(--text-1)" }}>{neg ? "−" : "+"}{fmtBRL(sg.linha.valor)}</div>
                               <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                                <button disabled={salvando} onClick={() => aceitarPares([{ linha: sg.linha, ids: sg.ids, nivel: sg.nivel }])}
+                                <button data-arato-button="primary" disabled={salvando} onClick={() => aceitarPares([{ linha: sg.linha, ids: sg.ids, nivel: sg.nivel }])}
                                   style={{ padding: "3px 8px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 11, fontWeight: 700, cursor: salvando ? "default" : "pointer" }}>Aceitar</button>
-                                <button disabled={salvando} onClick={() => ignorarSugestao(sg.linha.id)} title="Descartar a sugestão"
+                                <button data-arato-button="icon" disabled={salvando} onClick={() => ignorarSugestao(sg.linha.id)} title="Descartar a sugestão"
                                   style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
                               </div>
                             </div>
@@ -3276,7 +3277,7 @@ function ConciliacaoInner() {
                     </div>
                   </div>
                 ) : abaSistema !== "conferencia" ? (
-                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div data-arato-grid-container="true" style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 760, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: abaSistema === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
                         <div />
@@ -3300,7 +3301,7 @@ function ConciliacaoInner() {
                   </div>
                 ) : (
                   /* ── Conferência: sistema × OFX, em pares (largura total) ── */
-                  <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <div data-arato-grid-container="true" style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ minWidth: 980, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
                         <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Sistema — baixados e conciliados</div>
@@ -3330,7 +3331,7 @@ function ConciliacaoInner() {
                                               <>
                                                 <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 6, background: "#E3EAF3", color: "#1A4870", marginRight: 5 }}>BORDERÔ</span>
                                                 {g.comps.length} títulos{lt.descricao ? ` · ${lt.descricao}` : ""}
-                                                <button onClick={() => setLotesAbertos(prev => { const n = new Set(prev); if (n.has(lt.id)) n.delete(lt.id); else n.add(lt.id); return n; })}
+                                                <button data-arato-button="secondary" onClick={() => setLotesAbertos(prev => { const n = new Set(prev); if (n.has(lt.id)) n.delete(lt.id); else n.add(lt.id); return n; })}
                                                   style={{ background: "none", border: "none", padding: 0, marginLeft: 6, fontSize: 10, color: "#1A4870", cursor: "pointer", textDecoration: "underline", fontWeight: 500 }}>
                                                   {lotesAbertos.has(lt.id) ? "ocultar" : "ver títulos"}
                                                 </button>
@@ -3361,7 +3362,7 @@ function ConciliacaoInner() {
                                   <div style={{ textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: x.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{x.tipo === "credito" ? "+" : "−"}{fmtBRL(x.valor)}</div>
                                   <div><span style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 6, background: om.bg, color: om.cor, whiteSpace: "nowrap" }}>{om.label}{x.confianca === "media" ? " · média" : ""}</span></div>
                                   <div style={{ textAlign: "right" }}>
-                                    <button onClick={() => desvincular(x.id)}
+                                    <button data-arato-button="secondary" onClick={() => desvincular(x.id)}
                                       style={{ padding: "2px 6px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 10, cursor: "pointer", whiteSpace: "nowrap", width: "100%" }}>Desvincular</button>
                                   </div>
                                 </div>
@@ -3403,10 +3404,10 @@ function ConciliacaoInner() {
                       {!linhaAtiva && " — clique em Vincular numa linha do OFX"}
                     </span>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => { setLancsSel(new Set()); setLinhaAtiva(null); }}
+                      <button data-arato-button="secondary" onClick={() => { setLancsSel(new Set()); setLinhaAtiva(null); }}
                         style={{ fontSize: 11, padding: "3px 9px", background: "transparent", color: "rgba(255,255,255,0.8)", border: "0.5px solid rgba(255,255,255,0.35)", borderRadius: 6, cursor: "pointer" }}>Cancelar</button>
                       {linhaAtiva && lancsSel.size > 0 && (
-                        <button onClick={() => confirmarVinculo()} disabled={salvando}
+                        <button data-arato-button="secondary" onClick={() => confirmarVinculo()} disabled={salvando}
                           style={{ fontSize: 11, padding: "3px 12px", background: "#fff", color: "#1A4870", border: "none", borderRadius: 6, cursor: salvando ? "default" : "pointer", fontWeight: 700 }}>
                           {btnConfirmarLabel}
                         </button>
@@ -3419,13 +3420,13 @@ function ConciliacaoInner() {
               {/* ─── DIREITA: extrato OFX ─────────────────────────────────── */}
               {abaSistema !== "conferencia" && (
               <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div data-arato-filters="true" style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap" }}>Extrato OFX · {fmtDt(extrato.data_inicio)} a {fmtDt(extrato.data_fim)}</div>
                   <input placeholder="Buscar descrição ou FITID…" value={busca} onChange={e => setBusca(e.target.value)}
                     style={{ flex: "1 1 130px", minWidth: 110, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
                   <input placeholder="Valor…" value={buscaValor} onChange={e => setBuscaValor(e.target.value)}
                     style={{ width: 84, padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, outline: "none" }} />
-                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                  <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                     <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} /> Só pendentes
                   </label>
                   <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{linhasOfxVisiveis.length} de {extrato.total_linhas}</span>
@@ -3437,18 +3438,18 @@ function ConciliacaoInner() {
                       {selecaoMultipla.size} linha{selecaoMultipla.size > 1 ? "s" : ""} selecionada{selecaoMultipla.size > 1 ? "s" : ""}
                       {selecaoMultipla.size > 1 && ` · Total ${fmtBRL(Array.from(selecaoMultipla).reduce((sm, id) => sm + (extrato.linhas.find(l => l.id === id)?.valor ?? 0), 0))}`}
                     </span>
-                    <button disabled={selecaoMultipla.size < 2}
+                    <button data-arato-button="toggle" disabled={selecaoMultipla.size < 2}
                       onClick={() => { setDescAgrupado(""); setOgAgrupado(""); setModalAgrupado(true); }}
                       title={selecaoMultipla.size < 2 ? "Selecione pelo menos 2 linhas" : undefined}
                       style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #1A4870", background: selecaoMultipla.size < 2 ? "var(--bg-card)" : "#1A4870", color: selecaoMultipla.size < 2 ? "#1A4870" : "#fff", fontSize: 11, fontWeight: 600, cursor: selecaoMultipla.size < 2 ? "default" : "pointer" }}>
                       Lançar CP/CR agrupado
                     </button>
-                    <button onClick={() => setSelecaoMultipla(new Set())}
+                    <button data-arato-button="secondary" onClick={() => setSelecaoMultipla(new Set())}
                       style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>Limpar</button>
                   </div>
                 )}
 
-                <div style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                   <div style={{ minWidth: 640, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
                       <div>Data pagto.</div><div>Histórico</div><div style={{ textAlign: "right" }}>Valor</div><div>Situação</div><div>Ação</div>
@@ -3461,7 +3462,7 @@ function ConciliacaoInner() {
                         const o = ORIGEM_META[l.origem_vinculo ?? "manual"] ?? ORIGEM_META.manual;
                         const reg = l.regra_id ? regras.find(r => r.id === l.regra_id) : undefined;
                         return (
-                          <div key={l.id} style={{
+                          <div data-arato-item-grid="true" key={l.id} style={{
                             display: "grid", gridTemplateColumns: COLS_OFX, gap: 8, alignItems: "center", padding: "7px 10px", fontSize: 12,
                             borderBottom: "0.5px solid var(--bg-tag)",
                             background: isAtiva ? "#DCE6F2" : bate || parHover === l.id ? "#EEF3F9" : "transparent",
@@ -3508,19 +3509,19 @@ function ConciliacaoInner() {
                             </div>
                             <div>
                               {l.conciliado ? (
-                                <button onClick={() => { desvincular(l.id); if (isAtiva) { setLinhaAtiva(null); setLancsSel(new Set()); } }}
+                                <button data-arato-button="secondary" onClick={() => { desvincular(l.id); if (isAtiva) { setLinhaAtiva(null); setLancsSel(new Set()); } }}
                                   style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>Desvincular</button>
                               ) : (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                                   {sug && !isAtiva && (
                                     <div style={{ display: "flex", gap: 4 }}>
-                                      <button disabled={salvando} onClick={() => aceitarPares([{ linha: l, ids: sug.ids, nivel: sug.nivel }])}
+                                      <button data-arato-button="primary" disabled={salvando} onClick={() => aceitarPares([{ linha: l, ids: sug.ids, nivel: sug.nivel }])}
                                         style={{ padding: "2px 6px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 10, fontWeight: 700, cursor: salvando ? "default" : "pointer", whiteSpace: "nowrap", flex: 1 }}>Aceitar</button>
-                                      <button disabled={salvando} onClick={() => ignorarSugestao(l.id)} title="Descartar a sugestão"
+                                      <button data-arato-button="icon" disabled={salvando} onClick={() => ignorarSugestao(l.id)} title="Descartar a sugestão"
                                         style={{ padding: "3px 7px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>✕</button>
                                     </div>
                                   )}
-                                  <button disabled={salvando}
+                                  <button data-arato-button="toggle" disabled={salvando}
                                     onClick={() => {
                                       if (isAtiva) { setLinhaAtiva(null); return; }
                                       setAbaSistema("abertos");
@@ -3531,7 +3532,7 @@ function ConciliacaoInner() {
                                     {isAtiva && salvando ? "Salvando…" : isAtiva ? "Cancelar" : lancsSel.size > 0 ? `↗ Vincular (${lancsSel.size})` : "Vincular"}
                                   </button>
                                   {!isAtiva && (
-                                    <button onClick={() => abrirTesouraria(l)}
+                                    <button data-arato-button="secondary" onClick={() => abrirTesouraria(l)}
                                       style={{ padding: "1px 4px", width: "100%", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 9, cursor: "pointer", whiteSpace: "nowrap" }}>+ Tesouraria</button>
                                   )}
                                 </div>

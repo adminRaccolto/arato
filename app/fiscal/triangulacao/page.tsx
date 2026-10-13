@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -366,14 +367,14 @@ export default function TriangulacaoPage() {
       <TopNav />
       <div style={{ padding: "24px 32px", fontFamily: "Inter, sans-serif", maxWidth: 1300, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Triangulação de NF</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Triangulação de NF</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Gestão de operações com múltiplos destinatários — Venda a Ordem, Barter, Pagamento a Terceiro e Entrega em Terceiro
           </p>
         </div>
-        <button style={btnV} onClick={() => abrir()}>+ Nova Triangulação</button>
+        <button data-arato-button="primary" style={btnV} onClick={() => abrir()}>+ Nova Triangulação</button>
       </div>
 
       {/* KPI Cards */}
@@ -400,18 +401,18 @@ export default function TriangulacaoPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+      <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         <input style={{ ...inp, width: 220 }} placeholder="Buscar produtor, trading, contrato…" value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} />
-        <select style={{ ...inp, width: 200 }} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value as TipoTriang | "")}>
+        <SelectField style={{ ...inp, width: 200 }} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value as TipoTriang | "")}>
           <option value="">Todos os tipos</option>
           {(Object.keys(TIPO_META) as TipoTriang[]).map(t => <option key={t} value={t}>{TIPO_META[t].icon} {TIPO_META[t].label}</option>)}
-        </select>
-        <select style={{ ...inp, width: 170 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusTriang | "")}>
+        </SelectField>
+        <SelectField style={{ ...inp, width: 170 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusTriang | "")}>
           <option value="">Todos os status</option>
           {(Object.keys(STATUS_META) as StatusTriang[]).map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-        </select>
+        </SelectField>
         {(filtroTipo || filtroStatus || filtroBusca) && (
-          <button style={btnO} onClick={() => { setFiltroTipo(""); setFiltroStatus(""); setFiltroBusca(""); }}>
+          <button data-arato-button="secondary" style={btnO} onClick={() => { setFiltroTipo(""); setFiltroStatus(""); setFiltroBusca(""); }}>
             Limpar filtros
           </button>
         )}
@@ -464,18 +465,18 @@ export default function TriangulacaoPage() {
                     {pBNome !== "—"   && <><span>→</span><span style={{ fontWeight: 600, color: "#14532D" }}>{pBNome}</span></>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => {
+                    <button data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => {
                       setExpandido(p => { const s = new Set(p); s.has(item.id) ? s.delete(item.id) : s.add(item.id); return s; });
                     }}>
                       {exp ? "▲ Fechar" : "▼ Documentos"}
                     </button>
-                    <button style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => abrir(item)}>Abrir</button>
+                    <button data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => abrir(item)}>Abrir</button>
                     {item.status === "em_andamento" && (
-                      <button style={{ ...btnV, padding: "5px 12px", fontSize: 12, background: "#16A34A" }} onClick={() => marcarConcluido(item)}>
+                      <button data-arato-button="primary" style={{ ...btnV, padding: "5px 12px", fontSize: 12, background: "#16A34A" }} onClick={() => marcarConcluido(item)}>
                         ✓ Concluir
                       </button>
                     )}
-                    <button style={{ ...btnO, padding: "5px 12px", fontSize: 12, color: "#E24B4A", borderColor: "#E24B4A" }} onClick={() => excluir(item.id)}>
+                    <button data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12, color: "#E24B4A", borderColor: "#E24B4A" }} onClick={() => excluir(item.id)}>
                       Excluir
                     </button>
                   </div>
@@ -571,23 +572,23 @@ export default function TriangulacaoPage() {
 
       {/* ══════════ MODAL ══════════ */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {/* Modal header */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {editItem ? "Editar Triangulação" : "Nova Triangulação de NF"}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {step === 1 ? "Passo 1 — Selecionar tipo" : step === 2 ? "Passo 2 — Dados da operação" : "Passo 3 — Revisar e gerar documentos"}
                 </div>
               </div>
-              <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }} onClick={() => setModal(false)}>✕</button>
+              <button data-arato-button="icon" style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }} onClick={() => setModal(false)}>✕</button>
             </div>
 
             {/* Progress */}
-            <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
+            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0, padding: "0 24px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
               {[1, 2, 3].map(s => (
                 <div key={s} style={{ padding: "10px 16px", fontSize: 12, fontWeight: step >= s ? 700 : 400, color: step >= s ? "#111111" : "var(--text-3)",
                   borderBottom: step === s ? "2px solid #111111" : "2px solid transparent", cursor: step < s ? "default" : "pointer" }}
@@ -597,7 +598,7 @@ export default function TriangulacaoPage() {
               ))}
             </div>
 
-            <div style={{ padding: "20px 24px", flex: 1 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 24px", flex: 1 }}>
 
               {/* ── PASSO 1: TIPO ─────────────────────────────────────── */}
               {step === 1 && (
@@ -658,20 +659,20 @@ export default function TriangulacaoPage() {
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Dados Gerais
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>Nº Contrato (ref.)</label>
+                        <label data-arato-label="true" style={lbl}>Nº Contrato (ref.)</label>
                         <input style={inp} value={f.contrato_ref ?? ""} onChange={e => sf("contrato_ref", e.target.value)} placeholder="Ex: 001/2026" />
                       </div>
                       <div>
-                        <label style={lbl}>Safra</label>
+                        <label data-arato-label="true" style={lbl}>Safra</label>
                         <input style={inp} value={f.safra ?? ""} onChange={e => sf("safra", e.target.value)} placeholder="Ex: 2025/2026" />
                       </div>
                       <div>
-                        <label style={lbl}>Status</label>
-                        <select style={inp} value={f.status} onChange={e => sf("status", e.target.value as StatusTriang)}>
+                        <label data-arato-label="true" style={lbl}>Status</label>
+                        <SelectField style={inp} value={f.status} onChange={e => sf("status", e.target.value as StatusTriang)}>
                           {(Object.keys(STATUS_META) as StatusTriang[]).map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                     </div>
                   </div>
@@ -681,32 +682,32 @@ export default function TriangulacaoPage() {
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Produto
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>Commodity</label>
-                        <select style={inp} value={f.produto ?? "Soja"} onChange={e => sf("produto", e.target.value)}>
+                        <label data-arato-label="true" style={lbl}>Commodity</label>
+                        <SelectField style={inp} value={f.produto ?? "Soja"} onChange={e => sf("produto", e.target.value)}>
                           {PRODUTOS.map(p => <option key={p}>{p}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Quantidade (sacas)</label>
+                        <label data-arato-label="true" style={lbl}>Quantidade (sacas)</label>
                         <InputNumerico style={inp} decimais={0} min="0"
                           value={f.quantidade_kg ? Math.round(f.quantidade_kg / 60) : ""}
                           onChange={v => sf("quantidade_kg", Number(v) * 60)}
                           placeholder="0" />
                       </div>
                       <div>
-                        <label style={lbl}>Preço ({f.moeda}/sc)</label>
+                        <label data-arato-label="true" style={lbl}>Preço ({f.moeda}/sc)</label>
                         <InputNumerico style={inp} min="0"
                           value={f.preco_unitario ?? ""}
                           onChange={v => sf("preco_unitario", Number(v))}
                           placeholder="0,00" />
                       </div>
                       <div>
-                        <label style={lbl}>Moeda</label>
-                        <select style={inp} value={f.moeda ?? "BRL"} onChange={e => sf("moeda", e.target.value)}>
+                        <label data-arato-label="true" style={lbl}>Moeda</label>
+                        <SelectField style={inp} value={f.moeda ?? "BRL"} onChange={e => sf("moeda", e.target.value)}>
                           {MOEDAS.map(m => <option key={m}>{m}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                     </div>
                     {(f.quantidade_kg ?? 0) > 0 && (f.preco_unitario ?? 0) > 0 && (
@@ -730,7 +731,7 @@ export default function TriangulacaoPage() {
                     {f.tipo === "venda_a_ordem" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
-                          <label style={lbl}>Produtor (emitente das NFs)</label>
+                          <label data-arato-label="true" style={lbl}>Produtor (emitente das NFs)</label>
                           <ProdutorCombo
                             produtores={produtores}
                             value={f.produtor_id ?? ""}
@@ -738,21 +739,21 @@ export default function TriangulacaoPage() {
                             placeholder="— Selecionar —"
                           />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
-                            <label style={lbl}>Trading A — Comprador (NF 6101 + 6108)</label>
-                            <select style={inp} value={f.comprador_a_id ?? ""} onChange={e => sf("comprador_a_id", e.target.value)}>
+                            <label data-arato-label="true" style={lbl}>Trading A — Comprador (NF 6101 + 6108)</label>
+                            <SelectField style={inp} value={f.comprador_a_id ?? ""} onChange={e => sf("comprador_a_id", e.target.value)}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Recebe NF 6101 do Produtor</div>
                           </div>
                           <div>
-                            <label style={lbl}>Trading B — Destinatário Final (NF 6108 + 6923)</label>
-                            <select style={inp} value={f.comprador_b_id ?? ""} onChange={e => sf("comprador_b_id", e.target.value)}>
+                            <label data-arato-label="true" style={lbl}>Trading B — Destinatário Final (NF 6108 + 6923)</label>
+                            <SelectField style={inp} value={f.comprador_b_id ?? ""} onChange={e => sf("comprador_b_id", e.target.value)}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Recebe entrega física + NF 6923</div>
                           </div>
                         </div>
@@ -769,7 +770,7 @@ export default function TriangulacaoPage() {
                     {f.tipo === "barter" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
-                          <label style={lbl}>Produtor</label>
+                          <label data-arato-label="true" style={lbl}>Produtor</label>
                           <ProdutorCombo
                             produtores={produtores}
                             value={f.produtor_id ?? ""}
@@ -777,31 +778,31 @@ export default function TriangulacaoPage() {
                             placeholder="— Selecionar —"
                           />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
-                            <label style={lbl}>Fornecedor de Insumos</label>
-                            <select style={inp} value={f.fornecedor_id ?? ""} onChange={e => sf("fornecedor_id", e.target.value)}>
+                            <label data-arato-label="true" style={lbl}>Fornecedor de Insumos</label>
+                            <SelectField style={inp} value={f.fornecedor_id ?? ""} onChange={e => sf("fornecedor_id", e.target.value)}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Quem entrega os insumos ao produtor</div>
                           </div>
                           <div>
-                            <label style={lbl}>Trading (comprador do grão)</label>
-                            <select style={inp} value={f.comprador_a_id ?? ""} onChange={e => sf("comprador_a_id", e.target.value)}>
+                            <label data-arato-label="true" style={lbl}>Trading (comprador do grão)</label>
+                            <SelectField style={inp} value={f.comprador_a_id ?? ""} onChange={e => sf("comprador_a_id", e.target.value)}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Paga o fornecedor e recebe o grão</div>
                           </div>
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
-                            <label style={lbl}>Nº NF Entrada de Insumos (ref.)</label>
+                            <label data-arato-label="true" style={lbl}>Nº NF Entrada de Insumos (ref.)</label>
                             <input style={inp} value={f.nf_entrada_ref ?? ""} onChange={e => sf("nf_entrada_ref", e.target.value)} placeholder="Ex: 12345" />
                           </div>
                           <div>
-                            <label style={lbl}>Valor Total dos Insumos (R$)</label>
+                            <label data-arato-label="true" style={lbl}>Valor Total dos Insumos (R$)</label>
                             <InputNumerico style={inp} min="0" value={f.valor_insumos ?? ""} onChange={v => sf("valor_insumos", Number(v))} placeholder="0,00" />
                           </div>
                         </div>
@@ -818,7 +819,7 @@ export default function TriangulacaoPage() {
                     {f.tipo === "pagamento_terceiro" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
-                          <label style={lbl}>Produtor</label>
+                          <label data-arato-label="true" style={lbl}>Produtor</label>
                           <ProdutorCombo
                             produtores={produtores}
                             value={f.produtor_id ?? ""}
@@ -826,24 +827,24 @@ export default function TriangulacaoPage() {
                             placeholder="— Selecionar —"
                           />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
-                            <label style={lbl}>Trading (comprador do grão)</label>
-                            <select style={inp} value={f.comprador_a_id ?? ""} onChange={e => sf("comprador_a_id", e.target.value)}>
+                            <label data-arato-label="true" style={lbl}>Trading (comprador do grão)</label>
+                            <SelectField style={inp} value={f.comprador_a_id ?? ""} onChange={e => sf("comprador_a_id", e.target.value)}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                           </div>
                           <div>
-                            <label style={lbl}>Beneficiário do Pagamento (banco / credor)</label>
-                            <select style={inp} value={f.beneficiario_id ?? ""} onChange={e => sf("beneficiario_id", e.target.value)}>
+                            <label data-arato-label="true" style={lbl}>Beneficiário do Pagamento (banco / credor)</label>
+                            <SelectField style={inp} value={f.beneficiario_id ?? ""} onChange={e => sf("beneficiario_id", e.target.value)}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                           </div>
                         </div>
                         <div>
-                          <label style={lbl}>Valor a pagar ao terceiro (R$)</label>
+                          <label data-arato-label="true" style={lbl}>Valor a pagar ao terceiro (R$)</label>
                           <InputNumerico style={{ ...inp, maxWidth: 200 }} min="0" value={f.valor_terceiro ?? ""} onChange={v => sf("valor_terceiro", Number(v))} placeholder="0,00" />
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Parte do valor do grão que a trading transfere diretamente ao beneficiário</div>
                         </div>
@@ -860,7 +861,7 @@ export default function TriangulacaoPage() {
                     {f.tipo === "entrega_terceiro" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
-                          <label style={lbl}>Produtor (emitente da NF)</label>
+                          <label data-arato-label="true" style={lbl}>Produtor (emitente da NF)</label>
                           <ProdutorCombo
                             produtores={produtores}
                             value={f.produtor_id ?? ""}
@@ -868,20 +869,20 @@ export default function TriangulacaoPage() {
                             placeholder="— Selecionar —"
                           />
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
-                            <label style={lbl}>Trading A — Destinatário da NF</label>
-                            <select style={inp} value={f.comprador_a_id ?? ""} onChange={e => {
+                            <label data-arato-label="true" style={lbl}>Trading A — Destinatário da NF</label>
+                            <SelectField style={inp} value={f.comprador_a_id ?? ""} onChange={e => {
                               sf("comprador_a_id", e.target.value);
                             }}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>A NF é emitida para este CNPJ</div>
                           </div>
                           <div>
-                            <label style={lbl}>Trading B — Local Físico de Entrega</label>
-                            <select style={inp} value={f.comprador_b_id ?? ""} onChange={e => {
+                            <label data-arato-label="true" style={lbl}>Trading B — Local Físico de Entrega</label>
+                            <SelectField style={inp} value={f.comprador_b_id ?? ""} onChange={e => {
                               const p = pessoas.find(x => x.id === e.target.value);
                               sf("comprador_b_id", e.target.value);
                               if (p) {
@@ -892,7 +893,7 @@ export default function TriangulacaoPage() {
                             }}>
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                            </select>
+                            </SelectField>
                             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Onde o grão é entregue fisicamente</div>
                           </div>
                         </div>
@@ -901,17 +902,17 @@ export default function TriangulacaoPage() {
                           <div style={{ fontSize: 12, fontWeight: 700, color: "#14532D", marginBottom: 10 }}>
                             Detalhes do Local de Entrega (para infCpl da NF)
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                             <div>
-                              <label style={lbl}>Nome / Razão Social</label>
+                              <label data-arato-label="true" style={lbl}>Nome / Razão Social</label>
                               <input style={inp} value={f.local_entrega_nome ?? ""} onChange={e => sf("local_entrega_nome", e.target.value)} placeholder="Ex: Amaggi Rondonópolis" />
                             </div>
                             <div>
-                              <label style={lbl}>CNPJ</label>
+                              <label data-arato-label="true" style={lbl}>CNPJ</label>
                               <input style={inp} value={f.local_entrega_cnpj ?? ""} onChange={e => sf("local_entrega_cnpj", e.target.value)} placeholder="00.000.000/0000-00" />
                             </div>
                             <div>
-                              <label style={lbl}>Endereço</label>
+                              <label data-arato-label="true" style={lbl}>Endereço</label>
                               <input style={inp} value={f.local_entrega_endereco ?? ""} onChange={e => sf("local_entrega_endereco", e.target.value)} placeholder="Rua, nº — Município/UF" />
                             </div>
                           </div>
@@ -932,7 +933,7 @@ export default function TriangulacaoPage() {
                     )}
 
                     <div style={{ marginTop: 8 }}>
-                      <label style={lbl}>Observações</label>
+                      <label data-arato-label="true" style={lbl}>Observações</label>
                       <textarea style={{ ...inp, height: 64, resize: "vertical" }} value={f.observacao ?? ""} onChange={e => sf("observacao", e.target.value)} placeholder="Condições especiais, instruções de entrega, etc." />
                     </div>
                   </div>
@@ -1002,17 +1003,17 @@ export default function TriangulacaoPage() {
             </div>
 
             {/* Footer do modal */}
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "var(--bg-card)" }}>
-              <button style={btnO} onClick={() => step === 1 ? setModal(false) : setStep(s => (s - 1) as 1|2|3)}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "var(--bg-card)" }}>
+              <button data-arato-button="secondary" style={btnO} onClick={() => step === 1 ? setModal(false) : setStep(s => (s - 1) as 1|2|3)}>
                 {step === 1 ? "Cancelar" : "← Voltar"}
               </button>
-              <div style={{ display: "flex", gap: 10 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
                 {step < 3 && (
-                  <button style={btnO} onClick={async () => { await salvar(); }}>
+                  <button data-arato-button="secondary" style={btnO} onClick={async () => { await salvar(); }}>
                     Salvar rascunho
                   </button>
                 )}
-                <button
+                <button data-arato-button="primary"
                   style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}
                   disabled={salvando}
                   onClick={() => {

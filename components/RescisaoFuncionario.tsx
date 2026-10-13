@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "./SelectField";
 import InputData from "../components/InputData";
 import { useEffect, useMemo, useState } from "react";
 import type { Funcionario, FuncionarioFerias } from "../lib/supabase";
@@ -91,7 +92,7 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
         <div style={{ border: "0.5px solid #16A34A", background: "#F0FDF4", borderRadius: 10, padding: 14, marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#16A34A" }}>Rescisão lançada — desligamento em {fmtD(ativa.data_desligamento)}</div>
           <div style={{ fontSize: 12, color: "#555", margin: "4px 0 10px" }}>{TIPOS_DESLIGAMENTO[ativa.tipo_desligamento]} · pagamento até {fmtD(ativa.data_pagamento)}</div>
-          <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
             <tbody>
               {ativa.verbas.map(v => (
                 <tr key={v.codigo}><td style={{ padding: "3px 0" }}>{v.descricao}</td><td style={{ textAlign: "right", color: v.tipo === "desconto" ? "#E24B4A" : "inherit" }}>{v.tipo === "desconto" ? "− " : ""}{fmt(v.valor)}</td></tr>
@@ -101,7 +102,7 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
             </tbody>
           </table>
           <div style={{ textAlign: "right", marginTop: 10 }}>
-            <button onClick={() => estornar(ativa)} style={{ padding: "6px 12px", borderRadius: 8, border: "0.5px solid #E24B4A", background: "transparent", color: "#E24B4A", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>↺ Estornar rescisão</button>
+            <button data-arato-button="secondary" onClick={() => estornar(ativa)} style={{ padding: "6px 12px", borderRadius: 8, border: "0.5px solid #E24B4A", background: "transparent", color: "#E24B4A", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>↺ Estornar rescisão</button>
           </div>
         </div>
       )}
@@ -109,21 +110,21 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
       {!ativa && (
         <>
           {!func.data_admissao && <div style={{ color: "#E24B4A", fontSize: 12, marginBottom: 10 }}>Informe a data de admissão na aba Dados Pessoais para calcular a rescisão.</div>}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div><label style={lbl}>Tipo de desligamento</label>
-              <select style={inp} value={tipo} onChange={e => setTipo(e.target.value as TipoDesligamento)}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div><label data-arato-label="true" style={lbl}>Tipo de desligamento</label>
+              <SelectField style={inp} value={tipo} onChange={e => setTipo(e.target.value as TipoDesligamento)}>
                 {(Object.keys(TIPOS_DESLIGAMENTO) as TipoDesligamento[]).map(k => <option key={k} value={k}>{TIPOS_DESLIGAMENTO[k]}</option>)}
-              </select></div>
-            <div><label style={lbl}>Data do desligamento</label><InputData type="date" style={inp} value={desligamento} onChange={e => setDesligamento(e.target.value)} /></div>
-            <div><label style={lbl}>Aviso prévio</label>
-              <select style={inp} value={aviso} onChange={e => setAviso(e.target.value as AvisoPrevio)}>
+              </SelectField></div>
+            <div><label data-arato-label="true" style={lbl}>Data do desligamento</label><InputData type="date" style={inp} value={desligamento} onChange={e => setDesligamento(e.target.value)} /></div>
+            <div><label data-arato-label="true" style={lbl}>Aviso prévio</label>
+              <SelectField style={inp} value={aviso} onChange={e => setAviso(e.target.value as AvisoPrevio)}>
                 {avisoOpcoes.map(a => <option key={a} value={a}>{a === "trabalhado" ? "Trabalhado" : a === "indenizado" ? (tipo === "pedido_demissao" ? "Não cumprido (descontar)" : "Indenizado") : "Sem aviso"}</option>)}
-              </select></div>
+              </SelectField></div>
           </div>
 
           {calc && (
             <div style={{ marginTop: 14, border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 10, overflow: "hidden" }}>
-              <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "var(--bg-page, #F4F6FA)" }}><th style={{ textAlign: "left", padding: "8px 12px", fontSize: 11 }}>Verba</th><th style={{ textAlign: "right", padding: "8px 12px", fontSize: 11, width: 150 }}>Valor (editável)</th></tr></thead>
                 <tbody>
                   {calc.verbas.map(v => (
@@ -147,18 +148,18 @@ export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged
           )}
           {calc?.avisos.map((a, i) => <div key={i} style={{ fontSize: 11, color: "#7A5500", background: "#FBF3E0", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>⚠ {a}</div>)}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 14 }}>
-            <div><label style={lbl}>Saldo do FGTS (para a multa){multaFgtsPct(tipo) > 0 ? ` — ${multaFgtsPct(tipo) * 100}%` : ""}</label>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 14 }}>
+            <div><label data-arato-label="true" style={lbl}>Saldo do FGTS (para a multa){multaFgtsPct(tipo) > 0 ? ` — ${multaFgtsPct(tipo) * 100}%` : ""}</label>
               <input style={inp} disabled={multaFgtsPct(tipo) === 0} value={saldoFgts ?? mask(fgtsEst)} onChange={e => setSaldoFgts(e.target.value)} />
               <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Estimativa (8% × meses); corrija com o extrato do FGTS.</div></div>
-            <div><label style={lbl}>Multa do FGTS (lançada à parte)</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} readOnly value={fmt(multa)} /></div>
-            <div><label style={lbl}>Pagar até (10 dias corridos)</label><InputData type="date" style={inp} value={prazo} onChange={e => setPagto(e.target.value)} /></div>
+            <div><label data-arato-label="true" style={lbl}>Multa do FGTS (lançada à parte)</label><input style={{ ...inp, background: "var(--bg-page, #F4F6FA)" }} readOnly value={fmt(multa)} /></div>
+            <div><label data-arato-label="true" style={lbl}>Pagar até (10 dias corridos)</label><InputData type="date" style={inp} value={prazo} onChange={e => setPagto(e.target.value)} /></div>
           </div>
-          <div style={{ marginTop: 12 }}><label style={lbl}>Observação</label><input style={inp} value={obs} onChange={e => setObs(e.target.value)} /></div>
+          <div style={{ marginTop: 12 }}><label data-arato-label="true" style={lbl}>Observação</label><input style={inp} value={obs} onChange={e => setObs(e.target.value)} /></div>
           <div style={{ fontSize: 11, color: "#888", marginTop: 10 }}>Cálculo de referência (CLT). INSS e IRRF ficam por sua conta ou do contador; férias vencidas em dobro e a homologação também. Ao lançar, o sistema cria o Contas a Pagar da rescisão{multa > 0 ? " e o da multa do FGTS" : ""} e marca o funcionário como desligado.</div>
           {erro && <div style={{ color: "#E24B4A", fontSize: 12, marginTop: 10 }}>{erro}</div>}
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-            <button onClick={confirmar} disabled={saving || !calc} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#E24B4A", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{saving ? "Lançando…" : "Lançar rescisão e desligar funcionário"}</button>
+            <button data-arato-button="danger" onClick={confirmar} disabled={saving || !calc} style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#E24B4A", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{saving ? "Lançando…" : "Lançar rescisão e desligar funcionário"}</button>
           </div>
         </>
       )}

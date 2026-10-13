@@ -30,6 +30,7 @@
 // condições de habilitação iguais à tela antiga — só NFs pendentes entram
 // no "Processar em Lote"; qualquer seleção permite Imprimir.
 // ═══════════════════════════════════════════════════════════════════════════
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -169,8 +170,8 @@ function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto
 }) {
   return (
     <div style={{ position: "relative" }}>
-      <label style={lblMini}>{label}</label>
-      <button onClick={onAbrirFechar} style={{ ...inp, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 150, justifyContent: "space-between" }}>
+      <label data-arato-label="true" style={lblMini}>{label}</label>
+      <button data-arato-button="secondary" onClick={onAbrirFechar} style={{ ...inp, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 150, justifyContent: "space-between" }}>
         <span>{selecionado.size === 0 ? "Todos" : `${selecionado.size} selecionado${selecionado.size > 1 ? "s" : ""}`}</span>
         <span style={{ fontSize: 9, color: "#888" }}>▾</span>
       </button>
@@ -179,7 +180,7 @@ function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto
           <div onClick={onAbrirFechar} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.14)", zIndex: 41, minWidth: 210, padding: 6, maxHeight: 260, overflowY: "auto" }}>
             {opcoes.map(o => (
-              <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6 }}
+              <label data-arato-label="true" key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: 12, cursor: "pointer", borderRadius: 6 }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#F4F6FA")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                 <input type="checkbox" checked={selecionado.has(o.v)} onChange={() => onToggle(o.v)} />
@@ -187,7 +188,7 @@ function FiltroDropdown({ label, opcoes, selecionado, onToggle, onLimpar, aberto
               </label>
             ))}
             {selecionado.size > 0 && (
-              <button onClick={onLimpar} style={{ width: "100%", marginTop: 4, fontSize: 11, color: "#0C447C", background: "none", border: "none", cursor: "pointer", padding: "6px", textAlign: "left" }}>
+              <button data-arato-button="secondary" onClick={onLimpar} style={{ width: "100%", marginTop: 4, fontSize: 11, color: "#0C447C", background: "none", border: "none", cursor: "pointer", padding: "6px", textAlign: "left" }}>
                 Limpar seleção
               </button>
             )}
@@ -468,7 +469,7 @@ export default function DocumentosFiscaisPage() {
   const porTipo = TIPO_OPCOES.map(t => ({ ...t, qtd: linhas.filter(l => l.tipo_doc === t.v).length, total: linhas.filter(l => l.tipo_doc === t.v).reduce((s, l) => s + (l.valor_total ?? 0), 0) }));
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <div style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
 
@@ -479,31 +480,31 @@ export default function DocumentosFiscaisPage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais</h1>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>NF de Produtos, NF de Serviços e CT-e recebidos, ordenados por data</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setModalNf({ id: null })} style={{ ...inp, background: "#0C447C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+            <button data-arato-button="primary" onClick={() => setModalNf({ id: null })} style={{ ...inp, background: "#0C447C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
               + Nova NF de Produtos
             </button>
-            <button onClick={() => setModalNfs({ id: null })} style={{ ...inp, background: "#5B21B6", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+            <button data-arato-button="primary" onClick={() => setModalNfs({ id: null })} style={{ ...inp, background: "#5B21B6", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
               + Nova NF de Serviço
             </button>
           </div>
         </div>
 
         {/* ── Barra de filtros sempre visível ── */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
-            <label style={lblMini}>Buscar (número, participante, chave)</label>
+            <label data-arato-label="true" style={lblMini}>Buscar (número, participante, chave)</label>
             <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div>
-            <label style={lblMini}>Tipo</label>
+            <label data-arato-label="true" style={lblMini}>Tipo</label>
             <div style={{ display: "flex", gap: 6 }}>
-              {TIPO_OPCOES.map(t => <button key={t.v} onClick={() => toggle(fTipo, setFTipo, t.v)} style={chip(fTipo.has(t.v))}>{t.label}</button>)}
+              {TIPO_OPCOES.map(t => <button data-arato-button="secondary" key={t.v} onClick={() => toggle(fTipo, setFTipo, t.v)} style={chip(fTipo.has(t.v))}>{t.label}</button>)}
             </div>
           </div>
           <FiltroDropdown
@@ -534,18 +535,18 @@ export default function DocumentosFiscaisPage() {
             onAbrirFechar={() => setDropdownAberto(p => p === "origem" ? null : "origem")}
           />
           <div>
-            <label style={lblMini}>Data de</label>
+            <label data-arato-label="true" style={lblMini}>Data de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
           </div>
           <div>
-            <label style={lblMini}>até</label>
+            <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <select value={ordenarPor} onChange={e => { setOrdenarPor(e.target.value as "data_doc" | "created_at"); }} style={{ ...inp, cursor: "pointer" }} title="Ordenar por">
+          <SelectField value={ordenarPor} onChange={e => { setOrdenarPor(e.target.value as "data_doc" | "created_at"); }} style={{ ...inp, cursor: "pointer" }} title="Ordenar por">
             <option value="data_doc">Ordenar: data da nota</option>
             <option value="created_at">Ordenar: data de cadastro</option>
-          </select>
-          <button onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+          </SelectField>
+          <button data-arato-button="primary" onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </button>
         </div>
@@ -575,7 +576,7 @@ export default function DocumentosFiscaisPage() {
               <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
                 {sel.length} selecionada{sel.length > 1 ? "s" : ""}
               </span>
-              <button
+              <button data-arato-button="secondary"
                 onClick={() => {
                   if (!selPendentesNf.length) { alert("Nenhuma NF pendente selecionada para processar."); return; }
                   setModalLote(true);
@@ -584,7 +585,7 @@ export default function DocumentosFiscaisPage() {
               >
                 ⚡ Processar em lote
               </button>
-              <button
+              <button data-arato-button="secondary"
                 onClick={async () => {
                   // Imprime os DANFEs das NFs selecionadas (um PDF único, um diálogo de impressão).
                   // A janela é aberta já no clique, senão o navegador bloqueia o pop-up.
@@ -617,7 +618,7 @@ export default function DocumentosFiscaisPage() {
               >
                 🖨 Imprimir
               </button>
-              <button
+              <button data-arato-button="secondary"
                 onClick={() => setSelecionados(new Set())}
                 style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
               >
@@ -627,21 +628,21 @@ export default function DocumentosFiscaisPage() {
           );
         })()}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#555" }}>
+        <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#555" }}>
           <span style={{ fontWeight: 600 }}>SIEG</span>
           <span style={{ color: "#888" }}>usa o período do filtro acima{!fDataDe && !fDataAte ? " (sem datas: últimos 30 dias)" : ""}</span>
-          <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", userSelect: "none" }}>
+          <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", userSelect: "none" }}>
             <input type="checkbox" checked={siegForce} onChange={e => setSiegForce(e.target.checked)} style={{ cursor: "pointer" }} />
             Forçar re-importação
           </label>
-          <button onClick={sincronizarSieg} disabled={siegSyncing} style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#111111", color: "#fff", fontWeight: 600, fontSize: 12, cursor: siegSyncing ? "default" : "pointer" }}>
+          <button data-arato-button="primary" onClick={sincronizarSieg} disabled={siegSyncing} style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#111111", color: "#fff", fontWeight: 600, fontSize: 12, cursor: siegSyncing ? "default" : "pointer" }}>
             {siegSyncing ? "Sincronizando…" : "⟳ Sincronizar SIEG"}
           </button>
           {siegMsg && <span style={{ color: siegMsg.startsWith("✗") ? "#B91C1C" : "#1A6B3C" }}>{siegMsg}</span>}
         </div>
 
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 290px)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <div data-arato-grid-container="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 290px)" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: 32 }} />    {/* checkbox */}
               <col style={{ width: 54 }} />    {/* Tipo — abreviado */}
@@ -781,7 +782,7 @@ export default function DocumentosFiscaisPage() {
         return (
           <>
             <div style={{ position: "fixed", inset: 0, zIndex: 1490 }} onClick={() => setPopover(null)} />
-            <div style={{ position: "fixed", top, left, zIndex: 1491, width: W, maxHeight: "85vh", display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div data-arato-statistic="action" style={{ position: "fixed", top, left, zIndex: 1491, width: W, maxHeight: "85vh", display: "flex", background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(11,45,80,0.22)", border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               {/* Conteúdo (rola sozinho; ações ficam na coluna da direita) */}
               <div style={{ flex: 1, minWidth: 0, maxHeight: "85vh", overflowY: "auto" }}>
               {/* Header */}
@@ -794,7 +795,7 @@ export default function DocumentosFiscaisPage() {
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, background: tm?.bg ?? "#eee", color: tm?.color ?? "#555", padding: "2px 7px", borderRadius: 6 }}>{tm?.label ?? d.tipo_doc}</span>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? d.status_normalizado}</span>
-                    <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                    <button data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
                   </div>
                 </div>
               </div>
@@ -917,7 +918,7 @@ export default function DocumentosFiscaisPage() {
                     <div>
                       <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Manifestação (SIEG)</div>
                       <div style={{ position: "relative", display: "inline-block" }}>
-                        <button
+                        <button data-arato-button="secondary"
                           disabled={isBusy}
                           onClick={() => setManDropdown(manAberto ? null : d.id)}
                           style={{ padding: "4px 10px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 11, cursor: isBusy ? "default" : "pointer", display: "flex", alignItems: "center", gap: 4 }}>
@@ -926,7 +927,7 @@ export default function DocumentosFiscaisPage() {
                         {manAberto && (
                           <div style={{ position: "absolute", left: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 1495, minWidth: 160, overflow: "hidden" }}>
                             {MAN_CFG.map(m => (
-                              <button key={m.tipo}
+                              <button data-arato-button="toggle" key={m.tipo}
                                 onClick={() => { setManDropdown(null); manifestar(d, nf, m.tipo); }}
                                 style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
                                 {m.tipo === manTipo ? "✓ " : ""}{m.label}
@@ -943,15 +944,15 @@ export default function DocumentosFiscaisPage() {
 
               </div>
               {/* Ações — coluna vertical na margem direita */}
-              <div style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6, maxHeight: "85vh", overflowY: "auto" }}>
+              <div  style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6, maxHeight: "85vh", overflowY: "auto" }}>
                 {d.tipo_doc === "NF" && pendente && (
-                  <button onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
+                  <button data-arato-button="primary" onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#1A5C38", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>
                     ▶ Processar
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (
-                  <button onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
+                  <button data-arato-button="secondary" onClick={() => { setPopover(null); setModalNf({ id: d.id }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     Abrir NF
                   </button>
@@ -966,37 +967,37 @@ export default function DocumentosFiscaisPage() {
                   </a>
                 )}
                 {d.tipo_doc === "NF" && processada && (nf?.tipo_entrada === "insumos" || nf?.tipo_entrada === "pecas") && (
-                  <button onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
+                  <button data-arato-button="danger" onClick={() => { setPopover(null); setModalNf({ id: d.id, acaoInicial: "devolver" }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #E24B4A50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     ↩ Devolver
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && nf?.tipo_entrada === "insumos" && (
-                  <button onClick={() => { setPopover(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${d.id}`); }}
+                  <button data-arato-button="secondary" onClick={() => { setPopover(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${d.id}`); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#E6F1FB", color: "#1A4870", border: "0.5px solid #1A487050", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     🚚 Emitir NF Remessa
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (
-                  <button onClick={() => estornarNfGrid(d)}
+                  <button data-arato-button="secondary" onClick={() => estornarNfGrid(d)}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF3E2", color: "#8A4A00", border: "0.5px solid #F6C87A", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     ↺ Estornar
                   </button>
                 )}
                 {d.tipo_doc === "NF" && processada && (
-                  <button onClick={() => abrirReclassificarGrid(d)}
+                  <button data-arato-button="secondary" onClick={() => abrirReclassificarGrid(d)}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     🏷 Reclassificar
                   </button>
                 )}
                 {d.tipo_doc === "NFS" && (
-                  <button onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
+                  <button data-arato-button="secondary" onClick={() => { setPopover(null); setModalNfs({ id: d.id, viewOnly: processada }); }}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#5B21B6", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>
                     Abrir NFS
                   </button>
                 )}
                 {d.tipo_doc === "NF" && pendente && d.origem_doc === "sieg" && (
-                  <button onClick={() => { setPopover(null); reimportarNfSieg(d); }} disabled={!!siegReimp[d.id]}
+                  <button data-arato-button="secondary" onClick={() => { setPopover(null); reimportarNfSieg(d); }} disabled={!!siegReimp[d.id]}
                     style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #DDE2EE", cursor: siegReimp[d.id] ? "default" : "pointer", fontWeight: 600, fontSize: 11 }}>
                     {siegReimp[d.id] ? "Re-importando…" : "↻ Re-importar SIEG"}
                   </button>
@@ -1011,33 +1012,33 @@ export default function DocumentosFiscaisPage() {
       })()}
 
       {reclass && (
-        <div onClick={() => !reclass.salvando && setReclass(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
-            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid #DDE2EE" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50" }}>Reclassificar NF</div>
-              <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>NF {reclass.d.numero}/{reclass.d.serie} — {reclass.d.participante_nome}</div>
-              <div style={{ fontSize: 11, color: "#7A5200", marginTop: 6, background: "#FBF3E0", padding: "4px 8px", borderRadius: 6 }}>
+        <div data-arato-overlay="true" onClick={() => !reclass.salvando && setReclass(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="form" onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid #DDE2EE" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50" }}>Reclassificar NF</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#555", marginTop: 2 }}>NF {reclass.d.numero}/{reclass.d.serie} — {reclass.d.participante_nome}</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#7A5200", marginTop: 6, background: "#FBF3E0", padding: "4px 8px", borderRadius: 6 }}>
                 Troca a Operação Gerencial e o Centro de Custo da NF <strong>e também dos lançamentos de CP gerados por ela</strong> (inclusive os já baixados). Estoque, valores e datas não mudam.
               </div>
             </div>
-            <div style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
               {reclass.err && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F" }}>{reclass.err}</div>}
-              <div>
-                <label style={{ fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4 }}>Operação Gerencial</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4 }}>Operação Gerencial</label>
                 <SelectBusca value={reclass.op} onChange={v => setReclass({ ...reclass, op: v })}
                   options={reclass.ops.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
                   placeholder="— Selecionar —" style={{ width: "100%" }} />
               </div>
-              <div>
-                <label style={{ fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4 }}>Centro de Custo</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, color: "#555", fontWeight: 600, display: "block", marginBottom: 4 }}>Centro de Custo</label>
                 <SelectBusca value={reclass.cc} onChange={v => setReclass({ ...reclass, cc: v })}
                   options={reclass.ccs.map(c => ({ value: c.id, label: c.codigo ? `${c.codigo} — ${c.nome}` : c.nome }))}
                   placeholder="— Nenhum —" style={{ width: "100%" }} />
               </div>
             </div>
-            <div style={{ padding: "12px 20px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={() => setReclass(null)} disabled={reclass.salvando} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", color: "#555", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>Cancelar</button>
-              <button onClick={salvarReclassificarGrid} disabled={reclass.salvando || !reclass.op} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: reclass.op ? "#C9921B" : "#D9C9A3", color: "#fff", cursor: reclass.op ? "pointer" : "default", fontWeight: 700, fontSize: 12 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 20px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button data-arato-button="secondary" onClick={() => setReclass(null)} disabled={reclass.salvando} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", color: "#555", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarReclassificarGrid} disabled={reclass.salvando || !reclass.op} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: reclass.op ? "#C9921B" : "#D9C9A3", color: "#fff", cursor: reclass.op ? "pointer" : "default", fontWeight: 700, fontSize: 12 }}>
                 {reclass.salvando ? "Salvando…" : "Salvar Reclassificação"}
               </button>
             </div>
@@ -1074,19 +1075,19 @@ export default function DocumentosFiscaisPage() {
 
       {/* ── Justificativa obrigatória pra Desconhecer/Não Realizada (manifestação SIEG) ── */}
       {siegJustModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2200 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", padding: 22 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", marginBottom: 4 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2200 }}>
+          <div data-arato-dialog="form" style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", padding: 22 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", marginBottom: 4 }}>
               {MAN_CFG.find(m => m.tipo === siegJustModal.tipo)?.label} — Justificativa
             </div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>
               NF {siegJustModal.d.numero}/{siegJustModal.d.serie} — mínimo 15 caracteres, exigido pela SEFAZ.
             </div>
             <textarea value={siegJustText} onChange={e => setSiegJustText(e.target.value)} rows={3}
               style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, boxSizing: "border-box", resize: "vertical" }} />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
-              <button onClick={() => setSiegJustModal(null)} style={{ ...inp, cursor: "pointer" }}>Cancelar</button>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+              <button data-arato-button="secondary" onClick={() => setSiegJustModal(null)} style={{ ...inp, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="toggle"
                 disabled={siegJustText.trim().length < 15}
                 onClick={async () => {
                   const { d, tipo } = siegJustModal;

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -114,7 +115,7 @@ export default function AdminCampoPage() {
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+        <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           App Campo
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
@@ -123,14 +124,14 @@ export default function AdminCampoPage() {
         </p>
       </div>
 
-      <div style={{ ...card, marginBottom: 20 }}>
-        <label style={lbl}>Selecionar conta *</label>
-        <select style={inp} value={contaId} onChange={(e) => selecionarConta(e.target.value)}>
+      <div data-arato-panel="true" style={{ ...card, marginBottom: 20 }}>
+        <label data-arato-label="true" style={lbl}>Selecionar conta *</label>
+        <SelectField style={inp} value={contaId} onChange={(e) => selecionarConta(e.target.value)}>
           <option value="">— Selecione uma conta —</option>
           {contas.map((c) => (
             <option key={c.id} value={c.id}>{c.nome}</option>
           ))}
-        </select>
+        </SelectField>
 
         {contaId && (
           <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
@@ -177,7 +178,7 @@ export default function AdminCampoPage() {
           ) : operadores.length === 0 ? (
             <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-muted)" }}>Nenhum operador cadastrado ainda.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: "0.5px solid var(--border-table)" }}>
                   <th style={{ textAlign: "left", padding: "8px 6px", color: "var(--text-2)", fontWeight: 600, fontSize: 11 }}>Nome</th>
@@ -219,7 +220,7 @@ export default function AdminCampoPage() {
       )}
 
       {!contaId && (
-        <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-muted)" }}>
+        <div data-arato-statistic="display" style={{ padding: "60px 0", textAlign: "center", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⬡</div>
           <div style={{ fontSize: 14, color: "var(--text-3)" }}>Selecione uma conta para gerenciar o App Campo</div>
         </div>

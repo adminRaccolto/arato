@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -153,11 +154,11 @@ export default function MigrarNF() {
   return (
     <div style={{ padding: "24px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--text-1)" }}>Migração de NF entre Contratos</h1>
+        <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--text-1)" }}>Migração de NF entre Contratos</h1>
         <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>Transfere romaneios e NFs emitidas de um contrato para outro, recalculando os saldos</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>
+      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>
         {/* ── Wizard ── */}
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
           {/* Steps header */}
@@ -186,14 +187,14 @@ export default function MigrarNF() {
           </div>
 
           {sucesso ? (
-            <div style={{ padding: 40, textAlign: "center" }}>
+            <div data-arato-statistic="action" style={{ padding: 40, textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>Migração concluída com sucesso!</div>
               <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20 }}>
                 Romaneio {romaneioSel?.numero} — NF-e {romaneioSel?.nfe_numero ?? "s/n"} foi migrado de{" "}
                 <strong>{contratoOrigem?.numero}</strong> para <strong>{contratoDestino?.numero}</strong>.
               </div>
-              <button onClick={reiniciar} style={btn(true)}>Nova Migração</button>
+              <button data-arato-button="secondary" onClick={reiniciar} style={btn(true)}>Nova Migração</button>
             </div>
           ) : (
             <div style={{ padding: 24 }}>
@@ -201,14 +202,14 @@ export default function MigrarNF() {
               {passo === 1 && (
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-1)" }}>Qual contrato contém a NF a migrar?</div>
-                  <select value={contratoOrigemId} onChange={e => setContratoOrigemId(e.target.value)} style={inp}>
+                  <SelectField value={contratoOrigemId} onChange={e => setContratoOrigemId(e.target.value)} style={inp}>
                     <option value="">— selecione —</option>
                     {contratos.filter(c => c.status !== "cancelado").map(c => (
                       <option key={c.id} value={c.id}>
                         {c.numero} · {c.comprador} · {c.produto} · {fmtN(c.entregue_sc, 0)}/{fmtN(c.quantidade_sc, 0)} sc {c.safra ? `(${c.safra})` : ""}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                   {contratoOrigemId && (
                     <div style={{ marginTop: 16, padding: "12px 16px", background: "var(--bg-page)", borderRadius: 10 }}>
                       <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>Contrato selecionado</div>
@@ -219,7 +220,7 @@ export default function MigrarNF() {
                     </div>
                   )}
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-                    <button onClick={() => setPasso(2)} style={btn(!!contratoOrigemId)} disabled={!contratoOrigemId}>
+                    <button data-arato-button="secondary" onClick={() => setPasso(2)} style={btn(!!contratoOrigemId)} disabled={!contratoOrigemId}>
                       Próximo →
                     </button>
                   </div>
@@ -239,7 +240,7 @@ export default function MigrarNF() {
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {romaneiosOrigem.map(r => (
-                        <label key={r.id} style={{
+                        <label data-arato-label="true" key={r.id} style={{
                           display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
                           border: `0.5px solid ${romaneioId === r.id ? "#111111" : "var(--border)"}`,
                           background: romaneioId === r.id ? "#F0F5FA" : "var(--bg-card)",
@@ -268,8 +269,8 @@ export default function MigrarNF() {
                     </div>
                   )}
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-                    <button onClick={() => setPasso(1)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
-                    <button onClick={() => setPasso(3)} style={btn(!!romaneioId)} disabled={!romaneioId}>Próximo →</button>
+                    <button data-arato-button="primary" onClick={() => setPasso(1)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
+                    <button data-arato-button="secondary" onClick={() => setPasso(3)} style={btn(!!romaneioId)} disabled={!romaneioId}>Próximo →</button>
                   </div>
                 </div>
               )}
@@ -284,14 +285,14 @@ export default function MigrarNF() {
                       Certifique-se de que o contrato destino está cadastrado com o mesmo comprador e produto.
                     </div>
                   ) : (
-                    <select value={contratoDestinoId} onChange={e => setContratoDestinoId(e.target.value)} style={inp}>
+                    <SelectField value={contratoDestinoId} onChange={e => setContratoDestinoId(e.target.value)} style={inp}>
                       <option value="">— selecione o contrato destino —</option>
                       {contratosDestino.map(c => (
                         <option key={c.id} value={c.id}>
                           {c.numero} · {c.comprador} · {fmtN(c.entregue_sc, 0)}/{fmtN(c.quantidade_sc, 0)} sc {c.safra ? `(${c.safra})` : ""}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   )}
                   {contratoDestinoId && (
                     <div style={{ marginTop: 12, padding: "12px 16px", background: "#F0FFF4", borderRadius: 10, border: "0.5px solid #86EFAC" }}>
@@ -304,7 +305,7 @@ export default function MigrarNF() {
                     </div>
                   )}
                   <div style={{ marginTop: 16 }}>
-                    <label style={{ display: "block", fontSize: 12, color: "var(--text-2)", fontWeight: 600, marginBottom: 4 }}>
+                    <label data-arato-label="true" style={{ display: "block", fontSize: 12, color: "var(--text-2)", fontWeight: 600, marginBottom: 4 }}>
                       Motivo da migração
                     </label>
                     <textarea value={motivo} onChange={e => setMotivo(e.target.value)}
@@ -313,8 +314,8 @@ export default function MigrarNF() {
                       style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
                   </div>
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-                    <button onClick={() => setPasso(2)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
-                    <button onClick={() => setPasso(4)} style={btn(!!contratoDestinoId)} disabled={!contratoDestinoId}>Revisar →</button>
+                    <button data-arato-button="primary" onClick={() => setPasso(2)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
+                    <button data-arato-button="secondary" onClick={() => setPasso(4)} style={btn(!!contratoDestinoId)} disabled={!contratoDestinoId}>Revisar →</button>
                   </div>
                 </div>
               )}
@@ -378,8 +379,8 @@ export default function MigrarNF() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <button onClick={() => setPasso(3)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
-                    <button onClick={executarMigracao} disabled={executando} style={{ ...btn(true), background: "#16A34A", opacity: executando ? 0.7 : 1 }}>
+                    <button data-arato-button="primary" onClick={() => setPasso(3)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
+                    <button data-arato-button="primary" onClick={executarMigracao} disabled={executando} style={{ ...btn(true), background: "#16A34A", opacity: executando ? 0.7 : 1 }}>
                       {executando ? "Migrando…" : "✓ Confirmar Migração"}
                     </button>
                   </div>

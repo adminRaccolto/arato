@@ -386,14 +386,14 @@ export default function SpedContabilPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
+              <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
               <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
                 Gera o arquivo de transmissão no formato aceito pelo Domínio e pela Receita Federal (Leiaute 10).
               </p>
@@ -416,16 +416,16 @@ export default function SpedContabilPage() {
         </div>
 
         {/* Parâmetros */}
-        <div style={card}>
+        <div data-arato-panel="true" style={card}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
             Parâmetros de Geração
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
             <div>
-              <label style={lbl}>Entidade Contábil</label>
+              <label data-arato-label="true" style={lbl}>Entidade Contábil</label>
               <div style={{ display: "flex", gap: 8 }}>
                 {([["pf", "Produtor / PF"], ["pj", "Empresa / PJ"]] as [string, string][]).map(([v, l]) => (
-                  <button
+                  <button data-arato-button="toggle"
                     key={v}
                     onClick={() => setEntidade(v as "pf" | "pj")}
                     style={{
@@ -441,7 +441,7 @@ export default function SpedContabilPage() {
               </div>
             </div>
             <div>
-              <label style={lbl}>Exercício (Ano)</label>
+              <label data-arato-label="true" style={lbl}>Exercício (Ano)</label>
               <input
                 style={inp}
                 value={anoExercicio}
@@ -454,10 +454,10 @@ export default function SpedContabilPage() {
 
           {/* Vínculos de atividade */}
           <div style={{ marginTop: 20 }}>
-            <label style={{ ...lbl, marginBottom: 10 }}>Vínculos de Atividade a incluir</label>
+            <label data-arato-label="true" style={{ ...lbl, marginBottom: 10 }}>Vínculos de Atividade a incluir</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
               {VINCULOS_DISPONIVEIS.map(vd => (
-                <button
+                <button data-arato-button="toggle"
                   key={vd.id}
                   onClick={() => toggleVinculo(vd.id)}
                   style={{
@@ -480,16 +480,16 @@ export default function SpedContabilPage() {
 
         {/* Preview / resultado */}
         {preview && (
-          <div style={card}>
+          <div data-arato-statistic="display" style={card}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
               Resultado da Análise
             </div>
             <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
-              <div style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
+              <div data-arato-statistic="display" style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#16A34A" }}>{preview.total}</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>lançamentos contábeis</div>
               </div>
-              <div style={{ background: preview.erros.length > 0 ? "#FCEBEB" : "#E8F5E9", border: `0.5px solid ${preview.erros.length > 0 ? "#E24B4A40" : "#16A34A40"}`, borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
+              <div data-arato-statistic="display" style={{ background: preview.erros.length > 0 ? "#FCEBEB" : "#E8F5E9", border: `0.5px solid ${preview.erros.length > 0 ? "#E24B4A40" : "#16A34A40"}`, borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: preview.erros.length > 0 ? "#E24B4A" : "#16A34A" }}>{preview.erros.length}</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>ignorados (sem conta)</div>
               </div>
@@ -523,14 +523,14 @@ export default function SpedContabilPage() {
 
         {/* Ações */}
         <div style={{ display: "flex", gap: 12 }}>
-          <button
+          <button data-arato-button="secondary"
             onClick={() => gerar(false)}
             disabled={loading}
             style={{ padding: "10px 24px", background: "var(--bg-page)", border: "0.5px solid #2A2A2A", color: "#2A2A2A", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
           >
             {loading ? "Analisando..." : "Analisar (sem baixar)"}
           </button>
-          <button
+          <button data-arato-button="toggle"
             onClick={() => gerar(true)}
             disabled={loading || (preview !== null && preview.total === 0)}
             style={{

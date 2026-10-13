@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
@@ -625,7 +626,7 @@ export default function DrePage() {
   // ── KPIs ──
   function KpiCard({ label, valor, sub, cor }: { label: string; valor: string; sub?: string; cor?: string }) {
     return (
-      <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px", minWidth: 160, flex: 1 }}>
+      <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px", minWidth: 160, flex: 1 }}>
         <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: cor ?? "var(--text-1)", lineHeight: 1.2 }}>{valor}</div>
         {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{sub}</div>}
@@ -660,15 +661,15 @@ export default function DrePage() {
       <main id="dre-print-content" style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* ── Cabeçalho ── */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>DRE Agrícola</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>DRE Agrícola</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Demonstrativo de Resultado do Exercício — análise econômica por ciclo de produção
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button
+            <button data-arato-button="secondary"
               onClick={() => {
                 const el = document.getElementById("dre-print-content");
                 abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", "landscape", "Demonstrativo de Resultado do Exercício");
@@ -681,32 +682,32 @@ export default function DrePage() {
         </div>
 
         {/* ── Filtros ── */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
 
           {/* Fazenda (só mostra se múltiplas fazendas) */}
           {todasFazendas.length > 1 && (
             <div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Fazenda</div>
-              <select
+              <SelectField
                 value={filtroFazenda || fazendaId || ""}
                 onChange={e => { setFiltroFazenda(e.target.value); setAnoLabel(""); setCiclosSel([]); }}
                 style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid #111111", fontSize: 13, background: "#F0F6FB", minWidth: 160 }}
               >
                 {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                 <option value="todas">Todas (Consolidado)</option>
-              </select>
+              </SelectField>
             </div>
           )}
 
           <div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Ano Safra</div>
-            <select
+            <SelectField
               value={anoLabel}
               onChange={e => { setAnoLabel(e.target.value); setCiclosSel([]); }}
               style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, minWidth: 140 }}
             >
               {anosArr.map(a => <option key={a.id} value={a.descricao}>{a.descricao}</option>)}
-            </select>
+            </SelectField>
           </div>
 
           <div>
@@ -716,7 +717,7 @@ export default function DrePage() {
                 const sel = ciclosSel.includes(c.id);
                 const fazNome = filtroFazenda === "todas" ? todasFazendas.find(f => f.id === c.fazenda_id)?.nome : null;
                 return (
-                  <button
+                  <button data-arato-button="toggle"
                     key={c.id}
                     onClick={() => setCiclosSel(sel ? ciclosSel.filter(x => x !== c.id) : [...ciclosSel, c.id])}
                     style={{
@@ -738,7 +739,7 @@ export default function DrePage() {
 
           <div style={{ display: "flex", gap: 6 }}>
             {(["consolidado", "individual"] as const).map(m => (
-              <button
+              <button data-arato-button="toggle"
                 key={m}
                 onClick={() => setViewMode(m)}
                 style={{
@@ -754,17 +755,17 @@ export default function DrePage() {
           </div>
 
           <div style={{ display: "flex", gap: 6 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
+            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
               <input type="checkbox" checked={showPct} onChange={e => setShowPct(e.target.checked)} />
               % da Receita
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
+            <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
               <input type="checkbox" checked={showHa} onChange={e => setShowHa(e.target.checked)} />
               R$/ha
             </label>
           </div>
 
-          <button
+          <button data-arato-button="toggle"
             onClick={calcularDre}
             disabled={loading || ciclosSel.length === 0 || fids.length === 0}
             style={{
@@ -948,7 +949,7 @@ export default function DrePage() {
 
                   {/* Prazo de retorno simples */}
                   {d.resultado_liquido > 0 && custoTotal > 0 && (
-                    <div style={{ background: "#EBF9F1", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "14px 16px" }}>
+                    <div data-arato-statistic="display" style={{ background: "#EBF9F1", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "14px 16px" }}>
                       <div style={{ fontSize: 12, color: "#166534", marginBottom: 2 }}>ROI da Safra</div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: "#16A34A" }}>
                         {fmt(pct(d.resultado_liquido, custoTotal), 1)}%
@@ -960,7 +961,7 @@ export default function DrePage() {
                   )}
 
                   {d.resultado_liquido < 0 && (
-                    <div style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 10, padding: "14px 16px" }}>
+                    <div data-arato-statistic="display" style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 10, padding: "14px 16px" }}>
                       <div style={{ fontSize: 12, color: "#991B1B", marginBottom: 2 }}>Atenção — Prejuízo</div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: "#E24B4A" }}>
                         {fmtReal(Math.abs(d.resultado_liquido))}
@@ -981,8 +982,8 @@ export default function DrePage() {
         {viewMode === "individual" && dres.length > 1 && (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginTop: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 14 }}>Comparativo entre Culturas</div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>Indicador</th>

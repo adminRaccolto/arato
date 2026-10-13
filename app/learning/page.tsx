@@ -123,15 +123,15 @@ export default function LearningPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 16px" }}>
 
         {/* Header com progresso */}
         <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 24, marginBottom: 20, border: "0.5px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Arato Academy</h1>
+              <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Arato Academy</h1>
               <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
                 Aprenda a operar o Arato no seu ritmo — do básico ao avançado
               </p>
@@ -155,7 +155,7 @@ export default function LearningPage() {
           {/* Tabs de navegação */}
           <div style={{ marginTop: 20, display: "flex", gap: 4 }}>
             {(["licoes", "fluxogramas"] as Vista[]).map(v => (
-              <button
+              <button data-arato-button="toggle"
                 key={v}
                 onClick={() => setVista(v)}
                 style={{
@@ -186,13 +186,13 @@ export default function LearningPage() {
           <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20, alignItems: "start" }}>
 
             {/* Lista de fluxos */}
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+            <div data-arato-statistic="action" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", background: "#111111", color: "#fff" }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Processos do Sistema</div>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>{FLUXOS_BPMN.length} fluxos mapeados</div>
               </div>
               {FLUXOS_BPMN.map(f => (
-                <button
+                <button data-arato-button="toggle"
                   key={f.id}
                   onClick={() => setFluxoAtivo(f)}
                   style={{
@@ -224,11 +224,11 @@ export default function LearningPage() {
               {fluxoAtivo ? (
                 <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                   {/* Cabeçalho */}
-                  <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div data-arato-statistic="action" style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 22 }}>{fluxoAtivo.icone}</span>
-                        <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>{fluxoAtivo.titulo}</h2>
+                        <h2 data-arato-h2="true" style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>{fluxoAtivo.titulo}</h2>
                         <span style={{
                           fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600,
                           background: fluxoAtivo.corModulo + "20", color: fluxoAtivo.corModulo,
@@ -236,7 +236,7 @@ export default function LearningPage() {
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: "#666" }}>{fluxoAtivo.descricao}</p>
                     </div>
-                    <button
+                    <button data-arato-button="secondary"
                       onClick={() => window.print()}
                       style={{
                         background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8,
@@ -248,7 +248,7 @@ export default function LearningPage() {
                   </div>
 
                   {/* Diagrama Mermaid */}
-                  <div style={{ padding: "24px", overflowX: "auto", minHeight: 200 }}>
+                  <div data-arato-grid-container="true" style={{ padding: "24px", overflowX: "auto", minHeight: 200 }}>
                     {carregandoFluxo ? (
                       <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)", fontSize: 13 }}>
                         Renderizando diagrama...
@@ -300,7 +300,7 @@ export default function LearningPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 56, textAlign: "center" }}>
+                <div data-arato-statistic="action" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 56, textAlign: "center" }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
                   <div style={{ fontSize: 18, fontWeight: 600, color: "#111111", marginBottom: 8 }}>Fluxogramas BPMN</div>
                   <div style={{ fontSize: 14, color: "#666", maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>
@@ -308,7 +308,7 @@ export default function LearningPage() {
                   </div>
                   <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
                     {FLUXOS_BPMN.map(f => (
-                      <button
+                      <button data-arato-button="secondary"
                         key={f.id}
                         onClick={() => setFluxoAtivo(f)}
                         style={{
@@ -350,7 +350,7 @@ export default function LearningPage() {
                 return (
                   <div key={fase.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
                     {/* Cabeçalho da fase */}
-                    <button
+                    <button data-arato-button="toggle"
                       onClick={() => { setFaseAberta(aberta ? "" : fase.id); setLicaoAtiva(null); }}
                       style={{
                         width: "100%", textAlign: "left", background: aberta ? "#E8E8E8" : "transparent",
@@ -382,7 +382,7 @@ export default function LearningPage() {
                           const concluida = completedIds.has(lic.id);
                           const ativa = licaoAtiva?.licao.id === lic.id;
                           return (
-                            <button
+                            <button data-arato-button="toggle"
                               key={lic.id}
                               onClick={() => setLicaoAtiva({ licao: lic, modulo: mod, fase })}
                               style={{
@@ -436,7 +436,7 @@ export default function LearningPage() {
                     <span style={{ color: "#ccc" }}>›</span>
                     <span style={{ fontSize: 11, color: "var(--text-3)" }}>{licaoAtiva.modulo.titulo}</span>
                   </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>
+                  <h2 data-arato-h2="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>
                     {licaoAtiva.licao.titulo}
                   </h2>
                   <div style={{ display: "flex", gap: 12, marginTop: 8, alignItems: "center" }}>
@@ -489,7 +489,7 @@ export default function LearningPage() {
                   </div>
 
                   {/* Marcar como concluída */}
-                  <button
+                  <button data-arato-button="toggle"
                     onClick={() => toggleConcluida(licaoAtiva.licao.id)}
                     disabled={salvando}
                     style={{
@@ -506,7 +506,7 @@ export default function LearningPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
+              <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: "#111111", marginBottom: 8 }}>Bem-vindo ao Arato Academy</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 400, margin: "0 auto" }}>
@@ -523,7 +523,7 @@ export default function LearningPage() {
                   const concluidasFase = licoesDaFase.filter(l => completedIds.has(l.id)).length;
                   const pctFase = licoesDaFase.length ? Math.round((concluidasFase / licoesDaFase.length) * 100) : 0;
                   return (
-                    <button
+                    <button data-arato-button="secondary"
                       key={fase.id}
                       onClick={() => { setFaseAberta(fase.id); }}
                       style={{
@@ -594,7 +594,7 @@ function LicaoNavButton({
   if (!alvo) return null;
 
   return (
-    <button
+    <button data-arato-button="secondary"
       onClick={() => { onFaseAberta(alvo.fase.id); onSelect(alvo); }}
       style={{
         background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8,

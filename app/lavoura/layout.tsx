@@ -64,7 +64,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             </div>
           </div>
         </div>
-        <button
+        <button data-arato-button="icon"
           onClick={() => router.back()}
           style={{
             background: "none", border: "none", color: "#fff",
@@ -104,7 +104,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             Nova operação
           </div>
           {ACOES.map(a => (
-            <button
+            <button data-arato-button="secondary"
               key={a.path}
               onClick={() => navTo(a.path)}
               style={{
@@ -134,7 +134,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             Mais opções
           </div>
           {MAIS.map(m => (
-            <button
+            <button data-arato-button="secondary"
               key={m.path}
               onClick={() => navTo(m.path)}
               style={{
@@ -160,7 +160,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           const isAction = tab.id === "novo";
           if (isAction) {
             return (
-              <button
+              <button data-arato-button="secondary"
                 key={tab.id}
                 onClick={() => setSheet(sheet === "novo" ? null : "novo")}
                 style={{
@@ -170,7 +170,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                   background: "none", gap: 2,
                 }}
               >
-                <div style={{
+                <div data-arato-statistic="display" style={{
                   width: 44, height: 44, borderRadius: "50%",
                   background: "#111111",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -193,7 +193,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           );
           if (isMais) {
             return (
-              <button
+              <button data-arato-button="toggle"
                 key={tab.id}
                 onClick={() => setSheet(sheet === "mais" ? null : "mais")}
                 style={{

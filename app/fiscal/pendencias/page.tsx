@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -234,21 +235,21 @@ export default function PendenciasFiscaisPage() {
     <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* Cabeçalho */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <button
+          <button data-arato-button="secondary"
             onClick={() => router.back()}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#111111", fontWeight: 600, padding: "0 0 8px 0", display: "flex", alignItems: "center", gap: 4 }}
           >
             ← Voltar
           </button>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências Fiscais</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências Fiscais</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Consumos registrados sem documento fiscal — WhatsApp IA ou lançamentos manuais
           </p>
         </div>
         {totalAguardando > 0 && (
-          <div style={{ background: "#FFF4E5", border: "0.5px solid #EFB672", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
+          <div data-arato-statistic="display" style={{ background: "#FFF4E5", border: "0.5px solid #EFB672", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#9D4900" }}>{totalAguardando}</div>
             <div style={{ fontSize: 11, color: "#9D4900" }}>aguardando NF</div>
           </div>
@@ -256,9 +257,9 @@ export default function PendenciasFiscaisPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+      <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         {(["", "aguardando", "recebida", "dispensada"] as const).map(s => (
-          <button
+          <button data-arato-button="toggle"
             key={s}
             onClick={() => setFiltroStatus(s)}
             style={{
@@ -272,14 +273,14 @@ export default function PendenciasFiscaisPage() {
             {s === "" ? `Todos (${pendencias.length})` : `${STATUS_LABEL[s]?.label} (${contadores[s] ?? 0})`}
           </button>
         ))}
-        <select
+        <SelectField
           value={filtroTipo}
           onChange={e => setFiltroTipo(e.target.value)}
           style={{ padding: "5px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", color: "#444" }}
         >
           <option value="">Todos os tipos</option>
           {Object.entries(TIPO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        </SelectField>
         <input
           placeholder="Buscar por descrição ou fornecedor..."
           value={busca}
@@ -287,7 +288,7 @@ export default function PendenciasFiscaisPage() {
           style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", minWidth: 240 }}
         />
         {selecionados.size > 0 && (
-          <button
+          <button data-arato-button="danger"
             onClick={excluirSelecionados}
             disabled={excluindo}
             style={{
@@ -310,7 +311,7 @@ export default function PendenciasFiscaisPage() {
             {filtroStatus === "aguardando" ? "Nenhuma pendência fiscal no momento." : "Nenhum registro encontrado."}
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                 <th style={{ padding: "10px 14px", width: 36 }}>
@@ -378,7 +379,7 @@ export default function PendenciasFiscaisPage() {
                     <td style={{ padding: "10px 14px" }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         {p.status === "aguardando" && (
-                          <button
+                          <button data-arato-button="secondary"
                             onClick={() => abrirModal(p)}
                             style={{
                               padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B",
@@ -391,7 +392,7 @@ export default function PendenciasFiscaisPage() {
                         {p.status === "recebida" && p.xml_storage_path && (
                           <span style={{ fontSize: 12, color: "#166534" }}>XML salvo</span>
                         )}
-                        <button
+                        <button data-arato-button="secondary"
                           onClick={() => excluirUma(p.id)}
                           title="Excluir pendência"
                           style={{
@@ -413,20 +414,20 @@ export default function PendenciasFiscaisPage() {
 
       {/* Modal de Anexar NF */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             {/* Header modal */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Anexar Nota Fiscal</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{modal.descricao}</div>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Anexar Nota Fiscal</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{modal.descricao}</div>
               </div>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
-            <div style={{ padding: "20px 24px" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>
               {/* Info da pendência */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13 }}>
+              <div data-arato-dialog-body="true" style={{ background: "var(--bg-card)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
                   <div><span style={{ color: "var(--text-3)" }}>Data: </span><span style={{ color: "#333", fontWeight: 500 }}>{new Date(modal.data_operacao + "T12:00").toLocaleDateString("pt-BR")}</span></div>
                   <div><span style={{ color: "var(--text-3)" }}>Tipo: </span><span style={{ color: "#333", fontWeight: 500 }}>{TIPO_LABEL[modal.tipo] ?? modal.tipo}</span></div>
@@ -436,9 +437,9 @@ export default function PendenciasFiscaisPage() {
               </div>
 
               {/* Abas de modo */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginBottom: 20 }}>
                 {(["chave", "foto"] as const).map(m => (
-                  <button
+                  <button data-arato-button="toggle"
                     key={m}
                     onClick={() => { setModoAnexo(m); setMsgResultado(null); }}
                     style={{
@@ -457,7 +458,7 @@ export default function PendenciasFiscaisPage() {
               {/* Modo: chave de acesso */}
               {modoAnexo === "chave" && (
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+                  <label data-arato-label="true" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
                     Chave de Acesso NF-e (44 dígitos)
                   </label>
                   <input
@@ -469,7 +470,7 @@ export default function PendenciasFiscaisPage() {
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                     {chaveInput.length}/44 dígitos — a chave está impressa abaixo do código de barras da DANFE
                   </div>
-                  <button
+                  <button data-arato-button="toggle"
                     onClick={consultarPorChave}
                     disabled={consultando || chaveInput.replace(/\D/g, "").length !== 44}
                     style={{
@@ -487,17 +488,17 @@ export default function PendenciasFiscaisPage() {
               {/* Modo: foto */}
               {modoAnexo === "foto" && (
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+                  <label data-arato-label="true" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
                     Foto da Nota Fiscal ou DANFE
                   </label>
-                  <div style={{ border: "1.5px dashed var(--border-table)", borderRadius: 10, padding: "24px", textAlign: "center", background: "#FAFBFC" }}>
+                  <div data-arato-panel="true" style={{ border: "1.5px dashed var(--border-table)", borderRadius: 10, padding: "24px", textAlign: "center", background: "#FAFBFC" }}>
                     {fotoBase64 ? (
                       <div>
                         <div style={{ fontSize: 13, color: "#166534", fontWeight: 600, marginBottom: 8 }}>✅ Foto carregada</div>
-                        <button onClick={() => setFotoBase64(null)} style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Trocar foto</button>
+                        <button data-arato-button="secondary" onClick={() => setFotoBase64(null)} style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Trocar foto</button>
                       </div>
                     ) : (
-                      <label style={{ cursor: "pointer" }}>
+                      <label data-arato-label="true" style={{ cursor: "pointer" }}>
                         <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
                         <div style={{ fontSize: 13, color: "#666" }}>Clique para selecionar uma foto</div>
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>JPG ou PNG — a IA Claude extrai a chave automaticamente</div>
@@ -505,7 +506,7 @@ export default function PendenciasFiscaisPage() {
                       </label>
                     )}
                   </div>
-                  <button
+                  <button data-arato-button="toggle"
                     onClick={consultarPorFoto}
                     disabled={consultando || !fotoBase64}
                     style={{
@@ -533,14 +534,14 @@ export default function PendenciasFiscaisPage() {
               )}
 
               {/* Rodapé */}
-              <div style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
-                <button
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
+                <button data-arato-button="secondary"
                   onClick={fecharModal}
                   style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
                 >
                   Fechar
                 </button>
-                <button
+                <button data-arato-button="secondary"
                   onClick={async () => {
                     const obs = prompt("Motivo da dispensa (opcional):");
                     await dispensar(modal.id, obs ?? "Dispensado pelo usuário");

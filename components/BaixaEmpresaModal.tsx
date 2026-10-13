@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "./SelectField";
 import InputData from "../components/InputData";
 import { useState } from "react";
 import type { EmpresaLancamento } from "../lib/supabase";
@@ -68,48 +69,48 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(96vw,560px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>{pagar ? "Registrar Pagamento" : "Registrar Recebimento"}</h3>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
+      <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(96vw,560px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <h3 data-arato-h3="true" style={{ fontSize: 16, fontWeight: 700, margin: "0 0 4px" }}>{pagar ? "Registrar Pagamento" : "Registrar Recebimento"}</h3>
         <p style={{ fontSize: 13, color: "#555", margin: "0 0 14px" }}>
           <strong>{lanc.descricao}</strong> — {fmtBRL(lanc.valor)}
           {(lanc.valor_pago ?? 0) > 0 && <> · já {pagar ? "pago" : "recebido"} {fmtBRL(lanc.valor_pago!)} · saldo {fmtBRL(saldo)}</>}
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div><label style={lbl}>Data *</label><InputData type="date" style={inp} value={data} onChange={e => setData(e.target.value)} /></div>
-          <div>
-            <label style={lbl}>Conta bancária *</label>
-            <select style={inp} value={conta} onChange={e => setConta(e.target.value)}>
+        <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data *</label><InputData type="date" style={inp} value={data} onChange={e => setData(e.target.value)} /></div>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Conta bancária *</label>
+            <SelectField style={inp} value={conta} onChange={e => setConta(e.target.value)}>
               <option value="">Selecione…</option>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            </SelectField>
           </div>
-          <div><label style={lbl}>Multa (R$)</label><input style={inp} value={multa} onChange={e => { setMulta(e.target.value); recalcValor(e.target.value, juros, desc); }} placeholder="0,00" /></div>
-          <div><label style={lbl}>Juros (R$)</label><input style={inp} value={juros} onChange={e => { setJuros(e.target.value); recalcValor(multa, e.target.value, desc); }} placeholder="0,00" /></div>
-          <div><label style={lbl}>Desconto (R$)</label><input style={inp} value={desc} onChange={e => { setDesc(e.target.value); recalcValor(multa, juros, e.target.value); }} placeholder="0,00" /></div>
-          <div>
-            <label style={lbl}>Valor {pagar ? "pago" : "recebido"} agora (R$) *</label>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Multa (R$)</label><input style={inp} value={multa} onChange={e => { setMulta(e.target.value); recalcValor(e.target.value, juros, desc); }} placeholder="0,00" /></div>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Juros (R$)</label><input style={inp} value={juros} onChange={e => { setJuros(e.target.value); recalcValor(multa, e.target.value, desc); }} placeholder="0,00" /></div>
+          <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Desconto (R$)</label><input style={inp} value={desc} onChange={e => { setDesc(e.target.value); recalcValor(multa, juros, e.target.value); }} placeholder="0,00" /></div>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Valor {pagar ? "pago" : "recebido"} agora (R$) *</label>
             <input style={{ ...inp, fontWeight: 700 }} value={valor} onChange={e => setValor(e.target.value)} />
             <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Recalculado sozinho com multa/juros/desconto; edite se pagou valor diferente</div>
           </div>
         </div>
         {parcial && valorPago > 0 && (
-          <div style={{ marginTop: 12, background: "#FBF3E0", border: "0.5px solid #F0C060", borderRadius: 8, padding: 12 }}>
+          <div data-arato-panel="true" style={{ marginTop: 12, background: "#FBF3E0", border: "0.5px solid #F0C060", borderRadius: 8, padding: 12 }}>
             <div style={{ fontSize: 12, color: "#7A5500", marginBottom: 8 }}>
               Baixa <strong>parcial</strong> — restam <strong>{fmtBRL(restante)}</strong> em aberto.
             </div>
-            <label style={lbl}>Novo vencimento do saldo *</label>
+            <label data-arato-label="true" style={lbl}>Novo vencimento do saldo *</label>
             <InputData type="date" style={{ ...inp, maxWidth: 200 }} value={novaData} min={data} onChange={e => setNovaData(e.target.value)} />
           </div>
         )}
-        <div style={{ marginTop: 12 }}>
-          <label style={lbl}>Observação</label>
+        <div data-arato-dialog-body="true" style={{ marginTop: 12 }}>
+          <label data-arato-label="true" style={lbl}>Observação</label>
           <input style={inp} value={obs} onChange={e => setObs(e.target.value)} />
         </div>
         {erro && <div style={{ marginTop: 12, color: "#E24B4A", fontSize: 12 }}>{erro}</div>}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-          <button onClick={confirmar} disabled={saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{saving ? "Salvando…" : parcial ? "✓ Baixar parcial" : "✓ Confirmar baixa"}</button>
+        <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
+          <button data-arato-button="secondary" onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+          <button data-arato-button="primary" onClick={confirmar} disabled={saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{saving ? "Salvando…" : parcial ? "✓ Baixar parcial" : "✓ Confirmar baixa"}</button>
         </div>
       </div>
     </div>

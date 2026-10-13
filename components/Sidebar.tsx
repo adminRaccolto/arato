@@ -123,7 +123,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
           <span style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>RT</span>
         </div>
         {aberto && <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Arato</span>}
-        <button
+        <button data-arato-button="secondary"
           onClick={() => setAberto(a => !a)}
           style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", fontSize: 16, padding: 0, flexShrink: 0 }}
         >
@@ -153,7 +153,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
             return (
               <div key={item.id}>
                 {/* Cabeçalho do grupo */}
-                <button
+                <button data-arato-button="toggle"
                   onClick={() => toggleGrupo(item.id)}
                   style={{
                     width: "100%", display: "flex", alignItems: "center",
@@ -260,7 +260,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
           </div>
         )}
         {aberto && (
-          <button
+          <button data-arato-button="secondary"
             onClick={signOut}
             title="Sair"
             style={{ background: "none", border: "none", cursor: "pointer", color: "#444", fontSize: 14, padding: 0, flexShrink: 0 }}

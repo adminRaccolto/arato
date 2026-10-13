@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -368,25 +369,25 @@ export default function AplicacoesFinanceirasPage() {
 
   // ─── Render ───────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Aplicações Financeiras</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Aplicações Financeiras</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
               CDB, LCI, LCA, Tesouro Direto, Fundos — controle de aportes, rendimentos e resgates
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button onClick={() => abrirNova()} style={btnV}>+ Nova Aplicação</button>
+            <button data-arato-button="primary" onClick={() => abrirNova()} style={btnV}>+ Nova Aplicação</button>
           </div>
         </div>
 
@@ -432,48 +433,48 @@ export default function AplicacoesFinanceirasPage() {
 
       {/* ═══════════ MODAL NOVA APLICAÇÃO ═══════════ */}
       {modalNova && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Aplicação" : "Nova Aplicação Financeira"}</div>
-              <button onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Aplicação" : "Nova Aplicação Financeira"}</div>
+              <button data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
               {nErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{nErr}</div>}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Nome da Aplicação</label>
+                  <label data-arato-label="true" style={lbl}>Nome da Aplicação</label>
                   <input value={nForm.nome} onChange={e => setNForm(f => ({ ...f, nome: e.target.value }))} style={inp} placeholder="Ex.: CDB Bradesco 105% CDI" />
                 </div>
                 <div>
-                  <label style={lbl}>Tipo</label>
-                  <select value={nForm.tipo} onChange={e => setNForm(f => ({ ...f, tipo: e.target.value as TipoAplicacao }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Tipo</label>
+                  <SelectField value={nForm.tipo} onChange={e => setNForm(f => ({ ...f, tipo: e.target.value as TipoAplicacao }))} style={inp}>
                     {Object.entries(TIPO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Instituição (banco / corretora)</label>
+                  <label data-arato-label="true" style={lbl}>Instituição (banco / corretora)</label>
                   <input value={nForm.instituicao} onChange={e => setNForm(f => ({ ...f, instituicao: e.target.value }))} style={inp} placeholder="Ex.: Bradesco, XP, Nubank" />
                 </div>
 
                 {/* Contas */}
-                <div style={{ gridColumn: "1 / -1", background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div data-arato-panel="true" style={{ gridColumn: "1 / -1", background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Contas envolvidas</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={lbl}>Conta Corrente — dinheiro SAI daqui ao aportar</label>
-                      <select value={nForm.conta_corrente} onChange={e => setNForm(f => ({ ...f, conta_corrente: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Corrente — dinheiro SAI daqui ao aportar</label>
+                      <SelectField value={nForm.conta_corrente} onChange={e => setNForm(f => ({ ...f, conta_corrente: e.target.value }))} style={inp}>
                         <option value="">— não informado —</option>
                         {contaOpts}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Conta Investimento — dinheiro ENTRA aqui ao aportar</label>
-                      <select value={nForm.conta_aplicacao} onChange={e => setNForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Investimento — dinheiro ENTRA aqui ao aportar</label>
+                      <SelectField value={nForm.conta_aplicacao} onChange={e => setNForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp}>
                         <option value="">— não informado —</option>
                         {contaOptsGrupo}
-                      </select>
+                      </SelectField>
                       <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Cadastre em Cadastros → Contas Bancárias como tipo "Conta Investimento"</div>
                     </div>
                   </div>
@@ -481,37 +482,37 @@ export default function AplicacoesFinanceirasPage() {
 
                 {!editando && (
                   <div>
-                    <label style={lbl}>Valor do Aporte Inicial (R$)</label>
+                    <label data-arato-label="true" style={lbl}>Valor do Aporte Inicial (R$)</label>
                     <InputMonetario value={nForm.valor_inicial} onChange={v => setNForm(f => ({ ...f, valor_inicial: v }))} style={inp} />
                   </div>
                 )}
                 <div>
-                  <label style={lbl}>Taxa Contratada (%)</label>
+                  <label data-arato-label="true" style={lbl}>Taxa Contratada (%)</label>
                   <InputMonetario value={nForm.taxa_contratada} onChange={v => setNForm(f => ({ ...f, taxa_contratada: v }))} style={inp} placeholder="Ex.: 105,00 para CDB 105% CDI" />
                 </div>
                 <div>
-                  <label style={lbl}>Indexador</label>
-                  <select value={nForm.indexador} onChange={e => setNForm(f => ({ ...f, indexador: e.target.value as TipoIndexador }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Indexador</label>
+                  <SelectField value={nForm.indexador} onChange={e => setNForm(f => ({ ...f, indexador: e.target.value as TipoIndexador }))} style={inp}>
                     {Object.entries(INDEXADOR_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Data de Início</label>
+                  <label data-arato-label="true" style={lbl}>Data de Início</label>
                   <InputData type="date" value={nForm.data_inicio} onChange={e => setNForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Data de Vencimento</label>
+                  <label data-arato-label="true" style={lbl}>Data de Vencimento</label>
                   <InputData type="date" value={nForm.data_vencimento} onChange={e => setNForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Observação</label>
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <textarea value={nForm.observacao} onChange={e => setNForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                 </div>
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
-              <button onClick={salvarNova} disabled={nSaving} style={{ ...btnV, cursor: nSaving ? "default" : "pointer", background: nSaving ? "var(--text-muted)" : "#111111" }}>{nSaving ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarNova} disabled={nSaving} style={{ ...btnV, cursor: nSaving ? "default" : "pointer", background: nSaving ? "var(--text-muted)" : "#111111" }}>{nSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -519,42 +520,42 @@ export default function AplicacoesFinanceirasPage() {
 
       {/* ═══════════ MODAL APORTE ═══════════ */}
       {modalAporte && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Aporte</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalAporte.nome}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Aporte</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalAporte.nome}</div>
               </div>
-              <button onClick={() => setModalAporte(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalAporte(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{aErr}</div>}
-              <div>
-                <label style={lbl}>Conta de Origem (saída de caixa)</label>
-                <select value={aForm.conta_corrente} onChange={e => setAForm(f => ({ ...f, conta_corrente: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Conta de Origem (saída de caixa)</label>
+                <SelectField value={aForm.conta_corrente} onChange={e => setAForm(f => ({ ...f, conta_corrente: e.target.value }))} style={inp}>
                   <option value="">— não informado —</option>
                   {contaOpts}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Valor (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Valor (R$)</label>
                   <InputMonetario value={aForm.valor} onChange={v => setAForm(f => ({ ...f, valor: v }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Data</label>
+                  <label data-arato-label="true" style={lbl}>Data</label>
                   <InputData type="date" value={aForm.data} onChange={e => setAForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                 </div>
               </div>
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input value={aForm.observacao} onChange={e => setAForm(f => ({ ...f, observacao: e.target.value }))} style={inp} />
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalAporte(null)}>Cancelar</button>
-              <button onClick={salvarAporte} disabled={aSaving} style={{ ...btnV, cursor: aSaving ? "default" : "pointer", background: aSaving ? "var(--text-muted)" : "#111111" }}>{aSaving ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalAporte(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarAporte} disabled={aSaving} style={{ ...btnV, cursor: aSaving ? "default" : "pointer", background: aSaving ? "var(--text-muted)" : "#111111" }}>{aSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -562,25 +563,25 @@ export default function AplicacoesFinanceirasPage() {
 
       {/* ═══════════ MODAL RENDIMENTO ═══════════ */}
       {modalRend && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Rendimento</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalRend.nome} · Saldo atual: {fmtBRL(modalRend.valor_atual)}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Rendimento</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalRend.nome} · Saldo atual: {fmtBRL(modalRend.valor_atual)}</div>
               </div>
-              <button onClick={() => setModalRend(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalRend(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {rErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{rErr}</div>}
-              <div>
-                <label style={lbl}>Tipo de Registro</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo de Registro</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([
                     { v: "acruado",  label: "Acruado na Aplicação",   desc: "Aumenta saldo, sem entrada em conta" },
                     { v: "recebido", label: "Recebido em Conta",       desc: "Entra na conta corrente" },
                   ] as { v: "acruado" | "recebido"; label: string; desc: string }[]).map(opt => (
-                    <button key={opt.v} onClick={() => setRForm(f => ({ ...f, tipo_registro: opt.v }))}
+                    <button data-arato-button="toggle" key={opt.v} onClick={() => setRForm(f => ({ ...f, tipo_registro: opt.v }))}
                       style={{ flex: 1, padding: "10px 12px", border: `2px solid ${rForm.tipo_registro === opt.v ? "#16A34A" : "var(--border-table)"}`, borderRadius: 8, background: rForm.tipo_registro === opt.v ? "#DCFCE7" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: rForm.tipo_registro === opt.v ? "#166534" : "var(--text-1)" }}>{opt.label}</div>
                       <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>{opt.desc}</div>
@@ -588,38 +589,38 @@ export default function AplicacoesFinanceirasPage() {
                   ))}
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Valor do Rendimento (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Valor do Rendimento (R$)</label>
                   <InputMonetario value={rForm.valor_bruto} onChange={v => setRForm(f => ({ ...f, valor_bruto: v }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Data</label>
+                  <label data-arato-label="true" style={lbl}>Data</label>
                   <InputData type="date" value={rForm.data} onChange={e => setRForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                 </div>
               </div>
               {rForm.tipo_registro === "recebido" && (
                 <div>
-                  <label style={lbl}>Conta de Destino (onde o dinheiro entra)</label>
-                  <select value={rForm.conta_destino} onChange={e => setRForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Conta de Destino (onde o dinheiro entra)</label>
+                  <SelectField value={rForm.conta_destino} onChange={e => setRForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
                     <option value="">— não informado —</option>
                     {contaOpts}
-                  </select>
+                  </SelectField>
                 </div>
               )}
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input value={rForm.observacao} onChange={e => setRForm(f => ({ ...f, observacao: e.target.value }))} style={inp} />
               </div>
-              <div style={{ background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#166534" }}>
+              <div data-arato-dialog-body="true" style={{ background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#166534" }}>
                 {rForm.tipo_registro === "acruado"
                   ? "O rendimento será incorporado ao saldo da aplicação. O lançamento financeiro ocorrerá no resgate."
                   : "Será gerado um lançamento de Receita Financeira na conta selecionada."}
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalRend(null)}>Cancelar</button>
-              <button onClick={salvarRendimento} disabled={rSaving} style={{ ...btnV, cursor: rSaving ? "default" : "pointer", background: rSaving ? "var(--text-muted)" : "#16A34A" }}>{rSaving ? "Salvando…" : "Registrar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalRend(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarRendimento} disabled={rSaving} style={{ ...btnV, cursor: rSaving ? "default" : "pointer", background: rSaving ? "var(--text-muted)" : "#16A34A" }}>{rSaving ? "Salvando…" : "Registrar"}</button>
             </div>
           </div>
         </div>
@@ -627,26 +628,26 @@ export default function AplicacoesFinanceirasPage() {
 
       {/* ═══════════ MODAL RESGATE ═══════════ */}
       {modalResgate && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Resgate</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalResgate.nome} · Saldo: {fmtBRL(modalResgate.valor_atual)}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Resgate</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalResgate.nome} · Saldo: {fmtBRL(modalResgate.valor_atual)}</div>
               </div>
-              <button onClick={() => setModalResgate(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalResgate(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {rgErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{rgErr}</div>}
 
-              <div>
-                <label style={lbl}>Tipo de Resgate</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo de Resgate</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([
                     { v: "resgate_parcial", label: "Parcial",        cor: "#C9921B" },
                     { v: "resgate_total",   label: "Total (Encerrar)", cor: "#E24B4A" },
                   ] as { v: "resgate_parcial" | "resgate_total"; label: string; cor: string }[]).map(opt => (
-                    <button key={opt.v} onClick={() => {
+                    <button data-arato-button="toggle" key={opt.v} onClick={() => {
                       setRgForm(f => ({
                         ...f, tipo: opt.v,
                         valor_bruto: opt.v === "resgate_total" ? modalResgate.valor_atual : f.valor_bruto,
@@ -659,40 +660,40 @@ export default function AplicacoesFinanceirasPage() {
                 </div>
               </div>
 
-              <div>
-                <label style={lbl}>Conta de Destino (onde o dinheiro entra)</label>
-                <select value={rgForm.conta_destino} onChange={e => setRgForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Conta de Destino (onde o dinheiro entra)</label>
+                <SelectField value={rgForm.conta_destino} onChange={e => setRgForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
                   <option value="">— não informado —</option>
                   {contaOpts}
-                </select>
+                </SelectField>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Valor Bruto do Resgate (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Valor Bruto do Resgate (R$)</label>
                   <InputMonetario value={rgForm.valor_bruto} onChange={v => setRgForm(f => ({ ...f, valor_bruto: v }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>IOF (R$)</label>
+                  <label data-arato-label="true" style={lbl}>IOF (R$)</label>
                   <InputMonetario value={rgForm.iof} onChange={v => setRgForm(f => ({ ...f, iof: v }))} style={inp} placeholder="0,00" />
                 </div>
                 <div>
-                  <label style={lbl}>IR s/ Rendimentos (R$)</label>
+                  <label data-arato-label="true" style={lbl}>IR s/ Rendimentos (R$)</label>
                   <InputMonetario value={rgForm.ir} onChange={v => setRgForm(f => ({ ...f, ir: v }))} style={inp} placeholder="0,00" />
                 </div>
                 <div>
-                  <label style={lbl}>Valor Líquido</label>
+                  <label data-arato-label="true" style={lbl}>Valor Líquido</label>
                   <div style={{ ...inp, background: "var(--bg-page)", fontWeight: 700, color: "#16A34A", display: "flex", alignItems: "center" }}>
                     {fmtBRL(rgForm.valor_bruto - rgForm.iof - rgForm.ir)}
                   </div>
                 </div>
               </div>
-              <div>
-                <label style={lbl}>Data do Resgate</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data do Resgate</label>
                 <InputData type="date" value={rgForm.data} onChange={e => setRgForm(f => ({ ...f, data: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input value={rgForm.observacao} onChange={e => setRgForm(f => ({ ...f, observacao: e.target.value }))} style={inp} />
               </div>
               {(rgForm.iof > 0 || rgForm.ir > 0) && (
@@ -701,9 +702,9 @@ export default function AplicacoesFinanceirasPage() {
                 </div>
               )}
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalResgate(null)}>Cancelar</button>
-              <button onClick={salvarResgate} disabled={rgSaving} style={{ ...btnV, cursor: rgSaving ? "default" : "pointer", background: rgSaving ? "var(--text-muted)" : "#E24B4A" }}>{rgSaving ? "Resgatando…" : "Confirmar Resgate"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalResgate(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarResgate} disabled={rgSaving} style={{ ...btnV, cursor: rgSaving ? "default" : "pointer", background: rgSaving ? "var(--text-muted)" : "#E24B4A" }}>{rgSaving ? "Resgatando…" : "Confirmar Resgate"}</button>
             </div>
           </div>
         </div>
@@ -769,11 +770,11 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
             {isResgatada ? "Encerrada" : "Ativa"}
           </span>
           {!isResgatada && <>
-            <button onClick={e => { e.stopPropagation(); abrirAporte(a); }} style={{ padding: "4px 9px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Aporte</button>
-            <button onClick={e => { e.stopPropagation(); abrirRendimento(a); }} style={{ padding: "4px 9px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#DCFCE7", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>Rendimento</button>
-            <button onClick={e => { e.stopPropagation(); abrirResgate(a); }} style={{ padding: "4px 9px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Resgatar</button>
+            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirAporte(a); }} style={{ padding: "4px 9px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Aporte</button>
+            <button data-arato-button="primary" onClick={e => { e.stopPropagation(); abrirRendimento(a); }} style={{ padding: "4px 9px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#DCFCE7", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>Rendimento</button>
+            <button data-arato-button="danger" onClick={e => { e.stopPropagation(); abrirResgate(a); }} style={{ padding: "4px 9px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Resgatar</button>
           </>}
-          <button onClick={e => { e.stopPropagation(); abrirNova(a); }} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
+          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirNova(a); }} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
         </div>
       </div>
 
@@ -783,7 +784,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
           {movimentos.length === 0 ? (
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem movimentações registradas.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead><tr style={{ background: "var(--bg-tag)" }}>
                 {["Data", "Tipo", "Valor Bruto", "IOF", "IR", "Líquido", "Conta", "Obs."].map(h => (
                   <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." || h === "Conta" || h === "Tipo" ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>

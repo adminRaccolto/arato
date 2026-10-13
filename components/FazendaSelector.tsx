@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "./SelectField";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -46,9 +47,9 @@ export default function FazendaSelector({ contaId, value, onChange, style }: Pro
   return (
     <span style={wrapper}>
       <span style={lbl}>Fazenda</span>
-      <select value={value ?? ""} onChange={e => onChange(e.target.value)} style={sel}>
+      <SelectField value={value ?? ""} onChange={e => onChange(e.target.value)} style={sel}>
         {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-      </select>
+      </SelectField>
       <span style={{ fontSize: 10, color: "#111111" }}>▼</span>
     </span>
   );

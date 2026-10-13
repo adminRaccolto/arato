@@ -1,4 +1,5 @@
 @import "./theme-compat.css";
+@import "./modern-layout.css";
 
 *, *::before, *::after { box-sizing: border-box; }
 

@@ -42,8 +42,8 @@ export default function AlterarSenha() {
           <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 38, marginBottom: 10 }} />
         </div>
 
-        <div style={{ background: "var(--bg-card)", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,0,0,0.09)", padding: "36px 40px" }}>
-          <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Crie sua senha</h2>
+        <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,0,0,0.09)", padding: "36px 40px" }}>
+          <h2 data-arato-h2="true" style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Crie sua senha</h2>
           <p style={{ margin: "0 0 28px", fontSize: 13, color: "#666", lineHeight: 1.5 }}>
             Este é seu primeiro acesso. Defina uma senha pessoal para continuar.
           </p>
@@ -56,7 +56,7 @@ export default function AlterarSenha() {
 
           <form onSubmit={salvar} style={{ display: "grid", gap: 16 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
+              <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
                 NOVA SENHA
               </label>
               <div style={{ position: "relative" }}>
@@ -74,7 +74,7 @@ export default function AlterarSenha() {
                     borderColor: novaSenha && novaSenha.length < 8 ? "#E24B4A" : "var(--border-table)",
                   }}
                 />
-                <button
+                <button data-arato-button="secondary"
                   type="button"
                   onClick={() => setShowSenha(s => !s)}
                   style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 12 }}>
@@ -87,7 +87,7 @@ export default function AlterarSenha() {
             </div>
 
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
+              <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
                 CONFIRMAR SENHA
               </label>
               <input
@@ -128,7 +128,7 @@ export default function AlterarSenha() {
               </div>
             )}
 
-            <button
+            <button data-arato-button="primary"
               type="submit"
               disabled={salvando || !senhasOk}
               style={{

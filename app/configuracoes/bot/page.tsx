@@ -210,16 +210,16 @@ export default function BotDiagPage() {
   const btn = (bg: string): React.CSSProperties => ({ padding: "9px 20px", background: bg, color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, maxWidth: 860, margin: "0 auto", padding: "24px 24px 40px", width: "100%" }}>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Bot IA — WhatsApp</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Bot IA — WhatsApp</h1>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>Diagnóstico e controle do assistente via WhatsApp</p>
           </div>
-          <button onClick={carregar} disabled={carregando} style={{ ...btn("#111111"), opacity: carregando ? 0.6 : 1 }}>
+          <button data-arato-button="secondary" onClick={carregar} disabled={carregando} style={{ ...btn("#111111"), opacity: carregando ? 0.6 : 1 }}>
             {carregando ? "Verificando…" : "↻ Atualizar status"}
           </button>
         </div>
@@ -259,10 +259,10 @@ export default function BotDiagPage() {
           )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button onClick={gerarQr} disabled={qrLoading} style={{ ...btn("#25D366"), opacity: qrLoading ? 0.6 : 1 }}>
+            <button data-arato-button="secondary" onClick={gerarQr} disabled={qrLoading} style={{ ...btn("#25D366"), opacity: qrLoading ? 0.6 : 1 }}>
               {qrLoading ? "Gerando…" : "Gerar QR Code"}
             </button>
-            <button onClick={testarBot} disabled={testLoading} style={{ ...btn("#111111"), opacity: testLoading ? 0.6 : 1 }}>
+            <button data-arato-button="secondary" onClick={testarBot} disabled={testLoading} style={{ ...btn("#111111"), opacity: testLoading ? 0.6 : 1 }}>
               {testLoading ? "Testando…" : "Verificar endpoint webhook"}
             </button>
           </div>
@@ -290,7 +290,7 @@ export default function BotDiagPage() {
                 3. Toque em <em>Conectar um aparelho</em><br />
                 4. Escaneie o QR code ao lado<br /><br />
                 <span style={{ color: "#D97706" }}>⚠️ O QR expira em ~60 segundos.</span><br />
-                <button onClick={gerarQr} disabled={qrLoading} style={{ marginTop: 8, padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 11, cursor: "pointer", color: "#111111" }}>
+                <button data-arato-button="secondary" onClick={gerarQr} disabled={qrLoading} style={{ marginTop: 8, padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 11, cursor: "pointer", color: "#111111" }}>
                   Renovar QR
                 </button>
               </div>
@@ -324,7 +324,7 @@ export default function BotDiagPage() {
           )}
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button onClick={fixarWebhook} disabled={fixLoading} style={{ ...btn(wh?.status === "ok" ? "#16A34A" : "#DC2626"), opacity: fixLoading ? 0.6 : 1 }}>
+            <button data-arato-button="secondary" onClick={fixarWebhook} disabled={fixLoading} style={{ ...btn(wh?.status === "ok" ? "#16A34A" : "#DC2626"), opacity: fixLoading ? 0.6 : 1 }}>
               {fixLoading ? "Corrigindo…" : wh?.status === "ok" ? "✅ Webhook OK — Reconfigurar" : "⚠️ Corrigir Webhook agora"}
             </button>
           </div>
@@ -382,7 +382,7 @@ export default function BotDiagPage() {
         <div style={cardStyle}>
           <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", marginBottom: 14 }}>🔑 Variáveis de Ambiente</div>
           {diag ? (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F4F6FA" }}>
                   <th style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>Variável</th>
@@ -432,7 +432,7 @@ export default function BotDiagPage() {
               Nenhum usuário tem WhatsApp cadastrado. Adicione o número em Cadastros → Usuários → campo WhatsApp.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F4F6FA" }}>
                   {["Nome", "WhatsApp", "Status"].map(h => (
@@ -458,14 +458,14 @@ export default function BotDiagPage() {
         </div>
 
         {/* ── 5b. Teste de fluxo completo ── */}
-        <div style={cardStyle}>
+        <div data-arato-panel="true" style={cardStyle}>
           <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", marginBottom: 6 }}>🧪 Testar Fluxo Completo</div>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--text-3)" }}>
             Simula uma mensagem chegando e testa cada etapa: busca do usuário → Claude → Evolution API (enviará uma mensagem de teste real no WhatsApp).
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 10, alignItems: "flex-end" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 10, alignItems: "flex-end" }}>
             <div>
-              <label style={{ ...lbl }}>Número (DDI+DDD+número)</label>
+              <label data-arato-label="true" style={{ ...lbl }}>Número (DDI+DDD+número)</label>
               <input
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
                 placeholder="5565999990000"
@@ -474,14 +474,14 @@ export default function BotDiagPage() {
               />
             </div>
             <div>
-              <label style={{ ...lbl }}>Mensagem de teste</label>
+              <label data-arato-label="true" style={{ ...lbl }}>Mensagem de teste</label>
               <input
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
                 value={testeMens}
                 onChange={e => setTesteMens(e.target.value)}
               />
             </div>
-            <button
+            <button data-arato-button="secondary"
               onClick={testarFluxo}
               disabled={testeLoading || !testeNum.trim()}
               style={{ ...btn("#111111"), opacity: testeLoading || !testeNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
@@ -515,14 +515,14 @@ export default function BotDiagPage() {
         </div>
 
         {/* ── 5c. Simulação direta — bypass Evolution ── */}
-        <div style={cardStyle}>
+        <div data-arato-panel="true" style={cardStyle}>
           <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", marginBottom: 4 }}>🔬 Simulação Direta (sem Evolution API)</div>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
             Envia um payload falso <em>diretamente</em> ao webhook, como se fosse a Evolution API. Se funcionar aqui mas o bot não responder no WhatsApp, o problema é definitivamente nos <strong>eventos da Evolution API</strong> (MESSAGES_UPSERT desmarcado). Se não funcionar aqui, há um bug no código do webhook.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 10, alignItems: "flex-end" }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 10, alignItems: "flex-end" }}>
             <div>
-              <label style={{ ...lbl }}>Número (DDI+DDD+número)</label>
+              <label data-arato-label="true" style={{ ...lbl }}>Número (DDI+DDD+número)</label>
               <input
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
                 placeholder="5565999990000"
@@ -531,14 +531,14 @@ export default function BotDiagPage() {
               />
             </div>
             <div>
-              <label style={{ ...lbl }}>Mensagem simulada</label>
+              <label data-arato-label="true" style={{ ...lbl }}>Mensagem simulada</label>
               <input
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
                 value={simMens}
                 onChange={e => setSimMens(e.target.value)}
               />
             </div>
-            <button
+            <button data-arato-button="secondary"
               onClick={simularEvento}
               disabled={simLoading || !simNum.trim()}
               style={{ ...btn("#C9921B"), opacity: simLoading || !simNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}

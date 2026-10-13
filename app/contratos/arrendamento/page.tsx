@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useMemo } from "react";
@@ -104,10 +105,10 @@ function Modal({ titulo, subtitulo, onClose, width = 760, children }: {
   titulo: string; subtitulo?: string; onClose: () => void; width?: number; children: React.ReactNode;
 }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
+        <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
         {subtitulo && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
@@ -925,17 +926,17 @@ export default function Arrendamentos() {
 
   if (!podeAcessarPlano("arrendamento")) return <PlanoGate modulo="arrendamento" />;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ padding: "28px 32px" }}>
 
         {/* cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos de Arrendamento</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos de Arrendamento</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Gestão de contratos, parcelas automáticas por safra e calendário de vencimentos</p>
           </div>
-          <button style={btnV} onClick={() => { setEditContrato(null); setFC(initFC()); setModalContrato(true); }}>
+          <button data-arato-button="primary" style={btnV} onClick={() => { setEditContrato(null); setFC(initFC()); setModalContrato(true); }}>
             + Novo Contrato
           </button>
         </div>
@@ -948,7 +949,7 @@ export default function Arrendamentos() {
             { label: "Parcelas Pendentes",   valor: pagPend,                 bg: "#FBF3E0", color: "#7A5A12" },
             { label: "Vencidas (atrasadas)", valor: pagAtras, bg: pagAtras > 0 ? "#FCEBEB" : "var(--bg-page)", color: pagAtras > 0 ? "#791F1F" : "var(--text-3)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: k.color }}>{k.valor}</div>
             </div>
@@ -958,7 +959,7 @@ export default function Arrendamentos() {
         {/* abas */}
         <div style={{ display: "flex", marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {ABAS.map(a => (
-            <button key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
               color: aba === a.key ? "#111111" : "#666",
@@ -990,7 +991,7 @@ export default function Arrendamentos() {
           return (
           <div>
             {arrendamentos.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
+              <div data-arato-statistic="display" style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 34, marginBottom: 12 }}>◻</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhum contrato cadastrado</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)" }}>Cadastre os contratos em Cadastros → Fazendas → aba Arrendamentos</div>
@@ -1028,7 +1029,7 @@ export default function Arrendamentos() {
                   return (
                     <div key={arr.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       {/* cabeçalho do contrato */}
-                      <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+                      <div data-arato-statistic="action" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
                         onClick={() => toggleArr(arr.id)}>
                         <div style={{ fontSize: 18, color: expanded ? "#111111" : "var(--text-3)" }}>{expanded ? "▼" : "▶"}</div>
                         <div style={{ flex: 1 }}>
@@ -1061,15 +1062,15 @@ export default function Arrendamentos() {
                             {arr.renovacao_auto && <Badge label="Renovação automática" bg="#ECFDF5" color="#14532D" />}
                           </div>
                         </div>
-                        <button style={{ ...btnV, fontSize: 12, padding: "6px 14px" }}
+                        <button data-arato-button="primary" style={{ ...btnV, fontSize: 12, padding: "6px 14px" }}
                           onClick={e => { e.stopPropagation(); setSelArr(arr); setFP({ ...initFP(), commodity: arr.forma_pagamento === "sc_milho" ? "Milho" : "Soja" }); setEditPag(null); setModalPag(true); }}>
                           + Parcela Manual
                         </button>
-                        <button style={{ ...btnR, fontSize: 12, padding: "6px 14px" }}
+                        <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12, padding: "6px 14px" }}
                           onClick={e => { e.stopPropagation(); abrirGerador(arr); }}>
                           Gerar por Safra
                         </button>
-                        <button style={{ ...btnE, fontSize: 12, padding: "6px 12px" }}
+                        <button data-arato-button="secondary" style={{ ...btnE, fontSize: 12, padding: "6px 12px" }}
                           onClick={e => {
                             e.stopPropagation();
                             setEditContrato(arr);
@@ -1098,7 +1099,7 @@ export default function Arrendamentos() {
                           }}>
                           Editar
                         </button>
-                        <button style={{ ...btnX, fontSize: 12, padding: "6px 12px" }}
+                        <button data-arato-button="danger" style={{ ...btnX, fontSize: 12, padding: "6px 12px" }}
                           onClick={async e => {
                             e.stopPropagation();
                             const qtdPags = (pagsByArr[arr.id] ?? []).length;
@@ -1121,7 +1122,7 @@ export default function Arrendamentos() {
                             </div>
                           ) : ehMisto ? (
                             /* TABELA ESPECIAL sc_soja_milho — 1 linha por safra com 2 grupos de colunas */
-                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-card)" }}>
                                   <th rowSpan={2} style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", verticalAlign: "bottom" }}>Ano Safra</th>
@@ -1168,24 +1169,24 @@ export default function Arrendamentos() {
                                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
                                           <div style={{ display: "flex", gap: 3, justifyContent: "flex-end" }}>
                                             {sojaP?.status === "pendente" && (
-                                              <button style={{ ...btnE, background: "#F0FDF7", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 10 }}
+                                              <button data-arato-button="secondary" style={{ ...btnE, background: "#F0FDF7", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 10 }}
                                                 onClick={() => baixarPagamento(sojaP)}>✓ Soja</button>
                                             )}
                                             {milhoP?.status === "pendente" && (
-                                              <button style={{ ...btnE, background: "#EBF3FC", color: "#0C447C", border: "0.5px solid #11111140", fontSize: 10 }}
+                                              <button data-arato-button="secondary" style={{ ...btnE, background: "#EBF3FC", color: "#0C447C", border: "0.5px solid #11111140", fontSize: 10 }}
                                                 onClick={() => baixarPagamento(milhoP)}>✓ Milho</button>
                                             )}
-                                            {sojaP && <button style={{ ...btnE, fontSize: 10 }} onClick={() => {
+                                            {sojaP && <button data-arato-button="secondary" style={{ ...btnE, fontSize: 10 }} onClick={() => {
                                               setSelArr(arr); setEditPag(sojaP);
                                               setFP({ ano_safra_id: sojaP.ano_safra_id ?? "", data_vencimento: sojaP.data_vencimento, data_pagamento: sojaP.data_pagamento ?? "", sacas_previstas: sojaP.sacas_previstas != null ? String(sojaP.sacas_previstas) : "", sacas_pagas: sojaP.sacas_pagas != null ? String(sojaP.sacas_pagas) : "", commodity: "Soja", preco_sc_referencia: sojaP.preco_sc_referencia != null ? String(sojaP.preco_sc_referencia) : "", valor_previsto: "", valor_pago: "", status: sojaP.status, observacao: sojaP.observacao ?? "" });
                                               setModalPag(true);
                                             }}>Ed S</button>}
-                                            {milhoP && <button style={{ ...btnE, fontSize: 10 }} onClick={() => {
+                                            {milhoP && <button data-arato-button="secondary" style={{ ...btnE, fontSize: 10 }} onClick={() => {
                                               setSelArr(arr); setEditPag(milhoP);
                                               setFP({ ano_safra_id: milhoP.ano_safra_id ?? "", data_vencimento: milhoP.data_vencimento, data_pagamento: milhoP.data_pagamento ?? "", sacas_previstas: milhoP.sacas_previstas != null ? String(milhoP.sacas_previstas) : "", sacas_pagas: milhoP.sacas_pagas != null ? String(milhoP.sacas_pagas) : "", commodity: "Milho", preco_sc_referencia: milhoP.preco_sc_referencia != null ? String(milhoP.preco_sc_referencia) : "", valor_previsto: "", valor_pago: "", status: milhoP.status, observacao: milhoP.observacao ?? "" });
                                               setModalPag(true);
                                             }}>Ed M</button>}
-                                            {rep && <button style={{ ...btnX, fontSize: 10 }} onClick={async () => {
+                                            {rep && <button data-arato-button="danger" style={{ ...btnX, fontSize: 10 }} onClick={async () => {
                                               if (!confirm("Excluir parcela(s) desta safra?")) return;
                                               const ids = [sojaP?.id, milhoP?.id].filter(Boolean) as string[];
                                               await excluirParcelasComVerificacao(ids);
@@ -1200,7 +1201,7 @@ export default function Arrendamentos() {
                             </table>
                           ) : (
                             /* TABELA PADRÃO (sc_soja, sc_milho, brl) */
-                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-card)" }}>
                                   {["Ano Safra", "Vencimento", ehSc ? "Sacas Prev." : "Valor Prev.", ehSc ? "Sacas Entregues" : "Valor Pago", ehSc ? "Equiv. R$" : "Diff.", "Pgto", "Status", ""].map((h, i) => (
@@ -1236,10 +1237,10 @@ export default function Arrendamentos() {
                                       <td style={{ padding: "8px 12px", textAlign: "right" }}>
                                         <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                                           {p.status === "pendente" && (
-                                            <button style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 10 }}
+                                            <button data-arato-button="secondary" style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 10 }}
                                               onClick={() => baixarPagamento(p)}>✓ Baixar</button>
                                           )}
-                                          <button style={{ ...btnE, fontSize: 10 }} onClick={() => {
+                                          <button data-arato-button="secondary" style={{ ...btnE, fontSize: 10 }} onClick={() => {
                                             setSelArr(arr);
                                             setEditPag(p);
                                             setFP({
@@ -1255,7 +1256,7 @@ export default function Arrendamentos() {
                                             });
                                             setModalPag(true);
                                           }}>Ed</button>
-                                          <button style={{ ...btnX, fontSize: 10 }} onClick={async () => {
+                                          <button data-arato-button="danger" style={{ ...btnX, fontSize: 10 }} onClick={async () => {
                                             if (!confirm("Excluir parcela?")) return;
                                             await excluirParcelasComVerificacao([p.id]);
                                           }}>✕</button>
@@ -1285,21 +1286,21 @@ export default function Arrendamentos() {
         {/* ═══════════ ABA PAGAMENTOS ═══════════ */}
         {!loading && aba === "pagamentos" && (
           <div>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-              <select style={{ ...inp, width: 200 }} value={filtroAno} onChange={e => setFiltroAno(e.target.value)}>
+            <div data-arato-filters="true" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+              <SelectField style={{ ...inp, width: 200 }} value={filtroAno} onChange={e => setFiltroAno(e.target.value)}>
                 <option value="">Todos os anos safra</option>
                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-              </select>
-              <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as typeof filtroStatus)}>
+              </SelectField>
+              <SelectField style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as typeof filtroStatus)}>
                 <option value="todos">Todos os status</option>
                 <option value="pendente">Pendente</option>
                 <option value="pago">Pago</option>
                 <option value="parcial">Parcial</option>
                 <option value="cancelado">Cancelado</option>
-              </select>
+              </SelectField>
             </div>
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Proprietário / Contrato", "Commodity", "Ano Safra", "Vencimento", "Previsto", "Pago", "Pgto", "Status", ""].map((h, i) => (
@@ -1332,7 +1333,7 @@ export default function Arrendamentos() {
                         <td style={{ padding: "10px 14px", textAlign: "right" }}><Badge label={st.label} bg={st.bg} color={st.color} /></td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           {p.status === "pendente" && arr && (
-                            <button style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }}
+                            <button data-arato-button="secondary" style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }}
                               onClick={() => baixarPagamento(p)}>✓ Baixar</button>
                           )}
                         </td>
@@ -1366,7 +1367,7 @@ export default function Arrendamentos() {
                   const commLabel = p.commodity ?? (arr?.forma_pagamento === "brl" ? "R$" : "");
 
                   return (
-                    <div key={p.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${urgente ? "#E24B4A50" : "var(--border)"}`, display: "flex", alignItems: "center", gap: 16 }}>
+                    <div data-arato-statistic="action" key={p.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${urgente ? "#E24B4A50" : "var(--border)"}`, display: "flex", alignItems: "center", gap: 16 }}>
                       <div style={{ width: 52, textAlign: "center", flexShrink: 0 }}>
                         <div style={{ fontSize: 22, fontWeight: 700, color: urgente ? "#E24B4A" : "#111111" }}>{dt.getDate()}</div>
                         <div style={{ fontSize: 11, color: "var(--text-3)" }}>{dt.toLocaleString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()} {dt.getFullYear()}</div>
@@ -1386,7 +1387,7 @@ export default function Arrendamentos() {
                         <div style={{ fontSize: 13, fontWeight: 600, color: urgente ? "#E24B4A" : "var(--text-2)" }}>
                           {dias === 0 ? "Hoje" : `em ${dias} dias`}
                         </div>
-                        <button style={{ ...btnE, marginTop: 6, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 11 }}
+                        <button data-arato-button="secondary" style={{ ...btnE, marginTop: 6, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 11 }}
                           onClick={() => baixarPagamento(p)}>✓ Baixar</button>
                       </div>
                     </div>
@@ -1405,22 +1406,22 @@ export default function Arrendamentos() {
           onClose={() => { setModalContrato(false); setEditContrato(null); setFC(initFC()); }}
           width={820}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
 
             {/* Proprietário */}
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>Proprietário *</label>
-              <select style={inp} value={fC.proprietario_id}
+              <label data-arato-label="true" style={lbl}>Proprietário *</label>
+              <SelectField style={inp} value={fC.proprietario_id}
                 onChange={e => {
                   const p = pessoas.find(x => x.id === e.target.value);
                   setFC(f => ({ ...f, proprietario_id: e.target.value, proprietario_nome: p?.nome ?? f.proprietario_nome }));
                 }}>
                 <option value="">Selecionar de Pessoas cadastradas…</option>
                 {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Nome (se não cadastrado)</label>
+              <label data-arato-label="true" style={lbl}>Nome (se não cadastrado)</label>
               <input style={inp} value={fC.proprietario_nome}
                 onChange={e => setFC(f => ({ ...f, proprietario_nome: e.target.value }))}
                 placeholder="Nome livre" />
@@ -1428,18 +1429,18 @@ export default function Arrendamentos() {
 
             {/* Locatário — parte que assina o contrato como arrendatário */}
             <div style={{ gridColumn: "1 / 3" }}>
-              <label style={lbl}>Locatário / Parte no Contrato</label>
-              <select style={inp} value={fC.locatario_id}
+              <label data-arato-label="true" style={lbl}>Locatário / Parte no Contrato</label>
+              <SelectField style={inp} value={fC.locatario_id}
                 onChange={e => {
                   const p = pessoas.find(x => x.id === e.target.value);
                   setFC(f => ({ ...f, locatario_id: e.target.value, locatario_nome: p?.nome ?? f.locatario_nome }));
                 }}>
                 <option value="">Selecionar de Pessoas cadastradas…</option>
                 {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Nome livre (se não cadastrado)</label>
+              <label data-arato-label="true" style={lbl}>Nome livre (se não cadastrado)</label>
               <input style={inp} value={fC.locatario_nome}
                 onChange={e => setFC(f => ({ ...f, locatario_nome: e.target.value }))}
                 placeholder="Ex: Rancho Alegre Ltda" />
@@ -1451,27 +1452,27 @@ export default function Arrendamentos() {
 
             {/* Área e forma */}
             <div>
-              <label style={lbl}>Área Arrendada (ha) *</label>
+              <label data-arato-label="true" style={lbl}>Área Arrendada (ha) *</label>
               <InputMonetario style={inp} value={fC.area_ha}
                 onChange={v => setFC(f => ({ ...f, area_ha: String(v) }))}
                 placeholder="Ex: 250,00" />
             </div>
             <div>
-              <label style={lbl}>Forma de Pagamento *</label>
-              <select style={inp} value={fC.forma_pagamento}
+              <label data-arato-label="true" style={lbl}>Forma de Pagamento *</label>
+              <SelectField style={inp} value={fC.forma_pagamento}
                 onChange={e => setFC(f => ({ ...f, forma_pagamento: e.target.value as FormaPage }))}>
                 <option value="sc_soja">Sacas de Soja</option>
                 <option value="sc_milho">Sacas de Milho</option>
                 <option value="sc_soja_milho">Sacas Soja + Milho</option>
                 <option value="brl">R$ (Real)</option>
-              </select>
+              </SelectField>
             </div>
 
             {/* Produto Agrícola — para alocação correta no BI */}
             {(fC.forma_pagamento === "sc_soja" || fC.forma_pagamento === "sc_soja_milho" || fC.forma_pagamento === "brl") && (
               <div>
-                <label style={lbl}>Produto Agrícola (Soja) *</label>
-                <select style={inp} value={fC.produto_agricola_id}
+                <label data-arato-label="true" style={lbl}>Produto Agrícola (Soja) *</label>
+                <SelectField style={inp} value={fC.produto_agricola_id}
                   onChange={e => setFC(f => ({ ...f, produto_agricola_id: e.target.value }))}>
                   <option value="">— Selecione o produto —</option>
                   {insumosPA.filter(i => i.nome.toLowerCase().includes("soja")).map(i => (
@@ -1480,7 +1481,7 @@ export default function Arrendamentos() {
                   {insumosPA.filter(i => !i.nome.toLowerCase().includes("soja") && !i.nome.toLowerCase().includes("milho")).map(i => (
                     <option key={i.id} value={i.id}>{i.nome}</option>
                   ))}
-                </select>
+                </SelectField>
                 {!fC.produto_agricola_id && (
                   <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>
                     ⚠ Obrigatório para alocação correta no BI (ex: Soja Transgênica vs Convencional)
@@ -1490,33 +1491,33 @@ export default function Arrendamentos() {
             )}
             {fC.forma_pagamento === "sc_milho" && (
               <div>
-                <label style={lbl}>Produto Agrícola (Milho) *</label>
-                <select style={inp} value={fC.produto_agricola_id}
+                <label data-arato-label="true" style={lbl}>Produto Agrícola (Milho) *</label>
+                <SelectField style={inp} value={fC.produto_agricola_id}
                   onChange={e => setFC(f => ({ ...f, produto_agricola_id: e.target.value }))}>
                   <option value="">— Selecione o produto —</option>
                   {insumosPA.filter(i => i.nome.toLowerCase().includes("milho")).map(i => (
                     <option key={i.id} value={i.id}>{i.nome}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             )}
             {fC.forma_pagamento === "sc_soja_milho" && (
               <div>
-                <label style={lbl}>Produto Agrícola (Milho)</label>
-                <select style={inp} value={fC.produto_agricola_id_milho}
+                <label data-arato-label="true" style={lbl}>Produto Agrícola (Milho)</label>
+                <SelectField style={inp} value={fC.produto_agricola_id_milho}
                   onChange={e => setFC(f => ({ ...f, produto_agricola_id_milho: e.target.value }))}>
                   <option value="">— Selecione o produto —</option>
                   {insumosPA.filter(i => i.nome.toLowerCase().includes("milho")).map(i => (
                     <option key={i.id} value={i.id}>{i.nome}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             )}
 
             {/* Valor conforme forma */}
             {fC.forma_pagamento === "sc_soja" && (
               <div>
-                <label style={lbl}>sc/ha/ano (Soja)</label>
+                <label data-arato-label="true" style={lbl}>sc/ha/ano (Soja)</label>
                 <InputMonetario style={inp} value={fC.sc_soja_ha}
                   onChange={v => setFC(f => ({ ...f, sc_soja_ha: String(v) }))}
                   placeholder="Ex: 10,00" />
@@ -1524,7 +1525,7 @@ export default function Arrendamentos() {
             )}
             {fC.forma_pagamento === "sc_milho" && (
               <div>
-                <label style={lbl}>sc/ha/ano (Milho)</label>
+                <label data-arato-label="true" style={lbl}>sc/ha/ano (Milho)</label>
                 <InputMonetario style={inp} value={fC.sc_soja_ha}
                   onChange={v => setFC(f => ({ ...f, sc_soja_ha: String(v) }))}
                   placeholder="Ex: 10,00" />
@@ -1533,19 +1534,19 @@ export default function Arrendamentos() {
             {fC.forma_pagamento === "brl" && (
               <>
                 <div>
-                  <label style={lbl}>Soja — sc/ha/ano (referência de cálculo)</label>
+                  <label data-arato-label="true" style={lbl}>Soja — sc/ha/ano (referência de cálculo)</label>
                   <InputNumerico style={inp} decimais={4} value={fC.sc_soja_ha}
                     onChange={v => setFC(f => ({ ...f, sc_soja_ha: v }))}
                     placeholder="Ex: 18,0000" />
                 </div>
                 <div>
-                  <label style={lbl}>Milho — sc/ha/ano (referência de cálculo)</label>
+                  <label data-arato-label="true" style={lbl}>Milho — sc/ha/ano (referência de cálculo)</label>
                   <InputMonetario style={inp} value={fC.sc_milho_ha}
                     onChange={v => setFC(f => ({ ...f, sc_milho_ha: String(v) }))}
                     placeholder="Ex: 4,00" />
                 </div>
                 <div>
-                  <label style={lbl}>Valor R$/ano base (opcional — calculado nas parcelas)</label>
+                  <label data-arato-label="true" style={lbl}>Valor R$/ano base (opcional — calculado nas parcelas)</label>
                   <InputMonetario style={inp} value={fC.valor_brl}
                     onChange={v => setFC(f => ({ ...f, valor_brl: String(v) }))}
                     placeholder="Calculado automaticamente via cotação nas parcelas" />
@@ -1557,13 +1558,13 @@ export default function Arrendamentos() {
             {fC.forma_pagamento === "sc_soja_milho" && (
               <>
                 <div>
-                  <label style={lbl}>Soja — sc/ha/ano</label>
+                  <label data-arato-label="true" style={lbl}>Soja — sc/ha/ano</label>
                   <InputMonetario style={inp} value={fC.sc_soja_ha}
                     onChange={v => setFC(f => ({ ...f, sc_soja_ha: String(v) }))}
                     placeholder="Ex: 11,00" />
                 </div>
                 <div>
-                  <label style={lbl}>Milho — sc/ha/ano</label>
+                  <label data-arato-label="true" style={lbl}>Milho — sc/ha/ano</label>
                   <InputMonetario style={inp} value={fC.sc_milho_ha}
                     onChange={v => setFC(f => ({ ...f, sc_milho_ha: String(v) }))}
                     placeholder="Ex: 20,00" />
@@ -1595,24 +1596,24 @@ export default function Arrendamentos() {
 
             {/* Vigência */}
             <div>
-              <label style={lbl}>Início do Contrato</label>
+              <label data-arato-label="true" style={lbl}>Início do Contrato</label>
               <InputData style={inp} type="date" value={fC.inicio}
                 onChange={e => setFC(f => ({ ...f, inicio: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Vencimento do Contrato</label>
+              <label data-arato-label="true" style={lbl}>Vencimento do Contrato</label>
               <InputData style={inp} type="date" value={fC.vencimento}
                 onChange={e => setFC(f => ({ ...f, vencimento: e.target.value }))} />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 20 }}>
               <input type="checkbox" id="renovAuto" checked={fC.renovacao_auto}
                 onChange={e => setFC(f => ({ ...f, renovacao_auto: e.target.checked }))} />
-              <label htmlFor="renovAuto" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Renovação automática</label>
+              <label data-arato-label="true" htmlFor="renovAuto" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Renovação automática</label>
             </div>
 
             {/* IE Explorador(es) — quem declara no LCDPR */}
             <div>
-              <label style={lbl}>
+              <label data-arato-label="true" style={lbl}>
                 IE Explorador / Responsável LCDPR
                 <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>(1º)</span>
               </label>
@@ -1624,12 +1625,12 @@ export default function Arrendamentos() {
               />
               {fC.produtor_id && (
                 <div style={{ marginTop: 6 }}>
-                  <label style={{ ...lbl, color: "#C9921B" }}>
+                  <label data-arato-label="true" style={{ ...lbl, color: "#C9921B" }}>
                     Inscrição Estadual (IE)
                     {iesProdutor.length > 1 && <span style={{ fontWeight: 400, color: "#888" }}> — {iesProdutor.length} registradas</span>}
                   </label>
                   {iesProdutor.length > 1 ? (
-                    <select
+                    <SelectField
                       style={{ ...inp, borderColor: !fC.ie_id ? "#E24B4A" : undefined }}
                       value={fC.ie_id ?? ""}
                       onChange={e => setFC(f => ({ ...f, ie_id: e.target.value || "" }))}
@@ -1641,7 +1642,7 @@ export default function Arrendamentos() {
                           {ie.ativa ? "" : " (inativa)"}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   ) : iesProdutor.length === 1 ? (
                     <input
                       style={{ ...inp, background: "var(--bg-page)", color: "#555", cursor: "default" }}
@@ -1659,7 +1660,7 @@ export default function Arrendamentos() {
               )}
             </div>
             <div>
-              <label style={lbl}>
+              <label data-arato-label="true" style={lbl}>
                 IE Explorador
                 <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>(2º — contrato conjunto)</span>
               </label>
@@ -1689,7 +1690,7 @@ export default function Arrendamentos() {
 
             {/* Observação */}
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Observação</label>
+              <label data-arato-label="true" style={lbl}>Observação</label>
               <textarea style={{ ...inp, height: 60, resize: "vertical" }} value={fC.observacao}
                 onChange={e => setFC(f => ({ ...f, observacao: e.target.value }))}
                 placeholder="Condições especiais, cláusulas relevantes…" />
@@ -1697,8 +1698,8 @@ export default function Arrendamentos() {
           </div>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => { setModalContrato(false); setEditContrato(null); setFC(initFC()); }}>Cancelar</button>
-            <button
+            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalContrato(false); setEditContrato(null); setFC(initFC()); }}>Cancelar</button>
+            <button data-arato-button="primary"
               style={{ ...btnV, opacity: salvando || !fC.area_ha || (!fC.proprietario_id && !fC.proprietario_nome) ? 0.5 : 1 }}
               disabled={salvando || !fC.area_ha || (!fC.proprietario_id && !fC.proprietario_nome)}
               onClick={salvarContrato}>
@@ -1718,63 +1719,63 @@ export default function Arrendamentos() {
             const total = ehSc && fP.sacas_previstas && fP.preco_sc_referencia
               ? parseFloat(fP.sacas_previstas) * parseFloat(fP.preco_sc_referencia) : null;
             return (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Ano Safra *</label>
-                  <select style={{ ...inp, borderColor: fP.ano_safra_id ? undefined : "#E24B4A" }} value={fP.ano_safra_id} onChange={e => setFP(p => ({ ...p, ano_safra_id: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+                  <SelectField style={{ ...inp, borderColor: fP.ano_safra_id ? undefined : "#E24B4A" }} value={fP.ano_safra_id} onChange={e => setFP(p => ({ ...p, ano_safra_id: e.target.value }))}>
                     <option value="">— Selecionar —</option>
                     {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Data de Vencimento *</label>
+                  <label data-arato-label="true" style={lbl}>Data de Vencimento *</label>
                   <InputData style={inp} type="date" value={fP.data_vencimento} onChange={e => setFP(p => ({ ...p, data_vencimento: e.target.value }))} />
                 </div>
                 <div>
-                  <label style={lbl}>Data de Pagamento</label>
+                  <label data-arato-label="true" style={lbl}>Data de Pagamento</label>
                   <InputData style={inp} type="date" value={fP.data_pagamento} onChange={e => setFP(p => ({ ...p, data_pagamento: e.target.value }))} />
                 </div>
                 {ehSc && <>
                   <div>
-                    <label style={lbl}>Commodity</label>
-                    <select style={inp} value={fP.commodity} onChange={e => setFP(p => ({ ...p, commodity: e.target.value }))}>
+                    <label data-arato-label="true" style={lbl}>Commodity</label>
+                    <SelectField style={inp} value={fP.commodity} onChange={e => setFP(p => ({ ...p, commodity: e.target.value }))}>
                       <option value="Soja">Soja</option>
                       <option value="Milho">Milho</option>
-                    </select>
+                    </SelectField>
                   </div>
                   <div>
-                    <label style={lbl}>Sacas Previstas</label>
+                    <label data-arato-label="true" style={lbl}>Sacas Previstas</label>
                     <InputNumerico style={inp} decimais={3} value={fP.sacas_previstas} onChange={v => setFP(p => ({ ...p, sacas_previstas: v }))}
                       placeholder={selArr.sc_ha ? `${fmtN(selArr.area_ha * selArr.sc_ha)} sc` : "0"} />
                   </div>
                   <div>
-                    <label style={lbl}>Preço R$/sc (referência)</label>
+                    <label data-arato-label="true" style={lbl}>Preço R$/sc (referência)</label>
                     <InputMonetario style={inp} value={fP.preco_sc_referencia} onChange={v => setFP(p => ({ ...p, preco_sc_referencia: String(v) }))} placeholder="Ex: 130,00" />
                   </div>
                   <div>
-                    <label style={lbl}>Sacas Efetivamente Entregues</label>
+                    <label data-arato-label="true" style={lbl}>Sacas Efetivamente Entregues</label>
                     <InputNumerico style={inp} decimais={3} value={fP.sacas_pagas} onChange={v => setFP(p => ({ ...p, sacas_pagas: v }))} />
                   </div>
                 </>}
                 {!ehSc && <>
                   <div>
-                    <label style={lbl}>Valor Previsto (R$)</label>
+                    <label data-arato-label="true" style={lbl}>Valor Previsto (R$)</label>
                     <InputMonetario style={inp} value={fP.valor_previsto} onChange={v => setFP(p => ({ ...p, valor_previsto: String(v) }))}
                       placeholder={selArr.valor_brl ? String(selArr.valor_brl) : "0,00"} />
                   </div>
                   <div>
-                    <label style={lbl}>Valor Pago (R$)</label>
+                    <label data-arato-label="true" style={lbl}>Valor Pago (R$)</label>
                     <InputMonetario style={inp} value={fP.valor_pago} onChange={v => setFP(p => ({ ...p, valor_pago: String(v) }))} />
                   </div>
                 </>}
                 <div>
-                  <label style={lbl}>Status</label>
-                  <select style={inp} value={fP.status} onChange={e => setFP(p => ({ ...p, status: e.target.value as StatusPag }))}>
+                  <label data-arato-label="true" style={lbl}>Status</label>
+                  <SelectField style={inp} value={fP.status} onChange={e => setFP(p => ({ ...p, status: e.target.value as StatusPag }))}>
                     <option value="pendente">Pendente</option>
                     <option value="pago">Pago</option>
                     <option value="parcial">Parcial</option>
                     <option value="cancelado">Cancelado</option>
-                  </select>
+                  </SelectField>
                 </div>
                 {total != null && (
                   <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
@@ -1784,15 +1785,15 @@ export default function Arrendamentos() {
                   </div>
                 )}
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Observação</label>
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <input style={inp} value={fP.observacao} onChange={e => setFP(p => ({ ...p, observacao: e.target.value }))} />
                 </div>
               </div>
             );
           })()}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => { setModalPag(false); setEditPag(null); setFP(initFP()); }}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fP.data_vencimento ? 0.5 : 1 }} disabled={salvando || !fP.data_vencimento} onClick={salvarPagamento}>
+            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalPag(false); setEditPag(null); setFP(initFP()); }}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fP.data_vencimento ? 0.5 : 1 }} disabled={salvando || !fP.data_vencimento} onClick={salvarPagamento}>
               {salvando ? "Salvando…" : editPag ? "Salvar" : "Registrar"}
             </button>
           </div>
@@ -1821,7 +1822,7 @@ export default function Arrendamentos() {
               Nenhum ano-safra cadastrado no período do contrato. Cadastre anos safra em Cadastros.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", width: 30 }}>
@@ -1917,8 +1918,8 @@ export default function Arrendamentos() {
           )}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button style={btnR} onClick={() => setModalGerador(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || configSafras.every(c => !c.incluir) ? 0.5 : 1 }}
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalGerador(false)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || configSafras.every(c => !c.incluir) ? 0.5 : 1 }}
               disabled={salvando || configSafras.every(c => !c.incluir)} onClick={gerarParcelas}>
               {salvando ? "Gerando…" : `Gerar ${configSafras.filter(c => c.incluir).length} Safra${configSafras.filter(c => c.incluir).length !== 1 ? "s" : ""}`}
             </button>

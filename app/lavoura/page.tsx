@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -84,10 +85,10 @@ const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid va
 
 function Modal({ titulo, subtitulo, onClose, width = 520, children }: { titulo: string; subtitulo?: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
+        <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
         {subtitulo && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
@@ -277,14 +278,14 @@ export default function PlanoAgricola() {
   // RENDER
   // ────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* ── Header ── */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Planejamento Agrícola</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Planejamento Agrícola</h1>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>
               Operações por ciclo · Ciclos cadastrados em <strong>Cadastros → Safras &amp; Ciclos</strong>
             </p>
@@ -294,7 +295,7 @@ export default function PlanoAgricola() {
         {/* ── Abas ── */}
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 4 }}>
           {([["ciclos", "Ciclos"] , ["analise", "Análise"]] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setAba(k)} style={{
+            <button data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{
               padding: "10px 16px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)",
               borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent",
@@ -318,7 +319,7 @@ export default function PlanoAgricola() {
                       { label: "Ops pendentes",        valor: String(opsPendentes.length),                    unidade: "",      cor: opsAtrasadas.length > 0 ? "#E24B4A" : "#EF9F27" },
                       { label: "Produtividade média",  valor: prodMedia > 0 ? prodMedia.toFixed(1) : "—",     unidade: prodMedia > 0 ? "sc/ha" : "", cor: prodMedia >= 65 ? "#111111" : "#EF9F27" },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                      <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                         <div style={{ fontSize: 22, fontWeight: 600, color: s.cor }}>
                           {s.valor}{s.unidade && <span style={{ fontSize: 12, color: "var(--text-2)", marginLeft: 4 }}>{s.unidade}</span>}
@@ -341,7 +342,7 @@ export default function PlanoAgricola() {
                       { key: "planejada",    label: "Planejados",   count: ciclos.filter(s => s.status === "planejada").length },
                       { key: "colhida",      label: "Colhidos",     count: colhidos.length },
                     ] as { key: Filtro; label: string; count: number }[]).map(f => (
-                      <button key={f.key} onClick={() => setFiltro(f.key)} style={{
+                      <button data-arato-button="toggle" key={f.key} onClick={() => setFiltro(f.key)} style={{
                         padding: "5px 14px", borderRadius: 20, border: "0.5px solid",
                         borderColor: filtro === f.key ? "#111111" : "var(--border-table)",
                         background: filtro === f.key ? "#E8E8E8" : "var(--bg-card)",
@@ -394,7 +395,7 @@ export default function PlanoAgricola() {
                                 <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
                                   onClick={() => setExpandidos(prev => { const s = new Set(prev); s.has(ciclo.id) ? s.delete(ciclo.id) : s.add(ciclo.id); return s; })}>
 
-                                  <div style={{ width: 44, height: 44, background: cul.bg, borderRadius: 10, border: `1.5px solid ${cul.borda}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <div data-arato-statistic="display" style={{ width: 44, height: 44, background: cul.bg, borderRadius: 10, border: `1.5px solid ${cul.borda}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     <span style={{ fontSize: 18, color: cul.color }}>❧</span>
                                   </div>
 
@@ -451,11 +452,11 @@ export default function PlanoAgricola() {
                                   <div style={{ borderTop: "0.5px solid var(--border-row)" }}>
                                     {/* Barra de ações */}
                                     <div style={{ padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                      <button style={{ ...btnE, fontSize: 12 }} onClick={() => { setModalAddOp(ciclo.id); setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: 0 }); }}>
+                                      <button data-arato-button="secondary" style={{ ...btnE, fontSize: 12 }} onClick={() => { setModalAddOp(ciclo.id); setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: 0 }); }}>
                                         + Lançar Operação
                                       </button>
                                       {(ciclo.status === "em_andamento" || ciclo.status === "planejada") && (
-                                        <button style={{ ...btnE, fontSize: 12, borderColor: "#11111180", color: "#0D0D0D", background: "#E4F0F9" }}
+                                        <button data-arato-button="secondary" style={{ ...btnE, fontSize: 12, borderColor: "#11111180", color: "#0D0D0D", background: "#E4F0F9" }}
                                           onClick={() => { setModalColheita(ciclo); setFColh({ produtividade_sc_ha: "", data_colheita: hoje() }); }}>
                                           ▣ Registrar Colheita
                                         </button>
@@ -467,7 +468,7 @@ export default function PlanoAgricola() {
                                         Nenhuma operação registrada. Use "+ Lançar Operação" para adicionar.
                                       </div>
                                     ) : (
-                                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                                         <thead>
                                           <tr style={{ background: "var(--bg-page)" }}>
                                             {["Tipo", "Operação / Descrição", "Data prevista", "Data realizada", "Custo/ha", "Status", ""].map((h, i) => (
@@ -501,7 +502,7 @@ export default function PlanoAgricola() {
                                                 </td>
                                                 <td style={{ padding: "8px 14px", textAlign: "center" }}>
                                                   {op.status === "pendente" && (
-                                                    <button onClick={() => { setModalConcluir({ cicloId: ciclo.id, op }); setFConc({ data_real: hoje(), custo_ha: op.custo_ha ?? 0 }); }}
+                                                    <button data-arato-button="secondary" onClick={() => { setModalConcluir({ cicloId: ciclo.id, op }); setFConc({ data_real: hoje(), custo_ha: op.custo_ha ?? 0 }); }}
                                                       style={{ ...btnE, background: "#E8E8E8", borderColor: "#11111160", color: "#0D0D0D", fontSize: 11 }}>Concluir</button>
                                                   )}
                                                 </td>
@@ -544,7 +545,7 @@ export default function PlanoAgricola() {
                       { label: "Ciclos colhidos",      valor: String(colhidos.length),                                                                                                                                            cor: "#111111" },
                       { label: "Maior produtividade",  valor: colhidos.filter(s => s.produtividade_sc_ha).length > 0 ? Math.max(...colhidos.filter(s => s.produtividade_sc_ha).map(s => s.produtividade_sc_ha!)).toFixed(1) : "—", unidade: "sc/ha", cor: "#111111" },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                      <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                         <div style={{ fontSize: 22, fontWeight: 600, color: s.cor }}>
                           {s.valor}{"unidade" in s && s.unidade && <span style={{ fontSize: 12, color: "var(--text-2)", marginLeft: 4 }}>{s.unidade}</span>}
@@ -559,7 +560,7 @@ export default function PlanoAgricola() {
                     </div>
                   ) : (
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Ano / Cultura", "Área", "Plantio", "Colheita", "Ciclo", "Produtiv.", "Custo/ha", "Sacas Totais", "Status"].map((h, i) => (
@@ -616,17 +617,17 @@ export default function PlanoAgricola() {
       {/* ══ Modal Novo Planejamento ══ */}
       {modalNovo && (
         <Modal titulo="Novo Planejamento Agrícola" subtitulo="Selecione o Ano Safra e Ciclo cadastrados" onClose={() => setModalNovo(false)} width={560}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Ano Safra *</label>
-              <select style={inp} value={fNP.ano_safra_id} onChange={e => setFNP(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+              <label data-arato-label="true" style={lbl}>Ano Safra *</label>
+              <SelectField style={inp} value={fNP.ano_safra_id} onChange={e => setFNP(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
                 <option value="">— Selecionar —</option>
                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Ciclo *</label>
-              <select style={inp} value={fNP.ciclo_id} onChange={e => {
+              <label data-arato-label="true" style={lbl}>Ciclo *</label>
+              <SelectField style={inp} value={fNP.ciclo_id} onChange={e => {
                 const c = cadastroCiclos.find(x => x.id === e.target.value);
                 setFNP(p => ({ ...p, ciclo_id: e.target.value, ...(c ? { ano_safra_id: c.ano_safra_id ?? p.ano_safra_id } : {}) }));
               }}>
@@ -635,22 +636,22 @@ export default function PlanoAgricola() {
                   const cultLabel: Record<string,string> = { soja:"Soja", milho1:"Milho 1ª", milho2:"Milho 2ª", algodao:"Algodão", sorgo:"Sorgo", trigo:"Trigo" };
                   return <option key={c.id} value={c.id}>{c.descricao ?? cultLabel[c.cultura] ?? c.cultura}</option>;
                 })}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Área (ha) *</label>
+              <label data-arato-label="true" style={lbl}>Área (ha) *</label>
               <InputNumerico style={inp} placeholder="Ex: 650" value={fNP.area_ha} onChange={v => setFNP(p => ({ ...p, area_ha: v }))} />
             </div>
             <div>
-              <label style={lbl}>Data de Início *</label>
+              <label data-arato-label="true" style={lbl}>Data de Início *</label>
               <InputData calendario style={inp} type="date" value={fNP.data_plantio} onChange={e => setFNP(p => ({ ...p, data_plantio: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Status inicial</label>
-              <select style={inp} value={fNP.status} onChange={e => setFNP(p => ({ ...p, status: e.target.value as Safra["status"] }))}>
+              <label data-arato-label="true" style={lbl}>Status inicial</label>
+              <SelectField style={inp} value={fNP.status} onChange={e => setFNP(p => ({ ...p, status: e.target.value as Safra["status"] }))}>
                 <option value="planejada">Planejado</option>
                 <option value="em_andamento">Em andamento</option>
-              </select>
+              </SelectField>
             </div>
           </div>
           {anosSafra.length === 0 && (
@@ -659,8 +660,8 @@ export default function PlanoAgricola() {
             </div>
           )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-            <button style={btnR} onClick={() => setModalNovo(false)}>Cancelar</button>
-            <button
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovo(false)}>Cancelar</button>
+            <button data-arato-button="primary"
               style={{ ...btnV, opacity: salvando || !fNP.ciclo_id || !fNP.area_ha || !fNP.data_plantio ? 0.5 : 1 }}
               disabled={salvando || !fNP.ciclo_id || !fNP.area_ha || !fNP.data_plantio}
               onClick={addPlanejamento}>
@@ -673,29 +674,29 @@ export default function PlanoAgricola() {
       {/* ══ Modal Lançar Operação ══ */}
       {modalAddOp && (
         <Modal titulo="Lançar Operação" onClose={() => setModalAddOp(null)} width={500}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Tipo de Operação *</label>
-              <select style={inp} value={fOp.tipo} onChange={e => setFOp(p => ({ ...p, tipo: e.target.value }))}>
+              <label data-arato-label="true" style={lbl}>Tipo de Operação *</label>
+              <SelectField style={inp} value={fOp.tipo} onChange={e => setFOp(p => ({ ...p, tipo: e.target.value }))}>
                 {TIPOS_OP.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Data Prevista *</label>
+              <label data-arato-label="true" style={lbl}>Data Prevista *</label>
               <InputData calendario style={inp} type="date" value={fOp.data_prev} onChange={e => setFOp(p => ({ ...p, data_prev: e.target.value }))} />
             </div>
             <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Descrição / Detalhes</label>
+              <label data-arato-label="true" style={lbl}>Descrição / Detalhes</label>
               <input style={inp} placeholder="Ex: Herbicida pós · Roundup 2 L/ha" value={fOp.nome} onChange={e => setFOp(p => ({ ...p, nome: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Custo estimado (R$/ha)</label>
+              <label data-arato-label="true" style={lbl}>Custo estimado (R$/ha)</label>
               <InputMonetario style={inp} placeholder="Ex: 85,00" value={fOp.custo_ha} onChange={v => setFOp(p => ({ ...p, custo_ha: v }))} />
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalAddOp(null)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fOp.data_prev ? 0.5 : 1 }} disabled={salvando || !fOp.data_prev} onClick={addOp}>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalAddOp(null)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fOp.data_prev ? 0.5 : 1 }} disabled={salvando || !fOp.data_prev} onClick={addOp}>
               {salvando ? "Salvando…" : "+ Lançar Operação"}
             </button>
           </div>
@@ -705,19 +706,19 @@ export default function PlanoAgricola() {
       {/* ══ Modal Concluir Operação ══ */}
       {modalConcluir && (
         <Modal titulo="Concluir Operação" subtitulo={labelOp(modalConcluir.op.tipo)} onClose={() => setModalConcluir(null)} width={440}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Data de realização</label>
+              <label data-arato-label="true" style={lbl}>Data de realização</label>
               <InputData calendario style={inp} type="date" value={fConc.data_real} onChange={e => setFConc(p => ({ ...p, data_real: e.target.value }))} />
             </div>
             <div>
-              <label style={lbl}>Custo real (R$/ha)</label>
+              <label data-arato-label="true" style={lbl}>Custo real (R$/ha)</label>
               <InputMonetario style={inp} placeholder={modalConcluir.op.custo_ha ? String(modalConcluir.op.custo_ha) : "Ex: 95,00"} value={fConc.custo_ha} onChange={v => setFConc(p => ({ ...p, custo_ha: v }))} />
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalConcluir(null)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={concluirOp}>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalConcluir(null)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={concluirOp}>
               {salvando ? "Salvando…" : "✓ Confirmar Conclusão"}
             </button>
           </div>
@@ -727,13 +728,13 @@ export default function PlanoAgricola() {
       {/* ══ Modal Registrar Colheita ══ */}
       {modalColheita && (
         <Modal titulo="Registrar Colheita" subtitulo={`${cc(modalColheita.cultura).label} · ${(modalColheita.area_ha ?? 0).toLocaleString("pt-BR")} ha`} onClose={() => setModalColheita(null)} width={460}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>Produtividade real (sc/ha) *</label>
+              <label data-arato-label="true" style={lbl}>Produtividade real (sc/ha) *</label>
               <InputNumerico style={inp} placeholder="Ex: 63,5" value={fColh.produtividade_sc_ha} onChange={v => setFColh(p => ({ ...p, produtividade_sc_ha: v }))} />
             </div>
             <div>
-              <label style={lbl}>Data da colheita</label>
+              <label data-arato-label="true" style={lbl}>Data da colheita</label>
               <InputData calendario style={inp} type="date" value={fColh.data_colheita} onChange={e => setFColh(p => ({ ...p, data_colheita: e.target.value }))} />
             </div>
           </div>
@@ -744,8 +745,8 @@ export default function PlanoAgricola() {
             </div>
           )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalColheita(null)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fColh.produtividade_sc_ha ? 0.5 : 1 }} disabled={salvando || !fColh.produtividade_sc_ha} onClick={registrarColheita}>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalColheita(null)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fColh.produtividade_sc_ha ? 0.5 : 1 }} disabled={salvando || !fColh.produtividade_sc_ha} onClick={registrarColheita}>
               {salvando ? "Salvando…" : "▣ Encerrar como Colhido"}
             </button>
           </div>

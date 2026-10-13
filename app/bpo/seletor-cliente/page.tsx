@@ -93,13 +93,13 @@ export default function BpoSeletorCliente() {
           <span style={{ fontSize: 13, color: "#888" }}>Portal do Parceiro</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
+          <button data-arato-button="secondary"
             onClick={() => router.push("/bpo/admin")}
             style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#111", fontWeight: 600 }}
           >
             Administração →
           </button>
-          <button
+          <button data-arato-button="secondary"
             onClick={() => supabase.auth.signOut()}
             style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#555" }}
           >
@@ -110,7 +110,7 @@ export default function BpoSeletorCliente() {
 
       {/* Conteúdo */}
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px" }}>
+        <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px" }}>
           Selecionar cliente
         </h1>
         <p style={{ fontSize: 13, color: "#666", margin: "0 0 24px" }}>
@@ -140,7 +140,7 @@ export default function BpoSeletorCliente() {
           }}>
             {busca
               ? "Nenhum cliente encontrado para essa busca."
-              : <span>Nenhum cliente cadastrado. <button onClick={() => router.push("/bpo/admin")} style={{ background: "none", border: "none", color: "#1A4870", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Cadastrar →</button></span>
+              : <span>Nenhum cliente cadastrado. <button data-arato-button="secondary" onClick={() => router.push("/bpo/admin")} style={{ background: "none", border: "none", color: "#1A4870", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Cadastrar →</button></span>
             }
           </div>
         ) : (
@@ -171,7 +171,7 @@ export default function BpoSeletorCliente() {
                   {c.logo_url ? (
                     <img src={c.logo_url} alt={nomeExibido} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }} />
                   ) : (
-                    <div style={{
+                    <div data-arato-statistic="display" style={{
                       width: 48, height: 48, borderRadius: 8, background: "#D5E8F5",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: 18, fontWeight: 700, color: "#1A4870",

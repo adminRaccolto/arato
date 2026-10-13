@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "./SelectField";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -204,31 +205,31 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   const row1Grid = `repeat(${row1Cols}, 1fr)`;
 
   return (
-    <div style={{ background: "#F2F2F2", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
+    <div data-arato-panel="true" style={{ background: "#F2F2F2", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
         Este lançamento pertence a
       </div>
 
       {/* Linha 1: Produtor | IE | Fazenda */}
       {(show.includes("produtor") || show.includes("fazenda")) && (
-        <div style={{ display: "grid", gridTemplateColumns: row1Grid, gap: 12, marginBottom: (show.includes("anoSafra") || show.includes("ciclo") || show.includes("talhao")) ? 10 : 0 }}>
+        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: row1Grid, gap: 12, marginBottom: (show.includes("anoSafra") || show.includes("ciclo") || show.includes("talhao")) ? 10 : 0 }}>
 
           {show.includes("produtor") && (
             <div>
-              <label style={lbl}>Produtor <span style={{ color: "#E24B4A" }}>*</span></label>
-              <select style={inp} value={values.produtorId ?? ""}
+              <label data-arato-label="true" style={lbl}>Produtor <span style={{ color: "#E24B4A" }}>*</span></label>
+              <SelectField style={inp} value={values.produtorId ?? ""}
                 onChange={e => sel("produtorId", e.target.value)}>
                 <option value="">— Selecionar —</option>
                 {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
 
           {/* IE — só exibe quando o level "ie" está ativo e o Produtor foi selecionado */}
           {show.includes("ie") && show.includes("produtor") && (
             <div>
-              <label style={lbl}>IE {ieRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
-              <select style={inp} value={values.ieId ?? ""}
+              <label data-arato-label="true" style={lbl}>IE {ieRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+              <SelectField style={inp} value={values.ieId ?? ""}
                 onChange={e => sel("ieId", e.target.value)}
                 disabled={!values.produtorId}>
                 <option value="">— Selecionar —</option>
@@ -237,19 +238,19 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
                     {ie.inscricao_estadual} — {ie.estado}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </div>
           )}
 
           {show.includes("fazenda") && (
             <div>
-              <label style={lbl}>Fazenda {fazendaRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
-              <select style={inp} value={values.fazendaId ?? ""}
+              <label data-arato-label="true" style={lbl}>Fazenda {fazendaRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+              <SelectField style={inp} value={values.fazendaId ?? ""}
                 onChange={e => sel("fazendaId", e.target.value)}
                 disabled={useIE && show.includes("produtor") && !values.ieId}>
                 <option value="">— Selecionar —</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
         </div>
@@ -257,22 +258,22 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
 
       {/* Linha 2: Ano Safra | Ciclo | Talhão */}
       {(show.includes("anoSafra") || show.includes("ciclo") || show.includes("talhao")) && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {show.includes("anoSafra") && (
             <div>
-              <label style={lbl}>Ano Safra {anoSafraRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
-              <select style={{ ...inp, ...(anoSafraRequired && !values.anoSafraId ? { borderColor: "#E24B4A" } : {}) }} value={values.anoSafraId ?? ""}
+              <label data-arato-label="true" style={lbl}>Ano Safra {anoSafraRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+              <SelectField style={{ ...inp, ...(anoSafraRequired && !values.anoSafraId ? { borderColor: "#E24B4A" } : {}) }} value={values.anoSafraId ?? ""}
                 onChange={e => sel("anoSafraId", e.target.value)}
                 disabled={!values.fazendaId}>
                 <option value="">— Selecionar —</option>
                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
           {show.includes("ciclo") && (
             <div>
-              <label style={lbl}>Ciclo / Cultura</label>
-              <select style={inp} value={values.cicloId ?? ""}
+              <label data-arato-label="true" style={lbl}>Ciclo / Cultura</label>
+              <SelectField style={inp} value={values.cicloId ?? ""}
                 onChange={e => sel("cicloId", e.target.value)}
                 disabled={!values.fazendaId}>
                 <option value="">— Selecionar —</option>
@@ -281,18 +282,18 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
                     {CULTURAS[c.cultura ?? ""] ?? c.cultura ?? ""}{c.descricao ? ` · ${c.descricao}` : ""}{escopoPorConta && fazendas.length > 1 ? ` · ${fazendas.find(f => f.id === c.fazenda_id)?.nome ?? ""}` : ""}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </div>
           )}
           {show.includes("talhao") && (
             <div>
-              <label style={lbl}>Talhão</label>
-              <select style={inp} value={values.talhaoId ?? ""}
+              <label data-arato-label="true" style={lbl}>Talhão</label>
+              <SelectField style={inp} value={values.talhaoId ?? ""}
                 onChange={e => sel("talhaoId", e.target.value)}
                 disabled={!values.fazendaId}>
                 <option value="">— Selecionar —</option>
                 {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
         </div>

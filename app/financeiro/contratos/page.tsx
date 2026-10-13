@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -1078,7 +1079,7 @@ export default function ContratosFinanceiros() {
   // ── Aba desabilitada quando contrato ainda não salvo ──
   function AbaDisabled({ nome }: { nome: string }) {
     return (
-      <div style={{ textAlign: "center", padding: "48px 0", color: "#999" }}>
+      <div data-arato-statistic="display" style={{ textAlign: "center", padding: "48px 0", color: "#999" }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-2)" }}>Salve o contrato primeiro</div>
         <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>Preencha a aba <strong>Principal</strong> e clique em <strong>Salvar</strong> para liberar a aba <strong>{nome}</strong>.</div>
@@ -1089,32 +1090,32 @@ export default function ContratosFinanceiros() {
   // ────────────────────────────────────────────────────────
   if (!podeAcessarPlano("fin_contratos")) return <PlanoGate modulo="fin_contratos" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
 
           {/* Cabeçalho */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
+          <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos Financeiros</h1>
+              <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos Financeiros</h1>
               <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>Custeio, CPR, investimento, securitização, EGF</div>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {ptax && <span style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
               {fazendas.length > 1 && (
-                <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
+                <SelectField value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
                   style={{ padding: "8px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
                   <option value="">Todas as fazendas</option>
                   {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-                </select>
+                </SelectField>
               )}
               {userRole === "raccotlo" && (
                 <a href="/configuracoes/importacao?aba=contratos_fin" style={{ ...btnR, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
                   📥 Importar XLSX
                 </a>
               )}
-              <button style={{ ...btnV, background: "#111111", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
+              <button data-arato-button="primary" style={{ ...btnV, background: "#111111", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
             </div>
           </div>
 
@@ -1122,16 +1123,16 @@ export default function ContratosFinanceiros() {
           {contratosFiltrados.length > 0 && (
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 16, overflow: "hidden" }}>
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr", borderBottom: kpiDetalhado ? "0.5px solid var(--border-table)" : "none" }}>
-                <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
+                <div data-arato-statistic="display" style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Contratos ativos</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#111111" }}>{ativosKpi.length}</div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{contratosFiltrados.filter(c => c.status !== "ativo").length} encerrados</div>
                 </div>
-                <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
+                <div data-arato-statistic="display" style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Total Captado{ptax ? " (conv. PTAX)" : ""}</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalFinanciado)}</div>
                 </div>
-                <div style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
+                <div data-arato-statistic="display" style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Valor Pago</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "#378ADD" }}>{fmtBRL(totalPagoKpi)}</div>
                   <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
@@ -1145,7 +1146,7 @@ export default function ContratosFinanceiros() {
                     </div>
                   </div>
                 </div>
-                <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div data-arato-statistic="action" style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Valor em Aberto</div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: totalAbertoKpi > 0 ? "#E24B4A" : "var(--text-3)" }}>{fmtBRL(totalAbertoKpi)}</div>
@@ -1160,15 +1161,15 @@ export default function ContratosFinanceiros() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => setKpiDetalhado(v => !v)}
+                  <button data-arato-button="secondary" onClick={() => setKpiDetalhado(v => !v)}
                     style={{ fontSize: 11, padding: "5px 11px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", marginTop: 4, whiteSpace: "nowrap" }}>
                     {kpiDetalhado ? "▲ Recolher" : "▼ Por contrato"}
                   </button>
                 </div>
               </div>
               {kpiDetalhado && (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Contrato / Credor", "Captado", "Pago", "Em Aberto", "% Pago"].map((h, i) => (
@@ -1213,10 +1214,10 @@ export default function ContratosFinanceiros() {
           )}
 
           {/* Filtros de coluna */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div data-arato-filters="true" style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
             <input placeholder="Buscar descrição, credor, nº operação..." value={colBusca} onChange={e => setColBusca(e.target.value)}
               style={{ flex: "1 1 200px", padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)", outline: "none" }} />
-            <select value={colTipo} onChange={e => setColTipo(e.target.value)}
+            <SelectField value={colTipo} onChange={e => setColTipo(e.target.value)}
               style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
               <option value="">Tipo: Todos</option>
               <option value="custeio">Custeio</option>
@@ -1225,31 +1226,31 @@ export default function ContratosFinanceiros() {
               <option value="egf">EGF</option>
               <option value="securitizacao">Securitização</option>
               <option value="outros">Outros</option>
-            </select>
-            <select value={colMoeda} onChange={e => setColMoeda(e.target.value)}
+            </SelectField>
+            <SelectField value={colMoeda} onChange={e => setColMoeda(e.target.value)}
               style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
               <option value="">Moeda: Todas</option>
               <option value="BRL">BRL</option>
               <option value="USD">USD</option>
-            </select>
-            <select value={colCalc} onChange={e => setColCalc(e.target.value)}
+            </SelectField>
+            <SelectField value={colCalc} onChange={e => setColCalc(e.target.value)}
               style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
               <option value="">Cálculo: Todos</option>
               <option value="sac">SAC</option>
               <option value="price">PRICE</option>
               <option value="sac_crescente">SACRE</option>
               <option value="outros">Outros</option>
-            </select>
-            <select value={colStatus} onChange={e => setColStatus(e.target.value)}
+            </SelectField>
+            <SelectField value={colStatus} onChange={e => setColStatus(e.target.value)}
               style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
               <option value="">Status: Todos</option>
               <option value="ativo">Ativo</option>
               <option value="quitado">Quitado</option>
               <option value="cancelado">Cancelado</option>
               <option value="refinanciado">Refinanciado</option>
-            </select>
+            </SelectField>
             {(colBusca || colTipo || colMoeda || colCalc || colStatus) && (
-              <button onClick={() => { setColBusca(""); setColTipo(""); setColMoeda(""); setColCalc(""); setColStatus(""); }}
+              <button data-arato-button="danger" onClick={() => { setColBusca(""); setColTipo(""); setColMoeda(""); setColCalc(""); setColStatus(""); }}
                 style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>
                 ✕ Limpar
               </button>
@@ -1261,19 +1262,19 @@ export default function ContratosFinanceiros() {
             <div style={{ background: "#FCEBEB", borderRadius: 14, border: "0.5px solid #E24B4A50", padding: "32px 24px", textAlign: "center" }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#791F1F", marginBottom: 6 }}>Erro ao carregar contratos</div>
               <div style={{ fontSize: 12, color: "#791F1F", marginBottom: 16 }}>{erroCarregamento}</div>
-              <button style={{ ...btnV, background: "#111111" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceirosDaConta(contaId, fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
+              <button data-arato-button="primary" style={{ ...btnV, background: "#111111" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceirosDaConta(contaId, fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
                 Tentar novamente
               </button>
             </div>
           ) : contratosFiltrados.length === 0 ? (
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", padding: "56px 0", textAlign: "center" }}>
+            <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", padding: "56px 0", textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🏦</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
             </div>
           ) : (
             <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Descrição / Credor", "Nº Operação", "Tipo", "Moeda", "Cálculo", "Taxa a.a.", "Prazo", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
@@ -1335,14 +1336,14 @@ export default function ContratosFinanceiros() {
                                 PDF
                               </a>
                             ) : (
-                              <button title="Anexar PDF da cédula" onClick={() => { abrirModal(c); }}
+                              <button data-arato-button="secondary" title="Anexar PDF da cédula" onClick={() => { abrirModal(c); }}
                                 style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, padding: "4px 9px", background: "#F4F6FA", color: "#999", border: "0.5px solid #DDE2EE", borderRadius: 6, cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap" }}>
                                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 2a1 1 0 011-1h6l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2z" stroke="#bbb" strokeWidth="1.2" fill="#f0f0f0"/><path d="M9 1v4h4" stroke="#bbb" strokeWidth="1.2" fill="none"/><path d="M8 7v4M6 9h4" stroke="#bbb" strokeWidth="1.4" strokeLinecap="round"/></svg>
                                 PDF
                               </button>
                             )}
-                            <button style={{ ...btnE, background: "#EBF2FA", color: "#111111", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir contrato e todas as parcelas?")) excluirContratoFinanceiro(c.id).then(() => setContratos(p => p.filter(x => x.id !== c.id))); }}>✕</button>
+                            <button data-arato-button="secondary" style={{ ...btnE, background: "#EBF2FA", color: "#111111", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
+                            <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir contrato e todas as parcelas?")) excluirContratoFinanceiro(c.id).then(() => setContratos(p => p.filter(x => x.id !== c.id))); }}>✕</button>
                           </div>
                         </td>
                       </tr>
@@ -1358,15 +1359,15 @@ export default function ContratosFinanceiros() {
 
       {/* ══ Modal Unificado ══ */}
       {modalAberto && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Cabeçalho do modal */}
-            <div style={{ padding: "18px 26px 0", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "18px 26px 0", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0 }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                <div data-arato-dialog-body="true">
+                  <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>
                     {contratoModal ? contratoModal.descricao : "Novo Contrato Financeiro"}
                   </div>
                   {contratoModal && (
@@ -1380,11 +1381,11 @@ export default function ContratosFinanceiros() {
                     </div>
                   )}
                 </div>
-                <button onClick={fecharModal} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</button>
+                <button data-arato-button="icon" onClick={fecharModal} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</button>
               </div>
 
               {/* Abas */}
-              <div style={{ display: "flex", gap: 0, overflowX: "auto" }}>
+              <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ display: "flex", gap: 0, overflowX: "auto" }}>
                 {([
                   ["principal",     "Principal"],
                   ["liberacao",     "Liberação"],
@@ -1396,7 +1397,7 @@ export default function ContratosFinanceiros() {
                 ] as const).map(([k, l]) => {
                   const bloqueada = k !== "principal" && !contratoModal;
                   return (
-                    <button key={k} onClick={() => !bloqueada && setAbaModal(k)}
+                    <button data-arato-button="toggle" key={k} onClick={() => !bloqueada && setAbaModal(k)}
                       style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#111111" : "var(--text-2)", borderBottom: abaModal === k ? "2.5px solid #111111" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
                     >{l}{bloqueada ? " 🔒" : ""}</button>
                   );
@@ -1409,23 +1410,23 @@ export default function ContratosFinanceiros() {
               <div style={{ background: "#FEECEC", border: "0.5px solid #E24B4A", borderRadius: 0, padding: "10px 26px", fontSize: 13, color: "#7A1010", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 <span style={{ fontWeight: 700 }}>⚠ Erro:</span>
                 <span style={{ flex: 1 }}>{erroModal}</span>
-                <button onClick={() => setErroModal(null)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#7A1010", fontSize: 16, lineHeight: 1 }}>✕</button>
+                <button data-arato-button="icon" onClick={() => setErroModal(null)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#7A1010", fontSize: 16, lineHeight: 1 }}>✕</button>
               </div>
             )}
 
             {/* Conteúdo */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
+            <div data-arato-dialog-body="true" style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
 
               {/* Fazenda — seletor explícito */}
               {fazendas.length > 1 && (
-                <div style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                <div data-arato-panel="true" style={{ background:"#F2F2F2", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
                   <div style={{ fontSize:10, fontWeight:700, color:"#111111", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
-                    <select style={inp} value={fC.fazenda_id || fazendaId || ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
+                    <label data-arato-label="true" style={{ fontSize:11, fontWeight:700, color:"#111111", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                    <SelectField style={inp} value={fC.fazenda_id || fazendaId || ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
                       <option value="">— Selecionar —</option>
                       {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
                 </div>
               )}
@@ -1435,7 +1436,7 @@ export default function ContratosFinanceiros() {
                 <div>
                   {/* ── Banner IA — upload de cédula PDF (Add-on ia_cedula) ── */}
                   {!contratoModal && contaModulosOverrides["ia_cedula"] === true && (
-                    <div style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
+                    <div data-arato-panel="true" style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#7A4300", marginBottom: 3 }}>
@@ -1461,7 +1462,7 @@ export default function ContratosFinanceiros() {
                           {pdfNome && !iaExtraindo && (
                             <span style={{ fontSize: 11, color: "#7A4300", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {pdfNome}</span>
                           )}
-                          <label style={{ padding: "6px 14px", background: iaExtraindo ? "#ddd" : "#C9921B", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: iaExtraindo ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                          <label data-arato-label="true" style={{ padding: "6px 14px", background: iaExtraindo ? "#ddd" : "#C9921B", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: iaExtraindo ? "default" : "pointer", whiteSpace: "nowrap" }}>
                             {iaExtraindo ? "Processando…" : pdfNome ? "Trocar PDF" : "Selecionar PDF"}
                             <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaExtraindo}
                               onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); e.target.value = ""; }}
@@ -1473,7 +1474,7 @@ export default function ContratosFinanceiros() {
                   )}
                   {/* PDF da cédula — upload e visualização (sempre visível ao editar) */}
                   {contratoModal && (
-                    <div style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #11111140", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <div data-arato-panel="true" style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #11111140", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: 14 }}>📎</span>
                         {(pdfFile ? pdfNome : contratoModal.pdf_nome) ? (
@@ -1489,7 +1490,7 @@ export default function ContratosFinanceiros() {
                         {!pdfFile && contratoModal.pdf_url && (
                           <a href={contratoModal.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#111111", fontWeight: 600, textDecoration: "none" }}>Abrir PDF ↗</a>
                         )}
-                        <label style={{ fontSize: 12, color: "#111111", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", textDecoration: "underline" }}>
+                        <label data-arato-label="true" style={{ fontSize: 12, color: "#111111", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", textDecoration: "underline" }}>
                           {(pdfFile || contratoModal.pdf_nome) ? "Substituir PDF" : "Anexar PDF"}
                           <input type="file" accept="application/pdf" style={{ display: "none" }}
                             onChange={e => { const f = e.target.files?.[0]; if (f) { setPdfFile(f); setPdfNome(f.name); } e.target.value = ""; }}
@@ -1512,7 +1513,7 @@ export default function ContratosFinanceiros() {
                           </div>
                         </div>
                         {novoC && (
-                          <button style={{ fontSize: 11, padding: "4px 10px", background: "#EDE9FB", border: "0.5px solid #7C6FC3", borderRadius: 6, cursor: "pointer", color: "#4B3B9B", fontWeight: 600 }}
+                          <button data-arato-button="secondary" style={{ fontSize: 11, padding: "4px 10px", background: "#EDE9FB", border: "0.5px solid #7C6FC3", borderRadius: 6, cursor: "pointer", color: "#4B3B9B", fontWeight: 600 }}
                             onClick={() => { fecharModal(); setTimeout(() => abrirModal(novoC), 50); }}>
                             Ver novo contrato →
                           </button>
@@ -1522,52 +1523,52 @@ export default function ContratosFinanceiros() {
                   })()}
 
                   <SecTitle>Identificação</SecTitle>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div style={{ gridColumn: "1/-1" }}>
-                      <label style={lbl}>Descrição *</label>
+                      <label data-arato-label="true" style={lbl}>Descrição *</label>
                       <input style={inp} placeholder="Ex: Custeio Soja 2026/2027 — Banco do Brasil" value={fC.descricao} onChange={e => setFC(p => ({ ...p, descricao: e.target.value }))} />
                     </div>
                     <div>
-                      <label style={lbl}>Tipo de Contrato *</label>
-                      <select style={inp} value={fC.tipo} onChange={e => setFC(p => ({ ...p, tipo: e.target.value as ContratoFinanceiro["tipo"] }))}>
+                      <label data-arato-label="true" style={lbl}>Tipo de Contrato *</label>
+                      <SelectField style={inp} value={fC.tipo} onChange={e => setFC(p => ({ ...p, tipo: e.target.value as ContratoFinanceiro["tipo"] }))}>
                         <option value="custeio">Custeio</option>
                         <option value="investimento">Investimento / Financiamento</option>
                         <option value="securitizacao">Securitização</option>
                         <option value="cpr">CPR</option>
                         <option value="egf">EGF</option>
                         <option value="outros">Outros</option>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Linha de Crédito</label>
+                      <label data-arato-label="true" style={lbl}>Linha de Crédito</label>
                       <input style={inp} list="linhas-credito-list" placeholder="Ex: Obrigatórios - MCR 6.2, PRONAF…" value={fC.linha_credito} onChange={e => setFC(p => ({ ...p, linha_credito: e.target.value }))} />
                       <datalist id="linhas-credito-list">
                         {LINHAS_CREDITO.map(l => <option key={l} value={l} />)}
                       </datalist>
                     </div>
                     <div>
-                      <label style={lbl}>Nº Documento / Contrato <span style={{ color: "#E24B4A" }}>*</span></label>
+                      <label data-arato-label="true" style={lbl}>Nº Documento / Contrato <span style={{ color: "#E24B4A" }}>*</span></label>
                       <input style={inp} placeholder="Ex: 12345/2026" value={fC.numero_documento} onChange={e => setFC(p => ({ ...p, numero_documento: e.target.value }))} />
                     </div>
                     <div>
-                      <label style={lbl}>Tipo de Cálculo *</label>
-                      <select style={inp} value={fC.tipo_calculo} onChange={e => setFC(p => ({ ...p, tipo_calculo: e.target.value as ContratoFinanceiro["tipo_calculo"] }))}>
+                      <label data-arato-label="true" style={lbl}>Tipo de Cálculo *</label>
+                      <SelectField style={inp} value={fC.tipo_calculo} onChange={e => setFC(p => ({ ...p, tipo_calculo: e.target.value as ContratoFinanceiro["tipo_calculo"] }))}>
                         <option value="sac">SAC Decrescente — Amortização Constante</option>
                         <option value="sac_crescente">SAC Crescente (SACRE) — Amortização Crescente</option>
                         <option value="price">PRICE (Tabela Francesa) — Parcela Constante</option>
                         <option value="outros">Outros / Manual</option>
-                      </select>
+                      </SelectField>
                     </div>
                   </div>
 
                   <SecTitle>Produtor / Tomador do Crédito</SecTitle>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
-                      <label style={lbl}>Produtor responsável (LCDPR)</label>
-                      <select style={inp} value={fC.produtor_id} onChange={e => setFC(p => ({ ...p, produtor_id: e.target.value }))}>
+                      <label data-arato-label="true" style={lbl}>Produtor responsável (LCDPR)</label>
+                      <SelectField style={inp} value={fC.produtor_id} onChange={e => setFC(p => ({ ...p, produtor_id: e.target.value }))}>
                         <option value="">— Selecionar produtor —</option>
                         {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div style={{ alignSelf: "end", fontSize: 11, color: "#888", paddingBottom: 8 }}>
                       Vincula o contrato ao CPF do produtor para o Livro Caixa e SPED. Extraído automaticamente do PDF.
@@ -1578,7 +1579,7 @@ export default function ContratosFinanceiros() {
                   {/* Busca por CNPJ/CPF */}
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10 }}>
                     <div style={{ flex: 1 }}>
-                      <label style={lbl}>Buscar credor por CNPJ / CPF</label>
+                      <label data-arato-label="true" style={lbl}>Buscar credor por CNPJ / CPF</label>
                       <input
                         style={inp}
                         placeholder="Digite o CNPJ ou CPF e pressione Enter"
@@ -1587,14 +1588,14 @@ export default function ContratosFinanceiros() {
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); buscarCredorPorCnpj(); } }}
                       />
                     </div>
-                    <button style={{ ...btnV, background: "#111111", whiteSpace: "nowrap" }} onClick={buscarCredorPorCnpj} type="button">
+                    <button data-arato-button="primary" style={{ ...btnV, background: "#111111", whiteSpace: "nowrap" }} onClick={buscarCredorPorCnpj} type="button">
                       Buscar
                     </button>
                     {cnpjBuscaStatus === "encontrado" && (
                       <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 600, whiteSpace: "nowrap" }}>✓ Encontrado</span>
                     )}
                     {cnpjBuscaStatus === "nao_encontrado" && (
-                      <button
+                      <button data-arato-button="primary"
                         style={{ ...btnV, background: "#C9921B", whiteSpace: "nowrap" }}
                         type="button"
                         onClick={() => window.open("/cadastros?tab=pessoas", "_blank")}
@@ -1603,53 +1604,53 @@ export default function ContratosFinanceiros() {
                       </button>
                     )}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
-                      <label style={lbl}>Credor (fornecedor cadastrado){fC.pessoa_id ? " ✓" : ""}</label>
-                      <select style={inp} value={fC.pessoa_id} onChange={e => { onPessoaChange(e.target.value); setCnpjBuscaStatus("idle"); }}>
+                      <label data-arato-label="true" style={lbl}>Credor (fornecedor cadastrado){fC.pessoa_id ? " ✓" : ""}</label>
+                      <SelectField style={inp} value={fC.pessoa_id} onChange={e => { onPessoaChange(e.target.value); setCnpjBuscaStatus("idle"); }}>
                         <option value="">— Selecionar —</option>
                         {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Nome do Credor <span style={{ color: "#E24B4A" }}>*</span>{fC.pessoa_id ? " (do cadastro)" : ""}</label>
+                      <label data-arato-label="true" style={lbl}>Nome do Credor <span style={{ color: "#E24B4A" }}>*</span>{fC.pessoa_id ? " (do cadastro)" : ""}</label>
                       <input style={inp} placeholder="Ex: Banco do Brasil, Bradesco, Cooperativa…" value={fC.credor} onChange={e => setFC(p => ({ ...p, credor: e.target.value }))} />
                     </div>
                   </div>
 
                   <SecTitle>Captação — Valor e Moeda</SecTitle>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
-                      <label style={lbl}>Moeda</label>
-                      <select style={inp} value={fC.moeda} onChange={e => setFC(p => ({ ...p, moeda: e.target.value as "BRL" | "USD", valor_cotacao: "" }))}>
+                      <label data-arato-label="true" style={lbl}>Moeda</label>
+                      <SelectField style={inp} value={fC.moeda} onChange={e => setFC(p => ({ ...p, moeda: e.target.value as "BRL" | "USD", valor_cotacao: "" }))}>
                         <option value="BRL">Real (R$)</option>
                         <option value="USD">Dólar (US$)</option>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Valor Financiado * ({fC.moeda === "USD" ? "US$" : "R$"})</label>
+                      <label data-arato-label="true" style={lbl}>Valor Financiado * ({fC.moeda === "USD" ? "US$" : "R$"})</label>
                       <InputMonetario style={inp} placeholder="0,00" value={fC.valor_financiado} onChange={v => setFC(p => ({ ...p, valor_financiado: String(v) }))} />
                     </div>
                     {fC.moeda === "USD" ? (
                       <div>
-                        <label style={lbl}>Cotação R$/US$</label>
+                        <label data-arato-label="true" style={lbl}>Cotação R$/US$</label>
                         <InputMonetario style={inp} decimais={4} placeholder="5,8500" value={fC.valor_cotacao} onChange={v => setFC(p => ({ ...p, valor_cotacao: String(v) }))} />
                       </div>
                     ) : <div />}
                     <div>
-                      <label style={lbl}>Data do Contrato *</label>
+                      <label data-arato-label="true" style={lbl}>Data do Contrato *</label>
                       <InputData style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p => ({ ...p, data_contrato: e.target.value }))} />
                     </div>
                     <div>
-                      <label style={lbl}>Periodicidade</label>
-                      <select style={inp} value={fC.periodicidade_meses} onChange={e => setFC(p => ({ ...p, periodicidade_meses: e.target.value }))}>
+                      <label data-arato-label="true" style={lbl}>Periodicidade</label>
+                      <SelectField style={inp} value={fC.periodicidade_meses} onChange={e => setFC(p => ({ ...p, periodicidade_meses: e.target.value }))}>
                         <option value="1">Mensal</option>
                         <option value="6">Semestral</option>
                         <option value="12">Anual</option>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>
+                      <label data-arato-label="true" style={lbl}>
                         Carência (meses)
                         {Number(fC.carencia_meses) > 0 && Number(fC.periodicidade_meses) > 1 && Number(fC.carencia_meses) < Number(fC.periodicidade_meses) && (
                           <span title="Carência menor que a periodicidade não gera período de carência. Para pagamento anual, carência real ocorre a partir de 12 meses." style={{ marginLeft: 4, color: "#C9921B", cursor: "help" }}>⚠</span>
@@ -1664,16 +1665,16 @@ export default function ContratosFinanceiros() {
                     </div>
                     {Number(fC.carencia_meses) > 0 && (
                       <div>
-                        <label style={lbl}>Tipo de Carência</label>
-                        <select style={inp} value={fC.carencia_tipo} onChange={e => setFC(p => ({ ...p, carencia_tipo: e.target.value as "so_juros" | "total" }))}>
+                        <label data-arato-label="true" style={lbl}>Tipo de Carência</label>
+                        <SelectField style={inp} value={fC.carencia_tipo} onChange={e => setFC(p => ({ ...p, carencia_tipo: e.target.value as "so_juros" | "total" }))}>
                           <option value="so_juros">Só juros</option>
                           <option value="total">Carência total (capitaliza)</option>
-                        </select>
+                        </SelectField>
                       </div>
                     )}
                     {fC.tipo_calculo === "sac_crescente" && (
                       <div>
-                        <label style={lbl}>Crescimento da Amortização por Período (%)</label>
+                        <label data-arato-label="true" style={lbl}>Crescimento da Amortização por Período (%)</label>
                         <InputMonetario style={inp} placeholder="Ex: 2 (IPCA, TR, fixo)" value={fC.crescimento_pct} onChange={v => setFC(p => ({ ...p, crescimento_pct: String(v) }))} />
                       </div>
                     )}
@@ -1683,7 +1684,7 @@ export default function ContratosFinanceiros() {
                   {/* Toggle Fixa / Variável */}
                   <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
                     {(["fixa", "variavel"] as const).map(t => (
-                      <button key={t} type="button" onClick={() => setFC(p => ({ ...p, taxa_tipo: t }))}
+                      <button data-arato-button="toggle" key={t} type="button" onClick={() => setFC(p => ({ ...p, taxa_tipo: t }))}
                         style={{ padding: "4px 14px", borderRadius: 6, border: `0.5px solid ${fC.taxa_tipo === t ? "#111111" : "var(--border)"}`, background: fC.taxa_tipo === t ? "#E8E8E8" : "transparent", color: fC.taxa_tipo === t ? "#0D0D0D" : "var(--text-3)", fontSize: 12, fontWeight: fC.taxa_tipo === t ? 600 : 400, cursor: "pointer" }}>
                         {t === "fixa" ? "Taxa Fixa" : "Taxa Fixa + Variável"}
                       </button>
@@ -1691,55 +1692,55 @@ export default function ContratosFinanceiros() {
                   </div>
 
                   {fC.taxa_tipo === "fixa" ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                       <div>
-                        <label style={lbl}>Taxa de Juros a.a. (%) <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <label data-arato-label="true" style={lbl}>Taxa de Juros a.a. (%) <span style={{ color: "#E24B4A" }}>*</span></label>
                         <InputNumerico style={inp} decimais={3} placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={v => onChangeAa(v)} />
                       </div>
                       <div>
-                        <label style={lbl}>Taxa de Juros a.m. (%)</label>
+                        <label data-arato-label="true" style={lbl}>Taxa de Juros a.m. (%)</label>
                         <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.taxa_juros_am} onChange={v => onChangeAm(v)} />
                       </div>
                       <div>
-                        <label style={lbl}>IOF (%)</label>
+                        <label data-arato-label="true" style={lbl}>IOF (%)</label>
                         <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
+                        <label data-arato-label="true" style={lbl}>TAC — Tarifa de Abertura (R$)</label>
                         <InputMonetario style={inp} placeholder="Ex: 500,00" value={fC.tac_valor} onChange={v => setFC(p => ({ ...p, tac_valor: String(v) }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Outros Custos Fixos (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Outros Custos Fixos (R$)</label>
                         <InputMonetario style={inp} placeholder="Registro, cartório…" value={fC.outros_custos} onChange={v => setFC(p => ({ ...p, outros_custos: String(v) }))} />
                       </div>
                     </div>
                   ) : (
                     <>
                       {/* Linha 1: Indexador | Taxa Variável (ref) | Juros Fixos a.a. | Juros Fixos a.m. | TEF a.a. */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 8 }}>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 8 }}>
                         <div>
-                          <label style={lbl}>Indexador <span style={{ color: "#E24B4A" }}>*</span></label>
-                          <select style={inp} value={fC.indexador} onChange={e => { setFC(p => ({ ...p, indexador: e.target.value })); buscarTaxaVariavelRef(e.target.value); }}>
+                          <label data-arato-label="true" style={lbl}>Indexador <span style={{ color: "#E24B4A" }}>*</span></label>
+                          <SelectField style={inp} value={fC.indexador} onChange={e => { setFC(p => ({ ...p, indexador: e.target.value })); buscarTaxaVariavelRef(e.target.value); }}>
                             <option value="">Selecione…</option>
                             {["CDI", "IPCA", "SELIC", "TR", "TJLP", "TLP", "INPC", "IGP-M", "Outro"].map(idx => (
                               <option key={idx} value={idx}>{idx}</option>
                             ))}
-                          </select>
+                          </SelectField>
                         </div>
                         <div>
-                          <label style={lbl}>
+                          <label data-arato-label="true" style={lbl}>
                             Taxa {fC.indexador || "Variável"} — ref. {loadingTaxaRef ? "…" : taxaVariavelRef != null ? `${fmtNum(taxaVariavelRef, 4)}% a.a.` : "sem dado"}
                           </label>
                           <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)", cursor: "default" }}
                             readOnly value={taxaVariavelRef != null ? fmtNum(taxaVariavelRef, 4) : "—"} />
                         </div>
                         <div>
-                          <label style={lbl}>Juros Fixos a.a. (%)</label>
+                          <label data-arato-label="true" style={lbl}>Juros Fixos a.a. (%)</label>
                           <InputNumerico style={inp} decimais={3} placeholder="Ex: 3,40" value={fC.spread_aa}
                             onChange={v => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_aa: v, spread_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); }} />
                         </div>
                         <div>
-                          <label style={lbl}>Juros Fixos a.m. (%)</label>
+                          <label data-arato-label="true" style={lbl}>Juros Fixos a.m. (%)</label>
                           <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.spread_am}
                             onChange={v => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, spread_am: v, spread_aa: isNaN(am) ? "" : String(parseFloat(amParaAa(am).toFixed(4))) })); }} />
                         </div>
@@ -1750,7 +1751,7 @@ export default function ContratosFinanceiros() {
                             const tef = variavel + fixo;
                             return (
                               <div>
-                                <label style={lbl}>TEF — Taxa Efetiva a.a. (%)</label>
+                                <label data-arato-label="true" style={lbl}>TEF — Taxa Efetiva a.a. (%)</label>
                                 <div style={{ ...inp, background: tef > 0 ? "#EAF4EC" : "var(--bg-page)", border: `0.5px solid ${tef > 0 ? "#16A34A" : "var(--border)"}`, color: tef > 0 ? "#0F5132" : "var(--text-3)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>
                                   {tef > 0 ? `${fmtNum(tef, 2)}%` : "—"}
                                 </div>
@@ -1760,17 +1761,17 @@ export default function ContratosFinanceiros() {
                         </div>
                       </div>
                       {/* Linha 2: IOF | TAC | Outros */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 2fr", gap: 12, marginBottom: 4 }}>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 2fr", gap: 12, marginBottom: 4 }}>
                         <div>
-                          <label style={lbl}>IOF (%)</label>
+                          <label data-arato-label="true" style={lbl}>IOF (%)</label>
                           <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
                         </div>
                         <div>
-                          <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
+                          <label data-arato-label="true" style={lbl}>TAC — Tarifa de Abertura (R$)</label>
                           <InputMonetario style={inp} placeholder="Ex: 500,00" value={fC.tac_valor} onChange={v => setFC(p => ({ ...p, tac_valor: String(v) }))} />
                         </div>
                         <div>
-                          <label style={lbl}>Outros Custos (R$)</label>
+                          <label data-arato-label="true" style={lbl}>Outros Custos (R$)</label>
                           <InputMonetario style={inp} placeholder="Registro, cartório…" value={fC.outros_custos} onChange={v => setFC(p => ({ ...p, outros_custos: String(v) }))} />
                         </div>
                         <div style={{ display: "flex", alignItems: "flex-end" }} />
@@ -1782,60 +1783,60 @@ export default function ContratosFinanceiros() {
                   )}
 
                   <SecTitle>Contas Bancárias</SecTitle>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
-                      <label style={lbl}>Conta de Liberação</label>
-                      <select style={inp} value={fC.conta_liberacao_id} onChange={e => { const id = e.target.value; const conta = contas.find(c => c.id === id); setFC(p => ({ ...p, conta_liberacao_id: id, credor: conta?.banco ? conta.banco : p.credor })); }}>
+                      <label data-arato-label="true" style={lbl}>Conta de Liberação</label>
+                      <SelectField style={inp} value={fC.conta_liberacao_id} onChange={e => { const id = e.target.value; const conta = contas.find(c => c.id === id); setFC(p => ({ ...p, conta_liberacao_id: id, credor: conta?.banco ? conta.banco : p.credor })); }}>
                         <option value="">— Onde o banco deposita —</option>
                         {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.moeda === "USD" ? " (US$)" : ""}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Conta de Pagamento</label>
-                      <select style={inp} value={fC.conta_pagamento_id} onChange={e => setFC(p => ({ ...p, conta_pagamento_id: e.target.value }))}>
+                      <label data-arato-label="true" style={lbl}>Conta de Pagamento</label>
+                      <SelectField style={inp} value={fC.conta_pagamento_id} onChange={e => setFC(p => ({ ...p, conta_pagamento_id: e.target.value }))}>
                         <option value="">— Onde debitam as parcelas —</option>
                         {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.moeda === "USD" ? " (US$)" : ""}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Forma de Pagamento</label>
-                      <select style={inp} value={fC.forma_pagamento} onChange={e => setFC(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                      <label data-arato-label="true" style={lbl}>Forma de Pagamento</label>
+                      <SelectField style={inp} value={fC.forma_pagamento} onChange={e => setFC(p => ({ ...p, forma_pagamento: e.target.value }))}>
                         <option value="">Selecione…</option>
                         <option value="Débito em conta">Débito em conta</option>
                         <option value="Boleto">Boleto</option>
                         <option value="PIX">PIX</option>
                         <option value="TED/DOC">TED/DOC</option>
                         <option value="Cheque">Cheque</option>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Local de Pagamento</label>
+                      <label data-arato-label="true" style={lbl}>Local de Pagamento</label>
                       <input style={inp} placeholder="Ex: Agência 0001 — Nova Mutum" value={fC.local_pagamento} onChange={e => setFC(p => ({ ...p, local_pagamento: e.target.value }))} />
                     </div>
                   </div>
 
                   <SecTitle>Opções</SecTitle>
                   <div style={{ display: "flex", gap: 24, marginBottom: 10, flexWrap: "wrap" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                    <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                       <input type="checkbox" checked={fC.rateio_por_vencimento} onChange={e => setFC(p => ({ ...p, rateio_por_vencimento: e.target.checked }))} />
                       Rateio por vencimento
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                    <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                       <input type="checkbox" checked={fC.fiscal} onChange={e => setFC(p => ({ ...p, fiscal: e.target.checked }))} />
                       Integrar ao Fiscal (LCDPR)
                     </label>
                   </div>
                   <div>
-                    <label style={lbl}>Observação</label>
+                    <label data-arato-label="true" style={lbl}>Observação</label>
                     <input style={inp} value={fC.observacao} onChange={e => setFC(p => ({ ...p, observacao: e.target.value }))} />
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", marginTop: 22 }}>
+                  <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", marginTop: 22 }}>
                     {erroModal && (
                       <span style={{ fontSize: 12, color: "#E24B4A", maxWidth: 360, lineHeight: 1.4 }}>{erroModal}</span>
                     )}
-                    <button style={btnR} onClick={() => { fecharModal(); setErroModal(null); }}>Fechar</button>
-                    <button
+                    <button data-arato-button="secondary" style={btnR} onClick={() => { fecharModal(); setErroModal(null); }}>Fechar</button>
+                    <button data-arato-button="primary"
                       style={{ ...btnV, background: "#111111" }}
                       disabled={salvando}
                       onClick={salvarContrato}
@@ -1850,16 +1851,16 @@ export default function ContratosFinanceiros() {
                   <div style={{ background: "#E4F0F9", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
                     ✦ Ao registrar uma liberação, um lançamento CR é criado automaticamente no financeiro{contratoModal.conta_liberacao_id ? ` · Conta: ${nomeConta(contratoModal.conta_liberacao_id)}` : ""}.
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
-                    <div><label style={lbl}>Data Liberação</label><InputData style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
-                    <div><label style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
-                    <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fLib.parcelas_liberacao} onChange={v => setFLib(p => ({ ...p, parcelas_liberacao: v }))} /></div>
-                    <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando}>+ Adicionar</button>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
+                    <div><label data-arato-label="true" style={lbl}>Data Liberação</label><InputData style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
+                    <div><label data-arato-label="true" style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
+                    <div><label data-arato-label="true" style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fLib.parcelas_liberacao} onChange={v => setFLib(p => ({ ...p, parcelas_liberacao: v }))} /></div>
+                    <button data-arato-button="primary" style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando}>+ Adicionar</button>
                   </div>
                   {parcelasLiberacao.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
                   ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead><tr style={{ background: "var(--bg-page)" }}>{["Nº", "Data", contratoModal.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", contratoModal.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th> : null)}</tr></thead>
                       <tbody>
                         {parcelasLiberacao.map((p, i) => (
@@ -1869,7 +1870,7 @@ export default function ContratosFinanceiros() {
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
                             {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</button></td>
+                            <td style={{ padding: "8px 12px", textAlign: "right" }}><button data-arato-button="danger" style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</button></td>
                           </tr>
                         ))}
                       </tbody>
@@ -1907,28 +1908,28 @@ export default function ContratosFinanceiros() {
                       ⚠ As parcelas estão zeradas (salvas sem valor). Clique em <strong>Calcular Parcelas</strong> para recalcular com base no principal acima.
                     </div>
                   )}
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo ?? "sac"] ?? "SAC Decrescente"}</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
-                      <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
+                      <div><label data-arato-label="true" style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
                       <div>
-                        <label style={lbl}>
+                        <label data-arato-label="true" style={lbl}>
                           Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#111111" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}
                           {(() => { const im = (parseFloat(fCalc.taxaMensal) || 0) / 100; const per = Number(fCalc.periodicidade) || 1; if (per > 1 && im > 0) { const ef = (Math.pow(1 + im, per) - 1) * 100; return <span style={{ color: "#C9921B", marginLeft: 4 }}>→ {fmtNum(ef, 2)}% a.{per===12?"a":per===6?"s":"t"}</span>; } return null; })()}
                         </label>
                         <InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} />
                       </div>
-                      <div><label style={lbl}>Data 1º Pagto.</label><InputData style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
-                      <div><label style={lbl}>Periodicidade</label><select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
-                      <div><label style={lbl}>Acessórios/parc. ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
+                      <div><label data-arato-label="true" style={lbl}>Data 1º Pagto.</label><InputData style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
+                      <div><label data-arato-label="true" style={lbl}>Periodicidade</label><SelectField style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></SelectField></div>
+                      <div><label data-arato-label="true" style={lbl}>Acessórios/parc. ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
                     </div>
-                    <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                    <div data-arato-dialog-actions="true" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8 }}>
                       {parcelasIAPdf && parcelasIAPdf.length > 0 && (
-                        <button style={{ ...btnV, background: "#16A34A" }} onClick={aplicarCronogramaIAPdf} disabled={salvando}>
+                        <button data-arato-button="primary" style={{ ...btnV, background: "#16A34A" }} onClick={aplicarCronogramaIAPdf} disabled={salvando}>
                           📄 Usar cronograma do PDF ({parcelasIAPdf.length} parcelas)
                         </button>
                       )}
-                      <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando}>{salvando ? "Calculando…" : "⟳ Calcular Parcelas"}</button>
+                      <button data-arato-button="primary" style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando}>{salvando ? "Calculando…" : "⟳ Calcular Parcelas"}</button>
                     </div>
                   </div>
                   {parcelasIAPdf && parcelasIAPdf.length > 0 && parcelasPagamento.length === 0 && (
@@ -1947,17 +1948,17 @@ export default function ContratosFinanceiros() {
                         const colsEditaveis = ["Amortização", "Juros"];
                         return (
                           <>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: temEdits ? "#FBF3E0" : "var(--bg-page)", border: `0.5px solid ${temEdits ? "#C9921B" : "var(--border-table)"}`, borderRadius: 8, padding: "8px 14px", marginBottom: 10 }}>
-                              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: temEdits ? "#7A4300" : "var(--text-2)", cursor: "pointer" }}>
+                            <div data-arato-panel="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: temEdits ? "#FBF3E0" : "var(--bg-page)", border: `0.5px solid ${temEdits ? "#C9921B" : "var(--border-table)"}`, borderRadius: 8, padding: "8px 14px", marginBottom: 10 }}>
+                              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: temEdits ? "#7A4300" : "var(--text-2)", cursor: "pointer" }}>
                                 <input type="checkbox" checked={editandoParcelas} onChange={e => setEditandoParcelas(e.target.checked)} />
                                 Editar parcelas (libera Amortização e Juros pra edição manual)
                                 {temEdits && <span> — ✏ há ajustes não salvos, clique em <strong>Salvar</strong> para confirmar.</span>}
                               </label>
-                              <button style={{ ...btnV, background: "#C9921B", padding: "6px 16px", fontSize: 12 }} disabled={salvando} onClick={salvarParcelasELancarCP}>
+                              <button data-arato-button="primary" style={{ ...btnV, background: "#C9921B", padding: "6px 16px", fontSize: 12 }} disabled={salvando} onClick={salvarParcelasELancarCP}>
                                 {salvando ? "Salvando…" : "💾 Salvar Parcelas e Lançar no CP"}
                               </button>
                             </div>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Nº", "Vencimento ✏", "Amortização", "Juros", "Encargos", "Valor Parcela ✏", "Saldo Devedor", "Status", ""].map((h, i) => (
@@ -2019,12 +2020,12 @@ export default function ContratosFinanceiros() {
                                       </td>
                                       <td style={{ padding: "4px 8px", textAlign: "center" }}>
                                         {p.status === "pago" ? (
-                                          <button
+                                          <button data-arato-button="secondary"
                                             style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #888", background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                                             onClick={() => reabrirParcela(p)}
                                           >↩ Reabrir</button>
                                         ) : (
-                                          <button
+                                          <button data-arato-button="secondary"
                                             style={{ fontSize: 10, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", color: "#1A4870", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                                             onClick={() => {
                                               setModalBaixaParcela(p);
@@ -2064,7 +2065,7 @@ export default function ContratosFinanceiros() {
                                 <span>Pagas: <strong style={{ color: "#111111" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
                               </>); })()}
                               {temEdits && (
-                                <button style={{ ...btnV, background: "#C9921B", padding: "5px 14px", fontSize: 11, marginLeft: "auto" }} disabled={salvando} onClick={salvarParcelasELancarCP}>{salvando ? "Salvando…" : "💾 Salvar Parcelas e Lançar no CP"}</button>
+                                <button data-arato-button="primary" style={{ ...btnV, background: "#C9921B", padding: "5px 14px", fontSize: 11, marginLeft: "auto" }} disabled={salvando} onClick={salvarParcelasELancarCP}>{salvando ? "Salvando…" : "💾 Salvar Parcelas e Lançar no CP"}</button>
                               )}
                             </div>
                           </>
@@ -2078,12 +2079,12 @@ export default function ContratosFinanceiros() {
               {/* ── Garantias ── */}
               {abaModal === "garantias" && (!contratoModal ? <AbaDisabled nome="Garantias" /> : (
                 <div>
-                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
                       <div>
-                        <label style={lbl}>Tipo de Garantia *</label>
-                        <select style={inp} value={fGar.tipo_garantia ?? ""} onChange={e => setFGar(p => ({ ...p, tipo_garantia: e.target.value as GarantiaContrato["tipo_garantia"] }))}>
+                        <label data-arato-label="true" style={lbl}>Tipo de Garantia *</label>
+                        <SelectField style={inp} value={fGar.tipo_garantia ?? ""} onChange={e => setFGar(p => ({ ...p, tipo_garantia: e.target.value as GarantiaContrato["tipo_garantia"] }))}>
                           <option value="alienacao_fiduciaria">Alienação Fiduciária</option>
                           <option value="hipoteca">Hipoteca</option>
                           <option value="penhor_rural">Penhor Rural / Agrícola</option>
@@ -2092,42 +2093,42 @@ export default function ContratosFinanceiros() {
                           <option value="cpr_garantia">CPR como Garantia</option>
                           <option value="cessao_recebiveis">Cessão de Recebíveis</option>
                           <option value="outros">Outros</option>
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Grau</label>
-                        <select style={inp} value={fGar.grau} onChange={e => setFGar(p => ({ ...p, grau: e.target.value as "" | "1_grau" | "2_grau" | "3_grau" }))}>
+                        <label data-arato-label="true" style={lbl}>Grau</label>
+                        <SelectField style={inp} value={fGar.grau} onChange={e => setFGar(p => ({ ...p, grau: e.target.value as "" | "1_grau" | "2_grau" | "3_grau" }))}>
                           <option value="">—</option><option value="1_grau">1° Grau</option><option value="2_grau">2° Grau</option><option value="3_grau">3° Grau</option>
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Tipo de Bem</label>
-                        <select style={inp} value={fGar.tipo_bem ?? "imovel"} onChange={e => setFGar(p => ({ ...p, tipo_bem: e.target.value as GarantiaContrato["tipo_bem"], matricula_id: "", imovel_urbano_id: "", maquina_id: "" }))}>
+                        <label data-arato-label="true" style={lbl}>Tipo de Bem</label>
+                        <SelectField style={inp} value={fGar.tipo_bem ?? "imovel"} onChange={e => setFGar(p => ({ ...p, tipo_bem: e.target.value as GarantiaContrato["tipo_bem"], matricula_id: "", imovel_urbano_id: "", maquina_id: "" }))}>
                           <option value="imovel">Imóvel Rural (Matrícula)</option>
                           <option value="imovel_urbano">Imóvel Urbano</option>
                           <option value="maquina">Máquina / Veículo</option>
                           <option value="semovente">Semovente (Gado)</option>
                           <option value="produto_agricola">Produto Agrícola (CPR)</option>
                           <option value="outro">Outro</option>
-                        </select>
+                        </SelectField>
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: ["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") ? "2fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
-                      {fGar.tipo_bem === "imovel" && <div><label style={lbl}>Matrícula vinculada</label><select style={inp} value={fGar.matricula_id} onChange={e => setFGar(p => ({ ...p, matricula_id: e.target.value }))}><option value="">— Selecione —</option>{matriculas.map(m => <option key={m.id} value={m.id}>Matr. {m.numero}{m.area_ha ? ` — ${m.area_ha} ha` : ""}{m.municipio ? ` — ${m.municipio}` : ""}</option>)}</select></div>}
-                      {fGar.tipo_bem === "imovel_urbano" && <div><label style={lbl}>Imóvel Urbano</label><select style={inp} value={fGar.imovel_urbano_id} onChange={e => setFGar(p => ({ ...p, imovel_urbano_id: e.target.value }))}><option value="">— Selecione —</option>{imoveisUrbanos.map(u => <option key={u.id} value={u.id}>{u.descricao}{u.municipio ? ` — ${u.municipio}` : ""}{u.area_m2 ? ` (${u.area_m2} m²)` : ""}</option>)}</select></div>}
-                      {fGar.tipo_bem === "maquina" && <div><label style={lbl}>Máquina / Veículo</label><select style={inp} value={fGar.maquina_id} onChange={e => setFGar(p => ({ ...p, maquina_id: e.target.value }))}><option value="">— Selecione —</option>{maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.ano ? ` (${m.ano})` : ""}</option>)}</select></div>}
-                      {!["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") && <div><label style={lbl}>Descrição do Bem *</label><input style={inp} placeholder="Ex: 300 cabeças Nelore…" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
-                      <div><label style={lbl}>% do Bem</label><InputNumerico style={inp} min="1" max="100" value={fGar.percentual_bem} onChange={v => setFGar(p => ({ ...p, percentual_bem: v }))} /></div>
-                      <div><label style={lbl}>Valor Avaliação (R$)</label><InputMonetario style={inp} value={fGar.valor_avaliacao} onChange={v => setFGar(p => ({ ...p, valor_avaliacao: String(v) }))} /></div>
-                      {["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") && <div><label style={lbl}>Obs.</label><input style={inp} placeholder="Opcional" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
-                      <button style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }} onClick={salvarGarantia} disabled={salvando}>+ Adicionar</button>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: ["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") ? "2fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+                      {fGar.tipo_bem === "imovel" && <div><label data-arato-label="true" style={lbl}>Matrícula vinculada</label><SelectField style={inp} value={fGar.matricula_id} onChange={e => setFGar(p => ({ ...p, matricula_id: e.target.value }))}><option value="">— Selecione —</option>{matriculas.map(m => <option key={m.id} value={m.id}>Matr. {m.numero}{m.area_ha ? ` — ${m.area_ha} ha` : ""}{m.municipio ? ` — ${m.municipio}` : ""}</option>)}</SelectField></div>}
+                      {fGar.tipo_bem === "imovel_urbano" && <div><label data-arato-label="true" style={lbl}>Imóvel Urbano</label><SelectField style={inp} value={fGar.imovel_urbano_id} onChange={e => setFGar(p => ({ ...p, imovel_urbano_id: e.target.value }))}><option value="">— Selecione —</option>{imoveisUrbanos.map(u => <option key={u.id} value={u.id}>{u.descricao}{u.municipio ? ` — ${u.municipio}` : ""}{u.area_m2 ? ` (${u.area_m2} m²)` : ""}</option>)}</SelectField></div>}
+                      {fGar.tipo_bem === "maquina" && <div><label data-arato-label="true" style={lbl}>Máquina / Veículo</label><SelectField style={inp} value={fGar.maquina_id} onChange={e => setFGar(p => ({ ...p, maquina_id: e.target.value }))}><option value="">— Selecione —</option>{maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.ano ? ` (${m.ano})` : ""}</option>)}</SelectField></div>}
+                      {!["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") && <div><label data-arato-label="true" style={lbl}>Descrição do Bem *</label><input style={inp} placeholder="Ex: 300 cabeças Nelore…" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
+                      <div><label data-arato-label="true" style={lbl}>% do Bem</label><InputNumerico style={inp} min="1" max="100" value={fGar.percentual_bem} onChange={v => setFGar(p => ({ ...p, percentual_bem: v }))} /></div>
+                      <div><label data-arato-label="true" style={lbl}>Valor Avaliação (R$)</label><InputMonetario style={inp} value={fGar.valor_avaliacao} onChange={v => setFGar(p => ({ ...p, valor_avaliacao: String(v) }))} /></div>
+                      {["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") && <div><label data-arato-label="true" style={lbl}>Obs.</label><input style={inp} placeholder="Opcional" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
+                      <button data-arato-button="primary" style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }} onClick={salvarGarantia} disabled={salvando}>+ Adicionar</button>
                     </div>
                   </div>
                   {garantias.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma garantia cadastrada para este contrato.</div>
                   ) : (
                     <>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead><tr style={{ background: "var(--bg-page)" }}>{["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {garantias.map((g, i) => {
@@ -2143,7 +2144,7 @@ export default function ContratosFinanceiros() {
                                 <td style={{ padding: "9px 12px", textAlign: "center" }}>{g.percentual_bem ? `${g.percentual_bem}%` : "100%"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600 }}>{g.valor_avaliacao ? fmtBRL(g.valor_avaliacao) : "—"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center" }}>{cobertura !== null ? <span style={{ fontWeight: 700, color: cobertura >= 130 ? "#16A34A" : cobertura >= 100 ? "#EF9F27" : "#E24B4A" }}>{fmtNum(cobertura, 1)}%</span> : "—"}</td>
-                                <td style={{ padding: "9px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirGarantia(g.id).then(() => setGarantias(x => x.filter(r => r.id !== g.id)))}>✕</button></td>
+                                <td style={{ padding: "9px 12px", textAlign: "right" }}><button data-arato-button="danger" style={btnX} onClick={() => excluirGarantia(g.id).then(() => setGarantias(x => x.filter(r => r.id !== g.id)))}>✕</button></td>
                               </tr>
                             );
                           })}
@@ -2171,8 +2172,8 @@ export default function ContratosFinanceiros() {
                 return (
                   <div>
                     <div style={{ marginBottom: 12, fontSize: 12, color: "var(--text-2)" }}>Defina como o valor captado é rateado entre safras/ciclos e centros de custo (deve totalizar 100%).</div>
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12, minWidth: 560 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12, minWidth: 560 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Safra / Ciclo", "Centro de Custo", "%", "Valor (R$)", ""].map((h, i) => (
@@ -2184,7 +2185,7 @@ export default function ContratosFinanceiros() {
                           {centrosForm.map((c, i) => (
                             <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "6px 6px", minWidth: 180 }}>
-                                <select style={inp} value={c.ciclo_id} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}>
+                                <SelectField style={inp} value={c.ciclo_id} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}>
                                   <option value="">— Safra / Ciclo —</option>
                                   {ccAnosSafra.map(as => {
                                     const cis = ccCiclos.filter(ci => ci.ano_safra_id === as.id);
@@ -2200,15 +2201,15 @@ export default function ContratosFinanceiros() {
                                   {ccCiclos.filter(ci => !ci.ano_safra_id).map(ci => (
                                     <option key={ci.id} value={ci.id}>{ci.cultura ? `${ci.cultura} — ` : ""}{ci.descricao ?? ""}</option>
                                   ))}
-                                </select>
+                                </SelectField>
                               </td>
                               <td style={{ padding: "6px 6px", minWidth: 180 }}>
-                                <select style={inp} value={c.centro_custo_id} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, centro_custo_id: e.target.value } : x))}>
+                                <SelectField style={inp} value={c.centro_custo_id} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, centro_custo_id: e.target.value } : x))}>
                                   <option value="">— Centro de Custo —</option>
                                   {ccOptions.map(cc => (
                                     <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} — ` : ""}{cc.nome}</option>
                                   ))}
-                                </select>
+                                </SelectField>
                               </td>
                               <td style={{ padding: "6px 6px", width: 80 }}>
                                 <InputMonetario style={{ ...inp, textAlign: "center" }} value={c.percentual} onChange={v => {
@@ -2220,22 +2221,22 @@ export default function ContratosFinanceiros() {
                                 <InputMonetario style={inp} value={c.valor} onChange={v => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, valor: String(v) } : x))} />
                               </td>
                               <td style={{ padding: "6px 6px", width: 36, textAlign: "center" }}>
-                                {centrosForm.length > 1 && <button style={btnX} onClick={() => setCentrosForm(p => p.filter((_, j) => j !== i))}>✕</button>}
+                                {centrosForm.length > 1 && <button data-arato-button="danger" style={btnX} onClick={() => setCentrosForm(p => p.filter((_, j) => j !== i))}>✕</button>}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <button style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { ciclo_id: "", centro_custo_id: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
-                      <div style={{ fontSize: 12 }}>
+                    <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { ciclo_id: "", centro_custo_id: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
+                      <div data-arato-dialog-body="true" style={{ fontSize: 12 }}>
                         Total: <strong style={{ color: ok100 ? "#111111" : "#E24B4A" }}>{fmtNum(totalPct, 2)}%</strong>
                         {!ok100 && <span style={{ color: "#E24B4A", marginLeft: 4 }}>⚠ deve ser 100%</span>}
                       </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-                      <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
+                    <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+                      <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
                     </div>
                     {centrosCusto.length > 0 && (
                       <div style={{ marginTop: 14, fontSize: 11, color: "var(--text-2)" }}>
@@ -2270,7 +2271,7 @@ export default function ContratosFinanceiros() {
 
                       {/* Contratos já vinculados como origem */}
                       {origensRefin.length > 0 && (
-                        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 14 }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 14 }}>
                           <thead><tr style={{ background: "#EDE9FB" }}>
                             {["Contrato de Origem", "Nº Operação", "Credor", "Saldo Incorporado", ""].map((h, i) => (
                               <th key={i} style={{ padding: "6px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#4B3B9B" }}>{h}</th>
@@ -2286,7 +2287,7 @@ export default function ContratosFinanceiros() {
                                   <td style={{ padding: "7px 10px", fontSize: 11, color: "#555" }}>{co?.credor ?? "—"}</td>
                                   <td style={{ padding: "7px 10px", fontSize: 12 }}>{o.saldo_incorporado ? fmtBRL(o.saldo_incorporado) : <span style={{ color: "#aaa" }}>—</span>}</td>
                                   <td style={{ padding: "7px 10px" }}>
-                                    <button style={btnX} onClick={async () => {
+                                    <button data-arato-button="danger" style={btnX} onClick={async () => {
                                       if (!confirm("Desvincular este contrato de origem? Ele voltará para status Ativo.")) return;
                                       await desvincularOrigemRefinanciamento(o.id, o.contrato_origem_id);
                                       setOrigensRefin(p => p.filter(x => x.id !== o.id));
@@ -2301,21 +2302,21 @@ export default function ContratosFinanceiros() {
                       )}
 
                       {/* Formulário para adicionar nova origem */}
-                      <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 10, alignItems: "end" }}>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "3fr 1fr auto", gap: 10, alignItems: "end" }}>
                         <div>
-                          <label style={{ ...lbl, color: "#4B3B9B" }}>Contrato de Origem</label>
-                          <select style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} onChange={e => setFRefin(p => ({ ...p, contrato_origem_id: e.target.value }))}>
+                          <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Contrato de Origem</label>
+                          <SelectField style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.contrato_origem_id} onChange={e => setFRefin(p => ({ ...p, contrato_origem_id: e.target.value }))}>
                             <option value="">— Selecionar contrato a consolidar —</option>
                             {disponiveis.map(c => (
                               <option key={c.id} value={c.id}>{c.descricao}{c.numero_documento ? ` — ${c.numero_documento}` : ""} · {c.credor}</option>
                             ))}
-                          </select>
+                          </SelectField>
                         </div>
                         <div>
-                          <label style={{ ...lbl, color: "#4B3B9B" }}>Saldo Incorporado (R$)</label>
+                          <label data-arato-label="true" style={{ ...lbl, color: "#4B3B9B" }}>Saldo Incorporado (R$)</label>
                           <InputMonetario style={{ ...inp, borderColor: "#7C6FC360" }} value={fRefin.saldo_incorporado} onChange={v => setFRefin(p => ({ ...p, saldo_incorporado: String(v) }))} />
                         </div>
-                        <button
+                        <button data-arato-button="toggle"
                           disabled={!fRefin.contrato_origem_id || salvando}
                           style={{ padding: "8px 16px", background: fRefin.contrato_origem_id ? "#4B3B9B" : "#ccc", color: "#fff", border: "none", borderRadius: 8, cursor: fRefin.contrato_origem_id ? "pointer" : "default", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}
                           onClick={async () => {
@@ -2336,30 +2337,30 @@ export default function ContratosFinanceiros() {
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
                       Registre alterações formais: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
                     </div>
-                    <div style={{ background: "#F8F9FB", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 16, marginBottom: 18 }}>
+                    <div data-arato-panel="true" style={{ background: "#F8F9FB", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 16, marginBottom: 18 }}>
                       <SecTitle>Novo Aditivo</SecTitle>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
-                        <div><label style={lbl}>Data do Aditivo *</label><InputData style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
-                        <div><label style={lbl}>Tipo *</label><select style={inp} value={fAdit.tipo} onChange={e => setFAdit(p => ({ ...p, tipo: e.target.value as AditivoContrato["tipo"] }))}>{Object.entries(TIPO_ADIT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
-                        <div><label style={lbl}>Descrição / Motivo *</label><input style={inp} placeholder="Motivo ou cláusula alterada" value={fAdit.descricao} onChange={e => setFAdit(p => ({ ...p, descricao: e.target.value }))} /></div>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
+                        <div><label data-arato-label="true" style={lbl}>Data do Aditivo *</label><InputData style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
+                        <div><label data-arato-label="true" style={lbl}>Tipo *</label><SelectField style={inp} value={fAdit.tipo} onChange={e => setFAdit(p => ({ ...p, tipo: e.target.value as AditivoContrato["tipo"] }))}>{Object.entries(TIPO_ADIT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</SelectField></div>
+                        <div><label data-arato-label="true" style={lbl}>Descrição / Motivo *</label><input style={inp} placeholder="Motivo ou cláusula alterada" value={fAdit.descricao} onChange={e => setFAdit(p => ({ ...p, descricao: e.target.value }))} /></div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-                        <div><label style={lbl}>Nova Data Vencimento</label><InputData style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
-                        <div><label style={lbl}>Nova Taxa a.a. (%)</label><InputMonetario style={inp} value={fAdit.nova_taxa_aa} onChange={v => { const aa = Number(v) || 0; setFAdit(p => ({ ...p, nova_taxa_aa: String(v), nova_taxa_am: aa === 0 ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
-                        <div><label style={lbl}>Nova Taxa a.m. (%)</label><InputNumerico style={inp} decimais={4} value={fAdit.nova_taxa_am} onChange={v => setFAdit(p => ({ ...p, nova_taxa_am: v }))} /></div>
-                        <div><label style={lbl}>Novo Valor Financiado</label><InputMonetario style={inp} value={fAdit.novo_valor_financiado} onChange={v => setFAdit(p => ({ ...p, novo_valor_financiado: String(v) }))} /></div>
-                        <div><label style={lbl}>Novas Parcelas</label><InputNumerico style={inp} decimais={0} value={fAdit.novo_num_parcelas} onChange={v => setFAdit(p => ({ ...p, novo_num_parcelas: v }))} /></div>
+                      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                        <div><label data-arato-label="true" style={lbl}>Nova Data Vencimento</label><InputData style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
+                        <div><label data-arato-label="true" style={lbl}>Nova Taxa a.a. (%)</label><InputMonetario style={inp} value={fAdit.nova_taxa_aa} onChange={v => { const aa = Number(v) || 0; setFAdit(p => ({ ...p, nova_taxa_aa: String(v), nova_taxa_am: aa === 0 ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
+                        <div><label data-arato-label="true" style={lbl}>Nova Taxa a.m. (%)</label><InputNumerico style={inp} decimais={4} value={fAdit.nova_taxa_am} onChange={v => setFAdit(p => ({ ...p, nova_taxa_am: v }))} /></div>
+                        <div><label data-arato-label="true" style={lbl}>Novo Valor Financiado</label><InputMonetario style={inp} value={fAdit.novo_valor_financiado} onChange={v => setFAdit(p => ({ ...p, novo_valor_financiado: String(v) }))} /></div>
+                        <div><label data-arato-label="true" style={lbl}>Novas Parcelas</label><InputNumerico style={inp} decimais={0} value={fAdit.novo_num_parcelas} onChange={v => setFAdit(p => ({ ...p, novo_num_parcelas: v }))} /></div>
                       </div>
-                      <div style={{ marginBottom: 12 }}><label style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 52, resize: "vertical" } as React.CSSProperties} value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
-                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                        <button style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</button>
-                        <button style={{ ...btnV }} disabled={salvando} onClick={salvarAditivo}>Registrar Aditivo</button>
+                      <div style={{ marginBottom: 12 }}><label data-arato-label="true" style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 52, resize: "vertical" } as React.CSSProperties} value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
+                      <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <button data-arato-button="secondary" style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</button>
+                        <button data-arato-button="primary" style={{ ...btnV }} disabled={salvando} onClick={salvarAditivo}>Registrar Aditivo</button>
                       </div>
                     </div>
                     {aditivos.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhum aditivo registrado.</div>
                     ) : (
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead><tr style={{ background: "var(--bg-page)" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {aditivos.map((a, i) => {
@@ -2375,7 +2376,7 @@ export default function ContratosFinanceiros() {
                                 <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, background: meta.bg, color: meta.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{meta.label}</span></td>
                                 <td style={{ padding: "8px 10px", fontSize: 12 }}><div>{a.descricao}</div>{a.obs && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{a.obs}</div>}</td>
                                 <td style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-2)" }}>{termos.length > 0 ? termos.map((t, ti) => <div key={ti}>{t}</div>) : <span style={{ color: "#bbb" }}>—</span>}</td>
-                                <td style={{ padding: "8px 10px" }}><button style={btnX} onClick={() => { if (confirm("Excluir este aditivo?")) excluirAditivo(a.id).then(() => setAditivos(p => p.filter(x => x.id !== a.id))); }}>✕</button></td>
+                                <td style={{ padding: "8px 10px" }}><button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir este aditivo?")) excluirAditivo(a.id).then(() => setAditivos(p => p.filter(x => x.id !== a.id))); }}>✕</button></td>
                               </tr>
                             );
                           })}
@@ -2405,7 +2406,7 @@ export default function ContratosFinanceiros() {
                     {movs.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
                     ) : (
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Data", "Evento", "Amortização", "Juros", "Acessórios", "Valor", "Saldo Devedor", "Status"].map((h, i) => (
@@ -2453,16 +2454,16 @@ export default function ContratosFinanceiros() {
 
       {/* ── Modal: Registrar Pagamento de Parcela ─────────────────────────────── */}
       {modalBaixaParcela && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Registrar Pagamento</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="form" style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Registrar Pagamento</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>
               Parcela {modalBaixaParcela.num_parcela} — vencimento {modalBaixaParcela.data_vencimento}
             </div>
 
-            <div style={{ display: "grid", gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Data do Pagamento *</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Data do Pagamento *</label>
                 <InputData
                   type="date"
                   style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
@@ -2470,36 +2471,36 @@ export default function ContratosFinanceiros() {
                   onChange={e => setBaixaPData(e.target.value)}
                 />
               </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Valor Pago (R$) *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Valor Pago (R$) *</label>
                 <InputMonetario
                   style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
                   value={baixaPValor}
                   onChange={v => setBaixaPValor(String(v))}
                 />
               </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Conta Bancária *</label>
-                <select
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Conta Bancária *</label>
+                <SelectField
                   style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box" }}
                   value={baixaPConta}
                   onChange={e => setBaixaPConta(e.target.value)}
                 >
                   <option value="">— selecione —</option>
                   {contas.map(c => <option key={c.id} value={c.id}>{c.nome} {c.banco ? `— ${c.banco}` : ""}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
 
             {baixaPErro && <div style={{ marginTop: 12, fontSize: 12, color: "#E24B4A", background: "#FCEBEB", padding: "8px 12px", borderRadius: 8 }}>{baixaPErro}</div>}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-              <button
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+              <button data-arato-button="secondary"
                 style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "#fff", fontSize: 13, cursor: "pointer" }}
                 onClick={() => setModalBaixaParcela(null)}
                 disabled={baixandoP}
               >Cancelar</button>
-              <button
+              <button data-arato-button="primary"
                 style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                 onClick={confirmarBaixaParcela}
                 disabled={baixandoP}

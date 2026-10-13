@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -204,22 +205,22 @@ function ConfiguracoesInner() {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
+              <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
                 {aba === "plano_contas" ? "Plano de Contas" : aba === "certificado" ? "Certificado A1" : "Configurações"}
               </h1>
               {aba === "hub" && <p style={{ margin: 0, fontSize: 11, color: "#666" }}>Acesso de suporte e cotações</p>}
             </div>
           </div>
           {diasCertMin !== null && diasCertMin <= 30 && (
-            <button
+            <button data-arato-button="toggle"
               onClick={() => { setAba("certificado"); window.history.replaceState({}, "", "/configuracoes?tab=certificado"); }}
               style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, fontSize: 12, color: "#791F1F", cursor: "pointer", fontWeight: 600 }}
             >
@@ -249,7 +250,7 @@ function ConfiguracoesInner() {
                   </p>
                   <p style={{ margin: "5px 0 0", fontSize: 10, color: "var(--text-muted)" }}>LGPD Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação</p>
                 </div>
-                <button
+                <button data-arato-button="toggle"
                   onClick={toggleRaccolto}
                   disabled={salvandoRaccolto}
                   style={{ flexShrink: 0, padding: "8px 18px", borderRadius: 8, border: `1px solid ${raccoltoAcesso ? "#E24B4A" : "#111111"}`, background: raccoltoAcesso ? "#FCEBEB" : "#111111", color: raccoltoAcesso ? "#791F1F" : "#fff", fontWeight: 700, fontSize: 13, cursor: salvandoRaccolto ? "wait" : "pointer", whiteSpace: "nowrap" }}
@@ -259,33 +260,33 @@ function ConfiguracoesInner() {
               </div>
 
               {/* Cotação e Basis */}
-              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 4 }}>
+              <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 4 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", paddingBottom: 6, borderBottom: "0.5px solid var(--border)", marginBottom: 14 }}>
                   Cotação e Basis
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 14 }}>
                   O basis é a diferença entre o preço local e a referência de mercado (CBOT/B3). Negativo = preço local menor. Ex: Soja CBOT R$ 129/sc + Basis −3,50 = preço local R$ 125,50/sc.
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
                   <div>
-                    <label style={lbl}>Praça de referência</label>
+                    <label data-arato-label="true" style={lbl}>Praça de referência</label>
                     <input value={basis.praca} onChange={e => setBasis(b => ({ ...b, praca: e.target.value }))} placeholder="Ex: Nova Mutum - MT" style={inp} />
                   </div>
                   <div>
-                    <label style={lbl}>Basis Soja (R$/sc)</label>
+                    <label data-arato-label="true" style={lbl}>Basis Soja (R$/sc)</label>
                     <InputNumerico value={basis.soja} onChange={v => setBasis(b => ({ ...b, soja: parseFloat(v) || 0 }))} style={inp} />
                   </div>
                   <div>
-                    <label style={lbl}>Basis Milho (R$/sc)</label>
+                    <label data-arato-label="true" style={lbl}>Basis Milho (R$/sc)</label>
                     <InputNumerico value={basis.milho} onChange={v => setBasis(b => ({ ...b, milho: parseFloat(v) || 0 }))} style={inp} />
                   </div>
                   <div>
-                    <label style={lbl}>Basis Algodão (R$/@)</label>
+                    <label data-arato-label="true" style={lbl}>Basis Algodão (R$/@)</label>
                     <InputNumerico value={basis.algodao} onChange={v => setBasis(b => ({ ...b, algodao: parseFloat(v) || 0 }))} style={inp} />
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button onClick={salvarBasis} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                  <button data-arato-button="primary" onClick={salvarBasis} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                     Salvar
                   </button>
                   {basisSalvo && <span style={{ fontSize: 12, color: "#1A5C38", fontWeight: 600 }}>Salvo — dashboard atualizado</span>}
@@ -309,7 +310,7 @@ function ConfiguracoesInner() {
                     { key: "custo",   label: "Custos",   count: contas.filter(c => c.tipo === "custo").length },
                     { key: "despesa", label: "Despesas", count: contas.filter(c => c.tipo === "despesa").length },
                   ] as { key: typeof filtroContas; label: string; count: number }[]).map(f => (
-                    <button key={f.key} onClick={() => setFiltroContas(f.key)} style={{
+                    <button data-arato-button="toggle" key={f.key} onClick={() => setFiltroContas(f.key)} style={{
                       padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
                       borderColor: filtroContas === f.key ? "#111111" : "var(--border-table)",
                       background: filtroContas === f.key ? "#E8E8E8" : "transparent",
@@ -325,7 +326,7 @@ function ConfiguracoesInner() {
                     <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>{contas.filter(c => c.lcdpr).length}</span>
                     vinculadas ao LCDPR
                   </span>
-                  <button
+                  <button data-arato-button="secondary"
                     onClick={() => {
                       const linhas = contasFiltradas.map(c => {
                         const ct = corTipoConta(c.tipo);
@@ -358,13 +359,13 @@ function ConfiguracoesInner() {
                     className="no-print"
                     style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}
                   >Imprimir</button>
-                  <button onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
+                  <button data-arato-button="secondary" onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
                     + Nova conta
                   </button>
                 </div>
               </div>
 
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Código", "Nome da conta", "Tipo", "Natureza", "Operacional", "LCDPR", ""].map((h, i) => (
@@ -399,11 +400,11 @@ function ConfiguracoesInner() {
                             : <span style={{ fontSize: 10, color: "#ccc" }}>—</span>}
                         </td>
                         <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          <button onClick={() => abrirEditarConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
+                          <button data-arato-button="secondary" onClick={() => abrirEditarConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
                           </button>
                           {!isGrupo && (
-                            <button onClick={() => excluirConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
+                            <button data-arato-button="icon" onClick={() => excluirConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
                               ×
                             </button>
                           )}
@@ -426,7 +427,7 @@ function ConfiguracoesInner() {
                     {certs.length === 0 ? "Nenhum certificado configurado" : `${certs.length} certificado${certs.length > 1 ? "s" : ""} — um por produtor/titular`}
                   </div>
                 </div>
-                <button
+                <button data-arato-button="primary"
                   onClick={() => { setCertProdutorId(produtores.length === 1 ? produtores[0].id : ""); setModalCert(true); }}
                   style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
                 >
@@ -466,7 +467,7 @@ function ConfiguracoesInner() {
                             <span style={{ fontSize: 11, color: "#EF9F27" }}>Vencimento não informado</span>
                           )}
                         </div>
-                        <button onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "transparent", color: "#111111", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                        <button data-arato-button="secondary" onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "transparent", color: "#111111", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                           Atualizar
                         </button>
                       </div>
@@ -486,84 +487,84 @@ function ConfiguracoesInner() {
 
       {/* ── Modal Conta Contábil ── */}
       {modalConta && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 480, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 20 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 480, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 20 }}>
               {contaEditCod ? "Editar conta" : "Nova conta"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Código *</label>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Código *</label>
                 <input style={inp} placeholder="Ex: 4.2.3" value={formConta.codigo}
                   onChange={e => setFormConta(p => ({ ...p, codigo: e.target.value }))} disabled={contaEditCod !== null} />
               </div>
-              <div>
-                <label style={lbl}>Nome da conta *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nome da conta *</label>
                 <input style={inp} placeholder="Ex: Calcário dolomítico" value={formConta.nome}
                   onChange={e => setFormConta(p => ({ ...p, nome: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Tipo *</label>
-                <select style={inp} value={formConta.tipo} onChange={e => setFormConta(p => ({ ...p, tipo: e.target.value as ContaContabil["tipo"] }))}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo *</label>
+                <SelectField style={inp} value={formConta.tipo} onChange={e => setFormConta(p => ({ ...p, tipo: e.target.value as ContaContabil["tipo"] }))}>
                   <option value="ativo">Ativo</option>
                   <option value="passivo">Passivo</option>
                   <option value="pl">Patrimônio Líquido</option>
                   <option value="receita">Receita</option>
                   <option value="custo">Custo de produção</option>
                   <option value="despesa">Despesa operacional</option>
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Nível *</label>
-                <select style={inp} value={formConta.nivel} onChange={e => setFormConta(p => ({ ...p, nivel: Number(e.target.value) }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nível *</label>
+                <SelectField style={inp} value={formConta.nivel} onChange={e => setFormConta(p => ({ ...p, nivel: Number(e.target.value) }))}>
                   <option value={0}>0 — Grupo</option>
                   <option value={1}>1 — Subgrupo</option>
                   <option value={2}>2 — Detalhe</option>
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Conta pai</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Conta pai</label>
                 <input style={inp} placeholder="Ex: 4.2" value={formConta.pai ?? ""}
                   onChange={e => setFormConta(p => ({ ...p, pai: e.target.value || undefined }))} />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div>
-                <label style={lbl}>Natureza do saldo</label>
-                <select style={inp} value={formConta.natureza ?? "devedora"}
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Natureza do saldo</label>
+                <SelectField style={inp} value={formConta.natureza ?? "devedora"}
                   onChange={e => setFormConta(p => ({ ...p, natureza: e.target.value as "devedora" | "credora" }))}>
                   <option value="devedora">Devedora (Ativo / Custo / Despesa)</option>
                   <option value="credora">Credora (Passivo / PL / Receita)</option>
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
                   <input type="checkbox" checked={!!formConta.operacional} onChange={e => setFormConta(p => ({ ...p, operacional: e.target.checked }))} style={{ width: 14, height: 14 }} />
                   Disponível para operadores
                 </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
                   <input type="checkbox" checked={!!formConta.transitoria} onChange={e => setFormConta(p => ({ ...p, transitoria: e.target.checked }))} style={{ width: 14, height: 14 }} />
                   Conta transitória
                 </label>
               </div>
             </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={lbl}>Código LCDPR</label>
-              <select style={inp} value={formConta.lcdpr ?? ""} onChange={e => setFormConta(p => ({ ...p, lcdpr: e.target.value || null }))}>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <label data-arato-label="true" style={lbl}>Código LCDPR</label>
+              <SelectField style={inp} value={formConta.lcdpr ?? ""} onChange={e => setFormConta(p => ({ ...p, lcdpr: e.target.value || null }))}>
                 {LCDPR_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </SelectField>
             </div>
             {erroConta && (
               <div style={{ marginBottom: 10, padding: "8px 12px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, color: "#791F1F", fontSize: 12 }}>
                 {erroConta}
               </div>
             )}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => { setModalConta(false); setErroConta(null); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim() || salvConta}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => { setModalConta(false); setErroConta(null); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim() || salvConta}
                 style={{ padding: "8px 20px", background: formConta.codigo.trim() && formConta.nome.trim() ? "#1A5C38" : "#999", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvConta ? "Salvando…" : contaEditCod ? "Salvar alterações" : "Criar conta"}
               </button>
@@ -574,20 +575,20 @@ function ConfiguracoesInner() {
 
       {/* ── Modal Certificado ── */}
       {modalCert && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 460, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
-            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 460, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
 
-            <div style={{ display: "grid", gap: 14 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
               {produtores.length > 1 && (
                 <div>
-                  <label style={lbl}>Produtor / Titular *</label>
-                  <select value={certProdutorId} onChange={e => setCertProdutorId(e.target.value)} style={inp}>
+                  <label data-arato-label="true" style={lbl}>Produtor / Titular *</label>
+                  <SelectField value={certProdutorId} onChange={e => setCertProdutorId(e.target.value)} style={inp}>
                     <option value="">Selecione o produtor...</option>
                     {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} — {p.tipo === "pf" ? "CPF" : "CNPJ"}: {p.cpf_cnpj ?? "—"}</option>)}
-                  </select>
+                  </SelectField>
                 </div>
               )}
               {produtores.length === 1 && (
@@ -598,8 +599,8 @@ function ConfiguracoesInner() {
                 </div>
               )}
 
-              <div>
-                <label style={lbl}>Arquivo do certificado (.pfx / .p12) *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Arquivo do certificado (.pfx / .p12) *</label>
                 <input ref={certInputRef} type="file" accept=".pfx,.p12" style={{ display: "none" }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) setCertFile(f); e.target.value = ""; }} />
                 {certFile ? (
@@ -608,7 +609,7 @@ function ConfiguracoesInner() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#166534", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{certFile.name}</div>
                       <div style={{ fontSize: 11, color: "#166534" }}>{(certFile.size / 1024).toFixed(1)} KB</div>
                     </div>
-                    <button onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontSize: 18, padding: "0 4px" }}>×</button>
+                    <button data-arato-button="icon" onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontSize: 18, padding: "0 4px" }}>×</button>
                   </div>
                 ) : (
                   <div
@@ -629,8 +630,8 @@ function ConfiguracoesInner() {
                 )}
               </div>
 
-              <div>
-                <label style={lbl}>Senha do certificado *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Senha do certificado *</label>
                 <input style={inp} type="password" placeholder="Senha do arquivo .pfx" value={certSenha}
                   onChange={e => setCertSenha(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && certFile && certSenha.trim()) carregarCertificado(); }} />
@@ -648,9 +649,9 @@ function ConfiguracoesInner() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button onClick={fecharModalCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={carregarCertificado} disabled={!certFile || !certSenha.trim() || certCarregando || certSucesso}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
+              <button data-arato-button="secondary" onClick={fecharModalCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={carregarCertificado} disabled={!certFile || !certSenha.trim() || certCarregando || certSucesso}
                 style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: (!certFile || !certSenha.trim() || certCarregando) ? "not-allowed" : "pointer", fontSize: 13, opacity: (!certFile || !certSenha.trim() || certCarregando) ? 0.5 : 1 }}>
                 {certCarregando ? "Carregando..." : "Carregar certificado"}
               </button>

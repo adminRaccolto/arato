@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -245,22 +246,22 @@ export default function ClassificacaoPage() {
       <TopNav />
       <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Regras de Classificação Automática</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Regras de Classificação Automática</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Critérios para o sistema classificar NFs da SIEG sem intervenção manual. Quanto mais regras, menos pendências.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button
+            <button data-arato-button="secondary"
               onClick={carregarPadroesArato}
               disabled={carregandoPad}
               style={{ padding: "9px 16px", borderRadius: 8, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#7A4300", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               {carregandoPad ? "Carregando…" : "Padrões Arato"}
             </button>
-            <button
+            <button data-arato-button="primary"
               onClick={abrirNova}
               style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
@@ -272,7 +273,7 @@ export default function ClassificacaoPage() {
         {msgPadroes && (
           <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#166534", display: "flex", justifyContent: "space-between" }}>
             {msgPadroes}
-            <button onClick={() => setMsgPadroes(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>✕</button>
+            <button data-arato-button="icon" onClick={() => setMsgPadroes(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>✕</button>
           </div>
         )}
 
@@ -283,7 +284,7 @@ export default function ClassificacaoPage() {
             { label: "Total Aplicações", valor: aplicacoes.toLocaleString("pt-BR"),                                           cor: "#111111" },
             { label: "Eficácia",         valor: regras.length > 0 ? `${Math.round((ativas / regras.length) * 100)}%` : "—",  cor: "#C9921B" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
               <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: k.cor }}>{k.valor}</div>
             </div>
@@ -309,7 +310,7 @@ export default function ClassificacaoPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)" }}>Carregando…</div>
         ) : regrasFiltradas.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 48, textAlign: "center" }}>
+          <div data-arato-statistic="action" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🤖</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>
               {regras.length === 0 ? "Nenhuma regra criada ainda" : "Nenhuma regra encontrada"}
@@ -318,7 +319,7 @@ export default function ClassificacaoPage() {
               Use <strong>Padrões Arato</strong> para carregar os NCMs mais comuns do agronegócio de uma vez.
             </div>
             {regras.length === 0 && (
-              <button onClick={carregarPadroesArato} disabled={carregandoPad}
+              <button data-arato-button="primary" onClick={carregarPadroesArato} disabled={carregandoPad}
                 style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 Carregar Padrões Arato
               </button>
@@ -326,7 +327,7 @@ export default function ClassificacaoPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["Regra", "Tipo NF", "Critérios de Match", "Classificação", "Aplicações", "Última", "Ativa", ""].map(h => (
@@ -370,7 +371,7 @@ export default function ClassificacaoPage() {
                       <td style={{ padding: "10px 14px", fontWeight: 700, color: "#111111" }}>{(r.qtd_aplicacoes ?? 0).toLocaleString("pt-BR")}</td>
                       <td style={{ padding: "10px 14px", color: "var(--text-3)", fontSize: 12 }}>{fmtDate(r.ultima_aplicacao)}</td>
                       <td style={{ padding: "10px 14px" }}>
-                        <button
+                        <button data-arato-button="toggle"
                           onClick={() => toggleAtivo(r)}
                           style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: r.ativo ? "#16A34A" : "var(--border)", position: "relative", transition: "background 0.2s" }}
                         >
@@ -379,8 +380,8 @@ export default function ClassificacaoPage() {
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>Editar</button>
-                          <button onClick={() => excluir(r.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #FECACA", background: "var(--bg-card)", color: "#E24B4A", fontSize: 11, cursor: "pointer" }}>Excluir</button>
+                          <button data-arato-button="secondary" onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                          <button data-arato-button="secondary" onClick={() => excluir(r.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #FECACA", background: "var(--bg-card)", color: "#E24B4A", fontSize: 11, cursor: "pointer" }}>Excluir</button>
                         </div>
                       </td>
                     </tr>
@@ -394,21 +395,21 @@ export default function ClassificacaoPage() {
 
       {/* ── Modal ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(640px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{editId ? "Editar Regra" : "Nova Regra de Classificação"}</div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Os critérios de match são cumulativos (AND) — preencha apenas os que tornam a regra específica.</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(640px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{editId ? "Editar Regra" : "Nova Regra de Classificação"}</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Os critérios de match são cumulativos (AND) — preencha apenas os que tornam a regra específica.</div>
             </div>
 
-            <div style={{ padding: 24 }}>
+            <div data-arato-dialog-body="true" style={{ padding: 24 }}>
 
               {/* Tipo NF */}
-              <div style={{ marginBottom: 18 }}>
+              <div data-arato-dialog-body="true" style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>Tipo de NF</div>
                 <div style={{ display: "inline-flex", background: "var(--bg-page)", borderRadius: 8, padding: 3, gap: 2 }}>
-                  <button style={btnTab(ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "produto", insumo_id: "", centro_custo_id: "" }))}>NF Produto</button>
-                  <button style={btnTab(!ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "servico" }))}>NFS Serviço</button>
+                  <button data-arato-button="secondary" style={btnTab(ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "produto", insumo_id: "", centro_custo_id: "" }))}>NF Produto</button>
+                  <button data-arato-button="secondary" style={btnTab(!ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "servico" }))}>NFS Serviço</button>
                 </div>
                 {ehProduto && (
                   <div style={{ marginTop: 8, fontSize: 11, color: "#1e40af", background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 6, padding: "6px 10px" }}>
@@ -418,8 +419,8 @@ export default function ClassificacaoPage() {
               </div>
 
               {/* Nome */}
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Nome da Regra</label>
+              <div data-arato-dialog-body="true" style={{ marginBottom: 18 }}>
+                <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Nome da Regra</label>
                 <input
                   value={form.nome_regra ?? ""}
                   onChange={e => setForm(f => ({ ...f, nome_regra: e.target.value }))}
@@ -429,11 +430,11 @@ export default function ClassificacaoPage() {
               </div>
 
               {/* Critérios */}
-              <div style={{ marginBottom: 18 }}>
+              <div data-arato-dialog-body="true" style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Critérios de Match (AND)</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>NCM{ehProduto ? " (principal)" : " (opcional)"}</label>
+                    <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>NCM{ehProduto ? " (principal)" : " (opcional)"}</label>
                     <input
                       value={form.ncm ?? ""}
                       onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))}
@@ -442,7 +443,7 @@ export default function ClassificacaoPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>CNPJ do Fornecedor (opcional)</label>
+                    <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>CNPJ do Fornecedor (opcional)</label>
                     <input
                       value={form.cnpj_emitente ?? ""}
                       onChange={e => setForm(f => ({ ...f, cnpj_emitente: e.target.value }))}
@@ -451,7 +452,7 @@ export default function ClassificacaoPage() {
                     />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Descrição contém (opcional)</label>
+                    <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Descrição contém (opcional)</label>
                     <input
                       value={form.descricao_contem ?? ""}
                       onChange={e => setForm(f => ({ ...f, descricao_contem: e.target.value }))}
@@ -463,28 +464,28 @@ export default function ClassificacaoPage() {
               </div>
 
               {/* Classificação Destino */}
-              <div style={{ marginBottom: 18 }}>
+              <div data-arato-dialog-body="true" style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Classificação Destino</div>
-                <div style={{ display: "grid", gridTemplateColumns: ehProduto ? "1fr 1fr" : "1fr 1fr 1fr", gap: 12 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: ehProduto ? "1fr 1fr" : "1fr 1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
-                    <select
+                    <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
+                    <SelectField
                       value={form.categoria ?? ""}
                       onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
                     >
                       <option value="">— Nenhuma —</option>
                       {(ehProduto ? CATEGORIAS_PRODUTO : CATEGORIAS_SERVICO).map(c => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
-                    </select>
+                    </SelectField>
                   </div>
 
                   {/* OG esperada — disponível para ambos os tipos */}
                   <div>
-                    <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>
+                    <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>
                       Operação Gerencial esperada
                       <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> (auditoria)</span>
                     </label>
-                    <select
+                    <SelectField
                       value={form.operacao_gerencial_id ?? ""}
                       onChange={e => setForm(f => ({ ...f, operacao_gerencial_id: e.target.value }))}
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
@@ -493,15 +494,15 @@ export default function ClassificacaoPage() {
                       {ogsDisponiveis.map(og => (
                         <option key={og.id} value={og.id}>{og.classificacao} — {og.descricao}</option>
                       ))}
-                    </select>
+                    </SelectField>
                   </div>
 
                   {/* Insumo e CC só para serviço */}
                   {!ehProduto && (
                     <>
                       <div>
-                        <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
-                        <select
+                        <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
+                        <SelectField
                           value={form.insumo_id ?? ""}
                           onChange={e => setForm(f => ({ ...f, insumo_id: e.target.value }))}
                           style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
@@ -510,11 +511,11 @@ export default function ClassificacaoPage() {
                           {insumos
                             .filter(ins => !form.categoria || ins.categoria === form.categoria)
                             .map(ins => <option key={ins.id} value={ins.id}>{ins.nome}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
-                        <select
+                        <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
+                        <SelectField
                           value={form.centro_custo_id ?? ""}
                           onChange={e => setForm(f => ({ ...f, centro_custo_id: e.target.value }))}
                           style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
@@ -523,7 +524,7 @@ export default function ClassificacaoPage() {
                           {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => (
                             <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>
                           ))}
-                        </select>
+                        </SelectField>
                       </div>
                     </>
                   )}
@@ -536,14 +537,14 @@ export default function ClassificacaoPage() {
                 )}
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
                 <input type="checkbox" id="ativo" checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} style={{ width: 16, height: 16 }} />
-                <label htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>Regra ativa</label>
+                <label data-arato-label="true" htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-2)", cursor: "pointer" }}>Regra ativa</label>
               </div>
 
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-                <button onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button data-arato-button="secondary" onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+                <button data-arato-button="primary" onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {saving ? "Salvando…" : editId ? "Salvar" : "Criar Regra"}
                 </button>
               </div>

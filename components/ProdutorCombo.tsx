@@ -51,7 +51,7 @@ export default function ProdutorCombo({
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button type="button" style={triggerStyle} onClick={() => setOpen(o => !o)}>
+      <button data-arato-button="secondary" type="button" style={triggerStyle} onClick={() => setOpen(o => !o)}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 6 }}>
           {sel ? sel.nome : placeholder}
         </span>

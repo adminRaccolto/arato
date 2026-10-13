@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
@@ -82,13 +83,13 @@ const btnG: React.CSSProperties = { background: "#16A34A", color: "#fff", border
 // ── Modal overlay ─────────────────────────────────────────────────────────────
 function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onClose: () => void; children: React.ReactNode; width?: number }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
         </div>
-        <div style={{ padding: 20, overflowY: "auto" }}>{children}</div>
+        <div data-arato-dialog-body="true" style={{ padding: 20, overflowY: "auto" }}>{children}</div>
       </div>
     </div>
   );
@@ -386,12 +387,12 @@ const salvar = async (confirmar = false) => {
     <div style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+      <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
           <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Relatório de recebimento de grãos — pesagem própria e tickets de terceiros</p>
         </div>
-        <button style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
+        <button data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
       </div>
 
       {/* KPI cards */}
@@ -402,7 +403,7 @@ const salvar = async (confirmar = false) => {
           { label: "Peso Classif.", value: fmt(pesoTotal / 1000, 1) + " t",      color: "#7C3AED", bg: "#F5F3FF" },
           { label: "Em Rascunho",   value: String(qRascunho) + " / " + String(qConfirmado) + " conf.", color: "#C9921B", bg: "#FBF3E0" },
         ].map(k => (
-          <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 16px", border: `0.5px solid ${k.bg === "#fff" ? "var(--border)" : k.bg}` }}>
+          <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 16px", border: `0.5px solid ${k.bg === "#fff" ? "var(--border)" : k.bg}` }}>
             <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
           </div>
@@ -410,30 +411,30 @@ const salvar = async (confirmar = false) => {
       </div>
 
       {/* Filtros */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <input style={{ ...inp, width: 180 }} placeholder="Buscar placa, ticket, produto…" value={fBusca} onChange={e => setFBusca(e.target.value)} />
-        <select style={{ ...inp, width: 160 }} value={fTipo} onChange={e => setFTipo(e.target.value as typeof fTipo)}>
+        <SelectField style={{ ...inp, width: 160 }} value={fTipo} onChange={e => setFTipo(e.target.value as typeof fTipo)}>
           <option value="">Todos os tipos</option>
           <option value="proprio">Pesagem Própria</option>
           <option value="terceiro">Romaneio Terceiro</option>
-        </select>
-        <select style={{ ...inp, width: 150 }} value={fStatus} onChange={e => setFStatus(e.target.value as typeof fStatus)}>
+        </SelectField>
+        <SelectField style={{ ...inp, width: 150 }} value={fStatus} onChange={e => setFStatus(e.target.value as typeof fStatus)}>
           <option value="">Todos os status</option>
           <option value="rascunho">Rascunho</option>
           <option value="em_pesagem">Em Pesagem</option>
           <option value="confirmado">Confirmado</option>
-        </select>
+        </SelectField>
         <InputData type="date" style={{ ...inp, width: 150 }} value={fDe}  onChange={e => setFDe(e.target.value)}  placeholder="De" />
         <InputData type="date" style={{ ...inp, width: 150 }} value={fAte} onChange={e => setFAte(e.target.value)} placeholder="Até" />
         {(fBusca || fTipo || fStatus || fDe || fAte) && (
-          <button style={btnR} onClick={() => { setFBusca(""); setFTipo(""); setFStatus(""); setFDe(""); setFAte(""); }}>Limpar</button>
+          <button data-arato-button="secondary" style={btnR} onClick={() => { setFBusca(""); setFTipo(""); setFStatus(""); setFDe(""); setFAte(""); }}>Limpar</button>
         )}
         <span style={{ marginLeft: "auto", fontSize: 12, color: "#666" }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
       </div>
 
       {/* Tabela */}
       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#F3F6FB" }}>
               {["Ticket / Data", "Tipo", "Produto / Ciclo", "Origem / Emissor", "Placa", "Peso Líq.", "Sacas", "Status", ""].map(h => (
@@ -495,11 +496,11 @@ const salvar = async (confirmar = false) => {
                   </td>
                   <td style={{ padding: "9px 12px" }}>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button style={{ ...btnR, padding: "4px 10px", fontSize: 11 }} onClick={() => abrirEditar(r)}>Abrir</button>
+                      <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 10px", fontSize: 11 }} onClick={() => abrirEditar(r)}>Abrir</button>
                       {r.status === "rascunho" && (
-                        <button style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
+                        <button data-arato-button="primary" style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
                       )}
-                      <button
+                      <button data-arato-button="secondary"
                         style={{ background: "var(--bg-page)", color: "#111111", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
                         title="Imprimir ticket de balança"
                         onClick={() => {
@@ -534,7 +535,7 @@ const salvar = async (confirmar = false) => {
                         }}
                       >🎫</button>
                       {r.status === "rascunho" && (
-                        <button
+                        <button data-arato-button="danger"
                           style={{ background: "#FEF2F2", color: "#E24B4A", border: "0.5px solid #FECACA", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
                           onClick={() => { if (confirm("Excluir?")) excluirRomaneioEntrada(r.id).then(() => setRomaneios(p => p.filter(x => x.id !== r.id))); }}
                         >✕</button>
@@ -555,22 +556,22 @@ const salvar = async (confirmar = false) => {
           {/* Fazenda */}
           {fazendas.length > 1 && (
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Fazenda *</label>
-              <select
+              <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Fazenda *</label>
+              <SelectField
                 disabled={editRom?.status === "confirmado"}
                 value={form.fazenda_id || fazendaId || ""}
                 onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "0.5px solid #CDD5E0", fontSize: 13, background: "var(--bg-card)" }}
               >
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
 
           {/* Toggle tipo */}
           <div style={{ display: "flex", gap: 0, marginBottom: 12, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>
             {([["proprio", "Pesagem por Balança", "#2A2A2A"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
-              <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
+              <button data-arato-button="toggle" key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
                 flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
                 background: form.tipo === v ? c : "var(--bg-card)",
                 color:      form.tipo === v ? "#fff" : "var(--text-2)",
@@ -584,7 +585,7 @@ const salvar = async (confirmar = false) => {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600, minWidth: 80 }}>Modo:</span>
               {([["balanca", "⚖ Balança Física"], ["manual", "✎ Entrada Manual"]] as const).map(([v, l]) => (
-                <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
+                <button data-arato-button="toggle" key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
                   padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "0.5px solid",
                   background: form.modo_pesagem === v ? "#EBF3FF" : "var(--bg-card)",
                   color:      form.modo_pesagem === v ? "#2A2A2A" : "#777",
@@ -609,18 +610,18 @@ const salvar = async (confirmar = false) => {
           )}
 
           {/* Dados básicos */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
             <div>
-              <label style={lbl}>Data *</label>
+              <label data-arato-label="true" style={lbl}>Data *</label>
               <InputData style={inp} type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} disabled={editRom?.status === "confirmado"} />
             </div>
             <div>
-              <label style={lbl}>{form.tipo === "proprio" && form.modo_pesagem === "balanca" ? "Nº Ticket da Balança" : "Ticket Interno"}</label>
+              <label data-arato-label="true" style={lbl}>{form.tipo === "proprio" && form.modo_pesagem === "balanca" ? "Nº Ticket da Balança" : "Ticket Interno"}</label>
               <input style={inp} placeholder={form.modo_pesagem === "balanca" ? "Ex: 0042 (nº impresso pela balança)" : "Ex: 001"} value={form.ticket_interno} onChange={e => setForm(p => ({ ...p, ticket_interno: e.target.value }))} disabled={editRom?.status === "confirmado"} />
             </div>
             {form.tipo === "terceiro" && (
               <div>
-                <label style={lbl}>Ticket do Terceiro</label>
+                <label data-arato-label="true" style={lbl}>Ticket do Terceiro</label>
                 <input style={inp} placeholder="Nº do ticket/romaneio deles" value={form.ticket_terceiro} onChange={e => setForm(p => ({ ...p, ticket_terceiro: e.target.value }))} disabled={editRom?.status === "confirmado"} />
               </div>
             )}
@@ -628,10 +629,10 @@ const salvar = async (confirmar = false) => {
 
           {/* Emissor + Depósito de Armazém (apenas terceiro) */}
           {form.tipo === "terceiro" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, padding: "12px 14px", background: "#F5F3FF", borderRadius: 8, border: "0.5px solid #DDD6FE" }}>
+            <div data-arato-panel="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, padding: "12px 14px", background: "#F5F3FF", borderRadius: 8, border: "0.5px solid #DDD6FE" }}>
               <div>
-                <label style={lbl}>Emitido por (empresa) *</label>
-                <select style={inp} value={form.pessoa_id} disabled={editRom?.status === "confirmado"}
+                <label data-arato-label="true" style={lbl}>Emitido por (empresa) *</label>
+                <SelectField style={inp} value={form.pessoa_id} disabled={editRom?.status === "confirmado"}
                   onChange={e => {
                     const pid = e.target.value;
                     const pessoa = pessoas.find(p => p.id === pid);
@@ -646,17 +647,17 @@ const salvar = async (confirmar = false) => {
                   }}>
                   <option value="">— selecione —</option>
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>Depósito de Armazém *</label>
-                <select style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+                <label data-arato-label="true" style={lbl}>Depósito de Armazém *</label>
+                <SelectField style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                   <option value="">— selecione o armazém —</option>
                   {(form.pessoa_id
                     ? deposTerceiros.filter(d => d.pessoa_id === form.pessoa_id)
                     : deposTerceiros
                   ).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                </select>
+                </SelectField>
                 {form.pessoa_id && deposTerceiros.filter(d => d.pessoa_id === form.pessoa_id).length === 0 && (
                   <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 4 }}>
                     Nenhum depósito vinculado a esta pessoa. Vá em Cadastros → Pessoas e marque "Criar depósito de armazém vinculado".
@@ -675,50 +676,50 @@ const salvar = async (confirmar = false) => {
           )}
 
           {/* Produto, Ciclo e Talhão */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
             <div>
-              <label style={lbl}>Produto</label>
-              <select style={inp} value={form.insumo_id} onChange={e => setForm(p => ({ ...p, insumo_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+              <label data-arato-label="true" style={lbl}>Produto</label>
+              <SelectField style={inp} value={form.insumo_id} onChange={e => setForm(p => ({ ...p, insumo_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                 <option value="">— selecione —</option>
                 {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Ano Safra</label>
-              <select style={inp} value={anoSel} onChange={e => { setAnoSel(e.target.value); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }} disabled={editRom?.status === "confirmado"}>
+              <label data-arato-label="true" style={lbl}>Ano Safra</label>
+              <SelectField style={inp} value={anoSel} onChange={e => { setAnoSel(e.target.value); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }} disabled={editRom?.status === "confirmado"}>
                 <option value="">— selecione —</option>
                 {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Ciclo / Empreendimento</label>
-              <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value, talhao_id: "" }))} disabled={editRom?.status === "confirmado" || !anoSel}>
+              <label data-arato-label="true" style={lbl}>Ciclo / Empreendimento</label>
+              <SelectField style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value, talhao_id: "" }))} disabled={editRom?.status === "confirmado" || !anoSel}>
                 <option value="">— selecione —</option>
                 {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-              </select>
+              </SelectField>
             </div>
             <div>
-              <label style={lbl}>Talhão <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(produtividade)</span></label>
-              <select style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+              <label data-arato-label="true" style={lbl}>Talhão <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(produtividade)</span></label>
+              <SelectField style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                 <option value="">— selecione —</option>
                 {talhoes
                   .filter(t => !form.fazenda_id || t.fazenda_id === (form.fazenda_id || fazendaId))
                   .map(t => <option key={t.id} value={t.id}>{t.nome} {t.area_ha ? `(${t.area_ha} ha)` : ""}</option>)}
-              </select>
+              </SelectField>
             </div>
           </div>
 
           {/* Produtor Responsável / IE Fiscal */}
-          <div style={{ background: "#F2F7FF", borderRadius: 8, border: "0.5px solid #B8D4F0", padding: "12px 14px", marginBottom: 16 }}>
+          <div data-arato-panel="true" style={{ background: "#F2F7FF", borderRadius: 8, border: "0.5px solid #B8D4F0", padding: "12px 14px", marginBottom: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>
               Produtor Responsável
               <span style={{ fontSize: 11, fontWeight: 400, color: "#555", marginLeft: 6 }}>— vincula o estoque ao CPF/CNPJ para SPED e IR</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {/* Linha 1: Produtor | Seletor de IE */}
               <div>
-                <label style={lbl}>Produtor</label>
-                <select style={inp} value={form.produtor_id} disabled={editRom?.status === "confirmado"}
+                <label data-arato-label="true" style={lbl}>Produtor</label>
+                <SelectField style={inp} value={form.produtor_id} disabled={editRom?.status === "confirmado"}
                   onChange={e => {
                     const pid = e.target.value;
                     const prod = produtores.find(p => p.id === pid);
@@ -740,12 +741,12 @@ const salvar = async (confirmar = false) => {
                   {produtores.map(p => (
                     <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>Selecionar IE</label>
+                <label data-arato-label="true" style={lbl}>Selecionar IE</label>
                 {iesModal.length > 0 ? (
-                  <select style={inp} value={form.ie_produtor}
+                  <SelectField style={inp} value={form.ie_produtor}
                     disabled={editRom?.status === "confirmado" || !form.produtor_id}
                     onChange={e => {
                       const ieVal = e.target.value;
@@ -756,7 +757,7 @@ const salvar = async (confirmar = false) => {
                     {iesModal.map(ie => (
                       <option key={ie.id} value={ie.inscricao_estadual}>{ie.inscricao_estadual} — {ie.estado}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 ) : (
                   <input style={inp} placeholder="Ex: 13.476.345-0" value={form.ie_produtor}
                     onChange={e => setForm(p => ({ ...p, ie_produtor: e.target.value }))}
@@ -766,13 +767,13 @@ const salvar = async (confirmar = false) => {
 
               {/* Linha 2: IE fixada (readonly) | Município / UF (readonly) */}
               <div>
-                <label style={lbl}>IE Selecionada</label>
+                <label data-arato-label="true" style={lbl}>IE Selecionada</label>
                 <div style={{ ...inp, background: form.ie_produtor ? "#EBF3FF" : "var(--bg-page)", color: form.ie_produtor ? "#0B2D50" : "var(--text-3)", fontFamily: "monospace", fontWeight: form.ie_produtor ? 600 : 400, letterSpacing: "0.04em", minHeight: 34, display: "flex", alignItems: "center" }}>
                   {form.ie_produtor || "—"}
                 </div>
               </div>
               <div>
-                <label style={lbl}>Município / UF da IE</label>
+                <label data-arato-label="true" style={lbl}>Município / UF da IE</label>
                 {iesModal.length > 0 ? (
                   <div style={{ ...inp, background: form.ie_municipio ? "#EBF3FF" : "var(--bg-page)", color: form.ie_municipio ? "#0B2D50" : "var(--text-3)", fontWeight: form.ie_municipio ? 600 : 400, minHeight: 34, display: "flex", alignItems: "center" }}>
                     {form.ie_municipio
@@ -792,19 +793,19 @@ const salvar = async (confirmar = false) => {
           </div>
 
           {/* Transporte */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
             <div>
-              <label style={lbl}>Placa do Veículo</label>
+              <label data-arato-label="true" style={lbl}>Placa do Veículo</label>
               <input style={inp} placeholder="ABC-1234" value={form.placa} onChange={e => setForm(p => ({ ...p, placa: e.target.value.toUpperCase() }))} disabled={editRom?.status === "confirmado"} />
             </div>
             <div>
-              <label style={lbl}>Motorista</label>
+              <label data-arato-label="true" style={lbl}>Motorista</label>
               <input style={inp} value={form.motorista} onChange={e => setForm(p => ({ ...p, motorista: e.target.value }))} disabled={editRom?.status === "confirmado"} />
             </div>
           </div>
 
           {/* Pesagem */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
+          <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
             <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 12 }}>Pesagem</div>
 
             {/* Integração balança Toledo PRIX — só no modo Balança Física (sua própria balança) */}
@@ -815,19 +816,19 @@ const salvar = async (confirmar = false) => {
               />
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div>
-                <label style={lbl}>Peso Bruto (kg) *</label>
+                <label data-arato-label="true" style={lbl}>Peso Bruto (kg) *</label>
                 <input style={inp} type="number" min="0" step="0.01" placeholder="Ex: 45000" value={form.peso_bruto}
                   onChange={e => setForm(p => ({ ...p, peso_bruto: e.target.value }))} disabled={editRom?.status === "confirmado"} />
               </div>
               <div>
-                <label style={lbl}>Tara (kg) *</label>
+                <label data-arato-label="true" style={lbl}>Tara (kg) *</label>
                 <input style={inp} type="number" min="0" step="0.01" placeholder="Ex: 13500 (peso do caminhão vazio)" value={form.tara}
                   onChange={e => setForm(p => ({ ...p, tara: e.target.value }))} disabled={editRom?.status === "confirmado"} />
               </div>
               <div>
-                <label style={lbl}>Peso Líquido (calculado)</label>
+                <label data-arato-label="true" style={lbl}>Peso Líquido (calculado)</label>
                 <div style={{ ...inp, background: "#F0F4FA", color: "#2A2A2A", fontWeight: 700, fontSize: 14 }}>
                   {fmt(calc.pl, 0)} kg
                 </div>
@@ -836,21 +837,21 @@ const salvar = async (confirmar = false) => {
           </div>
 
           {/* Classificação */}
-          <div style={{ background: "#FAFAFA", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
+          <div data-arato-panel="true" style={{ background: "#FAFAFA", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
             <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 12 }}>
               Classificação do Grão
               <span style={{ fontSize: 11, fontWeight: 400, color: "#666", marginLeft: 8 }}>
                 (padrão: umidade {fmt(calc.cls.umidade_padrao, 1)}% · impureza {fmt(calc.cls.impureza_padrao, 1)}% · avariados {fmt(calc.cls.avariados_padrao, 1)}%)
               </span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
               {[
                 { label: "Umidade (%)", key: "umidade" as const },
                 { label: "Impureza (%)", key: "impureza" as const },
                 { label: "PH (kg/hl)", key: "ph" as const },
               ].map(f => (
                 <div key={f.key}>
-                  <label style={lbl}>{f.label}</label>
+                  <label data-arato-label="true" style={lbl}>{f.label}</label>
                   <input style={inp} type="number" step="0.01" min="0" placeholder="0,00"
                     value={(form as unknown as Record<string, string>)[f.key]}
                     onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
@@ -863,7 +864,7 @@ const salvar = async (confirmar = false) => {
             <div style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "#444" }}>Avariados</span>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
                   <input type="checkbox" checked={form.usar_sub} disabled={editRom?.status === "confirmado"}
                     onChange={e => setForm(p => ({ ...p, usar_sub: e.target.checked }))} />
                   Detalhar sub-parâmetros
@@ -871,14 +872,14 @@ const salvar = async (confirmar = false) => {
               </div>
               {!form.usar_sub ? (
                 <div style={{ maxWidth: 200 }}>
-                  <label style={lbl}>Total avariados (%)</label>
+                  <label data-arato-label="true" style={lbl}>Total avariados (%)</label>
                   <input style={inp} type="number" step="0.01" min="0" placeholder="0,00"
                     value={form.avariados_manual}
                     onChange={e => setForm(p => ({ ...p, avariados_manual: e.target.value }))}
                     disabled={editRom?.status === "confirmado"} />
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                   {[
                     { label: "Ardidos (%)",    key: "ardidos" as const },
                     { label: "Mofados (%)",    key: "mofados" as const },
@@ -890,7 +891,7 @@ const salvar = async (confirmar = false) => {
                     { label: "Outros (%)",     key: "outros_avariados" as const },
                   ].map(f => (
                     <div key={f.key}>
-                      <label style={{ ...lbl, fontSize: 10 }}>{f.label}</label>
+                      <label data-arato-label="true" style={{ ...lbl, fontSize: 10 }}>{f.label}</label>
                       <input style={inp} type="number" step="0.01" min="0" placeholder="0,00"
                         value={(form as unknown as Record<string, string>)[f.key]}
                         onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
@@ -920,7 +921,7 @@ const salvar = async (confirmar = false) => {
 
             {/* Sacas */}
             {calc.class_ > 0 && (
-              <div style={{ marginTop: 10, textAlign: "center", padding: "10px", background: "#ECFDF5", borderRadius: 8 }}>
+              <div data-arato-statistic="display" style={{ marginTop: 10, textAlign: "center", padding: "10px", background: "#ECFDF5", borderRadius: 8 }}>
                 <span style={{ fontSize: 11, color: "var(--text-2)" }}>Total em sacas: </span>
                 <span style={{ fontSize: 22, fontWeight: 800, color: "#16A34A" }}>{fmt(calc.sacas, 3)}</span>
                 <span style={{ fontSize: 12, color: "var(--text-2)" }}> sc ({calc.cls.kg_saca} kg/sc)</span>
@@ -930,15 +931,15 @@ const salvar = async (confirmar = false) => {
 
           {/* Destino (apenas para próprio) */}
           {form.tipo === "proprio" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
               <div>
-                <label style={lbl}>Depósito / Armazém de Destino *</label>
-                <select style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+                <label data-arato-label="true" style={lbl}>Depósito / Armazém de Destino *</label>
+                <SelectField style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                   <option value="">— selecione —</option>
                   {deposArmazem.length > 0
                     ? deposArmazem.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)
                     : depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                </select>
+                </SelectField>
                 {depositos.length === 0 && <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>Nenhum depósito cadastrado. Vá em Cadastros → Depósitos.</div>}
               </div>
             </div>
@@ -946,7 +947,7 @@ const salvar = async (confirmar = false) => {
 
           {/* Observações */}
           <div style={{ marginBottom: 20 }}>
-            <label style={lbl}>Observações</label>
+            <label data-arato-label="true" style={lbl}>Observações</label>
             <textarea style={{ ...inp, height: 56, resize: "vertical" }} value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} disabled={editRom?.status === "confirmado"} />
           </div>
 
@@ -954,15 +955,15 @@ const salvar = async (confirmar = false) => {
           {editRom?.status === "confirmado" ? (
             <div style={{ textAlign: "right" }}>
               <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, marginRight: 12 }}>✓ Romaneio confirmado — apenas leitura</span>
-              <button style={btnR} onClick={() => setModal(false)}>Fechar</button>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Fechar</button>
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-              <button style={{ ...btnR, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(false)}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
+              <button data-arato-button="secondary" style={{ ...btnR, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(false)}>
                 {salvando ? "Salvando…" : "Salvar Rascunho"}
               </button>
-              <button style={{ ...btnG, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(true)}>
+              <button data-arato-button="primary" style={{ ...btnG, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(true)}>
                 {salvando ? "Confirmando…" : "✓ Confirmar e Dar Entrada no Estoque"}
               </button>
             </div>

@@ -120,7 +120,7 @@ function PagamentoInner() {
   const totalDevido = pagamentos.reduce((s, p) => s + p.valor, 0);
 
   return (
-    <div style={{
+    <div data-arato-statistic="action" style={{
       minHeight: "100vh", background: "var(--bg-page)",
       fontFamily: "system-ui, sans-serif", fontSize: 13,
       display: "flex", flexDirection: "column",
@@ -139,14 +139,14 @@ function PagamentoInner() {
         </a>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", gap: 24 }}>
+      <div data-arato-statistic="action" style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", gap: 24 }}>
 
         {/* Coluna principal */}
         <div style={{ width: "100%", maxWidth: 560 }}>
 
           {/* Status banner */}
           {inadimplente && (
-            <div style={{
+            <div data-arato-statistic="display" style={{
               background: "#FEF2F2", border: "0.5px solid #E24B4A",
               borderRadius: 12, padding: "16px 20px", marginBottom: 20,
               display: "flex", gap: 12, alignItems: "flex-start",
@@ -165,7 +165,7 @@ function PagamentoInner() {
           {carregando ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
           ) : assinatura && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
+            <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Sua assinatura</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
@@ -269,7 +269,7 @@ function PagamentoInner() {
                       <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 11, fontFamily: "monospace", wordBreak: "break-all", marginBottom: 10 }}>
                         {novoPag.pix}
                       </div>
-                      <button onClick={copiarPix} style={{
+                      <button data-arato-button="toggle" onClick={copiarPix} style={{
                         width: "100%", padding: "12px 0",
                         background: pixCopiado ? "#16A34A" : "#111111",
                         color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer",
@@ -290,7 +290,7 @@ function PagamentoInner() {
                   </div>
                 </div>
               ) : (
-                <button onClick={gerarPagamento} disabled={gerandoPag} style={{
+                <button data-arato-button="toggle" onClick={gerarPagamento} disabled={gerandoPag} style={{
                   width: "100%", padding: "12px 0",
                   background: gerandoPag ? "#9BB5CC" : "#111111",
                   color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700,

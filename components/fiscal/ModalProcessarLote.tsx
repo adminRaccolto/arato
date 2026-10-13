@@ -12,6 +12,7 @@
 // a VÁRIAS NFs pendentes de uma vez, processando-as quando o tipo de
 // destino é "Apropriação Direta" (sem entrada em estoque).
 // ═══════════════════════════════════════════════════════════════════════════
+import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { useState, useEffect } from "react";
 import {
@@ -189,25 +190,25 @@ export default function ModalProcessarLote({
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}>
-      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 620, maxWidth: "96vw", maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2100 }}>
+      <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 620, maxWidth: "96vw", maxHeight: "90vh", overflowY: "auto" }}>
+        <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>
           ⚡ Processar em Lote
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>
+        <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>
           {nfs.length} NF(s) pendente(s) selecionada(s). Deixe em branco para manter o valor individual de cada NF.
         </div>
 
         {/* ── Tipo de Destino ── */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={lbl}>Tipo de Processamento</label>
-          <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: "0.5px solid var(--border-ui)" }}>
+        <div data-arato-dialog-body="true" style={{ marginBottom: 18 }}>
+          <label data-arato-label="true" style={lbl}>Tipo de Processamento</label>
+          <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: "0.5px solid var(--border-ui)" }}>
             {([
               { v: "" as const,        label: "— não alterar —",     desc: "Mantém o tipo de cada NF" },
               { v: "estoque" as const,  label: "Estoque / Insumos",   desc: "Salva depósito; itens mapeados individualmente" },
               { v: "direto" as const,   label: "Apropriação Direta",  desc: "Processa sem entrada em estoque" },
             ] as const).map(opt => (
-              <button key={opt.v} onClick={() => setSettings(p => ({ ...p, tipo_destino: opt.v }))}
+              <button data-arato-button="toggle" key={opt.v} onClick={() => setSettings(p => ({ ...p, tipo_destino: opt.v }))}
                 title={opt.desc}
                 style={{
                   flex: 1, padding: "8px 6px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
@@ -226,10 +227,10 @@ export default function ModalProcessarLote({
         {/* Sub-tipo de estoque — só quando "estoque" está selecionado */}
         {settings.tipo_destino === "estoque" && (
           <div style={{ marginBottom: 14 }}>
-            <label style={lbl}>Subcategoria do Estoque</label>
+            <label data-arato-label="true" style={lbl}>Subcategoria do Estoque</label>
             <div style={{ display: "flex", gap: 8 }}>
               {([ ["insumos", "Insumos Agrícolas"], ["pecas", "Peças / Manutenção"], ["combustivel", "Combustível"] ] as const).map(([v, label]) => (
-                <button key={v} onClick={() => setSettings(p => ({ ...p, tipo_estoque: v }))}
+                <button data-arato-button="toggle" key={v} onClick={() => setSettings(p => ({ ...p, tipo_estoque: v }))}
                   style={{ flex: 1, padding: "7px 8px", border: `0.5px solid ${settings.tipo_estoque === v ? "#1A4870" : "var(--border-ui)"}`, borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: 600, background: settings.tipo_estoque === v ? "#D5E8F5" : "var(--bg-input)", color: settings.tipo_estoque === v ? "#1A4870" : "var(--text-2)" }}>
                   {label}
                 </button>
@@ -238,46 +239,46 @@ export default function ModalProcessarLote({
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-          <div>
-            <label style={lbl}>Vencimento da CP</label>
+        <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Vencimento da CP</label>
             <InputData type="date" value={settings.data_vencimento_cp} onChange={e => setSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
           </div>
-          <div>
-            <label style={lbl}>Ano Safra (obrigatório — vale para as NFs que ainda não têm)</label>
-            <select value={settings.ano_safra_id} onChange={e => setSettings(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))} style={inp}>
+          <div data-arato-dialog-body="true">
+            <label data-arato-label="true" style={lbl}>Ano Safra (obrigatório — vale para as NFs que ainda não têm)</label>
+            <SelectField value={settings.ano_safra_id} onChange={e => setSettings(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))} style={inp}>
               <option value="">— manter individual —</option>
               {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-            </select>
+            </SelectField>
           </div>
 
           {settings.ano_safra_id && (
             <div>
-              <label style={lbl}>Ciclo</label>
-              <select value={settings.ciclo_id} onChange={e => setSettings(p => ({ ...p, ciclo_id: e.target.value }))} style={inp}>
+              <label data-arato-label="true" style={lbl}>Ciclo</label>
+              <SelectField value={settings.ciclo_id} onChange={e => setSettings(p => ({ ...p, ciclo_id: e.target.value }))} style={inp}>
                 <option value="">— manter individual —</option>
                 {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
 
           {(settings.tipo_destino === "direto" || settings.tipo_destino === "") && (
             <>
               <div>
-                <label style={lbl}>Centro de Custo</label>
-                <select value={settings.centro_custo_id} onChange={e => setSettings(p => ({ ...p, centro_custo_id: e.target.value }))} style={inp}>
+                <label data-arato-label="true" style={lbl}>Centro de Custo</label>
+                <SelectField value={settings.centro_custo_id} onChange={e => setSettings(p => ({ ...p, centro_custo_id: e.target.value }))} style={inp}>
                   <option value="">— manter individual —</option>
                   {centros.filter(c => !centros.some(x => x.parent_id === c.id)).map(c => (
                     <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
                   ))}
-                </select>
+                </SelectField>
               </div>
               <div>
-                <label style={lbl}>OG — Operação Gerencial</label>
-                <select value={settings.operacao_gerencial_id} onChange={e => setSettings(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={inp}>
+                <label data-arato-label="true" style={lbl}>OG — Operação Gerencial</label>
+                <SelectField value={settings.operacao_gerencial_id} onChange={e => setSettings(p => ({ ...p, operacao_gerencial_id: e.target.value }))} style={inp}>
                   <option value="">— manter individual —</option>
                   {ops.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
-                </select>
+                </SelectField>
               </div>
             </>
           )}
@@ -285,10 +286,10 @@ export default function ModalProcessarLote({
           {(settings.tipo_destino === "estoque" || settings.tipo_destino === "") && (
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
-                <label style={{ ...lbl, marginBottom: 0 }}>Depósito de Entrada</label>
+                <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Depósito de Entrada</label>
                 <div style={{ display: "flex", gap: 3, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
                   {(["proprio", "terceiro"] as const).map(t => (
-                    <button key={t} onClick={() => setDepFiltro(t)}
+                    <button data-arato-button="toggle" key={t} onClick={() => setDepFiltro(t)}
                       style={{ fontSize: 9, fontWeight: 600, padding: "1px 8px", borderRadius: 4, border: "none", cursor: "pointer",
                         background: depFiltro === t ? "#111111" : "transparent",
                         color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
@@ -297,19 +298,19 @@ export default function ModalProcessarLote({
                   ))}
                 </div>
               </div>
-              <select value={settings.deposito_destino_id} onChange={e => setSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
+              <SelectField value={settings.deposito_destino_id} onChange={e => setSettings(p => ({ ...p, deposito_destino_id: e.target.value }))} style={inp}>
                 <option value="">— manter individual —</option>
                 {depositos
                   .filter(d => depFiltro === "terceiro"
                     ? ["terceiro", "armazem_terceiro"].includes(d.tipo)
                     : !["terceiro", "armazem_terceiro"].includes(d.tipo))
                   .map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-              </select>
+              </SelectField>
             </div>
           )}
 
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={lbl}>Vincular a Pedido de Compra</label>
+          <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+            <label data-arato-label="true" style={lbl}>Vincular a Pedido de Compra</label>
             <SelectBusca value={settings.pedido_compra_id} onChange={v => setSettings(p => ({ ...p, pedido_compra_id: v }))}
               placeholder="— sem pedido —" style={inp}
               options={pedidos.map(p => {
@@ -343,9 +344,9 @@ export default function ModalProcessarLote({
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button style={btnR} onClick={onClose} disabled={saving}>Cancelar</button>
-          <button
+        <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button data-arato-button="secondary" style={btnR} onClick={onClose} disabled={saving}>Cancelar</button>
+          <button data-arato-button="primary"
             onClick={processarEmLote}
             disabled={saving || (settings.tipo_destino === "direto" && !settings.centro_custo_id)}
             style={{ ...btnV, opacity: (saving || (settings.tipo_destino === "direto" && !settings.centro_custo_id)) ? 0.5 : 1, cursor: saving ? "default" : "pointer" }}

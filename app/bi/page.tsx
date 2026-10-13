@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import React, { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
 import PlanoGate from "../../components/PlanoGate";
@@ -679,7 +680,7 @@ export default function BI() {
   const isRaccotloUser = ["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "");
   if (userRole === null || !isRaccotloUser) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+      <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
         <TopNav />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
           <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 14 }}>Verificando acesso…</div>
@@ -689,7 +690,7 @@ export default function BI() {
   }
   if (!loading && fazenda && fazenda.raccolto_acesso === false) {
     return (
-      <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+      <div data-arato-statistic="display" data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
         <TopNav />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
           <div style={{ textAlign: "center", maxWidth: 420 }}>
@@ -1104,17 +1105,17 @@ export default function BI() {
 
   // ─────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "#0B1E35", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "#0B1E35", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
 
       {/* ── Cabeçalho ────────────────────────────────────────── */}
       <div style={{ background: "linear-gradient(135deg, #0B1E35 0%, #111111 100%)", padding: "20px 32px 0", borderBottom: "0.5px solid var(--border)" }}>
 
         {/* Linha 1: título + preços + refresh */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
-              <h1 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#fff" }}>Raccolto Intelligence</h1>
+              <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#fff" }}>Raccolto Intelligence</h1>
               <span style={{ background: "#C9921B", color: "#fff", fontSize: 10, padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>EXCLUSIVO</span>
               {fazenda && <Semaforo saude={saudeGeral} />}
             </div>
@@ -1138,7 +1139,7 @@ export default function BI() {
                 ))}
               </div>
             )}
-            <button
+            <button data-arato-button="secondary"
               onClick={() => { setCfContratos([]); setCfParcelas([]); carregar(); carregarCF(); }}
               title="Recarregar todos os dados (use após importar contratos ou lançamentos)"
               style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</button>
@@ -1146,8 +1147,8 @@ export default function BI() {
         </div>
 
         {/* Linha 2: filtros */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <select
+        <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <SelectField
             value={filtroAnoSafraId}
             onChange={e => handleAnoSafraChange(e.target.value)}
             style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 12, cursor: "pointer", outline: "none" }}
@@ -1156,7 +1157,7 @@ export default function BI() {
             {safrasUnicas.map(s => (
               <option key={s.id} value={s.id} style={{ background: "#111111" }}>{s.descricao}</option>
             ))}
-          </select>
+          </SelectField>
 
           {filtroAnoSafraId && ciclosPorAnoSafra.length > 0 && ["painel","producao","custos","comercializacao","sensibilidade"].includes(aba) && (
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
@@ -1164,7 +1165,7 @@ export default function BI() {
               {ciclosPorAnoSafra.map(c => {
                 const ativo = filtroCicloIds.has(c.id);
                 return (
-                  <button key={c.id} onClick={() => toggleCiclo(c.id)} style={{
+                  <button data-arato-button="toggle" key={c.id} onClick={() => toggleCiclo(c.id)} style={{
                     padding: "4px 10px", borderRadius: 12, border: "0.5px solid rgba(255,255,255,0.25)",
                     background: ativo ? "#C9921B" : "var(--border)",
                     color: ativo ? "#fff" : "rgba(255,255,255,0.7)",
@@ -1173,7 +1174,7 @@ export default function BI() {
                 );
               })}
               {filtroCicloIds.size > 0 && (
-                <button onClick={() => setFiltroCicloIds(new Set())} style={{ padding: "4px 8px", borderRadius: 12, border: "none", background: "var(--border)", color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }}>✕ limpar</button>
+                <button data-arato-button="secondary" onClick={() => setFiltroCicloIds(new Set())} style={{ padding: "4px 8px", borderRadius: 12, border: "none", background: "var(--border)", color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }}>✕ limpar</button>
               )}
             </div>
           )}
@@ -1188,7 +1189,7 @@ export default function BI() {
         {/* Abas */}
         <div style={{ display: "flex", gap: 2 }}>
           {ABAS.map(a => (
-            <button key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 16px", border: "none", cursor: "pointer", fontSize: 12,
               fontWeight: aba === a.key ? 700 : 400, borderRadius: "7px 7px 0 0",
               background: aba === a.key ? "var(--bg-page)" : "transparent",
@@ -1223,7 +1224,7 @@ export default function BI() {
                 { label: "Saldo Líquido",      v: fmtR(saldoLiq), color: saldoLiq >= 0 ? "#14532D" : "#791F1F", bg: saldoLiq >= 0 ? "#ECFDF5" : "#FCEBEB" },
                 { label: "CP Vencidas",         v: fmtR(cpVencidas), color: cpVencidas > 0 ? "#791F1F" : "var(--text-3)", bg: cpVencidas > 0 ? "#FCEBEB" : "var(--bg-page)" },
               ].map(k => (
-                <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border)" }}>
+                <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border)" }}>
                   <div style={{ fontSize: 10, color: "#666", marginBottom: 5 }}>{k.label}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: k.color }}>{k.v}</div>
                 </div>
@@ -1253,7 +1254,7 @@ export default function BI() {
                 {ciclosFiltrados.length === 0 ? (
                   <div style={{ padding: "24px 18px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum ciclo no filtro selecionado</div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-card)" }}>
                         {["Ciclo", "Cultura", "Área", "Prod. Esp.", "sc/ha Esp.", "sc/ha MT", "Status"].map((h, i) => (
@@ -1751,7 +1752,7 @@ export default function BI() {
               {/* ── Sub-tab bar ── */}
               <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
                 {([["posicao", "Posição do Produto"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
-                  <button key={k} onClick={() => setAbaProducao(k)}
+                  <button data-arato-button="toggle" key={k} onClick={() => setAbaProducao(k)}
                     style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#111111" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
                     {l}
                     {k === "colheita" && totalColhido > 0 && <span style={{ marginLeft: 6, background: "#16A34A", color: "#fff", borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>✓</span>}
@@ -1763,14 +1764,14 @@ export default function BI() {
               {abaProducao === "posicao" && (
                 <div>
                   {/* ── Filtros: chips de produto + fazenda ── */}
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "9px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
+                  <div data-arato-panel="true" data-arato-filters="true" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "9px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginRight: 2 }}>Produto:</span>
-                    <button onClick={() => setPcCultFiltro("")}
+                    <button data-arato-button="toggle" onClick={() => setPcCultFiltro("")}
                       style={{ padding: "3px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: !pcCultFiltro ? "#111111" : "#EEF2F7", color: !pcCultFiltro ? "#fff" : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
                       Todos
                     </button>
                     {cultOpts.map(c => (
-                      <button key={c} onClick={() => setPcCultFiltro(pcCultFiltro === c ? "" : c)}
+                      <button data-arato-button="toggle" key={c} onClick={() => setPcCultFiltro(pcCultFiltro === c ? "" : c)}
                         style={{ padding: "3px 11px", borderRadius: 20, border: `1.5px solid ${pcCultFiltro === c ? COMM_COR(c) : "transparent"}`, cursor: "pointer", background: pcCultFiltro === c ? COMM_BG(c) : "#EEF2F7", color: pcCultFiltro === c ? COMM_COR(c) : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
                         {c}
                         <span style={{ marginLeft: 5, background: pcCultFiltro === c ? COMM_COR(c) : "#DDE2EE", color: pcCultFiltro === c ? "#fff" : "var(--text-3)", borderRadius: 8, padding: "0 5px", fontSize: 10 }}>
@@ -1782,15 +1783,15 @@ export default function BI() {
                       <>
                         <div style={{ width: 1, height: 18, background: "var(--border-table)", margin: "0 4px" }} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)" }}>Fazenda:</span>
-                        <select value={pcFazFiltro} onChange={e => setPcFazFiltro(e.target.value)}
+                        <SelectField value={pcFazFiltro} onChange={e => setPcFazFiltro(e.target.value)}
                           style={{ padding: "3px 8px", border: `0.5px solid ${pcFazFiltro ? "#111111" : "var(--border-table)"}`, borderRadius: 7, fontSize: 11, background: pcFazFiltro ? "#E8E8E8" : "var(--bg-card)", color: pcFazFiltro ? "#0D0D0D" : "var(--text-1)" }}>
                           <option value="">Todas</option>
                           {fazOpts.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                        </select>
+                        </SelectField>
                       </>
                     )}
                     {(pcFazFiltro || pcCultFiltro) && (
-                      <button onClick={() => { setPcFazFiltro(""); setPcCultFiltro(""); }}
+                      <button data-arato-button="secondary" onClick={() => { setPcFazFiltro(""); setPcCultFiltro(""); }}
                         style={{ padding: "3px 9px", border: "none", borderRadius: 6, background: "#E24B4A18", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                         Limpar ✕
                       </button>
@@ -1799,7 +1800,7 @@ export default function BI() {
                       <span style={{ fontSize: 11, color: "var(--text-3)" }}>
                         {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} · {fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha
                       </span>
-                      <button onClick={imprimirPosicaoProduto}
+                      <button data-arato-button="primary" onClick={imprimirPosicaoProduto}
                         style={{ padding: "4px 12px", background: "#111111", color: "#fff", border: "none", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
                         🖨 PDF
                       </button>
@@ -1950,8 +1951,8 @@ export default function BI() {
                           <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)" }}>
                             <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Por Fazenda × Produto</span>
                           </div>
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-tag)" }}>
                                   <th style={{ padding: "7px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", whiteSpace: "nowrap" }}>Fazenda</th>
@@ -2007,8 +2008,8 @@ export default function BI() {
                             <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Originação de Barter</span>
                             <span style={{ fontSize: 10, color: "var(--text-3)" }}>produto agrícola e safra de origem do compromisso</span>
                           </div>
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-tag)" }}>
                                   {["Fazenda","Produto / Commodity","Ano Safra","Fornecedor","Sacas comprometidas","Valor"].map(h => (
@@ -2052,8 +2053,8 @@ export default function BI() {
                           <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Detalhe por Ciclo</span>
                           <span style={{ fontSize: 10, color: "var(--text-3)" }}>clique no cabeçalho para ordenar</span>
                         </div>
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-tag)" }}>
                                 <th style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Fazenda / Ciclo</th>
@@ -2288,31 +2289,31 @@ export default function BI() {
                         }
 
                         return (
-                          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}
+                          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}
                             onClick={() => setModalComprHa(false)}>
-                            <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 900, maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" }}
+                            <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 900, maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" }}
                               onClick={e => e.stopPropagation()}>
                               {/* Header */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Comprometido por Hectare</div>
-                                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
+                              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                                <div data-arato-dialog-body="true">
+                                  <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Comprometido por Hectare</div>
+                                  <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
                                     {fmtN(totalArea, 0)} ha · {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} selecionados
                                   </div>
                                 </div>
-                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                  <button onClick={imprimirComprHa}
+                                <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                  <button data-arato-button="primary" onClick={imprimirComprHa}
                                     style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                                     🖨 Imprimir PDF
                                   </button>
-                                  <button onClick={() => setModalComprHa(false)}
+                                  <button data-arato-button="icon" onClick={() => setModalComprHa(false)}
                                     style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>✕</button>
                                 </div>
                               </div>
 
                               {/* Indicador grande */}
-                              <div style={{ background: "#FBF3E0", borderRadius: 12, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 20 }}>
-                                <div>
+                              <div data-arato-dialog-body="true" style={{ background: "#FBF3E0", borderRadius: 12, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 20 }}>
+                                <div data-arato-dialog-body="true">
                                   <div style={{ fontSize: 11, color: "#7A5200", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>Comprometido total</div>
                                   <div style={{ fontSize: 32, fontWeight: 800, color: "#7A5200", fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
                                     {fmtN(kpiCompr / totalArea, 1)} <span style={{ fontSize: 16, fontWeight: 600 }}>sc/ha</span>
@@ -2322,7 +2323,7 @@ export default function BI() {
                                   </div>
                                 </div>
                                 {/* Mini barra */}
-                                <div style={{ flex: 1 }}>
+                                <div data-arato-dialog-body="true" style={{ flex: 1 }}>
                                   <div style={{ display: "flex", height: 14, borderRadius: 4, overflow: "hidden", background: "#F0F4F8" }}>
                                     {kpiArr    > 0 && <div style={{ width: `${(kpiArr/kpiVolPrev)*100}%`,    background: "#C9921B" }} />}
                                     {kpiVenda  > 0 && <div style={{ width: `${(kpiVenda/kpiVolPrev)*100}%`,  background: "#111111" }} />}
@@ -2337,8 +2338,8 @@ export default function BI() {
                               </div>
 
                               {/* Tabela por categoria */}
-                              <div style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Categorias de comprometimento</div>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
+                              <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Categorias de comprometimento</div>
+                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-tag)" }}>
                                     {["Categoria", "Sacas", "sc/ha", "% do Previsto", ""].map(h => (
@@ -2376,7 +2377,7 @@ export default function BI() {
                               {commSummary.length > 1 && (
                                 <>
                                   <div style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Por Produto Agrícola</div>
-                                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                     <thead>
                                       <tr style={{ background: "var(--bg-tag)" }}>
                                         {["Produto", "Área (ha)", "Prev. sc/ha", "Arr. sc/ha", "Venda sc/ha", "Barter sc/ha", "Compr. sc/ha", "Disp. sc/ha"].map(h => (
@@ -2546,8 +2547,8 @@ export default function BI() {
                     {fazResume.length > 1 && (
                       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 18px" }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 14 }}>Por Fazenda</div>
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-tag)" }}>
                                 {["Fazenda","Previsto (sc)","Colhido (sc)","% Realizado","Delta (sc)"].map(h => (
@@ -2936,20 +2937,20 @@ export default function BI() {
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
                             {isGrupoOps && (
-                              <button
+                              <button data-arato-button="toggle"
                                 onClick={() => setCustoPorTalhao(v => !v)}
                                 style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: `0.5px solid ${custoPorTalhao ? cor : "var(--border)"}`, background: custoPorTalhao ? `${cor}10` : "var(--bg-page)", color: custoPorTalhao ? cor : "var(--text-2)", cursor: "pointer", fontWeight: custoPorTalhao ? 700 : 400 }}
                               >
                                 Por Talhão
                               </button>
                             )}
-                            <button
+                            <button data-arato-button="secondary"
                               onClick={() => window.print()}
                               style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}
                             >
                               PDF
                             </button>
-                            <button
+                            <button data-arato-button="icon"
                               onClick={() => setCustoGrupoAtivo(null)}
                               style={{ fontSize: 12, padding: "2px 6px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
                             >✕</button>
@@ -2963,8 +2964,8 @@ export default function BI() {
                               Sem registros de campo para este grupo no período
                             </div>
                           ) : (
-                            <div style={{ overflowX: "auto" }}>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                 <thead>
                                   <tr style={{ background: `${cor}10` }}>
                                     <th style={{ textAlign: "left",   padding: "5px 8px", color: "var(--text-2)", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Produto</th>
@@ -3014,7 +3015,7 @@ export default function BI() {
                         ) : (
                           /* Tabela por categoria de custo (objeto de custo, não fornecedor) */
                           <div style={{ overflowY: "auto", maxHeight: 300 }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: `${cor}10` }}>
                                   <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "var(--text-2)", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Categoria</th>
@@ -3071,7 +3072,7 @@ export default function BI() {
                       {custoGrupoAtivo} — Safra {safraLabel}
                       {custoPorTalhao ? " (Por Talhão)" : ""}
                     </div>
-                    <table className="bi-print-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                    <table data-arato-grid="true" className="bi-print-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-tag)" }}>
                           <th style={{ textAlign: "left",  padding: "5px 8px" }}>Produto</th>
@@ -3236,19 +3237,19 @@ export default function BI() {
           <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
 
             {/* ── Seletores ── */}
-            <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-              <select value={filtroAnoSafraId} onChange={e => setFiltroAnoSafraId(e.target.value)}
+            <div data-arato-filters="true" style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+              <SelectField value={filtroAnoSafraId} onChange={e => setFiltroAnoSafraId(e.target.value)}
                 style={{ padding:"7px 10px", border:"0.5px solid var(--border-table)", borderRadius:8, fontSize:12, background:"var(--bg-card)", outline:"none", color:"var(--text-1)", minWidth:160 }}>
                 <option value="">Todos os anos safra</option>
                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-              </select>
-              <select value={biComCultura} onChange={e => setBiComCultura(e.target.value)}
+              </SelectField>
+              <SelectField value={biComCultura} onChange={e => setBiComCultura(e.target.value)}
                 style={{ padding:"7px 10px", border:"0.5px solid var(--border-table)", borderRadius:8, fontSize:12, background:"var(--bg-card)", outline:"none", color:"var(--text-1)", minWidth:140 }}>
                 <option value="">Todas as culturas</option>
                 {culturasList.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              </SelectField>
               {(filtroAnoSafraId || biComCultura) && (
-                <button onClick={() => { setFiltroAnoSafraId(""); setBiComCultura(""); }}
+                <button data-arato-button="secondary" onClick={() => { setFiltroAnoSafraId(""); setBiComCultura(""); }}
                   style={{ padding:"7px 12px", border:"0.5px solid var(--border-table)", borderRadius:8, fontSize:11, color:"var(--text-2)", background:"var(--bg-card)", cursor:"pointer" }}>
                   ✕ Limpar filtros
                 </button>
@@ -3266,7 +3267,7 @@ export default function BI() {
                 { label:"Preço Médio Pond.",    val:precoMedPond>0?fmtR(precoMedPond)+"/sc":"—", sub:"ponderado por volume",                cor:"#C9921B", bg:"#FBF3E0" },
                 { label:"Saldo a Entregar",     val:fmtN(totalSaldSc, 0)+" sc",   sub:totalSc>0?fmtN(totalEntSc/totalSc*100,0)+"% já entregue":"0% entregue", cor:totalSaldSc>0?"#E24B4A":"#16A34A", bg:totalSaldSc>0?"#FFF0F0":"#ECFDF5" },
               ].map(k => (
-                <div key={k.label} style={{ background:k.bg, border:"0.5px solid var(--border)", borderRadius:12, padding:"16px 18px" }}>
+                <div data-arato-statistic="display" key={k.label} style={{ background:k.bg, border:"0.5px solid var(--border)", borderRadius:12, padding:"16px 18px" }}>
                   <div style={{ fontSize:10, color:"var(--text-2)", fontWeight:600, marginBottom:6, textTransform:"uppercase", letterSpacing:".03em" }}>{k.label}</div>
                   <div style={{ fontSize:20, fontWeight:800, color:k.cor }}>{k.val}</div>
                   <div style={{ fontSize:10, color:"var(--text-3)", marginTop:4 }}>{k.sub}</div>
@@ -3448,7 +3449,7 @@ export default function BI() {
                     <text x="50" y="47" textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--text-1)">{produtores.length}</text>
                     <text x="50" y="57" textAnchor="middle" fontSize="7" fill="var(--text-3)">produtores</text>
                   </svg>
-                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                  <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                     <thead>
                       <tr style={{ background:"var(--bg-card)" }}>
                         {["#","Produtor","Volume (sc)","% do total","Receita (BRL)","Contratos"].map((h, i) => (
@@ -3568,7 +3569,7 @@ export default function BI() {
                         </div>
                         {exp && (
                           <div style={{ background:"var(--bg-card)", borderRadius:8, border:"0.5px solid var(--bg-tag)", margin:"4px 0 8px 34px", overflow:"hidden" }}>
-                            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+                            <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                               <thead>
                                 <tr style={{ background:"var(--bg-tag)" }}>
                                   {["Nº","Produto","Sacas","Entregue","% Ent.","Preço","Moeda","Status"].map((h, hi) => (
@@ -3701,7 +3702,7 @@ export default function BI() {
             {/* Tabela lançamentos em aberto */}
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--border)", fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Lançamentos em Aberto</div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-card)" }}>
                     {["Tipo", "Descrição", "Categoria", "Vencimento", "Valor"].map((h, i) => (
@@ -3846,7 +3847,7 @@ export default function BI() {
                   <span style={{ fontSize: 11, color: "var(--text-2)" }}>Ano civil:</span>
                   <div style={{ display: "flex", gap: 4 }}>
                     {["todos", ...Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() + i - 1))].map(ano => (
-                      <button key={ano} type="button" onClick={() => setFiltroCambioAno(ano)}
+                      <button data-arato-button="toggle" key={ano} type="button" onClick={() => setFiltroCambioAno(ano)}
                         style={{
                           fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "0.5px solid",
                           cursor: "pointer",
@@ -3877,7 +3878,7 @@ export default function BI() {
                         : "✓ Todas as datas com USD coberto"}
                     </span>
                   </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-card)" }}>
                         {["Data", "CP a Pagar (USD)", "CR a Receber (USD)", "Saldo USD", "Saldo BRL", "Status"].map((h, i) => (
@@ -4104,20 +4105,20 @@ export default function BI() {
                 Parâmetros do cenário
                 <span style={{ marginLeft: 8, fontSize: 10, background: "#C9921B20", color: "#7A5A12", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>EXCLUSIVO RACCOLTO</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
                 {[
                   { label: "Preço da soja (R$/sc)", val: precoMask, set: setPrecoMask },
                   { label: "Produtividade (sc/ha)",  val: prodMask,  set: setProdMask  },
                   { label: "Custo total (R$/ha)",    val: custoMask, set: setCustoMask },
                 ].map(f => (
                   <div key={f.label}>
-                    <label style={labelSt}>{f.label}</label>
+                    <label data-arato-label="true" style={labelSt}>{f.label}</label>
                     <input style={inputSt} type="text" inputMode="numeric" value={f.val}
                       onChange={e => f.set(aplicarMascara(e.target.value))} />
                   </div>
                 ))}
                 <div>
-                  <label style={labelSt}>Área (ha)</label>
+                  <label data-arato-label="true" style={labelSt}>Área (ha)</label>
                   <input style={inputSt} type="text" inputMode="numeric" value={areaStr}
                     onChange={e => setAreaStr(e.target.value.replace(/\D/g, ""))} />
                 </div>
@@ -4162,8 +4163,8 @@ export default function BI() {
             <div style={{ padding: "16px 20px" }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Matriz de sensibilidade — Resultado/ha (R$)</div>
               <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12 }}>Eixo X: produtividade · Eixo Y: preço soja · Verde = lucro · Vermelho = prejuízo</div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ borderCollapse: "collapse", fontSize: 11 }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ borderCollapse: "collapse", fontSize: 11 }}>
                   <thead>
                     <tr>
                       <th style={{ padding: "6px 12px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" }}>Preço \ Prod.</th>
@@ -4336,27 +4337,27 @@ export default function BI() {
           return (
             <div>
               {/* Toolbar: filtro + exportação */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" }}>Ano / Safra:</span>
-                  <select value={rtFiltroLabel} onChange={e => { setRtFiltroLabel(e.target.value); setRtDrillLabel(null); }}
+                  <SelectField value={rtFiltroLabel} onChange={e => { setRtFiltroLabel(e.target.value); setRtDrillLabel(null); }}
                     style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none", cursor: "pointer" }}>
                     <option value="todos">Todos os anos</option>
                     {rtPorAno.map(b => <option key={b.label} value={b.label}>{b.label}{b.captado === 0 ? " (sem captação)" : ""}</option>)}
-                  </select>
+                  </SelectField>
                   {rtFiltroLabel !== "todos" && (
-                    <button onClick={() => { setRtFiltroLabel("todos"); setRtDrillLabel(null); }}
+                    <button data-arato-button="secondary" onClick={() => { setRtFiltroLabel("todos"); setRtDrillLabel(null); }}
                       style={{ padding: "4px 10px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                       ✕ limpar
                     </button>
                   )}
                 </div>
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                  <button onClick={() => window.print()}
+                  <button data-arato-button="secondary" onClick={() => window.print()}
                     style={{ padding: "6px 14px", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
                     ⎙ PDF
                   </button>
-                  <button onClick={exportarXLSX} disabled={exportandoRT}
+                  <button data-arato-button="primary" onClick={exportarXLSX} disabled={exportandoRT}
                     style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: exportandoRT ? "not-allowed" : "pointer", opacity: exportandoRT ? 0.7 : 1 }}>
                     {exportandoRT ? "Exportando…" : "↓ XLSX"}
                   </button>
@@ -4399,7 +4400,7 @@ export default function BI() {
                   .reduce((s, g) => s + saldoGrupo(g.tipos), 0);
 
                 return (
-                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px", marginBottom: 16 }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px", marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Saldo por Categoria</span>
@@ -4409,12 +4410,12 @@ export default function BI() {
                         Total selecionado: {fmtR(totalSelecionado)}
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
                       {CF_GRUPOS.map(g => {
                         const sel = cfGruposFiltro.has(g.key);
                         const saldo = saldoGrupo(g.tipos);
                         return (
-                          <label key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "var(--border)"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>
+                          <label data-arato-label="true" key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "var(--border)"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <input type="checkbox" checked={sel} onChange={() => {
                                 const next = new Set(cfGruposFiltro);
@@ -4453,7 +4454,7 @@ export default function BI() {
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Histórico por Ano Fiscal</span>
                       <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>captação × amortização × juros</span>
                     </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Ano / Safra", "Captado", "Pago (Principal)", "Juros Pagos", "Saldo Devedor", "Progresso"].map((h, i) => (
@@ -4512,7 +4513,7 @@ export default function BI() {
                                     {drillLancs.length === 0 ? (
                                       <div style={{ padding: "10px 0", fontSize: 12, color: "var(--text-muted)" }}>Nenhum lançamento encontrado para esta safra.</div>
                                     ) : (
-                                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                         <thead>
                                           <tr>
                                             {["Descrição","Categoria","Vencimento","Moeda","Tipo","Valor","Status"].map((h, hi) => (
@@ -4580,7 +4581,7 @@ export default function BI() {
                   </div>
 
                   {/* Por tipo de operação */}
-                  <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                  <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                     <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Por Tipo de Operação</span>
                     </div>
@@ -4611,7 +4612,7 @@ export default function BI() {
 
                     {/* KPI juros/ha destaque */}
                     {areaTotal > 0 && (
-                      <div style={{ margin: "0 18px 16px", padding: "12px 14px", background: "#F3E8FF", borderRadius: 10, border: "0.5px solid #C4B5FD" }}>
+                      <div data-arato-statistic="display" style={{ margin: "0 18px 16px", padding: "12px 14px", background: "#F3E8FF", borderRadius: 10, border: "0.5px solid #C4B5FD" }}>
                         <div style={{ fontSize: 10, color: "#5B21B6", marginBottom: 3, fontWeight: 600 }}>ENCARGO FINANCEIRO / ha</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: "#5B21B6" }}>{fmtR2(rtJurosHa)}</div>
                         <div style={{ fontSize: 10, color: "#7C3AED", marginTop: 2 }}>
@@ -4842,11 +4843,11 @@ export default function BI() {
               )}
 
               {/* ── Filtro de categorias ── */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
+              <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Incluir no cálculo
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
                   {CF_GRUPOS.map(g => {
                     const sel = cfGruposFiltro.has(g.key);
                     const saldoG = cfContratos.filter(c => (g.tipos as readonly string[]).includes(c.tipo ?? "")).reduce((s, c) => {
@@ -4854,7 +4855,7 @@ export default function BI() {
                       return s + (ultima?.saldo_devedor ?? (c.valor_total ?? 0));
                     }, 0);
                     return (
-                      <label key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "var(--border)"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>
+                      <label data-arato-label="true" key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "var(--border)"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <input type="checkbox" checked={sel} onChange={() => {
                             const next = new Set(cfGruposFiltro);
@@ -4877,8 +4878,8 @@ export default function BI() {
                   {/* ══ TABELA PRINCIPAL ══ */}
                   <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                     {sectionHeader("Evolução do Endividamento", "anos anteriores (3) → último vencimento  ·  coluna atual destacada  ·  futuro em cinza")}
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 130 + 200 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 130 + 200 }}>
                         <thead>
                           <tr>
                             <th style={thFirst}>Indicador</th>
@@ -4946,7 +4947,7 @@ export default function BI() {
                     <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
 
                       {/* Tendência do endividamento */}
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: tendencia === "crescendo" ? "#FEF2F2" : tendencia === "reduzindo" ? "#F0FDF4" : "#F9FAFB", border: `0.5px solid ${tendencia === "crescendo" ? "#FCA5A5" : tendencia === "reduzindo" ? "#86EFAC" : "var(--border)"}` }}>
+                      <div data-arato-statistic="display" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: tendencia === "crescendo" ? "#FEF2F2" : tendencia === "reduzindo" ? "#F0FDF4" : "#F9FAFB", border: `0.5px solid ${tendencia === "crescendo" ? "#FCA5A5" : tendencia === "reduzindo" ? "#86EFAC" : "var(--border)"}` }}>
                         <div style={{ fontSize: 22 }}>{tendencia === "crescendo" ? "⚠️" : tendencia === "reduzindo" ? "✅" : "➡️"}</div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: tendencia === "crescendo" ? "#991B1B" : tendencia === "reduzindo" ? "#14532D" : "var(--text-2)" }}>
@@ -4961,7 +4962,7 @@ export default function BI() {
                       </div>
 
                       {/* Custo financeiro */}
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#FAEEDA", border: "0.5px solid #F9C86C" }}>
+                      <div data-arato-statistic="display" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#FAEEDA", border: "0.5px solid #F9C86C" }}>
                         <div style={{ fontSize: 22 }}>💸</div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: "#633806" }}>Custo financeiro: {custoFinPct.toFixed(1)}% do total pago são juros</div>
@@ -4974,7 +4975,7 @@ export default function BI() {
 
                       {/* Pico de caixa */}
                       {picoVal > 0 && (
-                        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#F2F2F2", border: "0.5px solid #93C5FD" }}>
+                        <div data-arato-statistic="display" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#F2F2F2", border: "0.5px solid #93C5FD" }}>
                           <div style={{ fontSize: 22 }}>📅</div>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>
@@ -4989,7 +4990,7 @@ export default function BI() {
                       )}
 
                       {/* Quitação estimada */}
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: anoQuit ? "#F0FDF4" : "#F9FAFB", border: `0.5px solid ${anoQuit ? "#86EFAC" : "var(--border)"}` }}>
+                      <div data-arato-statistic="display" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: anoQuit ? "#F0FDF4" : "#F9FAFB", border: `0.5px solid ${anoQuit ? "#86EFAC" : "var(--border)"}` }}>
                         <div style={{ fontSize: 22 }}>{anoQuit ? "🏁" : "🔄"}</div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: anoQuit ? "#14532D" : "var(--text-2)" }}>
@@ -5007,7 +5008,7 @@ export default function BI() {
                       {(() => {
                         const anosComCaptacao = anos.filter(a => (captPorAno[a] ?? 0) > 0 && Number(a) >= anoAtual - 2);
                         return anosComCaptacao.length > 0 ? (
-                          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#F0FDF4", border: "0.5px solid #86EFAC" }}>
+                          <div data-arato-statistic="display" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#F0FDF4", border: "0.5px solid #86EFAC" }}>
                             <div style={{ fontSize: 22 }}>📥</div>
                             <div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: "#14532D" }}>
@@ -5043,7 +5044,7 @@ export default function BI() {
                 const cor = semParcelas.length > 0 ? "#E24B4A" : "#16A34A";
                 return (
                   <div style={{ marginTop: 24, border: `0.5px solid ${semParcelas.length > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                    <button onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("contratos_cp") ? n.delete("contratos_cp") : n.add("contratos_cp"); return n; })}
+                    <button data-arato-button="secondary" onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("contratos_cp") ? n.delete("contratos_cp") : n.add("contratos_cp"); return n; })}
                       style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
                       <span style={{ fontSize: 18, flexShrink: 0 }}>📑</span>
@@ -5072,8 +5073,8 @@ export default function BI() {
                         ) : cfContratos.length === 0 ? (
                           <div style={{ padding: 20, color: "var(--text-3)", fontSize: 13, textAlign: "center" }}>Nenhum contrato financeiro cadastrado</div>
                         ) : (
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Contrato","Credor","Status","Parcelas CP","Total CP","1º Venc.","Últ. Venc."].map(h => (
@@ -5157,7 +5158,7 @@ export default function BI() {
 
                 return (
                 <div style={{ marginTop: 8, border: "0.5px solid rgba(226,75,74,0.3)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                  <button onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("parcelas_dup") ? n.delete("parcelas_dup") : n.add("parcelas_dup"); return n; })}
+                  <button data-arato-button="secondary" onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("parcelas_dup") ? n.delete("parcelas_dup") : n.add("parcelas_dup"); return n; })}
                     style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0, display: "inline-block" }} />
                     <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
@@ -5171,7 +5172,7 @@ export default function BI() {
                   {expDup && <div style={{ borderTop: "0.5px solid var(--border)" }}>
                     {/* Toolbar de seleção */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: algumaSel ? "#FEF2F2" : "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+                      <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
                         <input type="checkbox" checked={todasSel} onChange={e => {
                           if (e.target.checked) setDupSelecionadas(new Set(dupKeys));
                           else setDupSelecionadas(new Set());
@@ -5179,15 +5180,15 @@ export default function BI() {
                         {algumaSel ? `${dupSelecionadas.size} selecionada(s)` : "Selecionar todas"}
                       </label>
                       {algumaSel && (
-                        <button onClick={excluirSelecionadas} disabled={deletandoDup}
+                        <button data-arato-button="toggle" onClick={excluirSelecionadas} disabled={deletandoDup}
                           style={{ background: deletandoDup ? "#ccc" : "#E24B4A", color: "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 600, cursor: deletandoDup ? "not-allowed" : "pointer" }}>
                           {deletandoDup ? "Excluindo…" : `🗑 Excluir ${dupSelecionadas.size} selecionada(s)`}
                         </button>
                       )}
                       {!algumaSel && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Selecione linhas e clique em excluir</span>}
                     </div>
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             <th style={{ width: 36, padding: "8px 12px", borderBottom: "0.5px solid var(--border)" }} />
@@ -5232,8 +5233,8 @@ export default function BI() {
                   const expanded = auditExpand.has(id);
                   const cor = ld ? "#ccc" : count > 0 ? "#E24B4A" : "#16A34A";
                   return (
-                    <div style={{ border: `0.5px solid ${count > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                      <button onClick={() => toggleAudit(id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                    <div data-arato-statistic="action" style={{ border: `0.5px solid ${count > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+                      <button data-arato-button="secondary" onClick={() => toggleAudit(id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
                         <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>
@@ -5258,7 +5259,7 @@ export default function BI() {
                         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Verificações de Dados</div>
                         <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Clique em cada item para ver os detalhes</div>
                       </div>
-                      <button onClick={() => { carregarAuditExtra(); if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos); }} disabled={auditExtraLoading}
+                      <button data-arato-button="secondary" onClick={() => { carregarAuditExtra(); if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos); }} disabled={auditExtraLoading}
                         style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: auditExtraLoading ? "not-allowed" : "pointer", opacity: auditExtraLoading ? 0.6 : 1 }}>
                         ⟳ Reprocessar
                       </button>
@@ -5269,8 +5270,8 @@ export default function BI() {
                         {auditRomaneios.length === 0 ? (
                           <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Nenhum romaneio pendente</div>
                         ) : (
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr style={{ background: "var(--bg-page)" }}>
                                 {["Número","Data","Produto","Status"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
                               </tr></thead>
@@ -5291,8 +5292,8 @@ export default function BI() {
                         {auditUomDiv.length === 0 ? (
                           <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Todas as unidades consistentes</div>
                         ) : (
-                          <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr style={{ background: "var(--bg-page)" }}>
                                 {["Produto","Unidade na NF","Unidade no sistema","NF Entrada"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
                               </tr></thead>
@@ -5323,8 +5324,8 @@ export default function BI() {
                             <div style={{ padding: "10px 16px 6px", fontSize: 12, color: "#92400E", background: "#FEF3C7", borderBottom: "0.5px solid var(--border)" }}>
                               ⚠️ Esses consumos não têm CC apontado — o custo não foi apropriado corretamente.
                             </div>
-                            <div style={{ overflowX: "auto" }}>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead><tr style={{ background: "var(--bg-page)" }}>
                                   {["Descrição","Quantidade","Unidade","Data"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
                                 </tr></thead>
@@ -5369,17 +5370,17 @@ export default function BI() {
         const tipoCor = isCaptacao(l) ? "#166534"  : isJurosPgto(l) ? "#633806"         : "#0C447C";
         const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"         : "#EBF3FC";
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
+          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
            >
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
-              <div style={{ padding: "14px 20px", background: "#111111", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento RT — contrato não localizado</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{l.descricao}</div>
+            <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 20px", background: "#111111", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div data-arato-dialog-body="true">
+                  <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento RT — contrato não localizado</div>
+                  <div data-arato-dialog-body="true" style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{l.descricao}</div>
                 </div>
-                <button onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12 }}>✕</button>
+                <button data-arato-button="icon" onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12 }}>✕</button>
               </div>
-              <div style={{ padding: "18px 22px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div data-arato-dialog-body="true" style={{ padding: "18px 22px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 {[["Tipo", <span style={{ background: tipoBg, color: tipoCor, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{tipo}</span>],
                   ["Moeda", l.moeda === "USD" ? "Dólar (US$)" : "Real (R$)"],
                   ["Status", l.status],
@@ -5393,8 +5394,8 @@ export default function BI() {
                   </div>
                 ))}
               </div>
-              <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10, background: "var(--bg-card)" }}>
-                <button onClick={() => setRtLancModal(null)} style={{ padding: "7px 16px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 22px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10, background: "var(--bg-card)" }}>
+                <button data-arato-button="secondary" onClick={() => setRtLancModal(null)} style={{ padding: "7px 16px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
                 <a href="/financeiro/contratos" style={{ padding: "7px 16px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Contratos Financeiros →</a>
               </div>
             </div>
@@ -5404,8 +5405,8 @@ export default function BI() {
 
       {/* ── Loading contrato ── */}
       {loadingContrato && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: "28px 40px", fontSize: 13, color: "var(--text-2)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 12, padding: "28px 40px", fontSize: 13, color: "var(--text-2)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" }}>
             Carregando contrato…
           </div>
         </div>
@@ -5549,18 +5550,18 @@ export default function BI() {
         };
 
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 20 }}
+          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 20 }}
            >
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
+            <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
 
               {/* Cabeçalho */}
-              <div style={{ padding: "16px 24px", background: "#111111", flexShrink: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 3 }}>Contrato Financeiro — Recurso de Terceiros</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{c.descricao}</div>
-                    <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                      <div>
+              <div data-arato-dialog-body="true" style={{ padding: "16px 24px", background: "#111111", flexShrink: 0 }}>
+                <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div data-arato-dialog-body="true">
+                    <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 3 }}>Contrato Financeiro — Recurso de Terceiros</div>
+                    <div data-arato-dialog-body="true" style={{ fontSize: 17, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{c.descricao}</div>
+                    <div data-arato-dialog-body="true" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                      <div data-arato-dialog-body="true">
                         <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "block" }}>INSTITUIÇÃO</span>
                         <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{c.credor || "—"}</span>
                       </div>
@@ -5570,19 +5571,19 @@ export default function BI() {
                           <span style={{ fontSize: 13, color: "#C9921B", fontWeight: 700, fontFamily: "monospace" }}>{c.numero_documento}</span>
                         </div>
                       )}
-                      <div>
+                      <div data-arato-dialog-body="true">
                         <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "block" }}>PRODUTOR / TOMADOR</span>
                         <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{c.produtorNome || "—"}</span>
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => setRtContratoModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 22, cursor: "pointer", lineHeight: 1, flexShrink: 0, marginLeft: 16 }}>✕</button>
+                  <button data-arato-button="icon" onClick={() => setRtContratoModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 22, cursor: "pointer", lineHeight: 1, flexShrink: 0, marginLeft: 16 }}>✕</button>
                 </div>
               </div>
 
               {/* Resumo da operação */}
-              <div style={{ padding: "16px 24px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)", flexShrink: 0 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14 }}>
+              <div data-arato-dialog-body="true" style={{ padding: "16px 24px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)", flexShrink: 0 }}>
+                <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14 }}>
                   {[
                     ["Tipo de Recurso", tipoLabel[c.tipo] ?? c.tipo],
                     ["Moeda", isUSD ? "Dólar (USD)" : "Real (BRL)"],
@@ -5618,12 +5619,12 @@ export default function BI() {
               </div>
 
               {/* Grid de parcelas */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
-                <div style={secH}>Parcelas</div>
+              <div data-arato-dialog-body="true" style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+                <div data-arato-dialog-body="true" style={secH}>Parcelas</div>
                 {c.parcelas.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 13 }}>Nenhuma parcela cadastrada</div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={{ ...thSt, textAlign: "center", width: 40 }}>#</th>
@@ -5665,33 +5666,33 @@ export default function BI() {
               </div>
 
               {/* Rodapé — totais */}
-              <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)", flexShrink: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", gap: 32 }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total Pago</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#16A34A" }}>
+              <div data-arato-dialog-body="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)", flexShrink: 0 }}>
+                <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div data-arato-dialog-body="true" style={{ display: "flex", gap: 32 }}>
+                    <div data-arato-dialog-body="true">
+                      <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total Pago</div>
+                      <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 800, color: "#16A34A" }}>
                         {isUSD ? `USD ${fmtN(totalPago, 2)}` : fmtR(totalPago)}
                         {isUSD && ptax > 0 && <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>≈ {fmtR(totalPago * ptax)}</span>}
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total a Vencer</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: totalAberto > 0 ? "#111111" : "var(--text-3)" }}>
+                    <div data-arato-dialog-body="true">
+                      <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total a Vencer</div>
+                      <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 800, color: totalAberto > 0 ? "#111111" : "var(--text-3)" }}>
                         {isUSD ? `USD ${fmtN(totalAberto, 2)}` : fmtR(totalAberto)}
                         {isUSD && ptax > 0 && <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>≈ {fmtR(totalAberto * ptax)}</span>}
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Parcelas</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-2)" }}>
+                    <div data-arato-dialog-body="true">
+                      <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Parcelas</div>
+                      <div data-arato-dialog-body="true" style={{ fontSize: 14, fontWeight: 700, color: "var(--text-2)" }}>
                         {c.parcelas.filter(p => p.status === "pago").length}/{c.parcelas.length} pagas
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
-                    <button onClick={abrirPreview} style={{ padding: "8px 18px", background: "var(--bg-page)", border: "0.5px solid #111111", borderRadius: 8, fontSize: 12, color: "#111111", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</button>
+                  <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                    <button data-arato-button="secondary" onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
+                    <button data-arato-button="secondary" onClick={abrirPreview} style={{ padding: "8px 18px", background: "var(--bg-page)", border: "0.5px solid #111111", borderRadius: 8, fontSize: 12, color: "#111111", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</button>
                     <a href="/financeiro/contratos" style={{ padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Abrir em Contratos →</a>
                   </div>
                 </div>

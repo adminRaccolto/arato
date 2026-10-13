@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useLayout } from "./LayoutProvider";
 import { usePathname, useRouter } from "next/navigation";
 
 // ─── Catálogo de itens disponíveis para atalho ────────────────────────────────
@@ -65,6 +66,7 @@ function salvarAtalhos(ids: string[]) {
 
 // ═══════════════════════════════════════════════════════════════
 export default function SidebarAtalhos() {
+  const { modern } = useLayout();
   const pathname              = usePathname();
   const router                = useRouter();
   const [expandida,  setExpandida]  = useState(false);
@@ -105,14 +107,14 @@ export default function SidebarAtalhos() {
   // CSS variable --sidebar-w: empurra o conteúdo da página para a direita
   useEffect(() => {
     const show =
-      montado && ativada &&
+      !modern && montado && ativada &&
       !pathname?.startsWith("/campo") &&
       !pathname?.startsWith("/login") &&
       !pathname?.startsWith("/admin");
     document.documentElement.style.setProperty("--sidebar-w", show ? W + "px" : "0px");
-  }, [montado, ativada, pathname, W]);
+  }, [montado, ativada, pathname, W, modern]);
 
-  if (!montado) return null;
+  if (!montado || modern) return null;
 
   // Não mostrar no App Campo (mobile), login, admin
   if (pathname?.startsWith("/campo") || pathname?.startsWith("/login") || pathname?.startsWith("/admin")) return null;
@@ -120,7 +122,7 @@ export default function SidebarAtalhos() {
   // Sidebar desativada — mostra aba visível para reativar
   if (!ativada) {
     return (
-      <button
+      <button data-arato-button="primary"
         onClick={() => { setAtivada(true); try { localStorage.setItem(STORAGE_VIS, "1"); } catch { /* noop */ } }}
         title="Mostrar barra de atalhos"
         style={{
@@ -189,7 +191,7 @@ export default function SidebarAtalhos() {
   return (
     <>
       {/* Sidebar */}
-      <div ref={sideRef}
+      <div data-arato-statistic="action" ref={sideRef}
         style={{
           position: "fixed", left: 0, top: 92, bottom: 0, zIndex: 300,
           width: W, background: "var(--bg-card)",
@@ -211,18 +213,18 @@ export default function SidebarAtalhos() {
               Atalhos
             </span>
           )}
-          <button onClick={toggleExpanir} title={expandida ? "Recolher" : "Expandir"}
+          <button data-arato-button="secondary" onClick={toggleExpanir} title={expandida ? "Recolher" : "Expandir"}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--text-3)", fontSize: 16, lineHeight: 1, display: "flex", alignItems: "center" }}>
             {expandida ? "◀" : "▶"}
           </button>
         </div>
 
         {/* Lista de atalhos */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
+        <div data-arato-statistic="action" style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
           {itensAtuais.map(item => {
             const ativo = pathname === item.path || pathname?.startsWith(item.path + "?");
             return (
-              <button key={item.id}
+              <button data-arato-button="toggle" key={item.id}
                 onClick={() => router.push(item.path)}
                 title={item.label}
                 style={{
@@ -251,7 +253,7 @@ export default function SidebarAtalhos() {
         {/* Rodapé: configurar + ocultar */}
         <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "4px 0", flexShrink: 0 }}>
           {/* Botão configurar atalhos */}
-          <button onClick={abrirModal} title="Configurar atalhos"
+          <button data-arato-button="secondary" onClick={abrirModal} title="Configurar atalhos"
             style={{
               width: "100%", display: "flex", alignItems: "center",
               gap: expandida ? 10 : 0, justifyContent: expandida ? "flex-start" : "center",
@@ -266,7 +268,7 @@ export default function SidebarAtalhos() {
           </button>
 
           {/* Botão ocultar barra */}
-          <button
+          <button data-arato-button="secondary"
             onClick={() => { setAtivada(false); try { localStorage.setItem(STORAGE_VIS, "0"); } catch { /* noop */ } }}
             title="Ocultar barra de atalhos"
             style={{
@@ -286,16 +288,16 @@ export default function SidebarAtalhos() {
 
       {/* ═══ MODAL CONFIGURAÇÃO ═══ */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "flex-start", paddingTop: 92, paddingLeft: W }}>
-          <div ref={modalRef} style={{ background: "var(--bg-card)", borderRadius: "0 12px 12px 0", width: 360, maxHeight: "calc(100vh - 92px)", display: "flex", flexDirection: "column", boxShadow: "4px 0 24px rgba(0,0,0,0.15)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "flex-start", paddingTop: 92, paddingLeft: W }}>
+          <div data-arato-dialog="confirmation" ref={modalRef} style={{ background: "var(--bg-card)", borderRadius: "0 12px 12px 0", width: 360, maxHeight: "calc(100vh - 92px)", display: "flex", flexDirection: "column", boxShadow: "4px 0 24px rgba(0,0,0,0.15)" }}>
 
             {/* Header */}
-            <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Configurar Atalhos</div>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{selecionados.length} selecionados</div>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 14 }}>Configurar Atalhos</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{selecionados.length} selecionados</div>
               </div>
-              <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
 
             {/* Selecionados — ordem atual */}
@@ -310,11 +312,11 @@ export default function SidebarAtalhos() {
                       <div key={id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
                         <span style={{ fontSize: 14 }}>{item.emoji}</span>
                         <span style={{ fontSize: 12, flex: 1 }}>{item.label}</span>
-                        <button onClick={() => moverItem(id, -1)} disabled={idx === 0}
+                        <button data-arato-button="secondary" onClick={() => moverItem(id, -1)} disabled={idx === 0}
                           style={{ background: "none", border: "none", cursor: idx === 0 ? "default" : "pointer", color: idx === 0 ? "#ccc" : "var(--text-2)", fontSize: 13, padding: "0 3px" }}>▲</button>
-                        <button onClick={() => moverItem(id, 1)} disabled={idx === selecionados.length - 1}
+                        <button data-arato-button="secondary" onClick={() => moverItem(id, 1)} disabled={idx === selecionados.length - 1}
                           style={{ background: "none", border: "none", cursor: idx === selecionados.length - 1 ? "default" : "pointer", color: idx === selecionados.length - 1 ? "#ccc" : "var(--text-2)", fontSize: 13, padding: "0 3px" }}>▼</button>
-                        <button onClick={() => toggleItem(id)}
+                        <button data-arato-button="icon" onClick={() => toggleItem(id)}
                           style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, padding: "0 3px" }}>×</button>
                       </div>
                     );
@@ -324,8 +326,8 @@ export default function SidebarAtalhos() {
             )}
 
             {/* Catálogo */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "10px 18px" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", marginBottom: 8, letterSpacing: ".08em", textTransform: "uppercase" }}>Adicionar atalhos</div>
+            <div data-arato-dialog-body="true" style={{ flex: 1, overflowY: "auto", padding: "10px 18px" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", marginBottom: 8, letterSpacing: ".08em", textTransform: "uppercase" }}>Adicionar atalhos</div>
               {grupos.map(grupo => (
                 <div key={grupo} style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", marginBottom: 4, letterSpacing: ".06em" }}>{grupo}</div>
@@ -333,7 +335,7 @@ export default function SidebarAtalhos() {
                     {CATALOGO_ATALHOS.filter(i => i.grupo === grupo).map(item => {
                       const selecionado = selecionados.includes(item.id);
                       return (
-                        <button key={item.id} onClick={() => toggleItem(item.id)}
+                        <button data-arato-button="toggle" key={item.id} onClick={() => toggleItem(item.id)}
                           style={{
                             display: "flex", alignItems: "center", gap: 8, padding: "5px 8px",
                             borderRadius: 6, border: selecionado ? "0.5px solid #1A4870" : "0.5px solid transparent",
@@ -352,12 +354,12 @@ export default function SidebarAtalhos() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "12px 18px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
-              <button onClick={() => setModal(false)}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 18px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
+              <button data-arato-button="secondary" onClick={() => setModal(false)}
                 style={{ padding: "7px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontSize: 13 }}>
                 Cancelar
               </button>
-              <button onClick={salvar}
+              <button data-arato-button="primary" onClick={salvar}
                 style={{ padding: "7px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
                 Salvar
               </button>

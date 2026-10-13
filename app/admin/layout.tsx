@@ -165,7 +165,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }}>
             <span>←</span> Voltar ao Arato
           </Link>
-          <button onClick={sair} style={{
+          <button data-arato-button="secondary" onClick={sair} style={{
             display: "flex", alignItems: "center", gap: 8, width: "100%",
             padding: "7px 12px", borderRadius: 8,
             border: "none", background: "transparent", cursor: "pointer",

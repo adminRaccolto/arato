@@ -66,7 +66,8 @@ for (const encoded of rgbaColors) {
     add('background', value, token); add('background-color', value, token);
   }
 }
-const excluded = ':not([data-theme-static], [data-theme-static] *, .print-area, .print-area *, #rom-print-area, #rom-print-area *)';
+const excluded = ':not(:where([data-theme-static], [data-theme-static] *, .print-area, .print-area *, #rom-print-area, #rom-print-area *))';
+const modernOrDark = ':is(:root[data-theme="dark"], :root[data-layout="new"][data-theme="light"])';
 const rules = [];
 const brightRules = [];
 // O Branco também adapta fundos e contornos neutros fixos dos formulários antigos.
@@ -119,11 +120,11 @@ for (const [key, values] of grouped) {
     brightRules.push(`  :is(:root[data-theme="dark"], :root[data-palette="branco"][data-theme="light"]) :is(${selectors.join(',')})${excluded} { color: var(${token}) !important; }`);
   } else {
     const selectors = [...values].flatMap(v => [`[style^="${property}: ${v}"]`, `[style*="; ${property}: ${v}"]`]);
-    rules.push(`  :root[data-theme="dark"] :is(${selectors.join(',')})${excluded} { ${property}: var(${token}) !important; }`);
+    rules.push(`  ${modernOrDark} :is(${selectors.join(',')})${excluded} { ${property}: var(${token}) !important; }`);
   }
 }
 rules.push(...brightRules);
-rules.push(`  :root[data-theme="dark"] :is([style*="background: var(--c-primary)"] ,[style*="background-color: var(--c-primary)"])${excluded} { color: var(--on-primary) !important; }`);
+rules.push(`  ${modernOrDark} :is([style*="background: var(--c-primary)"] ,[style*="background-color: var(--c-primary)"])${excluded} { color: var(--on-primary) !important; }`);
 rules.push('  :root[data-theme="dark"] svg text:is([fill="#111"], [fill="#111111"], [fill="#000"], [fill="#000000"], [fill="#333"], [fill="#666"], [fill="#888"]) { fill: var(--text-2); }');
 fs.writeFileSync('app/theme-compat.css', `/* Gerado por scripts/generate-theme-compat.mjs. Cores inline legadas adaptadas somente na tela. */\n@media screen {\n${rules.join('\n')}\n}\n`);
 console.log(`Compatibilidade gerada: ${grouped.size} famílias de cores.`);

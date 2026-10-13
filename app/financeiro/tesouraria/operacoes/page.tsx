@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../../components/SelectField";
 import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
@@ -113,22 +114,22 @@ export default function OperacoesTesourariaPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Operações de Tesouraria</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Operações de Tesouraria</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
               Gerencie os tipos de operações disponíveis ao registrar lançamentos de tesouraria.
             </p>
           </div>
           {fazendasConta.length > 1 && (
-            <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+            <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
               {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-            </select>
+            </SelectField>
           )}
         </div>
 
@@ -138,7 +139,7 @@ export default function OperacoesTesourariaPage() {
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Operações padrão do sistema</span>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>Não editáveis</span>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#FAFBFC" }}>
                 {["Operação", "Tipo", "Descrição"].map(h => (
@@ -167,7 +168,7 @@ export default function OperacoesTesourariaPage() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
           <div style={{ padding: "12px 18px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Operações personalizadas da fazenda</span>
-            <button onClick={abrirNova} style={btnV}>+ Nova Operação</button>
+            <button data-arato-button="primary" onClick={abrirNova} style={btnV}>+ Nova Operação</button>
           </div>
 
           {ops.length === 0 ? (
@@ -176,7 +177,7 @@ export default function OperacoesTesourariaPage() {
               <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Crie operações específicas da sua fazenda que não estão na lista padrão acima.</span>
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#FAFBFC" }}>
                   {["Operação", "Tipo", "Categoria", "Vinculada ao Plano de Contas", ""].map(h => (
@@ -200,8 +201,8 @@ export default function OperacoesTesourariaPage() {
                       </td>
                       <td style={{ padding: "9px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
-                          <button onClick={() => excluir(op.id)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>Excluir</button>
+                          <button data-arato-button="secondary" onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
+                          <button data-arato-button="danger" onClick={() => excluir(op.id)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>Excluir</button>
                         </div>
                       </td>
                     </tr>
@@ -215,35 +216,35 @@ export default function OperacoesTesourariaPage() {
 
       {/* Modal */}
       {modalOp && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{opEdit ? "Editar Operação" : "Nova Operação de Tesouraria"}</div>
-              <button onClick={() => setModalOp(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{opEdit ? "Editar Operação" : "Nova Operação de Tesouraria"}</div>
+              <button data-arato-button="icon" onClick={() => setModalOp(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
-              <div>
-                <label style={lbl}>Nome da Operação *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nome da Operação *</label>
                 <input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} style={inp} placeholder="Ex.: Resgate Tesouro Direto" />
               </div>
-              <div>
-                <label style={lbl}>Tipo *</label>
-                <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as OpTesoura["tipo"] }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo *</label>
+                <SelectField value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as OpTesoura["tipo"] }))} style={inp}>
                   <option value="entrada">Entrada (crédito)</option>
                   <option value="saida">Saída (débito)</option>
                   <option value="ambos">Ambos (entrada ou saída)</option>
                   <option value="transferencia">Transferência entre Contas</option>
                   <option value="ajuste">Ajuste de Saldo</option>
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Categoria</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Categoria</label>
                 <input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} style={inp} placeholder="Ex.: Investimentos" />
               </div>
-              <div>
-                <label style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
-                <select value={form.og_id} onChange={e => setForm(f => ({ ...f, og_id: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
+                <SelectField value={form.og_id} onChange={e => setForm(f => ({ ...f, og_id: e.target.value }))} style={inp}>
                   <option value="">— Sem vínculo (não impacta DRE/LCDPR/SPED)</option>
                   <optgroup label="Receitas">
                     {ogs.filter(g => g.tipo === "receita").map(g => (
@@ -255,21 +256,21 @@ export default function OperacoesTesourariaPage() {
                       <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
                     ))}
                   </optgroup>
-                </select>
+                </SelectField>
                 {form.og_id && (
                   <div style={{ marginTop: 4, fontSize: 11, color: "#16A34A" }}>
                     ✓ Lançamentos desta operação impactarão o plano de contas selecionado.
                   </div>
                 )}
               </div>
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <textarea value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalOp(false)}>Cancelar</button>
-              <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalOp(false)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                 {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
@@ -1021,14 +1022,14 @@ function MdfePageInner() {
 
   if (!podeAcessarPlano("transporte")) return <PlanoGate modulo="transporte" />;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>MDF-e — Manifesto de Documentos Fiscais Eletrônico</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>MDF-e — Manifesto de Documentos Fiscais Eletrônico</h1>
           <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
             Vincula CT-e e NF-e por viagem · Frota própria · Motoristas CLT
           </p>
@@ -1042,7 +1043,7 @@ function MdfePageInner() {
             { label: "Carga em Trânsito",     value: pesoTransito > 0 ? `${(pesoTransito/1000).toFixed(0)} ton` : "—", sub: "peso total", color: "#C9921B" },
             { label: "Cancelados",            value: mdfes.filter(m => m.status === "cancelado").length.toString(), sub: "total", color: "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -1053,16 +1054,16 @@ function MdfePageInner() {
         {/* Filtro + botão */}
         <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
           <div style={{ flex: "0 0 160px" }}>
-            <label style={lbl}>Status</label>
-            <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={inp}>
+            <label data-arato-label="true" style={lbl}>Status</label>
+            <SelectField value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} style={inp}>
               <option value="">Todos</option>
               {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
+            </SelectField>
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => { setChaveMsg(null); setModalChave(true); }} style={btnR} title="Encerra na SEFAZ um MDF-e que ficou aberto e bloqueia a placa (mesmo emitido fora do sistema)">Encerrar por chave</button>
-            <button onClick={abrirNovo} style={btnV}>+ Emitir MDF-e</button>
+            <button data-arato-button="secondary" onClick={() => { setChaveMsg(null); setModalChave(true); }} style={btnR} title="Encerra na SEFAZ um MDF-e que ficou aberto e bloqueia a placa (mesmo emitido fora do sistema)">Encerrar por chave</button>
+            <button data-arato-button="primary" onClick={abrirNovo} style={btnV}>+ Emitir MDF-e</button>
           </div>
         </div>
 
@@ -1073,7 +1074,7 @@ function MdfePageInner() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Nº/Série","Data","Percurso","Veículo","Motorista","Documentos","Peso","Status",""].map(h => (
@@ -1119,23 +1120,23 @@ function MdfePageInner() {
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                           {m.status === "rascunho" && (
-                            <button onClick={() => autorizar(m)} disabled={autorizando === m.id} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: autorizando === m.id ? "default" : "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <button data-arato-button="primary" onClick={() => autorizar(m)} disabled={autorizando === m.id} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: autorizando === m.id ? "default" : "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               {autorizando === m.id ? "Transmitindo…" : "Autorizar SEFAZ"}
                             </button>
                           )}
                           {m.status === "rascunho" && (
-                            <button onClick={() => excluirRascunho(m)} disabled={autorizando === m.id} title="Excluir este rascunho (nunca autorizado)"
+                            <button data-arato-button="danger" onClick={() => excluirRascunho(m)} disabled={autorizando === m.id} title="Excluir este rascunho (nunca autorizado)"
                               style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
                               Excluir
                             </button>
                           )}
                           {m.status === "autorizado" && (
-                            <button onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <button data-arato-button="primary" onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Encerrar
                             </button>
                           )}
                           {(m.status === "autorizado" || m.status === "encerrado") && (
-                            <button onClick={() => {
+                            <button data-arato-button="secondary" onClick={() => {
                               // Emitente real do MDF-e: o escolhido nele; senão a transportadora do CT-e vinculado; senão a 1ª empresa.
                               const cteChave = (m.documentos.find(d => d.tipo === "cte")?.chave ?? "").replace(/\D/g, "");
                               const cnpjCte = ctes.find(c => (c.chave_acesso ?? "").replace(/\D/g, "") === cteChave)?.emitente_cnpj ?? null;
@@ -1147,12 +1148,12 @@ function MdfePageInner() {
                             </button>
                           )}
                           {(m.status === "rascunho" || m.status === "autorizado") && (
-                            <button onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                            <button data-arato-button="secondary" onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               {m.status === "autorizado" ? "CIOT" : "Editar"}
                             </button>
                           )}
                           {m.status === "autorizado" && (
-                            <button onClick={() => cancelar(m)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                            <button data-arato-button="danger" onClick={() => cancelar(m)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
                               Cancelar
                             </button>
                           )}
@@ -1177,60 +1178,60 @@ function MdfePageInner() {
           MODAL EMISSÃO MDF-e
       ══════════════════════════════════════════════════════ */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mdfeEdit ? `MDF-e ${mdfeEdit.numero_mdfe}/${mdfeEdit.serie}` : "Emitir MDF-e"}</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Manifesto de Documentos Fiscais Eletrônico</div>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mdfeEdit ? `MDF-e ${mdfeEdit.numero_mdfe}/${mdfeEdit.serie}` : "Emitir MDF-e"}</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Manifesto de Documentos Fiscais Eletrônico</div>
               </div>
-              <button onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div style={{ display: "flex", gap: 4, padding: "0 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 4, padding: "0 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               {([["dados", "Dados do MDF-e"], ["seguro", "Seguro e Averbação"]] as const).map(([k, t]) => (
-                <button key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</button>
+                <button data-arato-button="toggle" key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</button>
               ))}
             </div>
 
             {abaModal === "seguro" && (
-              <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-fields="true" style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
                 <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--text-3)" }}>
                   Seguro da Carga (RCTR-C) deste MDF-e. Campos em branco usam o cadastro da transportadora em Parâmetros → MDF-e; o que for preenchido aqui vale só para este manifesto. Necessário quando o transporte é prestação de serviço (com CT-e); carga própria não exige seguro.
                 </div>
                 <div>
-                  <label style={lbl}>Seguradora</label>
+                  <label data-arato-label="true" style={lbl}>Seguradora</label>
                   <input value={form.seguradora_nome} onChange={e => setForm(f => ({ ...f, seguradora_nome: e.target.value }))} style={inp} placeholder="Ex: Porto Seguro Cia de Seguros Gerais" />
                 </div>
                 <div>
-                  <label style={lbl}>CNPJ da Seguradora</label>
+                  <label data-arato-label="true" style={lbl}>CNPJ da Seguradora</label>
                   <input value={form.seguradora_cnpj} onChange={e => setForm(f => ({ ...f, seguradora_cnpj: e.target.value }))} style={inp} placeholder="00.000.000/0001-00" />
                 </div>
                 <div>
-                  <label style={lbl}>Nº da Apólice</label>
+                  <label data-arato-label="true" style={lbl}>Nº da Apólice</label>
                   <input value={form.apolice_numero} onChange={e => setForm(f => ({ ...f, apolice_numero: e.target.value }))} style={inp} />
                 </div>
                 <div style={{ gridColumn: "1 / -1", borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, fontSize: 12, color: "var(--text-3)" }}>
                   <strong style={{ color: "var(--text-2)" }}>Pagamento do frete</strong> — exigido em carga lotação (um único CT-e/NF-e, SEFAZ 302). Favorecido = transportadora emitente; valor = frete do CT-e. Em branco usa a chave PIX de Parâmetros → MDF-e.
                 </div>
                 <div>
-                  <label style={lbl}>Chave PIX de quem recebe o frete</label>
+                  <label data-arato-label="true" style={lbl}>Chave PIX de quem recebe o frete</label>
                   <input value={form.pag_pix} onChange={e => setForm(f => ({ ...f, pag_pix: e.target.value }))} style={inp} placeholder="CNPJ, e-mail, telefone ou chave aleatória" />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <div><label style={lbl}>Banco (alternativa)</label><input value={form.pag_cod_banco} onChange={e => setForm(f => ({ ...f, pag_cod_banco: e.target.value }))} style={inp} placeholder="001" /></div>
-                  <div><label style={lbl}>Agência</label><input value={form.pag_agencia} onChange={e => setForm(f => ({ ...f, pag_agencia: e.target.value }))} style={inp} placeholder="1234" /></div>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div><label data-arato-label="true" style={lbl}>Banco (alternativa)</label><input value={form.pag_cod_banco} onChange={e => setForm(f => ({ ...f, pag_cod_banco: e.target.value }))} style={inp} placeholder="001" /></div>
+                  <div><label data-arato-label="true" style={lbl}>Agência</label><input value={form.pag_agencia} onChange={e => setForm(f => ({ ...f, pag_agencia: e.target.value }))} style={inp} placeholder="1234" /></div>
                 </div>
                 <div>
-                  <label style={lbl}>Nº da Averbação (obrigatório p/ prestador de serviço)</label>
+                  <label data-arato-label="true" style={lbl}>Nº da Averbação (obrigatório p/ prestador de serviço)</label>
                   <input value={form.averbacao_numero} onChange={e => setForm(f => ({ ...f, averbacao_numero: e.target.value }))} style={inp} placeholder="Informe a averbação desta viagem" />
                 </div>
               </div>
             )}
 
-            <div style={{ padding: "20px 24px", display: abaModal === "dados" ? "grid" : "none", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 24px", display: abaModal === "dados" ? "grid" : "none", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
 
               {/* ── CT-e vinculados — primeiro campo do formulário: marcar aqui já preenche
@@ -1238,16 +1239,16 @@ function MdfePageInner() {
                   percurso completo (destino/fim + UFs intermediárias) continua manual, porque o
                   CT-e não tem o trajeto rodoviário inteiro, só origem/destino do frete. Pedido
                   do dono 23/09/2026 — antes ficava no fim do formulário e não preenchia nada. ── */}
-              <div style={divider}>CT-e Vinculados</div>
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div data-arato-dialog-body="true" style={divider}>CT-e Vinculados</div>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
                 {ctes.length === 0 ? (
                   <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>Nenhum CT-e autorizado disponível. Emita e autorize CT-e antes de emitir o MDF-e.</div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 10 }}>
+                  <div data-arato-panel="true" style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 10 }}>
                     {ctes.map(c => {
                       const sel = form.cte_ids.includes(c.id);
                       return (
-                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sel ? "#E8E8E8" : "var(--bg-card)", border: `0.5px solid ${sel ? "#11111150" : "transparent"}` }}>
+                        <label data-arato-label="true" key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sel ? "#E8E8E8" : "var(--bg-card)", border: `0.5px solid ${sel ? "#11111150" : "transparent"}` }}>
                           <input type="checkbox" checked={sel} onChange={() => toggleCte(c.id)} style={{ width: 14, height: 14 }} />
                           <span style={{ fontSize: 12, flex: 1 }}>
                             <strong>CT-e {c.numero_cte}/{c.serie}</strong> — {c.remetente_nome} → {c.destinatario_nome}
@@ -1262,13 +1263,13 @@ function MdfePageInner() {
               </div>
 
               {/* ── Identificação ── */}
-              <div style={divider}>Identificação</div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Emitente do MDF-e (transportadora)</label>
-                <select value={form.emitente_id} onChange={e => setForm(f => ({ ...f, emitente_id: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true" style={divider}>Identificação</div>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Emitente do MDF-e (transportadora)</label>
+                <SelectField value={form.emitente_id} onChange={e => setForm(f => ({ ...f, emitente_id: e.target.value }))} style={inp}>
                   <option value="">{empresasTransp.length ? "— Automático (transportadora do CT-e vinculado) —" : "Nenhuma empresa cadastrada"}</option>
                   {empresasTransp.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome} — {e.cpf_cnpj}</option>)}
-                </select>
+                </SelectField>
                 {(() => {
                   const sel = empresasTransp.find(e => e.id === form.emitente_id);
                   const cte = ctes.find(c => form.cte_ids.includes(c.id));
@@ -1277,58 +1278,58 @@ function MdfePageInner() {
                   return null;
                 })()}
               </div>
-              <div>
-                <label style={lbl}>Nº MDF-e</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Nº MDF-e</label>
                 <input value={form.numero_mdfe} onChange={e => setForm(f => ({ ...f, numero_mdfe: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Série</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Série</label>
                 <input value={form.serie} onChange={e => setForm(f => ({ ...f, serie: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Data de Emissão</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data de Emissão</label>
                 <InputData type="date" value={form.data_emissao} onChange={e => setForm(f => ({ ...f, data_emissao: e.target.value }))} style={inp} />
               </div>
 
               {/* ── Percurso ── */}
-              <div style={divider}>Percurso</div>
-              <div>
-                <label style={lbl}>UF de Início</label>
-                <select value={form.uf_inicio} onChange={e => setForm(f => ({ ...f, uf_inicio: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true" style={divider}>Percurso</div>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>UF de Início</label>
+                <SelectField value={form.uf_inicio} onChange={e => setForm(f => ({ ...f, uf_inicio: e.target.value }))} style={inp}>
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ gridColumn: "2 / 3" }}>
-                <label style={lbl}>Município de Início (carregamento)</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "2 / 3" }}>
+                <label data-arato-label="true" style={lbl}>Município de Início (carregamento)</label>
                 <input value={form.municipio_inicio}
                   onChange={e => setForm(f => ({ ...f, municipio_inicio: e.target.value }))}
                   onBlur={async e => { const v = e.target.value.trim(); if (v && !form.ibge_inicio) { const ibge = await buscarIbgeMdfe(v, form.uf_inicio); if (ibge) setForm(f => ({ ...f, ibge_inicio: ibge })); } }}
                   style={inp} placeholder="Nova Mutum" />
               </div>
-              <div style={{ gridColumn: "3 / -1" }}>
-                <label style={lbl}>Cód. IBGE Início {form.ibge_inicio ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "3 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Cód. IBGE Início {form.ibge_inicio ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
                 <div style={{ display: "flex", gap: 4 }}>
                   <input value={form.ibge_inicio} onChange={e => setForm(f => ({ ...f, ibge_inicio: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" maxLength={7} />
-                  <button type="button" title="Buscar de novo pelo Município de Início"
+                  <button data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Início"
                     onClick={async () => { const ibge = await buscarIbgeMdfe(form.municipio_inicio, form.uf_inicio); if (ibge) setForm(f => ({ ...f, ibge_inicio: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                     🔄
                   </button>
                 </div>
               </div>
-              <div>
-                <label style={lbl}>UF de Destino (fim)</label>
-                <select value={form.uf_fim} onChange={e => setForm(f => ({ ...f, uf_fim: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>UF de Destino (fim)</label>
+                <SelectField value={form.uf_fim} onChange={e => setForm(f => ({ ...f, uf_fim: e.target.value }))} style={inp}>
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ gridColumn: "2 / -1" }}>
-                <label style={lbl}>UFs do Percurso Intermediário (opcional)</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "2 / -1" }}>
+                <label data-arato-label="true" style={lbl}>UFs do Percurso Intermediário (opcional)</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {UFS.filter(u => u !== form.uf_inicio && u !== form.uf_fim).map(u => {
                     const sel = form.percurso_ufs.includes(u);
                     return (
-                      <button key={u} type="button"
+                      <button data-arato-button="toggle" key={u} type="button"
                         onClick={() => setForm(f => ({ ...f, percurso_ufs: sel ? f.percurso_ufs.filter(x => x !== u) : [...f.percurso_ufs, u] }))}
                         style={{ padding: "3px 8px", borderRadius: 6, fontSize: 11, border: `1px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", color: sel ? "#0D0D0D" : "var(--text-2)", fontWeight: sel ? 600 : 400 }}>
                         {u}
@@ -1339,16 +1340,16 @@ function MdfePageInner() {
               </div>
 
               {/* ── Veículo & Motorista ── */}
-              <div style={divider}>Veículo & Motorista</div>
-              <div>
-                <label style={lbl}>Veículo</label>
-                <select value={form.veiculo_id} onChange={e => setForm(f => ({ ...f, veiculo_id: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true" style={divider}>Veículo & Motorista</div>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Veículo</label>
+                <SelectField value={form.veiculo_id} onChange={e => setForm(f => ({ ...f, veiculo_id: e.target.value }))} style={inp}>
                   <option value="">— Selecionar —</option>
                   {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Motorista</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Motorista</label>
                 {/* Digite livre (sem precisar cadastrar) ou escolha uma sugestão do cadastro. */}
                 <input list="mdfe-motoristas" value={form.motorista_nome}
                   onChange={e => {
@@ -1361,7 +1362,7 @@ function MdfePageInner() {
                   {motoristas.map(m => <option key={m.id} value={m.nome} />)}
                 </datalist>
               </div>
-              <div />
+              <div data-arato-dialog-body="true" />
 
               {/* ── CIOT (TAC) ── */}
               {(() => {
@@ -1389,7 +1390,7 @@ function MdfePageInner() {
                         <div style={{ fontSize:10, color:"var(--text-2)" }}>Protocolo</div>
                         <div style={{ fontSize:12, fontFamily:"monospace", color:"var(--text-2)" }}>{ciotGerado.protocolo}</div>
                       </div>}
-                      <button type="button" onClick={resetCiot} style={{ marginLeft:"auto", padding:"6px 14px", border:"0.5px solid #C9921B50", borderRadius:8, background:"#FBF3E0", color:"#7A5400", fontSize:12, cursor:"pointer" }}>
+                      <button data-arato-button="secondary" type="button" onClick={resetCiot} style={{ marginLeft:"auto", padding:"6px 14px", border:"0.5px solid #C9921B50", borderRadius:8, background:"#FBF3E0", color:"#7A5400", fontSize:12, cursor:"pointer" }}>
                         Gerar novo
                       </button>
                     </div>
@@ -1397,72 +1398,72 @@ function MdfePageInner() {
                     <>
                       {ciotErro && <div style={{ gridColumn:"1/-1", background:"#FCEBEB", border:"0.5px solid #F5C6C6", borderRadius:8, padding:"8px 14px", fontSize:12, color:"#791F1F" }}>{ciotErro}</div>}
                       <div>
-                        <label style={lbl}>Valor do Frete (R$) *</label>
+                        <label data-arato-label="true" style={lbl}>Valor do Frete (R$) *</label>
                         <input style={inp} placeholder="4500.00" value={ciotForm.valor_frete} onChange={e => setCiotForm(f => ({ ...f, valor_frete: e.target.value }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Data Fim da Viagem *</label>
+                        <label data-arato-label="true" style={lbl}>Data Fim da Viagem *</label>
                         <InputData type="date" style={inp} value={ciotForm.data_fim} onChange={e => setCiotForm(f => ({ ...f, data_fim: e.target.value }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Distância (km) *</label>
+                        <label data-arato-label="true" style={lbl}>Distância (km) *</label>
                         <input style={inp} placeholder="850" value={ciotForm.distancia_km} onChange={e => setCiotForm(f => ({ ...f, distancia_km: e.target.value }))} />
                       </div>
                       <div>
-                        <label style={lbl}>CEP Origem *</label>
+                        <label data-arato-label="true" style={lbl}>CEP Origem *</label>
                         <input style={{ ...inp, fontFamily:"monospace" }} placeholder="78450-000" value={ciotForm.cep_origem} onChange={e => setCiotForm(f => ({ ...f, cep_origem: e.target.value }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Placa(s) do implemento/carreta *</label>
+                        <label data-arato-label="true" style={lbl}>Placa(s) do implemento/carreta *</label>
                         <input style={{ ...inp, textTransform: "uppercase" }} placeholder="ABC1D23, ABC1D24" value={ciotForm.implementos} disabled={ciotSemImpl} onChange={e => setCiotForm(f => ({ ...f, implementos: e.target.value }))} />
-                        <label style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label>
+                        <label data-arato-label="true" style={{ fontSize: 11, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}><input type="checkbox" checked={ciotSemImpl} onChange={e => setCiotSemImpl(e.target.checked)} /> Caminhão simples (sem implemento)</label>
                       </div>
                       <div>
-                        <label style={lbl}>Cód. IBGE Município Origem *</label>
+                        <label data-arato-label="true" style={lbl}>Cód. IBGE Município Origem *</label>
                         <input style={{ ...inp, fontFamily:"monospace" }} placeholder="5106224" maxLength={7} value={ciotForm.ibge_origem} onChange={e => setCiotForm(f => ({ ...f, ibge_origem: e.target.value.replace(/\D/g,"") }))} />
                       </div>
                       <div>
-                        <label style={lbl}>CEP Destino *</label>
+                        <label data-arato-label="true" style={lbl}>CEP Destino *</label>
                         <input style={{ ...inp, fontFamily:"monospace" }} placeholder="11015-000" value={ciotForm.cep_destino} onChange={e => setCiotForm(f => ({ ...f, cep_destino: e.target.value }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Cód. IBGE Município Destino *</label>
+                        <label data-arato-label="true" style={lbl}>Cód. IBGE Município Destino *</label>
                         <input style={{ ...inp, fontFamily:"monospace" }} placeholder="3548708" maxLength={7} value={ciotForm.ibge_destino} onChange={e => setCiotForm(f => ({ ...f, ibge_destino: e.target.value.replace(/\D/g,"") }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Natureza da Carga</label>
-                        <select style={inp} value={ciotForm.natureza} onChange={e => setCiotForm(f => ({ ...f, natureza: e.target.value }))}>
+                        <label data-arato-label="true" style={lbl}>Natureza da Carga</label>
+                        <SelectField style={inp} value={ciotForm.natureza} onChange={e => setCiotForm(f => ({ ...f, natureza: e.target.value }))}>
                           {NATUREZAS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       <div>
-                        <label style={lbl}>Peso (toneladas)</label>
+                        <label data-arato-label="true" style={lbl}>Peso (toneladas)</label>
                         <input style={inp} placeholder="28.5" value={ciotForm.peso_ton} onChange={e => setCiotForm(f => ({ ...f, peso_ton: e.target.value }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Forma de Pagamento</label>
-                        <select style={inp} value={ciotForm.tipo_pagamento} onChange={e => setCiotForm(f => ({ ...f, tipo_pagamento: e.target.value }))}>
+                        <label data-arato-label="true" style={lbl}>Forma de Pagamento</label>
+                        <SelectField style={inp} value={ciotForm.tipo_pagamento} onChange={e => setCiotForm(f => ({ ...f, tipo_pagamento: e.target.value }))}>
                           {PGTOS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
+                        </SelectField>
                       </div>
                       {ciotForm.tipo_pagamento === "6" && (
                         <div style={{ gridColumn:"2/-1" }}>
-                          <label style={lbl}>Chave PIX do Motorista</label>
+                          <label data-arato-label="true" style={lbl}>Chave PIX do Motorista</label>
                           <input style={{ ...inp, fontFamily:"monospace" }} placeholder={mot?.cpf ?? "CPF do motorista"} value={ciotForm.chave_pix} onChange={e => setCiotForm(f => ({ ...f, chave_pix: e.target.value }))} />
                           <div style={{ fontSize:10, color:"var(--text-3)", marginTop:3 }}>Deixe em branco para usar o CPF do motorista como chave PIX</div>
                         </div>
                       )}
-                      <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
-                        <div style={{ flex: "1 1 200px" }}><label style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>
-                        <div style={{ flex: "0 1 140px" }}><label style={lbl}>Cód. verificador</label><input style={inp} value={ciotManual.cv} onChange={e => setCiotManual(m => ({ ...m, cv: e.target.value }))} /></div>
-                        <button type="button" onClick={() => {
+                      <div data-arato-panel="true" style={{ gridColumn: "1/-1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
+                        <div style={{ flex: "1 1 200px" }}><label data-arato-label="true" style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>
+                        <div style={{ flex: "0 1 140px" }}><label data-arato-label="true" style={lbl}>Cód. verificador</label><input style={inp} value={ciotManual.cv} onChange={e => setCiotManual(m => ({ ...m, cv: e.target.value }))} /></div>
+                        <button data-arato-button="secondary" type="button" onClick={() => {
                           const cod = ciotManual.codigo.replace(/\D/g, "");
                           if (cod.length !== 12) { setCiotErro("O CIOT tem 12 dígitos."); return; }
                           setCiotGerado({ id: cod, cv: ciotManual.cv.trim(), protocolo: "" }); setCiotErro("");
                         }} style={{ padding: "8px 16px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5400", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Usar este CIOT</button>
                       </div>
-                      <div style={{ gridColumn:"1/-1", display:"flex", justifyContent:"flex-end" }}>
-                        <button type="button" onClick={gerarCiot} disabled={gerandoCiot} style={{ padding:"8px 24px", background: gerandoCiot ? "var(--text-muted)" : "#C9921B", color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:13, cursor: gerandoCiot ? "default":"pointer" }}>
+                      <div data-arato-dialog-actions="true" style={{ gridColumn:"1/-1", display:"flex", justifyContent:"flex-end" }}>
+                        <button data-arato-button="toggle" type="button" onClick={gerarCiot} disabled={gerandoCiot} style={{ padding:"8px 24px", background: gerandoCiot ? "var(--text-muted)" : "#C9921B", color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:13, cursor: gerandoCiot ? "default":"pointer" }}>
                           {gerandoCiot ? "Gerando CIOT…" : "🔗 Gerar CIOT via ANTT"}
                         </button>
                       </div>
@@ -1472,8 +1473,8 @@ function MdfePageInner() {
               })()}
 
               {/* ── NF-e avulsas ── */}
-              <div style={divider}>NF-e Avulsas (por chave de acesso)</div>
-              <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div data-arato-dialog-body="true" style={divider}>NF-e Avulsas (por chave de acesso)</div>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 6 }}>
                 {form.nfe_chaves.map((chave, idx) => (
                   <div key={idx} style={{ display: "flex", gap: 6 }}>
                     <input value={chave} onChange={e => {
@@ -1482,62 +1483,62 @@ function MdfePageInner() {
                       setForm(f => ({ ...f, nfe_chaves: arr }));
                     }} placeholder={`Chave de acesso ${idx + 1} (44 dígitos)`} maxLength={44} style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
                     {form.nfe_chaves.length > 1 && (
-                      <button type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: f.nfe_chaves.filter((_, i) => i !== idx) }))} style={{ padding: "0 10px", border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", cursor: "pointer", color: "#791F1F", fontSize: 14 }}>×</button>
+                      <button data-arato-button="danger" type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: f.nfe_chaves.filter((_, i) => i !== idx) }))} style={{ padding: "0 10px", border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", cursor: "pointer", color: "#791F1F", fontSize: 14 }}>×</button>
                     )}
                   </div>
                 ))}
-                <button type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: [...f.nfe_chaves, ""] }))} style={{ ...btnR, fontSize: 12, padding: "6px 14px", alignSelf: "flex-start" }}>+ Adicionar NF-e</button>
+                <button data-arato-button="secondary" type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: [...f.nfe_chaves, ""] }))} style={{ ...btnR, fontSize: 12, padding: "6px 14px", alignSelf: "flex-start" }}>+ Adicionar NF-e</button>
               </div>
 
               {/* ── Carga ── */}
-              <div style={divider}>Dados da Carga</div>
-              <div>
-                <label style={lbl}>Produto predominante</label>
+              <div data-arato-dialog-body="true" style={divider}>Dados da Carga</div>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Produto predominante</label>
                 <input value={form.produto_predominante.descricao} maxLength={120} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, descricao: e.target.value } }))} placeholder="Descrição do produto transportado" style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Tipo de carga</label>
-                <select value={form.produto_predominante.tipo_carga} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, tipo_carga: e.target.value } }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo de carga</label>
+                <SelectField value={form.produto_predominante.tipo_carga} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, tipo_carga: e.target.value } }))} style={inp}>
                   <option value="">Selecione</option>
                   {TIPOS_CARGA.map(([codigo, nome]) => <option key={codigo} value={codigo}>{codigo} — {nome}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>NCM do produto</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>NCM do produto</label>
                 <input value={form.produto_predominante.ncm} maxLength={8} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, ncm: e.target.value.replace(/\D/g, "") } }))} style={inp} />
               </div>
-              <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--text-3)" }}>Para carga lotação, informe os CEPs dos locais reais de carga e descarga. São exigidos quando há um único documento vinculado nas operações sujeitas à regra de lotação.</div>
-              <div>
-                <label style={lbl}>CEP do carregamento</label>
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--text-3)" }}>Para carga lotação, informe os CEPs dos locais reais de carga e descarga. São exigidos quando há um único documento vinculado nas operações sujeitas à regra de lotação.</div>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>CEP do carregamento</label>
                 <input value={form.produto_predominante.cep_carregamento} maxLength={9} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, cep_carregamento: e.target.value.replace(/\D/g, "").slice(0, 8) } }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>CEP do descarregamento</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>CEP do descarregamento</label>
                 <input value={form.produto_predominante.cep_descarregamento} maxLength={9} onChange={e => setForm(f => ({ ...f, produto_predominante: { ...f.produto_predominante, cep_descarregamento: e.target.value.replace(/\D/g, "").slice(0, 8) } }))} style={inp} />
               </div>
-              <div />
-              <div>
-                <label style={lbl}>Peso Total (kg)</label>
+              <div data-arato-dialog-body="true" />
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Peso Total (kg)</label>
                 <InputMonetario value={form.peso_total_kg} onChange={v => setForm(f => ({ ...f, peso_total_kg: v }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Valor Total da Carga (R$)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Valor Total da Carga (R$)</label>
                 <InputMonetario value={form.valor_total_carga} onChange={v => setForm(f => ({ ...f, valor_total_carga: v }))} style={inp} />
               </div>
-              <div />
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true" />
+              <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <textarea value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
               </div>
             </div>
 
-            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)" }}>
                 TAC: CIOT gerado via API ANTT · CLT: isento · Transmissão MDF-e via SEFAZ
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
+                <button data-arato-button="toggle" onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                   {saving ? "Salvando…" : (mdfeEdit ? "Salvar alterações" : "Salvar MDF-e")}
                 </button>
               </div>
@@ -1551,57 +1552,57 @@ function MdfePageInner() {
       ══════════════════════════════════════════════════════ */}
 
       {modalChave && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", padding: 24 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e por chave</div>
-            <div style={{ fontSize: 12, color: "var(--text-3)", margin: "4px 0 16px" }}>Para MDF-e que ficou aberto na SEFAZ e bloqueia a placa ("Existe MDF-e não encerrado…") — mesmo emitido em outro sistema. Usa o certificado do emitente que está na chave.</div>
-            <label style={lbl}>Chave de Acesso (44 dígitos)</label>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", padding: 24 }}>
+            <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e por chave</div>
+            <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", margin: "4px 0 16px" }}>Para MDF-e que ficou aberto na SEFAZ e bloqueia a placa ("Existe MDF-e não encerrado…") — mesmo emitido em outro sistema. Usa o certificado do emitente que está na chave.</div>
+            <label data-arato-label="true" style={lbl}>Chave de Acesso (44 dígitos)</label>
             <input value={chaveForm.chave} onChange={e => setChaveForm(f => ({ ...f, chave: e.target.value }))} style={inp} placeholder="Chave do MDF-e não encerrado" />
-            <label style={{ ...lbl, marginTop: 10 }}>Protocolo de Autorização (15 dígitos)</label>
+            <label data-arato-label="true" style={{ ...lbl, marginTop: 10 }}>Protocolo de Autorização (15 dígitos)</label>
             <input value={chaveForm.protocolo} onChange={e => setChaveForm(f => ({ ...f, protocolo: e.target.value }))} style={inp} placeholder="Ex: 951260021390502" />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10, marginTop: 10 }}>
-              <div><label style={lbl}>Data</label><InputData type="date" value={chaveForm.data} onChange={e => setChaveForm(f => ({ ...f, data: e.target.value }))} style={inp} /></div>
-              <div><label style={lbl}>Município de encerramento</label><input value={chaveForm.municipio} onChange={e => setChaveForm(f => ({ ...f, municipio: e.target.value }))} style={inp} /></div>
-              <div><label style={lbl}>UF</label><select value={chaveForm.uf} onChange={e => setChaveForm(f => ({ ...f, uf: e.target.value }))} style={inp}><option value="">UF</option>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10, marginTop: 10 }}>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Data</label><InputData type="date" value={chaveForm.data} onChange={e => setChaveForm(f => ({ ...f, data: e.target.value }))} style={inp} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>Município de encerramento</label><input value={chaveForm.municipio} onChange={e => setChaveForm(f => ({ ...f, municipio: e.target.value }))} style={inp} /></div>
+              <div data-arato-dialog-body="true"><label data-arato-label="true" style={lbl}>UF</label><SelectField value={chaveForm.uf} onChange={e => setChaveForm(f => ({ ...f, uf: e.target.value }))} style={inp}><option value="">UF</option>{UFS.map(u => <option key={u} value={u}>{u}</option>)}</SelectField></div>
             </div>
             {chaveMsg && <div style={{ marginTop: 12, fontSize: 12, padding: "8px 12px", borderRadius: 8, background: chaveMsg.ok ? "#EAF7EE" : "#FCEBEB", color: chaveMsg.ok ? "#166534" : "#791F1F" }}>{chaveMsg.txt}</div>}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-              <button style={btnR} onClick={() => setModalChave(false)}>Fechar</button>
-              <button onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.uf || !chaveForm.data || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalChave(false)}>Fechar</button>
+              <button data-arato-button="primary" onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.uf || !chaveForm.data || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</button>
             </div>
           </div>
         </div>
       )}
 
       {modalEnc && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>MDF-e {modalEnc.numero_mdfe}/{modalEnc.serie} — {modalEnc.veiculo_placa}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>MDF-e {modalEnc.numero_mdfe}/{modalEnc.serie} — {modalEnc.veiculo_placa}</div>
               </div>
-              <button onClick={() => setModalEnc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalEnc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={lbl}>Data de Encerramento</label>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data de Encerramento</label>
                 <InputData type="date" value={encForm.data_encerramento} onChange={e => setEncForm(f => ({ ...f, data_encerramento: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>UF de Encerramento</label>
-                <select value={encForm.uf_encerramento} onChange={e => setEncForm(f => ({ ...f, uf_encerramento: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>UF de Encerramento</label>
+                <SelectField value={encForm.uf_encerramento} onChange={e => setEncForm(f => ({ ...f, uf_encerramento: e.target.value }))} style={inp}>
                   {UFS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Município de Encerramento (destino)</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Município de Encerramento (destino)</label>
                 <input value={encForm.municipio_encerramento} onChange={e => setEncForm(f => ({ ...f, municipio_encerramento: e.target.value }))} style={inp} placeholder="Cidade onde a carga foi entregue" />
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalEnc(null)}>Cancelar</button>
-              <button onClick={encerrar} disabled={encSaving} style={{ ...btnV, background: encSaving ? "var(--text-muted)" : "#1A6B3C", cursor: encSaving ? "default" : "pointer" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalEnc(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={encerrar} disabled={encSaving} style={{ ...btnV, background: encSaving ? "var(--text-muted)" : "#1A6B3C", cursor: encSaving ? "default" : "pointer" }}>
                 {encSaving ? "Encerrando…" : "Confirmar Encerramento"}
               </button>
             </div>

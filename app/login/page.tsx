@@ -123,7 +123,7 @@ function LoginInner() {
 
         {/* ── TÍTULO ── */}
         <div style={{ marginBottom: 22 }}>
-          <h2 style={{
+          <h2 data-arato-h2="true" style={{
             margin: "0 0 5px", fontSize: 21, fontWeight: 800,
             color: "#fff", letterSpacing: "-0.3px",
             textShadow: "0 1px 8px rgba(0,0,0,0.25)",
@@ -162,7 +162,7 @@ function LoginInner() {
 
           {/* E-mail */}
           <div style={{ marginBottom: 14 }}>
-            <label style={{
+            <label data-arato-label="true" style={{
               display: "block", fontSize: 11, fontWeight: 700,
               color: "rgba(255,255,255,0.80)", marginBottom: 6,
               letterSpacing: "0.07em", textTransform: "uppercase",
@@ -185,13 +185,13 @@ function LoginInner() {
           {modo === "login" && (
             <div style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <label style={{
+                <label data-arato-label="true" style={{
                   fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)",
                   letterSpacing: "0.07em", textTransform: "uppercase",
                 }}>
                   Senha
                 </label>
-                <button
+                <button data-arato-button="secondary"
                   type="button"
                   onClick={() => { setModo("recuperar"); setErro(null); setSucesso(null); }}
                   style={{
@@ -214,7 +214,7 @@ function LoginInner() {
                   onFocus={e => { e.target.style.borderColor = "#fff"; e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.20)"; }}
                   onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.50)"; e.target.style.boxShadow = "none"; }}
                 />
-                <button
+                <button data-arato-button="secondary"
                   type="button"
                   onClick={() => setSenhaVis(v => !v)}
                   style={{
@@ -233,7 +233,7 @@ function LoginInner() {
           )}
 
           {/* Botão entrar */}
-          <button
+          <button data-arato-button="toggle"
             type="submit"
             disabled={carregando || (modo === "recuperar" && !!sucesso)}
             style={{
@@ -256,7 +256,7 @@ function LoginInner() {
           </button>
 
           {modo === "recuperar" && (
-            <button
+            <button data-arato-button="secondary"
               type="button"
               onClick={() => { setModo("login"); setErro(null); setSucesso(null); }}
               style={{

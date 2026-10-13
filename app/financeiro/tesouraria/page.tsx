@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -246,26 +247,26 @@ export default function TesourariaPage() {
 
   if (!podeAcessarPlano("fin_tesouraria")) return <PlanoGate modulo="fin_tesouraria" />;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Lançamento de Tesouraria</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Lançamento de Tesouraria</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
               Registre operações financeiras de tesouraria: transferências, ajustes de saldo, seguros, consórcios e outros.
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</button>
+            <button data-arato-button="primary" onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</button>
           </div>
         </div>
 
@@ -276,7 +277,7 @@ export default function TesourariaPage() {
             { label: "Total Saídas",      value: fmtBRL(totalSaidas),   color: "#E24B4A" },
             { label: "Lançamentos em Aberto", value: String(emAberto),  color: "#111111" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
             </div>
@@ -291,7 +292,7 @@ export default function TesourariaPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   {["Data", "Operação", "Descrição", "Conta", "Entrada", "Saída", "Status", ""].map(h => (
@@ -320,8 +321,8 @@ export default function TesourariaPage() {
                       </span>
                     </td>
                     <td style={{ padding: "9px 8px", textAlign: "center" }}>
-                      <button onClick={() => abrirEditarTesoura(l)} title="Editar" style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>✎</button>
-                      <button onClick={async () => { if (confirm("Excluir este lançamento?")) { await supabase.from("lancamentos").delete().eq("id", l.id); await carregar(); } }} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>✕</button>
+                      <button data-arato-button="icon" onClick={() => abrirEditarTesoura(l)} title="Editar" style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>✎</button>
+                      <button data-arato-button="icon" onClick={async () => { if (confirm("Excluir este lançamento?")) { await supabase.from("lancamentos").delete().eq("id", l.id); await carregar(); } }} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>✕</button>
                     </td>
                   </tr>
                 ))}
@@ -335,48 +336,48 @@ export default function TesourariaPage() {
           MODAL NOVO LANÇAMENTO
       ══════════════════════════════════════════════════════ */}
       {editLanc && (
-        <div onClick={() => !editSaving && setEditLanc(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
-            <div style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Editar lançamento</div>
-              <button onClick={() => setEditLanc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" onClick={() => !editSaving && setEditLanc(null)} style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div data-arato-dialog="form" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Editar lançamento</div>
+              <button data-arato-button="icon" onClick={() => setEditLanc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
               {CATS_PAR_TESOURA.includes(editLanc.categoria) && (
                 <div style={{ fontSize: 11, color: "#7A5200", background: "#FBF3E0", padding: "6px 10px", borderRadius: 6 }}>
                   Este lançamento faz parte de um par ({editLanc.categoria}). Ao salvar, só esta linha muda — ajuste a outra linha também, ou exclua e lance de novo.
                 </div>
               )}
               {editErr && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F" }}>{editErr}</div>}
-              <div>
-                <label style={lbl}>Descrição *</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Descrição *</label>
                 <input style={inp} value={editLanc.descricao} onChange={e => setEditLanc({ ...editLanc, descricao: e.target.value })} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Valor (R$) *</label>
+                  <label data-arato-label="true" style={lbl}>Valor (R$) *</label>
                   <InputMonetario style={inp} value={editLanc.valor} onChange={v => setEditLanc({ ...editLanc, valor: v })} />
                 </div>
                 <div>
-                  <label style={lbl}>Data *</label>
+                  <label data-arato-label="true" style={lbl}>Data *</label>
                   <InputData type="date" style={inp} value={editLanc.data} onChange={e => setEditLanc({ ...editLanc, data: e.target.value })} />
                 </div>
               </div>
-              <div>
-                <label style={lbl}>Conta bancária</label>
-                <select style={inp} value={editLanc.conta} onChange={e => setEditLanc({ ...editLanc, conta: e.target.value })}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Conta bancária</label>
+                <SelectField style={inp} value={editLanc.conta} onChange={e => setEditLanc({ ...editLanc, conta: e.target.value })}>
                   <option value="">— Nenhuma —</option>
                   {contas.map(c => <option key={c.id} value={contaLabelTesoura(c)}>{contaLabelTesoura(c)}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input style={inp} value={editLanc.observacao} onChange={e => setEditLanc({ ...editLanc, observacao: e.target.value })} />
               </div>
             </div>
-            <div style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button style={btnR} onClick={() => setEditLanc(null)} disabled={editSaving}>Cancelar</button>
-              <button style={btnV} onClick={salvarEditarTesoura} disabled={editSaving}>{editSaving ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setEditLanc(null)} disabled={editSaving}>Cancelar</button>
+              <button data-arato-button="primary" style={btnV} onClick={salvarEditarTesoura} disabled={editSaving}>{editSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -405,18 +406,18 @@ export default function TesourariaPage() {
               ].filter(Boolean);
             })();
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-              <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Lançamento de Tesouraria</div>
-                <button onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+          <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
+            <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Lançamento de Tesouraria</div>
+                <button data-arato-button="icon" onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
               </div>
-              <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
                 {lErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{lErr}</div>}
 
-                <div>
-                  <label style={lbl}>Operação</label>
-                  <select value={lForm.tipo_op} onChange={e => {
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Operação</label>
+                  <SelectField value={lForm.tipo_op} onChange={e => {
                     const opCustom = opsTesouraria.find(o => o.id === e.target.value);
                     setLForm(f => ({
                       ...f,
@@ -433,26 +434,26 @@ export default function TesourariaPage() {
                         {opsTesouraria.map(op => <option key={op.id} value={op.id}>{op.nome}{op.operacao_gerencial_id ? " ✓" : ""}</option>)}
                       </optgroup>
                     )}
-                  </select>
+                  </SelectField>
                 </div>
 
                 {/* AJUSTE DE SALDO */}
                 {isAjuste && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Conta</label>
-                      <select value={lForm.conta_ajuste} onChange={e => setLForm(f => ({ ...f, conta_ajuste: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta</label>
+                      <SelectField value={lForm.conta_ajuste} onChange={e => setLForm(f => ({ ...f, conta_ajuste: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
-                      </select>
+                      </SelectField>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>Saldo Atual (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Saldo Atual (R$)</label>
                         <InputMonetario style={inp} placeholder="0,00" value={lForm.saldo_atual} onChange={v => setLForm(f => ({ ...f, saldo_atual: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Saldo Correto (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Saldo Correto (R$)</label>
                         <InputMonetario style={inp} placeholder="0,00" value={lForm.saldo_correto} onChange={v => setLForm(f => ({ ...f, saldo_correto: v }))} />
                       </div>
                     </div>
@@ -466,7 +467,7 @@ export default function TesourariaPage() {
                       </div>
                     )}
                     <div>
-                      <label style={lbl}>Data</label>
+                      <label data-arato-label="true" style={lbl}>Data</label>
                       <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                     </div>
                   </div>
@@ -476,26 +477,26 @@ export default function TesourariaPage() {
                 {isTransf && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Conta Origem</label>
-                      <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Origem</label>
+                      <SelectField value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Conta Destino</label>
-                      <select value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Destino</label>
+                      <SelectField value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
-                      </select>
+                      </SelectField>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>Valor (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Valor (R$)</label>
                         <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Data</label>
+                        <label data-arato-label="true" style={lbl}>Data</label>
                         <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                     </div>
@@ -509,30 +510,30 @@ export default function TesourariaPage() {
                 {isAplicacao && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Conta Corrente de Origem — dinheiro SAI daqui</label>
-                      <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Corrente de Origem — dinheiro SAI daqui</label>
+                      <SelectField value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Conta Investimento de Destino — dinheiro ENTRA aqui</label>
-                      <select value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Investimento de Destino — dinheiro ENTRA aqui</label>
+                      <SelectField value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOptsGrupo}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Descrição (opcional)</label>
+                      <label data-arato-label="true" style={lbl}>Descrição (opcional)</label>
                       <input value={lForm.descricao} onChange={e => setLForm(f => ({ ...f, descricao: e.target.value }))} style={inp} placeholder="Ex.: Aporte mensal CDB" />
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>Valor (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Valor (R$)</label>
                         <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Data</label>
+                        <label data-arato-label="true" style={lbl}>Data</label>
                         <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                     </div>
@@ -546,45 +547,45 @@ export default function TesourariaPage() {
                 {isResgate && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Conta Investimento de Origem — dinheiro SAI daqui</label>
-                      <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Investimento de Origem — dinheiro SAI daqui</label>
+                      <SelectField value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOptsGrupo}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Conta Corrente de Destino — dinheiro ENTRA aqui</label>
-                      <select value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+                      <label data-arato-label="true" style={lbl}>Conta Corrente de Destino — dinheiro ENTRA aqui</label>
+                      <SelectField value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Descrição (opcional)</label>
+                      <label data-arato-label="true" style={lbl}>Descrição (opcional)</label>
                       <input value={lForm.descricao} onChange={e => setLForm(f => ({ ...f, descricao: e.target.value }))} style={inp} placeholder="Ex.: Resgate CDB vencimento" />
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                       <div style={{ gridColumn: "1 / -1" }}>
-                        <label style={lbl}>Valor Bruto do Resgate (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Valor Bruto do Resgate (R$)</label>
                         <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>IOF (R$)</label>
+                        <label data-arato-label="true" style={lbl}>IOF (R$)</label>
                         <InputMonetario style={inp} placeholder="0,00" value={lForm.iof} onChange={v => setLForm(f => ({ ...f, iof: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>IR s/ Rendimentos (R$)</label>
+                        <label data-arato-label="true" style={lbl}>IR s/ Rendimentos (R$)</label>
                         <InputMonetario style={inp} placeholder="0,00" value={lForm.ir} onChange={v => setLForm(f => ({ ...f, ir: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Valor Líquido</label>
+                        <label data-arato-label="true" style={lbl}>Valor Líquido</label>
                         <div style={{ ...inp, background: "var(--bg-page)", fontWeight: 700, color: "#16A34A", display: "flex", alignItems: "center" }}>
                           {fmtBRL(lForm.valor - (lForm.iof || 0) - (lForm.ir || 0))}
                         </div>
                       </div>
                     </div>
                     <div>
-                      <label style={lbl}>Data</label>
+                      <label data-arato-label="true" style={lbl}>Data</label>
                       <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                     </div>
                     <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0D0D0D" }}>
@@ -598,10 +599,10 @@ export default function TesourariaPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {isAmbos && (
                       <div>
-                        <label style={lbl}>Tipo</label>
+                        <label data-arato-label="true" style={lbl}>Tipo</label>
                         <div style={{ display: "flex", gap: 8 }}>
                           {(["pagar", "receber"] as const).map(t => (
-                            <button key={t} onClick={() => setLForm(f => ({ ...f, tipo: t }))}
+                            <button data-arato-button="toggle" key={t} onClick={() => setLForm(f => ({ ...f, tipo: t }))}
                               style={{ flex: 1, padding: "9px 14px", border: `2px solid ${lForm.tipo === t ? "#111111" : "var(--border-table)"}`, borderRadius: 8, background: lForm.tipo === t ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: lForm.tipo === t ? "#0D0D0D" : "var(--text-2)" }}>
                               {t === "pagar" ? "Saída (Pagar)" : "Entrada (Receber)"}
                             </button>
@@ -610,33 +611,33 @@ export default function TesourariaPage() {
                       </div>
                     )}
                     <div>
-                      <label style={lbl}>Descrição</label>
+                      <label data-arato-label="true" style={lbl}>Descrição</label>
                       <input value={lForm.descricao} onChange={e => setLForm(f => ({ ...f, descricao: e.target.value }))} style={inp} placeholder="Ex.: Prêmio de seguro agrícola" />
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={lbl}>Valor (R$)</label>
+                        <label data-arato-label="true" style={lbl}>Valor (R$)</label>
                         <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
                       </div>
                       <div>
-                        <label style={lbl}>Data</label>
+                        <label data-arato-label="true" style={lbl}>Data</label>
                         <InputData type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                       </div>
                       <div>
-                        <label style={lbl}>Vencimento</label>
+                        <label data-arato-label="true" style={lbl}>Vencimento</label>
                         <InputData type="date" value={lForm.data_vencimento} onChange={e => setLForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
                       </div>
                       <div>
-                        <label style={lbl}>Conta Bancária</label>
-                        <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
+                        <label data-arato-label="true" style={lbl}>Conta Bancária</label>
+                        <SelectField value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
                           <option value="">— não informado —</option>
                           {contaOpts}
-                        </select>
+                        </SelectField>
                       </div>
                     </div>
                     <div>
-                      <label style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
-                      <select value={lForm.og_id} onChange={e => setLForm(f => ({ ...f, og_id: e.target.value }))}
+                      <label data-arato-label="true" style={lbl}>Vínculo Fiscal — Plano de Contas (OG)</label>
+                      <SelectField value={lForm.og_id} onChange={e => setLForm(f => ({ ...f, og_id: e.target.value }))}
                         style={{ ...inp, borderColor: lForm.og_id ? "#16A34A" : undefined }}>
                         <option value="">— Sem vínculo (não impacta DRE/LCDPR)</option>
                         <optgroup label="Receitas">
@@ -649,7 +650,7 @@ export default function TesourariaPage() {
                             <option key={g.id} value={g.id}>{g.classificacao} — {g.descricao}</option>
                           ))}
                         </optgroup>
-                      </select>
+                      </SelectField>
                       {lForm.og_id && (
                         <div style={{ marginTop: 3, fontSize: 11, color: "#16A34A" }}>✓ Impacta DRE, LCDPR e SPED ECD</div>
                       )}
@@ -657,14 +658,14 @@ export default function TesourariaPage() {
                   </div>
                 )}
 
-                <div>
-                  <label style={lbl}>Observação</label>
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <textarea value={lForm.observacao} onChange={e => setLForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                 </div>
               </div>
-              <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button style={btnR} onClick={() => setModalLanc(false)}>Cancelar</button>
-                <button onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#111111", cursor: lSaving ? "default" : "pointer" }}>
+              <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalLanc(false)}>Cancelar</button>
+                <button data-arato-button="toggle" onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#111111", cursor: lSaving ? "default" : "pointer" }}>
                   {lSaving ? "Salvando…" : "Salvar"}
                 </button>
               </div>

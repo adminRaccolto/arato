@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -162,14 +163,14 @@ const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-p
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
+    <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+      <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+        <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
         </div>
-        <div style={{ padding: "20px 22px" }}>{children}</div>
+        <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>{children}</div>
       </div>
     </div>
   );
@@ -202,8 +203,8 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
   };
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
             <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border-row)" }}>Módulo</th>
@@ -231,7 +232,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                     return (
                       <td key={acao} style={{ padding: "6px 10px", textAlign: "center" }}>
                         {modsComAcao.length > 0 ? (
-                          <button
+                          <button data-arato-button="toggle"
                             onClick={() => toggleGrupo(grupo, acao)}
                             title={`${todosOn ? "Desativar" : "Ativar"} "${ACAO_META[acao].label}" em todo o grupo ${grupo}`}
                             style={{ width: 20, height: 20, borderRadius: 5, border: `0.5px solid ${todosOn ? ACAO_META[acao].cor : algumOn ? ACAO_META[acao].cor + "80" : "var(--border-table)"}`, background: todosOn ? ACAO_META[acao].bg : algumOn ? ACAO_META[acao].bg + "80" : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
@@ -255,7 +256,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                         return (
                           <td key={acao} style={{ padding: "7px 10px", textAlign: "center" }}>
                             {disponivel ? (
-                              <button
+                              <button data-arato-button="toggle"
                                 onClick={() => toggle(mod.id, acao)}
                                 title={`${ativo ? "Remover" : "Conceder"} permissão "${ACAO_META[acao].label}" em ${mod.label}`}
                                 style={{ width: 22, height: 22, borderRadius: 6, border: `0.5px solid ${ativo ? ACAO_META[acao].cor : "var(--border-table)"}`, background: ativo ? ACAO_META[acao].bg : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: ativo ? ACAO_META[acao].cor : "#bbb", transition: "all 0.1s" }}>
@@ -268,7 +269,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                         );
                       })}
                       <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                        <button
+                        <button data-arato-button="secondary"
                           onClick={() => toggleTudo(mod.id)}
                           style={{ fontSize: 10, color: tudo ? "#E24B4A" : "#16A34A", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                           {tudo ? "Nenhum" : "Tudo"}
@@ -594,17 +595,17 @@ export default function UsuariosPermissoes() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
 
       <div style={{ padding: "24px 28px", flex: 1 }}>
         {/* Cabeçalho */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>Usuários & Permissões</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>Usuários & Permissões</h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#666" }}>Gerencie os usuários e grupos de acesso desta fazenda</p>
           </div>
-          <button
+          <button data-arato-button="primary"
             onClick={() => aba === "grupos" ? abrirModalGrupo() : abrirModalUser()}
             style={{ ...btnV, fontSize: 12 }}>
             + {aba === "grupos" ? "Novo Grupo" : "Novo Usuário"}
@@ -613,7 +614,7 @@ export default function UsuariosPermissoes() {
 
         {erro && (
           <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 16px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>
-            ⚠ {erro} <button onClick={() => setErro(null)} style={{ background: "none", border: "none", color: "#791F1F", cursor: "pointer", marginLeft: 8 }}>✕</button>
+            ⚠ {erro} <button data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", color: "#791F1F", cursor: "pointer", marginLeft: 8 }}>✕</button>
           </div>
         )}
 
@@ -623,7 +624,7 @@ export default function UsuariosPermissoes() {
             { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
             { key: "usuarios", label: `Usuários (${usuarios.length})`        },
           ] as { key: typeof aba; label: string }[]).map(a => (
-            <button key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
               color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
@@ -641,7 +642,7 @@ export default function UsuariosPermissoes() {
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : grupos.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                Nenhum grupo criado. <button onClick={() => abrirModalGrupo()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                Nenhum grupo criado. <button data-arato-button="secondary" onClick={() => abrirModalGrupo()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
@@ -656,11 +657,11 @@ export default function UsuariosPermissoes() {
                           {g.descricao && <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{g.descricao}</div>}
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => abrirModalGrupo(g)}
+                          <button data-arato-button="secondary" onClick={() => abrirModalGrupo(g)}
                             style={{ padding: "4px 10px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                             Editar
                           </button>
-                          <button onClick={() => excluirGrupo(g.id)}
+                          <button data-arato-button="danger" onClick={() => excluirGrupo(g.id)}
                             style={{ padding: "4px 10px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, fontSize: 11, color: "#E24B4A", cursor: "pointer" }}>
                             ✕
                           </button>
@@ -740,7 +741,7 @@ export default function UsuariosPermissoes() {
                   Base legal LGPD: Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação a qualquer tempo
                 </p>
               </div>
-              <button
+              <button data-arato-button="toggle"
                 onClick={toggleRaccolto}
                 disabled={salvandoRaccolto}
                 style={{
@@ -759,7 +760,7 @@ export default function UsuariosPermissoes() {
             {carregando ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 16 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 16 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nome", "E-mail", "Grupo de Acesso", "Status", ""].map(h => (
@@ -770,7 +771,7 @@ export default function UsuariosPermissoes() {
                 <tbody>
                   {usuarios.length === 0 && (
                     <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                      Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                      Nenhum usuário cadastrado. <button data-arato-button="secondary" onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
                     </td></tr>
                   )}
                   {usuarios.map((u, i) => {
@@ -798,11 +799,11 @@ export default function UsuariosPermissoes() {
                         </td>
                         <td style={{ padding: "11px 16px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                            <button onClick={() => abrirModalUser(u)}
+                            <button data-arato-button="secondary" onClick={() => abrirModalUser(u)}
                               style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                               Editar
                             </button>
-                            <button onClick={() => excluirUser(u.id)}
+                            <button data-arato-button="danger" onClick={() => excluirUser(u.id)}
                               style={{ padding: "4px 10px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, fontSize: 11, color: "#E24B4A", cursor: "pointer" }}>
                               ✕
                             </button>
@@ -821,22 +822,22 @@ export default function UsuariosPermissoes() {
       {/* Modal Grupo */}
       {modalGrupo && (
         <Modal titulo={editGrupo ? `Editar Grupo — ${editGrupo.nome}` : "Novo Grupo de Acesso"} onClose={() => setModalGrupo(false)} width={960}>
-          <div style={{ display: "grid", gap: 18 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div><label style={lbl}>Nome do grupo *</label><input style={inp} value={fGrupo.nome} onChange={e => setFGrupo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Equipe de Campo" /></div>
-              <div><label style={lbl}>Descrição</label><input style={inp} value={fGrupo.descricao} onChange={e => setFGrupo(p => ({ ...p, descricao: e.target.value }))} placeholder="Opcional" /></div>
+          <div data-arato-fields="true" style={{ display: "grid", gap: 18 }}>
+            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div><label data-arato-label="true" style={lbl}>Nome do grupo *</label><input style={inp} value={fGrupo.nome} onChange={e => setFGrupo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Equipe de Campo" /></div>
+              <div><label data-arato-label="true" style={lbl}>Descrição</label><input style={inp} value={fGrupo.descricao} onChange={e => setFGrupo(p => ({ ...p, descricao: e.target.value }))} placeholder="Opcional" /></div>
             </div>
 
             <div>
-              <label style={lbl}>Perfil predefinido — clique para aplicar</label>
+              <label data-arato-label="true" style={lbl}>Perfil predefinido — clique para aplicar</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                 {Object.entries(PERFIS_PRESET).map(([id, p]) => (
-                  <button key={id} onClick={() => aplicarPreset(id)}
+                  <button data-arato-button="toggle" key={id} onClick={() => aplicarPreset(id)}
                     style={{ padding: "6px 14px", border: `1.5px solid ${presetAtivo === id ? p.cor : p.cor + "40"}`, borderRadius: 8, background: presetAtivo === id ? p.cor + "18" : p.cor + "08", color: p.cor, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {presetAtivo === id ? "✓ " : ""}{p.label}
                   </button>
                 ))}
-                <button onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
+                <button data-arato-button="secondary" onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
                   style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
                   Limpar tudo
                 </button>
@@ -849,7 +850,7 @@ export default function UsuariosPermissoes() {
             </div>
 
             <div>
-              <label style={{ ...lbl, fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>Matriz de Permissões</label>
+              <label data-arato-label="true" style={{ ...lbl, fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>Matriz de Permissões</label>
               <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
                 <MatrizPermissoes perms={permGrupo} onChange={setPermGrupo} />
               </div>
@@ -857,8 +858,8 @@ export default function UsuariosPermissoes() {
           </div>
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, paddingTop: 16, borderTop: "0.5px solid var(--border-row)" }}>
-            <button style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>
+            <button data-arato-button="secondary" style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</button>
+            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>
               {salvando ? "Salvando…" : "Salvar Grupo"}
             </button>
           </div>
@@ -892,24 +893,24 @@ export default function UsuariosPermissoes() {
                   </div>
                 </div>
               )}
-              <button onClick={() => setModalUser(false)} style={{ ...btnV, fontSize: 12 }}>Fechar</button>
+              <button data-arato-button="primary" onClick={() => setModalUser(false)} style={{ ...btnV, fontSize: 12 }}>Fechar</button>
             </div>
           )}
 
           {!resultadoCriacao?.ok && !campoCredenciais && (
             <>
-              <div style={{ display: "grid", gap: 14 }}>
-                <div><label style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
-                <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} placeholder="joao@fazenda.com.br" /></div>
+              <div data-arato-fields="true" style={{ display: "grid", gap: 14 }}>
+                <div><label data-arato-label="true" style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
+                <div><label data-arato-label="true" style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} placeholder="joao@fazenda.com.br" /></div>
                 <div>
-                  <label style={lbl}>WhatsApp (assistente IA)</label>
+                  <label data-arato-label="true" style={lbl}>WhatsApp (assistente IA)</label>
                   <input style={inp} type="tel" value={fUser.whatsapp} onChange={e => setFUser(p => ({ ...p, whatsapp: e.target.value.replace(/\D/g, "") }))} placeholder="5565999990000" maxLength={15} />
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>DDI + DDD + número, sem espaços. Ex: 5565999990000</div>
                 </div>
 
                 {!editUser && (
                   <div>
-                    <label style={lbl}>Senha provisória *</label>
+                    <label data-arato-label="true" style={lbl}>Senha provisória *</label>
                     <div style={{ position: "relative" }}>
                       <input
                         style={{ ...inp, paddingRight: 40 }}
@@ -918,7 +919,7 @@ export default function UsuariosPermissoes() {
                         onChange={e => setFUser(p => ({ ...p, senha: e.target.value }))}
                         placeholder="Mín. 6 caracteres"
                       />
-                      <button type="button" onClick={() => setSenhaVisivel(v => !v)}
+                      <button data-arato-button="secondary" type="button" onClick={() => setSenhaVisivel(v => !v)}
                         style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}>
                         {senhaVisivel ? "🙈" : "👁"}
                       </button>
@@ -928,11 +929,11 @@ export default function UsuariosPermissoes() {
                 )}
 
                 <div>
-                  <label style={lbl}>Grupo de acesso</label>
-                  <select style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Grupo de acesso</label>
+                  <SelectField style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
                     <option value="">Sem grupo (sem acesso)</option>
                     {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
-                  </select>
+                  </SelectField>
                   {fUser.grupo_id && (
                     <div style={{ marginTop: 6, padding: "8px 12px", background: "var(--bg-tag)", borderRadius: 8, fontSize: 11, color: "var(--text-2)" }}>
                       {(() => {
@@ -947,17 +948,17 @@ export default function UsuariosPermissoes() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input type="checkbox" id="ativo" checked={fUser.ativo} onChange={e => setFUser(p => ({ ...p, ativo: e.target.checked }))} />
-                  <label htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Usuário ativo</label>
+                  <label data-arato-label="true" htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Usuário ativo</label>
                 </div>
 
                 {moduloCampoHabilitado && (
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <input
                         type="checkbox" id="campoAtivo" checked={campoAtivo} disabled={campoCarregando}
                         onChange={e => setCampoAtivo(e.target.checked)} style={{ marginTop: 2 }}
                       />
-                      <label htmlFor="campoAtivo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
+                      <label data-arato-label="true" htmlFor="campoAtivo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
                         <span style={{ fontWeight: 600 }}>Acesso ao App Campo</span>
                         <span style={{ display: "block", fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                           Login separado (e-mail sintético + PIN) pro celular, pra lançar e aprovar operações de campo.
@@ -966,16 +967,16 @@ export default function UsuariosPermissoes() {
                     </div>
 
                     {campoAtivo && (
-                      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                      <div data-arato-fields="true" style={{ marginTop: 12, display: "grid", gap: 10 }}>
                         <div>
-                          <label style={lbl}>Papel no Campo</label>
-                          <select style={inp} value={campoPapel} onChange={e => setCampoPapel(e.target.value as "operador" | "gerente_campo")}>
+                          <label data-arato-label="true" style={lbl}>Papel no Campo</label>
+                          <SelectField style={inp} value={campoPapel} onChange={e => setCampoPapel(e.target.value as "operador" | "gerente_campo")}>
                             <option value="operador">Operador — lança e executa tarefas</option>
                             <option value="gerente_campo">Gerente Campo — também aprova lançamentos</option>
-                          </select>
+                          </SelectField>
                         </div>
                         <div>
-                          <label style={lbl}>WhatsApp do Campo (aviso de pendência/aprovação)</label>
+                          <label data-arato-label="true" style={lbl}>WhatsApp do Campo (aviso de pendência/aprovação)</label>
                           <input
                             style={inp} type="tel" value={campoWhatsapp} maxLength={15}
                             onChange={e => setCampoWhatsapp(e.target.value.replace(/\D/g, ""))}
@@ -985,7 +986,7 @@ export default function UsuariosPermissoes() {
                         {campoPerfilExistente && (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span style={{ fontSize: 12, color: "var(--text-2)", fontFamily: "monospace" }}>{campoPerfilExistente.email}</span>
-                            <button type="button" style={{ ...btnR, fontSize: 11, padding: "6px 10px" }} disabled={campoSalvando} onClick={resetarPinCampo}>
+                            <button data-arato-button="secondary" type="button" style={{ ...btnR, fontSize: 11, padding: "6px 10px" }} disabled={campoSalvando} onClick={resetarPinCampo}>
                               Resetar PIN
                             </button>
                           </div>
@@ -997,10 +998,10 @@ export default function UsuariosPermissoes() {
                 )}
 
                 {!editUser && (
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
+                  <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <input type="checkbox" id="enviarEmail" checked={fUser.enviarEmail} onChange={e => setFUser(p => ({ ...p, enviarEmail: e.target.checked }))} style={{ marginTop: 2 }} />
-                      <label htmlFor="enviarEmail" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
+                      <label data-arato-label="true" htmlFor="enviarEmail" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
                         <span style={{ fontWeight: 600 }}>Enviar e-mail de boas-vindas</span>
                         <span style={{ display: "block", fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                           Envia e-mail para <strong>{fUser.email || "o endereço acima"}</strong> com as credenciais de acesso.
@@ -1012,8 +1013,8 @@ export default function UsuariosPermissoes() {
               </div>
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-                <button style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
-                <button
+                <button data-arato-button="secondary" style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
+                <button data-arato-button="primary"
                   style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim()) ? 0.5 : 1 }}
                   disabled={salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim())}
                   onClick={salvarUser}

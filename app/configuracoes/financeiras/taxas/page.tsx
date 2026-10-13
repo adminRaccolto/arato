@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../../components/SelectField";
 import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
 import TopNav from "@/components/TopNav";
@@ -98,23 +99,23 @@ export default function TaxasVariaveisPage() {
   const inp: React.CSSProperties = { padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, width: "100%", boxSizing: "border-box", background: "var(--bg-card)", color: "var(--text-1)" };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, maxWidth: 1200, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Taxas de Referência Variável</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Taxas de Referência Variável</h1>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
               CDI, IPCA, SELIC, TR, TJLP e outros — atualizado automaticamente todo dia 1º · Fonte: Banco Central do Brasil
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button onClick={() => setModalManual(true)}
+            <button data-arato-button="secondary" onClick={() => setModalManual(true)}
               style={{ padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
               + Lançar Manual
             </button>
-            <button onClick={atualizarAgora} disabled={atualizando}
+            <button data-arato-button="primary" onClick={atualizarAgora} disabled={atualizando}
               style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#111111", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: atualizando ? 0.6 : 1 }}>
               {atualizando ? "Atualizando…" : "↻ Atualizar Agora (BCB)"}
             </button>
@@ -148,7 +149,7 @@ export default function TaxasVariaveisPage() {
             const label = op === "tudo" ? "Tudo (10 anos)" : `Últimos ${anoAtual() - (op as number) + 1} anos`;
             const ativo = op === "tudo" ? anoInicio <= anoAtual() - 9 : anoInicio === op;
             return (
-              <button key={String(op)} onClick={() => { setAnoInicio(op === "tudo" ? anoAtual() - 10 : op as number); setAnoFim(anoAtual()); }}
+              <button data-arato-button="toggle" key={String(op)} onClick={() => { setAnoInicio(op === "tudo" ? anoAtual() - 10 : op as number); setAnoFim(anoAtual()); }}
                 style={{ padding: "4px 12px", borderRadius: 6, border: `0.5px solid ${ativo ? "#111111" : "var(--border)"}`, background: ativo ? "#E8E8E8" : "transparent", color: ativo ? "#0D0D0D" : "var(--text-3)", fontSize: 12, fontWeight: ativo ? 600 : 400, cursor: "pointer" }}>
                 {label}
               </button>
@@ -158,8 +159,8 @@ export default function TaxasVariaveisPage() {
 
         {/* Tabela histórica */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Período</th>
@@ -228,36 +229,36 @@ export default function TaxasVariaveisPage() {
 
       {/* Modal lançamento manual */}
       {modalManual && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
          >
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "min(480px, 95vw)", padding: "24px" }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 18 }}>Lançar Taxa Manualmente</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Indexador</label>
-                <select style={inp} value={fManual.indexador} onChange={e => setFManual(p => ({ ...p, indexador: e.target.value }))}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "min(480px, 95vw)", padding: "24px" }}>
+            <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: 18 }}>Lançar Taxa Manualmente</div>
+            <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Indexador</label>
+                <SelectField style={inp} value={fManual.indexador} onChange={e => setFManual(p => ({ ...p, indexador: e.target.value }))}>
                   {INDEXADORES.map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
+                </SelectField>
               </div>
-              <div>
-                <label style={lbl}>Ano</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Ano</label>
                 <input style={inp} type="number" min={2010} max={2099} value={fManual.ano} onChange={e => setFManual(p => ({ ...p, ano: e.target.value }))} />
               </div>
-              <div>
-                <label style={lbl}>Mês</label>
-                <select style={inp} value={fManual.mes} onChange={e => setFManual(p => ({ ...p, mes: e.target.value }))}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Mês</label>
+                <SelectField style={inp} value={fManual.mes} onChange={e => setFManual(p => ({ ...p, mes: e.target.value }))}>
                   {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-                </select>
+                </SelectField>
               </div>
             </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={lbl}>Valor (% a.a.)</label>
+            <div data-arato-dialog-body="true" style={{ marginBottom: 20 }}>
+              <label data-arato-label="true" style={lbl}>Valor (% a.a.)</label>
               <input style={inp} type="text" placeholder="Ex: 14,75" value={fManual.valor_pct} onChange={e => setFManual(p => ({ ...p, valor_pct: e.target.value }))} />
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Informe sempre em percentual ao ano (% a.a.)</div>
+              <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Informe sempre em percentual ao ano (% a.a.)</div>
             </div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "transparent", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salvarManual} disabled={salvando || !fManual.valor_pct}
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button data-arato-button="secondary" onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "transparent", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvarManual} disabled={salvando || !fManual.valor_pct}
                 style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "#111111", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: salvando || !fManual.valor_pct ? 0.5 : 1 }}>
                 {salvando ? "Salvando…" : "Salvar"}
               </button>

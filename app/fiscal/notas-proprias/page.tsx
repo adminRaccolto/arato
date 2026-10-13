@@ -14,6 +14,7 @@
 // movimentar estoque (baixa de saída). Entrada por XML, por chave de
 // acesso (consulta SEFAZ) ou manual.
 // ═══════════════════════════════════════════════════════════════════════════
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useRef } from "react";
@@ -227,15 +228,15 @@ export default function NotasPropriasExternasPage() {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Entrada de Nota Própria</h1>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Entrada de Nota Própria</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Documentos onde você é o emitente, mas autorizados fora do Arato (ERP antigo, sistema paralelo). Só registro — nunca gera financeiro.</p>
           </div>
-          <button style={btnV} onClick={abrirWizard}>+ Nova Nota Própria</button>
+          <button data-arato-button="primary" style={btnV} onClick={abrirWizard}>+ Nova Nota Própria</button>
         </header>
 
         <div style={{ padding: "18px 22px", flex: 1 }}>
@@ -254,7 +255,7 @@ export default function NotasPropriasExternasPage() {
             </div>
           ) : (
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nº / Série", "Emissão", "Destinatário", "Natureza", "Valor", "Estoque?", "Origem", "Status", ""].map(h => (
@@ -279,8 +280,8 @@ export default function NotasPropriasExternasPage() {
                         </td>
                         <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            {n.status === "processada" && <button onClick={() => estornar(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px" }}>Estornar</button>}
-                            {n.status !== "processada" && <button onClick={() => excluir(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px", color: "#791F1F" }}>Excluir</button>}
+                            {n.status === "processada" && <button data-arato-button="secondary" onClick={() => estornar(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px" }}>Estornar</button>}
+                            {n.status !== "processada" && <button data-arato-button="secondary" onClick={() => excluir(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px", color: "#791F1F" }}>Excluir</button>}
                           </div>
                         </td>
                       </tr>
@@ -295,20 +296,20 @@ export default function NotasPropriasExternasPage() {
 
       {/* ══ WIZARD — Nova Nota Própria ══ */}
       {wizard && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => setWizard(false)}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 760px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: "min(94vw, 760px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>
                 Entrada de Nota Própria {passo === 2 ? "— Itens / Estoque" : ""}
               </h2>
-              <button onClick={() => setWizard(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
 
             {passo === 1 && (<>
               <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
                 {([["manual", "✍ Manual"], ["xml", "📄 XML"], ["chave", "🔑 Chave de Acesso"]] as const).map(([v, label]) => (
-                  <button key={v} onClick={() => setOrig(v)} style={{
+                  <button data-arato-button="toggle" key={v} onClick={() => setOrig(v)} style={{
                     flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
                     border: orig === v ? "1.5px solid #1A4870" : "0.5px solid var(--border-table)",
                     background: orig === v ? "#E6F1FB" : "var(--bg-card)", color: orig === v ? "#0C447C" : "var(--text-2)",
@@ -318,7 +319,7 @@ export default function NotasPropriasExternasPage() {
 
               {orig === "xml" && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={lbl}>Arquivo XML</label>
+                  <label data-arato-label="true" style={lbl}>Arquivo XML</label>
                   <input ref={xmlInputRef} type="file" accept=".xml" onChange={e => {
                     const f = e.target.files?.[0]; if (!f) return;
                     const reader = new FileReader();
@@ -331,11 +332,11 @@ export default function NotasPropriasExternasPage() {
 
               {orig === "chave" && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={lbl}>Chave de Acesso (44 dígitos)</label>
+                  <label data-arato-label="true" style={lbl}>Chave de Acesso (44 dígitos)</label>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input value={chaveDigitada} onChange={e => setChaveDigitada(e.target.value.replace(/\D/g, "").slice(0, 44))}
                       placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000" style={inp} />
-                    <button onClick={consultarPorChave} disabled={consultandoChave} style={{ ...btnV, whiteSpace: "nowrap" }}>
+                    <button data-arato-button="primary" onClick={consultarPorChave} disabled={consultandoChave} style={{ ...btnV, whiteSpace: "nowrap" }}>
                       {consultandoChave ? "Consultando..." : "Consultar"}
                     </button>
                   </div>
@@ -343,27 +344,27 @@ export default function NotasPropriasExternasPage() {
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 12 }}>
-                <div><label style={lbl}>Número *</label><input value={cab.numero} onChange={e => setCab(p => ({ ...p, numero: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Série</label><input value={cab.serie} onChange={e => setCab(p => ({ ...p, serie: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Chave de Acesso</label><input value={cab.chave_acesso} onChange={e => setCab(p => ({ ...p, chave_acesso: e.target.value }))} style={{ ...inp, fontFamily: "monospace", fontSize: 11 }} /></div>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 12 }}>
+                <div><label data-arato-label="true" style={lbl}>Número *</label><input value={cab.numero} onChange={e => setCab(p => ({ ...p, numero: e.target.value }))} style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Série</label><input value={cab.serie} onChange={e => setCab(p => ({ ...p, serie: e.target.value }))} style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Chave de Acesso</label><input value={cab.chave_acesso} onChange={e => setCab(p => ({ ...p, chave_acesso: e.target.value }))} style={{ ...inp, fontFamily: "monospace", fontSize: 11 }} /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 10, marginBottom: 12 }}>
-                <div><label style={lbl}>Data de Emissão *</label><InputData type="date" value={cab.data_emissao} onChange={e => setCab(p => ({ ...p, data_emissao: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Natureza da Operação</label><input value={cab.natureza} onChange={e => setCab(p => ({ ...p, natureza: e.target.value }))} placeholder="Ex: Remessa para armazenagem" style={inp} /></div>
-                <div><label style={lbl}>Valor Total *</label><input value={cab.valor_total} onChange={e => setCab(p => ({ ...p, valor_total: e.target.value }))} placeholder="0,00" style={inp} /></div>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 10, marginBottom: 12 }}>
+                <div><label data-arato-label="true" style={lbl}>Data de Emissão *</label><InputData type="date" value={cab.data_emissao} onChange={e => setCab(p => ({ ...p, data_emissao: e.target.value }))} style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Natureza da Operação</label><input value={cab.natureza} onChange={e => setCab(p => ({ ...p, natureza: e.target.value }))} placeholder="Ex: Remessa para armazenagem" style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Valor Total *</label><input value={cab.valor_total} onChange={e => setCab(p => ({ ...p, valor_total: e.target.value }))} placeholder="0,00" style={inp} /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                <div><label style={lbl}>CNPJ Emitente (você)</label><input value={cab.cnpj_emitente} onChange={e => setCab(p => ({ ...p, cnpj_emitente: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Nome Emitente</label><input value={cab.nome_emitente} onChange={e => setCab(p => ({ ...p, nome_emitente: e.target.value }))} style={inp} /></div>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                <div><label data-arato-label="true" style={lbl}>CNPJ Emitente (você)</label><input value={cab.cnpj_emitente} onChange={e => setCab(p => ({ ...p, cnpj_emitente: e.target.value }))} style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Nome Emitente</label><input value={cab.nome_emitente} onChange={e => setCab(p => ({ ...p, nome_emitente: e.target.value }))} style={inp} /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-                <div><label style={lbl}>CNPJ Destinatário</label><input value={cab.cnpj_destinatario} onChange={e => setCab(p => ({ ...p, cnpj_destinatario: e.target.value }))} style={inp} /></div>
-                <div><label style={lbl}>Nome Destinatário</label><input value={cab.nome_destinatario} onChange={e => setCab(p => ({ ...p, nome_destinatario: e.target.value }))} style={inp} /></div>
+              <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                <div><label data-arato-label="true" style={lbl}>CNPJ Destinatário</label><input value={cab.cnpj_destinatario} onChange={e => setCab(p => ({ ...p, cnpj_destinatario: e.target.value }))} style={inp} /></div>
+                <div><label data-arato-label="true" style={lbl}>Nome Destinatário</label><input value={cab.nome_destinatario} onChange={e => setCab(p => ({ ...p, nome_destinatario: e.target.value }))} style={inp} /></div>
               </div>
 
-              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
+              <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                   <input type="checkbox" checked={cab.movimenta_estoque} onChange={e => setCab(p => ({ ...p, movimenta_estoque: e.target.checked }))} />
                   Essa nota movimenta estoque (baixa de saída)
                 </label>
@@ -373,14 +374,14 @@ export default function NotasPropriasExternasPage() {
               </div>
 
               <div>
-                <label style={lbl}>Observação</label>
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input value={cab.observacao} onChange={e => setCab(p => ({ ...p, observacao: e.target.value }))} style={inp} />
               </div>
 
               {erroWiz && <div style={{ marginTop: 14, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 12px", borderRadius: 6 }}>{erroWiz}</div>}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-                <button onClick={() => setWizard(false)} style={btnR}>Cancelar</button>
-                <button onClick={avancar} disabled={salvando} style={btnV}>
+              <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
+                <button data-arato-button="secondary" onClick={() => setWizard(false)} style={btnR}>Cancelar</button>
+                <button data-arato-button="primary" onClick={avancar} disabled={salvando} style={btnV}>
                   {cab.movimenta_estoque ? "Avançar →" : (salvando ? "Salvando..." : "Salvar Nota Própria")}
                 </button>
               </div>
@@ -388,14 +389,14 @@ export default function NotasPropriasExternasPage() {
 
             {passo === 2 && (<>
               <div style={{ marginBottom: 14 }}>
-                <label style={lbl}>Depósito de Origem (de onde sai o estoque) *</label>
-                <select value={cab.deposito_origem_id} onChange={e => setCab(p => ({ ...p, deposito_origem_id: e.target.value }))} style={inp}>
+                <label data-arato-label="true" style={lbl}>Depósito de Origem (de onde sai o estoque) *</label>
+                <SelectField value={cab.deposito_origem_id} onChange={e => setCab(p => ({ ...p, deposito_origem_id: e.target.value }))} style={inp}>
                   <option value="">Selecionar...</option>
                   {depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
-                </select>
+                </SelectField>
               </div>
 
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Descrição NF", "Produto (catálogo) *", "Un.", "Qtd.", "Vlr. Unit.", "Vlr. Total", ""].map(h => (
@@ -408,29 +409,29 @@ export default function NotasPropriasExternasPage() {
                     <tr key={it.key}>
                       <td style={{ padding: "4px" }}><input value={it.descricao} onChange={e => setItem(it.key, { descricao: e.target.value })} style={{ ...inp, fontSize: 11 }} /></td>
                       <td style={{ padding: "4px" }}>
-                        <select value={it.insumo_id} onChange={e => {
+                        <SelectField value={it.insumo_id} onChange={e => {
                           const ins = insumos.find(i => i.id === e.target.value);
                           setItem(it.key, { insumo_id: e.target.value, unidade: ins?.unidade ?? it.unidade });
                         }} style={{ ...inp, fontSize: 11, background: it.insumo_id ? "var(--bg-input)" : "#FEE2E2" }}>
                           <option value="">— selecionar —</option>
                           {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                        </select>
+                        </SelectField>
                       </td>
                       <td style={{ padding: "4px" }}><input value={it.unidade} onChange={e => setItem(it.key, { unidade: e.target.value })} style={{ ...inp, fontSize: 11, width: 60 }} /></td>
                       <td style={{ padding: "4px" }}><input value={it.quantidade} onChange={e => setItem(it.key, { quantidade: e.target.value })} style={{ ...inp, fontSize: 11, width: 80, textAlign: "right" }} /></td>
                       <td style={{ padding: "4px" }}><input value={it.valor_unitario} onChange={e => setItem(it.key, { valor_unitario: e.target.value })} style={{ ...inp, fontSize: 11, width: 90, textAlign: "right" }} /></td>
                       <td style={{ padding: "4px" }}><input value={it.valor_total} onChange={e => setItem(it.key, { valor_total: e.target.value })} style={{ ...inp, fontSize: 11, width: 90, textAlign: "right" }} /></td>
-                      <td style={{ padding: "4px" }}><button onClick={() => removerItem(it.key)} style={{ background: "none", border: "none", color: "#E24B4A", cursor: "pointer" }}>✕</button></td>
+                      <td style={{ padding: "4px" }}><button data-arato-button="icon" onClick={() => removerItem(it.key)} style={{ background: "none", border: "none", color: "#E24B4A", cursor: "pointer" }}>✕</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <button onClick={addItem} style={{ ...btnR, fontSize: 12, marginBottom: 16 }}>+ Item</button>
+              <button data-arato-button="secondary" onClick={addItem} style={{ ...btnR, fontSize: 12, marginBottom: 16 }}>+ Item</button>
 
               {erroWiz && <div style={{ marginTop: 4, marginBottom: 14, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 12px", borderRadius: 6 }}>{erroWiz}</div>}
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-                <button onClick={() => setPasso(1)} style={btnR}>← Voltar</button>
-                <button onClick={salvar} disabled={salvando} style={btnV}>
+              <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
+                <button data-arato-button="secondary" onClick={() => setPasso(1)} style={btnR}>← Voltar</button>
+                <button data-arato-button="primary" onClick={salvar} disabled={salvando} style={btnV}>
                   {salvando ? "Salvando e baixando estoque..." : "✓ Salvar e Baixar Estoque"}
                 </button>
               </div>

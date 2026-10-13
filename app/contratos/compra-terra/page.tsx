@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -583,17 +584,17 @@ export default function CompraTerrPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compra de Terra</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compra de Terra</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Contratos de aquisição de imóveis rurais</p>
           </div>
-          <button onClick={() => abrir()} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button data-arato-button="primary" onClick={() => abrir()} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             + Novo Contrato
           </button>
         </div>
@@ -606,7 +607,7 @@ export default function CompraTerrPage() {
             { label: "Valor Contratado", val: fmt(contratos.filter(c => c.status !== "cancelado").reduce((s, c) => s + (c.valor_total ?? 0), 0)), sub: "valor total" },
             { label: "Parcelas Pendentes", val: pgPendentes.length.toString(), sub: pgAtrasados.length > 0 ? `${pgAtrasados.length} atrasada(s)` : "em dia", subColor: pgAtrasados.length > 0 ? "#E24B4A" : "#16A34A" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: "6px 0 2px", fontVariantNumeric: "tabular-nums" }}>{k.val}</div>
               <div style={{ fontSize: 11, color: k.subColor ?? "#888" }}>{k.sub}</div>
@@ -617,7 +618,7 @@ export default function CompraTerrPage() {
         {/* Abas */}
         <div style={{ display: "flex", gap: 0, marginBottom: 16, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", overflow: "hidden", width: "fit-content" }}>
           {(["lista", "pagamentos"] as const).map(a => (
-            <button key={a} onClick={() => setAba(a)} style={{ padding: "9px 22px", border: "none", background: aba === a ? "#1A4870" : "transparent", color: aba === a ? "#fff" : "#555", fontSize: 13, fontWeight: aba === a ? 600 : 400, cursor: "pointer" }}>
+            <button data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{ padding: "9px 22px", border: "none", background: aba === a ? "#1A4870" : "transparent", color: aba === a ? "#fff" : "#555", fontSize: 13, fontWeight: aba === a ? 600 : 400, cursor: "pointer" }}>
               {a === "lista" ? "Contratos" : `Parcelas (${pagamentos.length})`}
             </button>
           ))}
@@ -627,7 +628,7 @@ export default function CompraTerrPage() {
         {aba === "lista" && (
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             {(["todos", ...Object.keys(STATUS_META)] as ("todos" | StatusCCT)[]).map(s => (
-              <button key={s} onClick={() => setFiltroStatus(s)} style={{ padding: "4px 12px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "#DDE2EE"}`, background: filtroStatus === s ? "#1A4870" : "#fff", color: filtroStatus === s ? "#fff" : "#555", fontSize: 12, cursor: "pointer", fontWeight: filtroStatus === s ? 600 : 400 }}>
+              <button data-arato-button="toggle" key={s} onClick={() => setFiltroStatus(s)} style={{ padding: "4px 12px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "#DDE2EE"}`, background: filtroStatus === s ? "#1A4870" : "#fff", color: filtroStatus === s ? "#fff" : "#555", fontSize: 12, cursor: "pointer", fontWeight: filtroStatus === s ? 600 : 400 }}>
                 {s === "todos" ? "Todos" : STATUS_META[s as StatusCCT].label}
               </button>
             ))}
@@ -636,14 +637,14 @@ export default function CompraTerrPage() {
 
         {/* ── ABA LISTA ── */}
         {aba === "lista" && (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+          <div data-arato-statistic="action" style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
             {loading ? (
               <div style={{ padding: 40, textAlign: "center", color: "#aaa" }}>Carregando…</div>
             ) : filtrados.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#aaa" }}>
+              <div data-arato-statistic="action" style={{ padding: 40, textAlign: "center", color: "#aaa" }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🏡</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#555", marginBottom: 6 }}>Nenhum contrato cadastrado</div>
-                <button onClick={() => abrir()} style={{ marginTop: 16, background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Contrato</button>
+                <button data-arato-button="primary" onClick={() => abrir()} style={{ marginTop: 16, background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Contrato</button>
               </div>
             ) : (
               <div>
@@ -730,15 +731,15 @@ export default function CompraTerrPage() {
                           {ct.observacoes && <div style={{ fontSize: 12, color: "#666", marginBottom: 14, padding: "8px 12px", background: "#fff", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>{ct.observacoes}</div>}
 
                           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <button onClick={() => abrir(ct, true)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, cursor: "pointer", color: "#555" }}>Abrir</button>
-                            <button onClick={() => abrir(ct, false)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", fontSize: 12, cursor: "pointer", color: "#1A4870" }}>✏ Editar</button>
+                            <button data-arato-button="secondary" onClick={() => abrir(ct, true)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, cursor: "pointer", color: "#555" }}>Abrir</button>
+                            <button data-arato-button="secondary" onClick={() => abrir(ct, false)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", fontSize: 12, cursor: "pointer", color: "#1A4870" }}>✏ Editar</button>
                             {podAvancar && ct.status !== "cancelado" && (
-                              <button onClick={() => avancarStatus(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                              <button data-arato-button="primary" onClick={() => avancarStatus(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
                                 Avançar para {STATUS_META[PIPELINE[pipeIdx + 1]].label} →
                               </button>
                             )}
                             <div style={{ flex: 1 }} />
-                            <button onClick={() => excluirContrato(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #E24B4A", background: "#FCEBEB", fontSize: 12, cursor: "pointer", color: "#E24B4A", fontWeight: 600 }}>🗑 Excluir</button>
+                            <button data-arato-button="danger" onClick={() => excluirContrato(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #E24B4A", background: "#FCEBEB", fontSize: 12, cursor: "pointer", color: "#E24B4A", fontWeight: 600 }}>🗑 Excluir</button>
                           </div>
                         </div>
                       )}
@@ -758,7 +759,7 @@ export default function CompraTerrPage() {
               {Object.keys(parcelasEditadas).length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 12, color: "#7A4300" }}>✏ Ajustes não salvos</span>
-                  <button onClick={salvarAjustesPagamentos} disabled={salvandoParcelas} style={{ padding: "5px 14px", borderRadius: 6, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button data-arato-button="primary" onClick={salvarAjustesPagamentos} disabled={salvandoParcelas} style={{ padding: "5px 14px", borderRadius: 6, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {salvandoParcelas ? "Salvando…" : "Salvar ajustes"}
                   </button>
                 </div>
@@ -767,8 +768,8 @@ export default function CompraTerrPage() {
             {pagamentos.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "#aaa" }}>Nenhuma parcela registrada</div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#F4F6FA" }}>
                       {["Imóvel", "Vencimento ✏", "Valor ✏", "Moeda", "Sacas", "Status", "Pago em", ""].map((h, i) => (
@@ -812,7 +813,7 @@ export default function CompraTerrPage() {
                           <td style={{ padding: "7px 12px", color: "#888", fontSize: 12 }}>{pg.data_pagamento ? new Date(pg.data_pagamento + "T00:00").toLocaleDateString("pt-BR") : "—"}</td>
                           <td style={{ padding: "7px 12px" }}>
                             {pg.status !== "pago" && (
-                              <button onClick={() => baixarPagamento(pg)} disabled={baixando === pg.id} style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#fff", color: "#16A34A", fontSize: 12, cursor: "pointer" }}>
+                              <button data-arato-button="secondary" onClick={() => baixarPagamento(pg)} disabled={baixando === pg.id} style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#fff", color: "#16A34A", fontSize: 12, cursor: "pointer" }}>
                                 {baixando === pg.id ? "…" : "Baixar"}
                               </button>
                             )}
@@ -830,72 +831,72 @@ export default function CompraTerrPage() {
 
       {/* ── MODAL ── */}
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 900, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
+          <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 900, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
             {/* Header modal */}
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>{viewOnly ? "Contrato de Compra" : editId ? "Editar Contrato" : "Novo Contrato de Compra de Terra"}</div>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>{viewOnly ? "Contrato de Compra" : editId ? "Editar Contrato" : "Novo Contrato de Compra de Terra"}</div>
                 {viewOnly && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Somente leitura</div>}
               </div>
-              <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#aaa", lineHeight: 1 }}>✕</button>
+              <button data-arato-button="icon" onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#aaa", lineHeight: 1 }}>✕</button>
             </div>
 
             {/* Abas do modal */}
-            <div style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", background: "#FAFBFC" }}>
+            <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", background: "#FAFBFC" }}>
               {(["imovel", "partes", "valor", "cartorio"] as const).map(a => (
-                <button key={a} onClick={() => setAbaModal(a)} style={{ padding: "10px 20px", border: "none", borderBottom: abaModal === a ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: abaModal === a ? 600 : 400, color: abaModal === a ? "#1A4870" : "#666", cursor: "pointer" }}>
+                <button data-arato-button="toggle" key={a} onClick={() => setAbaModal(a)} style={{ padding: "10px 20px", border: "none", borderBottom: abaModal === a ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: abaModal === a ? 600 : 400, color: abaModal === a ? "#1A4870" : "#666", cursor: "pointer" }}>
                   {{ imovel: "Imóvel", partes: "Partes", valor: "Valor & Pagamento", cartorio: "Cartório & Obs." }[a]}
                 </button>
               ))}
             </div>
 
             {/* Corpo do modal */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+            <div data-arato-dialog-body="true" style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
 
               {/* ── ABA IMÓVEL ── */}
               {abaModal === "imovel" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {fazendasConta.length > 1 && (
-                    <div><label style={lbl}>Fazenda vinculada *</label>
-                      <select style={inp} value={form.fazenda_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
+                    <div><label data-arato-label="true" style={lbl}>Fazenda vinculada *</label>
+                      <SelectField style={inp} value={form.fazenda_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
                         <option value="">— Selecionar —</option>
                         {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                      </select>
+                      </SelectField>
                     </div>
                   )}
-                  <div style={g2}>
-                    <div><label style={lbl}>Nome / Identificação do Imóvel *</label>
+                  <div data-arato-fields="true" style={g2}>
+                    <div><label data-arato-label="true" style={lbl}>Nome / Identificação do Imóvel *</label>
                       <input style={inp} value={form.imovel_nome} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_nome: e.target.value }))} placeholder="Ex: Fazenda Boa Vista — Gleba Norte" /></div>
-                    <div><label style={lbl}>Nº do Contrato (interno)</label>
+                    <div><label data-arato-label="true" style={lbl}>Nº do Contrato (interno)</label>
                       <input style={inp} value={form.numero} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, numero: e.target.value }))} placeholder="Ex: CCT-001/2026" /></div>
                   </div>
-                  <div style={g3}>
-                    <div><label style={lbl}>Município</label>
+                  <div data-arato-fields="true" style={g3}>
+                    <div><label data-arato-label="true" style={lbl}>Município</label>
                       <input style={inp} value={form.imovel_municipio} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_municipio: e.target.value }))} /></div>
-                    <div><label style={lbl}>UF</label>
-                      <select style={inp} value={form.imovel_uf} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_uf: e.target.value }))}>
+                    <div><label data-arato-label="true" style={lbl}>UF</label>
+                      <SelectField style={inp} value={form.imovel_uf} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_uf: e.target.value }))}>
                         {UFS.map(u => <option key={u}>{u}</option>)}
-                      </select></div>
-                    <div><label style={lbl}>Área Total (ha)</label>
+                      </SelectField></div>
+                    <div><label data-arato-label="true" style={lbl}>Área Total (ha)</label>
                       <input style={inp} type="number" step="0.01" value={form.imovel_area_total_ha} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_area_total_ha: e.target.value }))} /></div>
                   </div>
-                  <div style={g3}>
-                    <div><label style={lbl}>Área Terra Nua (ha)</label>
+                  <div data-arato-fields="true" style={g3}>
+                    <div><label data-arato-label="true" style={lbl}>Área Terra Nua (ha)</label>
                       <input style={inp} type="number" step="0.01" value={form.imovel_area_terra_nua_ha} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_area_terra_nua_ha: e.target.value }))} /></div>
-                    <div><label style={lbl}>Matrícula do Imóvel</label>
+                    <div><label data-arato-label="true" style={lbl}>Matrícula do Imóvel</label>
                       <input style={inp} value={form.imovel_matricula} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_matricula: e.target.value }))} placeholder="Nº da matrícula no CRI" /></div>
-                    <div><label style={lbl}>Código CAR</label>
+                    <div><label data-arato-label="true" style={lbl}>Código CAR</label>
                       <input style={inp} value={form.imovel_car} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_car: e.target.value }))} /></div>
                   </div>
-                  <div style={{ ...g2, maxWidth: 380 }}>
-                    <div><label style={lbl}>NIRF</label>
+                  <div data-arato-fields="true" style={{ ...g2, maxWidth: 380 }}>
+                    <div><label data-arato-label="true" style={lbl}>NIRF</label>
                       <input style={inp} value={form.imovel_nirf} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, imovel_nirf: e.target.value }))} /></div>
-                    <div><label style={lbl}>Status</label>
-                      <select style={inp} value={form.status} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, status: e.target.value as StatusCCT }))}>
+                    <div><label data-arato-label="true" style={lbl}>Status</label>
+                      <SelectField style={inp} value={form.status} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, status: e.target.value as StatusCCT }))}>
                         {(Object.keys(STATUS_META) as StatusCCT[]).map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-                      </select></div>
+                      </SelectField></div>
                   </div>
                 </div>
               )}
@@ -903,25 +904,25 @@ export default function CompraTerrPage() {
               {/* ── ABA PARTES ── */}
               {abaModal === "partes" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={g2}>
-                    <div><label style={lbl}>Vendedor (Alienante) *</label>
-                      <select style={inp} value={form.vendedor_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, vendedor_id: e.target.value }))}>
+                  <div data-arato-fields="true" style={g2}>
+                    <div><label data-arato-label="true" style={lbl}>Vendedor (Alienante) *</label>
+                      <SelectField style={inp} value={form.vendedor_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, vendedor_id: e.target.value }))}>
                         <option value="">— Selecionar —</option>
                         {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select></div>
-                    <div><label style={lbl}>Comprador (Produtor)</label>
-                      <select style={inp} value={form.comprador_produtor_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, comprador_produtor_id: e.target.value }))}>
+                      </SelectField></div>
+                    <div><label data-arato-label="true" style={lbl}>Comprador (Produtor)</label>
+                      <SelectField style={inp} value={form.comprador_produtor_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, comprador_produtor_id: e.target.value }))}>
                         <option value="">— Selecionar —</option>
                         {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select></div>
+                      </SelectField></div>
                   </div>
-                  <div style={{ ...g2, maxWidth: 560 }}>
-                    <div><label style={lbl}>Corretor / Intermediário</label>
-                      <select style={inp} value={form.corretor_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, corretor_id: e.target.value }))}>
+                  <div data-arato-fields="true" style={{ ...g2, maxWidth: 560 }}>
+                    <div><label data-arato-label="true" style={lbl}>Corretor / Intermediário</label>
+                      <SelectField style={inp} value={form.corretor_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, corretor_id: e.target.value }))}>
                         <option value="">— Nenhum —</option>
                         {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select></div>
-                    <div><label style={lbl}>Comissão Corretor (%)</label>
+                      </SelectField></div>
+                    <div><label data-arato-label="true" style={lbl}>Comissão Corretor (%)</label>
                       <input style={inp} type="number" step="0.01" value={form.comissao_corretor_pct} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, comissao_corretor_pct: e.target.value }))} placeholder="Ex: 3" /></div>
                   </div>
                   {form.comissao_corretor_pct && form.valor_total && (
@@ -929,10 +930,10 @@ export default function CompraTerrPage() {
                       Comissão do corretor: {fmt(+form.valor_total * +form.comissao_corretor_pct / 100)}
                     </div>
                   )}
-                  <div style={{ ...g2, maxWidth: 380 }}>
-                    <div><label style={lbl}>Data do Contrato</label>
+                  <div data-arato-fields="true" style={{ ...g2, maxWidth: 380 }}>
+                    <div><label data-arato-label="true" style={lbl}>Data do Contrato</label>
                       <InputData style={inp} type="date" value={form.data_contrato} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_contrato: e.target.value }))} /></div>
-                    <div><label style={lbl}>Previsão Escritura</label>
+                    <div><label data-arato-label="true" style={lbl}>Previsão Escritura</label>
                       <InputData style={inp} type="date" value={form.data_previsao_escritura} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_previsao_escritura: e.target.value }))} /></div>
                   </div>
                 </div>
@@ -941,20 +942,20 @@ export default function CompraTerrPage() {
               {/* ── ABA VALOR & PAGAMENTO ── */}
               {abaModal === "valor" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={g3}>
-                    <div><label style={lbl}>Valor Total do Imóvel (R$) *</label>
+                  <div data-arato-fields="true" style={g3}>
+                    <div><label data-arato-label="true" style={lbl}>Valor Total do Imóvel (R$) *</label>
                       <input style={inp} type="text" inputMode="numeric" value={displayBRL(form.valor_total)} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_total: parseBRLInput(e.target.value) }))} /></div>
-                    <div><label style={lbl}>Valor Terra Nua (R$)</label>
+                    <div><label data-arato-label="true" style={lbl}>Valor Terra Nua (R$)</label>
                       <input style={inp} type="number" step="0.01" value={form.valor_terra_nua} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_terra_nua: e.target.value }))} /></div>
-                    <div><label style={lbl}>Valor Benfeitorias (R$)</label>
+                    <div><label data-arato-label="true" style={lbl}>Valor Benfeitorias (R$)</label>
                       <input style={inp} type="number" step="0.01" value={form.valor_benfeitorias} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_benfeitorias: e.target.value }))} /></div>
                   </div>
 
-                  <div style={{ ...g2, maxWidth: 560 }}>
-                    <div><label style={lbl}>ITBI Estimado (R$)</label>
+                  <div data-arato-fields="true" style={{ ...g2, maxWidth: 560 }}>
+                    <div><label data-arato-label="true" style={lbl}>ITBI Estimado (R$)</label>
                       <input style={inp} type="number" step="0.01" value={form.itbi_valor} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, itbi_valor: e.target.value }))} /></div>
                     <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+                      <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
                         <input type="checkbox" checked={form.itbi_pago} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, itbi_pago: e.target.checked }))} />
                         ITBI já pago
                       </label>
@@ -964,10 +965,10 @@ export default function CompraTerrPage() {
                   <div style={{ height: 1, background: "#DDE2EE" }} />
 
                   <div>
-                    <label style={lbl}>Forma de Pagamento *</label>
+                    <label data-arato-label="true" style={lbl}>Forma de Pagamento *</label>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {(Object.keys(FORMA_META) as FormaPagamento[]).map(f => (
-                        <label key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${form.forma_pagamento === f ? "#1A4870" : "#DDE2EE"}`, background: form.forma_pagamento === f ? "#EBF2FB" : "#fff", userSelect: "none" }}>
+                        <label data-arato-label="true" key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${form.forma_pagamento === f ? "#1A4870" : "#DDE2EE"}`, background: form.forma_pagamento === f ? "#EBF2FB" : "#fff", userSelect: "none" }}>
                           <input type="radio" name="forma" value={f} checked={form.forma_pagamento === f} disabled={viewOnly} onChange={() => setForm(p => ({ ...p, forma_pagamento: f }))} style={{ accentColor: "#1A4870" }} />
                           {FORMA_META[f]}
                         </label>
@@ -976,20 +977,20 @@ export default function CompraTerrPage() {
                   </div>
 
                   {(form.forma_pagamento === "misto" || form.forma_pagamento === "parcelado_vendedor" || form.forma_pagamento === "financiamento") && (
-                    <div style={g2}>
-                      <div><label style={lbl}>Entrada / Sinal (R$)</label>
+                    <div data-arato-fields="true" style={g2}>
+                      <div><label data-arato-label="true" style={lbl}>Entrada / Sinal (R$)</label>
                         <input style={inp} type="text" inputMode="numeric" value={displayBRL(form.valor_entrada)} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, valor_entrada: parseBRLInput(e.target.value) }))} /></div>
-                      <div><label style={lbl}>Data da Entrada</label>
+                      <div><label data-arato-label="true" style={lbl}>Data da Entrada</label>
                         <InputData style={inp} type="date" value={form.data_entrada} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, data_entrada: e.target.value }))} /></div>
                     </div>
                   )}
 
                   {(form.forma_pagamento === "financiamento" || form.forma_pagamento === "misto") && (
-                    <div><label style={lbl}>Contrato de Financiamento (vinculado)</label>
-                      <select style={inp} value={form.contrato_financeiro_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, contrato_financeiro_id: e.target.value }))}>
+                    <div><label data-arato-label="true" style={lbl}>Contrato de Financiamento (vinculado)</label>
+                      <SelectField style={inp} value={form.contrato_financeiro_id} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, contrato_financeiro_id: e.target.value }))}>
                         <option value="">— Selecionar financiamento —</option>
                         {contrFinanc.map(cf => <option key={cf.id} value={cf.id}>{cf.descricao} – {cf.credor}</option>)}
-                      </select></div>
+                      </SelectField></div>
                   )}
 
                   {/* ── Cronograma de Parcelas ── */}
@@ -1001,12 +1002,12 @@ export default function CompraTerrPage() {
                       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
 
                         {/* Linha 1: periodicidade, Nº parcelas, data 1ª */}
-                        <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
                           <div>
-                            <label style={lbl}>Periodicidade</label>
+                            <label data-arato-label="true" style={lbl}>Periodicidade</label>
                             <div style={{ display: "flex", gap: 0, borderRadius: 6, overflow: "hidden", border: "0.5px solid #DDE2EE" }}>
                               {(["anual", "semestral"] as const).map(p => (
-                                <button key={p} type="button" disabled={viewOnly} onClick={() => { setForm(f => ({ ...f, periodicidade: p })); setParcelasCustom(null); }}
+                                <button data-arato-button="toggle" key={p} type="button" disabled={viewOnly} onClick={() => { setForm(f => ({ ...f, periodicidade: p })); setParcelasCustom(null); }}
                                   style={{ padding: "7px 18px", border: "none", background: form.periodicidade === p ? "#1A4870" : "#fff", color: form.periodicidade === p ? "#fff" : "#555", fontSize: 13, fontWeight: form.periodicidade === p ? 600 : 400, cursor: viewOnly ? "default" : "pointer" }}>
                                   {p.charAt(0).toUpperCase() + p.slice(1)}
                                 </button>
@@ -1014,29 +1015,29 @@ export default function CompraTerrPage() {
                             </div>
                           </div>
                           <div>
-                            <label style={lbl}>Nº de Parcelas</label>
+                            <label data-arato-label="true" style={lbl}>Nº de Parcelas</label>
                             <input style={{ ...inp, width: 80 }} type="number" min="1" max="30" value={form.num_parcelas_vendedor} disabled={viewOnly}
                               onChange={e => { setForm(p => ({ ...p, num_parcelas_vendedor: e.target.value })); setParcelasCustom(null); }} />
                           </div>
                           <div>
-                            <label style={lbl}>Data da 1ª Parcela</label>
+                            <label data-arato-label="true" style={lbl}>Data da 1ª Parcela</label>
                             <InputData style={inp} type="date" value={form.data_primeira_parcela} disabled={viewOnly}
                               onChange={e => { setForm(p => ({ ...p, data_primeira_parcela: e.target.value })); setParcelasCustom(null); }} />
                           </div>
                         </div>
 
                         {/* Linha 2: moeda padrão das parcelas */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                           <div>
-                            <label style={lbl}>Moeda das Parcelas (padrão)</label>
-                            <select style={inp} value={form.moeda_parcela_padrao} disabled={viewOnly}
+                            <label data-arato-label="true" style={lbl}>Moeda das Parcelas (padrão)</label>
+                            <SelectField style={inp} value={form.moeda_parcela_padrao} disabled={viewOnly}
                               onChange={e => { setForm(p => ({ ...p, moeda_parcela_padrao: e.target.value as MoedaParcela })); setParcelasCustom(null); }}>
                               {(Object.keys(MOEDA_META) as MoedaParcela[]).map(m => <option key={m} value={m}>{MOEDA_META[m].label}</option>)}
-                            </select>
+                            </SelectField>
                           </div>
                           {form.moeda_parcela_padrao !== "BRL" && (
                             <div>
-                              <label style={lbl}>Preço de referência (R$/sc)</label>
+                              <label data-arato-label="true" style={lbl}>Preço de referência (R$/sc)</label>
                               <input style={inp} type="number" step="0.01" placeholder="Ex: 120.00" value={form.preco_sc_ref_padrao} disabled={viewOnly}
                                 onChange={e => { setForm(p => ({ ...p, preco_sc_ref_padrao: e.target.value })); setParcelasCustom(null); }} />
                             </div>
@@ -1045,26 +1046,26 @@ export default function CompraTerrPage() {
                         </div>
 
                         {/* Linha 3: Rateio por vencimento — safra/ciclo padrão */}
-                        <div style={{ background: "#EBF2FB", borderRadius: 8, padding: "10px 12px", border: "0.5px solid #BDD5EE" }}>
+                        <div data-arato-panel="true" style={{ background: "#EBF2FB", borderRadius: 8, padding: "10px 12px", border: "0.5px solid #BDD5EE" }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "#0C447C", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                             Rateio por Vencimento — Safra / Ciclo Padrão
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                             <div>
-                              <label style={{ ...lbl, color: "#0C447C" }}>Ano Safra *</label>
-                              <select style={{ ...inp, borderColor: form.ano_safra_id_padrao ? undefined : "#E24B4A" }} value={form.ano_safra_id_padrao} disabled={viewOnly}
+                              <label data-arato-label="true" style={{ ...lbl, color: "#0C447C" }}>Ano Safra *</label>
+                              <SelectField style={{ ...inp, borderColor: form.ano_safra_id_padrao ? undefined : "#E24B4A" }} value={form.ano_safra_id_padrao} disabled={viewOnly}
                                 onChange={e => setForm(p => ({ ...p, ano_safra_id_padrao: e.target.value, ciclo_id_padrao: "" }))}>
                                 <option value="">— Selecionar —</option>
                                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                              </select>
+                              </SelectField>
                             </div>
                             <div>
-                              <label style={{ ...lbl, color: "#0C447C" }}>Ciclo / Empreendimento</label>
-                              <select style={inp} value={form.ciclo_id_padrao} disabled={viewOnly}
+                              <label data-arato-label="true" style={{ ...lbl, color: "#0C447C" }}>Ciclo / Empreendimento</label>
+                              <SelectField style={inp} value={form.ciclo_id_padrao} disabled={viewOnly}
                                 onChange={e => setForm(p => ({ ...p, ciclo_id_padrao: e.target.value }))}>
                                 <option value="">— Sem ciclo —</option>
                                 {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
-                              </select>
+                              </SelectField>
                             </div>
                           </div>
                           <div style={{ fontSize: 11, color: "#378ADD", marginTop: 6 }}>
@@ -1097,17 +1098,17 @@ export default function CompraTerrPage() {
                                 {!viewOnly && (
                                   <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
                                     {isCustom ? (
-                                      <button type="button" onClick={() => setParcelasCustom(null)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "#fff", color: "#555", cursor: "pointer" }}>↺ Restaurar automático</button>
+                                      <button data-arato-button="secondary" type="button" onClick={() => setParcelasCustom(null)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "#fff", color: "#555", cursor: "pointer" }}>↺ Restaurar automático</button>
                                     ) : (
-                                      <button type="button" onClick={() => setParcelasCustom(autoParc)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer" }}>✏ Personalizar</button>
+                                      <button data-arato-button="secondary" type="button" onClick={() => setParcelasCustom(autoParc)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer" }}>✏ Personalizar</button>
                                     )}
                                   </div>
                                 )}
                               </div>
 
                               {/* Tabela de parcelas */}
-                              <div style={{ maxHeight: 320, overflowY: "auto", overflowX: "auto", border: "0.5px solid #DDE2EE", borderRadius: 8 }}>
-                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 720 }}>
+                              <div data-arato-grid-container="true" style={{ maxHeight: 320, overflowY: "auto", overflowX: "auto", border: "0.5px solid #DDE2EE", borderRadius: 8 }}>
+                                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 720 }}>
                                   <thead>
                                     <tr style={{ background: "#F4F6FA", position: "sticky", top: 0 }}>
                                       {["#", "Vencimento", "Moeda", "Sacas", "Preço R$/sc", "Valor R$", "Ano Safra", "Ciclo"].map((h, i) => (
@@ -1132,14 +1133,14 @@ export default function CompraTerrPage() {
                                           </td>
                                           <td style={{ padding: "4px 6px", minWidth: 110 }}>
                                             {isCustom && !viewOnly ? (
-                                              <select value={p.moeda_parcela} onChange={e => {
+                                              <SelectField value={p.moeda_parcela} onChange={e => {
                                                 const novaM = e.target.value as MoedaParcela;
                                                 setParcelasCustom(prev => prev!.map((x, j) => j === i
                                                   ? { ...x, moeda_parcela: novaM, produto: MOEDA_META[novaM]?.produto || "", quantidade_sacas: novaM === "BRL" ? "" : x.quantidade_sacas }
                                                   : x));
                                               }} style={{ border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "3px 5px", fontSize: 11, width: "100%", background: "#FBF3E0" }}>
                                                 {(Object.keys(MOEDA_META) as MoedaParcela[]).map(m => <option key={m} value={m}>{MOEDA_META[m].label}</option>)}
-                                              </select>
+                                              </SelectField>
                                             ) : (
                                               <span style={{ fontSize: 11, padding: "2px 6px", borderRadius: 8, background: isGrao ? "#E6F1FB" : "#F4F6FA", color: isGrao ? "#0C447C" : "#888" }}>
                                                 {isGrao ? MOEDA_META[p.moeda_parcela]?.label : "R$"}
@@ -1178,22 +1179,22 @@ export default function CompraTerrPage() {
                                           </td>
                                           <td style={{ padding: "4px 6px", minWidth: 110 }}>
                                             {isCustom && !viewOnly ? (
-                                              <select value={p.ano_safra_id} onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, ano_safra_id: e.target.value, ciclo_id: "" } : x))}
+                                              <SelectField value={p.ano_safra_id} onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, ano_safra_id: e.target.value, ciclo_id: "" } : x))}
                                                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "3px 5px", fontSize: 11, width: "100%", background: "#F4F6FA" }}>
                                                 <option value="">— Padrão —</option>
                                                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                                              </select>
+                                              </SelectField>
                                             ) : (
                                               <span style={{ fontSize: 11, color: "#555" }}>{anosSafra.find(a => a.id === p.ano_safra_id)?.descricao || (form.ano_safra_id_padrao ? anosSafra.find(a => a.id === form.ano_safra_id_padrao)?.descricao : "—")}</span>
                                             )}
                                           </td>
                                           <td style={{ padding: "4px 6px", minWidth: 120 }}>
                                             {isCustom && !viewOnly ? (
-                                              <select value={p.ciclo_id} onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}
+                                              <SelectField value={p.ciclo_id} onChange={e => setParcelasCustom(prev => prev!.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value } : x))}
                                                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "3px 5px", fontSize: 11, width: "100%", background: "#F4F6FA" }}>
                                                 <option value="">— Padrão —</option>
                                                 {ciclosParcela.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
-                                              </select>
+                                              </SelectField>
                                             ) : (
                                               <span style={{ fontSize: 11, color: "#555" }}>{ciclos.find(c => c.id === p.ciclo_id)?.descricao || (form.ciclo_id_padrao ? ciclos.find(c => c.id === form.ciclo_id_padrao)?.descricao : "—")}</span>
                                             )}
@@ -1244,44 +1245,44 @@ export default function CompraTerrPage() {
               {/* ── ABA CARTÓRIO ── */}
               {abaModal === "cartorio" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div><label style={lbl}>Cartório de Registro de Imóveis</label>
+                  <div><label data-arato-label="true" style={lbl}>Cartório de Registro de Imóveis</label>
                     <input style={inp} value={form.cartorio_nome} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, cartorio_nome: e.target.value }))} placeholder="Nome e comarca do cartório" /></div>
                   <div style={{ height: 1, background: "#DDE2EE" }} />
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>Escritura Pública</div>
-                  <div style={g3}>
-                    <div><label style={lbl}>Nº da Escritura</label>
+                  <div data-arato-fields="true" style={g3}>
+                    <div><label data-arato-label="true" style={lbl}>Nº da Escritura</label>
                       <input style={inp} value={form.escritura_numero} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, escritura_numero: e.target.value }))} /></div>
-                    <div><label style={lbl}>Data da Escritura</label>
+                    <div><label data-arato-label="true" style={lbl}>Data da Escritura</label>
                       <InputData style={inp} type="date" value={form.escritura_data} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, escritura_data: e.target.value }))} /></div>
-                    <div><label style={lbl}>Custo do Cartório (R$)</label>
+                    <div><label data-arato-label="true" style={lbl}>Custo do Cartório (R$)</label>
                       <input style={inp} type="number" step="0.01" value={form.custo_cartorio} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, custo_cartorio: e.target.value }))} /></div>
                   </div>
                   <div style={{ height: 1, background: "#DDE2EE" }} />
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>Registro no CRI</div>
-                  <div style={g2}>
-                    <div><label style={lbl}>Nº do Registro</label>
+                  <div data-arato-fields="true" style={g2}>
+                    <div><label data-arato-label="true" style={lbl}>Nº do Registro</label>
                       <input style={inp} value={form.registro_numero} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, registro_numero: e.target.value }))} /></div>
-                    <div><label style={lbl}>Data do Registro</label>
+                    <div><label data-arato-label="true" style={lbl}>Data do Registro</label>
                       <InputData style={inp} type="date" value={form.registro_data} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, registro_data: e.target.value }))} /></div>
                   </div>
                   <div style={{ height: 1, background: "#DDE2EE" }} />
-                  <div><label style={lbl}>Observações Gerais</label>
+                  <div><label data-arato-label="true" style={lbl}>Observações Gerais</label>
                     <textarea style={{ ...inp, height: 80, resize: "vertical" } as React.CSSProperties} value={form.observacoes} disabled={viewOnly} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} placeholder="Pendências, condicionantes, cláusulas especiais..." /></div>
                 </div>
               )}
             </div>
 
             {/* Footer modal */}
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
                 {(["imovel", "partes", "valor", "cartorio"] as const).map(a => (
-                  <button key={a} onClick={() => setAbaModal(a)} style={{ width: 8, height: 8, borderRadius: "50%", background: abaModal === a ? "#1A4870" : "#DDE2EE", border: "none", cursor: "pointer", padding: 0 }} />
+                  <button data-arato-button="toggle" key={a} onClick={() => setAbaModal(a)} style={{ width: 8, height: 8, borderRadius: "50%", background: abaModal === a ? "#1A4870" : "#DDE2EE", border: "none", cursor: "pointer", padding: 0 }} />
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setShowModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}>Fechar</button>
+              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
+                <button data-arato-button="secondary" onClick={() => setShowModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}>Fechar</button>
                 {!viewOnly && (
-                  <button onClick={salvar} disabled={salvando || !form.imovel_nome || !form.valor_total} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando ? "default" : "pointer", opacity: salvando ? 0.7 : 1 }}>
+                  <button data-arato-button="primary" onClick={salvar} disabled={salvando || !form.imovel_nome || !form.valor_total} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando ? "default" : "pointer", opacity: salvando ? 0.7 : 1 }}>
                     {salvando ? "Salvando…" : editId ? "Salvar Alterações" : "Criar Contrato"}
                   </button>
                 )}

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
@@ -326,7 +327,7 @@ function OperacoesGerenciaisContent() {
     const nome = plano.find(c => c.codigo === value)?.nome;
     return (
       <div>
-        <select style={{ ...inp, fontFamily: "monospace" }} value={value} onChange={e => onChange(e.target.value)}>
+        <SelectField style={{ ...inp, fontFamily: "monospace" }} value={value} onChange={e => onChange(e.target.value)}>
           <option value="">{placeholder}</option>
           {plano.map(c => {
             const d = c.codigo.split(".").length - 1;
@@ -336,7 +337,7 @@ function OperacoesGerenciaisContent() {
               </option>
             );
           })}
-        </select>
+        </SelectField>
         {value && nome && (
           <div style={{ fontSize: 11, color: "#0D0D0D", marginTop: 3, background: "#EEF5FE", padding: "3px 8px", borderRadius: 5 }}>
             {nome}
@@ -355,7 +356,7 @@ function OperacoesGerenciaisContent() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ padding: "16px 24px" }}>
 
@@ -368,11 +369,11 @@ function OperacoesGerenciaisContent() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
-            <button onClick={exportarXlsx}
+            <button data-arato-button="secondary" onClick={exportarXlsx}
               style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #16A34A", borderRadius: 7, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}>
               ⬇ XLSX
             </button>
-            <button onClick={importarPadrao} disabled={seeding}
+            <button data-arato-button="secondary" onClick={importarPadrao} disabled={seeding}
               style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #C9921B", borderRadius: 7, background: "#FBF3E0", color: "#7A5A10", cursor: seeding ? "not-allowed" : "pointer", fontWeight: 600, opacity: seeding ? 0.7 : 1 }}>
               {seeding ? "Importando…" : "↓ Importar Padrão"}
             </button>
@@ -380,7 +381,7 @@ function OperacoesGerenciaisContent() {
               style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #111111", borderRadius: 7, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
               → Plano de Contas
             </a>
-            <button onClick={abrirNovo}
+            <button data-arato-button="primary" onClick={abrirNovo}
               style={{ fontSize: 11, padding: "6px 14px", border: "none", borderRadius: 7, background: "#111111", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
               + Nova Operação
             </button>
@@ -388,14 +389,14 @@ function OperacoesGerenciaisContent() {
         </div>
 
         {/* ── KPI strip ── */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
+        <div data-arato-statistic="action" style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
           {[
             { label: "Total Ativas",       value: totalAtivos,   color: "#111111", bg: "#E8E8E8", onClick: () => setFiltroTipo("todos")    },
             { label: "Receitas",           value: totalReceita,  color: "#1A5C38", bg: "#EAF3DE", onClick: () => setFiltroTipo("receita")  },
             { label: "Despesas",           value: totalDespesa,  color: "#633806", bg: "#FAEEDA", onClick: () => setFiltroTipo("despesa")  },
             { label: "Com Conta Contábil", value: totalComConta, color: "#4B1A8A", bg: "#F0EAF8", onClick: () => {} },
           ].map((k, i) => (
-            <button key={k.label} onClick={k.onClick} style={{
+            <button data-arato-button="secondary" key={k.label} onClick={k.onClick} style={{
               flex: 1, padding: "10px 18px", border: "none", borderRight: i < 3 ? "0.5px solid var(--border-table)" : "none",
               background: "transparent", cursor: "pointer", textAlign: "left",
               display: "flex", alignItems: "center", gap: 12,
@@ -407,10 +408,10 @@ function OperacoesGerenciaisContent() {
         </div>
 
         {/* ── Filtros ── */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+        <div data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
             {(["todos", "receita", "despesa"] as const).map(f => (
-              <button key={f} onClick={() => setFiltroTipo(f)} style={{
+              <button data-arato-button="toggle" key={f} onClick={() => setFiltroTipo(f)} style={{
                 padding: "5px 14px", border: "none", borderRight: f !== "despesa" ? "0.5px solid var(--border-table)" : "none",
                 background: filtroTipo === f ? "#E8E8E8" : "var(--bg-card)",
                 color: filtroTipo === f ? "#0D0D0D" : "var(--text-3)",
@@ -425,7 +426,7 @@ function OperacoesGerenciaisContent() {
             placeholder="Buscar por código, descrição ou conta: (ex: conta:5.01)"
             style={{ ...inp, padding: "5px 10px", flex: 1, minWidth: 240, maxWidth: 400 }}
           />
-          <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap" }}>
+          <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap" }}>
             <input type="checkbox" checked={mostrarInativos} onChange={e => setMostrarInativos(e.target.checked)} />
             Mostrar inativas
           </label>
@@ -437,8 +438,8 @@ function OperacoesGerenciaisContent() {
           {loading ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando operações…</div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
+            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
                 <colgroup>
                   <col style={{ width: 130 }} />  {/* Código */}
                   <col />                          {/* Descrição — flex */}
@@ -539,11 +540,11 @@ function OperacoesGerenciaisContent() {
                         {/* Ações */}
                         <td style={{ padding: "5px 10px" }}>
                           <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                            <button onClick={() => abrirEditar(o)} title="Editar"
+                            <button data-arato-button="icon" onClick={() => abrirEditar(o)} title="Editar"
                               style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>✎</button>
-                            <button onClick={() => duplicar(o)} title="Duplicar — cria uma nova operação com a mesma configuração"
+                            <button data-arato-button="secondary" onClick={() => duplicar(o)} title="Duplicar — cria uma nova operação com a mesma configuração"
                               style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>⧉</button>
-                            <button onClick={() => excluir(o)} title="Excluir"
+                            <button data-arato-button="danger" onClick={() => excluir(o)} title="Excluir"
                               style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "#791F1F" }}>✕</button>
                           </div>
                         </td>
@@ -563,64 +564,64 @@ function OperacoesGerenciaisContent() {
 
       {/* ── Modal OG ──────────────────────────────────────────────────────────── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 860, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.3)" }}>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 12, width: 860, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.3)" }}>
 
             {/* Header modal */}
-            <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
                 {editOp ? `Editar — ${editOp.classificacao} · ${editOp.descricao}` : "Nova Operação Gerencial"}
               </div>
-              <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
             </div>
 
             {/* Cabeçalho fixo do formulário */}
-            <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", flexShrink: 0 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 10 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", flexShrink: 0 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 10 }}>
                 <div>
-                  <label style={lbl}>Operação Pai (hierarquia)</label>
-                  <select style={inp} value={form.parent_id} onChange={e => setForm(p => ({ ...p, parent_id: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Operação Pai (hierarquia)</label>
+                  <SelectField style={inp} value={form.parent_id} onChange={e => setForm(p => ({ ...p, parent_id: e.target.value }))}>
                     <option value="">— Nível raiz —</option>
                     {ops.filter(o => !editOp || o.id !== editOp.id).sort((a, b) => a.classificacao.localeCompare(b.classificacao)).map(o => (
                       <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
                     ))}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Descrição *</label>
+                  <label data-arato-label="true" style={lbl}>Descrição *</label>
                   <input style={inp} value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Compra de Defensivos" />
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 160px 180px", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "150px 1fr 160px 180px", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Classificação *</label>
+                  <label data-arato-label="true" style={lbl}>Classificação *</label>
                   <input style={{ ...inp, fontFamily: "monospace" }} value={form.classificacao} onChange={e => setForm(p => ({ ...p, classificacao: e.target.value }))} placeholder="Ex: 1.01.001" />
                 </div>
                 <div style={{ display: "flex", gap: 14, alignItems: "flex-end", paddingBottom: 2 }}>
-                  <label style={lbl}>Tipo</label>
+                  <label data-arato-label="true" style={lbl}>Tipo</label>
                   {(["receita", "despesa"] as const).map(t => (
-                    <label key={t} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 13 }}>
+                    <label data-arato-label="true" key={t} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 13 }}>
                       <input type="radio" checked={form.tipo === t} onChange={() => setForm(p => ({ ...p, tipo: t }))} />
                       {t === "receita" ? "Receita" : "Despesa"}
                     </label>
                   ))}
                 </div>
                 <div>
-                  <label style={lbl}>Tipo Doc. LCDPR</label>
-                  <select style={inp} value={form.tipo_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_lcdpr: e.target.value }))}>
+                  <label data-arato-label="true" style={lbl}>Tipo Doc. LCDPR</label>
+                  <SelectField style={inp} value={form.tipo_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_lcdpr: e.target.value }))}>
                     <option value="">— Nenhum —</option>
                     <option value="1">1 — Nota Fiscal</option>
                     <option value="2">2 — Recibo</option>
                     <option value="3">3 — Folha de Pagamento</option>
                     <option value="4">4 — Pró-Labore</option>
                     <option value="5">5 — Outros</option>
-                  </select>
+                  </SelectField>
                 </div>
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-end", paddingBottom: 6 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12 }}>
+                  <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12 }}>
                     <input type="checkbox" checked={form.inativo} onChange={e => setForm(p => ({ ...p, inativo: e.target.checked }))} /> Inativa
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12 }}>
+                  <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12 }}>
                     <input type="checkbox" checked={form.informa_complemento} onChange={e => setForm(p => ({ ...p, informa_complemento: e.target.checked }))} /> Inf. Compl.
                   </label>
                 </div>
@@ -656,7 +657,7 @@ function OperacoesGerenciaisContent() {
             })()}
 
             {/* Abas */}
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0, background: "var(--bg-card)" }}>
+            <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0, background: "var(--bg-card)" }}>
               {([
                 { key: "telas",         label: "Telas / Módulos"   },
                 { key: "estoque",       label: "Estoque"            },
@@ -670,7 +671,7 @@ function OperacoesGerenciaisContent() {
                   !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
                   !form.permite_manutencao && !form.permite_combustivel;
                 return (
-                  <button key={a.key} onClick={() => setAbaModal(a.key)} style={{
+                  <button data-arato-button="toggle" key={a.key} onClick={() => setAbaModal(a.key)} style={{
                     padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                     borderBottom: abaModal === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
                     color: abaModal === a.key ? "#2A2A2A" : "var(--text-2)",
@@ -687,11 +688,11 @@ function OperacoesGerenciaisContent() {
             </div>
 
             {/* Conteúdo das abas */}
-            <div style={{ padding: "18px 20px", flex: 1, overflowY: "auto" }}>
+            <div data-arato-dialog-body="true" style={{ padding: "18px 20px", flex: 1, overflowY: "auto" }}>
 
               {/* ── Telas / Módulos ── */}
               {abaModal === "telas" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Lançamentos Gerais</div>
                     {([
@@ -703,7 +704,7 @@ function OperacoesGerenciaisContent() {
                       { key: "permite_custo_produto",       label: "Custo de Produto"            },
                       { key: "permite_contrato_financeiro", label: "Contrato Financeiro"         },
                     ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-                      <label key={key} style={chkRow(!!form[key])}>
+                      <label data-arato-label="true" key={key} style={chkRow(!!form[key])}>
                         <input type="checkbox" checked={!!form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))} />
                         {label}
                       </label>
@@ -719,7 +720,7 @@ function OperacoesGerenciaisContent() {
                       { key: "marcar_fiscal_padrao",    label: "Marcar como Fiscal por Padrão"    },
                       { key: "permite_energia_eletrica",label: "Importação de Energia Elétrica"   },
                     ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-                      <label key={key} style={chkRow(!!form[key])}>
+                      <label data-arato-label="true" key={key} style={chkRow(!!form[key])}>
                         <input type="checkbox" checked={!!form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))} />
                         {label}
                       </label>
@@ -735,12 +736,12 @@ function OperacoesGerenciaisContent() {
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Operação de Estoque</div>
                     <div style={{ display: "flex", gap: 20 }}>
                       {(["entrada", "saida", "neutra"] as const).map(v => (
-                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                        <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                           <input type="radio" checked={form.operacao_estoque === v} onChange={() => setForm(p => ({ ...p, operacao_estoque: v }))} />
                           {v === "entrada" ? "Entrada" : v === "saida" ? "Saída" : "Neutra"}
                         </label>
                       ))}
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                      <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                         <input type="radio" checked={!form.operacao_estoque} onChange={() => setForm(p => ({ ...p, operacao_estoque: "" }))} />
                         Não Aplica
                       </label>
@@ -750,7 +751,7 @@ function OperacoesGerenciaisContent() {
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Tipo de Custo no Estoque</div>
                     <div style={{ display: "flex", gap: 20 }}>
                       {(["gasto", "ajuste", "contrato", "nenhum"] as const).map(v => (
-                        <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                        <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                           <input type="radio" checked={form.tipo_custo_estoque === v} onChange={() => setForm(p => ({ ...p, tipo_custo_estoque: v }))} />
                           {v.charAt(0).toUpperCase() + v.slice(1)}
                         </label>
@@ -763,13 +764,13 @@ function OperacoesGerenciaisContent() {
               {/* ── Fiscal ── */}
               {abaModal === "fiscal" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
-                      <label style={lbl}>OBS Legal (NF-e — campo infCpl)</label>
+                      <label data-arato-label="true" style={lbl}>OBS Legal (NF-e — campo infCpl)</label>
                       <input style={inp} value={form.obs_legal} onChange={e => setForm(p => ({ ...p, obs_legal: e.target.value }))} placeholder="Texto padrão incluído automaticamente na NF-e" />
                     </div>
                     <div>
-                      <label style={lbl}>Natureza da Receita</label>
+                      <label data-arato-label="true" style={lbl}>Natureza da Receita</label>
                       <input style={inp} value={form.natureza_receita} onChange={e => setForm(p => ({ ...p, natureza_receita: e.target.value }))} />
                     </div>
                   </div>
@@ -786,7 +787,7 @@ function OperacoesGerenciaisContent() {
                         { key: "cbs",          label: "CBS"          },
                         { key: "ibs_estadual", label: "IBS Estadual" },
                       ].map(({ key, label }) => (
-                        <label key={key} style={{
+                        <label data-arato-label="true" key={key} style={{
                           display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13,
                           padding: "6px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6,
                           background: form.impostos.includes(key) ? "#E8E8E8" : "var(--bg-card)",
@@ -803,7 +804,7 @@ function OperacoesGerenciaisContent() {
 
               {/* ── Financeiro/Custos ── */}
               {abaModal === "financeiro" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 10, textTransform: "uppercase" }}>Financeiro</div>
                     {([
@@ -811,7 +812,7 @@ function OperacoesGerenciaisContent() {
                       { key: "gerar_financeiro_gerencial",  label: "Gerar Financeiro Gerencial"       },
                       { key: "valida_propriedade",          label: "Valida Propriedade no Lançamento" },
                     ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-                      <label key={key} style={chkRow(!!form[key])}>
+                      <label data-arato-label="true" key={key} style={chkRow(!!form[key])}>
                         <input type="checkbox" checked={!!form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))} />
                         {label}
                       </label>
@@ -822,7 +823,7 @@ function OperacoesGerenciaisContent() {
                       { key: "custo_abc",               label: "Custo ABC"                  },
                       { key: "atualizar_custo_estoque", label: "Atualizar Custo do Estoque" },
                     ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-                      <label key={key} style={chkRow(!!form[key])}>
+                      <label data-arato-label="true" key={key} style={chkRow(!!form[key])}>
                         <input type="checkbox" checked={!!form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))} />
                         {label}
                       </label>
@@ -834,7 +835,7 @@ function OperacoesGerenciaisContent() {
                       { key: "manutencao_reparos", label: "Manutenção e Reparos" },
                       { key: "gerar_depreciacao",  label: "Gerar Depreciação"    },
                     ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-                      <label key={key} style={chkRow(!!form[key])}>
+                      <label data-arato-label="true" key={key} style={chkRow(!!form[key])}>
                         <input type="checkbox" checked={!!form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))} />
                         {label}
                       </label>
@@ -856,7 +857,7 @@ function OperacoesGerenciaisContent() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                     <div>
-                      <label style={lbl}>Conta Contábil — Débito</label>
+                      <label data-arato-label="true" style={lbl}>Conta Contábil — Débito</label>
                       <SelectConta
                         value={form.conta_debito}
                         onChange={v => setForm(p => ({ ...p, conta_debito: v }))}
@@ -865,7 +866,7 @@ function OperacoesGerenciaisContent() {
                       <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Conta que será debitada no razão contábil</div>
                     </div>
                     <div>
-                      <label style={lbl}>Conta Contábil — Crédito</label>
+                      <label data-arato-label="true" style={lbl}>Conta Contábil — Crédito</label>
                       <SelectConta
                         value={form.conta_credito}
                         onChange={v => setForm(p => ({ ...p, conta_credito: v }))}
@@ -875,18 +876,18 @@ function OperacoesGerenciaisContent() {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Tipo de Fórmula</label>
-                      <select style={inp} value={form.tipo_formula} onChange={e => setForm(p => ({ ...p, tipo_formula: e.target.value as typeof form.tipo_formula }))}>
+                      <label data-arato-label="true" style={lbl}>Tipo de Fórmula</label>
+                      <SelectField style={inp} value={form.tipo_formula} onChange={e => setForm(p => ({ ...p, tipo_formula: e.target.value as typeof form.tipo_formula }))}>
                         <option value="">— Nenhuma —</option>
                         <option value="baixas">Baixas</option>
                         <option value="tesouraria">Tesouraria</option>
                         <option value="adiantamentos">Adiantamentos</option>
-                      </select>
+                      </SelectField>
                     </div>
                     <div>
-                      <label style={lbl}>Modelo Contábil</label>
+                      <label data-arato-label="true" style={lbl}>Modelo Contábil</label>
                       <input style={inp} value={form.modelo_contabil} onChange={e => setForm(p => ({ ...p, modelo_contabil: e.target.value }))} placeholder="Código do modelo de lançamento contábil" />
                     </div>
                   </div>
@@ -934,9 +935,9 @@ function OperacoesGerenciaisContent() {
             {erro && (
               <div style={{ padding: "8px 20px", background: "#FCEBEB", borderTop: "0.5px solid #F5C2C2", fontSize: 12, color: "#791F1F", flexShrink: 0 }}>{erro}</div>
             )}
-            <div style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
-              <button onClick={() => setModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
+              <button data-arato-button="secondary" onClick={() => setModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando…" : editOp ? "Salvar Alterações" : "Criar Operação"}
               </button>
             </div>

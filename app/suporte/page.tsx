@@ -174,7 +174,7 @@ export default function SuportePage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
 
@@ -185,11 +185,11 @@ export default function SuportePage() {
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span>⚠️ {erroGeral}</span>
-            <button onClick={() => setErroGeral(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#c0392b", fontSize: 16, padding: "0 4px" }}>×</button>
+            <button data-arato-button="icon" onClick={() => setErroGeral(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#c0392b", fontSize: 16, padding: "0 4px" }}>×</button>
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, height: "calc(100vh - 140px)" }}>
+        <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, height: "calc(100vh - 140px)" }}>
 
           {/* Sidebar de conversas */}
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -199,7 +199,7 @@ export default function SuportePage() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#111111" }}>Suporte Chat</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Olívia · Assistente Virtual</div>
               </div>
-              <button
+              <button data-arato-button="primary"
                 onClick={novaConversa}
                 style={{
                   background: "#111111", color: "#fff", border: "none", borderRadius: 7,
@@ -245,7 +245,7 @@ export default function SuportePage() {
                           {conv.updated_at ? new Date(conv.updated_at).toLocaleDateString("pt-BR") : ""}
                         </div>
                       </div>
-                      <button
+                      <button data-arato-button="icon"
                         onClick={(e) => deletarConversa(conv.id, e)}
                         style={{
                           background: "none", border: "none", color: "#ccc", cursor: "pointer",
@@ -298,7 +298,7 @@ export default function SuportePage() {
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                         {SUGESTOES.map(s => (
-                          <button
+                          <button data-arato-button="secondary"
                             key={s}
                             onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 50); }}
                             style={{
@@ -394,7 +394,7 @@ export default function SuportePage() {
                       t.style.height = Math.min(t.scrollHeight, 120) + "px";
                     }}
                   />
-                  <button
+                  <button data-arato-button="toggle"
                     onClick={enviarMensagem}
                     disabled={!input.trim() || enviando}
                     style={{
@@ -410,7 +410,7 @@ export default function SuportePage() {
               </>
             ) : (
               /* Estado vazio — sem conversa selecionada */
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
+              <div data-arato-statistic="action" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
                 <img src="/suporte-avatar.jpg" alt="Assistente" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", objectPosition: "top center", marginBottom: 16 }} />
                 <div style={{ fontSize: 20, fontWeight: 700, color: "#111111", marginBottom: 4 }}>Olívia</div>
                 <div style={{ fontSize: 12, color: "#16A34A", marginBottom: 12, fontWeight: 500 }}>● Online</div>
@@ -418,7 +418,7 @@ export default function SuportePage() {
                   Tire dúvidas sobre o Arato, regras fiscais do agronegócio e melhores práticas do campo.
                   Selecione uma conversa ou crie uma nova.
                 </div>
-                <button
+                <button data-arato-button="primary"
                   onClick={novaConversa}
                   style={{
                     background: "#111111", color: "#fff", border: "none", borderRadius: 10,

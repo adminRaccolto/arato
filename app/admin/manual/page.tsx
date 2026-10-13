@@ -6,7 +6,7 @@ import { Suspense } from "react";
 function Secao({ n, titulo, children }: { n: string; titulo: string; children: React.ReactNode }) {
   return (
     <div className="section" style={{ marginBottom: 44 }}>
-      <h2 style={{ fontSize: 17, fontWeight: 800, color: "#111111", borderBottom: "2px solid #111111", paddingBottom: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+      <h2 data-arato-h2="true" style={{ fontSize: 17, fontWeight: 800, color: "#111111", borderBottom: "2px solid #111111", paddingBottom: 10, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ background: "#111111", color: "#fff", borderRadius: 6, padding: "2px 10px", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{n}</span>
         {titulo}
       </h2>
@@ -18,7 +18,7 @@ function Secao({ n, titulo, children }: { n: string; titulo: string; children: R
 function SubSecao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D", borderBottom: "0.5px solid #E8E8E8", paddingBottom: 6, marginBottom: 14 }}>{titulo}</h3>
+      <h3 data-arato-h3="true" style={{ fontSize: 14, fontWeight: 700, color: "#0D0D0D", borderBottom: "0.5px solid #E8E8E8", paddingBottom: 6, marginBottom: 14 }}>{titulo}</h3>
       {children}
     </div>
   );
@@ -77,7 +77,7 @@ function Sucesso({ children }: { children: React.ReactNode }) {
 
 function Tabela({ colunas, linhas }: { colunas: string[]; linhas: string[][] }) {
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, marginBottom: 16 }}>
+    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, marginBottom: 16 }}>
       <thead>
         <tr style={{ background: "var(--bg-page)" }}>
           {colunas.map(c => (
@@ -110,7 +110,7 @@ function ManualContent() {
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Manual do Proprietário — Arato SaaS</span>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 12 }}>Versão 2.0 · Abril 2026 · Uso interno Raccolto</span>
         </div>
-        <button
+        <button data-arato-button="primary"
           onClick={() => window.print()}
           style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
@@ -135,7 +135,7 @@ function ManualContent() {
         {/* ── Capa ── */}
         <div style={{ textAlign: "center", padding: "32px 0 44px", borderBottom: "2px solid #111111", marginBottom: 44 }}>
           <div style={{ fontSize: 11, color: "var(--text-3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Raccolto Consultoria · Documento Interno</div>
-          <h1 style={{ fontSize: 30, fontWeight: 900, color: "#111111", margin: "0 0 6px" }}>Arato SaaS</h1>
+          <h1 data-arato-h1="true" style={{ fontSize: 30, fontWeight: 900, color: "#111111", margin: "0 0 6px" }}>Arato SaaS</h1>
           <div style={{ fontSize: 16, color: "var(--text-2)", marginBottom: 28 }}>Manual Completo do Proprietário do Sistema</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
             {["Versão 2.0", "Abril 2026", "Uso interno"].map(t => (
@@ -146,7 +146,7 @@ function ManualContent() {
 
         {/* ── Índice ── */}
         <div className="section" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: "#111111", marginBottom: 16 }}>Índice</h2>
+          <h2 data-arato-h2="true" style={{ fontSize: 16, fontWeight: 800, color: "#111111", marginBottom: 16 }}>Índice</h2>
           {[
             ["1",  "Visão Geral — Como o SaaS Funciona"],
             ["2",  "Adicionando um Novo Cliente (Checklist Completo)"],

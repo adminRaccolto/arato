@@ -140,7 +140,7 @@ export default function OnboardingAdminPage() {
           <div style={{ fontSize: 11, color: "var(--text-3, #888)" }}>Onboarding autônomo de novos clientes via WhatsApp</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
+          <button data-arato-button="secondary"
             onClick={carregar}
             style={{ background: "var(--bg-page, #F4F6FA)", border: "0.5px solid var(--border, #DDE2EE)", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", color: "var(--text-2, #555)" }}
           >
@@ -149,14 +149,14 @@ export default function OnboardingAdminPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 380px", gap: 0, height: "calc(100vh - 65px)" }}>
+      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "300px 1fr 380px", gap: 0, height: "calc(100vh - 65px)" }}>
 
         {/* ── Coluna 1: Lista de sessões ── */}
         <div style={{ background: "var(--bg-card, #fff)", borderRight: "0.5px solid var(--border, #DDE2EE)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Filtros */}
           <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--border, #DDE2EE)", display: "flex", gap: 4 }}>
             {(["todos", "ativos", "concluidos"] as const).map(f => (
-              <button
+              <button data-arato-button="toggle"
                 key={f}
                 onClick={() => setFiltro(f)}
                 style={{
@@ -197,7 +197,7 @@ export default function OnboardingAdminPage() {
                       <div style={{ fontWeight: 600, fontSize: 12, color: ativa ? "#111111" : "var(--text-1, #1a1a1a)" }}>
                         {(s.dados_coletados.fazenda as Record<string, string> | undefined)?.nome ?? s.telefone}
                       </div>
-                      <button
+                      <button data-arato-button="icon"
                         onClick={e => { e.stopPropagation(); excluirSessao(s.id); }}
                         style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 14, padding: "0 2px", visibility: ativa ? "visible" : "hidden" }}
                       >
@@ -230,7 +230,7 @@ export default function OnboardingAdminPage() {
         </div>
 
         {/* ── Coluna 2: Histórico da sessão selecionada ── */}
-        <div style={{ background: "var(--bg-page, #F4F6FA)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div data-arato-statistic="display" style={{ background: "var(--bg-page, #F4F6FA)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {selected ? (
             <>
               {/* Header da sessão */}
@@ -317,7 +317,7 @@ export default function OnboardingAdminPage() {
               <div style={{ fontWeight: 600, fontSize: 13, color: "#111111" }}>🧪 Modo Teste</div>
               <div style={{ fontSize: 10, color: "var(--text-3, #888)" }}>Simula uma conversa WhatsApp</div>
             </div>
-            <button
+            <button data-arato-button="secondary"
               onClick={novoTeste}
               style={{ background: "var(--bg-page, #F4F6FA)", border: "0.5px solid var(--border, #DDE2EE)", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "var(--text-2, #555)" }}
             >
@@ -327,7 +327,7 @@ export default function OnboardingAdminPage() {
 
           {/* Config do teste */}
           <div style={{ padding: "8px 14px", borderBottom: "0.5px solid var(--border, #DDE2EE)", background: "var(--bg-page, #F4F6FA)" }}>
-            <label style={{ fontSize: 10, color: "var(--text-3, #888)", display: "block", marginBottom: 3 }}>ID da sessão de teste</label>
+            <label data-arato-label="true" style={{ fontSize: 10, color: "var(--text-3, #888)", display: "block", marginBottom: 3 }}>ID da sessão de teste</label>
             <input
               value={testPhone}
               onChange={e => setTestPhone(e.target.value)}
@@ -336,7 +336,7 @@ export default function OnboardingAdminPage() {
           </div>
 
           {/* Mensagens do teste */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div data-arato-statistic="display" style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
             {testMessages.length === 0 ? (
               <div style={{ textAlign: "center", marginTop: 40, color: "var(--text-3, #888)" }}>
                 <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>
@@ -393,7 +393,7 @@ export default function OnboardingAdminPage() {
                 fontSize: 12, outline: "none", background: testSending ? "var(--bg-page, #F4F6FA)" : "var(--bg-card, #fff)",
               }}
             />
-            <button
+            <button data-arato-button="toggle"
               onClick={enviarTeste}
               disabled={!testInput.trim() || testSending}
               style={{

@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
 import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -223,22 +224,22 @@ export default function MutuoPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
+    <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Mútuo entre Empresas</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Mútuo entre Empresas</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Contratos de empréstimo entre empresas do grupo ou partes relacionadas</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
+              <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              </SelectField>
             )}
-            <button onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
+            <button data-arato-button="primary" onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
           </div>
         </div>
 
@@ -250,7 +251,7 @@ export default function MutuoPage() {
             { label: "Contratos Ativos", value: String(ativos.length), sub: "contratos", color: "#0D0D0D" },
             { label: "Em Atraso",        value: String(emAtraso),  sub: "contratos", color: emAtraso > 0 ? "#E24B4A" : "#666" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
+            <div data-arato-statistic="display" key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -301,17 +302,17 @@ export default function MutuoPage() {
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                       <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span>
                       {m.status === "ativo" && <>
-                        <button onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", conta_pagamento: m.conta_minha ?? "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Pagar</button>
-                        <button onClick={e => { e.stopPropagation(); quitarMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Quitar</button>
+                        <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", conta_pagamento: m.conta_minha ?? "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Pagar</button>
+                        <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); quitarMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Quitar</button>
                       </>}
-                      <button onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
+                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
                     </div>
                   </div>
                   {exp && (
                     <div style={{ borderTop: "0.5px solid var(--bg-tag)", padding: "12px 18px", background: "var(--bg-card)" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Histórico de Pagamentos</div>
                       {pagsMutuo.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum pagamento registrado.</div> : (
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "var(--bg-tag)" }}>
                             {["Data", "Principal", "Juros", "Total", "Conta", "Obs."].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." || h === "Conta" ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}
                           </tr></thead>
@@ -338,24 +339,24 @@ export default function MutuoPage() {
 
       {/* ═══════════ MODAL MÚTUO ═══════════ */}
       {modalMutuo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
-              <button onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
+              <button data-arato-button="icon" onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
               {mErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{mErr}</div>}
 
               {/* Tipo */}
-              <div>
-                <label style={lbl}>Tipo</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Tipo</label>
                 <div style={{ display: "flex", gap: 10 }}>
                   {([
                     { v: "concessao", label: "Concessão (a receber)", desc: "Sua empresa emprestou", contaLabel: "Conta Saída (dinheiro sai)" },
                     { v: "captacao",  label: "Captação (a pagar)",    desc: "Outra empresa emprestou", contaLabel: "Conta Entrada (dinheiro entra)" },
                   ] as { v: TipoMutuo; label: string; desc: string; contaLabel: string }[]).map(opt => (
-                    <button key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#111111" : "var(--border-table)"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                    <button data-arato-button="toggle" key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#111111" : "var(--border-table)"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{opt.label}</div>
                       <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{opt.desc}</div>
                     </button>
@@ -364,36 +365,36 @@ export default function MutuoPage() {
               </div>
 
               {/* Contraparte + Conta */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Contraparte (empresa ou pessoa)</label>
+                  <label data-arato-label="true" style={lbl}>Contraparte (empresa ou pessoa)</label>
                   <input value={mForm.contraparte} onChange={e => setMForm(f => ({ ...f, contraparte: e.target.value }))} style={inp} placeholder="Nome da empresa ou pessoa" />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>{mForm.tipo === "concessao" ? "Conta Saída — dinheiro sai desta conta ao emprestar" : "Conta Entrada — dinheiro entra nesta conta ao receber"}</label>
-                  <select value={mForm.conta_minha} onChange={e => setMForm(f => ({ ...f, conta_minha: e.target.value }))} style={inp}>
+                  <label data-arato-label="true" style={lbl}>{mForm.tipo === "concessao" ? "Conta Saída — dinheiro sai desta conta ao emprestar" : "Conta Entrada — dinheiro entra nesta conta ao receber"}</label>
+                  <SelectField value={mForm.conta_minha} onChange={e => setMForm(f => ({ ...f, conta_minha: e.target.value }))} style={inp}>
                     <option value="">— não informado —</option>
                     {contaOpts}
-                  </select>
+                  </SelectField>
                 </div>
                 <div>
-                  <label style={lbl}>Valor Principal (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Valor Principal (R$)</label>
                   <InputMonetario value={mForm.valor_principal} onChange={v => setMForm(f => ({ ...f, valor_principal: String(v) }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Taxa de Juros (% ao mês)</label>
+                  <label data-arato-label="true" style={lbl}>Taxa de Juros (% ao mês)</label>
                   <InputMonetario value={mForm.taxa_juros_mensal} onChange={v => setMForm(f => ({ ...f, taxa_juros_mensal: String(v) }))} style={inp} placeholder="0,00" />
                 </div>
                 <div>
-                  <label style={lbl}>Data de Início</label>
+                  <label data-arato-label="true" style={lbl}>Data de Início</label>
                   <InputData type="date" value={mForm.data_inicio} onChange={e => setMForm(f => ({ ...f, data_inicio: e.target.value }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Data de Vencimento</label>
+                  <label data-arato-label="true" style={lbl}>Data de Vencimento</label>
                   <InputData type="date" value={mForm.data_vencimento} onChange={e => setMForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Observação</label>
+                  <label data-arato-label="true" style={lbl}>Observação</label>
                   <textarea value={mForm.observacao} onChange={e => setMForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                 </div>
               </div>
@@ -404,9 +405,9 @@ export default function MutuoPage() {
                 </div>
               )}
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalMutuo(false)}>Cancelar</button>
-              <button onClick={salvarMutuo} disabled={mSaving} style={{ ...btnV, background: mSaving ? "var(--text-muted)" : "#111111", cursor: mSaving ? "default" : "pointer" }}>{mSaving ? "Salvando…" : "Salvar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalMutuo(false)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={salvarMutuo} disabled={mSaving} style={{ ...btnV, background: mSaving ? "var(--text-muted)" : "#111111", cursor: mSaving ? "default" : "pointer" }}>{mSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -414,35 +415,35 @@ export default function MutuoPage() {
 
       {/* ═══════════ MODAL PAGAMENTO ═══════════ */}
       {modalPag && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar {modalPag.tipo === "concessao" ? "Recebimento" : "Pagamento"}</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalPag.contraparte} · saldo {fmtBRL(modalPag.saldo_devedor)}</div>
+        <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div data-arato-dialog-body="true">
+                <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar {modalPag.tipo === "concessao" ? "Recebimento" : "Pagamento"}</div>
+                <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalPag.contraparte} · saldo {fmtBRL(modalPag.saldo_devedor)}</div>
               </div>
-              <button onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <button data-arato-button="icon" onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {pagErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{pagErr}</div>}
-              <div>
-                <label style={lbl}>Data</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Data</label>
                 <InputData type="date" value={pagForm.data_pagamento} onChange={e => setPagForm(f => ({ ...f, data_pagamento: e.target.value }))} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>{modalPag.tipo === "concessao" ? "Conta Entrada — onde o dinheiro retorna" : "Conta Saída — de onde o dinheiro sai"}</label>
-                <select value={pagForm.conta_pagamento} onChange={e => setPagForm(f => ({ ...f, conta_pagamento: e.target.value }))} style={inp}>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>{modalPag.tipo === "concessao" ? "Conta Entrada — onde o dinheiro retorna" : "Conta Saída — de onde o dinheiro sai"}</label>
+                <SelectField value={pagForm.conta_pagamento} onChange={e => setPagForm(f => ({ ...f, conta_pagamento: e.target.value }))} style={inp}>
                   <option value="">— não informado —</option>
                   {contaOpts}
-                </select>
+                </SelectField>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={lbl}>Valor Principal (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Valor Principal (R$)</label>
                   <InputMonetario value={pagForm.valor_principal} onChange={v => setPagForm(f => ({ ...f, valor_principal: String(v) }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Juros (R$)</label>
+                  <label data-arato-label="true" style={lbl}>Juros (R$)</label>
                   <InputMonetario value={pagForm.valor_juros} onChange={v => setPagForm(f => ({ ...f, valor_juros: String(v) }))} style={inp} />
                 </div>
               </div>
@@ -452,14 +453,14 @@ export default function MutuoPage() {
                   {parseFloat(pagForm.valor_juros) > 0 && <span style={{ fontSize: 11, color: "#666", marginLeft: 8 }}>({parseFloat(pagForm.valor_juros) > 0 ? "juros lançados como " + (modalPag.tipo === "concessao" ? "Receita" : "Despesa") + " Financeira" : ""})</span>}
                 </div>
               )}
-              <div>
-                <label style={lbl}>Observação</label>
+              <div data-arato-dialog-body="true">
+                <label data-arato-label="true" style={lbl}>Observação</label>
                 <input value={pagForm.observacao} onChange={e => setPagForm(f => ({ ...f, observacao: e.target.value }))} style={inp} />
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={btnR} onClick={() => setModalPag(null)}>Cancelar</button>
-              <button onClick={registrarPagamento} disabled={pagSaving} style={{ ...btnV, background: pagSaving ? "var(--text-muted)" : "#111111", cursor: pagSaving ? "default" : "pointer" }}>{pagSaving ? "Registrando…" : "Registrar"}</button>
+            <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button data-arato-button="secondary" style={btnR} onClick={() => setModalPag(null)}>Cancelar</button>
+              <button data-arato-button="toggle" onClick={registrarPagamento} disabled={pagSaving} style={{ ...btnV, background: pagSaving ? "var(--text-muted)" : "#111111", cursor: pagSaving ? "default" : "pointer" }}>{pagSaving ? "Registrando…" : "Registrar"}</button>
             </div>
           </div>
         </div>

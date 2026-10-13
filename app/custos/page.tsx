@@ -1,4 +1,5 @@
 "use client";
+import SelectField from "../../components/SelectField";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
@@ -133,8 +134,8 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
     <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "12px 22px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "end" }}>
         <div>
-          <label style={lbl}>Ano Safra</label>
-          <select value={descricaoSelecionada} onChange={e => {
+          <label data-arato-label="true" style={lbl}>Ano Safra</label>
+          <SelectField value={descricaoSelecionada} onChange={e => {
             const novaDescricao = e.target.value;
             const idsDoGrupo = novaDescricao ? (idsPorDescricao.get(novaDescricao) ?? []) : [];
             // Mantém o formato de estado (um id só) — qualquer id do grupo serve
@@ -145,11 +146,11 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
           }} style={inp}>
             <option value="">Todos</option>
             {anosSafraUnicos.map(a => <option key={a.descricao} value={a.descricao}>{a.descricao}</option>)}
-          </select>
+          </SelectField>
         </div>
         <div ref={dropdownRef} style={{ position: "relative" }}>
-          <label style={lbl}>Ciclos</label>
-          <button onClick={() => setDropdownAberto(v => !v)} style={{
+          <label data-arato-label="true" style={lbl}>Ciclos</label>
+          <button data-arato-button="secondary" onClick={() => setDropdownAberto(v => !v)} style={{
             ...inp, display: "flex", justifyContent: "space-between", alignItems: "center",
             cursor: "pointer", textAlign: "left", background: "var(--bg-card)",
           }}>
@@ -174,17 +175,17 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                   placeholder="Buscar por fazenda ou ciclo…"
                   style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 12 }}
                 />
-                <button onClick={() => setCicloIds(ciclosFiltrados.map(c => c.id))}
+                <button data-arato-button="secondary" onClick={() => setCicloIds(ciclosFiltrados.map(c => c.id))}
                   style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
                   Todos
                 </button>
-                <button onClick={() => setCicloIds([])}
+                <button data-arato-button="secondary" onClick={() => setCicloIds([])}
                   style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
                   Limpar
                 </button>
               </div>
               <div style={{ overflowY: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ position: "sticky", top: 0, background: "var(--bg-page)" }}>
                       <th style={{ width: 32 }} />
@@ -447,19 +448,19 @@ function CustosInner() {
   // ═══════════════════════════════════════════════════════════
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Custos</div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
+            <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
               {aba === "dre" ? "DRE Agrícola" : aba === "custoha" ? "Custo / ha" : aba === "produtividade" ? "Produtividade" : "Custos Totais"}
             </h1>
           </div>
-          <button onClick={() => window.print()} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button data-arato-button="primary" onClick={() => window.print()} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Exportar PDF
           </button>
         </header>
@@ -522,7 +523,7 @@ function CustosInner() {
                     </div>
                   </div>
 
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Conta", "Total (R$)", "R$/ha", "R$/sc", "% Receita"].map((h, i) => (
@@ -667,7 +668,7 @@ function CustosInner() {
 
               {/* ══════════ ABA: Custo/ha ══════════ */}
               {aba === "custoha" && !dreLoading && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                     {[
                       { label: "Custo insumos/ha",   v: areaHa > 0 ? fmtBRL(cpvTotal / areaHa) : "—",       cor: "#E24B4A" },
@@ -675,7 +676,7 @@ function CustosInner() {
                       { label: "Custo total/ha",     v: areaHa > 0 ? fmtBRL(custoTotal / areaHa) : "—",     cor: "var(--text-1)" },
                       { label: "Receita/ha",         v: areaHa > 0 ? fmtBRL(receitaBRL / areaHa) : "—",     cor: "#111111" },
                     ].map((k, i) => (
-                      <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
+                      <div data-arato-statistic="display" key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 5 }}>{k.label}</div>
                         <div style={{ fontSize: 18, fontWeight: 600, color: k.cor }}>{k.v}</div>
                       </div>
@@ -818,7 +819,7 @@ function CustosInner() {
 
               {/* ══════════ ABA: Custos Totais ══════════ */}
               {aba === "custostotais" && !dreLoading && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {/* KPIs custos totais */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                     {[
@@ -827,7 +828,7 @@ function CustosInner() {
                       { label: "Overhead Rateado",     v: fmtBRL(despIndirTotal + overheadSemRateio), cor: "#7C3AED" },
                       { label: "Custo Total",          v: fmtBRL(custoTotal),  cor: "var(--text-1)" },
                     ].map((k, i) => (
-                      <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
+                      <div data-arato-statistic="display" key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                         <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.v}</div>
                         {areaHa > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{fmtBRL(parseFloat(k.v.replace(/[^0-9,-]/g, "").replace(",", ".")) / areaHa)}/ha</div>}

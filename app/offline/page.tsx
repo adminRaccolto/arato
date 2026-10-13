@@ -82,7 +82,7 @@ export default function OfflinePage() {
         <div className="card">
           <div className="logo">Arato</div>
           <div className="icon">📡</div>
-          <h1>Sem conexão</h1>
+          <h1 data-arato-h1="true">Sem conexão</h1>
           <p>
             Você está sem internet no momento.<br />
             Verifique o sinal e tente novamente.

@@ -1,0 +1,2106 @@
+[
+  {
+    "file": "app/[modulo]/page.tsx",
+    "roles": {
+      "page": 2,
+      "statistic": 4,
+      "page-heading": 1,
+      "h1": 1
+    }
+  },
+  {
+    "file": "app/admin/campo/page.tsx",
+    "roles": {
+      "h1": 1,
+      "panel": 1,
+      "label": 1,
+      "grid": 1,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/admin/clientes/novo/page.tsx",
+    "roles": {
+      "statistic": 1,
+      "button": 2,
+      "page-heading": 1,
+      "h1": 1,
+      "fields": 4,
+      "panel": 3,
+      "label": 15
+    }
+  },
+  {
+    "file": "app/admin/clientes/page.tsx",
+    "roles": {
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 13,
+      "dialog-heading": 2,
+      "button": 23,
+      "fields": 2,
+      "label": 11,
+      "dialog-actions": 1,
+      "statistic": 2,
+      "page-heading": 1,
+      "h1": 1,
+      "filters": 1,
+      "panel": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/admin/cp-produtor/page.tsx",
+    "roles": {
+      "filters": 1,
+      "button": 6,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/admin/dados/page.tsx",
+    "roles": {
+      "statistic": 1,
+      "h1": 1,
+      "button": 9,
+      "panel": 5,
+      "item-grid": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/admin/faturamento/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 1,
+      "button": 10,
+      "label": 5,
+      "fields": 1,
+      "dialog-actions": 1,
+      "statistic": 4,
+      "filters": 2,
+      "panel": 2,
+      "grid": 3,
+      "h1": 1
+    }
+  },
+  {
+    "file": "app/admin/identidade/page.tsx",
+    "roles": {
+      "h1": 1,
+      "panel": 4,
+      "h2": 4,
+      "button": 6,
+      "item-grid": 2,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/admin/layout.tsx",
+    "roles": {
+      "button": 1
+    }
+  },
+  {
+    "file": "app/admin/logs/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 6,
+      "statistic": 2,
+      "filters": 1,
+      "panel": 1,
+      "label": 6,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 6,
+      "dialog-heading": 1
+    }
+  },
+  {
+    "file": "app/admin/manual/page.tsx",
+    "roles": {
+      "h2": 2,
+      "h3": 1,
+      "grid": 1,
+      "button": 1,
+      "h1": 1
+    }
+  },
+  {
+    "file": "app/admin/modulos/page.tsx",
+    "roles": {
+      "h1": 1,
+      "panel": 1,
+      "fields": 1,
+      "label": 1,
+      "button": 3,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/admin/onboarding/page.tsx",
+    "roles": {
+      "button": 5,
+      "fields": 1,
+      "statistic": 2,
+      "label": 1
+    }
+  },
+  {
+    "file": "app/admin/padroes/page.tsx",
+    "roles": {
+      "button": 14,
+      "filters": 1,
+      "grid": 1,
+      "label": 11,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 1,
+      "fields": 4,
+      "panel": 1,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/admin/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 7,
+      "dialog-heading": 1,
+      "button": 10,
+      "fields": 2,
+      "label": 11,
+      "dialog-actions": 1,
+      "h1": 1,
+      "statistic": 2,
+      "grid": 3,
+      "filters": 1,
+      "panel": 1,
+      "h2": 1
+    }
+  },
+  {
+    "file": "app/admin/parceiros/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 2,
+      "dialog-heading": 2,
+      "h2": 2,
+      "label": 8,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/admin/planos/page.tsx",
+    "roles": {
+      "h1": 1,
+      "statistic": 1,
+      "h2": 2,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/admin/usuarios/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "button": 23,
+      "grid-container": 1,
+      "grid": 2,
+      "page-heading": 1,
+      "h1": 1,
+      "label": 22,
+      "fields": 4,
+      "panel": 1,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/algodao/page.tsx",
+    "roles": {
+      "filters": 2,
+      "page-heading": 1,
+      "h1": 1,
+      "label": 50,
+      "statistic": 9,
+      "button": 24,
+      "grid": 7,
+      "grid-container": 1,
+      "overlay": 6,
+      "dialog": 6,
+      "h2": 6,
+      "fields": 6,
+      "dialog-body": 55,
+      "dialog-actions": 5
+    }
+  },
+  {
+    "file": "app/alterar-senha/page.tsx",
+    "roles": {
+      "panel": 1,
+      "h2": 1,
+      "label": 2,
+      "button": 2
+    }
+  },
+  {
+    "file": "app/atualizacoes/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 2
+    }
+  },
+  {
+    "file": "app/auditoria/classificacao/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 5,
+      "statistic": 2,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/auditoria/safra-ciclo/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 5,
+      "filters": 1,
+      "panel": 1,
+      "label": 2,
+      "grid-container": 2,
+      "grid": 2
+    }
+  },
+  {
+    "file": "app/auth/nova-senha/page.tsx",
+    "roles": {
+      "h2": 1,
+      "label": 2,
+      "button": 1
+    }
+  },
+  {
+    "file": "app/balanca/pesagem-avulsa/page.tsx",
+    "roles": {
+      "panel": 1,
+      "button": 21,
+      "statistic": 5,
+      "page-heading": 1,
+      "h1": 1,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 3,
+      "dialog": 3,
+      "dialog-body": 20,
+      "dialog-heading": 2,
+      "item-grid": 2,
+      "dialog-actions": 3
+    }
+  },
+  {
+    "file": "app/bi/page.tsx",
+    "roles": {
+      "page": 3,
+      "statistic": 11,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 29,
+      "filters": 4,
+      "grid": 24,
+      "panel": 3,
+      "grid-container": 12,
+      "overlay": 4,
+      "dialog": 4,
+      "dialog-body": 40,
+      "dialog-heading": 4,
+      "fields": 3,
+      "label": 5,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/bpo/admin/page.tsx",
+    "roles": {
+      "button": 13,
+      "statistic": 1,
+      "grid": 2,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 2,
+      "dialog-heading": 2,
+      "h2": 2,
+      "fields": 1,
+      "label": 18,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/bpo/seletor-cliente/page.tsx",
+    "roles": {
+      "button": 3,
+      "h1": 1,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/cadastro/page.tsx",
+    "roles": {
+      "h1": 3,
+      "statistic": 3,
+      "button": 5,
+      "item-grid": 4,
+      "label": 1
+    }
+  },
+  {
+    "file": "app/cadastros/page.tsx",
+    "roles": {
+      "overlay": 7,
+      "dialog": 7,
+      "dialog-body": 57,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 288,
+      "grid": 39,
+      "grid-container": 1,
+      "statistic": 6,
+      "dialog-heading": 2,
+      "label": 429,
+      "fields": 79,
+      "dialog-actions": 6,
+      "item-grid": 8,
+      "filters": 11,
+      "panel": 16
+    }
+  },
+  {
+    "file": "app/comercial/faturamento/page.tsx",
+    "roles": {
+      "fields": 9,
+      "label": 54,
+      "panel": 2,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 29,
+      "filters": 1,
+      "grid": 2,
+      "overlay": 1,
+      "statistic": 6,
+      "grid-container": 2
+    }
+  },
+  {
+    "file": "app/comercial/hedge/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "button": 19,
+      "panel": 4,
+      "statistic": 11,
+      "grid": 4,
+      "fields": 5,
+      "label": 30,
+      "filters": 1,
+      "grid-container": 1
+    }
+  },
+  {
+    "file": "app/compras/nf/page.tsx",
+    "roles": {
+      "page": 1,
+      "button": 71,
+      "panel": 13,
+      "filters": 2,
+      "label": 57,
+      "statistic": 1,
+      "grid-container": 1,
+      "grid": 3,
+      "overlay": 9,
+      "dialog": 9,
+      "dialog-body": 57,
+      "dialog-heading": 9,
+      "dialog-actions": 10,
+      "fields": 12,
+      "item-grid": 3
+    }
+  },
+  {
+    "file": "app/compras/nf-servico/page.tsx",
+    "roles": {
+      "page": 1,
+      "button": 27,
+      "panel": 4,
+      "filters": 2,
+      "label": 38,
+      "statistic": 1,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 8,
+      "dialog-heading": 4,
+      "fields": 11,
+      "dialog-actions": 3,
+      "item-grid": 1
+    }
+  },
+  {
+    "file": "app/compras/page.tsx",
+    "roles": {
+      "button": 36,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 1,
+      "filters": 1,
+      "grid": 9,
+      "overlay": 6,
+      "dialog": 6,
+      "dialog-body": 48,
+      "dialog-heading": 6,
+      "grid-container": 1,
+      "panel": 3,
+      "label": 64,
+      "fields": 19,
+      "dialog-actions": 4
+    }
+  },
+  {
+    "file": "app/configuracoes/auditoria/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "statistic": 3,
+      "filters": 1,
+      "panel": 1,
+      "label": 1,
+      "button": 3,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/configuracoes/automacoes/page.tsx",
+    "roles": {
+      "h1": 1,
+      "statistic": 3,
+      "button": 6,
+      "panel": 1,
+      "h2": 2,
+      "fields": 1,
+      "label": 4,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 7,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/configuracoes/backup/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "button": 6,
+      "statistic": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 5,
+      "label": 1,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/configuracoes/bot/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 7,
+      "grid": 2,
+      "panel": 2,
+      "fields": 2,
+      "label": 4
+    }
+  },
+  {
+    "file": "app/configuracoes/classificacao/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 11,
+      "statistic": 2,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 10,
+      "label": 9,
+      "fields": 2,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/configuracoes/contabilidade/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "button": 2,
+      "panel": 4,
+      "fields": 4,
+      "label": 19
+    }
+  },
+  {
+    "file": "app/configuracoes/financeiras/taxas/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 5,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "fields": 1,
+      "label": 4,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/configuracoes/importacao/page.tsx",
+    "roles": {
+      "panel": 5,
+      "grid-container": 1,
+      "grid": 2,
+      "statistic": 2,
+      "h1": 1,
+      "button": 6,
+      "h2": 1,
+      "fields": 1,
+      "label": 5
+    }
+  },
+  {
+    "file": "app/configuracoes/integracoes/page.tsx",
+    "roles": {
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 11,
+      "button": 22,
+      "dialog-heading": 3,
+      "label": 2,
+      "item-grid": 1,
+      "dialog-actions": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 11
+    }
+  },
+  {
+    "file": "app/configuracoes/modulos/page.tsx",
+    "roles": {
+      "label": 19,
+      "h2": 9,
+      "button": 46,
+      "grid-container": 2,
+      "grid": 5,
+      "statistic": 2,
+      "item-grid": 2,
+      "panel": 4,
+      "filters": 1,
+      "page": 1,
+      "h1": 1,
+      "fields": 6,
+      "overlay": 5,
+      "dialog": 5,
+      "dialog-body": 39,
+      "dialog-heading": 5,
+      "h3": 5,
+      "dialog-actions": 5
+    }
+  },
+  {
+    "file": "app/configuracoes/operacoes-gerenciais/page.tsx",
+    "roles": {
+      "page": 1,
+      "button": 12,
+      "statistic": 1,
+      "filters": 1,
+      "label": 24,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 1,
+      "fields": 6,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/configuracoes/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 15,
+      "panel": 1,
+      "fields": 5,
+      "label": 16,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 19,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/configuracoes/plano-contas/page.tsx",
+    "roles": {
+      "page": 1,
+      "button": 17,
+      "filters": 2,
+      "panel": 1,
+      "grid": 2,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 16,
+      "dialog-heading": 2,
+      "fields": 5,
+      "label": 15,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/configuracoes/rateio/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 19,
+      "filters": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 22,
+      "dialog-heading": 4,
+      "fields": 4,
+      "label": 12,
+      "panel": 3,
+      "item-grid": 2,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/configuracoes/usuarios/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "button": 23,
+      "grid-container": 1,
+      "grid": 2,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "fields": 4,
+      "label": 14,
+      "panel": 2
+    }
+  },
+  {
+    "file": "app/contratos/arrendamento/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 1,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 22,
+      "statistic": 4,
+      "grid": 4,
+      "filters": 1,
+      "fields": 2,
+      "label": 34
+    }
+  },
+  {
+    "file": "app/contratos/compra-terra/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 18,
+      "statistic": 3,
+      "grid-container": 2,
+      "grid": 2,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 2,
+      "label": 41,
+      "fields": 15,
+      "panel": 1
+    }
+  },
+  {
+    "file": "app/contratos/compromissos-graos/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 1,
+      "fields": 1,
+      "panel": 1,
+      "label": 5,
+      "statistic": 1,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/contratos/migrar-nf/page.tsx",
+    "roles": {
+      "h1": 1,
+      "fields": 1,
+      "statistic": 1,
+      "button": 8,
+      "label": 2
+    }
+  },
+  {
+    "file": "app/contratos/page.tsx",
+    "roles": {
+      "panel": 11,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 42,
+      "statistic": 1,
+      "filters": 1,
+      "grid": 9,
+      "overlay": 5,
+      "dialog": 5,
+      "dialog-body": 43,
+      "fields": 16,
+      "label": 71,
+      "dialog-heading": 7,
+      "dialog-actions": 3,
+      "h2": 1
+    }
+  },
+  {
+    "file": "app/controller/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 5,
+      "filters": 1,
+      "panel": 1,
+      "label": 1,
+      "statistic": 2
+    }
+  },
+  {
+    "file": "app/custos/page.tsx",
+    "roles": {
+      "label": 2,
+      "button": 4,
+      "grid": 2,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 4
+    }
+  },
+  {
+    "file": "app/empresas/folha/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "button": 25,
+      "filters": 2,
+      "statistic": 4,
+      "label": 20,
+      "grid": 4,
+      "h2": 4,
+      "panel": 1,
+      "grid-container": 1,
+      "fields": 6
+    }
+  },
+  {
+    "file": "app/empresas/pagar/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 12,
+      "statistic": 1,
+      "filters": 1,
+      "label": 17,
+      "grid-container": 1,
+      "grid": 1,
+      "h3": 1,
+      "fields": 2
+    }
+  },
+  {
+    "file": "app/empresas/receber/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 11,
+      "statistic": 1,
+      "filters": 1,
+      "label": 17,
+      "grid-container": 1,
+      "grid": 1,
+      "h3": 1,
+      "fields": 1
+    }
+  },
+  {
+    "file": "app/estoque/abastecimento/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 7,
+      "statistic": 3,
+      "filters": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 13,
+      "dialog-heading": 1,
+      "label": 10,
+      "fields": 1
+    }
+  },
+  {
+    "file": "app/estoque/graos/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "filters": 1,
+      "grid-container": 5,
+      "button": 4,
+      "statistic": 5,
+      "grid": 5,
+      "panel": 1,
+      "fields": 1,
+      "label": 4
+    }
+  },
+  {
+    "file": "app/estoque/kardex/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 4,
+      "panel": 1,
+      "fields": 1,
+      "label": 4,
+      "grid-container": 1,
+      "grid": 1,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/estoque/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 1,
+      "page": 1,
+      "page-heading": 2,
+      "h1": 1,
+      "filters": 3,
+      "grid-container": 19,
+      "button": 41,
+      "grid": 17,
+      "panel": 5,
+      "fields": 9,
+      "label": 59,
+      "statistic": 5
+    }
+  },
+  {
+    "file": "app/estoque/romaneio-entrada/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "button": 13,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 2,
+      "filters": 1,
+      "panel": 5,
+      "grid": 1,
+      "label": 25,
+      "fields": 9
+    }
+  },
+  {
+    "file": "app/estoque/transferencias/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 21,
+      "statistic": 1,
+      "grid-container": 4,
+      "grid": 4,
+      "overlay": 2,
+      "dialog": 2,
+      "h3": 1,
+      "fields": 6,
+      "dialog-body": 28,
+      "panel": 3,
+      "label": 22,
+      "dialog-heading": 2,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/expedicao/page.tsx",
+    "roles": {
+      "label": 2,
+      "page": 1,
+      "h1": 1,
+      "button": 31,
+      "statistic": 2,
+      "grid": 2,
+      "overlay": 5,
+      "h3": 5,
+      "item-grid": 1,
+      "grid-container": 1
+    }
+  },
+  {
+    "file": "app/financeiro/adiantamentos/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "button": 11,
+      "page": 1,
+      "statistic": 1,
+      "filters": 1,
+      "grid": 2,
+      "fields": 2,
+      "label": 16,
+      "panel": 1
+    }
+  },
+  {
+    "file": "app/financeiro/aplicacoes/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 19,
+      "overlay": 4,
+      "dialog": 4,
+      "dialog-body": 35,
+      "dialog-heading": 4,
+      "fields": 5,
+      "label": 28,
+      "panel": 1,
+      "dialog-actions": 4,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/financeiro/apoio/page.tsx",
+    "roles": {
+      "filters": 3,
+      "page-heading": 1,
+      "h1": 1,
+      "label": 16,
+      "button": 21,
+      "statistic": 1,
+      "grid-container": 2,
+      "grid": 2,
+      "overlay": 3,
+      "dialog": 3,
+      "h3": 3,
+      "fields": 2,
+      "dialog-body": 19,
+      "dialog-actions": 3
+    }
+  },
+  {
+    "file": "app/financeiro/cartoes/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 6,
+      "button": 13,
+      "filters": 1,
+      "label": 15,
+      "grid": 3,
+      "fields": 4,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 15,
+      "dialog-heading": 2,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/financeiro/conciliacao/page.tsx",
+    "roles": {
+      "item-grid": 4,
+      "button": 48,
+      "page": 1,
+      "overlay": 4,
+      "dialog": 4,
+      "dialog-body": 32,
+      "label": 21,
+      "dialog-actions": 1,
+      "dialog-heading": 2,
+      "fields": 4,
+      "panel": 2,
+      "statistic": 7,
+      "page-heading": 1,
+      "h1": 1,
+      "grid-container": 7,
+      "grid": 4,
+      "filters": 2
+    }
+  },
+  {
+    "file": "app/financeiro/consorcios/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "statistic": 2,
+      "filters": 1,
+      "panel": 2,
+      "label": 31,
+      "button": 28,
+      "grid": 3,
+      "overlay": 4,
+      "dialog": 4,
+      "dialog-body": 28,
+      "dialog-heading": 5,
+      "fields": 3,
+      "item-grid": 1,
+      "dialog-actions": 3
+    }
+  },
+  {
+    "file": "app/financeiro/contratos/page.tsx",
+    "roles": {
+      "statistic": 6,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 36,
+      "grid-container": 3,
+      "grid": 9,
+      "filters": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 14,
+      "dialog-heading": 2,
+      "panel": 7,
+      "label": 73,
+      "fields": 16,
+      "dialog-actions": 5
+    }
+  },
+  {
+    "file": "app/financeiro/empresas/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 2,
+      "filters": 1,
+      "label": 3,
+      "h2": 1,
+      "statistic": 2,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/financeiro/endividamento/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 7,
+      "filters": 2,
+      "panel": 1,
+      "statistic": 1,
+      "grid-container": 3,
+      "grid": 3,
+      "h2": 1
+    }
+  },
+  {
+    "file": "app/financeiro/folha/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "button": 30,
+      "filters": 1,
+      "label": 21,
+      "statistic": 3,
+      "grid": 4,
+      "h2": 4,
+      "panel": 1,
+      "grid-container": 1,
+      "fields": 6
+    }
+  },
+  {
+    "file": "app/financeiro/pagar/faturas/page.tsx",
+    "roles": {}
+  },
+  {
+    "file": "app/financeiro/pagar/page.tsx",
+    "roles": {
+      "fields": 21,
+      "label": 68,
+      "button": 43,
+      "grid-container": 2,
+      "grid": 2,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "filters": 1,
+      "panel": 4,
+      "statistic": 2,
+      "overlay": 7,
+      "dialog": 7,
+      "dialog-body": 63,
+      "dialog-heading": 7,
+      "h2": 7,
+      "dialog-actions": 5,
+      "item-grid": 1
+    }
+  },
+  {
+    "file": "app/financeiro/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 2,
+      "h1": 1,
+      "button": 40,
+      "label": 38,
+      "statistic": 1,
+      "grid": 5,
+      "grid-container": 2,
+      "overlay": 6,
+      "dialog": 6,
+      "dialog-body": 46,
+      "fields": 7,
+      "dialog-actions": 6,
+      "dialog-heading": 3
+    }
+  },
+  {
+    "file": "app/financeiro/pendencias-nf/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 2,
+      "filters": 1,
+      "panel": 2,
+      "button": 10,
+      "grid": 1,
+      "overlay": 3,
+      "dialog": 3,
+      "dialog-body": 20,
+      "dialog-heading": 1,
+      "fields": 1,
+      "label": 4,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/financeiro/receber/page.tsx",
+    "roles": {
+      "fields": 21,
+      "label": 66,
+      "button": 44,
+      "grid-container": 2,
+      "grid": 2,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "filters": 1,
+      "panel": 2,
+      "statistic": 2,
+      "overlay": 7,
+      "dialog": 7,
+      "dialog-body": 63,
+      "dialog-heading": 7,
+      "h2": 7,
+      "dialog-actions": 5,
+      "item-grid": 1
+    }
+  },
+  {
+    "file": "app/financeiro/relatorios/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 40,
+      "label": 23,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 9,
+      "dialog-heading": 2,
+      "fields": 1,
+      "grid": 8,
+      "filters": 8,
+      "grid-container": 7,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/financeiro/seguros/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "statistic": 1,
+      "button": 21,
+      "grid": 3,
+      "overlay": 3,
+      "dialog": 3,
+      "dialog-body": 20,
+      "dialog-heading": 3,
+      "fields": 6,
+      "label": 35,
+      "item-grid": 1,
+      "panel": 1,
+      "dialog-actions": 3
+    }
+  },
+  {
+    "file": "app/financeiro/tesouraria/mutuo/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 11,
+      "statistic": 1,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 16,
+      "dialog-heading": 2,
+      "label": 13,
+      "fields": 2,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/financeiro/tesouraria/operacoes/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "grid": 2,
+      "button": 6,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 9,
+      "dialog-heading": 1,
+      "label": 5,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/financeiro/tesouraria/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "statistic": 1,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 14,
+      "dialog-heading": 2,
+      "fields": 7,
+      "label": 35,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/fiscal/documentos/page.tsx",
+    "roles": {
+      "label": 9,
+      "button": 25,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "filters": 2,
+      "panel": 1,
+      "grid-container": 1,
+      "grid": 1,
+      "statistic": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 11,
+      "fields": 1,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/fiscal/esocial/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "statistic": 4,
+      "grid": 3,
+      "label": 4,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 6,
+      "dialog-heading": 1,
+      "fields": 1,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/fiscal/gnre/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "statistic": 2,
+      "filters": 1,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 14,
+      "dialog-heading": 1,
+      "fields": 5,
+      "label": 12,
+      "panel": 1,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/fiscal/manifestacao/page.tsx",
+    "roles": {}
+  },
+  {
+    "file": "app/fiscal/notas-proprias/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 12,
+      "grid": 2,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 1,
+      "dialog-heading": 2,
+      "h2": 1,
+      "label": 15,
+      "fields": 4,
+      "panel": 1,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/fiscal/page.tsx",
+    "roles": {
+      "grid": 3,
+      "button": 54,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 9,
+      "fields": 8,
+      "label": 39,
+      "overlay": 8,
+      "dialog": 8,
+      "dialog-body": 76,
+      "dialog-actions": 7,
+      "grid-container": 1,
+      "panel": 1,
+      "dialog-heading": 2
+    }
+  },
+  {
+    "file": "app/fiscal/pendencias/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "button": 12,
+      "h1": 1,
+      "statistic": 1,
+      "filters": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 1,
+      "label": 3,
+      "panel": 1
+    }
+  },
+  {
+    "file": "app/fiscal/remessas/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 1,
+      "filters": 1,
+      "grid-container": 1,
+      "grid": 1,
+      "button": 5,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 4,
+      "dialog-heading": 1,
+      "label": 2,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/fiscal/sped-contabil/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "panel": 1,
+      "fields": 1,
+      "label": 3,
+      "button": 4,
+      "statistic": 3
+    }
+  },
+  {
+    "file": "app/fiscal/transferencia-maquinas/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 9,
+      "statistic": 1,
+      "filters": 1,
+      "grid": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 19,
+      "dialog-heading": 2,
+      "fields": 1,
+      "label": 13,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/fiscal/triangulacao/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "filters": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 2,
+      "fields": 8,
+      "label": 26
+    }
+  },
+  {
+    "file": "app/ibs/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 1,
+      "button": 1,
+      "fields": 1,
+      "label": 3,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/lavoura/adubacao/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "statistic": 1,
+      "grid": 2,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 27,
+      "fields": 1,
+      "label": 4,
+      "item-grid": 1,
+      "dialog-actions": 2,
+      "dialog-heading": 1
+    }
+  },
+  {
+    "file": "app/lavoura/aerea/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 17,
+      "statistic": 4,
+      "filters": 1,
+      "grid": 2,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 13,
+      "dialog-heading": 2,
+      "label": 29,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/lavoura/colheita/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 24,
+      "statistic": 3,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 4,
+      "dialog": 4,
+      "dialog-body": 22,
+      "dialog-heading": 5,
+      "h2": 4,
+      "fields": 7,
+      "label": 19,
+      "dialog-actions": 3,
+      "panel": 1
+    }
+  },
+  {
+    "file": "app/lavoura/correcao/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 6,
+      "statistic": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 14,
+      "fields": 1,
+      "label": 4,
+      "item-grid": 1,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/lavoura/execucao/page.tsx",
+    "roles": {
+      "button": 5,
+      "panel": 2,
+      "statistic": 4
+    }
+  },
+  {
+    "file": "app/lavoura/layout.tsx",
+    "roles": {
+      "button": 5,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/lavoura/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 1,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 13,
+      "statistic": 3,
+      "grid": 2,
+      "fields": 4,
+      "label": 13
+    }
+  },
+  {
+    "file": "app/lavoura/planejamento/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 1,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 25,
+      "filters": 2,
+      "panel": 1,
+      "label": 28,
+      "statistic": 4,
+      "grid": 2,
+      "fields": 4
+    }
+  },
+  {
+    "file": "app/lavoura/plantio/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 5,
+      "statistic": 1,
+      "grid-container": 1,
+      "grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 23,
+      "fields": 3,
+      "label": 11,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/lavoura/pluviometria/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 6,
+      "statistic": 4,
+      "grid-container": 2,
+      "grid": 3,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 9,
+      "dialog-heading": 1,
+      "fields": 2,
+      "label": 7
+    }
+  },
+  {
+    "file": "app/lavoura/pragas/page.tsx",
+    "roles": {
+      "page-heading": 1,
+      "h1": 1,
+      "button": 12,
+      "statistic": 2,
+      "filters": 1,
+      "grid": 2,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 15,
+      "dialog-heading": 1,
+      "fields": 2,
+      "label": 13
+    }
+  },
+  {
+    "file": "app/lavoura/pulverizacao/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 8,
+      "statistic": 1,
+      "grid-container": 3,
+      "grid": 3,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 28,
+      "dialog-actions": 2,
+      "fields": 3,
+      "label": 11,
+      "dialog-heading": 1
+    }
+  },
+  {
+    "file": "app/lavoura/recomendacoes/page.tsx",
+    "roles": {
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 22,
+      "dialog-heading": 5,
+      "button": 19,
+      "fields": 4,
+      "label": 29,
+      "item-grid": 1,
+      "panel": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 2,
+      "filters": 1
+    }
+  },
+  {
+    "file": "app/lavoura/relatorios/aplicacoes/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 10,
+      "panel": 1,
+      "label": 13,
+      "fields": 2,
+      "filters": 3,
+      "statistic": 2,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/lavoura/tratamento-sementes/page.tsx",
+    "roles": {
+      "item-grid": 2,
+      "button": 25,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 3,
+      "panel": 1,
+      "filters": 1,
+      "grid": 1,
+      "overlay": 4,
+      "dialog": 4,
+      "dialog-body": 38,
+      "dialog-heading": 4,
+      "h2": 4,
+      "fields": 6,
+      "label": 25,
+      "dialog-actions": 4
+    }
+  },
+  {
+    "file": "app/layout.tsx",
+    "roles": {}
+  },
+  {
+    "file": "app/lcdpr/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 17,
+      "panel": 1,
+      "grid-container": 4,
+      "statistic": 6,
+      "grid": 7,
+      "fields": 2,
+      "label": 13,
+      "item-grid": 1,
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-actions": 1
+    }
+  },
+  {
+    "file": "app/learning/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 9,
+      "statistic": 4,
+      "h2": 2,
+      "grid-container": 1
+    }
+  },
+  {
+    "file": "app/login/page.tsx",
+    "roles": {
+      "h2": 1,
+      "label": 2,
+      "button": 4
+    }
+  },
+  {
+    "file": "app/mapa/page.tsx",
+    "roles": {
+      "statistic": 2,
+      "page": 1,
+      "button": 3
+    }
+  },
+  {
+    "file": "app/offline/page.tsx",
+    "roles": {
+      "h1": 1
+    }
+  },
+  {
+    "file": "app/pagamento/page.tsx",
+    "roles": {
+      "statistic": 4,
+      "button": 2
+    }
+  },
+  {
+    "file": "app/page.tsx",
+    "roles": {
+      "page": 1,
+      "filters": 1,
+      "button": 2
+    }
+  },
+  {
+    "file": "app/parcerias/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 4,
+      "dialog-heading": 1,
+      "button": 25,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "statistic": 2,
+      "grid": 3,
+      "h3": 1,
+      "panel": 1,
+      "item-grid": 3
+    }
+  },
+  {
+    "file": "app/pendencias/operacionais/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 9,
+      "statistic": 5,
+      "filters": 1,
+      "overlay": 2,
+      "dialog": 2,
+      "dialog-body": 9,
+      "dialog-heading": 1,
+      "h2": 2,
+      "label": 1,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/planos/page.tsx",
+    "roles": {
+      "h1": 1,
+      "h2": 3,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/propriedades/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 1,
+      "statistic": 4,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/raccotlo/page.tsx",
+    "roles": {
+      "h1": 1,
+      "button": 3
+    }
+  },
+  {
+    "file": "app/relatorios/dre/page.tsx",
+    "roles": {
+      "statistic": 3,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 4,
+      "filters": 1,
+      "panel": 1,
+      "label": 2,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/relatorios/financeiro-classificacao/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 18,
+      "panel": 1,
+      "fields": 1,
+      "label": 10,
+      "grid-container": 2,
+      "grid": 2
+    }
+  },
+  {
+    "file": "app/relatorios/manutencao/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "button": 9,
+      "panel": 1,
+      "fields": 2,
+      "label": 7,
+      "grid-container": 1,
+      "grid": 1
+    }
+  },
+  {
+    "file": "app/relatorios/pedidos-compra/page.tsx",
+    "roles": {
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1
+    }
+  },
+  {
+    "file": "app/relatorios/romaneios/page.tsx",
+    "roles": {
+      "h1": 1,
+      "button": 4,
+      "panel": 1,
+      "fields": 1,
+      "label": 8,
+      "statistic": 2,
+      "grid-container": 3,
+      "grid": 3
+    }
+  },
+  {
+    "file": "app/seletor-cliente/page.tsx",
+    "roles": {
+      "button": 4,
+      "h1": 1
+    }
+  },
+  {
+    "file": "app/suporte/page.tsx",
+    "roles": {
+      "page": 1,
+      "button": 6,
+      "item-grid": 1,
+      "statistic": 1
+    }
+  },
+  {
+    "file": "app/transporte/acerto-frete/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 8,
+      "dialog-heading": 1,
+      "h2": 1,
+      "button": 8,
+      "grid": 2,
+      "panel": 1,
+      "fields": 1,
+      "label": 3,
+      "dialog-actions": 1,
+      "page": 1,
+      "page-heading": 1,
+      "h1": 1,
+      "filters": 1
+    }
+  },
+  {
+    "file": "app/transporte/cadastros/page.tsx",
+    "roles": {
+      "overlay": 1,
+      "dialog": 1,
+      "dialog-body": 2,
+      "dialog-heading": 1,
+      "button": 15,
+      "label": 5,
+      "page-heading": 1,
+      "h1": 1,
+      "grid": 3,
+      "item-grid": 10,
+      "panel": 2,
+      "fields": 1
+    }
+  },
+  {
+    "file": "app/transporte/cte/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "statistic": 1,
+      "button": 30,
+      "filters": 1,
+      "grid": 2,
+      "label": 70,
+      "overlay": 3,
+      "dialog": 3,
+      "dialog-body": 72,
+      "dialog-heading": 5,
+      "fields": 7,
+      "panel": 3,
+      "dialog-actions": 2
+    }
+  },
+  {
+    "file": "app/transporte/mdfe/page.tsx",
+    "roles": {
+      "page": 1,
+      "h1": 1,
+      "statistic": 1,
+      "label": 51,
+      "button": 24,
+      "grid": 1,
+      "overlay": 3,
+      "dialog": 3,
+      "dialog-body": 56,
+      "dialog-heading": 3,
+      "fields": 3,
+      "panel": 2,
+      "dialog-actions": 3
+    }
+  }
+]
