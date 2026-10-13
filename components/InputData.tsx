@@ -61,7 +61,7 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
   }
 
   return (
-    <span className={calendario ? "input-data" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", ...(calendario ? { width: style?.width ?? "100%", maxWidth: style?.maxWidth ?? "100%", containerType: "inline-size" } : {}) }}>
+    <span className={calendario ? "input-data" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", ...(calendario ? { width: style?.width ?? "100%", maxWidth: style?.maxWidth ?? "100%", ...(style?.width || style?.minWidth ? {} : { minWidth: type === "datetime-local" ? 210 : 150 }), containerType: "inline-size" } : {}) }}>
       {calendario && <style>{`@container (max-width: 190px) { .input-data-hoje { display: none; } } @container (max-width: 130px) { .input-data-texto { padding-left: 5px !important; padding-right: 5px !important; font-size: 11px !important; } }`}</style>}
       <input
         ref={ref}

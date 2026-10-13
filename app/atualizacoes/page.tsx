@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-f",
+    data: "13/10/2026",
+    titulo: "Campos de data não encolhem mais em barras de filtro",
+    modulos: ["Geral"],
+    itens: [
+      { tipo: "correcao", texto: "Os campos de data/competência ficavam espremidos (quase invisíveis) quando estavam dentro de uma barra sem largura definida, como na janela da Folha de Pagamento (Competência — de / até). Agora têm largura mínima própria em qualquer tela." },
+    ],
+    onde: "Todas as telas com campo de data",
+  },
+  {
     versao: "2026.10.13-e",
     data: "13/10/2026",
     titulo: "Folha: adiantamento só na aba Adiantamentos",
