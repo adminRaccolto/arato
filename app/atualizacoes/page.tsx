@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-h",
+    data: "13/10/2026",
+    titulo: "Conciliação: extrato e Contas a Pagar/Receber sempre de acordo",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Botão \"Verificar divergências\" na Conciliação: encontra e corrige linhas conciliadas no extrato cujo título está em aberto/sem marca no CP, vínculos com títulos excluídos e títulos marcados como conciliados sem linha de extrato." },
+      { tipo: "correcao", texto: "Reabrir uma baixa (estorno) não soltava a linha do extrato: ela continuava verde com o título em aberto. Agora solta." },
+      { tipo: "melhoria", texto: "Seção 339 (supabase_migrations.sql): gatilhos no banco mantêm a marca de conciliado dos títulos igual ao que o extrato diz, e soltam a linha do extrato quando o título é excluído ou tem a baixa desfeita, em qualquer tela." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.13-g",
     data: "13/10/2026",
     titulo: "Conciliação: erro ao salvar (\"Não foi possível salvar a conciliação\")",

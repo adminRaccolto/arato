@@ -16479,3 +16479,84 @@ ALTER TABLE lancamentos
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 339 — Conciliação: extrato ↔ CP/CR sempre em sincronia (gatilhos no banco)
+-- =============================================================================
+-- Problema recorrente (13/10/2026): linha conciliada no extrato com o título em aberto no CP, e o
+-- inverso (título "conciliado" sem linha de extrato). Causas: gravação em 2-3 lugares sem transação,
+-- reabrir/excluir título sem limpar a linha do extrato. Aqui o BANCO garante a coerência, qualquer
+-- que seja a tela/rota que gravou:
+--   A) mexeu numa linha de extrato_transacoes  → recalcula o flag conciliado dos títulos citados
+--   B) título excluído ou com a baixa desfeita → tira o título da linha do extrato (sem títulos = Pendente)
+-- Para consertar o que já está divergente: Financeiro → Conciliação → botão "Verificar divergências".
+
+CREATE OR REPLACE FUNCTION fn_sync_conciliado_titulos() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE ids uuid[] := '{}'::uuid[];
+BEGIN
+  IF TG_OP IN ('UPDATE','DELETE') THEN
+    ids := ids || COALESCE(OLD.lancamento_ids, '{}'::uuid[]);
+    IF OLD.lancamento_id IS NOT NULL THEN ids := ids || OLD.lancamento_id; END IF;
+  END IF;
+  IF TG_OP IN ('INSERT','UPDATE') THEN
+    ids := ids || COALESCE(NEW.lancamento_ids, '{}'::uuid[]);
+    IF NEW.lancamento_id IS NOT NULL THEN ids := ids || NEW.lancamento_id; END IF;
+  END IF;
+  IF cardinality(ids) > 0 THEN
+    UPDATE lancamentos l SET conciliado = x.c
+      FROM (SELECT i AS id, EXISTS (SELECT 1 FROM extrato_transacoes t
+                                    WHERE t.conciliado AND (t.lancamento_id = i OR i = ANY(COALESCE(t.lancamento_ids, '{}'::uuid[])))) AS c
+              FROM unnest(ids) AS i) x
+     WHERE l.id = x.id AND l.conciliado IS DISTINCT FROM x.c;
+    UPDATE empresa_lancamentos l SET conciliado = x.c
+      FROM (SELECT i AS id, EXISTS (SELECT 1 FROM extrato_transacoes t
+                                    WHERE t.conciliado AND (t.lancamento_id = i OR i = ANY(COALESCE(t.lancamento_ids, '{}'::uuid[])))) AS c
+              FROM unnest(ids) AS i) x
+     WHERE l.id = x.id AND l.conciliado IS DISTINCT FROM x.c;
+  END IF;
+  RETURN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_sync_conciliado_titulos ON extrato_transacoes;
+CREATE TRIGGER trg_sync_conciliado_titulos
+  AFTER INSERT OR UPDATE OR DELETE ON extrato_transacoes
+  FOR EACH ROW EXECUTE FUNCTION fn_sync_conciliado_titulos();
+
+CREATE OR REPLACE FUNCTION fn_desvincular_extrato_titulo() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE r record; resto uuid[];
+BEGIN
+  FOR r IN SELECT id, lancamento_id, lancamento_ids FROM extrato_transacoes
+            WHERE lancamento_id = OLD.id OR OLD.id = ANY(COALESCE(lancamento_ids, '{}'::uuid[]))
+  LOOP
+    resto := array_remove(
+      COALESCE(r.lancamento_ids, CASE WHEN r.lancamento_id IS NOT NULL THEN ARRAY[r.lancamento_id] ELSE '{}'::uuid[] END),
+      OLD.id);
+    IF cardinality(resto) > 0 THEN
+      UPDATE extrato_transacoes SET lancamento_ids = resto, lancamento_id = resto[1], updated_at = now() WHERE id = r.id;
+    ELSE
+      UPDATE extrato_transacoes SET conciliado = false, lancamento_ids = NULL, lancamento_id = NULL,
+             lancamento_desc = NULL, lancamento_valor = NULL, updated_at = now() WHERE id = r.id;
+    END IF;
+  END LOOP;
+  RETURN NULL;
+END $$;
+
+-- título excluído
+DROP TRIGGER IF EXISTS trg_desvincular_extrato_del ON lancamentos;
+CREATE TRIGGER trg_desvincular_extrato_del AFTER DELETE ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_desvincular_extrato_titulo();
+DROP TRIGGER IF EXISTS trg_desvincular_extrato_del ON empresa_lancamentos;
+CREATE TRIGGER trg_desvincular_extrato_del AFTER DELETE ON empresa_lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_desvincular_extrato_titulo();
+
+-- baixa desfeita (baixado/parcial/pago → em aberto/vencido/pendente)
+DROP TRIGGER IF EXISTS trg_desvincular_extrato_reabre ON lancamentos;
+CREATE TRIGGER trg_desvincular_extrato_reabre AFTER UPDATE OF status ON lancamentos
+  FOR EACH ROW WHEN (OLD.status IN ('baixado','parcial') AND NEW.status IN ('em_aberto','vencido','vencendo','previsto'))
+  EXECUTE FUNCTION fn_desvincular_extrato_titulo();
+DROP TRIGGER IF EXISTS trg_desvincular_extrato_reabre ON empresa_lancamentos;
+CREATE TRIGGER trg_desvincular_extrato_reabre AFTER UPDATE OF status ON empresa_lancamentos
+  FOR EACH ROW WHEN (OLD.status = 'pago' AND NEW.status = 'pendente')
+  EXECUTE FUNCTION fn_desvincular_extrato_titulo();
+
+NOTIFY pgrst, 'reload schema';

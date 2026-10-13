@@ -1078,6 +1078,11 @@ export async function reabrirLancamentos(ids: string[]): Promise<void> {
     idsVencidos.length ? supabase.from("lancamentos").update({ ...base, status: "vencido" }).in("id", idsVencidos) : null,
     idsEmAberto.length ? supabase.from("lancamentos").update({ ...base, status: "em_aberto" }).in("id", idsEmAberto) : null,
   ]);
+  // Títulos reabertos saem das linhas de extrato conciliadas (senão extrato verde × CP em aberto)
+  await fetch("/api/financeiro/baixar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ acao: "desvincular_extrato", ids }),
+  }).catch(() => null);
 }
 
 /**

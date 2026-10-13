@@ -1071,6 +1071,41 @@ function ConciliacaoInner() {
     }
   }
 
+  // ── Auditoria: extrato × Contas a Pagar/Receber ───────────────────────────
+  const [auditando, setAuditando] = useState(false);
+  async function auditarDivergencias() {
+    if (!fazendaId) return;
+    setAuditando(true);
+    try {
+      const chamar = async (aplicar: boolean) => {
+        const r = await authFetch("/api/financeiro/conciliacao-reparar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazenda_id: fazendaId, aplicar }),
+        });
+        const j = await r.json().catch(() => null) as { ok?: boolean; error?: string; total?: number; resumo?: Record<string, number> } | null;
+        if (!r.ok || !j?.ok) throw new Error(j?.error ?? `HTTP ${r.status}`);
+        return j;
+      };
+      const rel = await chamar(false);
+      if (!rel.total) { alert("Tudo certo: o extrato e o Contas a Pagar/Receber estão de acordo."); return; }
+      const rs = rel.resumo ?? {};
+      const msg =
+        `Foram encontradas ${rel.total} divergência(s) entre o extrato e o CP/CR:\n\n` +
+        `• Linha do extrato ligada a título que não existe mais: ${rs.vinculosMortos ?? 0}\n` +
+        `• Extrato conciliado, mas o título não está marcado como conciliado: ${rs.tituloSemFlag ?? 0}\n` +
+        `• Extrato conciliado, mas o título está em aberto (baixa não gravada) e o valor bate: ${rs.baixaPendente ?? 0} (será baixado com a data e a conta da linha)\n` +
+        `• Extrato conciliado com título em aberto e valor que não bate: ${rs.linhasVoltamPendente ?? 0} (a linha volta a Pendente)\n` +
+        `• Título marcado como conciliado sem nenhuma linha de extrato: ${rs.tituloComFlagSemLinha ?? 0} (a marca é removida)\n\n` +
+        `Corrigir tudo agora?`;
+      if (!confirm(msg)) return;
+      await chamar(true);
+      alert("Divergências corrigidas.");
+      carregar();
+    } catch (e) {
+      alert("Não foi possível auditar a conciliação: " + (e instanceof Error ? e.message : "erro desconhecido"));
+    } finally { setAuditando(false); }
+  }
+
   // ── Registrar no histórico ─────────────────────────────────────────────────
   async function registrarHistorico(linha: LinhaOFX, acao: "conciliado" | "desvinculado", lancsIds: string[], lancDesc: string) {
     if (!fazendaId || !extrato) return;
@@ -2513,6 +2548,10 @@ function ConciliacaoInner() {
                 {loading ? "Processando..." : "Importar OFX"}
               </button>
               <input ref={inputRef} type="file" accept=".ofx,.OFX" onChange={handleOFX} style={{ display: "none" }} />
+              <button onClick={auditarDivergencias} disabled={auditando} title="Confere se o que está conciliado no extrato bate com o Contas a Pagar/Receber e corrige as diferenças"
+                style={{ padding: "7px 14px", background: "var(--bg-card)", color: "var(--text-1)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                {auditando ? "Verificando..." : "Verificar divergências"}
+              </button>
             </div>
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>Suporta OFX de qualquer banco brasileiro</div>
           </div>
