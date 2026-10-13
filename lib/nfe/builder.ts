@@ -150,6 +150,11 @@ function fmtVal(n: number, casas = 2): string {
 function escXml(s: string): string {
   return String(s ?? "")
     .replace(/[\r\n\t]+/g, " ")
+    // Espaço duplo/triplo no meio do texto — mesma classe de erro do xEnder
+    // acima (SEFAZ 215, cadastro com espaço sobrando), só que no meio em vez
+    // da ponta. Achado 13/out/2026: "SEMENTE SOJA CG 7681   BAG" (nome de
+    // insumo com espaço duplicado no cadastro) rejeitado em xProd.
+    .replace(/ {2,}/g, " ")
     .trim()
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
