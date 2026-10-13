@@ -957,9 +957,9 @@ export default function Arrendamentos() {
         </div>
 
         {/* abas */}
-        <div style={{ display: "flex", marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {ABAS.map(a => (
-            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
               color: aba === a.key ? "#111111" : "#666",

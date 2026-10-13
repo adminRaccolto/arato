@@ -1085,7 +1085,7 @@ export default function LCDPR() {
 
           {/* ── Abas ── */}
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-            <div data-arato-grid-container="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", overflowX: "auto" }}>
+            <div data-arato-tabs="true" data-arato-grid-container="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", overflowX: "auto" }}>
               {([
                 ["livro",         "Livro Caixa"],
                 ["participacoes", "Produtores e Participações"],
@@ -1094,7 +1094,7 @@ export default function LCDPR() {
                 ["importacao",    "Importação"],
                 ["exportacao",    "Exportação"],
               ] as [Aba, string][]).map(([k, lbl]) => (
-                <button data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{
+                <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{
                   padding: "10px 18px", border: "none",
                   background: aba === k ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === k ? "2px solid #1A5C38" : "2px solid transparent",

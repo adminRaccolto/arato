@@ -1030,9 +1030,9 @@ export default function Estoque() {
         </header>
 
         {/* Abas — scroll horizontal no mobile */}
-        <div data-arato-grid-container="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
+        <div data-arato-tabs="true" data-arato-grid-container="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
           {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"], ["duplicados","Possíveis Duplicados"] ] as const).map(([k,l]) => (
-            <button data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+            <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
               {l}
               {k === "duplicados" && gruposDuplicados.length > 0 && (
                 <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", borderRadius: 10, padding: "1px 7px" }}>{gruposDuplicados.length}</span>

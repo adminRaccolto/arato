@@ -504,9 +504,9 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       {/* Abas */}
-      <div style={{ display: "flex", gap: 0, background: "var(--bg-card,#fff)", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+      <div data-arato-tabs="true" style={{ display: "flex", gap: 0, background: "var(--bg-card,#fff)", border: "0.5px solid var(--border-table,#DDE2EE)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
         {ABAS.map(a => (
-          <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: "11px 8px", border: "none", borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 12, fontWeight: aba === a.key ? 700 : 400, color: aba === a.key ? "#111111" : "var(--text-2,#555)", cursor: "pointer" }}>
+          <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{ flex: 1, padding: "11px 8px", border: "none", borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 12, fontWeight: aba === a.key ? 700 : 400, color: aba === a.key ? "#111111" : "var(--text-2,#555)", cursor: "pointer" }}>
             {a.label}
           </button>
         ))}

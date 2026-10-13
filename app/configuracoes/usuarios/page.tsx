@@ -619,12 +619,12 @@ export default function UsuariosPermissoes() {
         )}
 
         {/* Abas */}
-        <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)" }}>
           {([
             { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
             { key: "usuarios", label: `Usuários (${usuarios.length})`        },
           ] as { key: typeof aba; label: string }[]).map(a => (
-            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
               color: aba === a.key ? "var(--text-1)" : "var(--text-2)",

@@ -1565,9 +1565,9 @@ function CtePageInner() {
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: "0.5px solid var(--bg-tag)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: "0.5px solid var(--bg-tag)" }}>
           {([["emitidos", "CT-e Emitidos"], ["recebidos", "CT-e Recebidos da SEFAZ"]] as const).map(([id, lbl]) => (
-            <button data-arato-button="toggle" key={id} onClick={() => setAba(id)} style={{ padding: "8px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === id ? 700 : 400, color: aba === id ? "#1A4870" : "var(--text-2)", borderBottom: aba === id ? "2px solid #1A4870" : "2px solid transparent", marginBottom: -1, borderRadius: 0 }}>
+            <button data-arato-tab-active={aba === (id)} data-arato-tab="true" data-arato-button="toggle" key={id} onClick={() => setAba(id)} style={{ padding: "8px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === id ? 700 : 400, color: aba === id ? "#1A4870" : "var(--text-2)", borderBottom: aba === id ? "2px solid #1A4870" : "2px solid transparent", marginBottom: -1, borderRadius: 0 }}>
               {lbl}
               {id === "recebidos" && recebidos.length > 0 && <span style={{ marginLeft: 6, background: "#1A4870", color: "#fff", borderRadius: 10, fontSize: 10, padding: "1px 6px" }}>{recebidos.length}</span>}
             </button>

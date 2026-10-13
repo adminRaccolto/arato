@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import AppearanceSettings from "./AppearanceSettings";
 import ModernNavigation from "./ModernNavigation";
 import { useLayout } from "./LayoutProvider";
+import { hasClientWorkspace } from "../lib/layout-preferences";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
@@ -17,6 +18,9 @@ interface TopNavProps { automacoesAtivas?: number; global?: boolean }
 
 export default function TopNav({ automacoesAtivas = 5, global = false }: TopNavProps) {
   const { modern } = useLayout();
+  const pathname = usePathname();
+  const { emailUsuario, contaId, fazendaId } = useAuth();
+  if (!hasClientWorkspace(pathname, emailUsuario, contaId, fazendaId)) return null;
   if (modern && !global) return null;
   return <TopNavContent automacoesAtivas={automacoesAtivas} modern={modern} />;
 }

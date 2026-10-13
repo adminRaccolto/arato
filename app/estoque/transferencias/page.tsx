@@ -712,12 +712,12 @@ export default function TransferenciasEstoquePage() {
       </div>
 
       {/* Abas */}
-      <div style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
+      <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
         {([
           { id: "solicitacoes", label: `Solicitações App Campo${solicitacoes.length > 0 ? ` (${solicitacoes.length})` : ""}` },
           { id: "lista",        label: `Transferências (${historico.length})` },
         ] as const).map(t => (
-          <button data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
+          <button data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
             padding: "10px 20px", border: "none", background: "transparent", cursor: "pointer",
             fontSize: 13, fontWeight: aba === t.id ? 700 : 400,
             color: aba === t.id ? "#111111" : "#666",
@@ -803,13 +803,13 @@ export default function TransferenciasEstoquePage() {
         const qtdCanceladas = historico.filter(t => t.status === "cancelada").length;
         return (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "flex", gap: 6, padding: "12px 16px 0" }}>
+          <div data-arato-tabs="true" style={{ display: "flex", gap: 6, padding: "12px 16px 0" }}>
             {([
               { id: "todas",       label: `Todas (${historico.length})` },
               { id: "emitidas",    label: `NFs Emitidas (${qtdEmitidas})` },
               { id: "canceladas",  label: `Canceladas (${qtdCanceladas})` },
             ] as const).map(s => (
-              <button data-arato-button="toggle" key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
+              <button data-arato-tab-active={subAbaLista === (s.id)} data-arato-tab="true" data-arato-button="toggle" key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
                 padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
                 borderColor: subAbaLista === s.id ? "#111111" : "#DDE2EE",
                 background: subAbaLista === s.id ? "#111111" : "transparent",

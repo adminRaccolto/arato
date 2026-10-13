@@ -3332,7 +3332,7 @@ export default function NfCompraPage() {
       ══════════════════════════════════════════════════════ */}
       {wizard && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1140, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div data-arato-nf-form="true" data-arato-drawer-width={etapa === "cabecalho" ? "860" : "1140"} data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1140, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -3541,7 +3541,7 @@ export default function NfCompraPage() {
                     )}
                   </div>
 
-                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div data-arato-nf-fields="identity" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                     <div>
                       <label data-arato-label="true" style={lbl}>Número da NF *</label>
                       <input value={cab.numero} onChange={e => setCab(p=>({...p,numero:e.target.value}))} style={inp} />
@@ -3596,7 +3596,7 @@ export default function NfCompraPage() {
                     </div>
                   )}
 
-                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-nf-fields="issuer" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                         <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Emitente (Fornecedor) *</label>
@@ -3709,7 +3709,7 @@ export default function NfCompraPage() {
                     </div>
                   </div>
 
-                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-nf-fields="dates" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label data-arato-label="true" style={lbl}>CNPJ do Emitente</label>
                       <input
@@ -3744,7 +3744,7 @@ export default function NfCompraPage() {
                     </div>
                   </div>
 
-                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div data-arato-nf-fields="value" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label data-arato-label="true" style={lbl}>Valor Produtos (R$) *</label>
                       <input value={cab.valor_total} onChange={e => setCab(p=>({...p,valor_total:e.target.value}))} placeholder="0,00" style={inp} />
@@ -3761,7 +3761,7 @@ export default function NfCompraPage() {
                       Impostos Adicionados ao Total
                       <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>Deixe em branco se não houver</span>
                     </div>
-                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
+                    <div data-arato-nf-fields="taxes" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
                       {([
                         ["IPI",    "valor_ipi",     "Imp. Produtos Industrializados"],
                         ["ST",     "valor_st",      "Substituição Tributária ICMS"],
@@ -3808,7 +3808,7 @@ export default function NfCompraPage() {
 
                   <div data-arato-panel="true" style={{ background: "var(--bg-page)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>Pagamento e Classificação</div>
-                    <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div data-arato-nf-fields="payment" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div>
                         <label data-arato-label="true" style={lbl}>Forma de Pagamento</label>
                         <SelectField value={cab.forma_pagamento} onChange={e => setCab(p => ({ ...p, forma_pagamento: e.target.value }))} style={inp}>

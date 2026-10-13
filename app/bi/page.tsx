@@ -1187,9 +1187,9 @@ export default function BI() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 2 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 2 }}>
           {ABAS.map(a => (
-            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 16px", border: "none", cursor: "pointer", fontSize: 12,
               fontWeight: aba === a.key ? 700 : 400, borderRadius: "7px 7px 0 0",
               background: aba === a.key ? "var(--bg-page)" : "transparent",
@@ -1750,9 +1750,9 @@ export default function BI() {
           return (
             <div>
               {/* ── Sub-tab bar ── */}
-              <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
+              <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
                 {([["posicao", "Posição do Produto"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
-                  <button data-arato-button="toggle" key={k} onClick={() => setAbaProducao(k)}
+                  <button data-arato-tab-active={abaProducao === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaProducao(k)}
                     style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#111111" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
                     {l}
                     {k === "colheita" && totalColhido > 0 && <span style={{ marginLeft: 6, background: "#16A34A", color: "#fff", borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>✓</span>}

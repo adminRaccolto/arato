@@ -75,14 +75,14 @@ export default function IBSCBS() {
 
           {/* Abas */}
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
+            <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
               {([
                 ["visao",      "Visão Geral"],
                 ["calculo",    "Calculadora"],
                 ["impacto",    "Agro — Reduções"],
                 ["cronograma", "Cronograma"],
               ] as [Aba, string][]).map(([key, label]) => (
-                <button data-arato-button="toggle" key={key} onClick={() => setAba(key)} style={{
+                <button data-arato-tab-active={aba === (key)} data-arato-tab="true" data-arato-button="toggle" key={key} onClick={() => setAba(key)} style={{
                   padding: "10px 20px", border: "none",
                   background: aba === key ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",

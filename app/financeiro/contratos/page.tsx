@@ -1385,7 +1385,7 @@ export default function ContratosFinanceiros() {
               </div>
 
               {/* Abas */}
-              <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ display: "flex", gap: 0, overflowX: "auto" }}>
+              <div data-arato-tabs="true" data-arato-dialog-body="true" data-arato-grid-container="true" style={{ display: "flex", gap: 0, overflowX: "auto" }}>
                 {([
                   ["principal",     "Principal"],
                   ["liberacao",     "Liberação"],
@@ -1397,7 +1397,7 @@ export default function ContratosFinanceiros() {
                 ] as const).map(([k, l]) => {
                   const bloqueada = k !== "principal" && !contratoModal;
                   return (
-                    <button data-arato-button="toggle" key={k} onClick={() => !bloqueada && setAbaModal(k)}
+                    <button data-arato-tab-active={abaModal === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => !bloqueada && setAbaModal(k)}
                       style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#111111" : "var(--text-2)", borderBottom: abaModal === k ? "2.5px solid #111111" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
                     >{l}{bloqueada ? " 🔒" : ""}</button>
                   );

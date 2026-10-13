@@ -2560,14 +2560,14 @@ function ConciliacaoInner() {
 
         {/* Abas: Extratos / Inconsistências / Histórico */}
         {!extrato && (
-          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          <div data-arato-tabs="true" style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             {([
               ["extrato",         "Extratos OFX"],
               ["regras",          `Regras${regras.length > 0 ? ` (${regras.length})` : ""}`],
               ["inconsistencias", `Inconsistências${pendencias.length > 0 ? ` (${pendencias.length})` : ""}`],
               ["historico",       `Histórico (${extratos.length})`],
             ] as const).map(([k, lbl]) => (
-              <button data-arato-button="toggle" key={k} onClick={() => setAbaAtiva(k)}
+              <button data-arato-tab-active={abaAtiva === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaAtiva(k)}
                 style={{
                   padding: "6px 16px", borderRadius: 8,
                   border: `0.5px solid ${abaAtiva === k ? (k === "inconsistencias" ? "#C9921B" : "#1A5CB8") : "var(--border)"}`,
@@ -3108,7 +3108,7 @@ function ConciliacaoInner() {
               {/* ─── ESQUERDA: lançamentos do sistema ─────────────────────── */}
               <div style={{ background: "var(--bg-card)", borderRadius: 10, border: `1px solid ${linhaAtiva ? "#1A4870" : "var(--border)"}`, overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
                 {/* Abas do sistema */}
-                <div style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
+                <div data-arato-tabs="true" style={{ display: "flex", gap: 4, padding: "8px 10px", borderBottom: "0.5px solid var(--border)", background: linhaAtiva ? "#EEF3F9" : "var(--bg-page)", flexWrap: "wrap" }}>
                   {([
                     ["sugeridos",   `Sugeridos (${sugestoesLista.length})`],
                     ["inconsistencias", `Inconsistências (${inconsistenciasLista.length})`],
@@ -3116,7 +3116,7 @@ function ConciliacaoInner() {
                     ["abertos",     `CP/CR abertos (${linhasAbertos.length})`],
                     ["conferencia", `Conferência (${paresConf.length})`],
                   ] as const).map(([k, lbl]) => (
-                    <button data-arato-button="toggle" key={k} onClick={() => setAbaSistema(k)}
+                    <button data-arato-tab-active={abaSistema === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaSistema(k)}
                       style={{ padding: "6px 12px", borderRadius: 8, border: `0.5px solid ${abaSistema === k ? "#1A4870" : "var(--border)"}`, background: abaSistema === k ? "#1A4870" : "var(--bg-card)", color: abaSistema === k ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: abaSistema === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap" }}>
                       {lbl}
                     </button>

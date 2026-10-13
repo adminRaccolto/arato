@@ -1793,9 +1793,9 @@ function ParametrosSistemaContent() {
   // ── Aba Transportes ───────────────────────────────────────────────────────
   const renderTransportes = () => (
     <div>
-      <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+      <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {(["transportadoras", "veiculos", "motoristas"] as const).map(s => (
-          <button data-arato-button="toggle" key={s} onClick={() => setSubAba(s)} style={{
+          <button data-arato-tab-active={subAba === (s)} data-arato-tab="true" data-arato-button="toggle" key={s} onClick={() => setSubAba(s)} style={{
             padding: "6px 16px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13,
             fontWeight: subAba === s ? 700 : 400, background: subAba === s ? "#111111" : "var(--bg-card)",
             color: subAba === s ? "#fff" : "#333", cursor: "pointer",
@@ -1978,9 +1978,9 @@ function ParametrosSistemaContent() {
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-2)" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
         </div>
 
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
           {TABS.map(t => (
-            <button data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
+            <button data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
               padding: "8px 18px", border: "none", borderRadius: "8px 8px 0 0",
               fontWeight: aba === t.id ? 700 : 400, fontSize: 13,
               background: aba === t.id ? "var(--bg-card)" : "transparent",

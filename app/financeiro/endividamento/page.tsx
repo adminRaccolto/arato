@@ -705,12 +705,12 @@ export default function RelatorioEndividamento() {
         </div>
 
         {/* Abas do relatório */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 6, marginBottom: 16 }}>
           {([
             ["evolucao",  "Evolução por Ano"],
             ["condicoes", "Condições Contratuais"],
           ] as const).map(([k, l]) => (
-            <button data-arato-button="toggle" key={k} onClick={() => setAbaRel(k)}
+            <button data-arato-tab-active={abaRel === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaRel(k)}
               style={{
                 padding: "7px 16px", borderRadius: 8, border: `0.5px solid ${abaRel === k ? "#111111" : "var(--border)"}`,
                 background: abaRel === k ? "#111111" : "var(--bg-card)", color: abaRel === k ? "#fff" : "var(--text-2)",

@@ -193,9 +193,9 @@ function RelatorioRomaneios() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 20, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 4, width: "fit-content" }}>
-          <button data-arato-button="toggle" style={tabStyle(aba === "entrada")} onClick={() => setAba("entrada")}>Entrada (Lavoura → Armazém)</button>
-          <button data-arato-button="toggle" style={tabStyle(aba === "saida")}   onClick={() => setAba("saida")}>Saída (Entrega por Contrato)</button>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 6, marginBottom: 20, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 4, width: "fit-content" }}>
+          <button data-arato-tab-active={aba === ("entrada")} data-arato-tab="true" data-arato-button="toggle" style={tabStyle(aba === "entrada")} onClick={() => setAba("entrada")}>Entrada (Lavoura → Armazém)</button>
+          <button data-arato-tab-active={aba === ("saida")} data-arato-tab="true" data-arato-button="toggle" style={tabStyle(aba === "saida")}   onClick={() => setAba("saida")}>Saída (Entrega por Contrato)</button>
         </div>
 
         {/* Filtros */}

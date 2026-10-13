@@ -704,12 +704,12 @@ export default function TratamentoSementesPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 20 }}>
           {[
             { id: "ordens",   label: "Ordens de Tratamento" },
             { id: "receitas", label: "Receitas Salvas" },
           ].map(a => (
-            <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)} style={{
+            <button data-arato-tab-active={aba === (a.id as typeof aba)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)} style={{
               padding: "8px 18px", border: "none", borderRadius: 8, cursor: "pointer",
               background: aba === a.id ? "#111111" : "#fff",
               color:      aba === a.id ? "#fff"    : "#555",

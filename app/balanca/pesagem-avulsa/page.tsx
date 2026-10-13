@@ -655,9 +655,9 @@ export default function PesagemAvulsa() {
         )}
 
         {/* Tabs */}
-        <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", marginBottom: 16, gap: 2 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", marginBottom: 16, gap: 2 }}>
           {([["andamento","Em Andamento",emAndamento.length],["finalizadas","Finalizadas",finalizadas.length]] as const).map(([id, label, count]) => (
-            <button data-arato-button="toggle" key={id} onClick={() => setAbaPrincipal(id)}
+            <button data-arato-tab-active={abaPrincipal === (id)} data-arato-tab="true" data-arato-button="toggle" key={id} onClick={() => setAbaPrincipal(id)}
               style={{ padding: "10px 20px", fontSize: 13, fontWeight: abaPrincipal === id ? 700 : 400, color: abaPrincipal === id ? "#1A5CB8" : "var(--text-2)", background: "none", border: "none", borderBottom: abaPrincipal === id ? "2px solid #1A5CB8" : "2px solid transparent", cursor: "pointer" }}>
               {label} <span style={{ fontSize: 11, marginLeft: 4, color: abaPrincipal === id ? "#1A5CB8" : "var(--text-3)" }}>({count})</span>
             </button>

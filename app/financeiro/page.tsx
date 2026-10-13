@@ -761,13 +761,13 @@ export default function Financeiro() {
               {lancamentos.length > 0 && (
                 <>
                   {/* Abas */}
-                  <div className="fc-tabs-bar" style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)", marginBottom: 0 }}>
+                  <div data-arato-tabs="true" className="fc-tabs-bar" style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)", marginBottom: 0 }}>
                     {([
                       { key: "lancamentos", label: "Lançamentos CP/CR" },
                       { key: "fluxo",       label: "Fluxo de Caixa"    },
                       { key: "conciliacao", label: "Conciliação OFX"   },
                     ] as { key: Aba; label: string }[]).map(a => (
-                      <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+                      <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
                         padding: "11px 20px", border: "none", background: "transparent", cursor: "pointer",
                         fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                         color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
@@ -907,13 +907,13 @@ export default function Financeiro() {
 
                       {/* Sub-abas Horizontal / Vertical */}
                       <div className="fc-sub-tabs" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)" }}>
-                        <div style={{ display: "flex", gap: 4 }}>
+                        <div data-arato-tabs="true" style={{ display: "flex", gap: 4 }}>
                           {([
                             { key: "horizontal", label: "⊞ DFC Mensal"      },
                             { key: "vertical",   label: "↕ Dia a dia"        },
                             { key: "prevreal",   label: "⇆ Previsto × Real"  },
                           ] as { key: SubAbaFluxo; label: string }[]).map(s => (
-                            <button data-arato-button="toggle" key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
+                            <button data-arato-tab-active={subAbaFluxo === (s.key)} data-arato-tab="true" data-arato-button="toggle" key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
                               padding: "6px 14px", borderRadius: 8, border: "0.5px solid",
                               borderColor: subAbaFluxo === s.key ? "#111111" : "var(--border-table)",
                               background: subAbaFluxo === s.key ? "#E8E8E8" : "transparent",
@@ -2085,9 +2085,9 @@ export default function Financeiro() {
                 <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Previsão de Gastos</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Aparecem em verde no fluxo · podem ser convertidas em CP</div>
               </div>
-              <div data-arato-dialog-body="true" style={{ display: "flex", gap: 4 }}>
+              <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 4 }}>
                 {(["lista", "nova"] as const).map(t => (
-                  <button data-arato-button="toggle" key={t} onClick={() => setAbaPrevisao(t)} style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid", borderColor: abaPrevisao === t ? "#111111" : "var(--border-table)", background: abaPrevisao === t ? "#E8E8E8" : "transparent", color: abaPrevisao === t ? "#0D0D0D" : "var(--text-2)", fontSize: 12, cursor: "pointer", fontWeight: abaPrevisao === t ? 600 : 400 }}>
+                  <button data-arato-tab-active={abaPrevisao === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAbaPrevisao(t)} style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid", borderColor: abaPrevisao === t ? "#111111" : "var(--border-table)", background: abaPrevisao === t ? "#E8E8E8" : "transparent", color: abaPrevisao === t ? "#0D0D0D" : "var(--text-2)", fontSize: 12, cursor: "pointer", fontWeight: abaPrevisao === t ? 600 : 400 }}>
                     {t === "lista" ? `Lista (${previsoes.length})` : "+ Nova"}
                   </button>
                 ))}

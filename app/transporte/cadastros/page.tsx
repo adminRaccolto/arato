@@ -289,13 +289,13 @@ export default function TransporteCadastrosPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {([
             ["transportadoras", `Transportadoras (${transFilt.length})`],
             ["veiculos",        `Veículos / Caminhões (${veicFilt.length})`],
             ["motoristas",      `Motoristas (${motorFilt.length})`],
           ] as [Aba, string][]).map(([a, l]) => (
-            <button data-arato-button="toggle" key={a} onClick={() => { setAba(a); setBusca(""); }}
+            <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => { setAba(a); setBusca(""); }}
               style={{ padding: "10px 20px", border: "none", borderBottom: aba === a ? "2px solid #2A2A2A" : "2px solid transparent",
                 background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#2A2A2A" : "var(--text-2)", cursor: "pointer" }}>
               {l}

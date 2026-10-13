@@ -264,9 +264,9 @@ export default function AdiantamentosPage() {
 
           {/* Tabs + Busca */}
           <div data-arato-filters="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+            <div data-arato-tabs="true" style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {TABS.map(t => (
-                <button data-arato-button="toggle" key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
+                <button data-arato-tab-active={tab === (t.key)} data-arato-tab="true" data-arato-button="toggle" key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
                   {t.label}
                   <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>
                     ({t.key === "todos" ? adiantamentos.length : adiantamentos.filter(a => a.status === t.key).length})

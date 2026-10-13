@@ -1189,9 +1189,9 @@ function MdfePageInner() {
               <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
-            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 4, padding: "0 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+            <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 4, padding: "0 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               {([["dados", "Dados do MDF-e"], ["seguro", "Seguro e Averbação"]] as const).map(([k, t]) => (
-                <button data-arato-button="toggle" key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</button>
+                <button data-arato-tab-active={abaModal === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</button>
               ))}
             </div>
 

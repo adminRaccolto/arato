@@ -870,13 +870,13 @@ export default function FolhaPagamentoPage() {
         )}
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
           {([
             ["processamento","📋 Processamento"],
             ["adiantamentos","💵 Adiantamentos"],
             ["gratificacoes","⭐ Gratificações"],
           ] as [Aba,string][]).map(([k,l]) => (
-            <button data-arato-button="toggle" key={k} onClick={()=>setAba(k)}
+            <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={()=>setAba(k)}
               style={{ padding: "10px 20px", background: "none", border: "none", borderBottom: aba===k ? "2px solid #1A4870" : "2px solid transparent", fontWeight: aba===k ? 700 : 400, color: aba===k ? "#1A4870" : "#666", cursor: "pointer", fontSize: 13 }}>
               {l}
             </button>
@@ -1154,9 +1154,9 @@ export default function FolhaPagamentoPage() {
             </div>
 
             {/* Sub-abas */}
-            <div style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
+            <div data-arato-tabs="true" style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
               {([["funcionarios","Funcionários"],["resumo","Resumo"]] as const).map(([k,l])=>(
-                <button data-arato-button="toggle" key={k} onClick={()=>setAbaModal(k)}
+                <button data-arato-tab-active={abaModal === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={()=>setAbaModal(k)}
                   style={{ padding:"8px 18px", background:"none", border:"none", borderBottom:abaModal===k?"2px solid #1A4870":"2px solid transparent", fontWeight:abaModal===k?700:400, color:abaModal===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>
                   {l}
                 </button>

@@ -638,12 +638,12 @@ export default function ParceriasPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${C.borda}`, paddingBottom: 0 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${C.borda}`, paddingBottom: 0 }}>
           {(["parcerias", "grupos", "apuracao"] as const).map(a => {
             const labels = { parcerias: "Parcerias Agrícolas", grupos: "Grupos Econômicos", apuracao: "Apuração & SPED" };
             const ativo = aba === a;
             return (
-              <button data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
+              <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
                 padding: "8px 18px", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer",
                 borderRadius: "6px 6px 0 0", background: ativo ? C.branco : "transparent",
                 color: ativo ? C.azul : C.sub,
@@ -961,11 +961,11 @@ export default function ParceriasPage() {
           width={900}
         >
           {/* Abas do modal */}
-          <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${C.borda}` }}>
+          <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${C.borda}` }}>
             {(["geral", "participantes", "distribuicao"] as const).map(a => {
               const labels = { geral: "Dados Gerais", participantes: `Participantes (${participants.length})`, distribuicao: `Distribuição de Custos (${distribs.length})` };
               return (
-                <button data-arato-button="toggle" key={a} onClick={() => setAbaMod(a)} style={{
+                <button data-arato-tab-active={abaMod === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaMod(a)} style={{
                   padding: "7px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
                   borderRadius: "5px 5px 0 0", background: abaMod === a ? C.branco : "transparent",
                   color: abaMod === a ? C.azul : C.sub,

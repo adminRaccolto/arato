@@ -1681,13 +1681,13 @@ export default function Contratos() {
               </div>
 
               {/* ── Abas ── */}
-              <div style={{ display:"flex", background:"var(--bg-card)", borderRadius:"12px 12px 0 0", border:"0.5px solid var(--border-table)" }}>
+              <div data-arato-tabs="true" style={{ display:"flex", background:"var(--bg-card)", borderRadius:"12px 12px 0 0", border:"0.5px solid var(--border-table)" }}>
                 {([
                   { key:"contratos", label:"Contratos",              count: contratos.length },
                   { key:"expedicao", label:"Expedição / Romaneios",  count: todosRomaneios.length },
                   { key:"posicao",   label:"Posição de Estoque",     count: null },
                 ] as { key: AbaLista; label: string; count: number|null }[]).map(a => (
-                  <button data-arato-button="toggle" key={a.key} onClick={() => setAbaLista(a.key)} style={{
+                  <button data-arato-tab-active={abaLista === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaLista(a.key)} style={{
                     padding:"11px 20px", border:"none", background:"transparent", cursor:"pointer",
                     fontWeight: abaLista===a.key ? 600 : 400, fontSize:13,
                     color: abaLista===a.key ? "var(--text-1)" : "var(--text-2)",
@@ -2169,9 +2169,9 @@ export default function Contratos() {
             </div>
 
             {/* Abas Principal / Adicionais */}
-            <div data-arato-dialog-body="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)" }}>
+            <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)" }}>
               {(["principal","adicionais"] as AbaForm[]).map(a => (
-                <button data-arato-button="toggle" key={a} onClick={() => setAbaForm(a)} style={{
+                <button data-arato-tab-active={abaForm === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaForm(a)} style={{
                   padding:"9px 20px", border:"none", background:"transparent", cursor:"pointer",
                   fontWeight: abaForm===a?600:400, fontSize:13,
                   color: abaForm===a?"var(--text-1)":"var(--text-2)",

@@ -529,9 +529,9 @@ export default function EstoqueGraosPage() {
       </div>
 
       {/* Abas */}
-      <div data-arato-grid-container="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto" }}>
+      <div data-arato-tabs="true" data-arato-grid-container="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto" }}>
         {TABS.map(t => (
-          <button data-arato-button="toggle" key={t.k} onClick={() => setAba(t.k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === t.k ? 700 : 400, color: aba === t.k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === t.k ? "2px solid #111111" : "2px solid transparent", whiteSpace: "nowrap" }}>{t.label}</button>
+          <button data-arato-tab-active={aba === (t.k)} data-arato-tab="true" data-arato-button="toggle" key={t.k} onClick={() => setAba(t.k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === t.k ? 700 : 400, color: aba === t.k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === t.k ? "2px solid #111111" : "2px solid transparent", whiteSpace: "nowrap" }}>{t.label}</button>
         ))}
       </div>
 

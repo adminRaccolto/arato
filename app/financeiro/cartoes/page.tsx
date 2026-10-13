@@ -318,9 +318,9 @@ export default function CartoesCredito() {
 
         {/* Abas */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
+          <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
             {([["cartoes","💳 Meus Cartões"], ["faturas","Faturas"], ["conciliacao","Conciliação"]] as [Aba, string][]).map(([k, lbl]) => (
-              <button data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "10px 20px", border: "none", background: aba===k ? "#fff" : "var(--bg-card)", borderBottom: `2px solid ${aba===k ? "#1A5C38" : "transparent"}`, cursor: "pointer", fontSize: 13, fontWeight: aba===k ? 600 : 400, color: aba===k ? "#1A5C38" : "var(--text-2)" }}>
+              <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "10px 20px", border: "none", background: aba===k ? "#fff" : "var(--bg-card)", borderBottom: `2px solid ${aba===k ? "#1A5C38" : "transparent"}`, cursor: "pointer", fontSize: 13, fontWeight: aba===k ? 600 : 400, color: aba===k ? "#1A5C38" : "var(--text-2)" }}>
                 {lbl}
               </button>
             ))}

@@ -370,9 +370,9 @@ export default function PragasPage() {
         ))}
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
           {(["lista", "mapa", "relatorio"] as const).map(a => (
-            <button data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
+            <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
               fontWeight: aba === a ? 700 : 400, color: aba === a ? "#111111" : "#666",
               borderBottom: aba === a ? "2.5px solid #111111" : "2.5px solid transparent",

@@ -654,12 +654,12 @@ export default function ApoioFinanceiroPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
           {([
             { id: "compartilhado", label: `CP/CR Compartilhado (${lancamentos.length})` },
             { id: "exclusivo",     label: `Apoio Exclusivo (${apoioLancs.length})` },
           ] as const).map((t) => (
-            <button data-arato-button="toggle"
+            <button data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle"
               key={t.id}
               onClick={() => setAba(t.id)}
               style={{

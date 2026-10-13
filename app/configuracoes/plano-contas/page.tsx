@@ -229,12 +229,12 @@ export default function PlanoContasPage() {
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 0 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 0 }}>
           {([
             { key: "plano",    label: "Plano de Contas Contábil" },
             { key: "operacoes", label: "Operações Gerenciais" },
           ] as { key: "plano"|"operacoes"; label: string }[]).map(a => (
-            <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "8px 18px", borderRadius: "8px 8px 0 0", border: "0.5px solid",
               borderBottom: "none", fontWeight: 600, fontSize: 13, cursor: "pointer",
               borderColor: aba === a.key ? "var(--border-table)" : "transparent",

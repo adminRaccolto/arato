@@ -1,14 +1,14 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { isPublicLayout } from "../lib/layout-preferences";
+import { hasClientWorkspace } from "../lib/layout-preferences";
 import LayoutSettings from "./LayoutSettings";
 import { useAuth } from "./AuthProvider";
 
 export default function Footer() {
-  const { anoSafraVigenteDesc } = useAuth();
+  const { anoSafraVigenteDesc, emailUsuario, contaId, fazendaId } = useAuth();
 
   const pathname = usePathname();
-  if (isPublicLayout(pathname)) return null;
+  if (!hasClientWorkspace(pathname, emailUsuario, contaId, fazendaId)) return null;
 
   return (
     <footer style={{

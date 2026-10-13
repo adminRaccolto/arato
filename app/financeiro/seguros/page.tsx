@@ -517,13 +517,13 @@ export default function SegurosPage() {
         )}
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border-table)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border-table)" }}>
           {([
             { id: "apolices",    label: "Apólices" },
             { id: "vencimentos", label: "Prêmios Pendentes" },
             { id: "sinistros",   label: "Sinistros" },
           ] as { id: typeof aba; label: string }[]).map(a => (
-            <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, color: aba === a.id ? "#111" : "#666", borderBottom: aba === a.id ? "2.5px solid #111" : "2.5px solid transparent", marginBottom: -1 }}>{a.label}</button>
+            <button data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, color: aba === a.id ? "#111" : "#666", borderBottom: aba === a.id ? "2.5px solid #111" : "2.5px solid transparent", marginBottom: -1 }}>{a.label}</button>
           ))}
         </div>
 
@@ -693,9 +693,9 @@ export default function SegurosPage() {
             </div>
 
             {/* Abas internas */}
-            <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--bg-tag)", padding: "0 22px" }}>
+            <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--bg-tag)", padding: "0 22px" }}>
               {(["dados","cobertura","financeiro","anexo"] as const).map(t => (
-                <button data-arato-button="toggle" key={t} onClick={() => setTabModal(t)} style={{ padding: "9px 18px", border: "none", borderBottom: tabModal === t ? "2.5px solid #111" : "2.5px solid transparent", background: "none", cursor: "pointer", fontSize: 12, fontWeight: tabModal === t ? 700 : 400, color: tabModal === t ? "#111" : "#666", marginBottom: -1 }}>
+                <button data-arato-tab-active={tabModal === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setTabModal(t)} style={{ padding: "9px 18px", border: "none", borderBottom: tabModal === t ? "2.5px solid #111" : "2.5px solid transparent", background: "none", cursor: "pointer", fontSize: 12, fontWeight: tabModal === t ? 700 : 400, color: tabModal === t ? "#111" : "#666", marginBottom: -1 }}>
                   {t === "dados" ? "Dados" : t === "cobertura" ? "Cobertura / Bem" : t === "financeiro" ? "Financeiro" : "Anexo"}
                 </button>
               ))}

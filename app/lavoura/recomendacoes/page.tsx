@@ -288,9 +288,9 @@ function ModalNova({
             <div data-arato-dialog-body="true" style={{ fontSize:17, fontWeight:700 }}>{isEditing ? "Editar Recomendação" : "Nova Recomendação Agronômica"}</div>
             <button data-arato-button="icon" onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
           </div>
-          <div data-arato-dialog-body="true" style={{ display:"flex", gap:0 }}>
+          <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display:"flex", gap:0 }}>
             {abas.map(a => (
-              <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)}
+              <button data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)}
                 style={{ padding:"10px 18px", border:"none", borderBottom: aba === a.id ? "2px solid #111111" : "2px solid transparent",
                   background:"none", fontSize:13, fontWeight: aba === a.id ? 700 : 400,
                   color: aba === a.id ? "#111111" : "#666", cursor:"pointer" }}>

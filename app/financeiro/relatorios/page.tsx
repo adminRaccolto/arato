@@ -1019,9 +1019,9 @@ function FinanceiroRelatoriosInner() {
                     )}
 
                     {/* Sub-abas Diário / Mensal */}
-                    <div className="no-print" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
+                    <div data-arato-tabs="true" className="no-print" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
                       {(["diario", "mensal", "anual"] as const).map(t => (
-                        <button data-arato-button="toggle" key={t} onClick={() => setSubAbaFluxo(t)}
+                        <button data-arato-tab-active={subAbaFluxo === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setSubAbaFluxo(t)}
                           style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #111111" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "var(--bg-card)", color: subAbaFluxo === t ? "#111111" : "var(--text-3)", transition: "all 0.15s" }}>
                           {t === "diario" ? "Diário" : t === "mensal" ? "Mensal" : "Anual"}
                         </button>

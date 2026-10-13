@@ -183,9 +183,9 @@ export default function OliviaWidget() {
     <>
       {/* Balão fechado */}
       {!aberto && (
-        <button data-arato-button="primary"
+        <button
           onClick={() => setAberto(true)}
-          title="Falar com a Olívia"
+          title="Falar com a Olívia" data-arato-olivia-launcher="true"
           style={{
             position: "fixed", right: 20, bottom: 20, zIndex: 2000,
             width: 58, height: 58, borderRadius: "50%", border: "none", cursor: "pointer",
@@ -214,11 +214,11 @@ export default function OliviaWidget() {
               </div>
               <div style={{ fontSize: 10, color: "#D5E8F5" }}>● Online</div>
             </div>
-            <button data-arato-button="secondary" onClick={() => setMostrarLista(m => !m)} title="Conversas"
+            <button onClick={() => setMostrarLista(m => !m)} title="Conversas"
               style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 6, color: "#fff", width: 26, height: 26, cursor: "pointer", fontSize: 13 }}>☰</button>
-            <button data-arato-button="icon" onClick={novaConversa} title="Nova conversa"
+            <button onClick={novaConversa} title="Nova conversa"
               style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 6, color: "#fff", width: 26, height: 26, cursor: "pointer", fontSize: 15 }}>+</button>
-            <button data-arato-button="icon" onClick={() => setAberto(false)} title="Fechar"
+            <button onClick={() => setAberto(false)} title="Fechar"
               style={{ background: "none", border: "none", color: "#fff", width: 22, height: 22, cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
           </div>
 
@@ -235,7 +235,7 @@ export default function OliviaWidget() {
                     <div style={{ fontSize: 12, fontWeight: ativa ? 600 : 400, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                       {conv.titulo ?? "Nova conversa"}
                     </div>
-                    <button data-arato-button="icon" onClick={e => deletarConversa(conv.id, e)} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, flexShrink: 0 }}>×</button>
+                    <button onClick={e => deletarConversa(conv.id, e)} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, flexShrink: 0 }}>×</button>
                   </div>
                 );
               })}
@@ -283,7 +283,7 @@ export default function OliviaWidget() {
           </div>
 
           {/* Input */}
-          <div data-arato-dialog="form" style={{ padding: "10px 10px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 6, alignItems: "flex-end", flexShrink: 0, background: "#fff" }}>
+          <div style={{ padding: "10px 10px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 6, alignItems: "flex-end", flexShrink: 0, background: "#fff" }}>
             <textarea
               ref={inputRef}
               value={input}
@@ -304,7 +304,7 @@ export default function OliviaWidget() {
                 t.style.height = Math.min(t.scrollHeight, 90) + "px";
               }}
             />
-            <button data-arato-button="toggle"
+            <button
               onClick={enviarMensagem}
               disabled={!input.trim() || enviando}
               style={{

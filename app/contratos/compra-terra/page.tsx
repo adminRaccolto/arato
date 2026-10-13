@@ -616,9 +616,9 @@ export default function CompraTerrPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 16, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", overflow: "hidden", width: "fit-content" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 16, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", overflow: "hidden", width: "fit-content" }}>
           {(["lista", "pagamentos"] as const).map(a => (
-            <button data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{ padding: "9px 22px", border: "none", background: aba === a ? "#1A4870" : "transparent", color: aba === a ? "#fff" : "#555", fontSize: 13, fontWeight: aba === a ? 600 : 400, cursor: "pointer" }}>
+            <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{ padding: "9px 22px", border: "none", background: aba === a ? "#1A4870" : "transparent", color: aba === a ? "#fff" : "#555", fontSize: 13, fontWeight: aba === a ? 600 : 400, cursor: "pointer" }}>
               {a === "lista" ? "Contratos" : `Parcelas (${pagamentos.length})`}
             </button>
           ))}
@@ -844,9 +844,9 @@ export default function CompraTerrPage() {
             </div>
 
             {/* Abas do modal */}
-            <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", background: "#FAFBFC" }}>
+            <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", background: "#FAFBFC" }}>
               {(["imovel", "partes", "valor", "cartorio"] as const).map(a => (
-                <button data-arato-button="toggle" key={a} onClick={() => setAbaModal(a)} style={{ padding: "10px 20px", border: "none", borderBottom: abaModal === a ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: abaModal === a ? 600 : 400, color: abaModal === a ? "#1A4870" : "#666", cursor: "pointer" }}>
+                <button data-arato-tab-active={abaModal === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaModal(a)} style={{ padding: "10px 20px", border: "none", borderBottom: abaModal === a ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: abaModal === a ? 600 : 400, color: abaModal === a ? "#1A4870" : "#666", cursor: "pointer" }}>
                   {{ imovel: "Imóvel", partes: "Partes", valor: "Valor & Pagamento", cartorio: "Cartório & Obs." }[a]}
                 </button>
               ))}

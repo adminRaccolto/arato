@@ -397,9 +397,9 @@ export default function AplicacaoAereaPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20 }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20 }}>
           {(["operacoes", "empresas"] as const).map(t => (
-            <button data-arato-button="toggle" key={t} onClick={() => setAba(t)} style={{
+            <button data-arato-tab-active={aba === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAba(t)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === t ? 700 : 400,
               color: aba === t ? "#111111" : "var(--text-3)",

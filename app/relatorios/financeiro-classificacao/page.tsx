@@ -773,9 +773,9 @@ function RelFinClassInner() {
           {/* Tipo de relatório */}
           <div style={{ marginBottom: 16 }}>
             <label data-arato-label="true" style={lbl}>Tipo de relatório</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div data-arato-tabs="true" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {([["analitico", "Analítico — gastos por OG com os lançamentos"], ["sintetico", "Sintético — só o total de cada OG no período"]] as const).map(([k, l]) => (
-                <button data-arato-button="toggle" key={k} onClick={() => setVisao(k)}
+                <button data-arato-tab-active={visao === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setVisao(k)}
                   style={{ padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: visao === k ? "1.5px solid #111" : "0.5px solid var(--border-table)", background: visao === k ? "#111" : "var(--bg-input)", color: visao === k ? "#fff" : "var(--text-1)" }}>
                   {l}
                 </button>

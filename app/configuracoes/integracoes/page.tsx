@@ -250,12 +250,12 @@ function ModalSieg({
         </div>
 
         {/* Tabs */}
-        <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
+        <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
           {([
             { id: "config", label: "Configuração" },
             { id: "cert",   label: "Registro no Sieg" },
           ] as const).map(t => (
-            <button data-arato-button="toggle" key={t.id} onClick={() => setTab(t.id)}
+            <button data-arato-tab-active={tab === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setTab(t.id)}
               style={{ padding: "9px 20px", border: "none", background: "transparent",
                        borderBottom: tab === t.id ? "2px solid #111111" : "2px solid transparent",
                        color: tab === t.id ? "#111111" : "#666",
@@ -940,13 +940,13 @@ export default function IntegracoesPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 8, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
           {CATEGORIAS.map(cat => {
             const ativosNoCat = cat.id === "fiscal"
               ? (siegAtivo ? 1 : 0)
               : configs.filter(c => catalogo.find(i => i.id === c.integracao_id)?.categoria === cat.id && c.ativo).length;
             return (
-              <button data-arato-button="toggle" key={cat.id} onClick={() => setAbaCat(cat.id)}
+              <button data-arato-tab-active={abaCat === (cat.id)} data-arato-tab="true" data-arato-button="toggle" key={cat.id} onClick={() => setAbaCat(cat.id)}
                 style={{ padding: "10px 20px", border: "none", borderRadius: "8px 8px 0 0",
                          background: abaCat === cat.id ? "#fff" : "transparent",
                          borderBottom: abaCat === cat.id ? "2px solid #111111" : "2px solid transparent",

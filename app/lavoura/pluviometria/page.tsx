@@ -297,12 +297,12 @@ export default function Pluviometria() {
       </div>
 
       {/* Abas */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
+      <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
         {[
           { v: "api" as const,    label: "☁ Dados Climáticos (API)" },
           { v: "manual" as const, label: `🌧 Leituras Manuais${leituras.length > 0 ? ` (${leituras.length})` : ""}` },
         ].map(a => (
-          <button data-arato-button="toggle" key={a.v} onClick={() => setAba(a.v)} style={{
+          <button data-arato-tab-active={aba === (a.v)} data-arato-tab="true" data-arato-button="toggle" key={a.v} onClick={() => setAba(a.v)} style={{
             padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
             fontWeight: aba === a.v ? 700 : 400, color: aba === a.v ? "#111111" : "#666",
             borderBottom: aba === a.v ? "2.5px solid #111111" : "2.5px solid transparent",

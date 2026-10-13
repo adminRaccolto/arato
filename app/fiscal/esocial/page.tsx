@@ -293,13 +293,13 @@ export default function EsocialPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: 4, width: "fit-content" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: 4, width: "fit-content" }}>
           {[
             { id: "trabalhadores", label: "Trabalhadores" },
             { id: "eventos",       label: `Eventos${qtdPend > 0 ? ` (${qtdPend})` : ""}` },
             { id: "apuracao",      label: "Apuração Mensal" },
           ].map(a => (
-            <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)}
+            <button data-arato-tab-active={aba === (a.id as typeof aba)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)}
               style={{ padding: "7px 18px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, background: aba === a.id ? "#111111" : "transparent", color: aba === a.id ? "#fff" : "var(--text-2)" }}>
               {a.label}
             </button>

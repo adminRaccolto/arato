@@ -787,12 +787,12 @@ export default function ConsorciosPage() {
         )}
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border-table)" }}>
+        <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border-table)" }}>
           {([
             { id: "lista",    label: "Consórcios"                 },
             { id: "parcelas", label: "Próximas Parcelas"          },
           ] as { id: typeof aba; label: string }[]).map(a => (
-            <button data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{
+            <button data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{
               padding: "9px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.id ? 700 : 400,
               color: aba === a.id ? "#111111" : "#666",
@@ -1116,12 +1116,12 @@ export default function ConsorciosPage() {
             </div>
 
             {/* Tab bar */}
-            <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--bg-tag)" }}>
+            <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--bg-tag)" }}>
               {(["dados", "rateio"] as const).map(t => {
                 const nCiclos = rateioLinhas.filter(l => l.ciclo_id).length;
                 const label = t === "dados" ? "Dados" : nCiclos > 0 ? `Rateio (${nCiclos})` : "Rateio";
                 return (
-                  <button data-arato-button="toggle" key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
+                  <button data-arato-tab-active={tabConsor === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
                     style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
                       fontWeight: tabConsor === t ? 700 : 400,
                       color: tabConsor === t ? "#111111" : "#666",

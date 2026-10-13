@@ -1685,9 +1685,9 @@ function FaturamentoInner() {
               </div>
 
               {/* Abas */}
-              <div data-arato-grid-container="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
+              <div data-arato-tabs="true" data-arato-grid-container="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
                 {ABAS_NOTA.map(a => (
-                  <button data-arato-button="toggle" key={a.id} onClick={() => setTabNFe(a.id)}
+                  <button data-arato-tab-active={tabNFe === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setTabNFe(a.id)}
                     style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #2A2A2A" : "2.5px solid transparent", background:"transparent",
                       color: tabNFe === a.id ? "#2A2A2A" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
                     {a.label}

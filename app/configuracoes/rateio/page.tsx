@@ -289,9 +289,9 @@ export default function RateioPage() {
         </header>
 
         {/* Tabs */}
-        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 0 }}>
+        <div data-arato-tabs="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 0 }}>
           {(["n2", "n1"] as const).map(t => (
-            <button data-arato-button="toggle" key={t} onClick={() => setTab(t)}
+            <button data-arato-tab-active={tab === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setTab(t)}
               style={{ padding: "10px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: tab === t ? 700 : 400, color: tab === t ? "#2A2A2A" : "var(--text-2)", borderBottom: tab === t ? "2px solid #2A2A2A" : "2px solid transparent" }}
             >
               {t === "n2" ? "Nível 2 — Fazenda → Ciclos" : "Nível 1 — Global → Fazendas"}

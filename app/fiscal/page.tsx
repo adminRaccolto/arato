@@ -1944,9 +1944,9 @@ function FiscalInner() {
               )}
 
               {/* Abas */}
-              <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 12 }}>
+              <div data-arato-tabs="true" style={{ display: "flex", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 12 }}>
                 {ABAS.map(a => (
-                  <button data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+                  <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                     color: a.alert ? "#92400E" : (aba === a.key ? "var(--text-1)" : "var(--text-2)"),
@@ -2686,9 +2686,9 @@ function FiscalInner() {
               })()}
 
               {/* Abas */}
-              <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
+              <div data-arato-tabs="true" data-arato-dialog-body="true" data-arato-grid-container="true" style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
                 {tabCfg.map(t => (
-                  <button data-arato-button="toggle" key={t.key} onClick={() => setTabNFe(t.key)}
+                  <button data-arato-tab-active={tabNFe === (t.key)} data-arato-tab="true" data-arato-button="toggle" key={t.key} onClick={() => setTabNFe(t.key)}
                     style={{ padding: "7px 14px", border: "none", background: tabNFe === t.key ? "#fff" : "transparent", color: tabNFe === t.key ? "#111111" : "#444", fontWeight: tabNFe === t.key ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", borderTop: tabNFe === t.key ? "2px solid #111111" : "2px solid transparent", borderRight: "0.5px solid #c8cdd8" }}>
                     {t.label}
                   </button>
@@ -3059,9 +3059,9 @@ function FiscalInner() {
               {/* Grid de Itens */}
               <div data-arato-dialog-body="true" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 {/* Sub-abas itens */}
-                <div data-arato-dialog-body="true" style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
+                <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
                   {(["itens","servicos","comissoes","impostos"] as const).map(t => (
-                    <button data-arato-button="toggle" key={t} onClick={() => setSubTabItem(t)}
+                    <button data-arato-tab-active={subTabItem === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setSubTabItem(t)}
                       style={{ padding: "5px 14px", border: "none", background: subTabItem===t?"#fff":"transparent", color: subTabItem===t?"#111111":"var(--text-2)", fontWeight: subTabItem===t?600:400, fontSize: 12, cursor: "pointer", borderBottom: subTabItem===t?"1px solid #fff":"none" }}>
                       {t.charAt(0).toUpperCase()+t.slice(1)}
                     </button>

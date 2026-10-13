@@ -295,7 +295,7 @@ export default function PlanoAgricola() {
         {/* ── Abas ── */}
         <div data-arato-tabs="true" role="tablist" aria-label="Planejamento agrícola" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 4 }}>
           {([["ciclos", "Ciclos"] , ["analise", "Análise"]] as const).map(([k, l]) => (
-            <button data-arato-button="toggle" role="tab" aria-selected={aba === k} key={k} onClick={() => setAba(k)} style={{
+            <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" role="tab" aria-selected={aba === k} key={k} onClick={() => setAba(k)} style={{
               padding: "10px 16px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)",
               borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent",

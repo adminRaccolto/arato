@@ -355,9 +355,9 @@ export default function EmpresaPagarPage() {
             </div>
 
             {/* abas */}
-            <div style={{ display: "flex", gap: 4, marginBottom: 18, borderBottom: "0.5px solid #DDE2EE" }}>
+            <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 18, borderBottom: "0.5px solid #DDE2EE" }}>
               {(["principal","adicionais"] as const).map(a => (
-                <button data-arato-button="toggle" key={a} onClick={() => setTabModal(a)} style={{ ...S.btn(tabModal === a ? "#1A4870" : "transparent", tabModal === a ? "#fff" : "#555"), borderRadius: "6px 6px 0 0", fontSize: 12 }}>
+                <button data-arato-tab-active={tabModal === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setTabModal(a)} style={{ ...S.btn(tabModal === a ? "#1A4870" : "transparent", tabModal === a ? "#fff" : "#555"), borderRadius: "6px 6px 0 0", fontSize: 12 }}>
                   {a === "principal" ? "Principal" : "Adicionais"}
                 </button>
               ))}

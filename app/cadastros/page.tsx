@@ -3566,9 +3566,9 @@ function CadastrosInner() {
                     </div>
 
                     {/* Abas do modal */}
-                    <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", padding: "0 24px" }}>
+                    <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", padding: "0 24px" }}>
                       {(["identificacao","alienacao"] as const).map(t => (
-                        <button data-arato-button="toggle" key={t} onClick={() => setTabBem(t)} style={{ background: "none", border: "none", borderBottom: tabBem === t ? "2px solid #1A4870" : "2px solid transparent", padding: "10px 16px", fontWeight: tabBem === t ? 700 : 400, color: tabBem === t ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
+                        <button data-arato-tab-active={tabBem === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setTabBem(t)} style={{ background: "none", border: "none", borderBottom: tabBem === t ? "2px solid #1A4870" : "2px solid transparent", padding: "10px 16px", fontWeight: tabBem === t ? 700 : 400, color: tabBem === t ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
                           {t === "identificacao" ? "Identificação" : `Alienação Fiduciária${bemConsorciosSel.size > 0 ? ` (${bemConsorciosSel.size})` : ""}`}
                         </button>
                       ))}
@@ -3743,9 +3743,9 @@ function CadastrosInner() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
                 {/* Sub-abas */}
-                <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div data-arato-tabs="true" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {SUB_ABAS_COMB.map(a => (
-                    <button data-arato-button="toggle" key={a.key} onClick={() => setSubAbaComb(a.key)}
+                    <button data-arato-tab-active={subAbaComb === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setSubAbaComb(a.key)}
                       style={{ flex: 1, padding: "11px 16px", border: "none", borderBottom: subAbaComb === a.key ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: subAbaComb === a.key ? 600 : 400, color: subAbaComb === a.key ? "#111111" : "var(--text-2)", cursor: "pointer" }}>
                       {a.label}
                     </button>
@@ -4079,14 +4079,14 @@ function CadastrosInner() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* Sub-abas */}
-              <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+              <div data-arato-tabs="true" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
                 {([
                   { key: "grupos_insumo", label: "Grupos de Insumos" },
                   { key: "tipos_pessoa",  label: "Tipos de Pessoa"   },
                   { key: "centros_custo", label: "Centros de Custo"  },
                   { key: "categorias",    label: "Categorias Financeiras" },
                 ] as { key: SubAbaAux; label: string }[]).map(s => (
-                  <button data-arato-button="toggle" key={s.key} onClick={() => setSubAbaAux(s.key)} style={{
+                  <button data-arato-tab-active={subAbaAux === (s.key)} data-arato-tab="true" data-arato-button="toggle" key={s.key} onClick={() => setSubAbaAux(s.key)} style={{
                     padding: "8px 18px", border: "none",
                     background: subAbaAux === s.key ? "#111111" : "transparent",
                     color: subAbaAux === s.key ? "#fff" : "#666",
@@ -6229,9 +6229,9 @@ function CadastrosInner() {
           {/* ══ USUÁRIOS (movido para Configurações) ══ */}
           {(aba as string) === "usuarios" && (
             <div>
-              <div style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+              <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
                 {(["grupos","usuarios"] as const).map(s => (
-                  <button data-arato-button="toggle" key={s} onClick={() => setSubAbaUser(s)} style={{ padding: "8px 20px", border: "none", background: subAbaUser === s ? "#111111" : "transparent", color: subAbaUser === s ? "#fff" : "#666", fontWeight: subAbaUser === s ? 600 : 400, cursor: "pointer", fontSize: 13 }}>
+                  <button data-arato-tab-active={subAbaUser === (s)} data-arato-tab="true" data-arato-button="toggle" key={s} onClick={() => setSubAbaUser(s)} style={{ padding: "8px 20px", border: "none", background: subAbaUser === s ? "#111111" : "transparent", color: subAbaUser === s ? "#fff" : "#666", fontWeight: subAbaUser === s ? 600 : 400, cursor: "pointer", fontSize: 13 }}>
                     {s === "grupos" ? "Grupos" : "Usuários"}
                   </button>
                 ))}
@@ -7418,9 +7418,9 @@ function CadastrosInner() {
       {modalProd && (
         <Modal titulo={editProd ? "Editar Produtor" : "Novo Produtor"} onClose={() => setModalProd(false)} width={960}>
           {/* Abas */}
-          <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border)", marginBottom: 20 }}>
+          <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border)", marginBottom: 20 }}>
             {([["dados","Dados Cadastrais"],["ies",`Inscrições Estaduais${prodIEs.length > 0 ? ` (${prodIEs.length})` : ""}`]] as [string,string][]).map(([k,l]) => (
-              <button data-arato-button="toggle" key={k} onClick={() => setTabProd(k as "dados"|"ies")} style={{ padding: "8px 18px", fontSize: 13, fontWeight: tabProd === k ? 600 : 400, color: tabProd === k ? "#111111" : "#666", background: "none", border: "none", borderBottom: tabProd === k ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}>{l}</button>
+              <button data-arato-tab-active={tabProd === (k as "dados"|"ies")} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setTabProd(k as "dados"|"ies")} style={{ padding: "8px 18px", fontSize: 13, fontWeight: tabProd === k ? 600 : 400, color: tabProd === k ? "#111111" : "#666", background: "none", border: "none", borderBottom: tabProd === k ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}>{l}</button>
             ))}
           </div>
 
@@ -7699,9 +7699,9 @@ function CadastrosInner() {
         return (
           <Modal titulo={editFaz ? "Editar Fazenda" : "Nova Fazenda"} subtitulo="Uma fazenda pode pertencer a um Produtor (PF/parceria) ou a uma Empresa (PJ)" onClose={() => setModalFaz(false)} width={1100}>
             {/* ── Tab navigation ── */}
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", marginBottom: 22, gap: 0 }}>
+            <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", marginBottom: 22, gap: 0 }}>
               {([["geral","Dados Gerais"],["matriculas",`Matrículas${fazMatsLocal.length > 0 ? ` (${fazMatsLocal.length})` : ""}`],["cars",`CAR${fazCars.length > 0 ? ` (${fazCars.length})` : ""}`],["nirfs",`NIRF${fazNirfs.length > 0 ? ` (${fazNirfs.length})` : ""}`],["itrs",`ITR${fazItrs.length > 0 ? ` (${fazItrs.length})` : ""}`],["ccirs",`CCIR${fazCcirs.length > 0 ? ` (${fazCcirs.length})` : ""}`],["arrendamentos",`Arrendamentos${fazArrendamentos.length > 0 ? ` (${fazArrendamentos.length})` : ""}`]] as [string,string][]).map(([k, l]) => (
-                <button data-arato-button="toggle" key={k} onClick={() => setTabFaz(k as typeof tabFaz)} style={{ padding: "10px 18px", border: "none", borderBottom: tabFaz === k ? "2px solid #111111" : "2px solid transparent", background: "none", cursor: "pointer", fontSize: 13, color: tabFaz === k ? "#111111" : "var(--text-2)", fontWeight: tabFaz === k ? 600 : 400 }}>{l}</button>
+                <button data-arato-tab-active={tabFaz === (k as typeof tabFaz)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setTabFaz(k as typeof tabFaz)} style={{ padding: "10px 18px", border: "none", borderBottom: tabFaz === k ? "2px solid #111111" : "2px solid transparent", background: "none", cursor: "pointer", fontSize: 13, color: tabFaz === k ? "#111111" : "var(--text-2)", fontWeight: tabFaz === k ? 600 : 400 }}>{l}</button>
               ))}
             </div>
 
@@ -9175,9 +9175,9 @@ function CadastrosInner() {
       {modalMaq && (
         <Modal titulo={editMaq ? "Editar Máquina / Veículo" : "Nova Máquina / Veículo"} onClose={() => setModalMaq(false)} width={820}>
           {/* Abas internas */}
-          <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginBottom: 18 }}>
+          <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginBottom: 18 }}>
             {(["geral", "aquisicao"] as const).map(t => (
-              <button data-arato-button="toggle" key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #2A2A2A" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#2A2A2A" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
+              <button data-arato-tab-active={tabMaq === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #2A2A2A" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#2A2A2A" : "var(--text-2)", cursor: "pointer", fontSize: 13 }}>
                 {t === "geral" ? "Dados Gerais" : "Aquisição / Financiamento"}
               </button>
             ))}
@@ -9627,7 +9627,7 @@ function CadastrosInner() {
           </div>
 
           {/* Sub-abas */}
-          <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 16 }}>
+          <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 16 }}>
             {([
               { key: "principal",     label: "Principal"         },
               { key: "estoque",       label: "Estoque"           },
@@ -9636,7 +9636,7 @@ function CadastrosInner() {
               { key: "contabilidade", label: "Contabilidade"     },
               { key: "cfop",          label: "Histórico Fiscal"  },
             ] as { key: typeof abaOpGer; label: string }[]).map(a => (
-              <button data-arato-button="toggle" key={a.key} onClick={() => {
+              <button data-arato-tab-active={abaOpGer === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => {
                 setAbaOpGer(a.key);
                 if (a.key === "cfop" && editOpGer && cfopsOp.length === 0 && !loadingCfops) {
                   setLoadingCfops(true);
@@ -10243,11 +10243,11 @@ function CadastrosInner() {
         return (
           <Modal titulo={editFunc ? `Funcionário — ${editFunc.nome}` : "Novo Funcionário"} onClose={() => setModalFunc(false)} width={920}>
             {/* Tabs */}
-            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-row)", marginBottom: 20, gap: 0 }}>
+            <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-row)", marginBottom: 20, gap: 0 }}>
               {((["dados","remuneracao","premiacoes","ferias", ...(editFunc ? ["rescisao"] : [])]) as ("dados"|"remuneracao"|"premiacoes"|"ferias"|"rescisao")[]).map(t => {
                 const labels: Record<string, string> = { dados: "Dados Pessoais", remuneracao: "Remuneração", premiacoes: `Premiações (${premiacoes.length})`, ferias: `Férias${ferDisp > 0 ? ` ⚠ ${ferDisp}` : ""}`, rescisao: editFunc?.ativo === false ? "Rescisão ✓" : "Rescisão" };
                 return (
-                  <button data-arato-button="toggle" key={t} onClick={() => setAbaFunc(t)} style={{ padding: "8px 18px", fontSize: 12, fontWeight: abaFunc === t ? 700 : 400, color: abaFunc === t ? "#111111" : "#666", background: "none", border: "none", borderBottom: abaFunc === t ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <button data-arato-tab-active={abaFunc === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAbaFunc(t)} style={{ padding: "8px 18px", fontSize: 12, fontWeight: abaFunc === t ? 700 : 400, color: abaFunc === t ? "#111111" : "#666", background: "none", border: "none", borderBottom: abaFunc === t ? "2px solid #111111" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>
                     {labels[t]}
                   </button>
                 );
@@ -11003,9 +11003,9 @@ function CadastrosInner() {
         return (
           <Modal titulo={editEmp ? "Editar Empresa" : "Nova Empresa"} onClose={() => setModalEmp(false)} width={900}>
             {/* Tabs */}
-            <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20, marginTop: -4 }}>
+            <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20, marginTop: -4 }}>
               {ABAS_EMP.map(a => (
-                <button data-arato-button="toggle" key={a.key} onClick={() => setAbaEmp(a.key as typeof abaEmp)}
+                <button data-arato-tab-active={abaEmp === (a.key as typeof abaEmp)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaEmp(a.key as typeof abaEmp)}
                   style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: abaEmp === a.key ? 700 : 400, color: abaEmp === a.key ? "#111111" : "var(--text-2)", borderBottom: abaEmp === a.key ? "2.5px solid #111111" : "2.5px solid transparent", whiteSpace: "nowrap" }}>
                   {a.label}
                 </button>

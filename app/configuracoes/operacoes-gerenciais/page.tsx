@@ -657,7 +657,7 @@ function OperacoesGerenciaisContent() {
             })()}
 
             {/* Abas */}
-            <div data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0, background: "var(--bg-card)" }}>
+            <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0, background: "var(--bg-card)" }}>
               {([
                 { key: "telas",         label: "Telas / Módulos"   },
                 { key: "estoque",       label: "Estoque"            },
@@ -671,7 +671,7 @@ function OperacoesGerenciaisContent() {
                   !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
                   !form.permite_manutencao && !form.permite_combustivel;
                 return (
-                  <button data-arato-button="toggle" key={a.key} onClick={() => setAbaModal(a.key)} style={{
+                  <button data-arato-tab-active={abaModal === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaModal(a.key)} style={{
                     padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                     borderBottom: abaModal === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
                     color: abaModal === a.key ? "#2A2A2A" : "var(--text-2)",

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
-import { DENSITY_KEY, LAYOUT_KEY, LAYOUT_SCRIPT, isPublicLayout, preferenceKey, validDensity, validLayout } from "./layout-preferences";
+import { DENSITY_KEY, LAYOUT_KEY, LAYOUT_SCRIPT, hasClientWorkspace, isClientLayout, isPublicLayout, preferenceKey, validDensity, validLayout } from "./layout-preferences";
 import { NAV, type NavItem } from "./navigation";
 import { activeDestination, canShowLink, modernNavigation } from "./modern-navigation";
 function destinations(source: NavItem[]): Set<string> {
@@ -50,7 +50,20 @@ test("bootstrap restaura o modelo antes da hidratação e suporta storage bloque
     runInNewContext(LAYOUT_SCRIPT, { document: { documentElement: root }, localStorage: { getItem: (key: string) => { if (blocked) throw new Error("blocked"); return key === LAYOUT_KEY ? "new" : key === DENSITY_KEY ? "compact" : null; } } });
     assert.equal(root.dataset.layout, blocked ? "current" : "new");
     assert.equal(root.dataset.gridDensity, blocked ? "comfortable" : "compact");
+    assert.equal(root.dataset.layoutWorkspace, "false");
   }
+});
+test("seleção e gestão interna usam o layout original mesmo com cliente anterior selecionado", () => {
+  for (const path of ["/seletor-cliente", "/raccotlo", "/admin", "/admin/clientes", "/bpo/seletor-cliente", "/bpo/admin", "/campo", "/login"]) {
+    assert.equal(isClientLayout(path), false, path);
+    assert.equal(hasClientWorkspace(path, "gestor@exemplo.com", "conta-anterior", "fazenda-anterior"), false, path);
+  }
+});
+test("navegação exige contexto autenticado de cliente e reaparece ao entrar no ambiente", () => {
+  assert.equal(hasClientWorkspace("/financeiro/pagar", null, "conta", "fazenda"), false);
+  assert.equal(hasClientWorkspace("/financeiro/pagar", "cliente@exemplo.com", null, null), false);
+  assert.equal(hasClientWorkspace("/financeiro/pagar", "cliente@exemplo.com", "conta", null), true);
+  assert.equal(hasClientWorkspace("/cadastros", "cliente@exemplo.com", null, "fazenda"), true);
 });
 test("documentos e páginas públicas não recebem a navegação operacional", () => {
   assert.equal(isPublicLayout("/comercial/faturamento/danfe/123"), true);
