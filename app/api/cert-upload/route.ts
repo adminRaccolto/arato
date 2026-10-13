@@ -1,32 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import forge from "node-forge";
 import { validateFazendaAccess } from "../../../lib/api-auth";
+import { validarCertificadoA1 } from "../../../lib/nfe/certificado-a1";
 
 function adminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
-}
-
-function extrairVencimento(buffer: ArrayBuffer, senha: string): string | null {
-  try {
-    const bytes = new Uint8Array(buffer);
-    let bin = "";
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    const der = forge.util.createBuffer(bin, "raw");
-    const asn1 = forge.asn1.fromDer(der);
-    const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, senha);
-    const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
-    const certs = bags[forge.pki.oids.certBag];
-    if (!certs || certs.length === 0) return null;
-    const cert = certs[0].cert;
-    if (!cert) return null;
-    return cert.validity.notAfter.toISOString().slice(0, 10);
-  } catch {
-    return null;
-  }
 }
 
 // POST /api/cert-upload
@@ -48,7 +29,12 @@ export async function POST(req: Request) {
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const buffer = await file.arrayBuffer();
-  const dataVencimento = extrairVencimento(buffer, senha);
+  let dataVencimento: string;
+  try {
+    dataVencimento = validarCertificadoA1(Buffer.from(buffer), senha).vencimento;
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  }
 
   const supabase = adminClient();
   const path = `${fazendaId}/${produtorId ?? "geral"}/${file.name}`;
