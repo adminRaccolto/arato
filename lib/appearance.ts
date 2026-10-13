@@ -272,6 +272,40 @@ export const PALETTES = {
       "accent": "#EAC477"
     },
     "nav2": "#775231"
+  },
+  "branco": {
+    "name": "Branco",
+    "description": "Fundos brancos, textos escuros e contornos definidos.",
+    "nav": "#1F2937",
+    "nav2": "#374151",
+    "light": {
+      "page": "#FFFFFF",
+      "surface": "#FFFFFF",
+      "input": "#FFFFFF",
+      "hover": "#F4F6F8",
+      "text": "#111827",
+      "secondary": "#374151",
+      "muted": "#4B5563",
+      "border": "#8793A3",
+      "control": "#64748B",
+      "primary": "#1A4870",
+      "onPrimary": "#FFFFFF",
+      "accent": "#856010"
+    },
+    "dark": {
+      "page": "#111827",
+      "surface": "#1F2937",
+      "input": "#273449",
+      "hover": "#303F54",
+      "text": "#F9FAFB",
+      "secondary": "#D1D5DB",
+      "muted": "#BAC5D4",
+      "border": "#526277",
+      "control": "#9AAAC0",
+      "primary": "#A5CCFA",
+      "onPrimary": "#111827",
+      "accent": "#F0C875"
+    }
   }
 } satisfies Record<string, Palette>;
 export type PaletteId = keyof typeof PALETTES;

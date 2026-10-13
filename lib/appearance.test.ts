@@ -13,7 +13,7 @@ function contrast(a: string, b: string) {
   return (max + .05) / (min + .05);
 }
 
-test("todas as oito paletas mantêm contraste de texto, botões e campos nos dois modos", () => {
+test("todas as paletas mantêm contraste de texto, botões e campos nos dois modos", () => {
   for (const [id, palette] of Object.entries(PALETTES)) {
     for (const mode of ["light", "dark"] as const) {
       const c = palette[mode];
@@ -30,6 +30,20 @@ test("todas as oito paletas mantêm contraste de texto, botões e campos nos doi
       }
     }
   }
+});
+
+test("Branco usa fundos brancos com contornos visíveis e restaura a preferência", () => {
+  const c = PALETTES.branco.light;
+  for (const bg of [c.page, c.surface, c.input]) {
+    assert.equal(bg, "#FFFFFF");
+    assert.ok(contrast(c.border, bg) >= 3, "delimitação de formulários");
+    assert.ok(contrast(c.control, bg) >= 3, "delimitação de campos");
+  }
+  assert.notEqual(c.hover, c.surface);
+  const { root, properties } = bootstrap("branco", "light");
+  assert.equal(root.dataset.palette, "branco");
+  assert.equal(properties["--bg-page"], "#FFFFFF");
+  assert.equal(properties["--border-control"], c.control);
 });
 
 test("preferências inválidas e nomes de propriedades do objeto não são aceitos como paletas", () => {

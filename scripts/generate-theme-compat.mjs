@@ -4,11 +4,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 const colors = new Set(['#000', '#fff', '#111111', '#333', '#666', '#888']);
 const rgbaColors = new Set();
+const borderStyles = new Map();
 function scan(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const file = path.join(dir, entry.name);
     if (entry.isDirectory()) scan(file);
     else if (file.endsWith('.tsx') && !file.includes('.legado.')) {
+      for (const m of fs.readFileSync(file, 'utf8').matchAll(/\b(border(?:Top|Right|Bottom|Left)?)\s*:\s*["'`](\d*\.?\d+px)\s+solid\s+(#[0-9a-fA-F]{3,6})\b/g)) {
+        const property = m[1].replace(/[A-Z]/g, c => '-' + c.toLowerCase());
+        if (!borderStyles.has(property)) borderStyles.set(property, new Set());
+        borderStyles.get(property).add(JSON.stringify([m[2], m[3]]));
+      }
       for (const m of fs.readFileSync(file, 'utf8').matchAll(/#[0-9a-fA-F]{3,8}\b/g)) if ([4, 7].includes(m[0].length)) colors.add(m[0].toLowerCase());
       for (const m of fs.readFileSync(file, 'utf8').matchAll(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(0?\.\d+|1)\s*\)/g)) {
         rgbaColors.add(JSON.stringify(m.slice(1).map(Number)));
@@ -63,11 +69,54 @@ for (const encoded of rgbaColors) {
 const excluded = ':not([data-theme-static], [data-theme-static] *, .print-area, .print-area *, #rom-print-area, #rom-print-area *)';
 const rules = [];
 const brightRules = [];
+// O Branco também adapta fundos e contornos neutros fixos dos formulários antigos.
+// Cores de avisos, estados e documentos continuam preservadas.
+const whiteBorders = new Map();
+const whiteBackgrounds = new Map();
+const whiteText = new Map();
+for (const hex of colors) {
+  const c = rgb(hex), avg = c.reduce((a, b) => a + b) / 3;
+  const value = `rgb(${c.join(', ')})`;
+  if (tone(c) === 'neutral' && avg >= 80 && avg < 235) {
+    const token = avg < 140 ? '--text-2' : '--text-3';
+    if (!whiteText.has(token)) whiteText.set(token, []);
+    whiteText.get(token).push(`[style^="color: ${value}"]`, `[style*="; color: ${value}"]`);
+  }
+  if (tone(c, 30) !== 'neutral' || avg < 160) continue;
+  if (avg < 235 || tone(c, 8) !== 'neutral') continue;
+  const token = avg >= 245 ? '--bg-card' : '--bg-tag';
+  if (!whiteBackgrounds.has(token)) whiteBackgrounds.set(token, []);
+  for (const property of ['background', 'background-color']) {
+    whiteBackgrounds.get(token).push(`[style^="${property}: ${value}"]`, `[style*="; ${property}: ${value}"]`);
+  }
+}
+for (const [property, styles] of borderStyles) {
+  const target = property === 'border' ? 'border-color' : `${property}-color`;
+  const selectors = new Set();
+  for (const encoded of styles) {
+    const [width, hex] = JSON.parse(encoded), c = rgb(hex);
+    if (tone(c, 30) !== 'neutral' || c.reduce((a, b) => a + b) / 3 < 160) continue;
+    const value = `${parseFloat(width)}px solid rgb(${c.join(', ')})`;
+    selectors.add(`[style^="${property}: ${value}"]`);
+    selectors.add(`[style*="; ${property}: ${value}"]`);
+  }
+  if (selectors.size) whiteBorders.set(target, selectors);
+}
+for (const [property, selectors] of whiteBorders) {
+  const width = property.replace('color', 'width');
+  rules.push(`  :root[data-palette="branco"][data-theme="light"] :is(${[...selectors].join(',')})${excluded}:not(input, select, textarea) { ${property}: var(--border) !important; ${width}: 1px !important; }`);
+}
+for (const [token, selectors] of whiteBackgrounds) {
+  rules.push(`  :root[data-palette="branco"][data-theme="light"] :is(${selectors.join(',')})${excluded}:not(input, select, textarea) { background-color: var(${token}) !important; }`);
+}
+for (const [token, selectors] of whiteText) {
+  rules.push(`  :root[data-palette="branco"][data-theme="light"] :is(${selectors.join(',')})${excluded}:not(header, header *, nav, nav *) { color: var(${token}) !important; }`);
+}
 for (const [key, values] of grouped) {
   const [property, token] = key.split('|');
   if (property === 'bright-background') {
     const selectors = [...values].flatMap(v => ['background', 'background-color'].flatMap(p => [`[style^="${p}: ${v}"]`, `[style*="; ${p}: ${v}"]`]));
-    brightRules.push(`  :root[data-theme="dark"] :is(${selectors.join(',')})${excluded} { color: var(${token}) !important; }`);
+    brightRules.push(`  :is(:root[data-theme="dark"], :root[data-palette="branco"][data-theme="light"]) :is(${selectors.join(',')})${excluded} { color: var(${token}) !important; }`);
   } else {
     const selectors = [...values].flatMap(v => [`[style^="${property}: ${v}"]`, `[style*="; ${property}: ${v}"]`]);
     rules.push(`  :root[data-theme="dark"] :is(${selectors.join(',')})${excluded} { ${property}: var(${token}) !important; }`);
