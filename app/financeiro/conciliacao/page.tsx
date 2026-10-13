@@ -52,6 +52,8 @@ interface RegraConc {
 // A migração Seção 277 (colunas novas em extrato_transacoes) pode ainda não ter sido
 // executada: sem este flag, qualquer select/upsert com as colunas novas derrubaria a tela.
 let COLUNAS_NOVAS = false;
+let ultimoErroSync = "";   // último erro devolvido pelo servidor ao gravar extrato_transacoes (mostrado no alerta)
+let ultimoErroPersist = "";
 
 interface Lancamento {
   id: string;
@@ -253,76 +255,19 @@ async function syncExtratoTransacoes(
 ): Promise<boolean> {
   if (!linhas.length) return true;
   if (!contaId) return false; // sem conta vinculada não dá pra deduplicar (chave exige conta_bancaria_id)
-
-  // Achados da auditoria 21/09/2026: (1) a consulta `.in("fitid", <todos>)` estourava o
-  // limite de URL em extratos grandes; o erro era ignorado, `existentes` vinha vazio e o
-  // upsert seguinte GRAVAVA conciliado=false por cima das conciliações existentes
-  // ("contas desconciliam"); (2) FITID repetido no mesmo lote derruba o upsert inteiro
-  // ("ON CONFLICT … a second time"); (3) qualquer erro só ia pro console e a tela seguia
-  // como se tivesse salvo. Agora: lotes pequenos, erro propaga (retorna false) e o
-  // lote nunca regride conciliação se a leitura do estado atual falhou.
-  // primeiro_/ultimo_extrato_id têm FK para extratos_bancarios: só um id que existe lá pode ser
-  // gravado. O id "virtual-…" da visão contínua nunca existe — usá-lo derrubava TODA ação manual.
-  const idExtratoValido = extratoId && !extratoId.startsWith("virtual-") ? extratoId : null;
-  const vistos = new Set<string>();
-  const unicas = linhas.filter(l => (vistos.has(l.id) ? false : (vistos.add(l.id), true)));
-
-  const LOTE = 150;
-  const mapaExistente = new Map<string, { fitid: string; valor: number; conciliado: boolean; lancamento_id: string | null; lancamento_ids: string[] | null; lancamento_desc: string | null; lancamento_valor: number | null; primeiro_extrato_id: string | null; ultimo_extrato_id?: string | null; origem_vinculo?: string | null; confianca?: string | null; regra_id?: string | null }>();
-  for (let i = 0; i < unicas.length; i += LOTE) {
-    const { data, error } = await supabase.from("extrato_transacoes")
-      .select("fitid, valor, conciliado, lancamento_id, lancamento_ids, lancamento_desc, lancamento_valor, primeiro_extrato_id, ultimo_extrato_id" + (COLUNAS_NOVAS ? ", origem_vinculo, confianca, regra_id" : ""))
-      .eq("conta_bancaria_id", contaId).in("fitid", unicas.slice(i, i + LOTE).map(l => l.id));
-    if (error) { console.error("[syncExtratoTransacoes] leitura", error); return false; }
-    for (const e of ((data ?? []) as unknown as Record<string, unknown>[])) mapaExistente.set(e.fitid as string, e as never);
-  }
-
-  const rows = unicas.map(l => {
-    const ex = mapaExistente.get(l.id);
-    // Alguns bancos (ex: Cresol) não geram FITID estável — é literalmente
-    // "data + sequência daquele dia dentro do arquivo", não um id do banco.
-    // Reimportar um período sobreposto pode reaproveitar o mesmo FITID pra
-    // uma transação DIFERENTE (se a ordem/quantidade de lançamentos daquele
-    // dia mudou entre os dois exports) — sem essa checagem, preservaria a
-    // conciliação antiga colada numa transação nova e diferente (valor/data
-    // sobrescritos, mas o vínculo do lançamento antigo mantido). Só confia
-    // que é a mesma transação se o valor bater; senão trata como nova linha.
-    const mesmaTransacao = !ex || Math.abs(ex.valor - l.valor) < 0.01;
-    // Import nunca regride: se já estava conciliado, preserva o vínculo
-    // existente mesmo que esta importação não tenha encontrado o match.
-    const preservarConciliado = modo === "import" && mesmaTransacao && ex?.conciliado && !l.conciliado;
-    return {
-      fazenda_id: fazendaId,
-      conta_bancaria_id: contaId,
-      conta_nome: contaNome ?? null,
-      fitid: l.id,
-      data: l.data,
-      descricao: l.descricao,
-      valor: l.valor,
-      tipo: l.tipo,
-      conciliado: preservarConciliado ? true : l.conciliado,
-      lancamento_id: preservarConciliado ? (ex?.lancamento_id ?? null) : (l.lancamento_id ?? null),
-      lancamento_ids: preservarConciliado ? (ex?.lancamento_ids ?? null) : (l.lancamento_ids ?? null),
-      lancamento_desc: preservarConciliado ? (ex?.lancamento_desc ?? null) : (l.lancamento_desc ?? null),
-      lancamento_valor: preservarConciliado ? (ex?.lancamento_valor ?? null) : (l.lancamento_valor ?? null),
-      primeiro_extrato_id: ex?.primeiro_extrato_id ?? idExtratoValido,
-      ultimo_extrato_id: idExtratoValido ?? ex?.ultimo_extrato_id ?? null,
-      updated_at: new Date().toISOString(),
-      ...(COLUNAS_NOVAS ? {
-        origem_vinculo: preservarConciliado ? (ex?.origem_vinculo ?? null) : (l.conciliado ? (l.origem_vinculo ?? "manual") : null),
-        confianca: preservarConciliado ? (ex?.confianca ?? null) : (l.conciliado ? (l.confianca ?? null) : null),
-        regra_id: preservarConciliado ? (ex?.regra_id ?? null) : (l.conciliado ? (l.regra_id ?? null) : null),
-        sugestao_lancamento_id: l.conciliado || preservarConciliado ? null : (l.sugestao_lancamento_id ?? null),
-        sugestao_motivo: l.conciliado || preservarConciliado ? null : (l.sugestao_motivo ?? null),
-      } : {}),
-    };
-  });
-
-  for (let i = 0; i < rows.length; i += LOTE) {
-    const { error } = await supabase.from("extrato_transacoes").upsert(rows.slice(i, i + LOTE), { onConflict: "conta_bancaria_id,fitid" });
-    if (error) { console.error("[syncExtratoTransacoes] gravação", error); return false; }
-  }
-  return true;
+  // A gravação roda no SERVIDOR (service_role): gravar direto daqui dependia da RLS/JWT do usuário e
+  // falhava para quem não tem conta_id no perfil (BPO/seletor) ou com sessão vencida, revertendo a
+  // conciliação inteira. Regras de deduplicação (FITID repetido, import nunca regride conciliação,
+  // lotes de 150) estão em /api/financeiro/sync-extrato-transacoes.
+  try {
+    const r = await authFetch("/api/financeiro/sync-extrato-transacoes", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fazenda_id: fazendaId, conta_id: contaId, conta_nome: contaNome ?? null, linhas, extrato_id: extratoId, modo, colunas_novas: COLUNAS_NOVAS }),
+    });
+    const j = await r.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+    if (!r.ok || !j?.ok) { console.error("[syncExtratoTransacoes]", r.status, j?.error); ultimoErroSync = j?.error ?? `HTTP ${r.status}`; return false; }
+    return true;
+  } catch (e) { console.error("[syncExtratoTransacoes]", e); ultimoErroSync = e instanceof Error ? e.message : String(e); return false; }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1076,6 +1021,7 @@ function ConciliacaoInner() {
     // Estado otimista COM rollback: antes, se a gravação falhasse a tela continuava
     // mostrando a linha conciliada (só um alert dizia o contrário) e, ao recarregar, a
     // conciliação "sumia". Agora a falha devolve a tela ao estado anterior.
+    ultimoErroPersist = "";
     const extratoAnterior = extrato;
     const extratosAnteriores = extratos;
     const reverter = () => { setExtrato(extratoAnterior); setExtratos(extratosAnteriores); };
@@ -1100,6 +1046,7 @@ function ConciliacaoInner() {
       const json = await res.json().catch(() => ({ ok: false }));
       if (!res.ok || json?.ok === false) {
         console.error("[persistExtrato] falhou:", json);
+        ultimoErroPersist = (json as { error?: string })?.error ?? `HTTP ${res.status}`;
         reverter();
         return false;
       }
@@ -1111,12 +1058,14 @@ function ConciliacaoInner() {
       if (!okSync) {
         // O lançamento já foi baixado/conciliado pela API, mas extrato_transacoes (o que a
         // tela lê ao reabrir) não foi atualizada. Repetir a ação é seguro (idempotente).
+        ultimoErroPersist = `extrato_transacoes: ${ultimoErroSync || "falha ao gravar"}`;
         reverter();
         return false;
       }
       return true;
     } catch (e) {
       console.error("[persistExtrato]", e);
+      ultimoErroPersist = e instanceof Error ? e.message : String(e);
       reverter();
       return false;
     }
@@ -1307,7 +1256,7 @@ function ConciliacaoInner() {
     );
 
     if (!ok) {
-      alert("Não foi possível salvar a conciliação — tente novamente. A tela pode estar mostrando um estado que ainda não foi gravado.");
+      alert(`Não foi possível salvar a conciliação — tente novamente. A tela pode estar mostrando um estado que ainda não foi gravado.${ultimoErroPersist ? `\n\nMotivo: ${ultimoErroPersist}` : ""}`);
       setSalvando(false);
       carregar();
       return;

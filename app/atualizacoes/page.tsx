@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-g",
+    data: "13/10/2026",
+    titulo: "Conciliação: erro ao salvar (\"Não foi possível salvar a conciliação\")",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao conciliar, a tela gravava o espelho do extrato (extrato_transacoes) direto do navegador, sujeito à RLS e à sessão do usuário. Para usuários sem conta vinculada no perfil (BPO/seletor) ou com sessão vencida a gravação era recusada e a conciliação inteira era desfeita na tela. Agora essa gravação roda no servidor, como o resto da conciliação." },
+      { tipo: "melhoria", texto: "Quando a conciliação não salvar, o aviso passa a mostrar o motivo devolvido pelo servidor." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.13-f",
     data: "13/10/2026",
     titulo: "Campos de data não encolhem mais em barras de filtro",
