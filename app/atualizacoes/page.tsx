@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-s",
+    data: "13/10/2026",
+    titulo: "Olívia: botão de enviar não respondia",
+    modulos: ["Geral"],
+    itens: [
+      { tipo: "correcao", texto: "O botão de enviar do balão da Olívia não fazia nada quando a conversa não havia sido criada ao abrir (usuário sem conta vinculada ou sessão vencida). Agora a conversa é criada pelo servidor no envio e os erros aparecem no chat." },
+    ],
+    onde: "Balão da Olívia (todas as telas)",
+  },
+  {
     versao: "2026.10.13-r",
     data: "13/10/2026",
     titulo: "Folha: pagamento no mês seguinte à competência",

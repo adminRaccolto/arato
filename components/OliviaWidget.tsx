@@ -92,14 +92,41 @@ export default function OliviaWidget() {
   }
 
   async function enviarMensagem() {
-    if (!input.trim() || !conversaAtiva || !fazendaId || enviando) return;
+    if (!input.trim() || enviando) return;
     const texto = input.trim();
+    if (!fazendaId) {
+      setMensagens(prev => [...prev, { id: "err-" + Date.now(), conversa_id: "", fazenda_id: "", role: "assistant", content: "⚠️ Nenhuma fazenda ativa selecionada. Escolha o cliente/fazenda no topo da tela e tente de novo." }]);
+      return;
+    }
     setInput("");
     setEnviando(true);
+    // Conversa ainda não existe (a criação inicial falhou por RLS/sessão): cria pelo servidor na hora de enviar
+    let conv = conversaAtiva;
+    try {
+      if (!conv) {
+        const { data: sess } = await supabase.auth.getSession();
+        const tk = sess.session?.access_token;
+        const rc = await fetch("/api/suporte/conversa", {
+          method: "POST", headers: { "Content-Type": "application/json", ...(tk ? { Authorization: `Bearer ${tk}` } : {}) },
+          body: JSON.stringify({ fazenda_id: fazendaId, titulo: "Nova conversa" }),
+        });
+        const jc = await rc.json() as { ok: boolean; conversa?: SuporteConversa; error?: string };
+        if (!jc.ok || !jc.conversa) throw new Error(jc.error ?? "Não foi possível iniciar a conversa");
+        conv = jc.conversa;
+        setConversaAtiva(conv);
+        setConversas(prev => [conv!, ...prev]);
+      }
+    } catch (e) {
+      setInput(texto);
+      setMensagens(prev => [...prev, { id: "err-" + Date.now(), conversa_id: "", fazenda_id: fazendaId, role: "assistant", content: `⚠️ Erro: ${e instanceof Error ? e.message : String(e)}` }]);
+      setEnviando(false);
+      return;
+    }
+    const conversaAtivaId = conv.id;
     try {
       const userRes = await fetch("/api/suporte/mensagem", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversa_id: conversaAtiva.id, fazenda_id: fazendaId, role: "user", content: texto }),
+        body: JSON.stringify({ conversa_id: conversaAtivaId, fazenda_id: fazendaId, role: "user", content: texto }),
       });
       const userJson = await userRes.json() as { ok: boolean; mensagem?: SuporteMensagem };
       if (!userJson.ok || !userJson.mensagem) throw new Error("Erro ao salvar mensagem");
@@ -108,15 +135,15 @@ export default function OliviaWidget() {
 
       if (mensagens.length === 0) {
         const titulo = texto.length > 50 ? texto.slice(0, 47) + "..." : texto;
-        setConversas(prev => prev.map(c => c.id === conversaAtiva.id ? { ...c, titulo } : c));
+        setConversas(prev => prev.map(c => c.id === conversaAtivaId ? { ...c, titulo } : c));
         setConversaAtiva(prev => prev ? { ...prev, titulo } : prev);
-        atualizarTituloConversa(conversaAtiva.id, titulo).catch(() => {});
+        atualizarTituloConversa(conversaAtivaId, titulo).catch(() => {});
       }
 
       const res = await fetch("/api/suporte/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          conversa_id: conversaAtiva.id, fazenda_id: fazendaId,
+          conversa_id: conversaAtivaId, fazenda_id: fazendaId,
           mensagens: [...mensagens, msgUser].map(m => ({ role: m.role, content: m.content })),
         }),
       });
@@ -128,16 +155,16 @@ export default function OliviaWidget() {
 
       const aiRes = await fetch("/api/suporte/mensagem", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversa_id: conversaAtiva.id, fazenda_id: fazendaId, role: "assistant", content: resposta }),
+        body: JSON.stringify({ conversa_id: conversaAtivaId, fazenda_id: fazendaId, role: "assistant", content: resposta }),
       });
       const aiJson = await aiRes.json() as { ok: boolean; mensagem?: SuporteMensagem };
-      const msgAI = aiJson.mensagem ?? { id: "ai-" + Date.now(), conversa_id: conversaAtiva.id, fazenda_id: fazendaId ?? "", role: "assistant" as const, content: resposta };
+      const msgAI = aiJson.mensagem ?? { id: "ai-" + Date.now(), conversa_id: conversaAtivaId, fazenda_id: fazendaId ?? "", role: "assistant" as const, content: resposta };
       setMensagens(prev => [...prev, msgAI]);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       const isApiKey = msg.includes("ANTHROPIC_API_KEY") || msg.includes("401") || msg.includes("Authentication");
       setMensagens(prev => [...prev, {
-        id: "err-" + Date.now(), conversa_id: conversaAtiva.id, fazenda_id: fazendaId ?? "", role: "assistant",
+        id: "err-" + Date.now(), conversa_id: conversaAtivaId, fazenda_id: fazendaId ?? "", role: "assistant",
         content: isApiKey
           ? "⚠️ Chave da API de IA não configurada. Acesse Vercel → Project → Settings → Environment Variables e adicione ANTHROPIC_API_KEY."
           : `⚠️ Erro: ${msg}`,
