@@ -403,6 +403,14 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (data?.publicUrl) setLogoArato(data.publicUrl);
   }, []);
 
+  // Aba aberta numa versão antiga: ao trocar de tela, recarrega por completo. Sem isso, o clique num atalho
+  // abria a tela da versão antiga (a aba continuava com o código velho e telas já removidas reapareciam).
+  const pathnameAnterior = useRef(pathname);
+  useEffect(() => {
+    if (pathnameAnterior.current !== pathname && desatualizado) { window.location.reload(); return; }
+    pathnameAnterior.current = pathname;
+  }, [pathname, desatualizado]);
+
   // Verificação de nova versão — polling a cada 3 minutos
   useEffect(() => {
     async function checarVersao() {
@@ -418,7 +426,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     }
     checarVersao();
     const id = setInterval(checarVersao, 3 * 60 * 1000);
-    return () => clearInterval(id);
+    // Ao voltar para a aba (ficou aberta por horas/dias), confere na hora
+    const aoVoltar = () => { if (document.visibilityState === "visible") checarVersao(); };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", aoVoltar); };
   }, []);
 
   // Fechar dropdown do sino ao clicar fora

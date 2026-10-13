@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-p",
+    data: "13/10/2026",
+    titulo: "Aba antiga do sistema recarrega sozinha ao trocar de tela",
+    modulos: ["Geral"],
+    itens: [
+      { tipo: "correcao", texto: "Quem deixava o Arato aberto por horas/dias continuava com a versão antiga na aba: o atalho ou o menu abriam telas que já tinham sido substituídas (ex.: o Contas a Pagar antigo, com erro de banco). Agora o sistema confere a versão ao voltar para a aba e, se estiver desatualizado, recarrega por completo ao trocar de tela." },
+    ],
+    onde: "Todo o sistema",
+  },
+  {
     versao: "2026.10.13-o",
     data: "13/10/2026",
     titulo: "Ano Safra obrigatório nos lançamentos",
