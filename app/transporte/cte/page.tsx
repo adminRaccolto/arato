@@ -33,11 +33,16 @@ function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
 // ─────────────────────────────────────────────────────────────
 // Tipos
 // ─────────────────────────────────────────────────────────────
-type StatusCte = "rascunho" | "autorizado" | "cancelado";
+type StatusCte = "rascunho" | "autorizado" | "cancelado" | "substituido";
 type TomadorTipo = "remetente" | "destinatario" | "expedidor" | "recebedor";
 
 interface Cte {
   id: string;
+  tipo_cte?: string | null;
+  cte_substituido_id?: string | null;
+  cte_substituido_chave?: string | null;
+  cte_substituto_chave?: string | null;
+  ind_altera_toma?: boolean | null;
   fazenda_id: string;
   numero_cte: string;
   serie: string;
@@ -124,6 +129,7 @@ const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> 
   rascunho:   { label: "Rascunho",  bg: "#FBF3E0", cl: "#7B4A00" },
   autorizado: { label: "Autorizado",bg: "#E8F5E9", cl: "#1A6B3C" },
   cancelado:  { label: "Cancelado", bg: "#FCEBEB", cl: "#791F1F" },
+  substituido:{ label: "Substituído", bg: "#EEF1F6", cl: "#475569" },
 };
 
 // CFOPs de prestação de serviço de transporte aceitos no CT-e (definição do dono, 24/09/2026).
@@ -282,7 +288,7 @@ table.mini td{padding:0}
 
   <!-- Tipo CT-e / Tipo serviço / Chave de acesso -->
   <div class="grid">
-    ${campo("TIPO DO CTE", c.status === "cancelado" ? "Cancelamento" : "Normal", 1)}
+    ${campo("TIPO DO CTE", c.status === "cancelado" ? "Cancelamento" : c.tipo_cte === "substituto" ? "Substituto" : "Normal", 1)}
     ${campo("TIPO DO SERVIÇO", "Normal", 1)}
     <div class="cel" style="flex:3">
       <div class="lbl">CHAVE DE ACESSO</div>
@@ -514,6 +520,9 @@ function CtePageInner() {
   // Modal
   const [modal, setModal]     = useState(false);
   const [cteEdit, setCteEdit] = useState<Cte | null>(null);
+  // CT-e autorizado que o rascunho aberto vai substituir (tpCTe=3)
+  const [substituindo, setSubstituindo] = useState<Cte | null>(null);
+  const [alteraToma, setAlteraToma] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [err, setErr]         = useState("");
@@ -719,7 +728,7 @@ function CtePageInner() {
 
   // ── Abrir modal ──────────────────────────────────────────
   function abrirNovo() {
-    setCteEdit(null);
+    setCteEdit(null); setSubstituindo(null); setAlteraToma(false);
     setForm({ ...FORM_VAZIO(), numero_cte: proximoNr });
     setRemetenteSelUI("");
     setMostrarExp(false); setMostrarRec(false);
@@ -731,8 +740,19 @@ function CtePageInner() {
     setModal(true);
   }
 
+  // CT-e substituto: abre um novo rascunho com os dados do autorizado (que ficam para correção);
+  // a chave do original vai travada no XML (infCteSub). O número novo é sorteado na emissão.
+  function abrirSubstituto(c: Cte) {
+    abrirEditar(c);
+    setCteEdit(null);
+    setSubstituindo(c);
+    setAlteraToma(false);
+    setForm(f => ({ ...f, numero_cte: proximoNr, data_emissao: new Date().toISOString().slice(0, 10), observacao: `CT-e substituto do CT-e nº ${c.numero_cte}.${f.observacao ? " " + f.observacao : ""}` }));
+  }
+
   function abrirEditar(c: Cte) {
-    setCteEdit(c);
+    setCteEdit(c); setAlteraToma(!!c.ind_altera_toma);
+    setSubstituindo(c.tipo_cte === "substituto" && c.cte_substituido_id ? (ctes.find(x => x.id === c.cte_substituido_id) ?? null) : null);
     setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "", implementos: "" });
     setCiotGerado(c.ciot ? { id: c.ciot, cv: c.ciot_codigo_verificador ?? "", protocolo: c.ciot_protocolo ?? "" } : null);
     setForm({
@@ -1029,6 +1049,13 @@ function CtePageInner() {
         nfe_chave: form.nfe_chave || null,
         status: cteEdit ? cteEdit.status : "rascunho" as StatusCte,
         observacao: form.observacao || null,
+        // Só envia quando é substituto (não quebra o salvamento de quem ainda não rodou a Seção 342)
+        ...(substituindo ? {
+          tipo_cte: "substituto",
+          cte_substituido_id: substituindo.id,
+          cte_substituido_chave: substituindo.chave_acesso ?? null,
+          ind_altera_toma: alteraToma,
+        } : {}),
         // Só envia quando há CIOT (não quebra o salvamento de quem ainda não rodou a Seção 296)
         ...(ciotGerado ? { ciot: ciotGerado.id, ciot_codigo_verificador: ciotGerado.cv, ciot_protocolo: ciotGerado.protocolo } : {}),
       };
@@ -1351,6 +1378,11 @@ function CtePageInner() {
       expedidor:          expPayload,
       recebedor:          recPayload,
       observacao:         c.observacao  ?? undefined,
+      ...(c.tipo_cte === "substituto" && c.cte_substituido_id ? {
+        tp_cte: "3" as const,
+        cte_substituido_id: c.cte_substituido_id,
+        ind_altera_toma: !!c.ind_altera_toma,
+      } : {}),
     };
 
     // Validação local: campos críticos para o XML do CT-e. Achado real 23/09/2026: só o IBGE do
@@ -1700,9 +1732,17 @@ function CtePageInner() {
                               🚚 Emitir MDF-e
                             </button>
                           )}
-                          {c.status !== "cancelado" && (
+                          {c.status !== "cancelado" && c.status !== "substituido" && (
                             <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Editar
+                            </button>
+                          )}
+                          {c.status === "autorizado" && (
+                            <button
+                              title="Emitir um CT-e substituto (tpCTe 3) para corrigir este. O original passa a Substituído e o financeiro dele é cancelado."
+                              onClick={() => abrirSubstituto(c)}
+                              style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                              Substituir
                             </button>
                           )}
                           {c.status === "autorizado" && (
@@ -1745,6 +1785,15 @@ function CtePageInner() {
             </div>
 
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+              {substituindo && (
+                <div style={{ gridColumn: "1 / -1", background: "#EEF4FB", border: "0.5px solid #B8D0EA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div><b>CT-e substituto</b> do CT-e nº {substituindo.numero_cte}{substituindo.chave_acesso ? ` — chave ${substituindo.chave_acesso}` : ""}. Corrija os dados abaixo; ao autorizar, o original passa a Substituído e o financeiro dele é cancelado.</div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    <input type="checkbox" checked={alteraToma} onChange={e => setAlteraToma(e.target.checked)} />
+                    A correção altera o tomador do serviço (indAlteraToma)
+                  </label>
+                </div>
+              )}
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
 
               {/* ── Emitente (Transportadora) ── */}

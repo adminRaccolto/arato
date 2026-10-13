@@ -16617,3 +16617,24 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE folha_pagamento ADD COLUMN IF NOT EXISTS data_vencimento date;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 342 — CT-e substituto (tpCTe = 3)
+-- =============================================================================
+-- Corrige um CT-e autorizado emitindo outro que o substitui. O original passa a 'substituido'
+-- (financeiro cancelado) e o substituto leva a chave do original no grupo infCteSub.
+DO $$ DECLARE c text; BEGIN
+  FOR c IN SELECT conname FROM pg_constraint
+           WHERE conrelid = 'ctes'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) ILIKE '%rascunho%'
+  LOOP EXECUTE format('ALTER TABLE ctes DROP CONSTRAINT %I', c); END LOOP;
+END $$;
+ALTER TABLE ctes
+  ADD CONSTRAINT ctes_status_check CHECK (status IN ('rascunho','autorizado','cancelado','substituido')),
+  ADD COLUMN IF NOT EXISTS tipo_cte              text NOT NULL DEFAULT 'normal',
+  ADD COLUMN IF NOT EXISTS cte_substituido_id    uuid,
+  ADD COLUMN IF NOT EXISTS cte_substituido_chave text,
+  ADD COLUMN IF NOT EXISTS cte_substituto_id     uuid,
+  ADD COLUMN IF NOT EXISTS cte_substituto_chave  text,
+  ADD COLUMN IF NOT EXISTS ind_altera_toma       boolean NOT NULL DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

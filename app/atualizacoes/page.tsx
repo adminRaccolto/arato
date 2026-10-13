@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-u",
+    data: "13/10/2026",
+    titulo: "CT-e substituto",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Botão Substituir em CT-e autorizado: abre um rascunho com os dados do original para corrigir e emite o CT-e substituto (tpCTe 3, com a chave do original no infCteSub). Ao autorizar, o original passa a Substituído, o financeiro dele é cancelado e o do substituto é lançado. O DACTE mostra tipo Substituto. Requer a Seção 342 do supabase_migrations.sql." },
+    ],
+    onde: "Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.10.13-t",
     data: "13/10/2026",
     titulo: "Folha: data de pagamento escolhida ao gerar",

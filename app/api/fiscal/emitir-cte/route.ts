@@ -48,6 +48,9 @@ export async function POST(req: NextRequest) {
       recebedor?:         CTeInput["recebedor"];
       observacao?:        string;
       cte_id?:            string | null;
+      tp_cte?:            "0" | "3";
+      cte_substituido_id?: string | null;
+      ind_altera_toma?:   boolean;
     };
 
     if (!body.fazenda_id || !body.remetente?.nome || !body.destinatario?.nome) {
@@ -108,11 +111,14 @@ export async function POST(req: NextRequest) {
       nfe_chave:          body.nfe_chave,
       tomador_tipo:       body.tomador_tipo ?? "3",
       observacao:         body.observacao,
+      tp_cte:             body.tp_cte === "3" ? "3" : "0",
+      ind_altera_toma:    !!body.ind_altera_toma,
     };
 
     const resultado = await emitirCTe(body.fazenda_id, input, {
       emitente_cnpj: body.emitente_cnpj,
       cte_id:        body.cte_id,
+      cte_substituido_id: body.tp_cte === "3" ? body.cte_substituido_id : null,
     });
     return NextResponse.json(resultado, { status: resultado.sucesso ? 200 : 422 });
   } catch (err) {

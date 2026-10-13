@@ -105,6 +105,8 @@ export interface ResultadoEmissaoCTe {
 export interface EmitirCTeOptions {
   emitente_cnpj?: string | null;
   cte_id?:        string | null; // ID do registro em `ctes` — atualizado com service_role após autorização
+  /** CT-e substituto: ID do registro original em `ctes` (precisa estar autorizado). */
+  cte_substituido_id?: string | null;
 }
 
 export interface CancelarCTeOptions {
@@ -226,6 +228,21 @@ export async function emitirCTe(
 
   if (!["5352", "5353", "6932"].includes(String((inputBase as { cfop?: string }).cfop ?? "")))
     return { sucesso: false, cStat: "503", xMotivo: "CFOP inválido para CT-e — use 5352, 5353 ou 6932." };
+
+  // CT-e substituto: o original precisa existir e estar autorizado (a SEFAZ valida o prazo)
+  if (inputBase.tp_cte === "3") {
+    if (!options.cte_substituido_id)
+      return { sucesso: false, cStat: "504", xMotivo: "CT-e substituto: informe o CT-e original que será substituído." };
+    const { data: orig } = await sb().from("ctes").select("id,status,chave_acesso,fazenda_id").eq("id", options.cte_substituido_id).maybeSingle();
+    if (!orig || orig.fazenda_id !== fazendaId)
+      return { sucesso: false, cStat: "504", xMotivo: "CT-e original não encontrado nesta fazenda." };
+    if (orig.status !== "autorizado")
+      return { sucesso: false, cStat: "504", xMotivo: "Só é possível substituir um CT-e autorizado (o original está como " + orig.status + ")." };
+    const chOrig = (orig.chave_acesso ?? "").replace(/\D/g, "");
+    if (chOrig.length !== 44)
+      return { sucesso: false, cStat: "504", xMotivo: "O CT-e original não tem chave de acesso válida." };
+    inputBase = { ...inputBase, cte_substituido_chave: chOrig };
+  }
 
   // 1. Config CT-e
   const resolved = await resolverConfigCTe(fazendaId, options.emitente_cnpj);
@@ -404,6 +421,30 @@ export async function emitirCTe(
   if (resposta.sucesso && options.cte_id) {
     try { console.log("[emitirCTe] financeiro:", (await lancarFinanceiroCte(options.cte_id)).join(" | ")); }
     catch (e) { console.error("[emitirCTe] financeiro falhou:", e); }
+  }
+
+  // CT-e substituto autorizado: o original vira "substituído" (liga as duas pontas) e o financeiro
+  // dele é cancelado — o do substituto já foi lançado acima.
+  if (resposta.sucesso && inputBase.tp_cte === "3" && options.cte_substituido_id) {
+    try {
+      const { data: orig } = await sb().from("ctes").select("chave_acesso").eq("id", options.cte_substituido_id).maybeSingle();
+      if (options.cte_id) {
+        await sb().from("ctes").update({
+          tipo_cte: "substituto",
+          cte_substituido_id: options.cte_substituido_id,
+          cte_substituido_chave: orig?.chave_acesso ?? inputBase.cte_substituido_chave ?? null,
+          ind_altera_toma: !!inputBase.ind_altera_toma,
+        }).eq("id", options.cte_id);
+      }
+      const { error: e2 } = await sb().from("ctes").update({
+        status: "substituido",
+        cte_substituto_id: options.cte_id ?? null,
+        cte_substituto_chave: built.chave,
+      }).eq("id", options.cte_substituido_id);
+      if (e2) console.error("[emitirCTe] não marcou o original como substituído:", e2);
+      const fin = await cancelarFinanceiroCte(options.cte_substituido_id);
+      console.log("[emitirCTe] financeiro do original:", fin.log.join(" | "));
+    } catch (e) { console.error("[emitirCTe] pós-substituição falhou:", e); }
   }
 
   return {

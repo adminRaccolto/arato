@@ -75,6 +75,11 @@ export interface CTeInput {
   motorista_nome:   string;
   motorista_cpf:    string;
   nfe_chave?:       string;
+  /** "3" = CT-e substituto (exige cte_substituido_chave). Padrão "0" = normal. */
+  tp_cte?: "0" | "3";
+  cte_substituido_chave?: string;
+  /** indAlteraToma: o substituto muda o tomador do serviço. */
+  ind_altera_toma?: boolean;
   tomador_tipo:     "0" | "1" | "2" | "3";  // 0=rem, 1=exped, 2=receb, 3=dest
   observacao?:      string;
 }
@@ -243,6 +248,16 @@ function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string, homolo
 export function buildCTe(input: CTeInput): CTeBuiltResult {
   const { emitente: e } = input;
 
+  // CT-e substituto (tpCTe=3): leva a chave do CT-e substituído no grupo infCteSub
+  let infCteSubXml = "";
+  if (input.tp_cte === "3") {
+    const chOrig = (input.cte_substituido_chave ?? "").replace(/\D/g, "");
+    if (chOrig.length !== 44) throw new Error("CT-e substituto: informe a chave de 44 dígitos do CT-e substituído.");
+    infCteSubXml = `<infCteSub>
+        <chCte>${chOrig}</chCte>${input.ind_altera_toma ? "\n        <indAlteraToma>1</indAlteraToma>" : ""}
+      </infCteSub>`;
+  }
+
   const cuf   = CUF[e.uf] ?? "51";
   const tpAmb = e.ambiente === "producao" ? "1" : "2";
 
@@ -366,7 +381,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <tpEmis>1</tpEmis>
       <cDV>${cdv}</cDV>
       <tpAmb>${tpAmb}</tpAmb>
-      <tpCTe>0</tpCTe>
+      <tpCTe>${input.tp_cte === "3" ? "3" : "0"}</tpCTe>
       <procEmi>0</procEmi>
       <verProc>4.00</verProc>
       <cMunEnv>${e.municipio_ibge}</cMunEnv>
@@ -457,6 +472,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
           <RNTRC>${e.rntrc || "ISENTO"}</RNTRC>
         </rodo>
       </infModal>
+      ${infCteSubXml}
     </infCTeNorm>
   </infCte>
 </CTe>`;
