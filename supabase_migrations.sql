@@ -16638,3 +16638,34 @@ ALTER TABLE ctes
   ADD COLUMN IF NOT EXISTS ind_altera_toma       boolean NOT NULL DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 343 — Carta de Correção do CT-e (evento 110110)
+-- =============================================================================
+-- Uma linha por campo corrigido; as linhas da mesma carta compartilham n_seq (nSeqEvento, 1 a 20).
+CREATE TABLE IF NOT EXISTS cte_cartas_correcao (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id    uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  cte_id        uuid NOT NULL REFERENCES ctes(id) ON DELETE CASCADE,
+  n_seq         integer NOT NULL,
+  grupo         text NOT NULL,
+  campo         text NOT NULL,
+  valor         text NOT NULL,
+  item          text,
+  protocolo     text,
+  data_registro timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_cte_cartas_cte ON cte_cartas_correcao(cte_id, n_seq);
+ALTER TABLE cte_cartas_correcao ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "cte_cartas_by_conta" ON cte_cartas_correcao FOR ALL
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';

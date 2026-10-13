@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-v",
+    data: "13/10/2026",
+    titulo: "Carta de correção do CT-e",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Botão Carta de correção no CT-e autorizado (evento 110110 da SEFAZ): escolha o campo (observações, produto predominante, outras características, chave da NF-e ou outro), informe o novo valor e transmita. O histórico de cartas aparece na janela. Não corrige valores, partes nem data (use o CT-e substituto). Requer a Seção 343 do supabase_migrations.sql." },
+    ],
+    onde: "Fretes e Transporte → CT-e",
+  },
+  {
     versao: "2026.10.13-u",
     data: "13/10/2026",
     titulo: "CT-e substituto",

@@ -13,7 +13,7 @@ import { createHash }  from "crypto";
 import { buildCTe }     from "./builder";
 import { assinarCTe }   from "./signer";
 import { transmitirCTe } from "./transmitter";
-import { cancelarCTe as registrarCancelamentoCTe } from "./evento";
+import { cancelarCTe as registrarCancelamentoCTe, enviarCartaCorrecaoCTe, type CorrecaoCTeItem } from "./evento";
 import { pfxParaPem }   from "../nfe/signer";
 import { resolverConfigCTe } from "./config";
 import type { CTeInput, EmitenteCTe } from "./builder";
@@ -215,6 +215,58 @@ export async function cancelarCTeEmitido(
     return avisoFin ? { ...resultado, xMotivo: `${resultado.xMotivo ?? "Cancelamento homologado."}${avisoFin}` } : resultado;
   } catch (error) {
     console.error("[cancelarCTe]", error);
+    return { sucesso: false, cStat: "ERRO_TECNICO", xMotivo: String(error) };
+  }
+}
+
+export interface CartaCorrecaoCTeOptions {
+  cte_id: string;
+  emitente_cnpj?: string | null;
+  chave_acesso: string;
+  correcoes: CorrecaoCTeItem[];
+}
+
+/** Envia a Carta de Correção (evento 110110) e guarda cada correção aceita em cte_cartas_correcao. */
+export async function emitirCartaCorrecaoCTe(fazendaId: string, options: CartaCorrecaoCTeOptions) {
+  const chave = options.chave_acesso.replace(/\D/g, "");
+  if (chave.length !== 44) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "CT-e não possui uma chave de acesso válida." };
+
+  const { data: cte } = await sb().from("ctes").select("id,status,fazenda_id,chave_acesso").eq("id", options.cte_id).maybeSingle();
+  if (!cte || cte.fazenda_id !== fazendaId) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "CT-e não encontrado nesta fazenda." };
+  if (cte.status !== "autorizado") return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Só é possível corrigir um CT-e autorizado." };
+
+  const resolved = await resolverConfigCTe(fazendaId, options.emitente_cnpj);
+  if (!resolved || !resolved.cteConfigEncontrada) return { sucesso: false, cStat: "CONFIGURACAO", xMotivo: "Configuração CT-e do emitente não encontrada." };
+  const confg = resolved.cteConfig;
+  const fiscal = resolved.fiscalConfig;
+  const certPath = confg.cert_a1_path ?? fiscal.cert_a1_path;
+  const certSenha = confg.cert_a1_senha ?? fiscal.cert_a1_senha;
+  if (!certPath || !certSenha) return { sucesso: false, cStat: "CERTIFICADO", xMotivo: "Certificado A1 não configurado para este emitente." };
+
+  // Próximo nº de sequência do evento (a SEFAZ rejeita repetido; máximo 20 por CT-e)
+  const { data: ult, error: errSeq } = await sb().from("cte_cartas_correcao").select("n_seq").eq("cte_id", options.cte_id).order("n_seq", { ascending: false }).limit(1);
+  if (errSeq) return { sucesso: false, cStat: "MIGRATION", xMotivo: "Tabela de cartas de correção ausente — aplique a Seção 343 do supabase_migrations.sql." };
+  const nSeq = (ult?.[0]?.n_seq ?? 0) + 1;
+
+  try {
+    const pem = pfxParaPem(await carregarPfx(certPath), certSenha);
+    const emitente = fiscal.cpf_cnpj_emitente ?? confg.cpf_cnpj_emitente ?? options.emitente_cnpj ?? resolved.emitenteDigits;
+    const r = await enviarCartaCorrecaoCTe(pem, {
+      chave, cpfCnpjEmitente: emitente,
+      uf: fiscal.uf_emitente ?? confg.uf_emitente ?? "MT",
+      ambiente: (confg.ambiente as "producao" | "homologacao") ?? "homologacao",
+      nSeqEvento: nSeq, correcoes: options.correcoes,
+    });
+    if (!r.sucesso) return { sucesso: false, cStat: r.cStat, xMotivo: r.xMotivo };
+    const { error } = await sb().from("cte_cartas_correcao").insert(options.correcoes.map(c => ({
+      fazenda_id: fazendaId, cte_id: options.cte_id, n_seq: nSeq, grupo: c.grupo.trim(), campo: c.campo.trim(),
+      valor: c.valor.trim(), item: c.item?.trim() || null, protocolo: r.protocolo ?? null,
+      data_registro: r.dataRegistro ?? new Date().toISOString(),
+    })));
+    if (error) console.error("[cartaCorrecaoCTe] SEFAZ aceitou, mas falhou ao gravar histórico:", error);
+    return { sucesso: true, cStat: r.cStat, xMotivo: r.xMotivo, protocolo: r.protocolo, nSeq };
+  } catch (error) {
+    console.error("[cartaCorrecaoCTe]", error);
     return { sucesso: false, cStat: "ERRO_TECNICO", xMotivo: String(error) };
   }
 }

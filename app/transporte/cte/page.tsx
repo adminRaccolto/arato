@@ -126,6 +126,16 @@ const particParaColunas = (pref: "expedidor" | "recebedor", p: ParticCte) =>
   Object.fromEntries(COLS_PARTIC.map(k => [`${pref}_${k}`, p[k] || null]));
 const TOMADOR_CODIGO: Record<string, "0" | "1" | "2" | "3"> = { remetente: "0", expedidor: "1", recebedor: "2", destinatario: "3" };
 
+const CCE_PRESETS: { id: string; label: string; grupo: string; campo: string; item?: boolean }[] = [
+  { id: "xObs",   label: "Observações do CT-e (compl / xObs)",       grupo: "compl",    campo: "xObs" },
+  { id: "proPred",label: "Produto predominante (infCarga / proPred)", grupo: "infCarga", campo: "proPred" },
+  { id: "xOutCat",label: "Outras características da carga (infCarga / xOutCat)", grupo: "infCarga", campo: "xOutCat" },
+  { id: "chave",  label: "Chave da NF-e (infNFe / chave) — informe o nº do item", grupo: "infNFe", campo: "chave", item: true },
+  { id: "outro",  label: "Outro campo (informar grupo e campo)",      grupo: "", campo: "" },
+];
+type CceLinha = { preset: string; grupo: string; campo: string; valor: string; item: string };
+const CCE_LINHA_VAZIA = (): CceLinha => ({ preset: "xObs", grupo: "compl", campo: "xObs", valor: "", item: "" });
+
 const STATUS_META: Record<StatusCte, { label: string; bg: string; cl: string }> = {
   rascunho:   { label: "Rascunho",  bg: "#FBF3E0", cl: "#7B4A00" },
   autorizado: { label: "Autorizado",bg: "#E8F5E9", cl: "#1A6B3C" },
@@ -529,6 +539,10 @@ function CtePageInner() {
   const [chaveExterna, setChaveExterna] = useState("");
   const [saving, setSaving]   = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [cceCte, setCceCte] = useState<Cte | null>(null);
+  const [cceLinhas, setCceLinhas] = useState<CceLinha[]>([]);
+  const [cceHist, setCceHist] = useState<{ n_seq: number; grupo: string; campo: string; valor: string; item: string | null; protocolo: string | null; data_registro: string | null }[]>([]);
+  const [cceEnviando, setCceEnviando] = useState(false);
   const [err, setErr]         = useState("");
   // IEs múltiplas por CPF/CNPJ
   const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
@@ -1466,6 +1480,43 @@ function CtePageInner() {
     }
   }
 
+  // ── Carta de Correção (evento 110110) ──────────────────
+  async function abrirCce(c: Cte) {
+    setCceCte(c); setCceLinhas([CCE_LINHA_VAZIA()]); setCceHist([]);
+    try {
+      const r = await fetch(`/api/fiscal/carta-correcao-cte?fazenda_id=${fazendaId}&cte_id=${c.id}`);
+      const j = await r.json() as { cartas?: { n_seq: number; grupo: string; campo: string; valor: string; item: string | null; protocolo: string | null; data_registro: string | null }[] };
+      setCceHist(j.cartas ?? []);
+    } catch { /* histórico é só informativo */ }
+  }
+
+  async function enviarCce() {
+    if (!cceCte || !fazendaId || cceEnviando) return;
+    const linhas = cceLinhas.filter(l => l.valor.trim());
+    if (!linhas.length) { alert("Informe ao menos uma correção com o novo valor."); return; }
+    if (linhas.some(l => !l.grupo.trim() || !l.campo.trim())) { alert("Informe o grupo e o campo de cada correção."); return; }
+    if (linhas.some(l => l.preset === "chave" && !l.item.trim())) { alert("Para corrigir a chave da NF-e, informe o número do item (1, 2, ...)."); return; }
+    if (!confirm(`Transmitir a Carta de Correção do CT-e ${cceCte.numero_cte}/${cceCte.serie} para a SEFAZ?\n\nNão serve para corrigir valores, tomador, remetente, destinatário ou data (nesses casos use o CT-e substituto).`)) return;
+    setCceEnviando(true);
+    try {
+      const res = await fetch("/api/fiscal/carta-correcao-cte", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id: fazendaId, cte_id: cceCte.id, emitente_cnpj: cceCte.emitente_cnpj, chave_acesso: cceCte.chave_acesso,
+          correcoes: linhas.map(l => ({ grupo: l.grupo.trim(), campo: l.campo.trim(), valor: l.valor.trim(), item: l.item.trim() || undefined })),
+        }),
+      });
+      const data = await res.json() as { sucesso?: boolean; cStat?: string; xMotivo?: string; protocolo?: string };
+      if (!data.sucesso) { alert(`Carta de correção não aceita pela SEFAZ.\n\ncStat ${data.cStat ?? "—"}: ${data.xMotivo ?? "Sem detalhe"}`); return; }
+      alert(`✓ Carta de correção registrada.\nProtocolo: ${data.protocolo ?? "—"}`);
+      setCceCte(null);
+    } catch (e) {
+      alert("Erro ao transmitir: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setCceEnviando(false);
+    }
+  }
+
   async function cancelar(c: Cte) {
     if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Cancelar o CT-e na SEFAZ. Esta ação não pode ser desfeita. Confirma?", perigo: true }))) return;
     if (cancelando) return;
@@ -1759,6 +1810,14 @@ function CtePageInner() {
                             </button>
                           )}
                           {c.status === "autorizado" && (
+                            <button
+                              title="Carta de correção (evento 110110): corrige observações e dados que não mudam valor, partes ou data"
+                              onClick={() => abrirCce(c)}
+                              style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                              Carta de correção
+                            </button>
+                          )}
+                          {c.status === "autorizado" && (
                             <button data-arato-button="danger" disabled={cancelando} onClick={() => cancelar(c)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#791F1F", opacity: cancelando ? .65 : 1 }}>
                               {cancelando ? "Cancelando…" : "Cancelar"}
                             </button>
@@ -1784,6 +1843,79 @@ function CtePageInner() {
       {/* ══════════════════════════════════════════════════════
           MODAL EMISSÃO CT-e
       ══════════════════════════════════════════════════════ */}
+      {cceCte && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 16 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 760, maxWidth: "100%", maxHeight: "92vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Carta de Correção — CT-e {cceCte.numero_cte}/{cceCte.serie}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Evento 110110 na SEFAZ. Cada carta pode ter até 20 correções; o CT-e aceita até 20 cartas.</div>
+              </div>
+              <button onClick={() => setCceCte(null)} style={{ border: "none", background: "transparent", fontSize: 18, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+            </div>
+            <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ background: "#FBF3E0", border: "0.5px solid #E9C97B", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7B4A00" }}>
+                Não pode corrigir: valores e base de cálculo do imposto, alíquota, quantidade, tomador, remetente, destinatário, emitente nem a data de emissão. Para isso, emita um CT-e substituto.
+              </div>
+              {cceLinhas.map((l, i) => (
+                <div key={i} style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 12, display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10 }}>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={lbl}>O que corrigir</label>
+                    <select style={inp} value={l.preset} onChange={e => {
+                      const p = CCE_PRESETS.find(x => x.id === e.target.value)!;
+                      setCceLinhas(a => a.map((x, j) => j === i ? { ...x, preset: p.id, grupo: p.grupo, campo: p.campo } : x));
+                    }}>
+                      {CCE_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  {l.preset === "outro" && (<>
+                    <div><label style={lbl}>Grupo (ex.: compl)</label><input style={inp} value={l.grupo} onChange={e => setCceLinhas(a => a.map((x, j) => j === i ? { ...x, grupo: e.target.value } : x))} /></div>
+                    <div><label style={lbl}>Campo (ex.: xObs)</label><input style={inp} value={l.campo} onChange={e => setCceLinhas(a => a.map((x, j) => j === i ? { ...x, campo: e.target.value } : x))} /></div>
+                    <div />
+                  </>)}
+                  <div style={{ gridColumn: l.preset === "chave" || l.preset === "outro" ? "1 / 3" : "1 / -1" }}>
+                    <label style={lbl}>Novo valor (como deve ficar)</label>
+                    <input style={inp} maxLength={500} value={l.valor} onChange={e => setCceLinhas(a => a.map((x, j) => j === i ? { ...x, valor: e.target.value } : x))} />
+                  </div>
+                  {(l.preset === "chave" || l.preset === "outro") && (
+                    <div><label style={lbl}>Nº do item</label><input style={inp} maxLength={2} value={l.item} onChange={e => setCceLinhas(a => a.map((x, j) => j === i ? { ...x, item: e.target.value.replace(/\D/g, "") } : x))} /></div>
+                  )}
+                  {cceLinhas.length > 1 && (
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <button onClick={() => setCceLinhas(a => a.filter((_, j) => j !== i))} style={{ border: "none", background: "transparent", color: "#791F1F", fontSize: 11, cursor: "pointer", padding: 0 }}>remover esta correção</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {cceLinhas.length < 20 && (
+                <button onClick={() => setCceLinhas(a => [...a, CCE_LINHA_VAZIA()])} style={{ alignSelf: "flex-start", padding: "6px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
+                  + Adicionar outra correção
+                </button>
+              )}
+              {cceHist.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Cartas já registradas</div>
+                  <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
+                    {cceHist.map((h, i) => (
+                      <div key={i} style={{ padding: "8px 12px", fontSize: 12, borderTop: i ? "0.5px solid var(--bg-tag)" : "none" }}>
+                        <b>#{h.n_seq}</b> · {h.grupo}/{h.campo}{h.item ? ` (item ${h.item})` : ""}: {h.valor}
+                        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>Protocolo {h.protocolo ?? "—"}{h.data_registro ? ` · ${new Date(h.data_registro).toLocaleString("pt-BR")}` : ""}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setCceCte(null)} style={{ padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Fechar</button>
+              <button disabled={cceEnviando} onClick={enviarCce} style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#111111", color: "#fff", cursor: cceEnviando ? "wait" : "pointer", fontSize: 13, fontWeight: 600, opacity: cceEnviando ? .65 : 1 }}>
+                {cceEnviando ? "Transmitindo…" : "Transmitir carta de correção"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modal && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 1060, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
