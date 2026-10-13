@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-d",
+    data: "13/10/2026",
+    titulo: "Folha: erro ao registrar adiantamento (lancamentos_origem_lancamento_check)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Registrar adiantamento de salário e fechar a folha falhavam com o erro 23514 \"lancamentos_origem_lancamento_check\": a regra do banco que lista as origens permitidas de um lançamento não incluía \"folha\". O sistema agora grava o CP mesmo sem a regra atualizada (como origem manual) e a Seção 338 do supabase_migrations.sql completa a lista (folha, aplicação financeira, mútuo, CT-e e apoio financeiro)." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.13-c",
     data: "13/10/2026",
     titulo: "Folha: adiantamento baixado na hora e descontado no fechamento · Contas a Pagar: filtros e colunas",

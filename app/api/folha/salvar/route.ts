@@ -15,6 +15,16 @@ async function resolverOgPorClassificacao(sb: any, fazenda_id: string, classific
 
 // Usa service_role_key para contornar JWT expirado / RLS em folha_pagamento.
 // Valida o token do usuário antes de executar qualquer operação.
+// Enquanto a Seção 338 (CHECK de origem_lancamento com 'folha') não foi aplicada no banco, o insert com
+// origem "folha" é rejeitado (23514). Nesse caso grava como "manual" em vez de travar a folha inteira.
+async function inserirLancamentoFolha(sb: any, row: Record<string, unknown>) {
+  let r = await sb.from("lancamentos").insert(row).select("id").single();
+  if (r.error?.code === "23514" && String(r.error.message ?? "").includes("origem_lancamento")) {
+    r = await sb.from("lancamentos").insert({ ...row, origem_lancamento: "manual" }).select("id").single();
+  }
+  return r;
+}
+
 export async function POST(req: Request) {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -185,7 +195,7 @@ export async function POST(req: Request) {
           + (it.complemento_salarial ?? 0)
         ) * 100) / 100);
 
-        const { data: lancamento, error: lancErr } = await sb.from("lancamentos").insert({
+        const { data: lancamento, error: lancErr } = await inserirLancamentoFolha(sb, {
           fazenda_id,
           empresa_id: empresa_id ?? null,
           produtor_id: it.produtor_id ?? null,
@@ -200,7 +210,7 @@ export async function POST(req: Request) {
           operacao_gerencial_id: ogSalario,
           data_vencimento: vencimento,
           data_lancamento: hoje,
-        }).select("id").single();
+        });
 
         if (lancErr) throw new Error(`CP ${it.nome_funcionario}: ${lancErr.message}`);
 
@@ -225,7 +235,7 @@ export async function POST(req: Request) {
 
       if (totalFGTS > 0.005) {
         const ogFgts = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.013");
-        const { data: fgtsLanc, error: fgtsErr } = await sb.from("lancamentos").insert({
+        const { data: fgtsLanc, error: fgtsErr } = await inserirLancamentoFolha(sb, {
           fazenda_id, empresa_id: empresa_id ?? null, produtor_id: produtorIdFolha,
           natureza: "real", tipo: "pagar",
           descricao: `FGTS ${nomeMesLabel}`,
@@ -235,7 +245,7 @@ export async function POST(req: Request) {
           origem_lancamento: "folha",
           operacao_gerencial_id: ogFgts,
           data_vencimento: vencimentoEncargo, data_lancamento: hoje,
-        }).select("id").single();
+        });
         if (fgtsErr) throw new Error(`CP FGTS: ${fgtsErr.message}`);
         // Se a Seção 261 (migration) ainda não rodou, folha_pagamento não tem
         // essa coluna — a CP é criada normalmente, só não fica rastreada pra
@@ -245,7 +255,7 @@ export async function POST(req: Request) {
 
       if (empresa_id && totalINSSPat > 0.005) {
         const ogInssPat = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
-        const { data: inssLanc, error: inssErr } = await sb.from("lancamentos").insert({
+        const { data: inssLanc, error: inssErr } = await inserirLancamentoFolha(sb, {
           fazenda_id, empresa_id, produtor_id: null,
           natureza: "real", tipo: "pagar",
           descricao: `INSS Patronal ${nomeMesLabel}`,
@@ -255,7 +265,7 @@ export async function POST(req: Request) {
           origem_lancamento: "folha",
           operacao_gerencial_id: ogInssPat,
           data_vencimento: vencimentoEncargo, data_lancamento: hoje,
-        }).select("id").single();
+        });
         if (inssErr) throw new Error(`CP INSS Patronal: ${inssErr.message}`);
         if (inssLanc?.id) await sb.from("folha_pagamento").update({ cp_inss_patronal_id: inssLanc.id }).eq("id", id);
       }
@@ -444,7 +454,7 @@ export async function POST(req: Request) {
       // CP do adiantamento nasce já ligado ao empregador (empresa ou produtor) do funcionário —
       // sem isso o título ficava "solto" e não aparecia no filtro de origem do Contas a Pagar.
       const { data: funcEmp } = await sb.from("funcionarios").select("empresa_id, produtor_id").eq("id", funcionario_id).maybeSingle();
-      const { data: lanc, error: lancErr } = await sb.from("lancamentos").insert({
+      const { data: lanc, error: lancErr } = await inserirLancamentoFolha(sb, {
         fazenda_id, empresa_id: funcEmp?.empresa_id ?? null, produtor_id: funcEmp?.produtor_id ?? null,
         tipo: "pagar", natureza: "real",
         descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
@@ -453,7 +463,7 @@ export async function POST(req: Request) {
         origem_lancamento: "folha",
         operacao_gerencial_id: ogAdiantFunc,
         data_vencimento: data, data_lancamento: data,
-      }).select("id").single();
+      });
       if (lancErr) throw lancErr;
       const { error: adiErr } = await sb.from("adiantamentos_salario").insert({
         fazenda_id, funcionario_id, data, valor,

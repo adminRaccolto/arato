@@ -16460,3 +16460,22 @@ UPDATE insumos SET ativo = false WHERE id IN (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 338 — lancamentos.origem_lancamento: CHECK com TODAS as origens usadas pelo código
+-- =============================================================================
+-- Achado real 13/10/2026: a Seção 335 recriou o CHECK sem 'folha' (nem 'aplicacao_financeira',
+-- 'mutuo', 'cte', 'apoio_financeiro'), e registrar adiantamento de salário passou a falhar com
+-- 23514 "lancamentos_origem_lancamento_check". Fechar folha (CP de salário/FGTS/INSS) usa o mesmo valor.
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IS NULL OR origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria',
+    'plantio','contrato_financeiro','consorcio','manual','compra_terra',
+    'nf_servico','seguro','cartao_fatura',
+    'folha','aplicacao_financeira','mutuo','cte','apoio_financeiro'
+  ));
+
+NOTIFY pgrst, 'reload schema';

@@ -318,7 +318,6 @@ export default function FolhaEmpresaPage() {
         valor: adiEdit.valor, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Adiantamentos",
         operacao_gerencial_id: ogAdiantFunc ?? null,
         data_vencimento: adiEdit.data, data_lancamento: adiEdit.data,
-        origem_lancamento: "folha",
       }).select("id").single();
       if (lancErr || !lanc?.id) throw new Error(`Não foi possível gerar o CP do adiantamento: ${lancErr?.message ?? "sem retorno"}`);
       await supabase.from("adiantamentos_salario").insert({
