@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-r",
+    data: "13/10/2026",
+    titulo: "Folha: pagamento no mês seguinte à competência",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O CP de salário nascia com vencimento no mesmo mês da competência. Agora a competência é o mês trabalhado e o pagamento é no mês seguinte (competência 07/2026 → vencimento 05/08/2026), na folha do Produtor, na folha da Empresa e na grade (Pgto. previsto). Os CPs de salário já gerados e ainda em aberto (64) foram corrigidos; os já baixados ficaram como estavam." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.13-q",
     data: "13/10/2026",
     titulo: "Folha: coluna Pgto. previsto",

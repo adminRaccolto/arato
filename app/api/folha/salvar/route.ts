@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { vencimentoSalario } from "../../../../lib/folha-calculo";
 import { createClient } from "@supabase/supabase-js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +180,7 @@ export async function POST(req: Request) {
       }
 
       const hoje = new Date().toISOString().slice(0, 10);
-      const vencimento = `${competencia}-05`;
+      const vencimento = vencimentoSalario(competencia); // pagamento no mês seguinte à competência
       const nomeMesLabel = (() => {
         const [ano, mes] = competencia.split("-");
         const n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao, baixarLancamento, listarContasPorEmpresa } from "../../../lib/db";
+import { vencimentoSalario } from "../../../lib/folha-calculo";
 import type { Empresa, ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 
@@ -294,7 +295,7 @@ export default function FolhaEmpresaPage() {
           descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
           valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
           operacao_gerencial_id: ogSalario ?? null,
-          data_vencimento: `${folha.competencia}-05`, data_lancamento: new Date().toISOString().slice(0,10),
+          data_vencimento: vencimentoSalario(folha.competencia), data_lancamento: new Date().toISOString().slice(0,10),
         }).select("id").single();
         if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
       }

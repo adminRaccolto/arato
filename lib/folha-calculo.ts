@@ -47,3 +47,11 @@ export function valorEmMaos(f: { salario_base?: number | null; salario_liquido?:
   const liq = Number(f.salario_liquido) > 0 ? Number(f.salario_liquido) : liquidoCarteira(Number(f.salario_base) || 0);
   return Math.round((liq + (Number(f.complemento_salarial) || 0)) * 100) / 100;
 }
+
+// Vencimento do salário: a competência é o mês trabalhado e o pagamento é no MÊS SEGUINTE
+// (competência 07/2026 → pagamento 08/2026, dia 05 por padrão).
+export function vencimentoSalario(competencia: string, dia = 5): string {
+  const [a, m] = competencia.split("-").map(Number);
+  const prox = m === 12 ? { a: a + 1, m: 1 } : { a, m: m + 1 };
+  return `${prox.a}-${String(prox.m).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}

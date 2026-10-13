@@ -7,6 +7,7 @@
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
+import { vencimentoSalario } from "./folha-calculo";
 import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, Veiculo, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 
 // ————————————————————————————————————————
@@ -2113,7 +2114,7 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
         descricao: l.descricao,
         valor: l.valor,
         data_lancamento: dataComp,
-        data_vencimento: `${anoMes}-05`,
+        data_vencimento: vencimentoSalario(anoMes),
         status: "em_aberto",
         auto: true,
         operacao_gerencial_id: opsByClass[l.class] ?? null,
