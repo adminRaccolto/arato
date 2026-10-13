@@ -35,7 +35,7 @@ export default function MultiSelectDropdown({ opcoes, selecionados, onChange, te
   }
 
   return (
-    <div ref={raiz} style={{ position: "relative", width: largura }}>
+    <div data-arato-filter-select="true" ref={raiz} style={{ position: "relative", width: largura }}>
       <button data-arato-button="secondary" type="button" onClick={() => setAberto(a => !a)}
         style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, textAlign: "left", color: marcados.length ? "#1A1A1A" : "#555" }}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{resumo}</span>
