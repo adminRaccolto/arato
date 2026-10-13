@@ -337,6 +337,22 @@ export default function FolhaPagamentoPage() {
           complemento_salarial: i.complemento_salarial ?? 0,
           gratificacao: i.gratificacao ?? 0,
         };
+        // Rascunho: a folha salva é uma "foto" de quando foi criada. Se o cadastro mudou depois (salário
+        // base, complemento salarial, benefícios), reabrir mostrava valores velhos e o que ia pro CP não
+        // batia com o cadastro. Atualiza do cadastro; gratificação e outros descontos são da folha e ficam.
+        if (folha.status === "rascunho") {
+          const cad = funcionarios.find(x => x.id === i.funcionario_id);
+          if (cad) {
+            Object.assign(base, recalc({
+              ...base,
+              salario_base: cad.salario_base ?? base.salario_base,
+              complemento_salarial: cad.complemento_salarial ?? 0,
+              vale_transporte: cad.vale_transporte ?? 0,
+              vale_refeicao: cad.vale_refeicao ?? 0,
+              outros_beneficios: cad.outros_beneficios ?? 0,
+            }));
+          }
+        }
         // Para rascunho: herda adiantamentos pendentes — inclui os sem competência_ref
         if (folha.status === "rascunho") {
           const adi = adiantamentos
@@ -1137,7 +1153,7 @@ export default function FolhaPagamentoPage() {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
                             <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -1175,6 +1191,7 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.inss_trabalhador)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.irrf)}</td>
+                                <td style={{ ...S.td, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap", color: (f.complemento_salarial ?? 0) > 0 ? "#1A4870" : "#888", fontWeight: (f.complemento_salarial ?? 0) > 0 ? 600 : 400 }}>{moeda(f.complemento_salarial ?? 0)}</td>
                                 {/* ── Outros Descontos — com justificativa inline ── */}
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
                                   {isFechado ? (
@@ -1204,7 +1221,7 @@ export default function FolhaPagamentoPage() {
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={12} style={{ padding:"12px 16px 16px 44px" }}>
+                                  <td colSpan={13} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
                                         <label style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>

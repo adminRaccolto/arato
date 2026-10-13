@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-i",
+    data: "13/10/2026",
+    titulo: "Folha: complemento salarial na grade e rascunho atualizado pelo cadastro",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A grade de lançamento da folha não mostrava o complemento salarial, então o Sal. Líquido exibido não era o valor que ia para o Contas a Pagar. Nova coluna Complemento; o líquido agora inclui o complemento." },
+      { tipo: "correcao", texto: "Folha em rascunho reaberta mostrava salário base, complemento e benefícios de quando foi criada. Agora reabre com os valores atuais do cadastro do funcionário (gratificação e outros descontos da folha são mantidos)." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.13-h",
     data: "13/10/2026",
     titulo: "Conciliação: extrato e Contas a Pagar/Receber sempre de acordo",
