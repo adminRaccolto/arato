@@ -346,7 +346,7 @@ export default function FolhaPagamentoPage() {
               a.funcionario_id === i.funcionario_id
             )
             .reduce((s, a) => s + a.valor, 0);
-          if (adi > 0) base.adiantamento = adi;  // mantém valor manual se não houver pendentes
+          base.adiantamento = adi;  // vem só da aba Adiantamentos (pendentes da competência ou sem competência)
         }
         return base;
       });
@@ -1137,7 +1137,7 @@ export default function FolhaPagamentoPage() {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
                             <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -1175,20 +1175,6 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.inss_trabalhador)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(f.irrf)}</td>
-                                {/* ── Adiantamento — editável (herda da aba Adiantamentos) ── */}
-                                <td style={{ ...S.td, padding:"4px 6px" }}>
-                                  {isFechado ? (
-                                    <span style={{ fontVariantNumeric:"tabular-nums", color: f.adiantamento > 0 ? "#C9921B" : "#888", whiteSpace:"nowrap" }}>{moeda(f.adiantamento)}</span>
-                                  ) : (
-                                    <>
-                                      <input type="number" value={f.adiantamento} onChange={e=>setFuncField(idx,"adiantamento",parseFloat(e.target.value)||0)}
-                                        style={{ ...S.inp, width:80, textAlign:"right", borderColor: f.adiantamento > 0 ? "#EF9F27" : "#DDE2EE", fontSize:12 }} />
-                                      {f.adiantamento > 0 && (
-                                        <div style={{ fontSize:9, color:"#C9921B", marginTop:1 }}>auto ↑ adi.</div>
-                                      )}
-                                    </>
-                                  )}
-                                </td>
                                 {/* ── Outros Descontos — com justificativa inline ── */}
                                 <td style={{ ...S.td, padding:"4px 6px" }}>
                                   {isFechado ? (
@@ -1214,11 +1200,11 @@ export default function FolhaPagamentoPage() {
                                     <div style={{ fontSize:9, color:"#888", marginTop:1 }}>do cadastro</div>
                                   )}
                                 </td>
-                                <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(liq)}</td>
+                                <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(liq)}{f.adiantamento > 0 && <div style={{ fontSize:9, fontWeight:400, color:"#C9921B" }}>já desconta adiant. {moeda(f.adiantamento)}</div>}</td>
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={13} style={{ padding:"12px 16px 16px 44px" }}>
+                                  <td colSpan={12} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
                                         <label style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>

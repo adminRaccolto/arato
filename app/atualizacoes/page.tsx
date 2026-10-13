@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-e",
+    data: "13/10/2026",
+    titulo: "Folha: adiantamento só na aba Adiantamentos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Retirada a coluna de Adiantamento da grade de lançamento da folha (rotina duplicada, com caminhos diferentes). O adiantamento agora é lançado exclusivamente na aba Adiantamentos; a folha desconta sozinha os adiantamentos pendentes do funcionário (da competência ou sem competência) e mostra o valor descontado abaixo do Sal. Líquido." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.13-d",
     data: "13/10/2026",
     titulo: "Folha: erro ao registrar adiantamento (lancamentos_origem_lancamento_check)",

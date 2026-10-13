@@ -210,7 +210,7 @@ export default function FolhaEmpresaPage() {
       const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id).order("nome_funcionario");
       setFolhaEdit({ ...folha, funcionarios: (itens ?? []).map((i: any) => ({ ...i, salario_base: (i.salario_bruto ?? 0) - (i.gratificacao ?? 0), gratificacao: i.gratificacao ?? 0 })) });
     } else {
-      const adisComp  = adiantamentos.filter(a => a.competencia_ref === fComp && a.status === "pendente");
+      const adisComp  = adiantamentos.filter(a => (!a.competencia_ref || a.competencia_ref === fComp) && a.status === "pendente");
       const premsComp = premiacoes.filter(p => p.mes_referencia === fComp);
       const funcs: FolhaFunc[] = funcionarios.map(f => {
         const base = f.salario_base ?? 0;
@@ -281,7 +281,7 @@ export default function FolhaEmpresaPage() {
       for (const it of (itens ?? []) as any[]) {
         const doFunc = pendentes.filter(a => a.funcionario_id === it.funcionario_id);
         const soma = Math.round(doFunc.reduce((t, a) => t + a.valor, 0) * 100) / 100;
-        if (soma > (it.adiantamento ?? 0) + 0.005) {
+        if (it.funcionario_id && Math.abs(soma - (it.adiantamento ?? 0)) > 0.005) {
           await supabase.from("folha_funcionarios").update({ adiantamento: soma }).eq("id", it.id);
           it.adiantamento = soma;
         }
@@ -600,7 +600,7 @@ export default function FolhaEmpresaPage() {
                 ) : (
                   <div style={{ overflowX:"auto" }}>
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-                      <thead><tr>{["","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Adiantamento","Outros Desc.","Benefícios","Líquido"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <thead><tr>{["","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Outros Desc.","Benefícios","Líquido"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {(folhaEdit.funcionarios ?? []).map((f, idx) => {
                           const liq = liquido(f);
@@ -615,14 +615,13 @@ export default function FolhaEmpresaPage() {
                                 <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(f.salario_bruto)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.inss_trabalhador)}</td>
                                 <td style={{ ...S.td, color:"#888", fontVariantNumeric:"tabular-nums" }}>{moeda(f.irrf)}</td>
-                                <td style={S.td}><input type="number" value={f.adiantamento} onChange={e=>setFuncField(idx,"adiantamento",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:90, textAlign:"right", borderColor:f.adiantamento>0?"#EF9F27":"#DDE2EE" }} /></td>
                                 <td style={S.td}><input type="number" value={f.outros_descontos} onChange={e=>setFuncField(idx,"outros_descontos",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} /></td>
                                 <td style={S.td}><input type="number" value={f.vale_transporte+f.vale_refeicao+f.outros_beneficios} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:80, textAlign:"right" }} /></td>
-                                <td style={{ ...S.td, fontWeight:700, color:liq>=0?"#16A34A":"#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(liq)}</td>
+                                <td style={{ ...S.td, fontWeight:700, color:liq>=0?"#16A34A":"#E24B4A", fontVariantNumeric:"tabular-nums" }}>{moeda(liq)}{f.adiantamento > 0 && <div style={{ fontSize:9, fontWeight:400, color:"#C9921B" }}>já desconta adiant. {moeda(f.adiantamento)}</div>}</td>
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-d`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={11} style={{ padding:"12px 16px 16px 44px" }}>
+                                  <td colSpan={10} style={{ padding:"12px 16px 16px 44px" }}>
                                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div><label style={S.label}>Vale Transporte</label><input type="number" value={f.vale_transporte} onChange={e=>setFuncField(idx,"vale_transporte",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>
                                       <div><label style={S.label}>Vale Refeição</label><input type="number" value={f.vale_refeicao} onChange={e=>setFuncField(idx,"vale_refeicao",parseFloat(e.target.value)||0)} style={{ ...S.inp, width:"100%" }} /></div>

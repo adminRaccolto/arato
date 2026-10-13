@@ -159,8 +159,8 @@ export async function POST(req: Request) {
 
       // Adiantamentos pendentes (da competência ou sem competência) entram no desconto mesmo se
       // foram lançados DEPOIS de a folha ser salva — antes o salário saía cheio e o adiantamento
-      // ficava "pendente" pra sempre. Vale o maior entre o valor salvo na folha (pode ser manual)
-      // e a soma dos pendentes.
+      // ficava "pendente" pra sempre. O desconto vem só da aba Adiantamentos: vale sempre a soma dos pendentes
+      // (a coluna manual de adiantamento na folha foi retirada).
       const funcIdsFolha = (itens ?? []).map((it: any) => it.funcionario_id).filter(Boolean) as string[];
       if (funcIdsFolha.length > 0) {
         const { data: adisPend } = await sb.from("adiantamentos_salario")
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         for (const a of adisPend ?? []) somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + Number(a.valor ?? 0);
         for (const it of (itens ?? []) as any[]) {
           const pend = Math.round((somaPend[it.funcionario_id] ?? 0) * 100) / 100;
-          if (pend > (it.adiantamento ?? 0) + 0.005) {
+          if (it.funcionario_id && Math.abs(pend - (it.adiantamento ?? 0)) > 0.005) {
             await sb.from("folha_funcionarios").update({ adiantamento: pend }).eq("id", it.id);
             it.adiantamento = pend;
           }
