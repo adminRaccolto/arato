@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-n",
+    data: "13/10/2026",
+    titulo: "Financeiro por Classificação: Analítico e Sintético por OG",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "novo", texto: "Dois tipos de relatório: Analítico (gastos por OG com os lançamentos de cada uma) e Sintético (só a soma de cada OG no período: quantidade, entradas, saídas e saldo). PDF e Excel seguem o tipo escolhido." },
+      { tipo: "correcao", texto: "Títulos sem OG apareciam com o nome da categoria como se fossem uma OG. Agora aparecem como \"Sem OG — categoria\", por último, e as OGs mostram código e nome, ordenadas pelo código." },
+    ],
+    onde: "Resultados → Gastos por Classificação",
+  },
+  {
     versao: "2026.10.13-m",
     data: "13/10/2026",
     titulo: "Manutenção de Máquinas: relatório do cliente, sem seletor de fazenda",

@@ -65,7 +65,7 @@ function getChave(r: LancRow, agr: AgrupadorKey): string {
     case "data":       return r.data_lancamento?.slice(0, 10) ?? "__sem__";
     case "vencimento": return r.data_vencimento?.slice(0, 10) ?? "__sem__";
     case "fornecedor": return r.pessoa_id ?? "__sem__";
-    case "og":         return r.operacao_gerencial_id ?? r.categoria ?? "__sem__";
+    case "og":         return r.operacao_gerencial_id ?? `sem-og::${r.categoria ?? ""}`;
     case "moeda":      return r.moeda ?? "BRL";
     case "fazenda":    return r.fazenda_id ?? "__sem__";
     case "produtor":   return r.produtor_id ?? "__sem__";
@@ -76,7 +76,7 @@ function getLabel(r: LancRow, agr: AgrupadorKey): string {
     case "data":       return r.data_lancamento ? fmtDate(r.data_lancamento) : "Sem Data";
     case "vencimento": return r.data_vencimento ? fmtDate(r.data_vencimento) : "Sem Vencimento";
     case "fornecedor": return r.pessoa_nome ?? "Sem Fornecedor/Cliente";
-    case "og":         return r.op_codigo ? `${r.op_codigo} — ${r.op_descricao ?? ""}` : (r.op_descricao ?? r.categoria ?? "Sem OG");
+    case "og":         return r.operacao_gerencial_id ? (r.op_codigo ? `${r.op_codigo} — ${r.op_descricao ?? ""}` : (r.op_descricao ?? "OG sem descrição")) : `Sem OG — ${r.categoria || "sem categoria"}`;
     case "moeda":      return MOEDA_LABELS[r.moeda ?? "BRL"] ?? r.moeda ?? "BRL";
     case "fazenda":    return r.fazenda_nome ?? r.fazenda_id ?? "—";
     case "produtor":   return r.produtor_nome ?? "Sem Produtor";
@@ -188,6 +188,7 @@ function RelFinClassInner() {
 
   // ── agrupadores ──
   const [agrupadores, setAgrupadores] = useState<AgrupadorKey[]>(["og"]);
+  const [visao, setVisao] = useState<"analitico" | "sintetico">("analitico");
   const [agrDropOpen, setAgrDropOpen] = useState(false);
 
   // ── dropdowns open ──
@@ -335,8 +336,25 @@ function RelFinClassInner() {
   // ── arvore (useMemo) ─────────────────────────────────────────────────────
   const arvore = useMemo(() => {
     if (!gerado || rows.length === 0 || agrupadores.length === 0) return [];
-    return buildTree(rows, agrupadores);
+    const t = buildTree(rows, agrupadores);
+    // Nível OG: por código da classificação; títulos sem OG por último
+    if (agrupadores[0] === "og") t.sort((a, b) => (a.chave.startsWith("sem-og::") ? 1 : 0) - (b.chave.startsWith("sem-og::") ? 1 : 0) || a.label.localeCompare(b.label, "pt-BR", { numeric: true }));
+    return t;
   }, [rows, agrupadores, gerado]);
+
+  // Sintético: uma linha por OG com a soma do período (sem detalhes)
+  const sintese = useMemo(() => {
+    if (!gerado) return [];
+    const m = new Map<string, { chave: string; label: string; qtd: number; entradas: number; saidas: number }>();
+    for (const r of rows) {
+      const chave = getChave(r, "og");
+      if (!m.has(chave)) m.set(chave, { chave, label: getLabel(r, "og"), qtd: 0, entradas: 0, saidas: 0 });
+      const x = m.get(chave)!;
+      x.qtd += 1;
+      if (r.tipo === "pagar") x.saidas += r.valor; else x.entradas += r.valor;
+    }
+    return [...m.values()].sort((a, b) => (a.chave.startsWith("sem-og::") ? 1 : 0) - (b.chave.startsWith("sem-og::") ? 1 : 0) || a.label.localeCompare(b.label, "pt-BR", { numeric: true }));
+  }, [rows, gerado]);
 
   // quando não há agrupadores, lista flat
   const rowsFlat = useMemo(() => {
@@ -426,6 +444,30 @@ function RelFinClassInner() {
   // ── PDF ───────────────────────────────────────────────────────────────────
   function gerarPDF() {
     const periodoLabel = `${fmtDate(inicio)} a ${fmtDate(fim)}`;
+    if (visao === "sintetico") {
+      const th = (t: string, al = "right") => `<th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #111;text-align:${al};white-space:nowrap">${t}</th>`;
+      const linhas = sintese.map(x => `
+        <tr style="border-bottom:0.5px solid #F0F3FA">
+          <td style="padding:4px 8px;font-size:10px;font-weight:600">${x.label}</td>
+          <td style="padding:4px 8px;font-size:10px;text-align:right">${x.qtd}</td>
+          <td style="padding:4px 8px;font-size:10px;text-align:right;color:#16A34A">${x.entradas ? fmtBRL(x.entradas) : "—"}</td>
+          <td style="padding:4px 8px;font-size:10px;text-align:right;color:#DC2626">${x.saidas ? fmtBRL(x.saidas) : "—"}</td>
+          <td style="padding:4px 8px;font-size:10px;text-align:right;font-weight:700;color:${x.entradas - x.saidas >= 0 ? "#16A34A" : "#DC2626"}">${fmtBRL(x.entradas - x.saidas)}</td>
+        </tr>`).join("");
+      abrirPreviewImpressao("Financeiro por Classificação — Sintético", `
+        <p style="font-size:10px;color:#555;margin-bottom:12px">Período: <strong>${periodoLabel}</strong> · Tipo: <strong>${tipoLabel}</strong> · ${totalLinhas} lançamentos</p>
+        <table style="border-collapse:collapse;font-family:system-ui,sans-serif;width:100%">
+          <thead><tr style="background:#f0f0f0">${th("Operação Gerencial", "left")}${th("Lançamentos")}${th("Entradas")}${th("Saídas")}${th("Saldo")}</tr></thead>
+          <tbody>${linhas}
+            <tr style="background:#111111"><td style="padding:6px 8px;font-size:10px;font-weight:700;color:#fff">TOTAL GERAL</td>
+              <td style="padding:6px 8px;font-size:10px;text-align:right;color:#fff">${totalLinhas}</td>
+              <td style="padding:6px 8px;font-size:10px;text-align:right;color:#86EFAC">${fmtBRL(totalEntradas)}</td>
+              <td style="padding:6px 8px;font-size:10px;text-align:right;color:#FCA5A5">${fmtBRL(totalSaidas)}</td>
+              <td style="padding:6px 8px;font-size:11px;text-align:right;font-weight:800;color:${saldo >= 0 ? "#86EFAC" : "#FCA5A5"}">${fmtBRL(saldo)}</td></tr>
+          </tbody>
+        </table>`, { orientation: "portrait", fazenda: nomeFazendaSelecionada ?? "", subtitulo: `${periodoLabel} · ${tipoLabel}` });
+      return;
+    }
     const tipoLabelPdf = tipoLabel;
     const statusLabelPdf = [...statusSel].map(s => STATUS_LABELS[s]).join(", ") || "Todos";
     const agrsLabel = agrupadores.map(a => AGRUPADORES_DISP.find(d => d.key === a)?.label).join(" → ") || "Sem agrupamento";
@@ -515,6 +557,24 @@ function RelFinClassInner() {
   // ── Excel ─────────────────────────────────────────────────────────────────
   async function exportarExcel() {
     const XLSX = await import("xlsx");
+    if (visao === "sintetico") {
+      const d: (string | number)[][] = [
+        [`Financeiro por Classificação (Sintético) — ${nomeFazendaSelecionada ?? ""}`],
+        [`Período: ${fmtDate(inicio)} a ${fmtDate(fim)} | Tipo: ${tipoLabel}`],
+        [`Gerado em: ${new Date().toLocaleString("pt-BR")}`], [],
+        ["Operação Gerencial", "Lançamentos", "Entradas (R$)", "Saídas (R$)", "Saldo (R$)"],
+        ...sintese.map(x => [x.label, x.qtd, x.entradas, x.saidas, x.entradas - x.saidas] as (string | number)[]),
+        ["TOTAL GERAL", totalLinhas, totalEntradas, totalSaidas, saldo],
+      ];
+      const w = XLSX.utils.aoa_to_sheet(d);
+      w["!cols"] = [{ wch: 52 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+      const rg = XLSX.utils.decode_range(w["!ref"] ?? "A1");
+      for (let R = 5; R <= rg.e.r; R++) for (let C = 2; C <= 4; C++) { const c = w[XLSX.utils.encode_cell({ r: R, c: C })]; if (c && typeof c.v === "number") c.z = "#,##0.00"; }
+      const b = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(b, w, "Sintético por OG");
+      XLSX.writeFile(b, `fin-classif-sintetico_${(nomeFazendaSelecionada ?? "").replace(/\s+/g, "_")}_${inicio}_${fim}.xlsx`);
+      return;
+    }
     const ws_data: (string | number)[][] = [];
     const agrsLabel = agrupadores.map(a => AGRUPADORES_DISP.find(d => d.key === a)?.label).join(" → ") || "Sem agrupamento";
 
@@ -594,7 +654,7 @@ function RelFinClassInner() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Lançamentos agrupados conforme estrutura de agrupadores definida</p>
+            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Analítico: gastos por OG com os lançamentos · Sintético: total de cada OG no período</p>
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 10 }}>
@@ -710,8 +770,21 @@ function RelFinClassInner() {
             </div>
           </div>
 
-          {/* Agrupadores */}
+          {/* Tipo de relatório */}
           <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Tipo de relatório</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {([["analitico", "Analítico — gastos por OG com os lançamentos"], ["sintetico", "Sintético — só o total de cada OG no período"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setVisao(k)}
+                  style={{ padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: visao === k ? "1.5px solid #111" : "0.5px solid var(--border-table)", background: visao === k ? "#111" : "var(--bg-input)", color: visao === k ? "#fff" : "var(--text-1)" }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Agrupadores (só no analítico: o sintético é sempre por OG) */}
+          {visao === "analitico" && <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Agrupadores do relatório</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
 
@@ -763,7 +836,7 @@ function RelFinClassInner() {
                 </span>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* Gerar */}
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -798,6 +871,38 @@ function RelFinClassInner() {
             {rows.length === 0 ? (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 40, textAlign: "center", color: "var(--text-3)" }}>
                 Nenhum lançamento encontrado com os filtros selecionados.
+              </div>
+            ) : visao === "sintetico" ? (
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-page)" }}>
+                        {["Operação Gerencial", "Lançamentos", "Entradas", "Saídas", "Saldo"].map(h => (
+                          <th key={h} style={{ padding: "10px 12px", textAlign: h === "Operação Gerencial" ? "left" : "right", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "1.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sintese.map((x, i) => (
+                        <tr key={x.chave} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD", borderBottom: "0.5px solid #F0F3FA" }}>
+                          <td style={{ padding: "8px 12px", fontWeight: 600, color: x.chave.startsWith("sem-og::") ? "#B45309" : "var(--text-1)" }}>{x.label}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{x.qtd}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "#16A34A" }}>{x.entradas ? fmtBRL(x.entradas) : "—"}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "#DC2626" }}>{x.saidas ? fmtBRL(x.saidas) : "—"}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: x.entradas - x.saidas >= 0 ? "#16A34A" : "#DC2626" }}>{fmtBRL(x.entradas - x.saidas)}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ background: "#111111" }}>
+                        <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 700, color: "#fff" }}>TOTAL GERAL</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "#fff", fontWeight: 700 }}>{totalLinhas}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "#86EFAC", fontWeight: 700 }}>{fmtBRL(totalEntradas)}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "#FCA5A5", fontWeight: 700 }}>{fmtBRL(totalSaidas)}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 15, fontWeight: 800, color: saldo >= 0 ? "#86EFAC" : "#FCA5A5" }}>{fmtBRL(saldo)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
