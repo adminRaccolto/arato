@@ -11,7 +11,7 @@ const RELEASES = [
     titulo: "CT-e substituto",
     modulos: ["Transporte"],
     itens: [
-      { tipo: "novo", texto: "Botão Substituir em CT-e autorizado: abre um rascunho com os dados do original para corrigir e emite o CT-e substituto (tpCTe 3, com a chave do original no infCteSub). Ao autorizar, o original passa a Substituído, o financeiro dele é cancelado e o do substituto é lançado. O DACTE mostra tipo Substituto. Requer a Seção 342 do supabase_migrations.sql." },
+      { tipo: "novo", texto: "Botão Substituir em CT-e autorizado: abre um rascunho com os dados do original para corrigir e emite o CT-e substituto (tpCTe 3, com a chave do original no infCteSub). Ao autorizar, o original passa a Substituído, o financeiro dele é cancelado e o do substituto é lançado. O DACTE mostra tipo Substituto. Na tela Emitir CT-e há o seletor Tipo do CT-e (Normal ou Substituto): escolha um CT-e autorizado ou Outro sistema (informando a chave do original emitido fora do Arato). A lista mostra as etiquetas Substituto e Substituído. Requer a Seção 342 do supabase_migrations.sql." },
     ],
     onde: "Fretes e Transporte → CT-e",
   },

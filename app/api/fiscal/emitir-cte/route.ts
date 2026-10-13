@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       cte_id?:            string | null;
       tp_cte?:            "0" | "3";
       cte_substituido_id?: string | null;
+      cte_substituido_chave?: string;
       ind_altera_toma?:   boolean;
     };
 
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
       observacao:         body.observacao,
       tp_cte:             body.tp_cte === "3" ? "3" : "0",
       ind_altera_toma:    !!body.ind_altera_toma,
+      cte_substituido_chave: body.tp_cte === "3" ? body.cte_substituido_chave : undefined,
     };
 
     const resultado = await emitirCTe(body.fazenda_id, input, {

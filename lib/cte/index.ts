@@ -231,17 +231,23 @@ export async function emitirCTe(
 
   // CT-e substituto: o original precisa existir e estar autorizado (a SEFAZ valida o prazo)
   if (inputBase.tp_cte === "3") {
-    if (!options.cte_substituido_id)
-      return { sucesso: false, cStat: "504", xMotivo: "CT-e substituto: informe o CT-e original que será substituído." };
-    const { data: orig } = await sb().from("ctes").select("id,status,chave_acesso,fazenda_id").eq("id", options.cte_substituido_id).maybeSingle();
-    if (!orig || orig.fazenda_id !== fazendaId)
-      return { sucesso: false, cStat: "504", xMotivo: "CT-e original não encontrado nesta fazenda." };
-    if (orig.status !== "autorizado")
-      return { sucesso: false, cStat: "504", xMotivo: "Só é possível substituir um CT-e autorizado (o original está como " + orig.status + ")." };
-    const chOrig = (orig.chave_acesso ?? "").replace(/\D/g, "");
-    if (chOrig.length !== 44)
-      return { sucesso: false, cStat: "504", xMotivo: "O CT-e original não tem chave de acesso válida." };
-    inputBase = { ...inputBase, cte_substituido_chave: chOrig };
+    if (options.cte_substituido_id) {
+      const { data: orig } = await sb().from("ctes").select("id,status,chave_acesso,fazenda_id").eq("id", options.cte_substituido_id).maybeSingle();
+      if (!orig || orig.fazenda_id !== fazendaId)
+        return { sucesso: false, cStat: "504", xMotivo: "CT-e original não encontrado nesta fazenda." };
+      if (orig.status !== "autorizado")
+        return { sucesso: false, cStat: "504", xMotivo: "Só é possível substituir um CT-e autorizado (o original está como " + orig.status + ")." };
+      const chOrig = (orig.chave_acesso ?? "").replace(/\D/g, "");
+      if (chOrig.length !== 44)
+        return { sucesso: false, cStat: "504", xMotivo: "O CT-e original não tem chave de acesso válida." };
+      inputBase = { ...inputBase, cte_substituido_chave: chOrig };
+    } else {
+      // Original emitido em outro sistema: só a chave informada (a SEFAZ valida o resto)
+      const chExt = (inputBase.cte_substituido_chave ?? "").replace(/\D/g, "");
+      if (chExt.length !== 44)
+        return { sucesso: false, cStat: "504", xMotivo: "CT-e substituto: informe o CT-e a substituir ou a chave de 44 dígitos do original." };
+      inputBase = { ...inputBase, cte_substituido_chave: chExt };
+    }
   }
 
   // 1. Config CT-e
@@ -425,6 +431,12 @@ export async function emitirCTe(
 
   // CT-e substituto autorizado: o original vira "substituído" (liga as duas pontas) e o financeiro
   // dele é cancelado — o do substituto já foi lançado acima.
+  if (resposta.sucesso && inputBase.tp_cte === "3" && !options.cte_substituido_id && options.cte_id) {
+    await sb().from("ctes").update({
+      tipo_cte: "substituto", cte_substituido_chave: inputBase.cte_substituido_chave ?? null,
+      ind_altera_toma: !!inputBase.ind_altera_toma,
+    }).eq("id", options.cte_id);
+  }
   if (resposta.sucesso && inputBase.tp_cte === "3" && options.cte_substituido_id) {
     try {
       const { data: orig } = await sb().from("ctes").select("chave_acesso").eq("id", options.cte_substituido_id).maybeSingle();

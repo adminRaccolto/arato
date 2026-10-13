@@ -523,6 +523,9 @@ function CtePageInner() {
   // CT-e autorizado que o rascunho aberto vai substituir (tpCTe=3)
   const [substituindo, setSubstituindo] = useState<Cte | null>(null);
   const [alteraToma, setAlteraToma] = useState(false);
+  const [modoSubst, setModoSubst] = useState(false);          // seletor Tipo do CT-e = Substituto
+  const [origemExterna, setOrigemExterna] = useState(false);  // original emitido em outro sistema
+  const [chaveExterna, setChaveExterna] = useState("");
   const [saving, setSaving]   = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [err, setErr]         = useState("");
@@ -728,7 +731,7 @@ function CtePageInner() {
 
   // ── Abrir modal ──────────────────────────────────────────
   function abrirNovo() {
-    setCteEdit(null); setSubstituindo(null); setAlteraToma(false);
+    setCteEdit(null); setSubstituindo(null); setAlteraToma(false); setModoSubst(false); setOrigemExterna(false); setChaveExterna("");
     setForm({ ...FORM_VAZIO(), numero_cte: proximoNr });
     setRemetenteSelUI("");
     setMostrarExp(false); setMostrarRec(false);
@@ -746,12 +749,15 @@ function CtePageInner() {
     abrirEditar(c);
     setCteEdit(null);
     setSubstituindo(c);
-    setAlteraToma(false);
+    setAlteraToma(false); setModoSubst(true); setOrigemExterna(false); setChaveExterna("");
     setForm(f => ({ ...f, numero_cte: proximoNr, data_emissao: new Date().toISOString().slice(0, 10), observacao: `CT-e substituto do CT-e nº ${c.numero_cte}.${f.observacao ? " " + f.observacao : ""}` }));
   }
 
   function abrirEditar(c: Cte) {
     setCteEdit(c); setAlteraToma(!!c.ind_altera_toma);
+    setModoSubst(c.tipo_cte === "substituto");
+    setOrigemExterna(c.tipo_cte === "substituto" && !c.cte_substituido_id);
+    setChaveExterna(c.tipo_cte === "substituto" && !c.cte_substituido_id ? (c.cte_substituido_chave ?? "") : "");
     setSubstituindo(c.tipo_cte === "substituto" && c.cte_substituido_id ? (ctes.find(x => x.id === c.cte_substituido_id) ?? null) : null);
     setCiotErro(""); setCiotForm({ data_fim: "", distancia_km: "", natureza: "2202", chave_pix: "", cep_origem: "", cep_destino: "", implementos: "" });
     setCiotGerado(c.ciot ? { id: c.ciot, cv: c.ciot_codigo_verificador ?? "", protocolo: c.ciot_protocolo ?? "" } : null);
@@ -991,6 +997,7 @@ function CtePageInner() {
     if (form.tomador_tipo === "expedidor" && !form.exp.nome.trim()) { setErr("Tomador = Expedidor: informe os dados do Expedidor."); return; }
     if (form.tomador_tipo === "recebedor" && !form.rec.nome.trim()) { setErr("Tomador = Recebedor: informe os dados do Recebedor."); return; }
     if (!form.destinatario_nome.trim()){ setErr("Informe o destinatário."); return; }
+    if (modoSubst && !substituindo && chaveExterna.replace(/\D/g, "").length !== 44) { setErr("CT-e substituto: escolha o CT-e a substituir ou informe a chave de 44 dígitos do CT-e original."); return; }
     setSaving(true); setErr("");
     try {
       const veiculo = veiculos.find(v => v.id === form.veiculo_id);
@@ -1050,10 +1057,10 @@ function CtePageInner() {
         status: cteEdit ? cteEdit.status : "rascunho" as StatusCte,
         observacao: form.observacao || null,
         // Só envia quando é substituto (não quebra o salvamento de quem ainda não rodou a Seção 342)
-        ...(substituindo ? {
+        ...(modoSubst ? {
           tipo_cte: "substituto",
-          cte_substituido_id: substituindo.id,
-          cte_substituido_chave: substituindo.chave_acesso ?? null,
+          cte_substituido_id: substituindo?.id ?? null,
+          cte_substituido_chave: substituindo ? (substituindo.chave_acesso ?? null) : chaveExterna.replace(/\D/g, ""),
           ind_altera_toma: alteraToma,
         } : {}),
         // Só envia quando há CIOT (não quebra o salvamento de quem ainda não rodou a Seção 296)
@@ -1378,9 +1385,10 @@ function CtePageInner() {
       expedidor:          expPayload,
       recebedor:          recPayload,
       observacao:         c.observacao  ?? undefined,
-      ...(c.tipo_cte === "substituto" && c.cte_substituido_id ? {
+      ...(c.tipo_cte === "substituto" && (c.cte_substituido_id || c.cte_substituido_chave) ? {
         tp_cte: "3" as const,
-        cte_substituido_id: c.cte_substituido_id,
+        cte_substituido_id: c.cte_substituido_id ?? null,
+        cte_substituido_chave: c.cte_substituido_chave ?? undefined,
         ind_altera_toma: !!c.ind_altera_toma,
       } : {}),
     };
@@ -1789,15 +1797,60 @@ function CtePageInner() {
             </div>
 
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
-              {substituindo && (
-                <div style={{ gridColumn: "1 / -1", background: "#EEF4FB", border: "0.5px solid #B8D0EA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div><b>CT-e substituto</b> do CT-e nº {substituindo.numero_cte}{substituindo.chave_acesso ? ` — chave ${substituindo.chave_acesso}` : ""}. Corrija os dados abaixo; ao autorizar, o original passa a Substituído e o financeiro dele é cancelado.</div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                    <input type="checkbox" checked={alteraToma} onChange={e => setAlteraToma(e.target.checked)} />
-                    A correção altera o tomador do serviço (indAlteraToma)
-                  </label>
+              <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 3fr", gap: 12 }}>
+                  <div>
+                    <label style={lbl}>Tipo do CT-e</label>
+                    <select value={modoSubst ? "substituto" : "normal"} disabled={!!cteEdit && cteEdit.status !== "rascunho"} style={inp}
+                      onChange={e => {
+                        const sub = e.target.value === "substituto";
+                        setModoSubst(sub);
+                        if (!sub) { setSubstituindo(null); setOrigemExterna(false); setChaveExterna(""); setAlteraToma(false); }
+                      }}>
+                      <option value="normal">Normal</option>
+                      <option value="substituto">Substituto</option>
+                    </select>
+                  </div>
+                  {modoSubst && (
+                    <div>
+                      <label style={lbl}>CT-e a substituir (preenche o formulário com os dados dele)</label>
+                      <select style={inp}
+                        value={origemExterna ? "externo" : (substituindo?.id ?? "")}
+                        onChange={e => {
+                          const v = e.target.value;
+                          if (v === "externo") { setSubstituindo(null); setOrigemExterna(true); return; }
+                          setOrigemExterna(false); setChaveExterna("");
+                          const o = ctes.find(x => x.id === v);
+                          if (o) abrirSubstituto(o); else setSubstituindo(null);
+                        }}>
+                        <option value="">— Selecionar CT-e autorizado —</option>
+                        {ctes.filter(x => x.status === "autorizado").map(x => (
+                          <option key={x.id} value={x.id}>{x.numero_cte}/{x.serie} — {x.remetente_nome} → {x.destinatario_nome} ({fmtData(x.data_emissao)})</option>
+                        ))}
+                        <option value="externo">Outro sistema — informar a chave de acesso</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
-              )}
+                {modoSubst && origemExterna && (
+                  <div>
+                    <label style={lbl}>Chave de acesso do CT-e original (44 dígitos)</label>
+                    <input value={chaveExterna} onChange={e => setChaveExterna(e.target.value.replace(/\D/g, "").slice(0, 44))} placeholder="Somente números" style={{ ...inp, fontFamily: "monospace" }} />
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>O original não está no Arato: nada do financeiro dele é alterado aqui. Preencha o CT-e abaixo com os dados corrigidos.</div>
+                  </div>
+                )}
+                {modoSubst && (substituindo || origemExterna) && (
+                  <div style={{ background: "#EEF4FB", border: "0.5px solid #B8D0EA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div>{substituindo
+                      ? <><b>CT-e substituto</b> do CT-e nº {substituindo.numero_cte}{substituindo.chave_acesso ? ` — chave ${substituindo.chave_acesso}` : ""}. Corrija os dados abaixo; ao autorizar, o original passa a Substituído e o financeiro dele é cancelado.</>
+                      : <><b>CT-e substituto</b> de CT-e emitido em outro sistema. O XML leva a chave informada no grupo infCteSub.</>}</div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <input type="checkbox" checked={alteraToma} onChange={e => setAlteraToma(e.target.checked)} />
+                      A correção altera o tomador do serviço (indAlteraToma)
+                    </label>
+                  </div>
+                )}
+              </div>
               {err && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{err}</div>}
 
               {/* ── Emitente (Transportadora) ── */}
