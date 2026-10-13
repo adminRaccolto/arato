@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-b",
+    data: "13/10/2026",
+    titulo: "NF-e de saída: série e número agora vêm de Parâmetros Fiscais desde o rascunho",
+    modulos: ["Fiscal", "Comercial"],
+    itens: [
+      { tipo: "correcao", texto: "Notas em Processando (rascunho) eram gravadas com série 1 e um número sequencial inventado pela tela, ignorando a série e o próximo número cadastrados em Parâmetros → Fiscal. Agora o rascunho já usa a série e o número do emitente/IE escolhido, e a série real usada pela SEFAZ também é gravada na nota ao autorizar. O campo Série da tela passou a mostrar Auto." },
+    ],
+    onde: "Comercial → Faturamento · Fiscal → Notas de Venda",
+  },
+  {
     versao: "2026.10.13-a",
     data: "13/10/2026",
     titulo: "Insumos: botão Desativar/Reativar + Adubação de Base com colunas separadas e detalhe",

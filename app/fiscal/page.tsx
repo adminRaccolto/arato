@@ -1297,10 +1297,22 @@ function FiscalInner() {
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
     setSalvando(true);
     try {
+      // Numeração prévia de Parâmetros → Fiscal (emitente + IE escolhidos); o número definitivo é
+      // reservado na transmissão. Antes: série "1" e contagem local, sem relação com a configuração.
+      let numPrevia: { serie: string | null; numero: number | null } = { serie: null, numero: null };
+      try {
+        const prodRasc = produtores.find(p => p.id === fVenda.produtor_id);
+        const rn = await fetch("/api/fiscal/numeracao-nfe", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazenda_id: fazendaId, modulo_key: moduloKeyAtivo, emit_ie_override: fVenda.ie_selecionada || prodRasc?.inscricao_est || undefined }),
+        });
+        if (rn.ok) numPrevia = await rn.json();
+      } catch { /* sem prévia: comportamento antigo */ }
+      const pendentesMesmaSerie = notas.filter(n => n.status === "em_digitacao" && n.serie === numPrevia.serie).length;
       await criarNotaFiscal({
         fazenda_id: fazendaId!,
-        numero: proximoNumero(),
-        serie: fVenda.serie || "1",
+        numero: numPrevia.numero != null ? String(numPrevia.numero + pendentesMesmaSerie).padStart(6, "0") : proximoNumero(),
+        serie: numPrevia.serie ?? (fVenda.serie || "1"),
         tipo: "saida",
         cfop: fVenda.cfop,
         natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
@@ -1463,7 +1475,7 @@ function FiscalInner() {
       await criarNotaFiscal({
         fazenda_id:        fazendaId!,
         numero:            resultado.numero ?? proximoNumero(),
-        serie:             fVenda.serie || "1",
+        serie:             (resultado as { serie?: string }).serie ?? (fVenda.serie || "1"),
         tipo:              "saida",
         cfop:              fVenda.cfop,
         natureza:          fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
@@ -1775,7 +1787,7 @@ function FiscalInner() {
           tipo: "1",
         }),
       });
-      const resBody = await res.json() as { sucesso?: boolean; chave?: string; numero?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string; erro?: string };
+      const resBody = await res.json() as { sucesso?: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string; erro?: string };
 
       if (!res.ok && !resBody.cStat) {
         alert(`⚠ Falha na emissão\n\n${resBody.erro ?? `Erro HTTP ${res.status}`}`);
@@ -1785,7 +1797,7 @@ function FiscalInner() {
       await criarNotaFiscal({
         fazenda_id:        fazendaId,
         numero:            resBody.numero ?? proximoNumero(),
-        serie:             "1",
+        serie:             resBody.serie ?? "1",
         tipo:              "saida",
         cfop:              fTransf.cfop,
         natureza:          natObj.descricao,
@@ -2919,7 +2931,7 @@ function FiscalInner() {
                           <option value="57">57 — CT-e</option>
                           <option value="65">65 — NFC-e</option>
                         </select>, "0 0 140px"),
-                      field("Série", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.serie} onChange={e => fv({serie:e.target.value})} />, "0 0 60px"),
+                      field("Série", <input style={{ ...inSt, textAlign:"center", background:"var(--bg-page)" }} value="Auto" disabled title="A série e o número vêm de Parâmetros → Fiscal do emitente (e da IE) escolhido" />, "0 0 60px"),
                       field("Data Emissão", <InputData style={inSt} type="date" value={fVenda.data_emissao} onChange={e => fv({data_emissao:e.target.value})} />, "0 0 140px"),
                       field("Data Ent./Saída", <InputData style={inSt} type="date" value={fVenda.data_saida} onChange={e => fv({data_saida:e.target.value})} />, "0 0 140px"),
                       field("Hora Ent./Saída", <input style={inSt} type="time" step="1" value={fVenda.hora_saida} onChange={e => fv({hora_saida:e.target.value})} />, "0 0 110px"),

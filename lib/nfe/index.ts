@@ -316,6 +316,7 @@ export interface ResultadoEmissao {
   sucesso: boolean;
   chave?: string;
   numero?: string;
+  serie?: string;         // série realmente usada na emissão (de Parâmetros → Fiscal), sem zeros à esquerda
   protocolo?: string;
   dhRecbto?: string;
   xmlUrl?: string;
@@ -731,6 +732,7 @@ export async function emitirNFe(
     sucesso: autorizada,
     chave:     built.chave,
     numero:    built.numero,
+    serie:     String(serieConfg),
     protocolo: resposta.protocolo,
     dhRecbto:  resposta.dhRecbto,
     xmlUrl,

@@ -559,12 +559,31 @@ function FaturamentoInner() {
         fiscalModulos[0];
       const emit = moduloFiscal?.config ?? {};
 
+      // Numeração prévia: série e próximo número vêm de Parâmetros → Fiscal do emitente/IE que vai
+      // emitir (o número definitivo é reservado na transmissão). Antes gravava série "1" e a
+      // contagem local de notas, que não tinham nada a ver com a configuração do cliente.
+      let numPrevia: { serie: string | null; numero: number | null } = { serie: null, numero: null };
+      if (moduloFiscal) {
+        try {
+          const rn = await fetch("/api/fiscal/numeracao-nfe", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fazenda_id: fazEmissao, modulo_key: moduloFiscal.modulo,
+              emit_ie_override: fVenda.ie_id ? iesProdutor.find(ie => ie.id === fVenda.ie_id)?.inscricao_estadual : undefined,
+            }),
+          });
+          if (rn.ok) numPrevia = await rn.json();
+        } catch { /* sem prévia: cai no comportamento antigo abaixo */ }
+      }
+      const pendentesMesmaSerie = notas.filter(n => n.tipo === "saida" && n.status === "em_digitacao" && n.serie === numPrevia.serie).length;
       const payload: Omit<NotaFiscal, "id" | "created_at"> = {
         fazenda_id:        fazEmissao,
         tipo:              "saida",
         status:            "em_digitacao",
-        numero:            String(notas.filter(n => n.tipo === "saida").length + 1).padStart(6, "0"),
-        serie:             fVenda.serie || "1",
+        numero:            numPrevia.numero != null
+          ? String(numPrevia.numero + pendentesMesmaSerie).padStart(6, "0")
+          : String(notas.filter(n => n.tipo === "saida").length + 1).padStart(6, "0"),
+        serie:             numPrevia.serie ?? (fVenda.serie || "1"),
         data_emissao:      fVenda.data_emissao,
         destinatario:      fVenda.destinatario,
         cnpj_destinatario: fVenda.cnpj || undefined,
@@ -675,7 +694,7 @@ function FaturamentoInner() {
           });
           if (resp.ok || resp.status === 422) {
             const res = await resp.json() as {
-              sucesso: boolean; chave?: string; numero?: string; protocolo?: string;
+              sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string;
               cStat: string; xMotivo: string;
               emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
               emit_endereco?: string; emit_bairro?: string; emit_municipio?: string; emit_uf?: string; emit_cep?: string;
@@ -698,6 +717,7 @@ function FaturamentoInner() {
               };
               await supabase.from("notas_fiscais").update({
                 status: "autorizada", chave_acesso: res.chave, numero: novoNumero,
+                ...(res.serie ? { serie: res.serie } : {}),
                 dados_nf_json: djAtualizado,
               }).eq("id", nova.id);
               // Grava chave de volta no romaneio para que Expedição reconheça como faturado
@@ -705,13 +725,14 @@ function FaturamentoInner() {
                 await supabase.from("romaneios").update({
                   nfe_chave: res.chave,
                   nfe_numero: novoNumero,
-                  nfe_serie: nova.serie,
+                  nfe_serie: res.serie ?? nova.serie,
                   nfe_status: "autorizada",
                 }).eq("id", fVenda.romaneio_id);
               }
               nova.status = "autorizada";
               nova.chave_acesso = res.chave;
               nova.numero = novoNumero;
+              if (res.serie) nova.serie = res.serie;
             } else {
               await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nova.id);
               nova.status = "rejeitada";
@@ -996,7 +1017,7 @@ function FaturamentoInner() {
           </div>
           <div>
             <label style={lbl}>Série</label>
-            <input style={inp} value={fVenda.serie} onChange={e => fv({ serie: e.target.value })} maxLength={3} />
+            <input style={{ ...inp, background:"var(--bg-page)" }} value="Auto" disabled title="A série e o número vêm de Parâmetros → Fiscal do emitente (e da IE) escolhido" />
           </div>
           <div>
             <label style={lbl}>Data Emissão</label>
@@ -1337,11 +1358,12 @@ function FaturamentoInner() {
                                     tipo: "1" as const,
                                   }),
                                 });
-                                const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; cStat?: string; xMotivo?: string; erro?: string };
+                                const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; serie?: string; cStat?: string; xMotivo?: string; erro?: string };
                                 if (res.sucesso && res.chave) {
                                   const num = res.numero ?? nota.numero;
-                                  await supabase.from("notas_fiscais").update({ status: "autorizada", chave_acesso: res.chave, numero: num }).eq("id", nota.id);
-                                  setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "autorizada", chave_acesso: res.chave, numero: num } : n));
+                                  const serieReal = res.serie ?? nota.serie;
+                                  await supabase.from("notas_fiscais").update({ status: "autorizada", chave_acesso: res.chave, numero: num, serie: serieReal }).eq("id", nota.id);
+                                  setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "autorizada", chave_acesso: res.chave, numero: num, serie: serieReal } : n));
                                 } else {
                                   const msg = res.erro ?? `SEFAZ [${res.cStat}]: ${res.xMotivo}`;
                                   await supabase.from("notas_fiscais").update({ status: "rejeitada" }).eq("id", nota.id);
