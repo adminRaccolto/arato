@@ -18,8 +18,7 @@ import {
   listarAnosSafra,
   listarTodosCiclos,
   listarDepositos,
-  listarFazendasDaConta,
-} from "../../../lib/db";
+  listarFazendasDaConta, insumoAtivo } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
 import type {
@@ -218,7 +217,7 @@ export default function TratamentoSementesPage() {
     ]);
     setTratamentos(ts);
     setReceitas(rec);
-    setInsumosSemente(ins.filter(i => i.categoria === "semente"));
+    setInsumosSemente(ins.filter(i => i.categoria === "semente" && insumoAtivo(i)));
     setInsumosProduto(ins.filter(i => ["defensivo", "biologico", "inoculante"].includes(i.categoria ?? "")));
     setAnosSafra(anos);
     setCiclos(ciclosAll);

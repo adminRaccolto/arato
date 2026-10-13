@@ -7,7 +7,7 @@ import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
 import { supabase } from "../../../lib/supabase";
 import type { Fazenda, Deposito, Insumo, TransferenciaEstoque, TransferenciaEstoqueItem, Produtor, ProdutorIE } from "../../../lib/supabase";
-import { saldoPorLote, listarProdutoresDaConta, listarIEsDoProdutor } from "../../../lib/db";
+import { saldoPorLote, listarProdutoresDaConta, listarIEsDoProdutor, insumoAtivo } from "../../../lib/db";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -233,7 +233,7 @@ export default function TransferenciasEstoquePage() {
         let from = 0;
         while (true) {
           const { data } = await supabase
-            .from("insumos").select("id,nome,unidade,estoque,categoria,deposito_id,custo_medio")
+            .from("insumos").select("*")
             .eq("fazenda_id", f.id).order("nome")
             .range(from, from + PAGE - 1);
           all = all.concat((data ?? []) as Insumo[]);
@@ -380,7 +380,7 @@ export default function TransferenciasEstoquePage() {
     .sort((a, b) => a.nome.localeCompare(b.nome));
   // Todos os insumos da conta (todas as fazendas) para lookup de nome e unidade
   const todosInsumos = Object.values(insumosPorFazenda).flat();
-  const insumosOrigem = form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos;
+  const insumosOrigem = (form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos).filter(insumoAtivo);
 
   // Saldo por lote: um lote só faz sentido pra uma fazenda/depósito de origem
   // específica — a chave composta invalida o cache sozinha quando a origem muda.

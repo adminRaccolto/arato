@@ -6,7 +6,7 @@ import TopNav from "../../../components/TopNav";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import type { Talhao, Insumo, AnoSafra, Ciclo } from "../../../lib/supabase";
-import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, processarPulverizacao, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
+import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, processarPulverizacao, resolverOperacaoGerencialPorClassificacao, insumoAtivo } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Tipos locais ────────────────────────────────────────────────────────────
@@ -794,7 +794,7 @@ export default function RecomendacoesPage() {
     if (!fazendaId) return;
     carregar();
     listarTalhoes(fazendaId).then(setTalhoes);
-    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo")));
+    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && insumoAtivo(i))));
     listarAnosSafra(fazendaId).then(setAnosSafra);
     listarTodosCiclos(fazendaId).then(setTodosCiclos);
   }, [fazendaId, carregar]);

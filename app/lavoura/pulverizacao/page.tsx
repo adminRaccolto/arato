@@ -7,8 +7,7 @@ import {
   listarTalhoes, listarInsumosParaConta,
   listarAnosSafra, listarTodosCiclos,
   criarPulverizacao, criarPulverizacaoItem, processarPulverizacao,
-  listarPulverizacoesDaConta, listarPulverizacaoItens, excluirPulverizacao, listarFazendas,
-} from "../../../lib/db";
+  listarPulverizacoesDaConta, listarPulverizacaoItens, excluirPulverizacao, listarFazendas, insumoAtivo } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import InputNumerico from "../../../components/InputNumerico";
@@ -82,7 +81,7 @@ export default function PulverizacaoPage() {
     // fazenda da conta — o catálogo de insumos usado pra resolver nome do
     // produto precisa cobrir todas as fazendas também, senão um lançamento de
     // outra fazenda mostra o UUID do insumo em vez do nome.
-    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && insumoAtivo(i)))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
   }, [fazendaId, fazendaFiltro, contaId]);

@@ -6,8 +6,7 @@ import TopNav from "../../../components/TopNav";
 import {
   listarTodosCiclos, listarTalhoes, listarInsumosParaConta,
   listarAnosSafra,
-  listarAdubacoesDaConta, criarAdubacao, criarAdubacaoItem, listarAdubacaoItens, processarAdubacao, excluirAdubacao, listarFazendas,
-} from "../../../lib/db";
+  listarAdubacoesDaConta, criarAdubacao, criarAdubacaoItem, listarAdubacaoItens, processarAdubacao, excluirAdubacao, listarFazendas, insumoAtivo } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Ciclo, Talhao, Insumo, AdubacaoBase, AdubacaoBaseItem, AnoSafra, Fazenda } from "../../../lib/supabase";
@@ -88,7 +87,7 @@ export default function AdubacaoBasePage() {
     // Conta-wide: a lista de adubações mostra lançamentos de qualquer fazenda
     // da conta — o catálogo de insumos precisa cobrir todas, senão um
     // lançamento de outra fazenda mostra o UUID do insumo em vez do nome.
-    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && i.categoria === "fertilizante"))).catch(() => {});
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && i.categoria === "fertilizante" && insumoAtivo(i)))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
   }, [fazendaId, fazendaFiltro, contaId]);

@@ -163,6 +163,9 @@ Fornecedor, cliente, prestador, transportador, arrendante. **É do cliente (cont
 
 O botão "..." ao lado do CNPJ (no modal Editar/Novo Pessoa) busca dados públicos pra auto-preencher nome/endereço, via rota própria do servidor ("/api/cadastros/consultar-cnpj") — tenta a BrasilAPI primeiro e, se ela estiver fora do ar ou no limite de consultas (erro 5xx/429), tenta a ReceitaWS automaticamente antes de desistir (roda no servidor, não no navegador, porque a ReceitaWS não aceita chamada direta do navegador — CORS). Erro "404" significa que o CNPJ realmente não existe na Receita; "400" é dígito verificador errado — nesses dois casos não adianta tentar de novo, é o cadastro que está errado.
 
+### Cadastros → Insumos: desativar sem excluir
+Cada linha das listas de Insumos (e dos demais itens do estoque) tem um botão Desativar. Um insumo desativado deixa de aparecer nos seletores de uso: Nota de Entrada, Pedido de Compra, Notas Próprias, Transferência de Estoque e as operações de lavoura (Plantio, Adubação, Correção, Pulverização, Aplicação Aérea, Tratamento de Sementes). O histórico, o Kardex, a Posição de estoque e as telas de Cadastros continuam mostrando o item normalmente. Se o item já estava selecionado numa nota ou pedido aberto, ele continua aparecendo nesse campo até ser trocado. O botão vira Reativar para o item voltar aos seletores. Uso típico: depois de converter semente de kg para bag, desativar o cadastro antigo em kg para ninguém usar por engano. Atenção: desativar um item que ainda tem saldo impede escolhê-lo em transferências.
+
 ### Cadastros → Safras & Ciclos
 Ano Safra é do cliente inteiro (vale pra todas as fazendas); Ciclo é específico de uma fazenda (campo "Fazenda" obrigatório no modal). **Ciclo Auxiliar** (toggle no topo do modal de Novo Ciclo) é usado pra cultura de cobertura/adubação verde sem receita própria — os custos dela são somados ao DRE de um Ciclo Principal escolhido, com um % de absorção configurável. Ao escolher o Ciclo Principal, Início/Fim do ciclo auxiliar vêm pré-preenchidos com as mesmas datas dele (editável) — é o caso normal de consórcio, onde as duas culturas ocupam a mesma área ao mesmo tempo.
 
@@ -183,6 +186,8 @@ Na grade de "Produtos Aplicados" (Pulverização Terrestre), a coluna **Total** 
 
 ### Produção → Adubação de Base / Correção de Solo
 Registram consumo de fertilizante/corretivo e dão baixa de estoque, sem CP nova (mesmo motivo do Plantio). Correção de Solo trabalha normalmente em toneladas e converte para a unidade do cadastro do insumo (referência 60 kg = 1 saca quando a conversão usa sc).
+
+**Adubação de Base — grid com colunas separadas e detalhe 13/10/2026**: a lista mostra as colunas Fazenda, Ano Safra, Ciclo e Talhão separadas (nessa ordem), e clicar numa linha abre um popup com os dados da aplicação e os produtos com dose, quantidade total e custo. O popup tem botão Editar.
 
 **Adubação de Base — 2 bugs corrigidos 09/10/2026**: (1) a coluna "Safra / Talhão" do grid aparecia sempre em branco ("—") pra qualquer registro — a lista de aplicações já é conta-wide (mostra todas as fazendas juntas), mas a busca do nome do ciclo/talhão pra exibir só olhava a fazenda ativa da sessão; corrigido pra buscar em todas as fazendas da conta. (2) não existia botão de editar um lançamento já feito, só excluir — adicionado "✎ Editar" por linha, reabre o mesmo formulário preenchido; salvar a edição reverte o estoque do lançamento antigo e grava um novo no lugar (mesmo efeito de uma edição de verdade). Mesma classe de problema (grid sem editar, nem pra Plantio/Pulverização/Correção de Solo/Colheita Própria) — só Adubação de Base foi corrigida até agora, reportar se o dono pedir as outras.
 

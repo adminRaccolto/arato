@@ -405,6 +405,11 @@ export async function listarInsumosParaConta(contaIdDireto?: string | null, faze
   return data ?? [];
 }
 
+// Insumo desativado (ativo=false) some dos seletores de uso (NF, pedido, lavoura),
+// mas segue nas listas de histórico/Kardex/Posição. `ativo` ausente = ativo (compatível
+// com banco sem a coluna, antes da Seção 337).
+export const insumoAtivo = (i: { ativo?: boolean | null }) => i.ativo !== false;
+
 // Normaliza nome de insumo para comparação: remove acento, caixa, pontuação e
 // artigos comuns ("de"/"do"/"da") — pega duplicatas como "SEM. SOJA BRS 8381"
 // vs "SEM. DE SOJA BRS 8381" que uma comparação exata (ilike) não detecta.

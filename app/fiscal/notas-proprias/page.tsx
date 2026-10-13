@@ -22,8 +22,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarNotasPropriasExternas, criarNotaPropriaExterna, salvarItensNotaPropriaExterna,
   processarNotaPropriaExterna, estornarNotaPropriaExterna, excluirNotaPropriaExterna,
-  listarItensNotaPropriaExterna, listarInsumosParaConta, listarDepositosMulti,
-} from "../../../lib/db";
+  listarItensNotaPropriaExterna, listarInsumosParaConta, listarDepositosMulti, insumoAtivo } from "../../../lib/db";
 import type { NotaPropriaExterna, Insumo, Deposito } from "../../../lib/supabase";
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -414,7 +413,7 @@ export default function NotasPropriasExternasPage() {
                           setItem(it.key, { insumo_id: e.target.value, unidade: ins?.unidade ?? it.unidade });
                         }} style={{ ...inp, fontSize: 11, background: it.insumo_id ? "var(--bg-input)" : "#FEE2E2" }}>
                           <option value="">— selecionar —</option>
-                          {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                          {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                         </select>
                       </td>
                       <td style={{ padding: "4px" }}><input value={it.unidade} onChange={e => setItem(it.key, { unidade: e.target.value })} style={{ ...inp, fontSize: 11, width: 60 }} /></td>

@@ -28,8 +28,7 @@ import {
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, atualizarLancamento, listarFazendas, criarContrato,
   listarProdutoresDaConta, listarNfEntradasPorPedido, listarIEsDoProdutor,
   listarIEsDeMultiplosProdutores, criarEstoqueTerceiro, criarPessoa,
-  listarGruposInsumoDaConta, listarPrincipiosAtivos,
-} from "../../lib/db";
+  listarGruposInsumoDaConta, listarPrincipiosAtivos, insumoAtivo } from "../../lib/db";
 import type { PedidoCompra, RelPedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor, NfEntrada, NfEntradaItem, ProdutorIE, GrupoInsumo, PrincipioAtivo } from "../../lib/supabase";
 import { supabase } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -2261,7 +2260,7 @@ export default function ComprasPage() {
                                           const ins = insumos.find(i => i.id === id);
                                           setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, insumo_id: id, nome_item: ins?.nome ?? x.nome_item, unidade: ins?.unidade ?? x.unidade } : x));
                                         }}
-                                        options={insumos.map(i => ({ id: i.id, label: `${i.nome} (${i.unidade})` }))}
+                                        options={insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => ({ id: i.id, label: `${i.nome} (${i.unidade})` }))}
                                         placeholder="— Selecionar insumo —"
                                         emptyMessage="Nenhum insumo cadastrado. Use + Criar insumo →"
                                         style={{ fontSize: 12 }}

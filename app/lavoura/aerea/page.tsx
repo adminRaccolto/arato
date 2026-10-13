@@ -11,8 +11,7 @@ import {
   listarAplicacoesAereasDaConta, criarAplicacaoAerea, atualizarAplicacaoAerea,
   excluirAplicacaoAerea, listarAplicacaoAereaTalhoes, salvarAplicacaoAereaTalhoes,
   listarAplicacaoAereaItens, salvarAplicacaoAereaItens,
-  listarEmpresasAplicadoras, salvarEmpresaAplicadora, excluirEmpresaAplicadora,
-} from "../../../lib/db";
+  listarEmpresasAplicadoras, salvarEmpresaAplicadora, excluirEmpresaAplicadora, insumoAtivo } from "../../../lib/db";
 import type {
   Talhao, Insumo, Ciclo, Fazenda,
   AplicacaoAerea, AplicacaoAereaItem, AplicacaoAereaTalhao,
@@ -789,7 +788,7 @@ export default function AplicacaoAereaPage() {
                               setItens(prev => prev.map((it, i) => i === idx ? { ...it, insumo_id: e.target.value, nome_produto: ins?.nome ?? it.nome_produto, unidade: ins?.unidade ?? it.unidade, valor_unitario: ins?.custo_medio?.toString() ?? it.valor_unitario } : it));
                             }} style={inp}>
                               <option value="">— cadastro —</option>
-                              {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+                              {insumos.filter(insumoAtivo).map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
                             </select>
                             {!item.insumo_id && (
                               <input placeholder="Nome livre" value={item.nome_produto} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, nome_produto: e.target.value } : it))} style={{ ...inp, marginTop: 4 }} />

@@ -3847,7 +3847,8 @@ function CadastrosInner() {
                                   <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                       <button style={btnE} onClick={() => abrirModalComb("combustivel", ins)}>Editar</button>
-                                      <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
+                                      <button style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</button>
+                                  <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
                                     </div>
                                   </td>
                                 </tr>
@@ -3902,7 +3903,8 @@ function CadastrosInner() {
                                   <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                       <button style={btnE} onClick={() => abrirModalComb("lubrificante", ins)}>Editar</button>
-                                      <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
+                                      <button style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</button>
+                                  <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
                                     </div>
                                   </td>
                                 </tr>
@@ -5002,6 +5004,7 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <button style={btnE} onClick={() => abrirModalIns(ins)}>Editar</button>
+                                  <button style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</button>
                                   <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
                                 </div>
                               </td>
@@ -5409,6 +5412,7 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <button style={btnE} onClick={() => abrirModalProd(ins)}>Editar</button>
+                                  <button style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</button>
                                   <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
                                 </div>
                               </td>
@@ -5662,6 +5666,7 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                                   <button style={btnE} onClick={() => abrirModalIt(ins)}>Editar</button>
+                                  <button style={btnE} title={ins.ativo === false ? "Voltar a aparecer nos seletores" : "Esconder dos seletores (NF, pedido, lavoura); histórico e Kardex continuam"} onClick={async () => { const novo = ins.ativo === false; try { await atualizarInsumo(ins.id, { ativo: novo }); setInsumos(x => x.map(r => r.id === ins.id ? { ...r, ativo: novo } : r)); } catch (e) { alert((e as { message?: string })?.message || "Falha ao alterar. A coluna ativo existe no banco? (Seção 337)"); } }}>{ins.ativo === false ? "Reativar" : "Desativar"}</button>
                                   <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
                                 </div>
                               </td>

@@ -193,6 +193,7 @@ export type Insumo = {
   validade?: string;
   numero_serie?: string; // peças/equipamentos — nº de série do fabricante
   foto_url?: string;     // peças/equipamentos — foto do produto
+  ativo?: boolean;       // false = desativado: some dos seletores (NF, pedido, lavoura), mas histórico/Kardex continuam
   created_at?: string;
 };
 

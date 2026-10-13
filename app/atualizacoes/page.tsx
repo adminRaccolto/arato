@@ -6,6 +6,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-a",
+    data: "13/10/2026",
+    titulo: "Insumos: botão Desativar/Reativar + Adubação de Base com colunas separadas e detalhe",
+    modulos: ["Cadastros", "Estoque", "Lavoura"],
+    itens: [
+      { tipo: "novo", texto: "Cadastros → Insumos: botão Desativar em cada linha. O insumo desativado some dos seletores de nota de entrada, pedido de compra, transferência e operações de lavoura, mas o histórico e o Kardex continuam. Botão Reativar traz o item de volta. Requer a Seção 337 do supabase_migrations.sql no Supabase." },
+      { tipo: "melhoria", texto: "Adubação de Base: o grid agora tem colunas separadas Fazenda, Ano Safra, Ciclo e Talhão, e clicar numa linha abre um popup com os dados da aplicação, produtos, doses e custo." },
+    ],
+    onde: "Cadastros → Insumos · Produção → Adubação de Base",
+  },
+  {
     versao: "2026.10.09-m",
     data: "09/10/2026",
     titulo: "Adubação de Base: coluna Safra/Talhão em branco corrigida + botão Editar",

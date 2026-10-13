@@ -42,8 +42,7 @@ import {
   listarCiclos,
   listarPedidoCompraItens,
   listarTransferenciasMaquinas, atualizarTransferenciaMaquina,
-  processarDevolucaoCompra,
-} from "../../lib/db";
+  processarDevolucaoCompra, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
 import type { TransferenciaMaquina, NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
@@ -3192,7 +3191,7 @@ export default function ModalNf({
                                         setItem(it.key, { insumo_id: nid, lotes_semente: autoLotes, pedido_item_id: linhas.length === 1 ? linhas[0].id : "", ...patchConv });
                                       }} style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1 }}>
                                       <option value="">— catálogo —</option>
-                                      {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                      {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                     </select>
                                     <button
                                       onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
@@ -3370,7 +3369,7 @@ export default function ModalNf({
                                   <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })}
                                     style={{ ...inp, fontSize: 11, padding: "4px 8px", flex: 1, borderColor: it.insumo_id ? undefined : "#F6C87A" }}>
                                     <option value="">— catálogo —</option>
-                                    {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                    {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                   </select>
                                   <button
                                     onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
@@ -3528,7 +3527,7 @@ export default function ModalNf({
                                   style={{ ...inp, fontSize: 11, padding: "4px 8px", width: 150, flexShrink: 0, color: lote.insumo_id ? "#1A5C38" : "var(--text-3)" }}
                                 >
                                   <option value="">— igual ao item —</option>
-                                  {insumos.filter(i => i.categoria === "semente").map(i => (
+                                  {insumos.filter(i => i.categoria === "semente" && (insumoAtivo(i) || i.id === lote.insumo_id)).map(i => (
                                     <option key={i.id} value={i.id}>{i.nome}</option>
                                   ))}
                                 </select>

@@ -16421,3 +16421,42 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE ciclos ADD COLUMN IF NOT EXISTS is_consorcio boolean DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 337 — Insumos: campo "ativo" (desativar sem excluir)
+-- =============================================================================
+-- Pedido real 13/10/2026 (conversão de sementes kg→bag, Grupo Ogliari): os cadastros
+-- antigos em kg precisam continuar existindo (histórico, Kardex, transferências) mas
+-- NÃO podem mais aparecer nos seletores de NF, pedido, lavoura etc.
+ALTER TABLE insumos ADD COLUMN IF NOT EXISTS ativo boolean NOT NULL DEFAULT true;
+
+NOTIFY pgrst, 'reload schema';
+
+-- Desativa os 23 cadastros de semente em kg do Grupo Ogliari (substituídos pelos cadastros em bag)
+UPDATE insumos SET ativo = false WHERE id IN (
+  '6f5af750-00f5-42d8-bf84-c2dbdd7cb360',
+  'e46da93c-2eaf-4c7d-9a12-83eda403cf38',
+  'ba46eb5e-0cb2-460a-9f9d-1cc9d490e8f8',
+  'f5c69962-1f8c-476e-9396-d1f43960fb59',
+  '6b34cd29-db31-40e9-b46e-ffc51c5c9ef7',
+  'be7accf3-9918-4272-a476-df85173d8523',
+  '81a800f6-fa0a-4deb-8fd6-cafb9d20aa34',
+  'a9ddaeb3-c61c-4431-9ba8-ae88311b575b',
+  '96f84c63-1dd0-465d-809c-a99038e27b40',
+  '5929bcc2-bd35-4b76-800c-3746c86de731',
+  'a202a8f9-4406-48fe-b216-ac8bdcb1fc1b',
+  'e0e5e3ae-6acd-4f86-8468-288625267ed5',
+  '5f807745-6581-41f7-91d9-0bb412465667',
+  'dd56b3ab-d408-4369-a4cd-1464e7545b89',
+  '408f3fe1-b626-4e39-a423-81308de7e598',
+  'e78ef73f-bd89-413e-b77a-01ab94a9d385',
+  '2dee404a-5c35-4148-abcd-afd35e4a87ff',
+  '4b631a37-9090-4e78-ab79-877f28e6ab51',
+  '82a5cf7f-96b8-48ee-ab25-12f78a1fbfaf',
+  '3181c679-e9f8-4099-af74-f5642666c182',
+  '3855320b-e4bd-4af1-82b7-c7f2e2680ea2',
+  'cac70d5a-621a-47e5-96cc-8f7c56536401',
+  'b3d47de1-47b3-4552-b118-b9f5a58189cf'
+);
+
+NOTIFY pgrst, 'reload schema';

@@ -6,8 +6,7 @@ import TopNav from "../../../components/TopNav";
 import {
   listarTodosCiclos, listarTalhoes, listarInsumosParaConta,
   listarAnosSafra,
-  listarCorrecoesDaConta, criarCorrecao, criarCorrecaoItem, processarCorrecao, excluirCorrecao, listarFazendas,
-} from "../../../lib/db";
+  listarCorrecoesDaConta, criarCorrecao, criarCorrecaoItem, processarCorrecao, excluirCorrecao, listarFazendas, insumoAtivo } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Ciclo, Talhao, Insumo, CorrecaoSolo, CorrecaoSoloItem, AnoSafra, Fazenda } from "../../../lib/supabase";
@@ -84,7 +83,7 @@ export default function CorrecaoSoloPage() {
     // Conta-wide: a lista de correções mostra lançamentos de qualquer fazenda
     // da conta — o catálogo de insumos precisa cobrir todas, senão um
     // lançamento de outra fazenda mostra o UUID do insumo em vez do nome.
-    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && i.categoria === "corretivo"))).catch(() => {});
+    listarInsumosParaConta(contaId, fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo" && i.categoria === "corretivo" && insumoAtivo(i)))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     listarFazendas(fazendaId).then(setFazendas).catch(() => {});
   }, [fazendaId, fazendaFiltro, contaId]);
