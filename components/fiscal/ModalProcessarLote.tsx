@@ -112,6 +112,8 @@ export default function ModalProcessarLote({
         const { data: nf } = await supabase.from("nf_entradas").select("*").eq("id", nfRef.id).single();
         if (!nf) { erros.push(`NF ${nfRef.numero}: não encontrada`); continue; }
         const nfTyped = nf as NfEntrada;
+        // Ano Safra é obrigatório: vale o do lote ou o que a NF já tem
+        if (!settings.ano_safra_id && !nfTyped.ano_safra_id) { erros.push(`NF ${nfRef.numero}: sem Ano Safra — escolha um no lote ou indique na NF`); continue; }
 
         const ccId  = settings.centro_custo_id || nfTyped.centro_custo_id;
         const ogId  = settings.operacao_gerencial_id || nfTyped.operacao_gerencial_id;
@@ -242,7 +244,7 @@ export default function ModalProcessarLote({
             <InputData type="date" value={settings.data_vencimento_cp} onChange={e => setSettings(p => ({ ...p, data_vencimento_cp: e.target.value }))} style={inp} />
           </div>
           <div>
-            <label style={lbl}>Ano Safra</label>
+            <label style={lbl}>Ano Safra (obrigatório — vale para as NFs que ainda não têm)</label>
             <select value={settings.ano_safra_id} onChange={e => setSettings(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))} style={inp}>
               <option value="">— manter individual —</option>
               {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}

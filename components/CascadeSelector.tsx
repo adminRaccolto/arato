@@ -26,6 +26,7 @@ interface Props {
   levels?:    Array<"produtor" | "ie" | "fazenda" | "anoSafra" | "ciclo" | "talhao">;
   /** Remove o asterisco de obrigatório do campo Fazenda. Padrão: true */
   fazendaRequired?: boolean;
+  anoSafraRequired?: boolean;   // mostra * e destaca o campo quando vazio
   /** Remove o asterisco de obrigatório do campo IE. Padrão: true */
   ieRequired?: boolean;
 }
@@ -46,7 +47,7 @@ const CULTURAS: Record<string, string> = {
   algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo", outro: "Outro",
 };
 
-export default function CascadeSelector({ contaId, fazendaIdFallback, values, onChange, levels, fazendaRequired = true, ieRequired = true }: Props) {
+export default function CascadeSelector({ contaId, fazendaIdFallback, values, onChange, levels, fazendaRequired = true, ieRequired = true, anoSafraRequired = false }: Props) {
   const show = levels ?? ["produtor", "fazenda", "anoSafra", "ciclo", "talhao"];
   const useIE = show.includes("ie");
 
@@ -259,8 +260,8 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {show.includes("anoSafra") && (
             <div>
-              <label style={lbl}>Ano Safra</label>
-              <select style={inp} value={values.anoSafraId ?? ""}
+              <label style={lbl}>Ano Safra {anoSafraRequired && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+              <select style={{ ...inp, ...(anoSafraRequired && !values.anoSafraId ? { borderColor: "#E24B4A" } : {}) }} value={values.anoSafraId ?? ""}
                 onChange={e => sel("anoSafraId", e.target.value)}
                 disabled={!values.fazendaId}>
                 <option value="">— Selecionar —</option>

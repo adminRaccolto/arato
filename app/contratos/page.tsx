@@ -1000,6 +1000,7 @@ export default function Contratos() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar contrato)", perigo: false }))) return;
     // Coleta todos os erros antes de mostrar — nunca um alert pontual
     const erros: string[] = [];
+    if (!fC.ano_safra_id) erros.push("Safra (Ano Safra)");
     if (!fC.data_entrega) erros.push("Prazo de Entrega");
     if (itens.every(i => !i.produto || i.quantidade <= 0)) erros.push("pelo menos um Item com produto e quantidade");
     if (iesProdutor.length > 1 && !fC.ie_id) erros.push("Inscrição Estadual (IE) do Produtor");
@@ -2329,8 +2330,8 @@ export default function Contratos() {
                       <input style={{ ...inp, background:"var(--bg-page)", color:"var(--text-3)" }} value={editContrato?.numero ?? "(gerado ao salvar)"} readOnly />
                     </div>
                     <div>
-                      <label style={lbl}>Safra</label>
-                      <select style={{ ...inp, color: fC.ano_safra_id ? "var(--text-1)" : "var(--text-3)" }}
+                      <label style={lbl}>Safra *</label>
+                      <select style={{ ...inp, color: fC.ano_safra_id ? "var(--text-1)" : "var(--text-3)", borderColor: fC.ano_safra_id ? undefined : "#E24B4A" }}
                         value={fC.ano_safra_id}
                         onChange={e => {
                           const sel = anosSafra.find(a => a.id === e.target.value);

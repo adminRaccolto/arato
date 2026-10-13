@@ -189,7 +189,7 @@ const COLS_GRID_CR: ColDef[] = [
 ];
 
 export default function ContasAReceberPage() {
-  const { fazendaId, fazendaIds, contaId, emailUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, emailUsuario, anoSafraVigenteId } = useAuth();
   const { visiveis: visCols, ordemTodas: ordemCols, toggle: toggleCol, moverColuna, resetar: resetarCols, w: cw, startResize } = useColunasGrid("cr", COLS_GRID_CR);
   const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
   const colunasVisiveis = ordemCols.filter(k => visCols[k] !== false).map(k => COLS_GRID_CR.find(c => c.key === k)).filter((c): c is ColDef => !!c);
@@ -604,8 +604,8 @@ export default function ContasAReceberPage() {
     setErroNovo("");
     setNovoTab("principal");
     setEditandoId(null);
-    setNovoForm({ ...NOVO_VAZIO, data_vencimento: hojeISO() });
-    setCascadeNovo({});
+    setNovoForm({ ...NOVO_VAZIO, data_vencimento: hojeISO(), emp_ano_safra_id: anoSafraVigenteId ?? "" });
+    setCascadeNovo({ anoSafraId: anoSafraVigenteId ?? undefined });
     setParcelasNovo([]);
     setSalvarComoRegra(false);
     setModalNovo(true);
@@ -687,7 +687,9 @@ export default function ContasAReceberPage() {
       if (!novoForm.descricao.trim()) erros.push("Descrição é obrigatória.");
       if (!novoForm.valor) erros.push("Valor é obrigatório.");
       if (!novoForm.data_vencimento) erros.push("Vencimento é obrigatório.");
+      if (!novoForm.emp_ano_safra_id) erros.push("Ano Safra é obrigatório.");
     } else {
+      if (!cascadeNovo.anoSafraId) erros.push("Ano Safra é obrigatório.");
       if (!novoForm.pessoa_id && !novoForm.descricao.trim()) erros.push("Cliente ou Descrição é obrigatório.");
       if (!novoForm.data_vencimento) erros.push("1º Vencimento é obrigatório.");
       if (novoForm.moeda !== "barter" && !novoForm.valor) erros.push("Valor é obrigatório.");
@@ -2024,9 +2026,9 @@ export default function ContasAReceberPage() {
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                         <div>
-                          <label style={lbl}>Safra</label>
-                          <select value={novoForm.emp_ano_safra_id} onChange={e => setNovoForm(p => ({ ...p, emp_ano_safra_id: e.target.value, emp_ciclo_id: "" }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
-                            <option value="">— Sem safra —</option>
+                          <label style={lbl}>Ano Safra *</label>
+                          <select value={novoForm.emp_ano_safra_id} onChange={e => setNovoForm(p => ({ ...p, emp_ano_safra_id: e.target.value, emp_ciclo_id: "" }))} style={{ ...inp, width: "100%", boxSizing: "border-box", borderColor: novoForm.emp_ano_safra_id ? undefined : "#E24B4A" }}>
+                            <option value="">— Selecionar —</option>
                             {empSafras.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                           </select>
                         </div>
@@ -2055,6 +2057,7 @@ export default function ContasAReceberPage() {
                         fazendaIdFallback={fazendaId}
                         fazendaRequired={false}
                         levels={["produtor", "fazenda", "anoSafra", "ciclo"]}
+                        anoSafraRequired
                         values={cascadeNovo}
                         onChange={setCascadeNovo}
                       />

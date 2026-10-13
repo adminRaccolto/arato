@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-o",
+    data: "13/10/2026",
+    titulo: "Ano Safra obrigatório nos lançamentos",
+    modulos: ["Financeiro", "Fiscal", "Compras", "Contratos", "Estoque"],
+    itens: [
+      { tipo: "melhoria", texto: "Ano Safra agora é obrigatório (campo com asterisco, preenchido com o ano safra vigente) em: Pedido de Compra, NF de Produtos e NFS-e, Processar em Lote, Contas a Pagar e a Receber (inclusive Empresa), Apoio Financeiro, Adiantamentos, Pagamento de Arrendamento, Compra de Terra, Contrato de Grãos e Abastecimento. Sem ano safra não salva. Necessário para a DRE por ano safra." },
+    ],
+    onde: "Telas de lançamento (Financeiro, Fiscal, Compras, Contratos, Estoque)",
+  },
+  {
     versao: "2026.10.13-n",
     data: "13/10/2026",
     titulo: "Financeiro por Classificação: Analítico e Sintético por OG",

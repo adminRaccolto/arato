@@ -69,7 +69,7 @@ const VAZIO_FORM = {
 const VAZIO_APLIQ = { valor_aplicado: "", data_aplicacao: "", descricao: "", nr_nf: "" };
 
 export default function AdiantamentosPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, anoSafraVigenteId } = useAuth();
   // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
   // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
@@ -101,6 +101,10 @@ export default function AdiantamentosPage() {
   const [loadAplic, setLoadAplic]       = useState(false);
 
   const [form, setForm]   = useState({ ...VAZIO_FORM });
+  // Ano Safra é obrigatório: adiantamento novo já abre com o ano safra vigente
+  useEffect(() => {
+    if (modalNovo && anoSafraVigenteId && !form.ano_safra_id) setForm(f => f.ano_safra_id ? f : { ...f, ano_safra_id: anoSafraVigenteId });
+  }, [modalNovo, anoSafraVigenteId, form.ano_safra_id]);
   const [fApliq, setFApliq] = useState({ ...VAZIO_APLIQ });
 
   useEffect(() => {
@@ -141,6 +145,7 @@ export default function AdiantamentosPage() {
     if (!form.descricao.trim()) erros.push("Descrição");
     if (!form.data_emissao) erros.push("Data de Emissão");
     if (!form.valor) erros.push("Valor");
+    if (!form.ano_safra_id) erros.push("Ano Safra");
     if (erros.length) { setErro(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
     setSalvando(true); setErro("");
     try {
@@ -398,8 +403,8 @@ export default function AdiantamentosPage() {
               </select>
             </div>
             <div>
-              <label style={lbl}>Ano Safra</label>
-              <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value }))}>
+              <label style={lbl}>Ano Safra *</label>
+              <select style={{ ...inp, borderColor: form.ano_safra_id ? undefined : "#E24B4A" }} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value }))}>
                 <option value="">— selecione —</option>
                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
               </select>

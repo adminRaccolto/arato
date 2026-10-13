@@ -136,7 +136,7 @@ const initFC = () => ({
 });
 
 export default function Arrendamentos() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId } = useAuth();
   const [aba, setAba] = useState<Aba>("lista");
 
   const [arrendamentos, setArrendamentos] = useState<Arrendamento[]>([]);
@@ -172,6 +172,10 @@ export default function Arrendamentos() {
     status: "pendente" as StatusPag, observacao: "",
   });
   const [fP, setFP] = useState(initFP());
+  // Ano Safra é obrigatório: pagamento novo já abre com o ano safra vigente
+  useEffect(() => {
+    if (modalPag && anoSafraVigenteId && !fP.ano_safra_id) setFP(f => f.ano_safra_id ? f : { ...f, ano_safra_id: anoSafraVigenteId });
+  }, [modalPag, anoSafraVigenteId, fP.ano_safra_id]);
 
   // modal gerador de parcelas (novo — por safra)
   const [modalGerador,    setModalGerador]    = useState(false);
@@ -716,6 +720,7 @@ export default function Arrendamentos() {
   async function salvarPagamento() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar pagamento)", perigo: false }))) return;
     if (!fazendaId || !selArr) return;
+    if (!fP.ano_safra_id) { alert("Selecione o Ano Safra do pagamento (a DRE por ano safra depende dele)."); return; }
     setSalvando(true);
     try {
       const ehSc = selArr.forma_pagamento !== "brl";
@@ -1715,9 +1720,9 @@ export default function Arrendamentos() {
             return (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
-                  <label style={lbl}>Ano Safra</label>
-                  <select style={inp} value={fP.ano_safra_id} onChange={e => setFP(p => ({ ...p, ano_safra_id: e.target.value }))}>
-                    <option value="">—</option>
+                  <label style={lbl}>Ano Safra *</label>
+                  <select style={{ ...inp, borderColor: fP.ano_safra_id ? undefined : "#E24B4A" }} value={fP.ano_safra_id} onChange={e => setFP(p => ({ ...p, ano_safra_id: e.target.value }))}>
+                    <option value="">— Selecionar —</option>
                     {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                   </select>
                 </div>

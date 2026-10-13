@@ -360,7 +360,7 @@ export default function ModalNf({
   // aqui (ela continua existindo só uma vez, nas funções já extraídas).
   acaoInicial?: "devolver" | "estornar";
 }) {
-  const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId } = useAuth();
   const router = useRouter();
 
   // Dados mestre (apoio ao wizard — carregados pelo modal, não por uma lista)
@@ -558,6 +558,11 @@ export default function ModalNf({
   // Garante que o dropdown de CC nunca fique vazio enquanto wCentros carrega
   const ccOpts = wCentros.length > 0 ? wCentros : centros;
   const ccManutencao   = (id: string) => !!ccOpts.find(c => c.id === id)?.manutencao_maquinas;
+  // Ano Safra é obrigatório: NF editável sem ano safra recebe o vigente (o usuário pode trocar)
+  useEffect(() => {
+    if (anoSafraVigenteId && !cab.ano_safra_id && nfEdit?.status !== "processada") setCab(p => p.ano_safra_id ? p : { ...p, ano_safra_id: anoSafraVigenteId });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anoSafraVigenteId, cab.ano_safra_id, nfEdit?.status]);
   async function abrirNovo() {
     setNfEdit(null);
     setEtapa("cabecalho");
@@ -581,7 +586,7 @@ export default function ModalNf({
       bomba_destino_id: "",
       e_combustivel: false,
       observacao: "",
-      ano_safra_id: "",
+      ano_safra_id: anoSafraVigenteId ?? "",
       ciclo_id: "",
       produtor_id: "",
       ie_produtor: "",
@@ -1222,6 +1227,11 @@ export default function ModalNf({
     // a regra já carrega a informação gerencial e o bloqueio seria redundante.
     if (!cab.operacao_gerencial_id && !sugestaoNome && !CFOPS_BEM_SEM_PAGAMENTO.has((cab.cfop ?? "").trim())) {
       setErr("Selecione uma Operação Gerencial antes de processar a NF.");
+      return;
+    }
+    // Guard: Ano Safra é obrigatório (DRE por ano safra, rateio e relatórios dependem dele)
+    if (!cab.ano_safra_id) {
+      setErr("Selecione o Ano Safra (campo no topo da NF) antes de processar.");
       return;
     }
     // Guard: item de estoque/terceiro/VEF/remessa sem insumo ou princípio ativo associado
@@ -2789,9 +2799,9 @@ export default function ModalNf({
                         )}
                       </div>
                       <div>
-                        <label style={lbl}>Ano Safra</label>
-                        <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={inp}>
-                          <option value="">— nenhum —</option>
+                        <label style={lbl}>Ano Safra *</label>
+                        <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={{ ...inp, borderColor: cab.ano_safra_id ? undefined : "#E24B4A" }}>
+                          <option value="">— selecionar —</option>
                           {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                         </select>
                       </div>

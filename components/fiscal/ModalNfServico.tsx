@@ -16,6 +16,7 @@
 // visualiza) — ao desmontar, todo o estado interno se perde naturalmente.
 // ═══════════════════════════════════════════════════════════════════════════
 import InputData from "../../components/InputData";
+import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -125,7 +126,7 @@ export default function ModalNfServico({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { fazendaId, fazendaIds, contaId, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId } = useAuth();
 
   const [pessoas,  setPessoas]  = useState<Pessoa[]>([]);
   const [centros,  setCentros]  = useState<CentroCusto[]>([]);
@@ -152,6 +153,10 @@ export default function ModalNfServico({
   } | null>(null);
 
   const [cab, setCab] = useState(CAB_VAZIO());
+  // Ano Safra é obrigatório: NFS-e editável sem ano safra recebe o vigente
+  useEffect(() => {
+    if (anoSafraVigenteId && !cab.ano_safra_id && nfEdit?.status !== "processada") setCab(p => p.ano_safra_id ? p : { ...p, ano_safra_id: anoSafraVigenteId });
+  }, [anoSafraVigenteId, cab.ano_safra_id, nfEdit?.status]);
   const [codigoLivre, setCodigoLivre] = useState("");
 
   const [nfCondicao,    setNfCondicao]    = useState<"avista" | "prazo">("avista");
@@ -343,6 +348,7 @@ export default function ModalNfServico({
   }
 
   async function salvar(status: "digitando" | "pendente" | "processada") {
+    if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!cab.fazenda_id && !fazendaId) return;
     setErr("");
     if (!cab.numero_nf.trim()) { setErr("Informe o número da NF."); return; }
@@ -350,6 +356,7 @@ export default function ModalNfServico({
     if (!cab.data_prestacao) { setErr("Informe a data da prestação."); return; }
     if (nfEdit?.status === "processada") { setErr("NFS-e já processada. Use Estornar para reprocessar."); return; }
     if (status === "processada" && vServico <= 0) { setErr("Valor do serviço deve ser maior que zero para processar."); return; }
+    if (status !== "digitando" && !cab.ano_safra_id) { setErr("Selecione o Ano Safra antes de salvar/processar a NFS-e."); return; }
     if (status === "processada" && !cab.operacao_gerencial_id) { setErr("Selecione a Operação Gerencial para processar."); return; }
 
     const codigoFinal = cab.codigo_servico === "outros" ? codigoLivre : cab.codigo_servico;
@@ -899,9 +906,9 @@ export default function ModalNfServico({
                     </select>
                   </div>
                   <div>
-                    <label style={lbl}>Ano Safra (para rateio)</label>
-                    <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p,ano_safra_id:e.target.value}))} style={inp}>
-                      <option value="">Opcional</option>
+                    <label style={lbl}>Ano Safra *</label>
+                    <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p,ano_safra_id:e.target.value}))} style={{ ...inp, borderColor: cab.ano_safra_id ? undefined : "#E24B4A" }}>
+                      <option value="">Selecionar…</option>
                       {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                     </select>
                   </div>

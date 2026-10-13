@@ -814,6 +814,7 @@ export default function ColheitaPage() {
                 fazendaIdFallback={fazendaId}
                 values={cascade}
                 levels={["fazenda", "anoSafra", "ciclo", "talhao"]}
+                anoSafraRequired
                 onChange={next => {
                   setCascade(next);
                   setAnoSafraSel(next.anoSafraId ?? "");

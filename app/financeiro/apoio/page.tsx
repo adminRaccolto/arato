@@ -135,7 +135,7 @@ const FORM_VAZIO = {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function ApoioFinanceiroPage() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId } = useAuth();
   // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
   // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
@@ -344,12 +344,17 @@ export default function ApoioFinanceiroPage() {
   }
 
   // ── Salvar novo lançamento exclusivo ──────────────────────────────────────
+  // Ano Safra é obrigatório: lançamento novo já abre com o ano safra vigente
+  useEffect(() => {
+    if (modalAberto && anoSafraVigenteId && !formApoio.ano_safra_id) setFormApoio(f => f.ano_safra_id ? f : { ...f, ano_safra_id: anoSafraVigenteId });
+  }, [modalAberto, anoSafraVigenteId, formApoio.ano_safra_id]);
   async function salvarApoioLanc() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar apoio lanc)", perigo: false }))) return;
     if (!fazAtiva) return;
     const erros: string[] = [];
     if (!formApoio.descricao) erros.push("Descrição");
     if (!formApoio.data_vencimento) erros.push("Data de Vencimento");
+    if (!formApoio.ano_safra_id) erros.push("Ano Safra");
     if (erros.length) { setErroModal(`Preencha antes de salvar: ${erros.join(", ")}`); return; }
     setErroModal("");
     const valor = parseFloat(formApoio.valorMask.replace(/\./g, "").replace(",", ".")) || 0;
@@ -1209,7 +1214,7 @@ export default function ApoioFinanceiroPage() {
 
                 {/* Ano Safra */}
                 <div>
-                  <label style={lbl}>Ano Safra</label>
+                  <label style={lbl}>Ano Safra *</label>
                   <select
                     value={formApoio.ano_safra_id}
                     onChange={(e) => setFormApoio({ ...formApoio, ano_safra_id: e.target.value, ciclo_id: "" })}

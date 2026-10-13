@@ -207,7 +207,7 @@ const FORM_VAZIO = {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function CompraTerrPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, anoSafraVigenteId } = useAuth();
   // Fazendas da conta — seletor explícito no modal (não existe "fazenda ativa")
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
   useEffect(() => {
@@ -341,9 +341,15 @@ export default function CompraTerrPage() {
     setShowModal(true);
   };
 
+  // Ano Safra é obrigatório: contrato novo já abre com o ano safra vigente
+  useEffect(() => {
+    if (showModal && anoSafraVigenteId && !form.ano_safra_id_padrao) setForm(f => f.ano_safra_id_padrao ? f : { ...f, ano_safra_id_padrao: anoSafraVigenteId });
+  }, [showModal, anoSafraVigenteId, form.ano_safra_id_padrao]);
+
   const salvar = async () => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if ((!form.fazenda_id && !fazendaId) || !form.imovel_nome || !form.valor_total) return;
+    if (!form.ano_safra_id_padrao) { alert("Selecione o Ano Safra do contrato (aba Pagamento) antes de salvar."); return; }
     setSalvando(true);
     try {
       const payload = {
@@ -1045,10 +1051,10 @@ export default function CompraTerrPage() {
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                             <div>
-                              <label style={{ ...lbl, color: "#0C447C" }}>Ano Safra</label>
-                              <select style={inp} value={form.ano_safra_id_padrao} disabled={viewOnly}
+                              <label style={{ ...lbl, color: "#0C447C" }}>Ano Safra *</label>
+                              <select style={{ ...inp, borderColor: form.ano_safra_id_padrao ? undefined : "#E24B4A" }} value={form.ano_safra_id_padrao} disabled={viewOnly}
                                 onChange={e => setForm(p => ({ ...p, ano_safra_id_padrao: e.target.value, ciclo_id_padrao: "" }))}>
-                                <option value="">— Sem safra —</option>
+                                <option value="">— Selecionar —</option>
                                 {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                               </select>
                             </div>

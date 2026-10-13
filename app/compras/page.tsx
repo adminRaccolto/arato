@@ -1061,6 +1061,7 @@ export default function ComprasPage() {
     if (!fazendaId) return;
     if (!f.operacao) { setErroModal("Operação Gerencial"); return; }
     if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErroModal("Fornecedor"); return; }
+    if (!f.ano_safra_id) { setErroModal("Ano Safra"); return; }
     setErroModal(""); setSalvando(true); setErro(null);
     let barterContratoGerado: string | null = null;
     try {
@@ -1900,9 +1901,9 @@ export default function ComprasPage() {
                     />
                   </div>
                   <div>
-                    <label style={lbl}>Ano Safra</label>
-                    <select style={inp} value={f.ano_safra_id} onChange={e => setF(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
-                      <option value="">— Todos —</option>
+                    <label style={lbl}>Ano Safra *</label>
+                    <select style={{ ...inp, borderColor: f.ano_safra_id ? undefined : "#E24B4A" }} value={f.ano_safra_id} onChange={e => setF(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                      <option value="">— Selecionar —</option>
                       {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                     </select>
                   </div>

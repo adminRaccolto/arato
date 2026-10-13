@@ -333,6 +333,7 @@ export default function PulverizacaoPage() {
                 contaId={contaId}
                 values={cascade}
                 levels={["fazenda", "anoSafra", "ciclo", "talhao"]}
+                anoSafraRequired
                 onChange={next => {
                   setCascade(next);
                   setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));

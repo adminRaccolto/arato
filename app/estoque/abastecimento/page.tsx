@@ -60,7 +60,7 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtNum = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
 export default function AbastecimentoPage() {
-  const { fazendaId, fazendaIds, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, anoSafraVigenteId } = useAuth();
 
   const [bombas,       setBombas]       = useState<BombaCombustivel[]>([]);
   const [maquinas,     setMaquinas]     = useState<Maquina[]>([]);
@@ -95,6 +95,10 @@ export default function AbastecimentoPage() {
   const [fVencimento,   setFVencimento]   = useState(() => new Date().toISOString().split("T")[0]);
   const [fHorimetro,    setFHorimetro]    = useState("");
   const [fAnoSafra,     setFAnoSafra]     = useState("");
+  // Ano Safra é obrigatório (DRE por ano safra): abastecimento novo abre com o vigente
+  useEffect(() => {
+    if (modal && anoSafraVigenteId && !fAnoSafra) setFAnoSafra(anoSafraVigenteId);
+  }, [modal, anoSafraVigenteId, fAnoSafra]);
   const [fCiclo,        setFCiclo]        = useState("");
 
   // ─── Carga inicial ──────────────────────────────────────────────────────────
@@ -201,6 +205,7 @@ export default function AbastecimentoPage() {
     if (!fBomba)        return setErroModal("Selecione a bomba.");
     if (isNaN(qtd) || qtd <= 0) return setErroModal("Informe a quantidade em litros.");
     if (!fData)         return setErroModal("Informe a data.");
+    if (!fAnoSafra)     return setErroModal("Selecione o Ano Safra.");
 
     const bomba = bombas.find(b => b.id === fBomba)!;
 
@@ -655,6 +660,7 @@ export default function AbastecimentoPage() {
                 <CascadeSelector
                   contaId={contaId}
                   fazendaIdFallback={fazendaId}
+                  anoSafraRequired
                   levels={["anoSafra", "ciclo"]}
                   values={{ fazendaId: fazendaId ?? "", anoSafraId: fAnoSafra, cicloId: fCiclo }}
                   onChange={next => { setFAnoSafra(next.anoSafraId ?? ""); setFCiclo(next.cicloId ?? ""); }}
