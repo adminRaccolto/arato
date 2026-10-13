@@ -185,6 +185,7 @@ export default function FolhaPagamentoPage() {
   // modal adiantamento
   const [modalAdi,   setModalAdi]   = useState(false);
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
+  const [vencCp,     setVencCp]     = useState<Record<string, string>>({});
   const [adiConta,   setAdiConta]   = useState("");
   const [contasAdi,  setContasAdi]  = useState<ContaBancaria[]>([]);
 
@@ -368,7 +369,14 @@ export default function FolhaPagamentoPage() {
       });
       setFolhaEdit({ ...folha, funcionarios: funcsCarregados });
       setSelecionados(new Set(funcsCarregados.map((_, i) => i)));
+      // Folha fechada: data de pagamento prevista = vencimento real do CP de salário de cada funcionário
+      const cpIds = funcsCarregados.map(f => f.cp_lancamento_id).filter(Boolean) as string[];
+      if (cpIds.length) {
+        const { data: lancs } = await supabase.from("lancamentos").select("id, data_vencimento").in("id", cpIds);
+        setVencCp(Object.fromEntries((lancs ?? []).map(l => [l.id as string, l.data_vencimento as string])));
+      } else setVencCp({});
     } else {
+      setVencCp({});
       // Nova folha — pré-preenche com funcionários ativos
       // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
       const adisComp = adiantamentos.filter(
@@ -817,21 +825,21 @@ export default function FolhaPagamentoPage() {
 
   // ─── Render ───────────────────────────────────────────────────
   return (
-    <div style={S.page}>
+    <div data-arato-page="true" style={S.page}>
       <TopNav />
       <div style={S.body}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento</h1>
+            <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento</h1>
             <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>Processamento mensal, adiantamentos e gratificações</p>
           </div>
         </div>
 
         {msg && (
           <div style={{ background: msg.startsWith("Erro") ? "#FEF2F2" : "#F0FDF4", border: `0.5px solid ${msg.startsWith("Erro") ? "#FECACA" : "#BBF7D0"}`, borderRadius: 6, padding: "10px 16px", marginBottom: 12, fontSize: 13, color: msg.startsWith("Erro") ? "#B91C1C" : "#166534" }}>
-            {msg} <button onClick={()=>setMsg("")} style={{ float:"right", background:"none", border:"none", cursor:"pointer", fontSize:15, lineHeight:1 }}>×</button>
+            {msg} <button data-arato-button="icon" onClick={()=>setMsg("")} style={{ float:"right", background:"none", border:"none", cursor:"pointer", fontSize:15, lineHeight:1 }}>×</button>
           </div>
         )}
 
@@ -842,7 +850,7 @@ export default function FolhaPagamentoPage() {
             ["adiantamentos","💵 Adiantamentos"],
             ["gratificacoes","⭐ Gratificações"],
           ] as [Aba,string][]).map(([k,l]) => (
-            <button key={k} onClick={()=>setAba(k)}
+            <button data-arato-button="toggle" key={k} onClick={()=>setAba(k)}
               style={{ padding: "10px 20px", background: "none", border: "none", borderBottom: aba===k ? "2px solid #1A4870" : "2px solid transparent", fontWeight: aba===k ? 700 : 400, color: aba===k ? "#1A4870" : "#666", cursor: "pointer", fontSize: 13 }}>
               {l}
             </button>
@@ -852,15 +860,15 @@ export default function FolhaPagamentoPage() {
         {/* ══════════════════ ABA PROCESSAMENTO ══════════════════ */}
         {aba === "processamento" && (
           <>
-            <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div data-arato-filters="true" style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                 <div>
-                  <label style={S.label}>De</label>
+                  <label data-arato-label="true" style={S.label}>De</label>
                   <InputData type="month" value={fComp} onChange={e=>{ if (!e.target.value) return; setFComp(e.target.value); if (e.target.value > fCompAte) setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 <span style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>até</span>
                 <div>
-                  <label style={S.label}>Até</label>
+                  <label data-arato-label="true" style={S.label}>Até</label>
                   <InputData type="month" value={fCompAte} onChange={e=>{ if (!e.target.value) return; setFCompAte(e.target.value); }} style={{ ...S.inp, width: 140 }} />
                 </div>
                 {fCompAte > fComp && (
@@ -870,7 +878,7 @@ export default function FolhaPagamentoPage() {
                 )}
               </div>
               <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                <button onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>
+                <button data-arato-button="secondary" onClick={()=>abrirFolha()} style={S.btn("#1A4870")}>
                   {fCompAte > fComp ? `+ Gerar ${monthsInRange(fComp,fCompAte).length} Folhas` : "+ Nova Folha"}
                 </button>
               </div>
@@ -883,7 +891,7 @@ export default function FolhaPagamentoPage() {
                   ⚠ {folhasForaPeriodo.length} folha{folhasForaPeriodo.length > 1 ? "s" : ""} fora do período filtrado:
                   {" "}{folhasForaPeriodo.map(f => nomeMes(f.competencia)).join(", ")}
                 </span>
-                <button onClick={() => {
+                <button data-arato-button="secondary" onClick={() => {
                   const todas = folhas.map(f => f.competencia).sort();
                   if (todas.length) { setFComp(todas[0]); setFCompAte(todas[todas.length - 1]); }
                 }} style={{ fontSize: 11, color: "#92400E", background: "#FDE68A", border: "0.5px solid #F0C060", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
@@ -895,15 +903,15 @@ export default function FolhaPagamentoPage() {
             {loading ? (
               <div style={{ textAlign:"center", padding:40, color:"#888" }}>Carregando...</div>
             ) : folhasFiltradas.length === 0 ? (
-              <div style={{ ...S.card, padding: 32, textAlign: "center", color: "#888" }}>
+              <div data-arato-statistic="action" style={{ ...S.card, padding: 32, textAlign: "center", color: "#888" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
                 <div>Nenhuma folha para {fComp === fCompAte ? nomeMes(fComp) : `${nomeMes(fComp)} – ${nomeMes(fCompAte)}`}.</div>
                 {folhasForaPeriodo.length > 0 && <div style={{ fontSize: 12, color: "#C9921B", marginTop: 4 }}>Ajuste o filtro acima para ver as folhas de outros meses.</div>}
-                <button onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop: 12 }}>Criar Folha</button>
+                <button data-arato-button="secondary" onClick={()=>abrirFolha()} style={{ ...S.btn("#1A4870"), marginTop: 12 }}>Criar Folha</button>
               </div>
             ) : (
               <div style={S.card}>
-                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr>
                       {["Competência","Empregador","Funcionários","Bruto Total","Líquido Total","Encargos Patronais","Status",""].map(h=>(
@@ -932,9 +940,9 @@ export default function FolhaPagamentoPage() {
                           </span>
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
-                          <button onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</button>
+                          <button data-arato-button="secondary" onClick={()=>abrirFolha(f)} style={{ ...S.btn("#F4F6FA","#1A4870"), marginRight:6, fontSize:12 }}>Abrir</button>
                           {f.status === "rascunho" && (
-                            <button onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</button>
+                            <button data-arato-button="secondary" onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</button>
                           )}
                         </td>
                       </tr>
@@ -952,20 +960,20 @@ export default function FolhaPagamentoPage() {
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
               <div style={{ marginLeft:"auto" }}>
-                <button onClick={()=>{ setAdiEdit({ data: new Date().toISOString().slice(0,10), competencia_ref: compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>
+                <button data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data: new Date().toISOString().slice(0,10), competencia_ref: compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>
                   + Novo Adiantamento
                 </button>
               </div>
             </div>
 
             {adiantamentos.length === 0 ? (
-              <div style={{ ...S.card, padding: 32, textAlign:"center", color:"#888" }}>
+              <div data-arato-statistic="display" style={{ ...S.card, padding: 32, textAlign:"center", color:"#888" }}>
                 <div style={{ fontSize:32, marginBottom:8 }}>💵</div>
                 <div>Nenhum adiantamento registrado.</div>
               </div>
             ) : (
               <div style={S.card}>
-                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr>
                       {["Funcionário","Data","Valor","Descontar em","Descrição","Status",""].map(h=>(
@@ -988,8 +996,8 @@ export default function FolhaPagamentoPage() {
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
                           {a.status === "pendente" && (<>
-                            <button onClick={()=>{ setAdiEdit({ id: a.id, funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
-                            <button onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>
+                            <button data-arato-button="secondary" onClick={()=>{ setAdiEdit({ id: a.id, funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
+                            <button data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>
                           </>)}
                         </td>
                       </tr>
@@ -1007,20 +1015,20 @@ export default function FolhaPagamentoPage() {
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize:13, color:"#555" }}>{premiacoes.length} gratificação(ões) registradas</span>
               <div style={{ marginLeft:"auto" }}>
-                <button onClick={()=>{ setPremEdit({ mes_referencia: compAtual() }); setModalPrem(true); }} style={S.btn("#C9921B")}>
+                <button data-arato-button="secondary" onClick={()=>{ setPremEdit({ mes_referencia: compAtual() }); setModalPrem(true); }} style={S.btn("#C9921B")}>
                   + Nova Gratificação
                 </button>
               </div>
             </div>
 
             {premiacoes.length === 0 ? (
-              <div style={{ ...S.card, padding: 32, textAlign:"center", color:"#888" }}>
+              <div data-arato-statistic="display" style={{ ...S.card, padding: 32, textAlign:"center", color:"#888" }}>
                 <div style={{ fontSize:32, marginBottom:8 }}>⭐</div>
                 <div>Nenhuma gratificação registrada.</div>
               </div>
             ) : (
               <div style={S.card}>
-                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr>
                       {["Funcionário","Mês Ref.","Descrição","Valor","Incluída na Folha",""].map(h=>(
@@ -1042,8 +1050,8 @@ export default function FolhaPagamentoPage() {
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
                           {!p.lancado_financeiro && (<>
-                            <button onClick={()=>{ setPremEdit({ id: p.id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, descricao: p.descricao, valor: p.valor }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
-                            <button onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</button>
+                            <button data-arato-button="secondary" onClick={()=>{ setPremEdit({ id: p.id, funcionario_id: p.funcionario_id, mes_referencia: p.mes_referencia, descricao: p.descricao, valor: p.valor }); setModalPrem(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
+                            <button data-arato-button="secondary" onClick={()=>excluirPremiacao(p.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Excluir</button>
                           </>)}
                         </td>
                       </tr>
@@ -1062,7 +1070,7 @@ export default function FolhaPagamentoPage() {
         <div style={S.overlay} onClick={()=>setModalFolha(false)}>
           <div style={{ ...S.modal, width: "min(99vw,1600px)", padding: "20px 20px 28px" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <h2 style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:17, color:"#0B2D50" }}>
                 {folhaEdit.id
                   ? `Folha — ${nomeMes(folhaEdit.competencia ?? "")}${folhaEdit.empresa_id ? ` · ${empresasMap[folhaEdit.empresa_id] ?? ""}` : folhaEdit.produtor_id ? ` · ${produtoresMap[folhaEdit.produtor_id] ?? ""}` : " · Sem vínculo"}`
                   : fCompAte > fComp
@@ -1076,11 +1084,11 @@ export default function FolhaPagamentoPage() {
                   </span>
                 )}
               </h2>
-              <button onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <button data-arato-button="icon" onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
 
             {/* Competência — editável para nova folha (retroativa), somente leitura para existente) */}
-            <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
+            <div data-arato-panel="true" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
               {folhaEdit.id ? (
                 <>
                   <div>
@@ -1117,7 +1125,7 @@ export default function FolhaPagamentoPage() {
             {/* Sub-abas */}
             <div style={{ display:"flex", gap:0, borderBottom:"0.5px solid #DDE2EE", marginBottom:16 }}>
               {([["funcionarios","Funcionários"],["resumo","Resumo"]] as const).map(([k,l])=>(
-                <button key={k} onClick={()=>setAbaModal(k)}
+                <button data-arato-button="toggle" key={k} onClick={()=>setAbaModal(k)}
                   style={{ padding:"8px 18px", background:"none", border:"none", borderBottom:abaModal===k?"2px solid #1A4870":"2px solid transparent", fontWeight:abaModal===k?700:400, color:abaModal===k?"#1A4870":"#666", cursor:"pointer", fontSize:13 }}>
                   {l}
                 </button>
@@ -1130,7 +1138,7 @@ export default function FolhaPagamentoPage() {
                 {/* Contador de seleção */}
                 {(folhaEdit.funcionarios ?? []).length > 0 && (
                   <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10, fontSize:12, color:"#555" }}>
-                    <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontWeight:600 }}>
+                    <label data-arato-label="true" style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontWeight:600 }}>
                       <input type="checkbox"
                         checked={selecionados.size === (folhaEdit.funcionarios ?? []).length && selecionados.size > 0}
                         ref={el => { if (el) el.indeterminate = selecionados.size > 0 && selecionados.size < (folhaEdit.funcionarios ?? []).length; }}
@@ -1149,11 +1157,11 @@ export default function FolhaPagamentoPage() {
                 {(folhaEdit.funcionarios ?? []).length === 0 ? (
                   <div style={{ textAlign:"center", padding:24, color:"#888" }}>Nenhum funcionário. Adicione manualmente abaixo.</div>
                 ) : (
-                  <div style={{ overflowX:"auto" }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                  <div data-arato-grid-container="true" style={{ overflowX:"auto" }}>
+                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. previsto"].map(h=>(
                             <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -1171,7 +1179,7 @@ export default function FolhaPagamentoPage() {
                                   <input type="checkbox" checked={sel} onChange={() => setSelecionados(prev => { const s = new Set(prev); s.has(idx) ? s.delete(idx) : s.add(idx); return s; })} style={{ cursor:"pointer" }} />
                                 </td>
                                 <td style={{ ...S.td, width:24, padding:"4px 4px" }}>
-                                  <button onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:"#1A4870", padding:"0 2px" }}>{expanded?"▾":"▸"}</button>
+                                  <button data-arato-button="secondary" onClick={()=>toggleExpand(idx)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:13, color:"#1A4870", padding:"0 2px" }}>{expanded?"▾":"▸"}</button>
                                 </td>
                                 <td style={{ ...S.td, minWidth:110, padding:"4px 8px" }}>
                                   {f.empresa_id
@@ -1218,36 +1226,40 @@ export default function FolhaPagamentoPage() {
                                   )}
                                 </td>
                                 <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(liq)}{f.adiantamento > 0 && <div style={{ fontSize:9, fontWeight:400, color:"#C9921B" }}>já desconta adiant. {moeda(f.adiantamento)}</div>}</td>
+                                {/* Data prevista do pagamento: folha fechada = vencimento real do CP; rascunho = dia 05 da competência (padrão do fechamento) */}
+                                <td style={{ ...S.td, padding:"4px 8px", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", color:"var(--text-2)" }}>
+                                  {dataFmt((f.cp_lancamento_id && vencCp[f.cp_lancamento_id]) || (folhaEdit.competencia ? `${folhaEdit.competencia}-05` : undefined))}
+                                </td>
                               </tr>
                               {expanded && (
                                 <tr key={`${idx}-detail`} style={{ background:"#F8FAFD" }}>
-                                  <td colSpan={13} style={{ padding:"12px 16px 16px 44px" }}>
-                                    <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
+                                  <td colSpan={14} style={{ padding:"12px 16px 16px 44px" }}>
+                                    <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"10px 20px", fontSize:12 }}>
                                       <div>
-                                        <label style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
+                                        <label data-arato-label="true" style={S.label}>Vale Transporte <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
                                         <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.vale_transporte)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>Vale Refeição <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
+                                        <label data-arato-label="true" style={S.label}>Vale Refeição <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
                                         <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.vale_refeicao)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>Outros Benefícios <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
+                                        <label data-arato-label="true" style={S.label}>Outros Benefícios <span style={{ color:"#888", fontWeight:400 }}>(do cadastro)</span></label>
                                         <span style={{ fontSize:13, color:"#16A34A", fontWeight:600 }}>{moeda(f.outros_beneficios)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>Outros Descontos (justificativa)</label>
+                                        <label data-arato-label="true" style={S.label}>Outros Descontos (justificativa)</label>
                                         {isFechado
                                           ? <span style={{ fontSize:13, color:"#555" }}>{f.desc_outros_descontos || "—"}</span>
                                           : <input type="text" value={f.desc_outros_descontos} onChange={e=>setFuncField(idx,"desc_outros_descontos",e.target.value)} style={{ ...S.inp, width:"100%" }} placeholder="Descreva o desconto..." />
                                         }
                                       </div>
                                       <div>
-                                        <label style={S.label}>INSS Patronal</label>
+                                        <label data-arato-label="true" style={S.label}>INSS Patronal</label>
                                         <span style={{ fontSize:13, color:"#888" }}>{moeda(f.inss_patronal)}</span>
                                       </div>
                                       <div>
-                                        <label style={S.label}>FGTS</label>
+                                        <label data-arato-label="true" style={S.label}>FGTS</label>
                                         <span style={{ fontSize:13, color:"#888" }}>{moeda(f.fgts)}</span>
                                       </div>
                                     </div>
@@ -1266,7 +1278,7 @@ export default function FolhaPagamentoPage() {
 
             {/* Sub-aba: Resumo */}
             {abaModal === "resumo" && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <div style={{ border:"0.5px solid #DDE2EE", borderRadius:8, padding:16 }}>
                   <div style={{ fontSize:12, color:"#888", marginBottom:12, fontWeight:700 }}>CUSTO DO TRABALHADOR</div>
                   {[
@@ -1304,7 +1316,7 @@ export default function FolhaPagamentoPage() {
                   </div>
                 </div>
                 <div style={{ gridColumn:"1/-1" }}>
-                  <label style={S.label}>Observações da Folha</label>
+                  <label data-arato-label="true" style={S.label}>Observações da Folha</label>
                   <textarea rows={3} value={folhaEdit.obs??""} onChange={e=>setFolhaEdit(p=>({...p,obs:e.target.value}))}
                     style={{ ...S.inp, width:"100%", resize:"vertical" }} />
                 </div>
@@ -1314,25 +1326,25 @@ export default function FolhaPagamentoPage() {
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <div style={{ display:"flex", gap:8 }}>
                 {folhaEdit.id && folhaEdit.status === "fechado" && (
-                  <button onClick={reabrirFolha} style={{ ...S.btn("#FBF3E0","#C9921B"), border:"1px solid #C9921B" }} disabled={saving}>
+                  <button data-arato-button="secondary" onClick={reabrirFolha} style={{ ...S.btn("#FBF3E0","#C9921B"), border:"1px solid #C9921B" }} disabled={saving}>
                     {saving ? "Abrindo..." : "↩ Reabrir Folha"}
                   </button>
                 )}
                 {folhaEdit.id && (
-                  <button onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>
+                  <button data-arato-button="secondary" onClick={()=>{ setRepFolha(folhaEdit as Folha); setRepNMeses(1); setModalFolha(false); setModalRep(true); }} style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE" }}>
                     ↻ Replicar Folha
                   </button>
                 )}
                 {folhaEdit.id && (
-                  <button onClick={excluirFolha} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5" }} disabled={saving}>
+                  <button data-arato-button="secondary" onClick={excluirFolha} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5" }} disabled={saving}>
                     🗑 Excluir Folha
                   </button>
                 )}
               </div>
               <div style={{ display:"flex", gap:8 }}>
-                <button onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+                <button data-arato-button="secondary" onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
                 {folhaEdit.status !== "fechado" && (
-                  <button onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</button>
+                  <button data-arato-button="secondary" onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</button>
                 )}
               </div>
             </div>
@@ -1345,14 +1357,14 @@ export default function FolhaPagamentoPage() {
         <div style={S.overlay} onClick={()=>setModalRep(false)}>
           <div style={{ ...S.modal, width:"min(96vw,440px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Replicar Folha</h2>
-              <button onClick={()=>setModalRep(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>Replicar Folha</h2>
+              <button data-arato-button="icon" onClick={()=>setModalRep(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:13, color:"#555", marginTop:-8, marginBottom:16 }}>
               Copia a estrutura da folha de <strong>{nomeMes(repFolha.competencia)}</strong>{repFolha.empresa_id ? ` (${empresasMap[repFolha.empresa_id] ?? "empresa"})` : ""} para as próximas competências como rascunho. Adiantamentos zerados.
             </p>
             <div style={{ marginBottom:20 }}>
-              <label style={S.label}>Replicar para as próximas</label>
+              <label data-arato-label="true" style={S.label}>Replicar para as próximas</label>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <input type="number" min={1} max={12} value={repNMeses} onChange={e=>setRepNMeses(Math.min(12,Math.max(1,parseInt(e.target.value)||1)))} style={{ ...S.inp, width:80, textAlign:"center", fontSize:16, fontWeight:700 }} />
                 <span style={{ fontSize:13, color:"#555" }}>competência{repNMeses>1?"s":""}</span>
@@ -1374,8 +1386,8 @@ export default function FolhaPagamentoPage() {
               );
             })()}
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalRep(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={replicarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Replicando...":"Replicar"}</button>
+              <button data-arato-button="secondary" onClick={()=>setModalRep(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={replicarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving?"Replicando...":"Replicar"}</button>
             </div>
           </div>
         </div>
@@ -1386,37 +1398,37 @@ export default function FolhaPagamentoPage() {
         <div style={S.overlay} onClick={()=>setModalAdi(false)}>
           <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento Salarial"}</h2>
-              <button onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento Salarial"}</h2>
+              <button data-arato-button="icon" onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado na hora, já baixado na conta escolhida.</p>
 
-            <div style={{ display:"grid", gap:14 }}>
+            <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
               <div>
-                <label style={S.label}>Funcionário *</label>
+                <label data-arato-label="true" style={S.label}>Funcionário *</label>
                 <select value={adiEdit.funcionario_id??""} onChange={e=>setAdiEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
                 </select>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
-                  <label style={S.label}>Data *</label>
+                  <label data-arato-label="true" style={S.label}>Data *</label>
                   <InputData type="date" value={adiEdit.data??""} onChange={e=>setAdiEdit(p=>({...p,data:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 </div>
                 <div>
-                  <label style={S.label}>Valor (R$) *</label>
+                  <label data-arato-label="true" style={S.label}>Valor (R$) *</label>
                   <input type="number" value={adiEdit.valor??""} onChange={e=>setAdiEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" />
                 </div>
               </div>
               <div>
-                <label style={S.label}>Descontar na competência</label>
+                <label data-arato-label="true" style={S.label}>Descontar na competência</label>
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 <span style={{ fontSize:11, color:"#888" }}>Mês onde o valor será descontado do salário</span>
               </div>
               {!adiEdit.id && (
                 <div>
-                  <label style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
+                  <label data-arato-label="true" style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
                   <select value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
                     <option value="">{adiEdit.funcionario_id ? "Selecionar..." : "Escolha o funcionário primeiro"}</option>
                     {contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -1425,14 +1437,14 @@ export default function FolhaPagamentoPage() {
                 </div>
               )}
               <div>
-                <label style={S.label}>Descrição / Motivo</label>
+                <label data-arato-label="true" style={S.label}>Descrição / Motivo</label>
                 <input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" />
               </div>
             </div>
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar, Gerar CP e Baixar"}</button>
+              <button data-arato-button="secondary" onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar, Gerar CP e Baixar"}</button>
             </div>
           </div>
         </div>
@@ -1443,38 +1455,38 @@ export default function FolhaPagamentoPage() {
         <div style={S.overlay} onClick={()=>setModalPrem(false)}>
           <div style={{ ...S.modal, width: "min(96vw,480px)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{premEdit.id ? "Editar Gratificação" : "Nova Gratificação"}</h2>
-              <button onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              <h2 data-arato-h2="true" style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{premEdit.id ? "Editar Gratificação" : "Nova Gratificação"}</h2>
+              <button data-arato-button="icon" onClick={()=>setModalPrem(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
             <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>A gratificação é incluída no bruto do mês de referência e será carregada ao criar a folha.</p>
 
-            <div style={{ display:"grid", gap:14 }}>
+            <div data-arato-fields="true" style={{ display:"grid", gap:14 }}>
               <div>
-                <label style={S.label}>Funcionário *</label>
+                <label data-arato-label="true" style={S.label}>Funcionário *</label>
                 <select value={premEdit.funcionario_id??""} onChange={e=>setPremEdit(p=>({...p,funcionario_id:e.target.value}))} style={{ ...S.inp, width:"100%" }}>
                   <option value="">Selecionar...</option>
                   {funcionarios.map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
                 </select>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div data-arato-fields="true" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 <div>
-                  <label style={S.label}>Mês de referência *</label>
+                  <label data-arato-label="true" style={S.label}>Mês de referência *</label>
                   <InputData type="month" value={premEdit.mes_referencia??""} onChange={e=>setPremEdit(p=>({...p,mes_referencia:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 </div>
                 <div>
-                  <label style={S.label}>Valor (R$) *</label>
+                  <label data-arato-label="true" style={S.label}>Valor (R$) *</label>
                   <input type="number" value={premEdit.valor??""} onChange={e=>setPremEdit(p=>({...p,valor:parseFloat(e.target.value)||0}))} style={{ ...S.inp, width:"100%" }} placeholder="0,00" />
                 </div>
               </div>
               <div>
-                <label style={S.label}>Descrição *</label>
+                <label data-arato-label="true" style={S.label}>Descrição *</label>
                 <input type="text" value={premEdit.descricao??""} onChange={e=>setPremEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Gratificação de produtividade, Bônus colheita..." />
               </div>
             </div>
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
-              <button onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving ? "Salvando..." : premEdit.id ? "Salvar Alterações" : "Salvar Gratificação"}</button>
+              <button data-arato-button="secondary" onClick={()=>setModalPrem(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
+              <button data-arato-button="secondary" onClick={salvarPremiacao} style={S.btn("#C9921B")} disabled={saving}>{saving ? "Salvando..." : premEdit.id ? "Salvar Alterações" : "Salvar Gratificação"}</button>
             </div>
           </div>
         </div>

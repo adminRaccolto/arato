@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-q",
+    data: "13/10/2026",
+    titulo: "Folha: coluna Pgto. previsto",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A grade da folha ganhou a coluna Pgto. previsto: em folha fechada é o vencimento real do CP de salário de cada funcionário; em rascunho é o dia 05 da competência (padrão do fechamento)." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.13-p",
     data: "13/10/2026",
     titulo: "Aba antiga do sistema recarrega sozinha ao trocar de tela",
@@ -4697,12 +4707,12 @@ export default function CentralAtualizacoes() {
   const lista   = filtro === "todos" ? RELEASES : RELEASES.filter(r => r.modulos.includes(filtro));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, padding: "24px 28px", maxWidth: 900, width: "100%" }}>
 
-        <header style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Central de Atualizações</h1>
+        <header data-arato-page-heading="true" style={{ marginBottom: 24 }}>
+          <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Central de Atualizações</h1>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>
             Histórico de melhorias, novidades e correções do sistema Arato
           </p>
@@ -4710,12 +4720,12 @@ export default function CentralAtualizacoes() {
 
         {/* Filtro de módulo */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-          <button onClick={() => setFiltro("todos")}
+          <button data-arato-button="toggle" onClick={() => setFiltro("todos")}
             style={{ padding: "5px 14px", borderRadius: 20, border: "0.5px solid var(--border-table)", background: filtro === "todos" ? "#1A4870" : "var(--bg-card)", color: filtro === "todos" ? "#fff" : "var(--text-1)", fontSize: 12, fontWeight: filtro === "todos" ? 600 : 400, cursor: "pointer" }}>
             Todos os módulos
           </button>
           {modulos.map(m => (
-            <button key={m} onClick={() => setFiltro(m)}
+            <button data-arato-button="toggle" key={m} onClick={() => setFiltro(m)}
               style={{ padding: "5px 14px", borderRadius: 20, border: `0.5px solid ${filtro === m ? (MODULO_COR[m] ?? "#1A4870") : "var(--border-table)"}`, background: filtro === m ? (MODULO_COR[m] ?? "#1A4870") : "var(--bg-card)", color: filtro === m ? "#fff" : "var(--text-1)", fontSize: 12, fontWeight: filtro === m ? 600 : 400, cursor: "pointer" }}>
               {m}
             </button>
