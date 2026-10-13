@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
-import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao } from "../../../lib/db";
+import { listarLancamentos, listarEmpresaLancamentosComoLancamento, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
@@ -258,7 +258,12 @@ function FinanceiroRelatoriosInner() {
     // Carrega de TODAS as fazendas da conta para incluir previsões de todas as fazendas
     const fidsParaCarregar = fazendaIds?.length ? fazendaIds : [fazendaId];
     Promise.all([
-      Promise.all(fidsParaCarregar.map(fid => listarLancamentos(fid))).then(results => results.flat()),
+      // Produtor (lancamentos) + Empresa (empresa_lancamentos): sem a segunda, o relatório mostrava só os
+      // CP/CR de empresa antigos e nenhum dos lançados depois.
+      Promise.all([
+        Promise.all(fidsParaCarregar.map(fid => listarLancamentos(fid))).then(results => results.flat()),
+        listarEmpresaLancamentosComoLancamento(fidsParaCarregar).catch(() => [] as Lancamento[]),
+      ]).then(([prod, empr]) => [...prod, ...empr]),
       listarOperacoesGerenciais(fazendaId),
       temApoio
         ? supabase.from("apoio_baixas").select("lancamento_id").in("fazenda_id", fazendaIds)

@@ -2277,6 +2277,43 @@ export async function listarEmpresaLancamentos(
   }));
 }
 
+/**
+ * Títulos de EMPRESA (empresa_lancamentos) no formato de Lancamento, para relatórios que leem a
+ * tabela do produtor. Sem isso o relatório só enxergava os CP/CR de empresa antigos (que viviam em
+ * lancamentos com empresa_id) e nunca os lançados depois — que vão para empresa_lancamentos.
+ */
+export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[]): Promise<Lancamento[]> {
+  if (!fazendaIds.length) return [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  let todos: Record<string, any>[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from("empresa_lancamentos").select("*")
+      .in("fazenda_id", fazendaIds).order("data_vencimento", { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    todos = todos.concat(data ?? []);
+    if (!data || data.length < 1000) break;
+  }
+  return todos.map(r => {
+    const status = r.status === "pago" ? "baixado"
+      : r.status === "parcial" ? "parcial"
+      : r.status === "cancelado" ? "cancelado"
+      : (r.data_vencimento && r.data_vencimento < hoje ? "vencido" : "em_aberto");
+    return {
+      id: r.id, fazenda_id: r.fazenda_id, tipo: r.tipo, moeda: r.moeda ?? "BRL",
+      descricao: r.descricao, categoria: r.categoria ?? "",
+      data_lancamento: (r.created_at ?? r.data_vencimento ?? "").slice(0, 10),
+      data_vencimento: r.data_vencimento, data_baixa: r.data_pagamento ?? undefined,
+      data_prorrogacao: r.data_prorrogacao ?? undefined,
+      valor: Number(r.valor), valor_pago: r.valor_pago ?? undefined, status, auto: false,
+      empresa_id: r.empresa_id, pessoa_id: r.pessoa_id ?? undefined, conta_bancaria: r.conta_bancaria ?? undefined,
+      operacao_gerencial_id: r.operacao_gerencial_id ?? undefined, ano_safra_id: r.ano_safra_id ?? undefined,
+      ciclo_id: r.ciclo_id ?? undefined, agrupador: r.agrupador ?? undefined,
+      valor_multa: r.valor_multa ?? undefined, valor_juros: r.valor_juros ?? undefined, valor_desconto: r.valor_desconto ?? undefined,
+      nfe_numero: r.numero_documento ?? undefined, nf_entrada_id: r.nf_entrada_id ?? undefined, conciliado: r.conciliado ?? false,
+    } as unknown as Lancamento;
+  });
+}
+
 export async function criarEmpresaLancamento(
   l: Omit<EmpresaLancamento, "id" | "numero" | "created_at" | "empresa_nome" | "pessoa_nome">
 ): Promise<EmpresaLancamento> {

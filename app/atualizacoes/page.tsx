@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-j",
+    data: "13/10/2026",
+    titulo: "Relatório CP/CR: lançamentos de Empresa recentes não apareciam",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O relatório CP / CR — Contas (e o Fluxo de Caixa da mesma tela) lia só os lançamentos do produtor; os CP/CR de empresa criados depois da separação (tabela própria de empresa) ficavam de fora e só os antigos apareciam. Agora o relatório inclui os títulos de empresa, com o filtro Empresa funcionando." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR — Contas",
+  },
+  {
     versao: "2026.10.13-i",
     data: "13/10/2026",
     titulo: "Folha: complemento salarial na grade e rascunho atualizado pelo cadastro",
