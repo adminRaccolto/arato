@@ -51,18 +51,20 @@ interface GrupoMaq {
 
 // ─── componente ──────────────────────────────────────────────────────────────
 function RelManutInner() {
-  const { fazendaId, contaId, nomeFazendaSelecionada } = useAuth();
+  const { fazendaId, contaId, contaNome } = useAuth();
+  const nomeCliente = contaNome ?? "";
 
+  // Relatório da CONTA toda: frota, anos safra e ciclos de todas as fazendas do cliente (a frota é do
+  // cliente, não de uma fazenda). A fazenda de cada máquina só aparece como informação.
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
-  const [fazTrabalho, setFazTrabalho] = useState<string>("");
   useEffect(() => {
     if (!fazendaId && !contaId) return;
     listarFazendasDaConta(contaId, fazendaId).then(fzs => {
       setFazendasConta(fzs.map(f => ({ id: f.id!, nome: f.nome })));
-      setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
     }).catch(() => {});
   }, [fazendaId, contaId]);
-  const fazAtiva = fazTrabalho || fazendaId || "";
+  const nomeFazenda = (id?: string | null) => fazendasConta.find(f => f.id === id)?.nome ?? "";
+  const fazAtiva = fazendaId || fazendasConta[0]?.id || "";
 
   const [modoFiltro, setModoFiltro] = useState<"data" | "safra">("data");
   const [inicio, setInicio]         = useState(anoAtras());
@@ -90,7 +92,7 @@ function RelManutInner() {
   }, [fazAtiva]);
 
   useEffect(() => {
-    if (anoSafraId) listarCiclos(anoSafraId, fazAtiva).then(setCiclos).catch(() => {});
+    if (anoSafraId) listarCiclos(anoSafraId, null).then(setCiclos).catch(() => {});
     else setCiclos([]);
     setCicloId("");
   }, [anoSafraId, fazAtiva]);
@@ -198,7 +200,7 @@ function RelManutInner() {
         <tr style="background:#111111">
           <td colspan="4" style="padding:6px 10px;font-size:10px;font-weight:700;color:#fff">
             ${g.maquina_nome}
-            <span style="opacity:.7;margin-left:8px;font-size:9px">${TIPO_MAQUINA_LABEL[g.maquina_tipo] ?? g.maquina_tipo}</span>
+            <span style="opacity:.7;margin-left:8px;font-size:9px">${TIPO_MAQUINA_LABEL[g.maquina_tipo] ?? g.maquina_tipo}${fazendasConta.length > 1 ? ` · ${nomeFazenda(maquinas.find(m => m.id === g.maquina_id)?.fazenda_id)}` : ""}</span>
           </td>
         </tr>
         ${rows}
@@ -236,7 +238,7 @@ function RelManutInner() {
 
     abrirPreviewImpressao("Manutenção de Veículos e Máquinas", html, {
       orientation: "landscape",
-      fazenda: nomeFazendaSelecionada ?? "",
+      fazenda: nomeCliente,
       subtitulo: periodoLabel,
     });
   }
@@ -248,7 +250,7 @@ function RelManutInner() {
 
     // ── Aba Detalhado ──
     const det: (string | number)[][] = [];
-    det.push([`Manutenção de Veículos e Máquinas — ${nomeFazendaSelecionada ?? ""}`]);
+    det.push([`Manutenção de Veículos e Máquinas — ${nomeCliente}`]);
     det.push([`Período: ${fmtDate(periodoInicio)} a ${fmtDate(periodoFim)}`]);
     det.push([`Gerado em: ${new Date().toLocaleString("pt-BR")}`]);
     det.push([]);
@@ -304,7 +306,7 @@ function RelManutInner() {
     }
     XLSX.utils.book_append_sheet(wb, wsRes, "Resumo por Máquina");
 
-    const nomeArquivo = `manutencao_${(nomeFazendaSelecionada ?? "fazenda").replace(/\s+/g, "_")}_${periodoInicio}_${periodoFim}.xlsx`;
+    const nomeArquivo = `manutencao_${(nomeCliente || "cliente").replace(/\s+/g, "_")}_${periodoInicio}_${periodoFim}.xlsx`;
     XLSX.writeFile(wb, nomeArquivo);
   }
 
@@ -333,12 +335,6 @@ function RelManutInner() {
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Histórico de manutenções agrupado por equipamento</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {fazendasConta.length > 1 && (
-              <select value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none" }}>
-                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
-            )}
             {gerado && (
               <>
                 <button onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -494,6 +490,7 @@ function RelManutInner() {
                               {g.maquina_nome}
                               <span style={{ marginLeft: 10, fontSize: 11, opacity: 0.7 }}>
                                 {TIPO_MAQUINA_LABEL[g.maquina_tipo] ?? g.maquina_tipo}
+                                {fazendasConta.length > 1 && ` · ${nomeFazenda(maquinas.find(m => m.id === g.maquina_id)?.fazenda_id)}`}
                               </span>
                               <span style={{ float: "right", fontSize: 11, opacity: 0.8 }}>
                                 {g.rows.length} manutenção{g.rows.length !== 1 ? "ões" : ""}

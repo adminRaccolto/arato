@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-m",
+    data: "13/10/2026",
+    titulo: "Manutenção de Máquinas: relatório do cliente, sem seletor de fazenda",
+    modulos: ["Produção"],
+    itens: [
+      { tipo: "melhoria", texto: "O relatório de Manutenção de Veículos e Máquinas deixou de pedir a fazenda: mostra a frota de todo o cliente, os ciclos de todas as fazendas no filtro por safra/ciclo, e o PDF/Excel saem com o nome do cliente. A fazenda de cada máquina aparece ao lado do tipo." },
+    ],
+    onde: "Produção → Manutenções",
+  },
+  {
     versao: "2026.10.13-l",
     data: "13/10/2026",
     titulo: "DRE por ano safra: custos pela origem certa",
