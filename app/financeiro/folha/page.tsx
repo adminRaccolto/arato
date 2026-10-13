@@ -66,6 +66,7 @@ interface Folha {
   inss_patronal?: number;
   fgts_total?: number;
   obs?: string;
+  data_vencimento?: string | null;   // data de pagamento (vencimento do CP de salário) escolhida ao gerar a folha
   funcionarios?: FolhaFunc[];
 }
 interface Adiantamento {
@@ -186,6 +187,10 @@ export default function FolhaPagamentoPage() {
   const [modalAdi,   setModalAdi]   = useState(false);
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
   const [vencCp,     setVencCp]     = useState<Record<string, string>>({});
+  // Data de pagamento da folha (vencimento do CP de salário): cada cliente escolhe conforme a sua operação.
+  // Padrão: o mesmo dia do mês usado na última folha (ou dia 5), no mês seguinte à competência.
+  const [dataPgto, setDataPgto] = useState("");
+  const dataPgtoManual = useRef(false);
   const [adiConta,   setAdiConta]   = useState("");
   const [contasAdi,  setContasAdi]  = useState<ContaBancaria[]>([]);
 
@@ -369,6 +374,8 @@ export default function FolhaPagamentoPage() {
       });
       setFolhaEdit({ ...folha, funcionarios: funcsCarregados });
       setSelecionados(new Set(funcsCarregados.map((_, i) => i)));
+      dataPgtoManual.current = true;
+      setDataPgto(folha.data_vencimento ?? vencimentoSalario(folha.competencia, diaPagamentoPadrao()));
       // Folha fechada: data de pagamento prevista = vencimento real do CP de salário de cada funcionário
       const cpIds = funcsCarregados.map(f => f.cp_lancamento_id).filter(Boolean) as string[];
       if (cpIds.length) {
@@ -377,6 +384,7 @@ export default function FolhaPagamentoPage() {
       } else setVencCp({});
     } else {
       setVencCp({});
+      dataPgtoManual.current = false;
       // Nova folha — pré-preenche com funcionários ativos
       // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
       const adisComp = adiantamentos.filter(
@@ -477,6 +485,18 @@ export default function FolhaPagamentoPage() {
     }
   }
 
+  function diaPagamentoPadrao(): number {
+    const ult = [...folhas].filter(f => f.data_vencimento).sort((a, b) => (b.competencia ?? "").localeCompare(a.competencia ?? ""))[0];
+    const d = ult?.data_vencimento ? Number(ult.data_vencimento.slice(8, 10)) : 5;
+    return d >= 1 && d <= 31 ? d : 5;
+  }
+  // Folha nova: acompanha a competência escolhida enquanto o usuário não digitar a data
+  useEffect(() => {
+    if (!modalFolha || folhaEdit.id || dataPgtoManual.current) return;
+    setDataPgto(vencimentoSalario(modalCompDe, diaPagamentoPadrao()));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalFolha, folhaEdit.id, modalCompDe, folhas]);
+
   async function apiFolha(body: Record<string, unknown>) {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? "";
@@ -507,7 +527,12 @@ export default function FolhaPagamentoPage() {
       && (folhaEdit.produtor_id ?? null) === (produtorId ?? null)
     ) ? folhaEdit.id : undefined;
 
-    const dadosFolha = { valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs };
+    // Data de pagamento: a informada vale para a competência principal; nas demais (geração em vários meses)
+    // repete o mesmo dia no mês seguinte à respectiva competência.
+    const compBase = folhaEdit.id ? folhaEdit.competencia : modalCompDe;
+    const diaPgto = Number(dataPgto.slice(8, 10)) || diaPagamentoPadrao();
+    const data_vencimento = dataPgto && comp === compBase ? dataPgto : vencimentoSalario(comp, diaPgto);
+    const dadosFolha = { valor_bruto: totalBruto, valor_liquido: totalLiq, inss_patronal: totalINSSPat, fgts_total: totalFGTS, obs: folhaEdit.obs, data_vencimento };
 
     if (!folhaId) {
       // Upsert via API route (service_role_key evita RLS 42501)
@@ -1119,6 +1144,11 @@ export default function FolhaPagamentoPage() {
                   )}
                 </>
               )}
+              <div title="Data em que o salário será pago: vira o vencimento do CP de cada funcionário ao fechar a folha">
+                <div style={{ ...S.label, marginBottom:2 }}>Data de pagamento (vencimento)</div>
+                <InputData type="date" value={dataPgto} disabled={folhaEdit.status === "fechado"}
+                  onChange={e => { dataPgtoManual.current = true; setDataPgto(e.target.value); }} style={{ ...S.inp, fontSize:13 }} />
+              </div>
               {folhaEdit.status && <span style={{ fontSize:11, fontWeight:700, color:ST_COLOR[folhaEdit.status], background:ST_COLOR[folhaEdit.status]+"18", borderRadius:4, padding:"3px 10px", marginTop: folhaEdit.id ? 0 : 16 }}>{ST_LABEL[folhaEdit.status]}</span>}
             </div>
 
@@ -1228,7 +1258,7 @@ export default function FolhaPagamentoPage() {
                                 <td style={{ ...S.td, fontWeight:700, color: liq >= 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric:"tabular-nums", padding:"4px 8px", whiteSpace:"nowrap" }}>{moeda(liq)}{f.adiantamento > 0 && <div style={{ fontSize:9, fontWeight:400, color:"#C9921B" }}>já desconta adiant. {moeda(f.adiantamento)}</div>}</td>
                                 {/* Data prevista do pagamento: folha fechada = vencimento real do CP; rascunho = dia 05 da competência (padrão do fechamento) */}
                                 <td style={{ ...S.td, padding:"4px 8px", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", color:"var(--text-2)" }}>
-                                  {dataFmt((f.cp_lancamento_id && vencCp[f.cp_lancamento_id]) || (folhaEdit.competencia ? vencimentoSalario(folhaEdit.competencia) : undefined))}
+                                  {dataFmt((f.cp_lancamento_id && vencCp[f.cp_lancamento_id]) || (folhaEdit.competencia ? (dataPgto || vencimentoSalario(folhaEdit.competencia)) : undefined))}
                                 </td>
                               </tr>
                               {expanded && (

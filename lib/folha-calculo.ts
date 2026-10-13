@@ -53,5 +53,6 @@ export function valorEmMaos(f: { salario_base?: number | null; salario_liquido?:
 export function vencimentoSalario(competencia: string, dia = 5): string {
   const [a, m] = competencia.split("-").map(Number);
   const prox = m === 12 ? { a: a + 1, m: 1 } : { a, m: m + 1 };
-  return `${prox.a}-${String(prox.m).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  const ultimo = new Date(prox.a, prox.m, 0).getDate();   // dia 31 em mês curto → último dia do mês
+  return `${prox.a}-${String(prox.m).padStart(2, "0")}-${String(Math.min(Math.max(dia, 1), ultimo)).padStart(2, "0")}`;
 }

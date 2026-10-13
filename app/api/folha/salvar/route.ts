@@ -106,17 +106,22 @@ export async function POST(req: Request) {
         throw findErr;
       }
 
+      // data_vencimento só existe depois da Seção 341: sem a coluna grava o resto normalmente
+      const semDataVenc = (d: Record<string, unknown>) => { const { data_vencimento: _x, ...r } = d; void _x; return r; };
+      const colunaAusente = (e: { message?: string } | null) => !!e?.message?.includes("data_vencimento");
       if (exist?.id) {
-        const { error } = await sb.from("folha_pagamento").update(dados).eq("id", exist.id);
+        let { error } = await sb.from("folha_pagamento").update(dados).eq("id", exist.id);
+        if (error && colunaAusente(error)) ({ error } = await sb.from("folha_pagamento").update(semDataVenc(dados)).eq("id", exist.id));
         if (error) throw error;
         return NextResponse.json({ ok: true, id: exist.id, criou: false });
       } else {
         const insertPayload: Record<string, unknown> = { fazenda_id, empresa_id: empresa_id ?? null, competencia, status: "rascunho", ...dados };
         if (colunaProdutorDisponivel) insertPayload.produtor_id = produtor_id ?? null;
-        const { data, error } = await sb.from("folha_pagamento")
+        let { data, error } = await sb.from("folha_pagamento")
           .insert(insertPayload)
           .select("id").single();
-        if (error) throw error;
+        if (error && colunaAusente(error)) ({ data, error } = await sb.from("folha_pagamento").insert(semDataVenc(insertPayload)).select("id").single());
+        if (error || !data) throw error ?? new Error("Falha ao criar a folha");
         return NextResponse.json({ ok: true, id: data.id, criou: true });
       }
     }
@@ -124,7 +129,11 @@ export async function POST(req: Request) {
     // ─── update_folha ─────────────────────────────────────────────────────────
     if (operacao === "update_folha") {
       const { id, ...dados } = payload as { id: string } & Record<string, unknown>;
-      const { error } = await sb.from("folha_pagamento").update(dados).eq("id", id);
+      let { error } = await sb.from("folha_pagamento").update(dados).eq("id", id);
+      if (error?.message?.includes("data_vencimento")) {
+        const { data_vencimento: _x, ...resto } = dados; void _x;
+        ({ error } = await sb.from("folha_pagamento").update(resto).eq("id", id));
+      }
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
@@ -180,7 +189,10 @@ export async function POST(req: Request) {
       }
 
       const hoje = new Date().toISOString().slice(0, 10);
-      const vencimento = vencimentoSalario(competencia); // pagamento no mês seguinte à competência
+      // Data de pagamento: a escolhida ao gerar a folha (folha_pagamento.data_vencimento, Seção 341);
+      // sem ela, o padrão é dia 05 do mês seguinte à competência.
+      const { data: folhaRow } = await sb.from("folha_pagamento").select("*").eq("id", id).maybeSingle();
+      const vencimento = ((folhaRow as { data_vencimento?: string | null } | null)?.data_vencimento) || vencimentoSalario(competencia);
       const nomeMesLabel = (() => {
         const [ano, mes] = competencia.split("-");
         const n = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];

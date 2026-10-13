@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-t",
+    data: "13/10/2026",
+    titulo: "Folha: data de pagamento escolhida ao gerar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao gerar a folha você informa a Data de pagamento (vencimento) conforme a sua operação, em vez do dia 5 fixo. O CP de salário de cada funcionário nasce com essa data. A sugestão repete o dia usado na última folha. Em geração de vários meses, o mesmo dia vale para cada competência. Requer a Seção 341 do supabase_migrations.sql." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.13-s",
     data: "13/10/2026",
     titulo: "Olívia: botão de enviar não respondia",

@@ -16607,3 +16607,13 @@ UPDATE folha_pagamento SET ano_safra_id = fn_ano_safra_da_data(fazenda_id, (comp
 UPDATE historico_manutencao SET ano_safra_id = fn_ano_safra_da_data(fazenda_id, data::date) WHERE data IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 341 — Folha: data de pagamento escolhida ao gerar a folha
+-- =============================================================================
+-- Cada cliente define o dia de pagamento conforme a sua operação (antes era sempre dia 05). O valor vira o
+-- vencimento do CP de salário de cada funcionário ao fechar a folha. Sem a coluna o sistema continua
+-- funcionando com o padrão (dia 05 do mês seguinte à competência).
+ALTER TABLE folha_pagamento ADD COLUMN IF NOT EXISTS data_vencimento date;
+
+NOTIFY pgrst, 'reload schema';
