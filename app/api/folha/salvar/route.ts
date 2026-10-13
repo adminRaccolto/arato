@@ -147,6 +147,27 @@ export async function POST(req: Request) {
         .from("folha_funcionarios").select("*").eq("folha_id", id);
       if (itErr) throw itErr;
 
+      // Adiantamentos pendentes (da competência ou sem competência) entram no desconto mesmo se
+      // foram lançados DEPOIS de a folha ser salva — antes o salário saía cheio e o adiantamento
+      // ficava "pendente" pra sempre. Vale o maior entre o valor salvo na folha (pode ser manual)
+      // e a soma dos pendentes.
+      const funcIdsFolha = (itens ?? []).map((it: any) => it.funcionario_id).filter(Boolean) as string[];
+      if (funcIdsFolha.length > 0) {
+        const { data: adisPend } = await sb.from("adiantamentos_salario")
+          .select("funcionario_id, valor, competencia_ref")
+          .eq("status", "pendente").in("funcionario_id", funcIdsFolha)
+          .or(`competencia_ref.eq.${competencia},competencia_ref.is.null`);
+        const somaPend: Record<string, number> = {};
+        for (const a of adisPend ?? []) somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + Number(a.valor ?? 0);
+        for (const it of (itens ?? []) as any[]) {
+          const pend = Math.round((somaPend[it.funcionario_id] ?? 0) * 100) / 100;
+          if (pend > (it.adiantamento ?? 0) + 0.005) {
+            await sb.from("folha_funcionarios").update({ adiantamento: pend }).eq("id", it.id);
+            it.adiantamento = pend;
+          }
+        }
+      }
+
       const hoje = new Date().toISOString().slice(0, 10);
       const vencimento = `${competencia}-05`;
       const nomeMesLabel = (() => {
@@ -248,9 +269,8 @@ export async function POST(req: Request) {
       if (funcIdsComAdiantamento.length > 0) {
         await sb.from("adiantamentos_salario")
           .update({ status: "descontado" })
-          .eq("fazenda_id", fazenda_id)
-          .eq("competencia_ref", competencia)
           .eq("status", "pendente")
+          .or(`competencia_ref.eq.${competencia},competencia_ref.is.null`)
           .in("funcionario_id", funcIdsComAdiantamento);
       }
 
@@ -421,8 +441,12 @@ export async function POST(req: Request) {
     if (operacao === "salvar_adiantamento") {
       const { fazenda_id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
       const ogAdiantFunc = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.09.002");
+      // CP do adiantamento nasce já ligado ao empregador (empresa ou produtor) do funcionário —
+      // sem isso o título ficava "solto" e não aparecia no filtro de origem do Contas a Pagar.
+      const { data: funcEmp } = await sb.from("funcionarios").select("empresa_id, produtor_id").eq("id", funcionario_id).maybeSingle();
       const { data: lanc, error: lancErr } = await sb.from("lancamentos").insert({
-        fazenda_id, tipo: "pagar", natureza: "real",
+        fazenda_id, empresa_id: funcEmp?.empresa_id ?? null, produtor_id: funcEmp?.produtor_id ?? null,
+        tipo: "pagar", natureza: "real",
         descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
         valor, moeda: "BRL", status: "em_aberto",
         categoria: "Pessoal / Adiantamentos",
@@ -439,7 +463,7 @@ export async function POST(req: Request) {
         status: "pendente",
       });
       if (adiErr) throw adiErr;
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, lancamento_id: lanc?.id ?? null });
     }
 
     // ─── editar_adiantamento ──────────────────────────────────────────────────

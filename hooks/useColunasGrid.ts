@@ -9,7 +9,12 @@ export type ColDef = {
   largura?: number; // largura inicial em px (se o usuário ainda não redimensionou)
 };
 
-const LARGURA_MINIMA = 40;
+const LARGURA_MINIMA = 60;
+const LARGURA_MAXIMA = 900;
+// Largura gravada fora desse intervalo é lixo de um arraste que nunca terminou (soltar o mouse fora
+// da janela deixava o "arrastar" preso e qualquer movimento seguinte esticava/encolhia a coluna até
+// sumir da tela) — é descartada na hora de carregar.
+const larguraValida = (n: unknown): n is number => typeof n === "number" && n >= LARGURA_MINIMA && n <= LARGURA_MAXIMA;
 
 async function tokenAtual(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
@@ -64,7 +69,7 @@ export function useColunasGrid(grid: string, colunas: ColDef[]) {
             ...salva.filter(k => defaultOrder.includes(k)),
             ...defaultOrder.filter(k => !conhecidas.has(k)),
           ]);
-          setLarguras(json.config.larguras ?? {});
+          setLarguras(Object.fromEntries(Object.entries(json.config.larguras ?? {}).filter(([, v]) => larguraValida(v))));
         } else {
           setLarguras({});
         }
@@ -115,15 +120,19 @@ export function useColunasGrid(grid: string, colunas: ColDef[]) {
     const startX = e.clientX;
     const startW = largurasRef.current[key] ?? colunas.find(c => c.key === key)?.largura ?? 120;
     const onMove = (ev: MouseEvent) => {
-      const nova = Math.max(LARGURA_MINIMA, startW + ev.clientX - startX);
+      // Botão já solto (mouseup perdido fora da janela/sobre outro elemento): encerra o arraste
+      if (ev.buttons === 0) { onUp(); return; }
+      const nova = Math.min(LARGURA_MAXIMA, Math.max(LARGURA_MINIMA, startW + ev.clientX - startX));
       setLarguras(prev => ({ ...prev, [key]: nova }));
     };
-    const onUp = () => {
+    function onUp() {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
+      window.removeEventListener("blur", onUp);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-    };
+    }
+    window.addEventListener("blur", onUp);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
     document.addEventListener("mousemove", onMove);
@@ -133,7 +142,7 @@ export function useColunasGrid(grid: string, colunas: ColDef[]) {
 
   // Largura atual da coluna (px); undefined = automática
   const w = useCallback((key: string): number | undefined =>
-    larguras[key] ?? colunas.find(c => c.key === key)?.largura, [larguras, colunas]);
+    (larguraValida(larguras[key]) ? larguras[key] : undefined) ?? colunas.find(c => c.key === key)?.largura, [larguras, colunas]);
 
   const toggle = useCallback((key: string) => {
     setVisiveis(prev => {

@@ -6,6 +6,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-c",
+    data: "13/10/2026",
+    titulo: "Folha: adiantamento baixado na hora e descontado no fechamento · Contas a Pagar: filtros e colunas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Folha de Pagamento: adiantamento lançado depois de a folha ser salva agora é descontado do salário ao fechar a folha (antes o salário saía cheio e o adiantamento ficava pendente). Também passam a ser descontados os adiantamentos sem competência definida." },
+      { tipo: "melhoria", texto: "Adiantamento de salário exige a conta bancária e já cria o CP baixado nessa conta, na data do adiantamento, para o fluxo de caixa. O CP agora nasce ligado à empresa/produtor do funcionário (aparece no filtro Origem)." },
+      { tipo: "correcao", texto: "Contas a Pagar: a configuração de colunas se perdia/desfigurava (coluna esticada ou comprimida a ponto de sumir) por causa de arraste de largura que ficava preso. Corrigido, e larguras inválidas já gravadas são ignoradas." },
+      { tipo: "melhoria", texto: "Contas a Pagar: Origem e Status viraram listas suspensas com seleção múltipla; os campos de data deixaram de ser achatados pelo campo Buscar." },
+    ],
+    onde: "Financeiro → Folha de Pagamento · Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.13-b",
     data: "13/10/2026",
     titulo: "NF-e de saída: série e número agora vêm de Parâmetros Fiscais desde o rascunho",

@@ -5,6 +5,8 @@ import { calcINSS, calcIRRF } from "../../../lib/folha-calculo";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { baixarLancamento, listarContasProdutorDaConta, listarContasPorEmpresa } from "../../../lib/db";
+import type { ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -183,6 +185,24 @@ export default function FolhaPagamentoPage() {
   // modal adiantamento
   const [modalAdi,   setModalAdi]   = useState(false);
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
+  const [adiConta,   setAdiConta]   = useState("");
+  const [contasAdi,  setContasAdi]  = useState<ContaBancaria[]>([]);
+
+  // Contas bancárias do empregador do funcionário escolhido (empresa → contas da empresa; senão contas do produtor da conta)
+  useEffect(() => {
+    if (!modalAdi) return;
+    const func = funcionarios.find(f => f.id === adiEdit.funcionario_id);
+    let ativo = true;
+    (async () => {
+      try {
+        const lista = func?.empresa_id
+          ? await listarContasPorEmpresa(func.empresa_id)
+          : contaId ? await listarContasProdutorDaConta(contaId) : [];
+        if (ativo) { setContasAdi(lista); setAdiConta(c => lista.some(x => x.id === c) ? c : ""); }
+      } catch { if (ativo) setContasAdi([]); }
+    })();
+    return () => { ativo = false; };
+  }, [modalAdi, adiEdit.funcionario_id, funcionarios, contaId]);
 
   // modal premiação
   const [modalPrem,  setModalPrem]  = useState(false);
@@ -515,12 +535,12 @@ export default function FolhaPagamentoPage() {
   async function fecharFolha(folha: Folha) {
     // Verifica adiantamentos pendentes para esta competência que podem não estar na folha
     const adisPendentesComp = adiantamentos.filter(
-      a => a.competencia_ref === folha.competencia && a.status === "pendente"
+      a => (!a.competencia_ref || a.competencia_ref === folha.competencia) && a.status === "pendente"
     );
     if (adisPendentesComp.length > 0) {
       const nomes = adisPendentesComp.map(a => `${a.funcionario_nome ?? "funcionário"} (${a.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`).join(", ");
       const ok = confirm(
-        `⚠️ Atenção: há ${adisPendentesComp.length} adiantamento(s) pendente(s) para ${nomeMes(folha.competencia)} que podem não estar incluídos no cálculo desta folha:\n\n${nomes}\n\nSe esses adiantamentos foram lançados DEPOIS de salvar a folha, cancele agora, abra a folha, salve novamente e então feche.\n\nDeseja fechar mesmo assim (sem garantia de desconto)?`
+        `Há ${adisPendentesComp.length} adiantamento(s) pendente(s) para ${nomeMes(folha.competencia)}:\n\n${nomes}\n\nEles serão descontados automaticamente do salário líquido ao fechar a folha, mesmo os lançados depois de salvar a folha.\n\nFechar a folha?`
       );
       if (!ok) return;
     } else {
@@ -604,6 +624,7 @@ export default function FolhaPagamentoPage() {
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
       setMsg("Preencha funcionário, data e valor."); return;
     }
+    if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
     setSaving(true);
     const funcionario_nome = funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "";
     try {
@@ -621,7 +642,7 @@ export default function FolhaPagamentoPage() {
         });
         setMsg("Adiantamento atualizado.");
       } else {
-        await apiFolha({
+        const r = await apiFolha({
           operacao: "salvar_adiantamento",
           fazenda_id: fazendaId,
           funcionario_id: adiEdit.funcionario_id,
@@ -630,8 +651,16 @@ export default function FolhaPagamentoPage() {
           competencia_ref: adiEdit.competencia_ref || null,
           descricao: adiEdit.descricao || null,
           funcionario_nome,
-        });
-        setMsg("Adiantamento registrado e CP gerado.");
+        }) as { lancamento_id?: string | null };
+        // Adiantamento é dinheiro que já saiu: CP nasce baixado, na conta informada (entra no fluxo de caixa)
+        if (r?.lancamento_id) {
+          try {
+            await baixarLancamento(r.lancamento_id, adiEdit.valor, adiEdit.data, adiConta);
+            setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
+          } catch (eb: any) {
+            setMsg(`Adiantamento registrado e CP gerado, mas a baixa falhou: ${eb.message}. Baixe o CP manualmente em Contas a Pagar.`);
+          }
+        } else setMsg("Adiantamento registrado e CP gerado.");
       }
       setModalAdi(false);
       setAdiEdit({});
@@ -1357,7 +1386,7 @@ export default function FolhaPagamentoPage() {
               <h2 style={{ margin:0, fontSize:16, color:"#0B2D50" }}>{adiEdit.id ? "Editar Adiantamento" : "Novo Adiantamento Salarial"}</h2>
               <button onClick={()=>setModalAdi(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
             </div>
-            <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado automaticamente na data do adiantamento.</p>
+            <p style={{ fontSize:12, color:"#888", marginTop:-12, marginBottom:16 }}>O CP é gerado na hora, já baixado na conta escolhida.</p>
 
             <div style={{ display:"grid", gap:14 }}>
               <div>
@@ -1382,6 +1411,16 @@ export default function FolhaPagamentoPage() {
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
                 <span style={{ fontSize:11, color:"#888" }}>Mês onde o valor será descontado do salário</span>
               </div>
+              {!adiEdit.id && (
+                <div>
+                  <label style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label>
+                  <select value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}>
+                    <option value="">{adiEdit.funcionario_id ? "Selecionar..." : "Escolha o funcionário primeiro"}</option>
+                    {contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                  <span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span>
+                </div>
+              )}
               <div>
                 <label style={S.label}>Descrição / Motivo</label>
                 <input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" />
@@ -1390,7 +1429,7 @@ export default function FolhaPagamentoPage() {
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <button onClick={()=>setModalAdi(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</button>
-              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar e Gerar CP"}</button>
+              <button onClick={salvarAdiantamento} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : adiEdit.id ? "Salvar Alterações" : "Registrar, Gerar CP e Baixar"}</button>
             </div>
           </div>
         </div>

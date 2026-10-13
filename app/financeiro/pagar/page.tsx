@@ -32,6 +32,7 @@
 // define data+conta e baixa todos de uma vez via /api/financeiro/bordero-acao.
 // ═══════════════════════════════════════════════════════════════════════════
 import InputData from "../../../components/InputData";
+import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
@@ -1243,35 +1244,27 @@ export default function ContasAPagarPage() {
           </button>
         </div>
 
-        {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ── */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+        {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ──
+            Origem e Status em dropdown de múltipla escolha; campos de data com largura fixa (antes o
+            campo Buscar crescia e achatava as datas). */}
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+          <div style={{ flex: "1 1 220px", minWidth: 200, maxWidth: 380 }}>
             <label style={lblMini}>Buscar</label>
             <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, fornecedor, nº NF ou borderô..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div>
             <label style={lblMini}>Origem</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => setFOrigem(new Set())} style={chip(fOrigem.size === 0)}>Todas</button>
-              {ORIGEM_OPCOES.map(o => (
-                <button key={o.v} onClick={() => toggle(fOrigem, setFOrigem, o.v)} style={chip(fOrigem.has(o.v))}>{o.label}</button>
-              ))}
-            </div>
+            <MultiSelectDropdown opcoes={ORIGEM_OPCOES} selecionados={fOrigem} onChange={setFOrigem} textoTodos="Todas" largura={150} />
           </div>
           <div>
             <label style={lblMini}>Status</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button onClick={() => setFStatus(new Set())} style={chip(fStatus.size === 0)}>Todos</button>
-              {STATUS_OPCOES.map(s => (
-                <button key={s.v} onClick={() => setFStatus(new Set([s.v]))} style={chip(fStatus.has(s.v))}>{s.label}</button>
-              ))}
-            </div>
+            <MultiSelectDropdown opcoes={STATUS_OPCOES} selecionados={fStatus} onChange={setFStatus} textoTodos="Todos" largura={170} />
           </div>
-          <div>
+          <div style={{ width: 200, flex: "0 0 200px" }}>
             <label style={lblMini}>Vencimento de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
           </div>
-          <div>
+          <div style={{ width: 200, flex: "0 0 200px" }}>
             <label style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>

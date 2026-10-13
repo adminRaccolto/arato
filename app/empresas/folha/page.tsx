@@ -4,8 +4,8 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao } from "../../../lib/db";
-import type { Empresa } from "../../../lib/supabase";
+import { listarEmpresasDaConta, resolverOperacaoGerencialPorClassificacao, baixarLancamento, listarContasPorEmpresa } from "../../../lib/db";
+import type { Empresa, ContaBancaria } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 
 // ─── Tipos ────────────────────────────────────────────────────
@@ -125,11 +125,19 @@ export default function FolhaEmpresaPage() {
   const [funcExpand,  setFuncExpand]  = useState<Set<number>>(new Set());
   const [modalAdi,    setModalAdi]    = useState(false);
   const [adiEdit,     setAdiEdit]     = useState<Partial<Adiantamento>>({});
+  const [adiConta,    setAdiConta]    = useState("");
+  const [contasAdi,   setContasAdi]   = useState<ContaBancaria[]>([]);
   const [modalPrem,   setModalPrem]   = useState(false);
   const [premEdit,    setPremEdit]    = useState<Partial<Premiacao>>({});
   const [modalRep,    setModalRep]    = useState(false);
   const [repFolha,    setRepFolha]    = useState<Folha | null>(null);
   const [repNMeses,   setRepNMeses]   = useState(1);
+
+  // Contas bancárias da empresa selecionada (para baixar o adiantamento na hora)
+  useEffect(() => {
+    if (!empresaSel) { setContasAdi([]); return; }
+    listarContasPorEmpresa(empresaSel).then(setContasAdi).catch(() => setContasAdi([]));
+  }, [empresaSel]);
 
   // Carregar empresas
   useEffect(() => {
@@ -266,6 +274,19 @@ export default function FolhaEmpresaPage() {
     try {
       const { data: itens } = await supabase.from("folha_funcionarios").select("*").eq("folha_id", folha.id);
       const ogSalario = await resolverOperacaoGerencialPorClassificacao(folha.fazenda_id, "2.01.01.10.001");
+      // Adiantamentos pendentes (da competência ou sem competência) entram no desconto mesmo se foram
+      // lançados depois de a folha ser salva; vale o maior entre o valor da folha e a soma dos pendentes.
+      const pendentes = adiantamentos.filter(a => a.status === "pendente" && (!a.competencia_ref || a.competencia_ref === folha.competencia));
+      const idsDescontar: string[] = [];
+      for (const it of (itens ?? []) as any[]) {
+        const doFunc = pendentes.filter(a => a.funcionario_id === it.funcionario_id);
+        const soma = Math.round(doFunc.reduce((t, a) => t + a.valor, 0) * 100) / 100;
+        if (soma > (it.adiantamento ?? 0) + 0.005) {
+          await supabase.from("folha_funcionarios").update({ adiantamento: soma }).eq("id", it.id);
+          it.adiantamento = soma;
+        }
+        if ((it.adiantamento ?? 0) > 0) idsDescontar.push(...doFunc.map(a => a.id as string));
+      }
       for (const it of (itens ?? [])) {
         const liq = Math.max(0, it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios);
         const { data: lancamento } = await supabase.from("lancamentos").insert({
@@ -277,7 +298,7 @@ export default function FolhaEmpresaPage() {
         }).select("id").single();
         if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
       }
-      await supabase.from("adiantamentos_salario").update({ status: "descontado" }).eq("fazenda_id", folha.fazenda_id).eq("competencia_ref", folha.competencia).eq("status", "pendente");
+      if (idsDescontar.length) await supabase.from("adiantamentos_salario").update({ status: "descontado" }).in("id", idsDescontar);
       await supabase.from("folha_pagamento").update({ status: "fechado" }).eq("id", folha.id);
       setMsg("Folha fechada e CPs gerados."); carregar();
     } catch (e: any) { setMsg("Erro: " + e.message); }
@@ -287,22 +308,32 @@ export default function FolhaEmpresaPage() {
   async function salvarAdiantamento() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) { setMsg("Preencha funcionário, data e valor."); return; }
+    if (!adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
     setSaving(true);
     try {
       const ogAdiantFunc = await resolverOperacaoGerencialPorClassificacao(fazendaId, "2.01.01.09.002");
-      const { data: lanc } = await supabase.from("lancamentos").insert({
+      const { data: lanc, error: lancErr } = await supabase.from("lancamentos").insert({
         fazenda_id: fazendaId, empresa_id: empresaSel, tipo: "pagar",
         descricao: `Adiantamento — ${funcionarios.find(f=>f.id===adiEdit.funcionario_id)?.nome ?? ""}${adiEdit.descricao ? ` — ${adiEdit.descricao}` : ""}`,
         valor: adiEdit.valor, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Adiantamentos",
         operacao_gerencial_id: ogAdiantFunc ?? null,
         data_vencimento: adiEdit.data, data_lancamento: adiEdit.data,
+        origem_lancamento: "folha",
       }).select("id").single();
+      if (lancErr || !lanc?.id) throw new Error(`Não foi possível gerar o CP do adiantamento: ${lancErr?.message ?? "sem retorno"}`);
       await supabase.from("adiantamentos_salario").insert({
         fazenda_id: fazendaId, funcionario_id: adiEdit.funcionario_id, data: adiEdit.data,
         valor: adiEdit.valor, competencia_ref: adiEdit.competencia_ref || null,
-        descricao: adiEdit.descricao || null, lancamento_id: lanc?.id ?? null, status: "pendente",
+        descricao: adiEdit.descricao || null, lancamento_id: lanc.id, status: "pendente",
       });
-      setMsg("Adiantamento registrado e CP gerado."); setModalAdi(false); setAdiEdit({}); carregar();
+      try {
+        // Adiantamento é dinheiro que já saiu: CP nasce baixado na conta informada (entra no fluxo de caixa)
+        await baixarLancamento(lanc.id, adiEdit.valor, adiEdit.data, adiConta);
+        setMsg("Adiantamento registrado, CP gerado e baixado na conta selecionada.");
+      } catch (eb: any) {
+        setMsg(`Adiantamento registrado e CP gerado, mas a baixa falhou: ${eb.message}. Baixe o CP manualmente em Contas a Pagar.`);
+      }
+      setModalAdi(false); setAdiEdit({}); carregar();
     } catch (e: any) { setMsg("Erro: " + e.message); }
     finally { setSaving(false); }
   }
@@ -675,6 +706,7 @@ export default function FolhaEmpresaPage() {
                 <label style={S.label}>Descontar na competência</label>
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
               </div>
+              <div><label style={S.label}>Conta bancária (de onde saiu o dinheiro) *</label><select value={adiConta} onChange={e=>setAdiConta(e.target.value)} style={{ ...S.inp, width:"100%" }}><option value="">Selecionar...</option>{contasAdi.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</select><span style={{ fontSize:11, color:"#888" }}>O adiantamento entra no CP já baixado nesta conta, na data informada.</span></div>
               <div><label style={S.label}>Descrição / Motivo</label><input type="text" value={adiEdit.descricao??""} onChange={e=>setAdiEdit(p=>({...p,descricao:e.target.value}))} style={{ ...S.inp, width:"100%" }} placeholder="Ex: Adiantamento quinzenal" /></div>
             </div>
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
