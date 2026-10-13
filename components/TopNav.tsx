@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import AppearanceSettings from "./AppearanceSettings";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
@@ -315,7 +316,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [showQr,           setShowQr]           = useState(false);
   const [qrDataUrl,        setQrDataUrl]        = useState("");
   const [showPalette,      setShowPalette]      = useState(false);
-  const [currentPalette,   setCurrentPalette]   = useState("default");
   const [showBell,         setShowBell]         = useState(false);
   const [desatualizado,    setDesatualizado]    = useState(false);
   const palRef  = useRef<HTMLDivElement>(null);
@@ -454,23 +454,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
-
-  // Lê paleta salva no mount e aplica no DOM (o inline script do layout.tsx já
-  // aplicou no SSR, mas este efeito garante consistência em hydration mismatch)
-  useEffect(() => {
-    try {
-      const p = localStorage.getItem("arato-palette") ?? "default";
-      setCurrentPalette(p);
-      document.documentElement.setAttribute("data-palette", p);
-    } catch { /* */ }
-  }, []);
-
-  function applyPalette(name: string) {
-    setCurrentPalette(name);
-    setShowPalette(false);
-    try { localStorage.setItem("arato-palette", name); } catch { /* */ }
-    document.documentElement.setAttribute("data-palette", name);
-  }
 
   const isAtivo = (path: string) => {
     const [p, q] = path.split("?");
@@ -797,34 +780,16 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             <div ref={palRef} style={{ position: "relative" }}>
               <button
                 onClick={() => setShowPalette(v => !v)}
-                title="Trocar paleta de cores"
+                title="Escolher paleta e modo de exibição"
+                aria-label="Aparência"
+                aria-expanded={showPalette}
                 style={{ background: showPalette ? "rgba(201,146,27,0.18)" : "var(--bg-input)", border: `0.5px solid ${showPalette ? "rgba(201,146,27,0.5)" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28 }}
               >
                 🎨
               </button>
               {showPalette && (
-                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-modal)", padding: 10, display: "flex", flexDirection: "column", gap: 4, minWidth: 170, zIndex: 9999 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", padding: "0 4px 4px", borderBottom: "0.5px solid var(--border)", marginBottom: 2 }}>Paleta de cores</div>
-                  {[
-                    { id: "default", label: "Arato",  f1: "#0A1628", f2: "#1A4870" },
-                    { id: "pitch",   label: "Pitch",   f1: "#18181B", f2: "#27272A" },
-                    { id: "terra",   label: "Terra",   f1: "#1C1512", f2: "#2B1D16" },
-                    { id: "alto",    label: "Alto",    f1: "#1B2235", f2: "#243252" },
-                    { id: "campo",   label: "Campo",   f1: "#14201A", f2: "#1D3325" },
-                  ].map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => applyPalette(p.id)}
-                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, border: currentPalette === p.id ? "1.5px solid #C9921B" : "1.5px solid transparent", background: currentPalette === p.id ? "rgba(201,146,27,0.08)" : "transparent", cursor: "pointer", width: "100%", textAlign: "left" }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", borderRadius: 4, overflow: "hidden", width: 28, height: 20, flexShrink: 0 }}>
-                        <div style={{ background: p.f1, flex: "55%" }} />
-                        <div style={{ background: p.f2, flex: "45%" }} />
-                      </div>
-                      <span style={{ fontSize: 12, fontWeight: currentPalette === p.id ? 700 : 500, color: currentPalette === p.id ? "#C9921B" : "var(--text-1)" }}>{p.label}</span>
-                      {currentPalette === p.id && <span style={{ marginLeft: "auto", fontSize: 10, color: "#C9921B" }}>✓</span>}
-                    </button>
-                  ))}
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, boxShadow: "var(--shadow-modal)", padding: 10, display: "flex", flexDirection: "column", gap: 4, width: 270, maxWidth: "calc(100vw - 32px)", maxHeight: "70vh", overflowY: "auto", zIndex: 9999 }}>
+                  <AppearanceSettings compact />
                 </div>
               )}
             </div>

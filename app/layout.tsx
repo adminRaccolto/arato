@@ -8,6 +8,8 @@ import Footer from "../components/Footer";
 import SidebarAtalhos from "../components/SidebarAtalhos";
 import OliviaWidget from "../components/OliviaWidget";
 import "./globals.css";
+import AppearanceProvider from "../components/AppearanceProvider";
+import { APPEARANCE_SCRIPT } from "../lib/appearance";
 
 export const metadata: Metadata = {
   title: "Arato — Gestão Agrícola",
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 // Script inline que aplica o tema ANTES da primeira pintura — elimina flash
-const THEME_SCRIPT = `(function(){try{document.documentElement.setAttribute('data-theme','light');localStorage.removeItem('arato-theme');var p=localStorage.getItem('arato-palette')||'default';document.documentElement.setAttribute('data-palette',p);}catch(e){}})();`
+const THEME_SCRIPT = APPEARANCE_SCRIPT;
 
 // Desregistra qualquer Service Worker que ainda esteja instalado no navegador
 // de quem usou o módulo de campo antigo (o sw.js foi removido junto com ele).
@@ -39,7 +41,7 @@ const SW_SCRIPT = `(function(){
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         {/* eslint-disable-next-line react/no-danger */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
@@ -49,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body style={{ margin: 0, padding: 0, display: "flex", flexDirection: "column", minHeight: "100vh", paddingBottom: 28 }}>
+        <AppearanceProvider />
         <AuthProvider>
           <ConfirmarAcaoHost />
           <BannerRelogioDessincronizado />

@@ -57,8 +57,8 @@ function LoginInner() {
     border: "1.5px solid rgba(255,255,255,0.50)",
     borderRadius: 12, fontSize: 14,
     outline: "none", boxSizing: "border-box",
-    color: "#0B1E35",
-    background: "rgba(255,255,255,0.90)",
+    color: "var(--text-1)",
+    background: "var(--bg-input)",
     fontFamily: "system-ui, sans-serif",
     transition: "border-color 0.15s, box-shadow 0.15s",
   };
@@ -140,18 +140,18 @@ function LoginInner() {
         {/* ── ALERTAS ── */}
         {erro && (
           <div style={{
-            background: "rgba(254,242,242,0.92)", border: "1px solid #FECACA",
+            background: "var(--status-danger-bg)", border: "1px solid var(--border)",
             borderRadius: 10, padding: "11px 14px", marginBottom: 16,
-            fontSize: 13, color: "#B91C1C", display: "flex", gap: 8, alignItems: "flex-start",
+            fontSize: 13, color: "var(--status-danger-text)", display: "flex", gap: 8, alignItems: "flex-start",
           }}>
             <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>{erro}
           </div>
         )}
         {sucesso && (
           <div style={{
-            background: "rgba(240,253,244,0.92)", border: "1px solid #BBF7D0",
+            background: "var(--status-success-bg)", border: "1px solid var(--border)",
             borderRadius: 10, padding: "11px 14px", marginBottom: 16,
-            fontSize: 13, color: "#15803D", display: "flex", gap: 8, alignItems: "flex-start",
+            fontSize: 13, color: "var(--status-success-text)", display: "flex", gap: 8, alignItems: "flex-start",
           }}>
             <span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>{sucesso}
           </div>

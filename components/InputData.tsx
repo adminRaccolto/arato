@@ -84,7 +84,7 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
       />
       {calendario && !disabled && !readOnly && (
         <span className="input-data-calendario" style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 30, height: 30, border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 5, background: "var(--bg-input, #F4F6FA)", color: "var(--text-2, #1A4870)" }}>
-          <style>{`.input-data-calendario:focus-within { outline: 2px solid #1A4870; outline-offset: 2px; } .input-data-calendario input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; cursor: pointer; }`}</style>
+          <style>{`.input-data-calendario:focus-within { outline: 2px solid var(--c-primary); outline-offset: 2px; } .input-data-calendario input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; cursor: pointer; }`}</style>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <rect x="3" y="5" width="18" height="16" rx="2" />
             <path d="M16 3v4M8 3v4M3 11h18" />
@@ -115,7 +115,7 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
       {!disabled && !readOnly && (
         <button className="input-data-hoje" type="button" onClick={e => { e.stopPropagation(); marcarHoje(); }} title={type === "month" ? "Preencher com o mês atual" : type === "date" ? "Preencher com a data de hoje" : "Preencher com a data e hora atuais"}
           disabled={calendario && !dentroDoPeriodo(dataLocalAgora(type))}
-          style={{ padding: "2px 6px", fontSize: 10, fontWeight: 600, borderRadius: 5, border: "0.5px solid #DDE2EE", background: "#F4F6FA", color: "#1A4870", cursor: "pointer", whiteSpace: "nowrap" }}>
+          style={{ padding: "2px 6px", fontSize: 10, fontWeight: 600, borderRadius: 5, border: "1px solid var(--border-control)", background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
           {type === "month" ? "Atual" : type === "date" ? "Hoje" : "Agora"}
         </button>
       )}

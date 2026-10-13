@@ -8,6 +8,7 @@ import type { ProdutorIE } from "../../../lib/supabase";
 import { listarIEsDeMultiplosProdutores, buscarRegistroPorDocumentoNaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
+import AppearanceSettings from "../../../components/AppearanceSettings";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface CfgModulo { [key: string]: string | number | boolean }
@@ -78,7 +79,7 @@ const txta = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
 );
 
 const secHeader = (label: string) => (
-  <div style={{ fontSize: 11, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: "0.5px solid var(--border)", paddingBottom: 6, marginBottom: 14 }}>
+  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-1)", textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: "0.5px solid var(--border)", paddingBottom: 6, marginBottom: 14 }}>
     {label}
   </div>
 );
@@ -519,17 +520,6 @@ function ParametrosSistemaContent() {
   // .in("fazenda_id", ...) em vez de .eq("fazenda_id", fazendaAtiva).
   const [contaFazendaIds, setContaFazendaIds] = useState<string[]>([]);
 
-  // ── Paleta de cores
-  const [paletaAtual, setPaletaAtual] = useState<string>("default");
-  useEffect(() => {
-    try { setPaletaAtual(localStorage.getItem("arato-palette") ?? "default"); } catch { /* */ }
-  }, []);
-  function aplicarPaleta(id: string) {
-    setPaletaAtual(id);
-    try { localStorage.setItem("arato-palette", id); } catch { /* */ }
-    document.documentElement.setAttribute("data-palette", id);
-  }
-
   // ── Teste de conexão CT-e
   const [cteTestando, setCteTestando] = useState(false);
   const [cteTesteResult, setCteTesteResult] = useState<{ ok: boolean; diagnostico: string; detalhe?: string; elapsed_ms?: number } | null>(null);
@@ -895,7 +885,7 @@ function ParametrosSistemaContent() {
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Operações Fiscais</h2>
+          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Operações Fiscais</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Define o perfil fiscal de cada tipo de saída — CFOP, ICMS, PIS/COFINS e IBS/CBS.
             Ao emitir uma NF-e o usuário escolhe a operação; o sistema aplica automaticamente o tratamento correto.
@@ -932,7 +922,7 @@ function ParametrosSistemaContent() {
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["Operação","CFOP int.","CFOP ext.","ICMS interno","ICMS externo","Alíq%","B.Red%","PIS","COFINS","IBS/CBS","Status",""].map(h => (
-                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -946,7 +936,7 @@ function ParametrosSistemaContent() {
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{op.nome}</div>
                       {op.descricao && <div style={{ color: "var(--text-3)", fontSize: 11, maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={op.descricao}>{op.descricao}</div>}
                     </td>
-                    <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700, color: "#111111" }}>{op.cfop_interno}</td>
+                    <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700, color: "var(--text-1)" }}>{op.cfop_interno}</td>
                     <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700, color: "var(--text-2)" }}>{op.cfop_externo !== op.cfop_interno ? op.cfop_externo : "—"}</td>
                     <td style={{ padding: "8px 10px" }}>{cstBadge(op.icms_cst_interno)}</td>
                     <td style={{ padding: "8px 10px" }}>{cstBadge(op.icms_cst_externo)}</td>
@@ -1107,7 +1097,7 @@ function ParametrosSistemaContent() {
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
+          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço e certificado próprios.
             A tributação por produto é configurada na aba <strong>Tributação NCM</strong>.
@@ -1156,7 +1146,7 @@ function ParametrosSistemaContent() {
           )}
         </div>
 
-        <div style={{ background: "#F2F2F2", border: "0.5px solid #444444", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 12, color: "#111111", lineHeight: 1.6 }}>
+        <div style={{ background: "#F2F2F2", border: "0.5px solid #444444", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 12, color: "var(--text-1)", lineHeight: 1.6 }}>
           <strong>Certificado digital:</strong> faça upload do arquivo <code>.pfx</code> (e-CNPJ ou e-CPF) em{" "}
           <strong>Supabase → Storage → Bucket: <code>certificados</code></strong> (privado). Informe o caminho relativo e a senha.
           O sistema baixa e assina automaticamente cada NF-e.
@@ -1249,7 +1239,7 @@ function ParametrosSistemaContent() {
 
                     {/* Banner de preenchimento automático */}
                     <div style={{ marginBottom: 18, padding: "9px 14px", background: "#F2F2F2", border: "0.5px solid #BFDBFE", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                      <span style={{ fontSize: 12, color: "#111111" }}>
+                      <span style={{ fontSize: 12, color: "var(--text-1)" }}>
                         Os dados de identificação e endereço podem ser preenchidos automaticamente a partir do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
                       </span>
                       <button
@@ -1290,9 +1280,9 @@ function ParametrosSistemaContent() {
                             return (
                               <div key={ie.id} style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 10, background: "var(--bg-page)" }}>
                                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-                                  <strong style={{ fontSize: 13, color: "#111111" }}>IE {ie.inscricao_estadual}</strong>
+                                  <strong style={{ fontSize: 13, color: "var(--text-1)" }}>IE {ie.inscricao_estadual}</strong>
                                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>{ie.municipio ?? "—"}/{ie.estado}</span>
-                                  {!ie.ativa && <span style={{ fontSize: 10, background: "#F3F4F6", color: "#666", padding: "1px 8px", borderRadius: 10 }}>Inativa</span>}
+                                  {!ie.ativa && <span style={{ fontSize: 10, background: "#F3F4F6", color: "var(--text-2)", padding: "1px 8px", borderRadius: 10 }}>Inativa</span>}
                                 </div>
                                 <div style={{ marginBottom: 10 }}>
                                   {semEndereco ? (
@@ -1445,7 +1435,7 @@ function ParametrosSistemaContent() {
                                 Certificado não configurado — NF-e não pode ser emitida.
                               </div>
                             )}
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "#111111", marginBottom: 10 }}>{hasCert ? "Atualizar certificado" : "Enviar certificado A1 (.pfx)"}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>{hasCert ? "Atualizar certificado" : "Enviar certificado A1 (.pfx)"}</div>
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                               <div>
                                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Arquivo .pfx / .p12</div>
@@ -1597,7 +1587,7 @@ function ParametrosSistemaContent() {
                     {/* Textos por tipo de operação */}
                     <div style={{ marginBottom: 24 }}>
                       {secHeader("Textos por Tipo de Operação")}
-                      <p style={{ fontSize: 12, color: "#666", marginTop: 0, marginBottom: 14 }}>
+                      <p style={{ fontSize: 12, color: "var(--text-2)", marginTop: 0, marginBottom: 14 }}>
                         Cada texto é adicionado ao <code>infCpl</code> somente quando a operação correspondente é emitida.
                         Use variáveis como <code>[NUMERO]</code>, <code>[DATA]</code>, <code>[ORIGEM]</code>, <code>[DESTINO]</code>.
                       </p>
@@ -1657,7 +1647,7 @@ function ParametrosSistemaContent() {
                       if (!preview) return null;
                       return (
                         <div style={{ background: "#F2F2F2", border: "0.5px solid #2A2A2A", borderRadius: 8, padding: 12, marginBottom: 24 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Pré-visualização do infCpl (base — todas as NF-e):</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Pré-visualização do infCpl (base — todas as NF-e):</div>
                           <div style={{ fontSize: 12, color: "#0D0D0D", lineHeight: 1.6 }}>{preview}</div>
                         </div>
                       );
@@ -1702,7 +1692,7 @@ function ParametrosSistemaContent() {
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Tributação por NCM</h2>
+          <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Tributação por NCM</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Define ICMS, PIS, COFINS, IBS e CBS para cada NCM. O sistema busca automaticamente essa tabela ao gerar uma NF-e.
           </p>
@@ -1735,7 +1725,7 @@ function ParametrosSistemaContent() {
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["NCM","Descrição","ICMS Interno","ICMS Externo","Alíq%","B.Red%","Efetiva","PIS","COFINS","IBS+CBS (c/red.)","infCpl",""].map(h => (
-                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1822,7 +1812,7 @@ function ParametrosSistemaContent() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["CNPJ","Razão Social","RNTRC","UF","Status",""].map(h => (
-                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
@@ -1854,7 +1844,7 @@ function ParametrosSistemaContent() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Placa","Tipo Veículo","Propriedade","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
-                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
@@ -1896,7 +1886,7 @@ function ParametrosSistemaContent() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Nome","CPF","Tipo","CNH","Validade CNH","Status",""].map(h => (
-                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
@@ -1984,7 +1974,7 @@ function ParametrosSistemaContent() {
             <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros do Sistema</h1>
             <span style={{ fontSize: 12, background: "#FBF3E0", color: "#C9921B", padding: "2px 10px", borderRadius: 12, fontWeight: 600, border: "0.5px solid #C9921B" }}>Configurações externas — sem código</span>
           </div>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#666" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-2)" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
         </div>
 
         <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
@@ -1992,9 +1982,9 @@ function ParametrosSistemaContent() {
             <button key={t.id} onClick={() => setAba(t.id)} style={{
               padding: "8px 18px", border: "none", borderRadius: "8px 8px 0 0",
               fontWeight: aba === t.id ? 700 : 400, fontSize: 13,
-              background: aba === t.id ? "#fff" : "transparent",
-              color: aba === t.id ? "#111111" : "#666",
-              borderBottom: aba === t.id ? "2px solid #111111" : "2px solid transparent",
+              background: aba === t.id ? "var(--bg-card)" : "transparent",
+              color: aba === t.id ? "var(--text-1)" : "var(--text-2)",
+              borderBottom: aba === t.id ? "2px solid var(--c-primary)" : "2px solid transparent",
               cursor: "pointer", marginBottom: -1.5,
             }}>{t.label}</button>
           ))}
@@ -2005,71 +1995,12 @@ function ParametrosSistemaContent() {
           {aba === "aparencia" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
 
-              {/* ── Tema / Paleta ────────────────────────────────────── */}
-              <div>
-                <div style={{ marginBottom: 18 }}>
-                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Tema de Cores</h2>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Escolha a aparência do sistema. A seleção é salva no navegador.</p>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-                  {[
-                    { id: "default", label: "Arato",  descricao: "Azul petróleo original", f1: "#0A1628", f2: "#1A4870", bg: "#F4F6FA", accent: "#C9921B", card: "#ffffff" },
-                    { id: "pitch",   label: "Pitch",   descricao: "Monocromático zinc",     f1: "#18181B", f2: "#27272A", bg: "#FAFAFA", accent: "#3F3F46", card: "#ffffff" },
-                    { id: "terra",   label: "Terra",   descricao: "Tons terrosos quentes",  f1: "#1C1512", f2: "#2B1D16", bg: "#FAF9F6", accent: "#C9921B", card: "#ffffff" },
-                    { id: "alto",    label: "Alto",    descricao: "Azul meia-noite",         f1: "#1B2235", f2: "#243252", bg: "#F5F7F9", accent: "#1B2235", card: "#ffffff" },
-                    { id: "campo",   label: "Campo",   descricao: "Verde oliva",             f1: "#14201A", f2: "#1D3325", bg: "#F5F8F2", accent: "#1D3325", card: "#ffffff" },
-                  ].map(p => {
-                    const ativo = paletaAtual === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => aplicarPaleta(p.id)}
-                        style={{
-                          display: "flex", flexDirection: "column", gap: 0,
-                          width: 140, border: ativo ? "2.5px solid #C9921B" : "1.5px solid #DDE2EE",
-                          borderRadius: 10, overflow: "hidden", cursor: "pointer",
-                          background: "#ffffff",
-                          boxShadow: ativo ? "0 0 0 4px rgba(201,146,27,0.18), 0 2px 8px rgba(0,0,0,0.08)" : "0 1px 3px rgba(0,0,0,0.07)",
-                          transition: "box-shadow 0.15s, border-color 0.15s",
-                          padding: 0, outline: "none",
-                        }}
-                      >
-                        {/* Barra nav faixa1 */}
-                        <div style={{ height: 14, background: p.f1 }} />
-                        {/* Barra nav faixa2 */}
-                        <div style={{ height: 10, background: p.f2, display: "flex", alignItems: "center", gap: 3, padding: "0 5px" }}>
-                          {[60, 45, 50, 40].map((w, i) => (
-                            <div key={i} style={{ height: 3, width: w, background: "rgba(255,255,255,0.45)", borderRadius: 2 }} />
-                          ))}
-                        </div>
-                        {/* Página mock */}
-                        <div style={{ background: p.bg, padding: "6px 7px", display: "flex", flexDirection: "column", gap: 3 }}>
-                          {/* Card mock */}
-                          <div style={{ background: p.card, borderRadius: 4, border: "0.5px solid rgba(0,0,0,0.07)", padding: "4px 5px", display: "flex", flexDirection: "column", gap: 2 }}>
-                            <div style={{ height: 3, background: p.accent, borderRadius: 1, width: "55%", opacity: 0.7 }} />
-                            <div style={{ height: 3, background: "rgba(0,0,0,0.1)", borderRadius: 1, width: "80%" }} />
-                            <div style={{ height: 3, background: "rgba(0,0,0,0.06)", borderRadius: 1, width: "65%" }} />
-                          </div>
-                          <div style={{ height: 3, background: p.accent, borderRadius: 2, width: "40%", opacity: 0.5 }} />
-                        </div>
-                        {/* Label */}
-                        <div style={{ padding: "6px 8px 8px", background: "#ffffff", borderTop: "0.5px solid #DDE2EE" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: ativo ? "#C9921B" : "#1a1a1a" }}>{p.label}</span>
-                            {ativo && <span style={{ fontSize: 11, color: "#C9921B" }}>✓</span>}
-                          </div>
-                          <div style={{ fontSize: 10, color: "#888888", marginTop: 1 }}>{p.descricao}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <AppearanceSettings />
 
               {/* ── Identidade Visual ────────────────────────────────── */}
               <div>
                 <div style={{ marginBottom: 24 }}>
-                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Identidade Visual</h2>
+                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Identidade Visual</h2>
                   <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
                 </div>
 
@@ -2138,7 +2069,7 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
                 <div>
-                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros CT-e 4.00 — por Emitente</h2>
+                  <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros CT-e 4.00 — por Emitente</h2>
                   <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
                     Cada empresa emissora tem sua própria série, numeração, RNTRC e certificado.
                     Autorizador por UF (MT → SVMT, outros → SVRS/SVSP).
@@ -2155,7 +2086,7 @@ function ParametrosSistemaContent() {
                         {cteTesteResult.ok ? "✓ SEFAZ acessível" : "✗ Falha de conexão"}
                       </div>
                       <div style={{ color: cteTesteResult.ok ? "#166534" : "#991B1B", lineHeight: 1.4 }}>{cteTesteResult.diagnostico}</div>
-                      {cteTesteResult.elapsed_ms && <div style={{ color: "#666", marginTop: 3 }}>{cteTesteResult.elapsed_ms}ms</div>}
+                      {cteTesteResult.elapsed_ms && <div style={{ color: "var(--text-2)", marginTop: 3 }}>{cteTesteResult.elapsed_ms}ms</div>}
                     </div>
                   )}
                 </div>
@@ -2255,7 +2186,7 @@ function ParametrosSistemaContent() {
                                   </div>
                                 </div>
                               )}
-                              <a href="/configuracoes/modulos?aba=fiscal" style={{ fontSize: 11, color: "#111111", textDecoration: "underline" }}>Gerenciar em Fiscal</a>
+                              <a href="/configuracoes/modulos?aba=fiscal" style={{ fontSize: 11, color: "var(--text-1)", textDecoration: "underline" }}>Gerenciar em Fiscal</a>
                             </div>
                           ) : (
                             <div style={{ background: "#FEF3C7", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5A12" }}>
@@ -2294,7 +2225,7 @@ function ParametrosSistemaContent() {
           {aba === "mdfe" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros MDF-e — por Emitente</h2>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros MDF-e — por Emitente</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Manifesto Eletrônico de Documentos Fiscais — obrigatório no transporte interestadual de grãos.</p>
               </div>
 
@@ -2446,7 +2377,7 @@ function ParametrosSistemaContent() {
           {aba === "transportes" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Transportes</h2>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Transportes</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Transportadoras, frota própria e motoristas. Usados na expedição e MDF-e.</p>
               </div>
               {renderTransportes()}
@@ -2456,7 +2387,7 @@ function ParametrosSistemaContent() {
           {aba === "integracoes" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Integrações Externas</h2>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Integrações Externas</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Credenciais de serviços externos. Armazenadas com segurança no banco — RLS por fazenda.</p>
               </div>
               <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#7A5A12" }}>
@@ -2469,7 +2400,7 @@ function ParametrosSistemaContent() {
           {aba === "expedicao" && (
             <div>
               <div style={{ marginBottom: 20 }}>
-                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#111111" }}>Parâmetros de Expedição</h2>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros de Expedição</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Configurações do módulo de expedição de grãos — pesos, tolerâncias e comportamento automático.</p>
               </div>
               {renderFields("expedicao", EXPEDICAO_FIELDS)}
@@ -2505,7 +2436,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interestadual", sel({ value: modalOp.icms_cst_externo ?? "020", onChange: e => setModalOp(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.icms_aliq ?? 12, onChange: e => setModalOp(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalOp.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
-              {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#111111" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
+              {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div style={{ marginBottom: 14 }}>{secHeader("PIS / COFINS")}</div>
@@ -2563,7 +2494,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.icms_aliq ?? 12, onChange: e => setModalNcm(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalNcm.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
-              {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#111111" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
+              {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
