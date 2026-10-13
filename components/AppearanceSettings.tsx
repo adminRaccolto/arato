@@ -8,7 +8,6 @@ export default function AppearanceSettings({ compact = false }: { compact?: bool
   return (
     <section className={`appearance-settings${compact ? " appearance-compact" : ""}`} aria-label="Aparência do sistema">
       {!compact && <><h2>Tema de cores</h2><p className="appearance-description">Escolha uma paleta e o modo de exibição. A preferência fica salva neste navegador.</p></>}
-      <LayoutSettings density />
       <div className="appearance-mode" role="group" aria-label="Modo de exibição">
         {MODES.map(item => <button type="button" key={item.id} aria-pressed={mode === item.id} onClick={() => setMode(item.id)}>{item.label}</button>)}
       </div>
@@ -27,6 +26,7 @@ export default function AppearanceSettings({ compact = false }: { compact?: bool
           </button>;
         })}
       </div>
+      <details className="layout-disclosure"><summary>Modelo de layout e densidade</summary><LayoutSettings density /></details>
     </section>
   );
 }

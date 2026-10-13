@@ -1,10 +1,14 @@
 "use client";
+import { usePathname } from "next/navigation";
+import { isPublicLayout } from "../lib/layout-preferences";
+import LayoutSettings from "./LayoutSettings";
 import { useAuth } from "./AuthProvider";
 
 export default function Footer() {
   const { anoSafraVigenteDesc } = useAuth();
 
-  if (!anoSafraVigenteDesc) return null;
+  const pathname = usePathname();
+  if (isPublicLayout(pathname)) return null;
 
   return (
     <footer style={{
@@ -28,7 +32,8 @@ export default function Footer() {
         {anoSafraVigenteDesc}
       </span>
 
-      <span style={{ marginLeft: "auto", color: "#BBB", fontWeight: 400 }}>
+      <details className="layout-disclosure footer-layout" style={{ marginLeft: "auto" }}><summary title="Modelo de layout e densidade">Layout ▴</summary><div><LayoutSettings density /></div></details>
+      <span style={{ color: "#BBB", fontWeight: 400 }}>
         Arato
       </span>
     </footer>

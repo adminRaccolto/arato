@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import AppearanceSettings from "./AppearanceSettings";
-import LayoutSettings from "./LayoutSettings";
 import ModernNavigation from "./ModernNavigation";
 import { useLayout } from "./LayoutProvider";
 import Link from "next/link";
@@ -445,7 +444,6 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <LayoutSettings />
             <button data-arato-button="secondary"
               onClick={() => setShowQr(true)}
               title="App Campo — instalar no celular"

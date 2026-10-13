@@ -67,7 +67,7 @@ for (const encoded of rgbaColors) {
   }
 }
 const excluded = ':not(:where([data-theme-static], [data-theme-static] *, .print-area, .print-area *, #rom-print-area, #rom-print-area *))';
-const modernOrDark = ':is(:root[data-theme="dark"], :root[data-layout="new"][data-theme="light"])';
+const modernOrDark = ':is(:root[data-theme="dark"], :root[data-layout="new"][data-layout-workspace="true"][data-theme="light"])';
 const rules = [];
 const brightRules = [];
 // O Branco também adapta fundos e contornos neutros fixos dos formulários antigos.
