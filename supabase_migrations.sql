@@ -16560,3 +16560,50 @@ CREATE TRIGGER trg_desvincular_extrato_reabre AFTER UPDATE OF status ON empresa_
   EXECUTE FUNCTION fn_desvincular_extrato_titulo();
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 340 — Ano safra na Folha de Pagamento e no Histórico de Manutenção (DRE por ano safra)
+-- =============================================================================
+-- A DRE passa a ser montada por ANO SAFRA (consolidada) ou por ciclo. Mão de obra e manutenção entram pelo
+-- ano safra em que a competência/data cai (regime de competência). A coluna é PREENCHIDA PELO SISTEMA
+-- (gatilho abaixo), nunca pelo usuário, e guarda o vínculo real (FK) com o ano safra.
+ALTER TABLE folha_pagamento       ADD COLUMN IF NOT EXISTS ano_safra_id uuid REFERENCES anos_safra(id) ON DELETE SET NULL;
+ALTER TABLE historico_manutencao  ADD COLUMN IF NOT EXISTS ano_safra_id uuid REFERENCES anos_safra(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_folha_pagamento_ano_safra      ON folha_pagamento(ano_safra_id);
+CREATE INDEX IF NOT EXISTS idx_historico_manutencao_ano_safra ON historico_manutencao(ano_safra_id);
+
+-- Ano safra vigente numa data, dentro da conta do cliente dono da fazenda
+CREATE OR REPLACE FUNCTION fn_ano_safra_da_data(p_fazenda uuid, p_data date) RETURNS uuid LANGUAGE sql STABLE AS $$
+  SELECT a.id FROM anos_safra a
+   WHERE a.conta_id = (SELECT f.conta_id FROM fazendas f WHERE f.id = p_fazenda)
+     AND p_data BETWEEN a.data_inicio AND a.data_fim
+   ORDER BY a.data_inicio DESC LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION fn_folha_ano_safra() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.competencia IS NOT NULL THEN
+    NEW.ano_safra_id := fn_ano_safra_da_data(NEW.fazenda_id, (NEW.competencia || '-01')::date);
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_folha_ano_safra ON folha_pagamento;
+CREATE TRIGGER trg_folha_ano_safra BEFORE INSERT OR UPDATE OF competencia ON folha_pagamento
+  FOR EACH ROW EXECUTE FUNCTION fn_folha_ano_safra();
+
+CREATE OR REPLACE FUNCTION fn_manutencao_ano_safra() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.data IS NOT NULL THEN
+    NEW.ano_safra_id := fn_ano_safra_da_data(NEW.fazenda_id, NEW.data::date);
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_manutencao_ano_safra ON historico_manutencao;
+CREATE TRIGGER trg_manutencao_ano_safra BEFORE INSERT OR UPDATE OF data ON historico_manutencao
+  FOR EACH ROW EXECUTE FUNCTION fn_manutencao_ano_safra();
+
+-- Preenche o que já existe
+UPDATE folha_pagamento SET ano_safra_id = fn_ano_safra_da_data(fazenda_id, (competencia || '-01')::date) WHERE competencia IS NOT NULL;
+UPDATE historico_manutencao SET ano_safra_id = fn_ano_safra_da_data(fazenda_id, data::date) WHERE data IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

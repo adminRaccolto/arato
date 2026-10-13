@@ -7,6 +7,7 @@ import { useAuth } from "../../../components/AuthProvider";
 // listarFazendas removido — usa authFazendaIds do AuthProvider para isolamento de tenant
 import type { Fazenda } from "../../../lib/supabase";
 import { getDreGrupo } from "../../../lib/seedOperacoesGerenciais";
+import { carregarCustosAno, GRUPO_POR_CATEGORIA_TEXTO, GRUPOS_INSUMO_JA_CONTADOS, type CustosAno } from "../../../lib/dre-custos";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type AnoSafra   = { id: string; descricao: string; fazenda_id?: string };
@@ -92,6 +93,8 @@ const fmtHa   = (v: number) => `${fmt(v)} sc/ha`;
 const CULT_LABELS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", milho2: "Milho 2ª", algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo" };
 
 // ─── Página ───────────────────────────────────────────────────
+type CpDre = { valor: number; categoria?: string; operacao_gerencial_id?: string; moeda?: string; sacas?: number; preco_saca_barter?: number };
+
 export default function DrePage() {
   const { fazendaId, fazendaIds: authFazendaIds, contaId } = useAuth();
 
@@ -207,6 +210,20 @@ export default function DrePage() {
 
     const resultados: DreData[] = [];
 
+    // Custos do ANO SAFRA (títulos de apropriação direta, consumo de combustível/manutenção, folha,
+    // arrendamento) — carregados uma vez; cada ciclo pega o que foi apontado a ele e o restante fica em
+    // "sem ciclo" (a regra de rateio entre ciclos é a próxima etapa). Ver lib/dre-custos.ts.
+    let custos: CustosAno = { porCiclo: {}, semCiclo: {} };
+    try {
+      const anoIds = [...new Set(ciclosArr.map(c => c.ano_safra_id))];
+      const { data: periodos } = await supabase.from("anos_safra").select("id, data_inicio, data_fim").in("id", anoIds);
+      const inicio = (periodos ?? []).map(a => a.data_inicio as string).filter(Boolean).sort()[0];
+      const fim = (periodos ?? []).map(a => a.data_fim as string).filter(Boolean).sort().at(-1);
+      if (inicio && fim) {
+        custos = await carregarCustosAno({ fazendaIds: fids, anoIds, inicio, fim, cicloIds: ciclosArr.map(c => c.id) });
+      }
+    } catch (e) { console.error("[DRE] custos do ano safra", e); }
+
     for (const cicloId of ciclosSel) {
       const ciclo = ciclosArr.find(c => c.id === cicloId);
       if (!ciclo) continue;
@@ -233,7 +250,7 @@ export default function DrePage() {
         supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("status_campo", "aprovado"),
         supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).maybeSingle(),
         supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
-        supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        Promise.resolve({ data: [] as CpDre[] }),
         supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("tipo", "pagar"),
         supabase.from("lancamentos").select("valor_juros, valor_multa, valor_desconto").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).in("status", ["baixado", "parcial"]),
       ]);
@@ -259,9 +276,15 @@ export default function DrePage() {
       // Helper: resolve DRE group for a CP row (uses classificacao when available, falls back to categoria)
       function cpGrupo(cp: { categoria?: string; operacao_gerencial_id?: string }): string {
         if (cp.operacao_gerencial_id && ogClassMap[cp.operacao_gerencial_id]) {
+          // Adiantamento a funcionário (2.01.01.09.002) é mão de obra, não "operações mecanizadas"
+          if (ogClassMap[cp.operacao_gerencial_id].startsWith("2.01.01.09.002")) return "cpv_rh_faz";
           return getDreGrupo(ogClassMap[cp.operacao_gerencial_id]);
         }
         const cat = cp.categoria ?? "";
+        // Lançamentos sem operação gerencial trazem a categoria como TEXTO ("Despesas Administrativas",
+        // "Peças / Manutenção", "Pessoal / Salários"...) — sem este mapa caíam em "outros" e sumiam do DRE.
+        const porTexto = GRUPO_POR_CATEGORIA_TEXTO[cat.trim().toLowerCase()] ?? (/^pr[êe]mio funcion/i.test(cat.trim()) ? "cpv_rh_faz" : undefined);
+        if (porTexto) return porTexto;
         if (cat === "operacoes_mecanizadas") return "cpv_agricultura";
         if (cat === "combustivel")           return "cpv_combustivel";
         if (cat === "manutencao")            return "cpv_manutencao";
@@ -285,6 +308,7 @@ export default function DrePage() {
       const grp: Record<string, number> = {};
       for (const cp of cpRows) {
         const g = cpGrupo(cp as { categoria?: string; operacao_gerencial_id?: string });
+        if (GRUPOS_INSUMO_JA_CONTADOS.has(g)) continue;
         const cpM = (cp as { moeda?: string }).moeda;
         const cpSacas = (cp as { sacas?: number }).sacas;
         const cpPreco = (cp as { preco_saca_barter?: number }).preco_saca_barter;
@@ -298,6 +322,8 @@ export default function DrePage() {
         const g = cpGrupo(ap);
         grp[g] = (grp[g] ?? 0) + (ap.valor ?? 0);
       }
+      // Custos apontados a este ciclo (títulos diretos, combustível, folha etc. — ver lib/dre-custos.ts)
+      for (const [k, v] of Object.entries(custos.porCiclo[cicloId] ?? {})) grp[k] = (grp[k] ?? 0) + v;
 
       // ── Receitas ──
       const totalSacas = (colheitasData ?? []).reduce((s, r) => s + (r.sacas_liquidas ?? 0), 0);
@@ -337,7 +363,7 @@ export default function DrePage() {
           supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", aux.id).eq("status_campo", "aprovado"),
           Promise.resolve({ data: null }),
           Promise.resolve({ data: null }),
-          supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          Promise.resolve({ data: [] as CpDre[] }),
           supabase.from("apoio_lancamentos").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", aux.id).eq("tipo", "pagar"),
         ]);
         aux_sementes     += (auxPl ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0) * pct;
@@ -359,15 +385,20 @@ export default function DrePage() {
           // Usa auxOgMap específico do auxiliar; cpGrupo como fallback para categoria
           let g: string;
           if (cp.operacao_gerencial_id && auxOgMap[cp.operacao_gerencial_id]) {
-            g = getDreGrupo(auxOgMap[cp.operacao_gerencial_id]);
+            g = auxOgMap[cp.operacao_gerencial_id].startsWith("2.01.01.09.002") ? "cpv_rh_faz" : getDreGrupo(auxOgMap[cp.operacao_gerencial_id]);
           } else {
             g = cpGrupo(cp);
           }
+          if (GRUPOS_INSUMO_JA_CONTADOS.has(g)) continue;
           const valorBRL = (cp as { moeda?: string; sacas?: number; preco_saca_barter?: number }).moeda === "barter" && (cp as { sacas?: number }).sacas && (cp as { preco_saca_barter?: number }).preco_saca_barter
             ? (cp as { sacas?: number }).sacas! * (cp as { preco_saca_barter?: number }).preco_saca_barter!
             : (cp.valor ?? 0);
           aux_grp[g] = (aux_grp[g] ?? 0) + valorBRL * pct;
         }
+      }
+      for (const aux of auxCiclos) {
+        const pctAux = (aux.absorcao_pct ?? 100) / 100;
+        for (const [k, v] of Object.entries(custos.porCiclo[aux.id] ?? {})) aux_grp[k] = (aux_grp[k] ?? 0) + v * pctAux;
       }
       // Merge aux_grp → grp (deve acontecer ANTES de operacoes_mecanizadas/combustivel/etc.)
       for (const [k, v] of Object.entries(aux_grp)) grp[k] = (grp[k] ?? 0) + v;
@@ -465,6 +496,35 @@ export default function DrePage() {
         resultado_ha: resultado_liquido / area,
         produtividade_scha: sacas / area,
         preco_medio_sc: sacas > 0 ? receita_total / sacas : preco_medio,
+      });
+    }
+
+    // Custos do ano safra SEM ciclo apontado: coluna própria (até existir a regra de rateio entre ciclos).
+    // No consolidado por ano safra ela soma junto; na visão por ciclo aparece separada.
+    const sc = custos.semCiclo;
+    if (Object.values(sc).some(v => v > 0.005) && resultados.length > 0) {
+      const g = (k: string) => sc[k] ?? 0;
+      const operacoes_mecanizadas = g("cpv_agricultura") + g("cpv_mecanizacao") + g("cpv_fretes") + g("cpv_outros");
+      const combustivel = g("cpv_combustivel"), manutencao = g("cpv_manutencao");
+      const cpv_total = operacoes_mecanizadas + combustivel + manutencao;
+      const arrendamento = g("arrendamento"), mao_obra = g("cpv_rh_faz") + g("desp_rh_adm");
+      const administrativo = g("desp_adm") + g("desp_impostos") + g("desp_frota") + g("depreciacao");
+      const seguro_lavoura = g("seguro_lavoura"), assistencia_tecnica = g("assistencia_tecnica");
+      const desp_operacionais_total = arrendamento + mao_obra + administrativo + seguro_lavoura + assistencia_tecnica;
+      const juros_custeio = g("juros_custeio"), juros_outros = g("desp_financeira");
+      const desp_financeiras_total = juros_custeio + juros_outros;
+      const lucro_bruto = -cpv_total, ebitda = lucro_bruto - desp_operacionais_total;
+      const resultado_liquido = ebitda - desp_financeiras_total;
+      const base = resultados[0];
+      resultados.push({
+        ciclo: { id: "__sem_ciclo__", cultura: "sem_ciclo", ano_safra_id: base.ciclo.ano_safra_id, fazenda_id: "", descricao: "Sem ciclo (aguarda rateio)" },
+        anoSafra: base.anoSafra, area_ha: 0,
+        receita_venda: 0, receita_bonificacao: 0, receita_outras: 0, receita_total: 0, funrural: 0, senar: 0, fundo_invest: 0, deducoes_total: 0, receita_liquida: 0,
+        sementes: 0, fertilizantes: 0, defensivos: 0, correcao_solo: 0, operacoes_mecanizadas, combustivel, manutencao, cpv_total,
+        arrendamento, mao_obra, administrativo, seguro_lavoura, assistencia_tecnica, desp_operacionais_total,
+        juros_custeio, juros_outros, juros_mora: 0, multas_atraso: 0, descontos_obtidos: 0, desp_financeiras_total,
+        lucro_bruto, ebitda, resultado_operacional: ebitda, resultado_liquido,
+        receita_ha: 0, custo_total_ha: 0, resultado_ha: 0, produtividade_scha: 0, preco_medio_sc: 0,
       });
     }
 

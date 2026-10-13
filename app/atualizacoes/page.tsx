@@ -6,6 +6,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.13-l",
+    data: "13/10/2026",
+    titulo: "DRE por ano safra: custos pela origem certa",
+    modulos: ["Resultados"],
+    itens: [
+      { tipo: "correcao", texto: "A DRE lia uma tabela que não existe e por isso nunca somou o Contas a Pagar. Agora: insumos, peças e combustível de bomba entram pelo consumo (custo gravado no momento); apropriação direta entra pelo CP pela classificação, no ano safra do título; mão de obra vem da folha fechada (bruto + complemento + encargos patronais); arrendamento dos contratos pagos (sacas × preço médio ponderado de venda); manutenção do histórico das máquinas." },
+      { tipo: "novo", texto: "DRE consolidada por ano safra ou por ciclo. Custos sem ciclo apontado aparecem na coluna \"Sem ciclo\" até a regra de rateio ser definida." },
+      { tipo: "melhoria", texto: "Seção 340 (supabase_migrations.sql): coluna ano_safra_id na folha e no histórico de manutenção, preenchida pelo sistema pela competência/data." },
+    ],
+    onde: "Resultados → Margens por Safra (DRE)",
+  },
+  {
     versao: "2026.10.13-k",
     data: "13/10/2026",
     titulo: "Gastos por Classificação: títulos de Empresa e períodos longos",
