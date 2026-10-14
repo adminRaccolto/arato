@@ -39,10 +39,16 @@ export function tableModel(children: ReactNode) {
   const headers = headerRows.length === 1 && element(headerRows[0]) ? nodes(headerRows[0].props.children).filter(element) : [];
   const bodies = parts.filter(p => element(p) && p.type === "tbody");
   const rows = bodies.flatMap(body => element(body) ? nodes(body.props.children).filter(p => element(p) && p.type === "tr") : []).filter(element);
-  const dataRows = rows.filter(row => nodes(row.props.children).filter(element).some(cell => cell.type === "td" && Number(cell.props.colSpan ?? 1) === 1));
-  // Grouped rows, editable matrices and merged headers retain their original table structure.
-  const regular = headers.length > 1 && headers.every(h => h.type === "th" && Number(h.props.colSpan ?? 1) === 1 && Number(h.props.rowSpan ?? 1) === 1)
+  const dataRows = rows.filter(row => typeof row.props.onClick === "function" || nodes(row.props.children).filter(element).some(cell => cell.type === "td" && Number(cell.props.colSpan ?? 1) === 1));
+  const simpleHeader = headers.length > 1 && headers.every(h => h.type === "th" && Number(h.props.colSpan ?? 1) === 1 && Number(h.props.rowSpan ?? 1) === 1);
+  const regular = simpleHeader
     && rows.every(row => { const cells = nodes(row.props.children).filter(element); return cells.length === headers.length && cells.every(cell => cell.type === "td" && Number(cell.props.colSpan ?? 1) === 1 && Number(cell.props.rowSpan ?? 1) === 1); });
-  const editable = contains(bodies, cell => cell.type === "input" && cell.props.type !== "checkbox" || cell.type === "select" || cell.type === "textarea");
-  return { parts, headers, rows, dataRows, regular, cards: regular && !editable };
+  // Horizontal spans (borderô summaries and expanded details) fit inside a card. Vertical spans do not.
+  const cardStructure = simpleHeader && rows.every(row => {
+    const cells = nodes(row.props.children).filter(element);
+    return cells.length > 0 && cells.every(cell => cell.type === "td" && Number(cell.props.rowSpan ?? 1) === 1 && Number(cell.props.colSpan ?? 1) >= 1)
+      && cells.reduce((sum, cell) => sum + Number(cell.props.colSpan ?? 1), 0) === headers.length;
+  });
+  const editable = contains(bodies, cell => cell.type === "input" && cell.props.type !== "checkbox" || cell.type === "select" || cell.type === "textarea" || typeof cell.type !== "string" && cell.props.value !== undefined && typeof cell.props.onChange === "function");
+  return { parts, headers, rows, dataRows, regular, decoratable: simpleHeader, cards: cardStructure && !editable };
 }

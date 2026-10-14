@@ -12,12 +12,27 @@ test("fichas preservam seleção, ações e identidade dos registros", () => {
   assert.equal(nodes(model.rows[0].props.children).length, 3);
 });
 
-test("borderôs, detalhes expandidos e cabeçalhos mesclados mantêm a tabela", () => {
+test("borderôs horizontais podem virar fichas; cabeçalhos mesclados mantêm a tabela", () => {
   const model = tableModel(<><thead><tr><th>Fornecedor</th><th>Valor</th></tr></thead><tbody><tr><td colSpan={2}>Borderô</td></tr><tr><td>Fornecedor</td><td>100</td></tr></tbody></>);
-  assert.equal(model.cards, false);
+  assert.equal(model.cards, true);
   assert.equal(model.regular, false);
   assert.equal(model.dataRows.length, 1);
   assert.equal(tableModel(<><thead><tr><th colSpan={2}>Resumo</th></tr><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></>).cards, false);
+});
+
+test("borderô clicável e detalhes expandidos preservam seus nós e comandos nas fichas", () => {
+  const command = () => {};
+  const model = tableModel(<><thead><tr><th>Fornecedor</th><th>Valor</th></tr></thead><tbody><tr onClick={command}><td colSpan={2}>Borderô pendente</td></tr><tr><td colSpan={2}><table><tbody><tr><td>Detalhe</td></tr></tbody></table></td></tr><tr><td>Fornecedor</td><td>100</td></tr></tbody></>);
+  assert.equal(model.cards, true);
+  assert.equal(model.regular, false);
+  assert.equal(model.decoratable, true);
+  assert.equal(model.rows[0].props.onClick, command);
+  assert.equal(model.dataRows.length, 2);
+});
+
+test("células com rowspan e linhas incompletas não são convertidas em fichas", () => {
+  assert.equal(tableModel(<><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td rowSpan={2}>Grupo</td><td>1</td></tr><tr><td>2</td></tr></tbody></>).cards, false);
+  assert.equal(tableModel(<><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>Apenas uma célula</td></tr></tbody></>).cards, false);
 });
 
 test("matrizes editáveis não oferecem fichas que alterariam o formulário", () => {

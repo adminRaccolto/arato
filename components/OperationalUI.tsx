@@ -76,7 +76,7 @@ export function OperationalGrid({ children, tools, className, ref: suppliedRef, 
   const [query, setQuery] = useState(""), [findResult, setFindResult] = useState(""), [expanded, setExpanded] = useState(false);
   const table = useRef<HTMLTableElement>(null), workspace = useRef<HTMLElement>(null), menuId = useId();
   const model = tableModel(children);
-  const labels = model.headers.map((h, i) => textOf(h.props.children) || `Coluna ${i + 1}`);
+  const labels = model.headers.map((h, i) => textOf(h.props.children) || (contains(h.props.children, child => child.type === "input" && child.props.type === "checkbox") ? "Selecionar" : `Coluna ${i + 1}`));
   // Operational commands and selection always remain available, even when columns are customized.
   const protectedColumns = new Set(model.headers.flatMap((h, i) => /aç[õo]es|op[çc][õo]es/i.test(labels[i]) || contains([h], e => e.type === "input") || model.rows.some(row => { const cell = nodes(row.props.children)[i]; return contains([cell], e => e.type === "button" || e.type === OperationalButton || e.type === "input" || e.type === "a"); }) ? [labels[i]] : []));
   const cards = model.cards && view === "cards";
@@ -90,9 +90,13 @@ export function OperationalGrid({ children, tools, className, ref: suppliedRef, 
       if (!element(node)) return node;
       if (node.type === "thead" || node.type === "tbody" || node.type === "tfoot") return cloneElement(node, {}, decorate(node.props.children));
       if (node.type !== "tr") return node;
-      return cloneElement(node, {}, nodes(node.props.children).map((cell, i) => {
+      let column = 0;
+      const wide = contains(node.props.children, child => child.type === "table" || child.props["data-arato-grid"] !== undefined);
+      return cloneElement(node, { "data-op-wide-row": wide || undefined }, nodes(node.props.children).map(cell => {
         if (!element(cell) || !["td", "th"].includes(String(cell.type))) return cell;
-        return cloneElement(cell, { "data-op-label": labels[i], "data-op-column-hidden": model.regular && !protectedColumns.has(labels[i]) && hidden.has(labels[i]) ? "true" : undefined });
+        const span = Number(cell.props.colSpan ?? 1), label = labels[column];
+        column += span;
+        return cloneElement(cell, { "data-op-label": span === 1 ? label : undefined, "data-op-spanned-cell": span > 1 || undefined, "data-op-column-hidden": model.regular && !protectedColumns.has(label) && hidden.has(label) ? "true" : undefined });
       }));
     });
   }
@@ -122,7 +126,7 @@ export function OperationalGrid({ children, tools, className, ref: suppliedRef, 
       </div>
     </div>
     {model.regular && <div className="op-columns" id={menuId} hidden={!columnsOpen}><strong>Informações visíveis</strong>{labels.map((label, i) => <label key={`${label}-${i}`}><input type="checkbox" disabled={protectedColumns.has(label)} checked={protectedColumns.has(label) || !hidden.has(label)} onChange={() => setHidden(previous => { const next = new Set(previous); if (next.has(label)) next.delete(label); else next.add(label); return next; })} />{label}</label>)}<button type="button" className="op-tool" onClick={() => setHidden(new Set())}>Mostrar todas</button></div>}
-    <div className="op-grid-scroll"><table {...props} ref={tableRef} className={`op-data-table ${className ?? ""}`}>{model.regular ? decorate(children) : children}</table></div>
+    <div className="op-grid-scroll"><table {...props} ref={tableRef} className={`op-data-table ${className ?? ""}`}>{model.decoratable ? decorate(children) : children}</table></div>
     <div className="op-grid-footer"><span className="op-grid-note"><span className="op-live-dot" />{cards ? "Informações organizadas por registro" : "Ações e seleção disponíveis nas linhas"}</span><form className="op-grid-find" onSubmit={e => { e.preventDefault(); locate(); }}><Icon name="search" size={14} /><input aria-label="Localizar texto nesta tabela" placeholder="Localizar na tabela…" value={query} onChange={e => { setQuery(e.target.value); setFindResult(""); if (!e.target.value) for (const row of table.current?.querySelectorAll("[data-op-found]") ?? []) row.removeAttribute("data-op-found"); }} /><button type="submit" className="op-tool">Localizar</button></form><span className="op-find-result" role="status">{findResult}</span></div>
   </section>;
 }
