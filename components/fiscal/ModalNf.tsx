@@ -2192,7 +2192,7 @@ export default function ModalNf({
       if (!nf) { setErr("NF não encontrada."); setCarregandoNf(false); return; }
       await abrirEditar(nf);
       setCarregandoNf(false);
-      if (acaoInicial === "devolver" && nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas")) {
+      if (acaoInicial === "devolver" && nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas" || nf.tipo_entrada === "custo_direto")) {
         abrirDevolucao(nf);
       } else if (acaoInicial === "estornar" && nf.status === "processada") {
         estornarNFClick(nf);
@@ -3775,7 +3775,7 @@ export default function ModalNf({
                       {nfEdit && nfEdit.status === "processada" && (
                         <button data-arato-button="secondary" onClick={() => estornarNFClick(nfEdit)} style={{ ...btnR, borderColor: "#F6C87A", background: "#FEF3E2", color: "#8A4A00" }}>↺ Estornar</button>
                       )}
-                      {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas") && (
+                      {nfEdit && nfEdit.status === "processada" && (nfEdit.tipo_entrada === "insumos" || nfEdit.tipo_entrada === "pecas" || nfEdit.tipo_entrada === "custo_direto") && (
                         <button data-arato-button="secondary" onClick={() => abrirDevolucao(nfEdit)} style={{ ...btnR, borderColor: "#E24B4A50", color: "#791F1F" }}>↩ Devolver</button>
                       )}
                       {nfEdit && nfEdit.status === "processada" && nfEdit.tipo_entrada === "insumos" && (
