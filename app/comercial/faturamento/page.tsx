@@ -1386,8 +1386,23 @@ function FaturamentoInner() {
                             style={{ padding:"4px 10px", fontSize:11, background:"#FCEBEB", color:"#791F1F", border:"0.5px solid #E24B4A50", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               const motivo = window.prompt("Motivo do cancelamento (min. 15 caracteres):");
-                              if (!motivo || motivo.length < 15) return;
-                              await atualizarStatusNFe(nota.id, "cancelada");
+                              if (!motivo || motivo.trim().length < 15) return;
+                              // NF-e já transmitida (tem chave) só é cancelada de verdade na SEFAZ: antes este botão só mudava
+                              // o status no sistema e a nota seguia autorizada na SEFAZ (caso NF 44/930, 14/10/2026).
+                              if (nota.chave_acesso && nota.status === "autorizada") {
+                                const res = await fetch("/api/fiscal/eventos", {
+                                  method: "POST", headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ acao: "cancelar", nota_id: nota.id, justificativa: motivo.trim() }),
+                                });
+                                const j = await res.json() as { ok?: boolean; cStat?: string; xMotivo?: string; error?: string; aviso?: string };
+                                if (!j.ok) {
+                                  alert(`Cancelamento não realizado na SEFAZ.\n\n${j.cStat ? `cStat ${j.cStat}: ` : ""}${j.xMotivo ?? j.error ?? "erro desconhecido"}\n\nA nota continua autorizada.`);
+                                  return;
+                                }
+                                alert(`✓ NF-e ${nota.numero} cancelada na SEFAZ.${j.aviso ? `\n\n${j.aviso}` : ""}`);
+                              } else {
+                                await atualizarStatusNFe(nota.id, "cancelada"); // rascunho nunca transmitido: só local
+                              }
                               setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "cancelada" } : n));
                             }}>
                             Cancelar

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-y",
+    data: "14/10/2026",
+    titulo: "Cancelar NF-e em Comercial → Faturamento agora cancela na SEFAZ",
+    modulos: ["Comercial", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "O botão Cancelar da lista de notas em Comercial, Faturamento só mudava o status no sistema: a NF-e continuava autorizada na SEFAZ (caso da NF 44/930, devolução). Agora, para nota já transmitida, ele envia o evento oficial de cancelamento à SEFAZ e só marca cancelada se ela aceitar; se recusar, a nota continua autorizada e a tela mostra o motivo. Rascunho nunca transmitido continua sendo cancelado só localmente. Conferi na SEFAZ as outras 14 notas canceladas sem registro de evento: todas estão realmente canceladas lá." },
+    ],
+    onde: "Comercial → Faturamento",
+  },
+  {
     versao: "2026.10.14-x",
     data: "14/10/2026",
     titulo: "Devolução aparece no Monitor e pode ser cancelada",
