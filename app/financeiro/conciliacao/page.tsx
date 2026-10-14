@@ -1729,7 +1729,7 @@ function ConciliacaoInner() {
       },
     );
     setSalvando(false);
-    if (!ok) { alert("Não foi possível salvar as conciliações — tente novamente."); carregar(); return; }
+    if (!ok) { alert(`Não foi possível salvar as conciliações — tente novamente.${ultimoErroPersist ? `\n\nMotivo: ${ultimoErroPersist}` : ""}`); carregar(); return; }
     setLotes(prev => {
       const n = new Map(prev);
       for (const ac of aceitas) if (ac.lote) n.set(ac.lote.id, { ...ac.lote, status: "pago", data_pagamento: ac.lote.status === "pendente" ? ac.linha.data : ac.lote.data_pagamento, conta_bancaria: ac.lote.conta_bancaria ?? extrato.conta_id, conciliado: true });

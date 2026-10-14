@@ -16693,3 +16693,54 @@ ALTER TABLE nf_entrada_itens ADD COLUMN IF NOT EXISTS origem_item_id uuid REFERE
 CREATE INDEX IF NOT EXISTS idx_nf_itens_origem ON nf_entrada_itens(origem_item_id) WHERE origem_item_id IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 346 — Conciliação: gatilho de sincronização mais leve (Aceitar todas estourava)
+-- =============================================================================
+-- O gatilho da Seção 339 disparava em TODA linha regravada de extrato_transacoes (inclusive sem mudança) e
+-- procurava os títulos sem índice. Agora: (1) dispara no UPDATE só quando conciliado/lancamento_id/lancamento_ids
+-- mudam; (2) a busca usa índice (btree em lancamento_id, GIN em lancamento_ids).
+CREATE INDEX IF NOT EXISTS idx_extrato_trans_lanc_id  ON extrato_transacoes(lancamento_id) WHERE lancamento_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_extrato_trans_lanc_ids ON extrato_transacoes USING gin (lancamento_ids);
+
+CREATE OR REPLACE FUNCTION fn_sync_conciliado_titulos() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE ids uuid[] := '{}'::uuid[];
+BEGIN
+  IF TG_OP IN ('UPDATE','DELETE') THEN
+    ids := ids || COALESCE(OLD.lancamento_ids, '{}'::uuid[]);
+    IF OLD.lancamento_id IS NOT NULL THEN ids := ids || OLD.lancamento_id; END IF;
+  END IF;
+  IF TG_OP IN ('INSERT','UPDATE') THEN
+    ids := ids || COALESCE(NEW.lancamento_ids, '{}'::uuid[]);
+    IF NEW.lancamento_id IS NOT NULL THEN ids := ids || NEW.lancamento_id; END IF;
+  END IF;
+  IF cardinality(ids) > 0 THEN
+    UPDATE lancamentos l SET conciliado = x.c
+      FROM (SELECT i AS id, EXISTS (SELECT 1 FROM extrato_transacoes t
+                                    WHERE t.conciliado AND (t.lancamento_id = i OR t.lancamento_ids @> ARRAY[i])) AS c
+              FROM unnest(ids) AS i) x
+     WHERE l.id = x.id AND l.conciliado IS DISTINCT FROM x.c;
+    UPDATE empresa_lancamentos l SET conciliado = x.c
+      FROM (SELECT i AS id, EXISTS (SELECT 1 FROM extrato_transacoes t
+                                    WHERE t.conciliado AND (t.lancamento_id = i OR t.lancamento_ids @> ARRAY[i])) AS c
+              FROM unnest(ids) AS i) x
+     WHERE l.id = x.id AND l.conciliado IS DISTINCT FROM x.c;
+  END IF;
+  RETURN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_sync_conciliado_titulos ON extrato_transacoes;
+DROP TRIGGER IF EXISTS trg_sync_conciliado_titulos_insdel ON extrato_transacoes;
+DROP TRIGGER IF EXISTS trg_sync_conciliado_titulos_upd ON extrato_transacoes;
+CREATE TRIGGER trg_sync_conciliado_titulos_insdel
+  AFTER INSERT OR DELETE ON extrato_transacoes
+  FOR EACH ROW EXECUTE FUNCTION fn_sync_conciliado_titulos();
+CREATE TRIGGER trg_sync_conciliado_titulos_upd
+  AFTER UPDATE ON extrato_transacoes
+  FOR EACH ROW
+  WHEN (OLD.conciliado IS DISTINCT FROM NEW.conciliado
+        OR OLD.lancamento_id IS DISTINCT FROM NEW.lancamento_id
+        OR OLD.lancamento_ids IS DISTINCT FROM NEW.lancamento_ids)
+  EXECUTE FUNCTION fn_sync_conciliado_titulos();
+
+NOTIFY pgrst, 'reload schema';

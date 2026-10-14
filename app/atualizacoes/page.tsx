@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-i",
+    data: "14/10/2026",
+    titulo: "Aceitar todas as sugestões na Conciliação",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O Aceitar todas as sugestões (e vincular linhas) podia falhar com Não foi possível salvar as conciliações: cada clique regravava o extrato inteiro e o gatilho de sincronização rodava em todas as linhas. Agora só as linhas que mudaram são gravadas, e o aviso de erro mostra o motivo. Requer a Seção 346 do supabase_migrations.sql, que deixa o gatilho mais leve (dispara só quando o vínculo muda e usa índice)." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.14-h",
     data: "14/10/2026",
     titulo: "CFOP de devolução sugerido pela compra",

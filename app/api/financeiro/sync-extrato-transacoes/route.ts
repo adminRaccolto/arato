@@ -97,8 +97,22 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    for (let i = 0; i < rows.length; i += LOTE) {
-      const { error } = await sb.from("extrato_transacoes").upsert(rows.slice(i, i + LOTE), { onConflict: "conta_bancaria_id,fitid" });
+    // Ação (aceitar/vincular): grava só as linhas que MUDARAM. Antes regravava o extrato inteiro (centenas de
+    // linhas) a cada clique e o gatilho de sincronização (Seção 339) rodava em cada uma — "Aceitar todas" estourava.
+    const mesmoArr = (x: string[] | null | undefined, y: string[] | null | undefined) =>
+      JSON.stringify([...(x ?? [])].sort()) === JSON.stringify([...(y ?? [])].sort());
+    const mudou = (r: typeof rows[number]) => {
+      const ex = mapaExistente.get(r.fitid);
+      if (!ex) return true;
+      return ex.conciliado !== r.conciliado || (ex.lancamento_id ?? null) !== (r.lancamento_id ?? null)
+        || !mesmoArr(ex.lancamento_ids, r.lancamento_ids) || (ex.lancamento_desc ?? null) !== (r.lancamento_desc ?? null)
+        || Number(ex.lancamento_valor ?? 0) !== Number(r.lancamento_valor ?? 0) || Math.abs(ex.valor - r.valor) >= 0.01
+        || (COLUNAS_NOVAS && ((ex.origem_vinculo ?? null) !== ((r as { origem_vinculo?: string | null }).origem_vinculo ?? null)
+          || (ex.confianca ?? null) !== ((r as { confianca?: string | null }).confianca ?? null)));
+    };
+    const aGravar = modo === "acao" ? rows.filter(mudou) : rows;
+    for (let i = 0; i < aGravar.length; i += LOTE) {
+      const { error } = await sb.from("extrato_transacoes").upsert(aGravar.slice(i, i + LOTE), { onConflict: "conta_bancaria_id,fitid" });
       if (error) return NextResponse.json({ ok: false, error: `gravação: ${error.message}` }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
