@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-e",
+    data: "14/10/2026",
+    titulo: "Nota Própria por chave traz os dados da NF",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Na Entrada de Nota Própria por Chave de Acesso, o Consultar mostrava só 'Autorizado o uso da NF-e' e não preenchia nada, porque a consulta de situação da SEFAZ não devolve o XML. Agora o sistema baixa o XML pela Distribuição DF-e e preenche tudo; se a SEFAZ não entregar o XML para o CNPJ, preenche número, série, chave e CNPJ do emitente pela própria chave e avisa o que falta completar." },
+    ],
+    onde: "Documentos Fiscais → Entrada de Nota Própria",
+  },
+  {
     versao: "2026.10.14-d",
     data: "14/10/2026",
     titulo: "Encargos zerados no cadastro valem na folha",

@@ -8,7 +8,7 @@
 // nenhum efeito colateral (não cria fornecedor, não grava pendência; essa
 // rota só lê e devolve).
 import { NextRequest, NextResponse } from "next/server";
-import { consultarNfePorChave } from "../../../../../lib/sefaz-consulta";
+import { consultarNfePorChave, baixarXmlNfePorChaveDFe } from "../../../../../lib/sefaz-consulta";
 import { parseNFeXml } from "../../../../../lib/sieg";
 
 export async function POST(req: NextRequest) {
@@ -21,9 +21,29 @@ export async function POST(req: NextRequest) {
     }
 
     const res = await consultarNfePorChave(chave, fazenda_id, ambiente ?? "producao");
-    if (!res.ok || !res.xmlCompleto) {
+    if (!res.ok) {
       return NextResponse.json({ ok: false, erro: res.erro || res.xMotivo || "Não foi possível consultar essa chave na SEFAZ." });
     }
+    // A consulta de situação só confirma o protocolo (não traz o XML). O XML completo vem da Distribuição DF-e.
+    let xmlCompleto = res.xmlCompleto;
+    if (!xmlCompleto) {
+      const dfe = await baixarXmlNfePorChaveDFe(chave, fazenda_id, ambiente ?? "producao");
+      if (dfe.ok) xmlCompleto = dfe.xml;
+    }
+    if (!xmlCompleto) {
+      // Sem XML: preenche o que a própria chave informa (UF, mês, CNPJ, série, número) e avisa
+      const c = chave.replace(/\D/g, "");
+      const doc14 = c.substring(6, 20);
+      return NextResponse.json({
+        ok: true,
+        numero: String(parseInt(c.substring(25, 34), 10)),
+        serie: String(parseInt(c.substring(22, 25), 10)),
+        chave: c,
+        cnpj_emitente: doc14.startsWith("000") ? doc14.slice(3) : doc14,
+        aviso: `A SEFAZ confirmou: ${res.xMotivo ?? "NF-e autorizada"}. Mas ela não entrega o XML da nota nesta consulta, então só número, série, chave e CNPJ do emitente foram preenchidos (emissão em ${c.substring(4, 6)}/20${c.substring(2, 4)}). Complete data, valor, destinatário e itens, ou use a aba XML com o arquivo da nota.`,
+      });
+    }
+    res.xmlCompleto = xmlCompleto;
 
     const parsed = parseNFeXml(res.xmlCompleto);
     if (!parsed) {

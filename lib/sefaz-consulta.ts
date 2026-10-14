@@ -1,5 +1,6 @@
 // Consulta NF-e na SEFAZ por chave de acesso usando certificado A1 (mTLS)
 import https from "https";
+import { gunzipSync } from "node:zlib";
 import forge from "node-forge";
 import { createClient } from "@supabase/supabase-js";
 
@@ -323,4 +324,46 @@ export async function salvarXmlStorage(
       upsert: true,
     });
   return error ? null : path;
+}
+
+
+// ── Baixa o XML completo da NF-e pela Distribuição DF-e (consulta por chave) ──────────────────────
+// A Consulta de Situação (acima) devolve só o protocolo — nunca o XML da nota. O XML vem do Ambiente
+// Nacional (NFeDistribuicaoDFe), consultando pela chave com o CNPJ/CPF interessado (o próprio emitente da
+// chave) e o certificado A1 dele. Se o CNPJ consultante não for interessado, a SEFAZ responde sem documento.
+export async function baixarXmlNfePorChaveDFe(
+  chaveAcesso: string,
+  fazendaId: string,
+  ambiente: "producao" | "homologacao" = "producao",
+): Promise<{ ok: boolean; xml?: string; cStat?: string; xMotivo?: string; erro?: string }> {
+  const chave = chaveAcesso.replace(/\D/g, "");
+  if (chave.length !== 44) return { ok: false, erro: "Chave de acesso inválida (deve ter 44 dígitos)" };
+  const doc14 = chave.substring(6, 20);
+  const tagDoc = doc14.startsWith("000") ? `<CPF>${doc14.slice(3)}</CPF>` : `<CNPJ>${doc14}</CNPJ>`;
+  const tpAmb = ambiente === "producao" ? "1" : "2";
+  const url = ambiente === "producao"
+    ? "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx"
+    : "https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx";
+  const certs = await carregarCertificados(fazendaId);
+  if (!certs.length) return { ok: false, erro: "Nenhum certificado A1 com senha cadastrada encontrado nesta conta." };
+  const dados = `<distDFeInt versao="1.01" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>${tpAmb}</tpAmb><cUFAutor>${chave.substring(0, 2)}</cUFAutor>${tagDoc}<consChNFe><chNFe>${chave}</chNFe></consChNFe></distDFeInt>`;
+  const envelope = `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Body><nfeDistDFeInteresse xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe"><nfeDadosMsg>${dados}</nfeDadosMsg></nfeDistDFeInteresse></soap12:Body></soap12:Envelope>`;
+  let ultimo: { cStat?: string; xMotivo?: string } = {};
+  for (const cert of certs) {
+    let pem: { cert: string; key: string };
+    try { pem = pfxParaPem(cert.pfxBuffer, cert.senha); } catch { continue; }
+    let resp: string;
+    try { resp = await soapRequest(url, envelope, pem.cert, pem.key); } catch (e) { return { ok: false, erro: `Erro ao conectar à Distribuição DF-e: ${(e as Error).message}` }; }
+    const tg = (n: string) => resp.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)<\\/${n}>`))?.[1]?.trim() ?? "";
+    ultimo = { cStat: tg("cStat"), xMotivo: tg("xMotivo") };
+    const re = /<docZip\s[^>]*>([\s\S]+?)<\/docZip>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(resp)) !== null) {
+      try {
+        const xml = gunzipSync(Buffer.from(m[1].trim(), "base64")).toString("utf-8");
+        if (xml.includes("<NFe") && xml.includes(chave)) return { ok: true, xml, ...ultimo };
+      } catch { /* tenta o próximo documento */ }
+    }
+  }
+  return { ok: false, ...ultimo };
 }

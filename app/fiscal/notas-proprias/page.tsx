@@ -75,6 +75,7 @@ export default function NotasPropriasExternasPage() {
   const [orig,   setOrig]     = useState<"manual" | "xml" | "chave">("manual");
   const [salvando, setSalvando] = useState(false);
   const [erroWiz,  setErroWiz]  = useState("");
+  const [avisoWiz, setAvisoWiz] = useState("");
 
   const CAB_VAZIO = {
     numero: "", serie: "", chave_acesso: "", natureza: "", data_emissao: "",
@@ -139,7 +140,7 @@ export default function NotasPropriasExternasPage() {
     if (!fazendaId) return;
     const chave = chaveDigitada.replace(/\D/g, "");
     if (chave.length !== 44) { setErroWiz("Chave de acesso precisa ter 44 dígitos."); return; }
-    setConsultandoChave(true); setErroWiz("");
+    setConsultandoChave(true); setErroWiz(""); setAvisoWiz("");
     try {
       const res = await fetch("/api/fiscal/notas-proprias/consultar-chave", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -149,6 +150,7 @@ export default function NotasPropriasExternasPage() {
       if (!json.ok) { setErroWiz(json.erro || "Não foi possível consultar essa chave."); return; }
       aplicarParsed(json);
       setXmlRaw(json.xml_content);
+      if (json.aviso) setAvisoWiz(json.aviso);
     } catch (e: unknown) {
       setErroWiz(e instanceof Error ? e.message : "Erro ao consultar a chave.");
     } finally {
@@ -378,6 +380,7 @@ export default function NotasPropriasExternasPage() {
                 <input value={cab.observacao} onChange={e => setCab(p => ({ ...p, observacao: e.target.value }))} style={inp} />
               </div>
 
+              {avisoWiz && <div style={{ marginTop: 14, fontSize: 12, color: "#7B4A00", background: "#FBF3E0", padding: "8px 12px", borderRadius: 6 }}>{avisoWiz}</div>}
               {erroWiz && <div style={{ marginTop: 14, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 12px", borderRadius: 6 }}>{erroWiz}</div>}
               <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
                 <button data-arato-button="secondary" onClick={() => setWizard(false)} style={btnR}>Cancelar</button>
