@@ -81,6 +81,7 @@ interface Adiantamento {
   descricao?: string;
   lancamento_id?: string;
   status: "pendente" | "descontado" | "cancelado";
+  tipo?: "salario" | "gratificacao";
   created_at?: string;
 }
 interface Premiacao {
@@ -669,12 +670,28 @@ export default function FolhaPagamentoPage() {
     }
   }
 
+  // Gratificação lançada x já adiantada, para o funcionário/competência do modal de adiantamento
+  const adiGratInfo = (() => {
+    const fid = adiEdit.funcionario_id, comp = adiEdit.competencia_ref;
+    if (adiEdit.tipo !== "gratificacao" || !fid || !comp) return { lancada: 0, adiantado: 0, disponivel: 0 };
+    const lancada = premiacoes.filter(p => p.funcionario_id === fid && String(p.mes_referencia).slice(0, 7) === comp).reduce((s, p) => s + p.valor, 0);
+    const adiantado = adiantamentos.filter(a => a.tipo === "gratificacao" && a.funcionario_id === fid && a.competencia_ref === comp && a.status !== "cancelado" && a.id !== adiEdit.id).reduce((s, a) => s + a.valor, 0);
+    return { lancada, adiantado, disponivel: Math.max(0, Math.round((lancada - adiantado) * 100) / 100) };
+  })();
+
   async function salvarAdiantamento() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar adiantamento)", perigo: false }))) return;
     if (!fazendaId || !adiEdit.funcionario_id || !adiEdit.valor || !adiEdit.data) {
       setMsg("Preencha funcionário, data e valor."); return;
     }
     if (!adiEdit.id && !adiConta) { setMsg("Selecione a conta bancária de onde saiu o adiantamento (necessária para o fluxo de caixa)."); return; }
+    if (adiEdit.tipo === "gratificacao") {
+      if (!adiEdit.competencia_ref) { setMsg("Adiantamento de gratificação: informe a competência da gratificação."); return; }
+      if (adiGratInfo.lancada <= 0) { setMsg("Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações."); return; }
+      if ((adiEdit.valor ?? 0) > adiGratInfo.disponivel + 0.005) {
+        setMsg(`O valor excede a gratificação disponível (${moeda(adiGratInfo.disponivel)}). O excedente deve ser lançado manualmente como empréstimo a terceiros.`); return;
+      }
+    }
     setSaving(true);
     const funcionario_nome = funcionarios.find(f => f.id === adiEdit.funcionario_id)?.nome ?? "";
     try {
@@ -682,6 +699,7 @@ export default function FolhaPagamentoPage() {
         // Edição de adiantamento existente
         await apiFolha({
           operacao: "editar_adiantamento",
+          tipo: adiEdit.tipo ?? "salario",
           id: adiEdit.id,
           funcionario_id: adiEdit.funcionario_id,
           data: adiEdit.data,
@@ -694,6 +712,7 @@ export default function FolhaPagamentoPage() {
       } else {
         const r = await apiFolha({
           operacao: "salvar_adiantamento",
+          tipo: adiEdit.tipo ?? "salario",
           fazenda_id: fazendaId,
           funcionario_id: adiEdit.funcionario_id,
           data: adiEdit.data,
@@ -1010,7 +1029,7 @@ export default function FolhaPagamentoPage() {
                   <tbody>
                     {adiantamentos.map(a => (
                       <tr key={a.id}>
-                        <td style={{ ...S.td, fontWeight:600 }}>{a.funcionario_nome ?? "—"}</td>
+                        <td style={{ ...S.td, fontWeight:600 }}>{a.funcionario_nome ?? "—"}{a.tipo === "gratificacao" && <div style={{ fontSize:10, fontWeight:600, color:"#7B4A00" }}>Gratificação</div>}</td>
                         <td style={S.td}>{dataFmt(a.data)}</td>
                         <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(a.valor)}</td>
                         <td style={S.td}>{a.competencia_ref ? nomeMes(a.competencia_ref) : "—"}</td>
@@ -1022,7 +1041,7 @@ export default function FolhaPagamentoPage() {
                         </td>
                         <td style={{ ...S.td, whiteSpace:"nowrap" }}>
                           {a.status === "pendente" && (<>
-                            <button data-arato-button="secondary" onClick={()=>{ setAdiEdit({ id: a.id, funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
+                            <button data-arato-button="secondary" onClick={()=>{ setAdiEdit({ id: a.id, tipo: a.tipo ?? "salario", funcionario_id: a.funcionario_id, data: a.data, valor: a.valor, competencia_ref: a.competencia_ref, descricao: a.descricao }); setModalAdi(true); }} style={{ background:"none", border:"none", color:"#1A4870", cursor:"pointer", fontSize:12, marginRight:8 }}>Editar</button>
                             <button data-arato-button="secondary" onClick={()=>cancelarAdiantamento(a.id)} style={{ background:"none", border:"none", color:"#E24B4A", cursor:"pointer", fontSize:12 }}>Cancelar</button>
                           </>)}
                         </td>
@@ -1453,9 +1472,24 @@ export default function FolhaPagamentoPage() {
                 </div>
               </div>
               <div>
-                <label data-arato-label="true" style={S.label}>Descontar na competência</label>
+                <label data-arato-label="true" style={S.label}>{adiEdit.tipo === "gratificacao" ? "Competência da gratificação *" : "Descontar na competência"}</label>
                 <InputData type="month" value={adiEdit.competencia_ref??""} onChange={e=>setAdiEdit(p=>({...p,competencia_ref:e.target.value}))} style={{ ...S.inp, width:"100%" }} />
-                <span style={{ fontSize:11, color:"#888" }}>Mês onde o valor será descontado do salário</span>
+                <span style={{ fontSize:11, color:"#888" }}>{adiEdit.tipo === "gratificacao" ? "Mês da gratificação adiantada; o valor é descontado na folha desse mês" : "Mês onde o valor será descontado do salário"}</span>
+                {adiEdit.tipo === "gratificacao" && adiEdit.funcionario_id && adiEdit.competencia_ref && (
+                  <div style={{ marginTop:6, fontSize:11, color: adiGratInfo.lancada > 0 ? "#0B2D50" : "#791F1F" }}>
+                    {adiGratInfo.lancada > 0
+                      ? `Gratificação lançada: ${moeda(adiGratInfo.lancada)} · já adiantado: ${moeda(adiGratInfo.adiantado)} · disponível: ${moeda(adiGratInfo.disponivel)}`
+                      : "Nenhuma gratificação lançada para este funcionário nessa competência (Cadastros, Funcionários, aba Premiações)."}
+                    {(adiEdit.valor ?? 0) > adiGratInfo.disponivel + 0.005 && adiGratInfo.lancada > 0 && <div style={{ color:"#791F1F" }}>Excede o disponível: lance o excedente manualmente como empréstimo a terceiros.</div>}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={S.label}>Tipo de adiantamento</label>
+                <select value={adiEdit.tipo ?? "salario"} onChange={e=>setAdiEdit(p=>({...p,tipo:e.target.value as "salario"|"gratificacao"}))} style={{ ...S.inp, width:"100%" }}>
+                  <option value="salario">Salário</option>
+                  <option value="gratificacao">Gratificação (de uma competência lançada)</option>
+                </select>
               </div>
               {!adiEdit.id && (
                 <div>

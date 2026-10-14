@@ -18,6 +18,29 @@ async function resolverOgPorClassificacao(sb: any, fazenda_id: string, classific
 // Valida o token do usuário antes de executar qualquer operação.
 // Enquanto a Seção 338 (CHECK de origem_lancamento com 'folha') não foi aplicada no banco, o insert com
 // origem "folha" é rejeitado (23514). Nesse caso grava como "manual" em vez de travar a folha inteira.
+/** Adiantamento de gratificação: a soma adiantada na competência não pode passar da gratificação lançada
+ *  no cadastro do funcionário. O excedente é tratado fora do sistema (empréstimo a terceiros). */
+async function validarAdiantamentoGratificacao(
+  sb: any,
+  p: { funcionario_id: string; competencia_ref?: string | null; valor: number; ignorarId?: string },
+): Promise<string | null> {
+  const comp = String(p.competencia_ref ?? "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(comp)) return "Adiantamento de gratificação: informe a competência da gratificação.";
+  const { data: prem, error: e1 } = await sb.from("funcionario_premiacoes").select("valor, mes_referencia").eq("funcionario_id", p.funcionario_id);
+  if (e1) return `Não foi possível ler as gratificações do funcionário: ${e1.message}`;
+  const lancada = (prem ?? []).filter((x: any) => String(x.mes_referencia).slice(0, 7) === comp).reduce((s: number, x: any) => s + Number(x.valor || 0), 0);
+  if (lancada <= 0) return "Não há gratificação lançada para este funcionário nessa competência. Lance antes em Cadastros, Funcionários, aba Premiações.";
+  const { data: adis, error: e2 } = await sb.from("adiantamentos_salario").select("id, valor, competencia_ref, status").eq("funcionario_id", p.funcionario_id).eq("tipo", "gratificacao");
+  if (e2) return "Aplique a Seção 344 do supabase_migrations.sql para usar adiantamento de gratificação.";
+  const adiantado = (adis ?? []).filter((a: any) => a.status !== "cancelado" && a.id !== p.ignorarId && String(a.competencia_ref ?? "").slice(0, 7) === comp)
+    .reduce((s: number, a: any) => s + Number(a.valor || 0), 0);
+  const disponivel = Math.round((lancada - adiantado) * 100) / 100;
+  if (Number(p.valor) > disponivel + 0.005) {
+    return `O valor excede a gratificação disponível na competência (R$ ${disponivel.toFixed(2).replace(".", ",")}). O excedente deve ser lançado manualmente como empréstimo a terceiros.`;
+  }
+  return null;
+}
+
 async function inserirLancamentoFolha(sb: any, row: Record<string, unknown>) {
   let r = await sb.from("lancamentos").insert(row).select("id").single();
   if (r.error?.code === "23514" && String(r.error.message ?? "").includes("origem_lancamento")) {
@@ -463,6 +486,11 @@ export async function POST(req: Request) {
     // ─── salvar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "salvar_adiantamento") {
       const { fazenda_id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      const tipoAdi: "salario" | "gratificacao" = (payload as any).tipo === "gratificacao" ? "gratificacao" : "salario";
+      if (tipoAdi === "gratificacao") {
+        const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor });
+        if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
+      }
       const ogAdiantFunc = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.09.002");
       // CP do adiantamento nasce já ligado ao empregador (empresa ou produtor) do funcionário —
       // sem isso o título ficava "solto" e não aparecia no filtro de origem do Contas a Pagar.
@@ -470,7 +498,7 @@ export async function POST(req: Request) {
       const { data: lanc, error: lancErr } = await inserirLancamentoFolha(sb, {
         fazenda_id, empresa_id: funcEmp?.empresa_id ?? null, produtor_id: funcEmp?.produtor_id ?? null,
         tipo: "pagar", natureza: "real",
-        descricao: `Adiantamento — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
+        descricao: `Adiantamento${tipoAdi === "gratificacao" ? " de gratificação" : ""} — ${funcionario_nome}${descricao ? ` — ${descricao}` : ""}`,
         valor, moeda: "BRL", status: "em_aberto",
         categoria: "Pessoal / Adiantamentos",
         origem_lancamento: "folha",
@@ -478,20 +506,35 @@ export async function POST(req: Request) {
         data_vencimento: data, data_lancamento: data,
       });
       if (lancErr) throw lancErr;
-      const { error: adiErr } = await sb.from("adiantamentos_salario").insert({
+      const linhaAdi: Record<string, unknown> = {
         fazenda_id, funcionario_id, data, valor,
         competencia_ref: competencia_ref || null,
         descricao: descricao || null,
         lancamento_id: lanc?.id ?? null,
         status: "pendente",
-      });
-      if (adiErr) throw adiErr;
+      };
+      let { error: adiErr } = await sb.from("adiantamentos_salario").insert({ ...linhaAdi, tipo: tipoAdi });
+      // Coluna tipo ainda não existe (Seção 344 não rodada): só o adiantamento de salário segue sem ela
+      if (adiErr && tipoAdi === "salario" && (adiErr.code === "42703" || adiErr.code === "PGRST204")) {
+        ({ error: adiErr } = await sb.from("adiantamentos_salario").insert(linhaAdi));
+      }
+      if (adiErr) {
+        if (lanc?.id) await sb.from("lancamentos").delete().eq("id", lanc.id);
+        throw tipoAdi === "gratificacao" && (adiErr.code === "42703" || adiErr.code === "PGRST204")
+          ? new Error("Aplique a Seção 344 do supabase_migrations.sql para usar adiantamento de gratificação.")
+          : adiErr;
+      }
       return NextResponse.json({ ok: true, lancamento_id: lanc?.id ?? null });
     }
 
     // ─── editar_adiantamento ──────────────────────────────────────────────────
     if (operacao === "editar_adiantamento") {
       const { id, funcionario_id, data, valor, competencia_ref, descricao, funcionario_nome } = payload as any;
+      const tipoAdi: "salario" | "gratificacao" = (payload as any).tipo === "gratificacao" ? "gratificacao" : "salario";
+      if (tipoAdi === "gratificacao") {
+        const erroGrat = await validarAdiantamentoGratificacao(sb, { funcionario_id, competencia_ref, valor, ignorarId: id });
+        if (erroGrat) return NextResponse.json({ error: erroGrat }, { status: 422 });
+      }
       // Atualiza o registro de adiantamento
       const { error: adiErr } = await sb.from("adiantamentos_salario").update({
         funcionario_id, data, valor,

@@ -16669,3 +16669,17 @@ CREATE POLICY "cte_cartas_by_conta" ON cte_cartas_correcao FOR ALL
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 344 — Adiantamento de gratificação
+-- =============================================================================
+-- adiantamentos_salario.tipo: 'salario' (padrão, comportamento atual) ou 'gratificacao' — adiantamento de uma
+-- gratificação já lançada no cadastro do funcionário (funcionario_premiacoes) para uma competência.
+ALTER TABLE adiantamentos_salario ADD COLUMN IF NOT EXISTS tipo text NOT NULL DEFAULT 'salario';
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'adiantamentos_salario_tipo_check') THEN
+    ALTER TABLE adiantamentos_salario ADD CONSTRAINT adiantamentos_salario_tipo_check CHECK (tipo IN ('salario','gratificacao'));
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

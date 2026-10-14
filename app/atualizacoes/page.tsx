@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-a",
+    data: "14/10/2026",
+    titulo: "Adiantamento de gratificação na folha",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Na aba Adiantamentos da folha há o Tipo Gratificação: adianta uma gratificação já lançada no cadastro do funcionário (aba Premiações) para uma competência, e o valor é descontado na folha desse mês. O sistema limita a soma adiantada ao valor lançado; o excedente deve ser lançado manualmente como empréstimo a terceiros. Requer a Seção 344 do supabase_migrations.sql." },
+    ],
+    onde: "Financeiro → Folha de Pagamento → Adiantamentos",
+  },
+  {
     versao: "2026.10.13-v",
     data: "13/10/2026",
     titulo: "Carta de correção do CT-e",
