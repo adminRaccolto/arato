@@ -5,6 +5,7 @@
  */
 
 import { falharSeErro } from "./db-util";
+import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
@@ -3192,7 +3193,9 @@ export async function processarNfEntrada(
     const parcelado = (opts?.parcelas?.length ?? 0) > 1;
     // Se NF está vinculada a um pedido que já tem lançamento → atualiza em vez de duplicar
     let lancamentoIdPedido: string | null = null;
-    if (opts?.pedidoCompraId) {
+    // O título do pedido NÃO é mais reaproveitado pela NF: ele fica no fluxo de caixa como SALDO do pedido (total menos
+    // as NFs processadas) e cada NF tem o seu próprio título — ver lib/financeiro/saldo-pedido.ts.
+    if (false as boolean && opts?.pedidoCompraId) {
       const { data: ped } = await supabase
         .from("pedidos_compra")
         .select("lancamento_id")
@@ -3340,6 +3343,7 @@ export async function processarNfEntrada(
         numero_documento:        opts?.nfeNumero ?? undefined,
         tipo_documento_lcdpr:    "NF",
         nf_entrada_id:           nfId,
+        pedido_compra_id:        opts?.pedidoCompraId ?? undefined,
         origem_lancamento:       "nf_entrada",
         produtor_id:             opts?.produtorId ?? undefined,
         maquina_id:              opts?.maquinaId ?? undefined,
@@ -5256,6 +5260,8 @@ export function alocarEntregaPorLinha(
 // reprocessar a mesma NF ou linkar uma NF nova nunca deve contar em dobro.
 export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | undefined): Promise<void> {
   if (!pedido_id) return;
+  // O título do pedido no fluxo de caixa vale só o saldo ainda não coberto por NF processada
+  await ajustarSaldoPedidoNoFC(supabase, pedido_id).catch(e => console.error("[saldo-pedido]", e));
   const { data: ped } = await supabase.from("pedidos_compra").select("status").eq("id", pedido_id).maybeSingle();
   if (!ped) return;
   // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado — só

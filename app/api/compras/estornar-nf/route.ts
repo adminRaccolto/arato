@@ -1,3 +1,4 @@
+import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
@@ -222,6 +223,7 @@ export async function POST(req: NextRequest) {
     // Estorno reverte a entrega — pedido fiscal pode voltar de "entregue"/
     // "parcialmente_entregue" pra "aprovado".
     if (nfRow?.pedido_compra_id) await recalcularEntregaPedidoFiscal(sb, nfRow.pedido_compra_id);
+    if (nfRow?.pedido_compra_id) await ajustarSaldoPedidoNoFC(sb, nfRow.pedido_compra_id).catch(() => {});
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

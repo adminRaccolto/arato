@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-w",
+    data: "14/10/2026",
+    titulo: "Pedido de Compra: só o saldo no Fluxo de Caixa",
+    modulos: ["Financeiro", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "O título do Pedido de Compra no Fluxo de Caixa projetado ficava com o valor integral mesmo com NFs já lançadas. Agora cada NF vinculada tem o seu título no Contas a Pagar e o título do pedido vale só o saldo (total do pedido menos as NFs processadas), zerando e sendo cancelado quando as NFs cobrem o pedido, e voltando se uma NF for estornada ou excluída. Pedido barter fica fora. Verifique o total de pedidos com valor digitado errado." },
+    ],
+    onde: "Financeiro → Fluxo de Caixa / Contas a Pagar",
+  },
+  {
     versao: "2026.10.14-v",
     data: "14/10/2026",
     titulo: "Lançar férias do funcionário",
