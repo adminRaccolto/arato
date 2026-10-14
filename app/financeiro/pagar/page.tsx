@@ -604,6 +604,11 @@ export default function ContasAPagarPage() {
       d.setMonth(d.getMonth() + i * freqMeses);
       return { data: d.toISOString().split("T")[0], valor: Math.round(valorParcela * 100) / 100 };
     });
+    // Diferença de arredondamento (ex.: 100 em 3x = 33,33 + 33,33 + 33,34) vai na última parcela: a soma sempre fecha com o total
+    if (valorTotal > 0 && novas.length > 1) {
+      const somaAnteriores = novas.slice(0, -1).reduce((s, x) => s + x.valor, 0);
+      novas[novas.length - 1].valor = Math.round((valorTotal - somaAnteriores) * 100) / 100;
+    }
     setParcelasNovo(novas);
   }
 
@@ -631,8 +636,8 @@ export default function ContasAPagarPage() {
   }
 
   // ── Editar lançamento existente — reaproveita o mesmo modal, sem a parte
-  // de Condição de Pagamento/parcelamento (converter parcelas de um título já
-  // lançado é um fluxo à parte, não entra aqui; editar muda só os campos).
+  // de Condição de Pagamento: em edição, "Parcelado" + "Gerar" divide o título em
+  // parcelas (a 1ª é o próprio título editado; as demais nascem com o mesmo agrupador).
   async function abrirEditar(l: RelLancamento) {
     setErroNovo("");
     setNovoTab("principal");
@@ -729,12 +734,13 @@ export default function ContasAPagarPage() {
 
     // ── Edição: UPDATE no título existente — sem reconversão de parcelamento ──
     if (editandoId) {
+      const converterEmParcelas = novoForm.condicao === "prazo" && parcelasNovo.length >= 2;
       setSalvandoAcao(true);
       try {
         if (novoForm.origem === "lancamentos") {
           const sacas = Number(novoForm.sacas);
           const valorFinal = novoForm.moeda === "barter" ? sacas * novoForm.preco_saca_barter : novoForm.valor;
-          await atualizarLancamento(editandoId, {
+          const camposEdit: Partial<Omit<Lancamento, "id" | "created_at">> = {
             moeda: novoForm.moeda,
             pessoa_id: novoForm.pessoa_id || undefined,
             descricao: novoForm.descricao.trim() || (pessoas.find(p => p.id === novoForm.pessoa_id)?.nome ?? ""),
@@ -757,10 +763,34 @@ export default function ContasAPagarPage() {
             natureza: novoForm.natureza,
             forma_pagamento: novoForm.forma_pagamento || undefined,
             entidade_contabil: novoForm.entidade_contabil || undefined,
-          });
+          };
+          // Título já lançado com vencimento único e negociado em parcelas: a 1ª parcela É o título original
+          // (editado), as demais são criadas com o mesmo agrupador — nada é apagado nem fica em dobro.
+          if (converterEmParcelas) {
+            if (novoForm.moeda === "barter") throw new Error("Título em sacas (barter) não é parcelado por aqui.");
+            const { data: orig } = await supabase.from("lancamentos").select("*").eq("id", editandoId).single();
+            if (!orig) throw new Error("Título não encontrado.");
+            const emAberto = ["em_aberto", "vencido", "vencendo", "previsto"].includes(orig.status);
+            if (!emAberto || orig.conciliado || orig.lote_id || orig.data_baixa || Number(orig.valor_pago ?? 0) > 0)
+              throw new Error("Só é possível parcelar um título ainda em aberto, sem baixa, conciliação nem borderô.");
+            if ((orig.total_parcelas ?? 1) > 1) throw new Error("Este título já faz parte de um parcelamento.");
+            const agrupador = crypto.randomUUID();
+            const n = parcelasNovo.length;
+            await atualizarLancamento(editandoId, { ...camposEdit, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, num_parcela: 1, total_parcelas: n, agrupador });
+            const { id: _i, created_at: _c, ...molde } = orig as Record<string, unknown>;
+            const linhas = parcelasNovo.slice(1).map((pc, k) => ({
+              ...molde, ...camposEdit, valor: pc.valor, data_vencimento: pc.data, num_parcela: k + 2, total_parcelas: n, agrupador,
+              status: "em_aberto", conciliado: false, lote_id: null, data_baixa: null, valor_pago: null,
+            }));
+            const r = await fetch("/api/lancamentos-cp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows: linhas }) });
+            const j = await r.json() as { ok: boolean; error?: string };
+            if (!j.ok) throw new Error(`A 1ª parcela foi salva, mas as demais não: ${j.error}. Abra o título e tente de novo.`);
+          } else {
+            await atualizarLancamento(editandoId, camposEdit);
+          }
           if (salvarComoRegra) await criarRegraClassificacaoNovo();
         } else {
-          await atualizarEmpresaLancamento(editandoId, {
+          const camposEmp = {
             empresa_id: novoForm.empresa_id,
             descricao: novoForm.descricao.trim(),
             categoria: novoForm.categoria || undefined,
@@ -777,7 +807,23 @@ export default function ContasAPagarPage() {
             conta_bancaria: novoForm.conta_pagamento || undefined,
             numero_documento: novoForm.numero_documento || undefined,
             observacao: novoForm.observacao.trim() || undefined,
-          });
+          };
+          if (converterEmParcelas) {
+            const { data: orig } = await supabase.from("empresa_lancamentos").select("*").eq("id", editandoId).single();
+            if (!orig) throw new Error("Título não encontrado.");
+            if (orig.status !== "pendente" || orig.conciliado || orig.lote_id || orig.data_pagamento || Number(orig.valor_pago ?? 0) > 0)
+              throw new Error("Só é possível parcelar um título ainda em aberto, sem baixa, conciliação nem borderô.");
+            if ((orig.parcelas_total ?? 1) > 1) throw new Error("Este título já faz parte de um parcelamento.");
+            const agrupador = crypto.randomUUID();
+            const n = parcelasNovo.length;
+            await atualizarEmpresaLancamento(editandoId, { ...camposEmp, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, parcela_num: 1, parcelas_total: n, agrupador });
+            const { id: _i, created_at: _c, numero: _n, ...molde } = orig as Record<string, unknown>;
+            for (let k = 1; k < n; k++) {
+              await criarEmpresaLancamento({ ...molde, ...camposEmp, valor: parcelasNovo[k].valor, data_vencimento: parcelasNovo[k].data, parcela_num: k + 1, parcelas_total: n, agrupador, status: "pendente", conciliado: false, lote_id: null, data_pagamento: null, valor_pago: null } as never);
+            }
+          } else {
+            await atualizarEmpresaLancamento(editandoId, camposEmp);
+          }
         }
         setModalNovo(false);
         setEditandoId(null);
@@ -2446,7 +2492,7 @@ export default function ContasAPagarPage() {
                 <OperationalButton data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
                 <OperationalButton data-arato-button="primary" onClick={salvarNovo} disabled={salvandoAcao}
                   style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
-                  {salvandoAcao ? "Salvando…" : editandoId ? "✓ Salvar alterações" : !ehEmpresa && novoForm.condicao === "prazo" && parcelasNovo.length > 0 ? `◈ Criar ${parcelasNovo.length} parcelas` : !ehEmpresa && novoForm.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, novoForm.qtd_parcelas)} repetições` : "Salvar Lançamento"}
+                  {salvandoAcao ? "Salvando…" : editandoId ? (novoForm.condicao === "prazo" && parcelasNovo.length >= 2 ? `✓ Salvar e dividir em ${parcelasNovo.length} parcelas` : "✓ Salvar alterações") : !ehEmpresa && novoForm.condicao === "prazo" && parcelasNovo.length > 0 ? `◈ Criar ${parcelasNovo.length} parcelas` : !ehEmpresa && novoForm.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, novoForm.qtd_parcelas)} repetições` : "Salvar Lançamento"}
                 </OperationalButton>
               </div>
             </div>

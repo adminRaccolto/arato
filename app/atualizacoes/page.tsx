@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-r",
+    data: "14/10/2026",
+    titulo: "Parcelar título já lançado no Contas a Pagar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao editar um título do Contas a Pagar e escolher Parcelado, as parcelas eram geradas na tela mas não salvas. Agora o botão Salvar e dividir em N parcelas transforma o título na 1ª parcela e cria as demais com o mesmo agrupamento (Produtor e Empresa), sem apagar nem duplicar. Só para título em aberto, sem baixa, conciliação ou borderô. A soma das parcelas agora sempre fecha com o total: a diferença de centavos vai na última." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Editar",
+  },
+  {
     versao: "2026.10.14-q",
     data: "14/10/2026",
     titulo: "Funcionário sem imposto automático na folha",
