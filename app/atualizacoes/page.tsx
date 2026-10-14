@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-m",
+    data: "14/10/2026",
+    titulo: "Data de hoje correta à noite",
+    modulos: ["Financeiro", "Fiscal", "Lavoura"],
+    itens: [
+      { tipo: "correcao", texto: "Depois das 21h o sistema calculava a data de hoje em UTC, que já é o dia seguinte no Brasil: títulos que vencem hoje apareciam como vencidos, datas padrão de lançamentos e filtros saíam um dia adiantadas e relatórios mudavam conforme a hora em que eram abertos. Agora todo o sistema usa o dia do fuso do usuário (104 telas e rotinas ajustadas)." },
+    ],
+    onde: "Todo o sistema",
+  },
+  {
     versao: "2026.10.14-l",
     data: "14/10/2026",
     titulo: "Relatórios financeiros sem linhas repetidas",

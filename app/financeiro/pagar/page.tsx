@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading, OperationalSummary } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Contas a Pagar — unificado (Produtor + Empresa). Promovida de piloto pra
@@ -113,7 +114,7 @@ const ORIGEM_OPCOES = [
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 const numBR = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
-const hojeISO = () => new Date().toISOString().slice(0, 10);
+const hojeISO = () => hojeLocal();
 const maisMeses = (n: number) => { const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
 // Dias até o vencimento (negativo = dias em atraso) — só faz sentido pra quem
 // ainda não foi baixado/cancelado.

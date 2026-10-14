@@ -15,6 +15,7 @@
 // (necessários no corpo do relatório) são buscados ao vivo por pedido
 // selecionado, via lib/db.ts (mesmas funções já usadas em Compras).
 // ═══════════════════════════════════════════════════════════════════════════
+import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { useState } from "react";
@@ -487,7 +488,7 @@ export default function PedidosCompraRelatorioTab() {
             }
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Detalhado");
           }
-          XLSX.writeFile(wb, `Consolidado_Insumo_${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+          XLSX.writeFile(wb, `Consolidado_Insumo_${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${hojeLocal()}.xlsx`);
         }
         setModalAberto(false);
         return;
@@ -531,7 +532,7 @@ export default function PedidosCompraRelatorioTab() {
           }
           XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Detalhado");
         }
-        XLSX.writeFile(wb, `${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        XLSX.writeFile(wb, `${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${hojeLocal()}.xlsx`);
       }
       setModalAberto(false);
     } catch (e: unknown) {

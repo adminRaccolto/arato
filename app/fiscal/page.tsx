@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -770,7 +771,7 @@ function FiscalInner() {
       // nenhum escolhido, não dá pra saber qual dos dois é o certo.
       const cfop = "6.905";
       const natRemessa = NATUREZAS_VENDA.find(n => n.codigo === "6.905")!;
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
       const agora = new Date().toTimeString().slice(0, 8);
       setFVenda(p => ({
         ...p,
@@ -839,8 +840,8 @@ function FiscalInner() {
     fazenda_destino_id: "",
     cfop: "5.152",
     ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "",
-    data_emissao: new Date().toISOString().slice(0, 10),
-    data_saida:   new Date().toISOString().slice(0, 10),
+    data_emissao: hojeLocal(),
+    data_saida:   hojeLocal(),
     obs: "",
   });
   const [retransmitindoNota, setRetransmitindoNota] = useState<NotaFiscal | null>(null);
@@ -849,7 +850,7 @@ function FiscalInner() {
 
   // Formulário NF-e Saída — 8 abas
   const [fVenda, setFVenda] = useState<typeof FVENDA_INICIAL>(() => {
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     return { ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora };
   });
@@ -1003,7 +1004,7 @@ function FiscalInner() {
     observacao: "",
   });
 
-  const TODAY = new Date().toISOString().slice(0, 10);
+  const TODAY = hojeLocal();
 
   // ── Emitente ativo (modulo_key selecionado para emissão) ────────
   const [moduloKeyAtivo, setModuloKeyAtivo] = useState<string>("");
@@ -1226,7 +1227,7 @@ function FiscalInner() {
 
   // Corrigir e retransmitir — abre o modal pré-preenchido com os dados da nota rejeitada
   function abrirRetransmit(nota: NotaFiscal) {
-    const hoje  = new Date().toISOString().slice(0, 10);
+    const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     const dj    = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
     const moduloSalvo = dj.modulo_key as string | undefined;
@@ -1342,7 +1343,7 @@ function FiscalInner() {
         },
       });
       await carregar();
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
       const agora = new Date().toTimeString().slice(0, 8);
       setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
       setNfeItens([]);
@@ -1554,7 +1555,7 @@ function FiscalInner() {
 
       await carregar();
 
-      const hoje = new Date().toISOString().slice(0,10);
+      const hoje = hojeLocal();
       const agora = new Date().toTimeString().slice(0,8);
       setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
       setNfeItens([]);
@@ -1746,7 +1747,7 @@ function FiscalInner() {
     const total = qtd * vUnit;
     const natObj = NATUREZAS_TRANSFERENCIA.find(n => n.codigo === fTransf.cfop) ?? NATUREZAS_TRANSFERENCIA[0];
     const prodSel = produtores.find(p => p.id === fTransf.produtor_id);
-    const TODAY = new Date().toISOString().slice(0, 10);
+    const TODAY = hojeLocal();
     setSalvandoTransf(true);
     try {
       // Busca endereço da fazenda destino da tabela fazendas
@@ -2651,7 +2652,7 @@ function FiscalInner() {
                   )}
                   {emissores.length === 1 && <span style={{ fontSize: 11, background: "var(--border)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
                   {emissores.length === 0 && <span style={{ fontSize: 11, background: "#E24B4A50", padding: "3px 8px", borderRadius: 5 }}>⚠ Configure Parâmetros Fiscais</span>}
-                  <OperationalButton data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
+                  <OperationalButton data-arato-button="toggle" onClick={() => { const hoje = hojeLocal(); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
                     style={{ background: "var(--border)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</OperationalButton>
                 </div>
               </div>
@@ -3158,7 +3159,7 @@ function FiscalInner() {
 
               {/* Barra de ações */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
-                <OperationalButton data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
+                <OperationalButton data-arato-button="toggle" onClick={() => { const hoje = hojeLocal(); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
                   style={{ padding: "7px 18px", border: "0.5px solid #C8CDD8", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
                 </OperationalButton>

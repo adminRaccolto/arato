@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -24,7 +25,7 @@ const sep: React.CSSProperties = { gridColumn: "1/-1", fontSize: 11, fontWeight:
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const hoje    = () => new Date().toISOString().split("T")[0];
+const hoje    = () => hojeLocal();
 
 function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{texto}</span>;

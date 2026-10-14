@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputNumerico from "../../../components/InputNumerico";
@@ -77,7 +78,7 @@ const formVazio = () => ({
   piloto: "",
   tipo: "fungicida" as TipoAplicacaoAerea,
   estadio_fenologico: "",
-  data_aplicacao: new Date().toISOString().split("T")[0],
+  data_aplicacao: hojeLocal(),
   volume_calda_l_ha: "",
   altura_voo_m: "",
   velocidade_vento_kmh: "",

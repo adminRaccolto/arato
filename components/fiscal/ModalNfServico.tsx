@@ -15,6 +15,7 @@
 // Monte o componente só quando for abrir (id=null → nova; id=<uuid> → edita/
 // visualiza) — ao desmontar, todo o estado interno se perde naturalmente.
 // ═══════════════════════════════════════════════════════════════════════════
+import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -105,7 +106,7 @@ const CAB_VAZIO = () => ({
   prestador_id: "", prestador_nome: "", prestador_cnpj: "",
   tomador_id: "", tomador_tipo: "" as "produtor" | "empresa" | "pessoa" | "", tomador_nome: "", tomador_cnpj: "",
   municipio_prestacao: "",
-  data_prestacao: new Date().toISOString().split("T")[0],
+  data_prestacao: hojeLocal(),
   competencia: new Date().toISOString().substring(0, 7),
   codigo_servico: "", cnae: "", discriminacao: "",
   valor_servico: "", valor_deducoes: "0",

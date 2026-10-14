@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -93,7 +94,7 @@ export default function CartoesCredito() {
   const [contasPagamento, setContasPagamento] = useState<ContaBancaria[]>([]);
   const [faturaPagar,     setFaturaPagar]     = useState<FaturaCartao | null>(null);
   const [pagarConta,      setPagarConta]      = useState("");
-  const [pagarData,       setPagarData]       = useState(() => new Date().toISOString().split("T")[0]);
+  const [pagarData,       setPagarData]       = useState(() => hojeLocal());
   const [pagandoFatura,   setPagandoFatura]   = useState(false);
   const [erroPagarFatura, setErroPagarFatura] = useState("");
 
@@ -215,7 +216,7 @@ export default function CartoesCredito() {
   const abrirPagarFatura = (f: FaturaCartao) => {
     setFaturaPagar(f);
     setPagarConta("");
-    setPagarData(new Date().toISOString().split("T")[0]);
+    setPagarData(hojeLocal());
     setErroPagarFatura("");
   };
 

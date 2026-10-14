@@ -1,4 +1,5 @@
 // Todas as 23 consultas disponíveis via WhatsApp
+import { hojeLocal } from "./data-local";
 import { createClient } from "@supabase/supabase-js";
 
 function sb() {
@@ -15,7 +16,7 @@ function fmtData(d: string) {
   return new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
 }
 function hoje() {
-  return new Date().toISOString().split("T")[0];
+  return hojeLocal();
 }
 function fimSemana() {
   const d = new Date();

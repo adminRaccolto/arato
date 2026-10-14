@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -54,7 +55,7 @@ interface OrcamentoItem {
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 const fmtR = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtN = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeLocal();
 const diasAte = (iso?: string | null) => {
   if (!iso) return null;
   const [y, m, d] = iso.split("-").map(Number);

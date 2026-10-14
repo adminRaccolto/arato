@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -1938,7 +1939,7 @@ function ImportacaoInner() {
           motivo:         "inventario",
           quantidade:     estoqueQtd,
           valor_unitario: valorUnit > 0 ? valorUnit : null,
-          data:           new Date().toISOString().split("T")[0],
+          data:           hojeLocal(),
           deposito_id:    depLinha?.id ?? null,
           observacao:     "Saldo inicial — importação",
           auto:           true,
@@ -2122,7 +2123,7 @@ function ImportacaoInner() {
           ? (moedaUp === "USD" && cotacaoV ? vlRaw * cotacaoV : vlRaw)
           : valorBRL; // fallback: mesmo valor do financiado
         const dataLib   = r.data_liberacao?.trim() || r.data_contrato.trim();
-        const hoje      = new Date().toISOString().slice(0, 10);
+        const hoje      = hojeLocal();
         // Verifica se já existe CR auto-gerado para não duplicar
         const { count: crAutoExist } = await supabase
           .from("lancamentos").select("id", { count: "exact", head: true })
@@ -2233,7 +2234,7 @@ function ImportacaoInner() {
             r._msg = `Parcelas criadas (${cpAutoExist} CP auto já existiam — não duplicados)`;
           } else {
             // ── Cria CP em lancamentos e vincula às parcelas ─────────────────
-            const hoje = new Date().toISOString().slice(0, 10);
+            const hoje = hojeLocal();
             const categoria = CAT_CAPTACAO_IMP[r.tipo] ?? "Captação de Empréstimos";
             const ogAmort = await resolverOperacaoGerencialPorClassificacao(fazendaId, OG_AMORT_IMP[r.tipo] ?? OG_AMORT_IMP.outros);
             const totalP = parcRows.length;

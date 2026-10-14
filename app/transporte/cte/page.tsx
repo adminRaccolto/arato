@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -26,7 +27,7 @@ const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px s
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const hoje = () => new Date().toISOString().split("T")[0];
+const hoje = () => hojeLocal();
 
 function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{texto}</span>;
@@ -766,7 +767,7 @@ function CtePageInner() {
     setCteEdit(null);
     setSubstituindo(c);
     setAlteraToma(false); setModoSubst(true); setOrigemExterna(false); setChaveExterna("");
-    setForm(f => ({ ...f, numero_cte: proximoNr, data_emissao: new Date().toISOString().slice(0, 10), observacao: `CT-e substituto do CT-e nº ${c.numero_cte}.${f.observacao ? " " + f.observacao : ""}` }));
+    setForm(f => ({ ...f, numero_cte: proximoNr, data_emissao: hojeLocal(), observacao: `CT-e substituto do CT-e nº ${c.numero_cte}.${f.observacao ? " " + f.observacao : ""}` }));
   }
 
   function abrirEditar(c: Cte) {

@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -34,7 +35,7 @@ interface ItemForm {
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeLocal();
 
 // CFOPs comuns para transferência de insumos (sufixo = últimos 3 dígitos)
 const CFOP_OPCOES: { sufixo: string; label: string }[] = [

@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -339,7 +340,7 @@ export default function NfCompraPage() {
   const [filtroDataAte,  setFiltroDataAte]  = useState("");
   // SIEG — painel de sincronização
   const [siegDtInicio,      setSiegDtInicio]      = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
-  const [siegDtFim,         setSiegDtFim]         = useState(() => new Date().toISOString().slice(0,10));
+  const [siegDtFim,         setSiegDtFim]         = useState(() => hojeLocal());
   const [siegForceReimport, setSiegForceReimport] = useState(false);
   const [siegSyncing,       setSiegSyncing]       = useState(false);
   const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
@@ -428,7 +429,7 @@ export default function NfCompraPage() {
   const [devFatorDesconto, setDevFatorDesconto] = useState(1);  // valor líquido da NF ÷ soma bruta dos itens — aplicado ao valor devolvido
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
   const [devCfop,    setDevCfop]    = useState("5201");
-  const [devData,    setDevData]    = useState(new Date().toISOString().split("T")[0]);
+  const [devData,    setDevData]    = useState(hojeLocal());
   const [devVenc,    setDevVenc]    = useState("");
   const [devObs,     setDevObs]     = useState("");
   const [devSaving,  setDevSaving]  = useState(false);
@@ -532,7 +533,7 @@ export default function NfCompraPage() {
         nf_remessa_chave:       res.chave,
         nf_remessa_numero:      res.numero,
         nf_remessa_protocolo:   res.protocolo,
-        nf_remessa_data:        new Date().toISOString().split("T")[0],
+        nf_remessa_data:        hojeLocal(),
         cfop_remessa:           cfop,
         cfop_retorno:           cfopRet,
         destinatario_pessoa_id: remessaDestId,
@@ -559,7 +560,7 @@ export default function NfCompraPage() {
     emitente_municipio: "", emitente_estado: "",
     nome_destinatario: "", cnpj_destino: "",   // destinatário da NF (nossa fazenda)
     pessoa_id: "", cfop: "",
-    data_emissao: "", data_entrada: new Date().toISOString().split("T")[0],
+    data_emissao: "", data_entrada: hojeLocal(),
     valor_total: "", natureza: "",
     pedido_compra_id: "",
     operacao_gerencial_id: "",
@@ -900,7 +901,7 @@ export default function NfCompraPage() {
     setSiegReimporting(p => ({ ...p, [nf.id]: true }));
     try {
       // Janela de ±7 dias em torno da emissão — evita buscar anos inteiros (timeout)
-      const base  = nf.data_emissao ?? new Date().toISOString().slice(0, 10);
+      const base  = nf.data_emissao ?? hojeLocal();
       const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
       const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
       const res = await fetch("/api/integracoes/sieg-sync", {
@@ -922,7 +923,7 @@ export default function NfCompraPage() {
     if (!nfEdit?.chave_acesso || !fazendaId) return;
     setWizardResyncando(true);
     try {
-      const base  = nfEdit.data_emissao ?? new Date().toISOString().slice(0, 10);
+      const base  = nfEdit.data_emissao ?? hojeLocal();
       const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
       const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
       const res = await fetch("/api/integracoes/sieg-sync", {
@@ -992,7 +993,7 @@ export default function NfCompraPage() {
       });
       const d = await res.json() as Record<string, unknown>;
       if (d.erro) setSiegErros(p => ({ ...p, [nf.id]: String(d.erro) }));
-      else setNfs(prev => prev.map(n => n.id === nf.id ? { ...n, manifestacao_tipo: tipo, manifestacao_data: new Date().toISOString().slice(0,10) } : n));
+      else setNfs(prev => prev.map(n => n.id === nf.id ? { ...n, manifestacao_tipo: tipo, manifestacao_data: hojeLocal() } : n));
     } catch (e) { setSiegErros(p => ({ ...p, [nf.id]: String(e) })); }
     finally { setSiegBusy(p => ({ ...p, [nf.id]: false })); }
   }
@@ -1030,8 +1031,8 @@ export default function NfCompraPage() {
       emitente_municipio: "", emitente_estado: "",
       nome_destinatario: "", cnpj_destino: "",
       pessoa_id: "", cfop: "",
-      data_emissao: new Date().toISOString().split("T")[0],
-      data_entrada: new Date().toISOString().split("T")[0],
+      data_emissao: hojeLocal(),
+      data_entrada: hojeLocal(),
       valor_total: "", natureza: "",
       pedido_compra_id: "",
       operacao_gerencial_id: "",
@@ -1091,7 +1092,7 @@ export default function NfCompraPage() {
       pessoa_id: nf.pessoa_id ?? pessoaPorCnpj(nf.emitente_cnpj ?? ""),
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
-      data_entrada: nf.data_entrada ?? new Date().toISOString().split("T")[0],
+      data_entrada: nf.data_entrada ?? hojeLocal(),
       // "Valor Produtos" precisa ser o BRUTO (o painel de impostos soma/subtrai por cima pra
       // chegar no valor líquido salvo em nf.valor_total). NFs processadas depois da correção têm
       // valor_produtos salvo separadamente (bruto de verdade); NFs mais antigas ou importadas via
@@ -1905,7 +1906,7 @@ export default function NfCompraPage() {
           status: "retornada",
           nf_retorno_chave:  cab.chave_acesso || nfEdit.chave_acesso || undefined,
           nf_retorno_numero: nfEdit.numero,
-          nf_retorno_data:   cab.data_emissao || nfEdit.data_emissao || new Date().toISOString().slice(0, 10),
+          nf_retorno_data:   cab.data_emissao || nfEdit.data_emissao || hojeLocal(),
         });
       }
 
@@ -2277,7 +2278,7 @@ export default function NfCompraPage() {
             itensDireto,
             nf.valor_total,
             nf.emitente_nome,
-            nf.data_emissao ?? nf.data_entrada ?? new Date().toISOString().slice(0, 10),
+            nf.data_emissao ?? nf.data_entrada ?? hojeLocal(),
             nf.emitente_cnpj ?? undefined,
             {
               nfeNumero:             nf.numero,
@@ -2336,7 +2337,7 @@ export default function NfCompraPage() {
     setDevNfOrig(nf);
     setDevErr("");
     setDevObs("");
-    setDevData(new Date().toISOString().split("T")[0]);
+    setDevData(hojeLocal());
     setDevVenc("");
     // CFOP padrão: 5201 (intraestadual) — ajustável pelo usuário
     setDevCfop("5201");

@@ -3,6 +3,7 @@
  * Encerra um MDF-e de verdade na SEFAZ (evento 110112). Aceita chave/protocolo diretos (MDF-e
  * emitido fora do sistema) ou mdfe_id (busca chave/protocolo no banco e atualiza o status).
  */
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { encerrarMDFePorChave } from "../../../../lib/mdfe/encerramento";
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       chave = (m.chave_acesso as string) ?? ""; protocolo = (m.protocolo_autorizacao as string) ?? "";
     }
     const r = await encerrarMDFePorChave(b.fazenda_id, {
-      chave, protocolo, dataEnc: b.data_enc ?? new Date().toISOString().slice(0, 10),
+      chave, protocolo, dataEnc: b.data_enc ?? hojeLocal(),
       ufEnc: b.uf_enc ?? "MT", cMunEnc: b.cmun_enc ?? "",
     });
     if (r.sucesso && b.mdfe_id) {

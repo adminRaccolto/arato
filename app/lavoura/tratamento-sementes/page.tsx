@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputNumerico from "../../../components/InputNumerico";
@@ -186,7 +187,7 @@ export default function TratamentoSementesPage() {
     ciclo_id: "", cultura: "soja", cultivar: "", lote_semente: "",
     insumo_id: "", deposito_origem_id: "", deposito_destino_id: "",
     quantidade_sc: "", volume_calda_ml_100kg: "500",
-    data_planejada: new Date().toISOString().split("T")[0],
+    data_planejada: hojeLocal(),
     operador: "", equipamento: "", observacao: "",
   };
   const [form, setForm]         = useState<FormOrdem>(formVazio);
@@ -420,7 +421,7 @@ export default function TratamentoSementesPage() {
             tipo:        "saida",
             motivo:      `Tratamento de Sementes #${concluindo.numero}`,
             quantidade:  consumido,
-            data:        formConcluir.data_conclusao?.split("T")[0] ?? new Date().toISOString().split("T")[0],
+            data:        formConcluir.data_conclusao?.split("T")[0] ?? hojeLocal(),
             deposito_id: concluindo.deposito_origem_id ?? null,
             auto:        true,
             observacao:  `${CULTURAS[concluindo.cultura ?? ""] ?? concluindo.cultura} — ${concluindo.cultivar ?? ""} — Lote: ${concluindo.lote_semente ?? "sem lote"}`,

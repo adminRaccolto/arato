@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../../lib/data-local";
 import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
 import { useState } from "react";
@@ -105,7 +106,7 @@ export default function NovoClientePage() {
     user_senha_conf: "",
     plano:           "gestao",
     status:          "trial",
-    data_inicio:     new Date().toISOString().split("T")[0],
+    data_inicio:     hojeLocal(),
     data_vencimento: (() => {
       const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().split("T")[0];
     })(),

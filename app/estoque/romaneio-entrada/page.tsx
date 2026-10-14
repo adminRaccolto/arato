@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -16,7 +17,7 @@ import {
 import { supabase } from "../../../lib/supabase";
 import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato, Talhao, Produtor, ProdutorIE } from "../../../lib/supabase";
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = hojeLocal();
 const fmt   = (n?: number | null, d = 2) => (n ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 

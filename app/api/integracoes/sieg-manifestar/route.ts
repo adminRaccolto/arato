@@ -6,6 +6,7 @@
  * tipo: 0=Ciência 1=Confirmação 2=Desconhecimento 3=Não Realizada
  */
 
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse }                     from "next/server";
 import { createClient }                                   from "@supabase/supabase-js";
 import { credenciaisEnv, credenciaisValidas, manifestarPorChave, TipoManifestacao } from "../../../../lib/sieg";
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
       .update({
         status:              novoStatus,
         manifestacao_tipo:   tipo,
-        manifestacao_data:   new Date().toISOString().slice(0, 10),
+        manifestacao_data:   hojeLocal(),
         manifestacao_msg:    result.mensagem,
       })
       .eq("id", nf_id)

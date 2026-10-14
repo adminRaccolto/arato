@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback, useMemo, type CSSProperties } from "react";
@@ -264,7 +265,7 @@ export function AuditoriaSafraCicloPainel({ embedded = false }: { embedded?: boo
       "Data": fmtDt(l.data), "Descrição": l.descricao, "Valor (R$)": l.valor == null ? "" : Math.round(l.valor * 100) / 100,
       "Status": l.status, "Fazenda": fazNomes.get(l.fazenda_id) ?? "",
     }))), "Registros");
-    XLSX.writeFile(wb, `auditoria_safra_ciclo_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `auditoria_safra_ciclo_${hojeLocal()}.xlsx`);
   }
 
   const chip = (ativo: boolean): CSSProperties => ({

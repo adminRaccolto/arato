@@ -1,6 +1,7 @@
 // Motor conversacional — Claude com tool use
 // O modelo decide o que perguntar, quais dados buscar e como responder.
 // Zero menus fixos, zero classificador de intenção, zero máquina de estados.
+import { hojeLocal } from "./data-local";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   consultaContasPagarSemana, consultaContasAtrasadas,
@@ -398,7 +399,7 @@ async function executarFerramenta(
       case "consultar_dre":
         return consultaDRESumario(fazendaId);
       case "consultar_fluxo_caixa_periodo": {
-        const di = String(input.data_inicio ?? new Date().toISOString().split("T")[0]);
+        const di = String(input.data_inicio ?? hojeLocal());
         const df = String(input.data_fim ?? di);
         return consultaFluxoCaixaIntervalo(fazendaId, di, df);
       }

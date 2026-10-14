@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -323,7 +324,7 @@ export default function Estoque() {
 
   // modal movimentação manual
   const [modalMov, setModalMov]   = useState(false);
-  const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
+  const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
 
   // relatórios
   const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex"|"depositos"|"auditoria"|"lotes">("saldos");
@@ -352,7 +353,7 @@ export default function Estoque() {
   const [saldoPorDeposito, setSaldoPorDeposito] = useState<{ insumo_id: string; deposito_id: string | null; saldo: number }[]>([]);
   // kardex
   const [kardexInicio, setKardexInicio] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
-  const [kardexFim, setKardexFim]       = useState(() => new Date().toISOString().slice(0,10));
+  const [kardexFim, setKardexFim]       = useState(() => hojeLocal());
   const [kardexCat, setKardexCat]       = useState<"todos" | Insumo["categoria"]>("todos");
   const [kardexInsumoId, setKardexInsumoId] = useState("");
   const [kardexDepositoId, setKardexDepositoId] = useState("");
@@ -638,7 +639,7 @@ export default function Estoque() {
     const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazAtiva!), listarMovimentacoesRel(fazAtiva!)]);
     setInsumos(ins2); setMovsRel(movsRelNovo);
     setModalMov(false);
-    setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "", variedade: "", lote_semente: "" });
+    setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
   });
 
   // ── Relatório histórico ──
@@ -814,7 +815,7 @@ export default function Estoque() {
       fazenda_id: fazAtiva!, numero: fNf.numero.trim(), serie: fNf.serie,
       chave_acesso: fNf.chave_acesso || undefined, emitente_nome: fNf.emitente_nome.trim(),
       emitente_cnpj: fNf.emitente_cnpj || undefined, data_emissao: fNf.data_emissao,
-      data_entrada: new Date().toISOString().slice(0,10),
+      data_entrada: hojeLocal(),
       valor_total: fNf.valor_total || 0,
       natureza: fNf.natureza || undefined, observacao: fNf.observacao || undefined,
       centro_custo_id: fNf.centro_custo_id || undefined,

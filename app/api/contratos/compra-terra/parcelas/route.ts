@@ -7,6 +7,7 @@
  * DELETE /api/contratos/compra-terra/parcelas
  * Remove parcelas, lançamentos e contratos de grãos vinculados.
  */
+import { hojeLocal } from "../../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     const sb = admin();
-    const TODAY = new Date().toISOString().split("T")[0];
+    const TODAY = hojeLocal();
 
     // Busca OG "COMPRA DE IMÓVEIS" (2.03.01.001) para classificar os lançamentos
     const { data: ogRow } = await sb

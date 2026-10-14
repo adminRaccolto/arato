@@ -6,6 +6,7 @@
 //   3. Contas ativas sem assinatura recente → verificar
 //   4. Gerar próximas cobranças (D-3 antes do vencimento) via Asaas
 
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { criarCobranca, buscarPixQrCode } from "../../../../lib/asaas";
@@ -26,7 +27,7 @@ function autorizado(req: NextRequest) {
   return auth === `Bearer ${secret}`;
 }
 
-function hoje() { return new Date().toISOString().split("T")[0]; }
+function hoje() { return hojeLocal(); }
 function addDias(d: number) {
   const dt = new Date();
   dt.setDate(dt.getDate() + d);

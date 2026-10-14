@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../lib/data-local";
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { calcularStepsCompletos } from "../lib/onboarding";
@@ -533,7 +534,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   // Carrega o Ano Safra vigente (data_inicio <= hoje <= data_fim) quando a fazenda muda
   useEffect(() => {
     if (!fazendaId) return;
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = hojeLocal();
     supabase
       .from("anos_safra")
       .select("id, descricao, data_inicio, data_fim")

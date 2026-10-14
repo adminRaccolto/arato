@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -139,11 +140,11 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
 
   // Modal curva
   const [modalCurva, setModalCurva]   = useState(false);
-  const [fCurva, setFCurva] = useState({ instrumento: "CBOT_SOJA", vencimento: "", data_referencia: new Date().toISOString().slice(0,10), valor: "", unidade: "cents_bu", fonte: "MANUAL", boletim: "fechamento" });
+  const [fCurva, setFCurva] = useState({ instrumento: "CBOT_SOJA", vencimento: "", data_referencia: hojeLocal(), valor: "", unidade: "cents_bu", fonte: "MANUAL", boletim: "fechamento" });
 
   // Modal fixação
   const [modalFix, setModalFix] = useState(false);
-  const [fFix, setFFix] = useState({ componente: "BOARD" as FixacaoHedge["componente"], quantidade_sc: "", valor: "", unidade: "cents_bu", vencimento_ref: "", data_fixacao: new Date().toISOString().slice(0,10), instrumento_hedge: "fisico", observacao: "" });
+  const [fFix, setFFix] = useState({ componente: "BOARD" as FixacaoHedge["componente"], quantidade_sc: "", valor: "", unidade: "cents_bu", vencimento_ref: "", data_fixacao: hojeLocal(), instrumento_hedge: "fisico", observacao: "" });
 
   // Modal despesa
   const [modalDesp, setModalDesp] = useState(false);
@@ -1079,7 +1080,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
               <div style={{ fontSize: 13, fontWeight: 700 }}>Histórico de Preços</div>
               <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Entrada manual · {curvas.length} registros</div>
             </div>
-            <OperationalButton data-arato-button="primary" style={btnM} onClick={() => { setFCurva({ instrumento: "CBOT_SOJA", vencimento: "", data_referencia: new Date().toISOString().slice(0,10), valor: "", unidade: "cents_bu", fonte: "MANUAL", boletim: "fechamento" }); setModalCurva(true); }}>+ Novo Registro</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={btnM} onClick={() => { setFCurva({ instrumento: "CBOT_SOJA", vencimento: "", data_referencia: hojeLocal(), valor: "", unidade: "cents_bu", fonte: "MANUAL", boletim: "fechamento" }); setModalCurva(true); }}>+ Novo Registro</OperationalButton>
           </div>
           <div style={{ ...card }}>
             {curvas.length === 0 ? (

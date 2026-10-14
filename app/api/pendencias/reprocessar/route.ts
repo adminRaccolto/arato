@@ -1,4 +1,5 @@
 // Reprocessa uma pendência operacional após o usuário vincular o insumo correto
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { converterUnidade } from "../../../../lib/whatsapp-inserir";
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     const areaHa      = Number(d.area_ha ?? 0);
     const unidUsuario = String(d.unidade ?? "");
     const unidInsumo  = String(insumo.unidade ?? "kg");
-    const dataOp      = String(d.data_op ?? new Date().toISOString().split("T")[0]);
+    const dataOp      = String(d.data_op ?? hojeLocal());
     const cicloId     = String(d.ciclo_id ?? "") || null;
     const tipoOp      = String(d.tipo_op ?? pend.subtipo ?? "");
     const operacaoId  = String(pend.operacao_id ?? "");
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
         descricao: `${tipoLabel[tipoOp] ?? tipoOp} — ${insumo.nome}`,
         categoria: catMap[tipoOp] ?? "Insumos",
         operacao_gerencial_id: ogId,
-        data_lancamento: new Date().toISOString().split("T")[0],
+        data_lancamento: hojeLocal(),
         data_vencimento: dataOp, valor: custoTotal,
         ciclo_id: cicloId, status: "em_aberto",
       });

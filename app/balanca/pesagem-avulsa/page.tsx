@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -643,8 +644,8 @@ export default function PesagemAvulsa() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
             {[
               { label: "Em Andamento",     v: pesagens.filter(p => p.status === "aguardando_bruto" || p.status === "aguardando_tara").length, color: "#C9921B" },
-              { label: "Finalizadas hoje", v: pesagens.filter(p => p.status === "finalizado" && p.data_bruto?.startsWith(new Date().toISOString().slice(0,10))).length, color: "#16A34A" },
-              { label: "Total hoje",       v: pesagens.filter(p => p.created_at?.startsWith(new Date().toISOString().slice(0,10))).length, color: "#1A5CB8" },
+              { label: "Finalizadas hoje", v: pesagens.filter(p => p.status === "finalizado" && p.data_bruto?.startsWith(hojeLocal())).length, color: "#16A34A" },
+              { label: "Total hoje",       v: pesagens.filter(p => p.created_at?.startsWith(hojeLocal())).length, color: "#1A5CB8" },
               { label: "Canceladas",       v: pesagens.filter(p => p.status === "cancelado").length, color: "#888" },
             ].map((k, i) => (
               <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 18px" }}>

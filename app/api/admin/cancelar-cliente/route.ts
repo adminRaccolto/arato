@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
       if (body.conta_id) {
         await admin
           .from("contas")
-          .update({ status: "cancelado", data_vencimento: new Date().toISOString().split("T")[0] })
+          .update({ status: "cancelado", data_vencimento: hojeLocal() })
           .eq("id", body.conta_id);
       }
       // Marca fazendas como sem acesso raccotlo

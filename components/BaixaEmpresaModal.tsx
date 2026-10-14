@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../lib/data-local";
 import SelectField from "./SelectField";
 import InputData from "../components/InputData";
 import { useState } from "react";
@@ -19,7 +20,7 @@ export default function BaixaEmpresaModal({ lanc, contas, onClose, onDone }: {
   lanc: EmpresaLancamento; contas: Conta[]; onClose: () => void; onDone: () => void;
 }) {
   const pagar = lanc.tipo === "pagar";
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = hojeLocal();
   const saldo = Math.max(0, lanc.valor - (lanc.valor_pago ?? 0));
   const [data, setData] = useState(hoje);
   const [conta, setConta] = useState(lanc.conta_bancaria ?? "");

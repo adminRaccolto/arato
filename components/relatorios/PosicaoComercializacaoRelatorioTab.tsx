@@ -12,6 +12,7 @@
 // (COALESCE pessoas.nome), ano safra e conta_id resolvidos, além de saldo_sc
 // já calculado (quantidade_sc - entregue_sc).
 // ═══════════════════════════════════════════════════════════════════════════
+import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { useState } from "react";
@@ -258,7 +259,7 @@ ${fTipo === "analitico" ? `
           }));
           XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Contratos");
         }
-        XLSX.writeFile(wb, `${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        XLSX.writeFile(wb, `${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${hojeLocal()}.xlsx`);
       }
       setModalAberto(false);
     } catch (e: unknown) {

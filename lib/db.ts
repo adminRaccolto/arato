@@ -4,6 +4,7 @@
  * Os componentes importam essas funções e não chamam supabase diretamente.
  */
 
+import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
 import { cached, invalidateCache } from "./cache";
@@ -458,7 +459,7 @@ export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise
       tipo:       "entrada",
       motivo:     "estoque_inicial",
       quantidade: estoqueInicial,
-      data:       new Date().toISOString().slice(0, 10),
+      data:       hojeLocal(),
       observacao: "Saldo inicial cadastrado",
       auto:       true,
     });
@@ -559,7 +560,7 @@ export async function atualizarInsumo(id: string, i: Partial<Insumo>): Promise<v
           tipo:       delta > 0 ? "entrada" : "saida",
           motivo:     "ajuste_manual",
           quantidade: Math.abs(delta),
-          data:       new Date().toISOString().slice(0, 10),
+          data:       hojeLocal(),
           observacao: "Ajuste via cadastro de insumos",
           auto:       false,
         });
@@ -1065,7 +1066,7 @@ export async function reabrirLancamento(id: string): Promise<void> {
  */
 export async function reabrirLancamentos(ids: string[]): Promise<void> {
   if (!ids.length) return;
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   const { data: lancs } = await supabase.from("lancamentos").select("id, data_vencimento").in("id", ids);
   // Agrupa por status resultante e faz 2 updates em lote em vez de 1 por
   // lançamento — antes era N idas ao banco pra reabrir um borderô inteiro.
@@ -1331,7 +1332,7 @@ export async function encerrarContratosPorSafras(
   if (error) throw error;
 
   // Baixa automática dos CPs vinculados a contratos de cessão de crédito
-  const today = new Date().toISOString().split("T")[0];
+  const today = hojeLocal();
   for (const c of (antes as { id: string; numero: string; dado_em_cessao?: boolean }[])) {
     if (!c.dado_em_cessao) continue;
     const debs = await listarCessaoDebitos(c.id);
@@ -2285,7 +2286,7 @@ export async function listarEmpresaLancamentos(
  */
 export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[]): Promise<Lancamento[]> {
   if (!fazendaIds.length) return [];
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   let todos: Record<string, any>[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase.from("empresa_lancamentos").select("*")
@@ -4008,7 +4009,7 @@ export async function baixarParcelaPagamento(
   parcela: ParcelaPagamento,
   contrato: ContratoFinanceiro,
 ): Promise<void> {
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   const moeda = contrato.moeda;
   const contaId = contrato.conta_pagamento_id;
   const descBase = `${contrato.descricao} — Parcela ${parcela.num_parcela}`;
@@ -4249,7 +4250,7 @@ export async function excluirCorrecao(id: string): Promise<void> {
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + qtd }).eq("id", it.insumo_id);
         const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: it.insumo_id, fazenda_id: correcao.fazenda_id,
-          tipo: "entrada", quantidade: qtd, data: new Date().toISOString().slice(0, 10),
+          tipo: "entrada", quantidade: qtd, data: hojeLocal(),
           motivo: "estorno_exclusao", observacao: "Estorno por exclusão de correção de solo", auto: true,
         });
         if (errMov) throw errMov;
@@ -4339,7 +4340,7 @@ export async function excluirAdubacao(id: string): Promise<void> {
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + qtd }).eq("id", it.insumo_id);
         const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: it.insumo_id, fazenda_id: adub.fazenda_id,
-          tipo: "entrada", quantidade: qtd, data: new Date().toISOString().slice(0, 10),
+          tipo: "entrada", quantidade: qtd, data: hojeLocal(),
           motivo: "estorno_exclusao", observacao: "Estorno por exclusão de adubação de base", auto: true,
         });
         if (errMov) throw errMov;
@@ -4411,7 +4412,7 @@ export async function excluirPlantio(id: string): Promise<void> {
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + p.quantidade_kg }).eq("id", p.insumo_id);
         const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: p.insumo_id, fazenda_id: p.fazenda_id,
-          tipo: "entrada", quantidade: p.quantidade_kg, data: new Date().toISOString().slice(0, 10),
+          tipo: "entrada", quantidade: p.quantidade_kg, data: hojeLocal(),
           motivo: "estorno_exclusao", observacao: "Estorno por exclusão de plantio", auto: true,
         });
         if (errMov) throw errMov;
@@ -4498,7 +4499,7 @@ export async function excluirPulverizacao(id: string): Promise<void> {
         await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + it.total_consumido }).eq("id", it.insumo_id);
         const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
           insumo_id: it.insumo_id, fazenda_id: pulv.fazenda_id,
-          tipo: "entrada", quantidade: it.total_consumido, data: new Date().toISOString().slice(0, 10),
+          tipo: "entrada", quantidade: it.total_consumido, data: hojeLocal(),
           motivo: "estorno_exclusao", observacao: "Estorno por exclusão de pulverização", auto: true,
         });
         if (errMov) throw errMov;
@@ -6395,7 +6396,7 @@ export async function registrarEntradaPA(params: {
   await supabase.from("movimentacoes_pa").insert({
     fazenda_id: fazendaId, principio_ativo_id: principioAtivoId,
     tipo: "entrada", quantidade, custo_unitario: custoUnitario,
-    data: data ?? new Date().toISOString().split("T")[0],
+    data: data ?? hojeLocal(),
     nome_comercial_ref: nomeComercialRef ?? null,
     nf_entrada_id: nfEntradaId ?? null,
     nf_entrada_item_id: nfEntradaItemId ?? null,
@@ -6429,7 +6430,7 @@ export async function registrarSaidaPA(params: {
     fazenda_id: fazendaId, principio_ativo_id: principioAtivoId,
     tipo: "saida", quantidade,
     custo_unitario: saldoRow?.custo_medio ?? null,
-    data: data ?? new Date().toISOString().split("T")[0],
+    data: data ?? hojeLocal(),
     nome_comercial_ref: nomeComercialRef ?? null,
     origem_tipo: origemTipo ?? "manual",
     obs: obs ?? null,
@@ -7697,7 +7698,7 @@ export async function pagarFaturaCartao(
 // como suficiente: "fechamento" só importa a próxima vez que alguém olhar
 // a fatura ou tentar lançar uma compra nova).
 export async function autoFecharFaturasVencidas(contaId: string): Promise<void> {
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = hojeLocal();
   await supabase
     .from("faturas_cartao")
     .update({ status: "fechada" })
@@ -7796,7 +7797,7 @@ export async function processarNotaPropriaExterna(id: string, processado_por?: s
       if (!it.insumo_id || !it.quantidade) continue;
       const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
         insumo_id: it.insumo_id, fazenda_id: nota.fazenda_id, tipo: "saida",
-        quantidade: it.quantidade, data: nota.data_emissao || new Date().toISOString().slice(0, 10),
+        quantidade: it.quantidade, data: nota.data_emissao || hojeLocal(),
         observacao: `Nota própria (outro sistema) ${nota.numero ?? ""}/${nota.serie ?? ""} — ${it.descricao_produto}`,
         auto: true, deposito_id: nota.deposito_origem_id ?? null, nota_propria_externa_id: nota.id,
       });

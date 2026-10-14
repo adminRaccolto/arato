@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -236,7 +237,7 @@ export default function AdiantamentosPage() {
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <OperationalButton data-arato-button="primary" style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
+            <OperationalButton data-arato-button="primary" style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: hojeLocal() }); setModalNovo(true); }}>
               + Novo Adiantamento
             </OperationalButton>
           </div>
@@ -331,7 +332,7 @@ export default function AdiantamentosPage() {
                           <OperationalButton data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</OperationalButton>
                           {(a.status === "em_aberto" || a.status === "parcial") && (
                             <OperationalButton data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
-                              onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: new Date().toISOString().slice(0,10) }); setErro(""); }}>
+                              onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: hojeLocal() }); setErro(""); }}>
                               Aplicar
                             </OperationalButton>
                           )}

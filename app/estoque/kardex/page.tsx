@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -22,7 +23,7 @@ function fmtDate(s: string) {
   return `${d}/${m}/${y}`;
 }
 function TODAY() {
-  return new Date().toISOString().slice(0, 10);
+  return hojeLocal();
 }
 function MONTH_START() {
   const d = new Date();

@@ -14,6 +14,7 @@
 // lógica foi preservada EXATAMENTE como estava — só a casca mudou (recebe
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
+import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -431,7 +432,7 @@ export default function ModalNf({
     emitente_municipio: "", emitente_estado: "",
     nome_destinatario: "", cnpj_destino: "",
     pessoa_id: "", cfop: "",
-    data_emissao: "", data_entrada: new Date().toISOString().split("T")[0],
+    data_emissao: "", data_entrada: hojeLocal(),
     valor_total: "", natureza: "",
     pedido_compra_id: "",
     operacao_gerencial_id: "",
@@ -509,7 +510,7 @@ export default function ModalNf({
   const [devFatorDesconto, setDevFatorDesconto] = useState(1);
   const [devItens,   setDevItens]   = useState<DevItem[]>([]);
   const [devCfop,    setDevCfop]    = useState("5201");
-  const [devData,    setDevData]    = useState(new Date().toISOString().split("T")[0]);
+  const [devData,    setDevData]    = useState(hojeLocal());
   const [devVenc,    setDevVenc]    = useState("");
   const [devObs,     setDevObs]     = useState("");
   const [devSaving,  setDevSaving]  = useState(false);
@@ -588,8 +589,8 @@ export default function ModalNf({
       emitente_municipio: "", emitente_estado: "",
       nome_destinatario: "", cnpj_destino: "",
       pessoa_id: "", cfop: "",
-      data_emissao: new Date().toISOString().split("T")[0],
-      data_entrada: new Date().toISOString().split("T")[0],
+      data_emissao: hojeLocal(),
+      data_entrada: hojeLocal(),
       valor_total: "", natureza: "",
       pedido_compra_id: "",
       operacao_gerencial_id: "",
@@ -647,7 +648,7 @@ export default function ModalNf({
       pessoa_id: nf.pessoa_id ?? pessoaPorCnpj(nf.emitente_cnpj ?? ""),
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
-      data_entrada: nf.data_entrada ?? new Date().toISOString().split("T")[0],
+      data_entrada: nf.data_entrada ?? hojeLocal(),
       // "Valor Produtos" precisa ser o BRUTO (o painel de impostos soma/subtrai por cima pra
       // chegar no valor líquido salvo em nf.valor_total). NFs processadas depois da correção têm
       // valor_produtos salvo separadamente (bruto de verdade); NFs mais antigas ou importadas via
@@ -770,7 +771,7 @@ export default function ModalNf({
     if (!nfEdit?.chave_acesso || !fazendaId) return;
     setWizardResyncando(true);
     try {
-      const base  = nfEdit.data_emissao ?? new Date().toISOString().slice(0, 10);
+      const base  = nfEdit.data_emissao ?? hojeLocal();
       const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
       const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
       const res = await fetch("/api/integracoes/sieg-sync", {
@@ -1582,7 +1583,7 @@ export default function ModalNf({
           status: "retornada",
           nf_retorno_chave:  cab.chave_acesso || nfEdit.chave_acesso || undefined,
           nf_retorno_numero: nfEdit.numero,
-          nf_retorno_data:   cab.data_emissao || nfEdit.data_emissao || new Date().toISOString().slice(0, 10),
+          nf_retorno_data:   cab.data_emissao || nfEdit.data_emissao || hojeLocal(),
         });
       }
 
@@ -1702,7 +1703,7 @@ export default function ModalNf({
     setDevNfOrig(nf);
     setDevErr("");
     setDevObs("");
-    setDevData(new Date().toISOString().split("T")[0]);
+    setDevData(hojeLocal());
     setDevVenc("");
     // CFOP padrão sugerido pelo CFOP da compra (1xxx = dentro do estado, 2xxx = interestadual); sem correspondência,
     // 5201 — sempre ajustável pelo usuário

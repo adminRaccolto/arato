@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -415,7 +416,7 @@ export default function ClientesPage() {
           status: statusInicial,
           pacote: pacote === "pro_bono" ? "essencial" : pacote,
           valor_mensalidade: valor,
-          data_inicio: new Date().toISOString().split("T")[0],
+          data_inicio: hojeLocal(),
           fazenda_ids: c._fazendas_prod.map(f => f.id),
         }),
       });
@@ -493,7 +494,7 @@ export default function ClientesPage() {
       });
       const json = await res.json();
       if (!res.ok) { alert("Erro: " + json.error); return; }
-      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "cancelado", data_vencimento: new Date().toISOString().split("T")[0] } : x));
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "cancelado", data_vencimento: hojeLocal() } : x));
       alert(`Acesso cancelado. ${json.users_bloqueados} usuário(s) bloqueado(s).`);
     } catch (e) {
       alert("Erro de conexão: " + String(e));

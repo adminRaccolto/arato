@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Pedidos de Compra. A GRID/FILTRO lê rel_pedidos_compra (Seções 310/311/320
@@ -275,7 +276,7 @@ const fmtUSD = (v?: number | null) => `US$ ${(v ?? 0).toLocaleString("pt-BR", { 
 const fmtMoeda = (v: number | null | undefined, moeda: string) => moeda === "USD" ? fmtUSD(v) : moeda === "barter" ? `${fmtN(v, 2)} sc` : fmtBRL(v);
 const fmtN   = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
-const hoje = () => new Date().toISOString().split("T")[0];
+const hoje = () => hojeLocal();
 
 const STATUS_MAP: Record<PedidoCompra["status"], { label: string; bg: string; color: string }> = {
   rascunho:               { label: "Rascunho",          bg: "var(--bg-page)", color: "var(--text-2)"    },

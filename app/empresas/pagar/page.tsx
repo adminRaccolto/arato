@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -31,7 +32,7 @@ const CATS_CP = [
 ];
 
 const FORMAS = ["PIX", "TED", "Boleto", "Dinheiro", "Cheque", "Débito Automático", "Outros"];
-const TODAY = new Date().toISOString().split("T")[0];
+const TODAY = hojeLocal();
 
 // ─── Helpers ─────────────────────────────────────────────────
 const fmtCNPJ = (v?: string) => { if (!v) return ""; const d = v.replace(/\D/g,""); return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,"$1.$2.$3/$4-$5") : d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4") : v; };

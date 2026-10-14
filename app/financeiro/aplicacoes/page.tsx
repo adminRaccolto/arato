@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -26,7 +27,7 @@ const OG_POR_CATEGORIA: Record<string, string> = {
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtPct  = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const hoje    = () => new Date().toISOString().split("T")[0];
+const hoje    = () => hojeLocal();
 
 // ─── Tipos ───────────────────────────────────────────────────
 type TipoAplicacao   = "cdb" | "lci" | "lca" | "cri" | "cra" | "fundos" | "tesouro" | "poupanca" | "outro";

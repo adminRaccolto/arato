@@ -6,6 +6,8 @@
  * as regras em funções puras, com teste automático (titulos.test.ts) — qualquer tela nova usa estas.
  */
 
+import { hojeLocal } from "../data-local.ts";
+
 export type TituloBase = {
   id: string;
   tipo: "pagar" | "receber" | string;
@@ -25,10 +27,7 @@ export function dedupeTitulos<T extends { id: string }>(rows: T[]): T[] {
   return Array.from(new Map(rows.map(r => [r.id, r])).values());
 }
 
-/** Data de hoje (AAAA-MM-DD) no fuso local do usuário — nunca em UTC, que vira o dia às 21h no Brasil. */
-export function hojeLocal(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+export { hojeLocal };
 
 /** Status que o usuário enxerga: baixado/parcial valem como estão; previsão não "vence"; o resto depende da data. */
 export function statusEfetivo(l: { status: string; natureza?: string | null; data_vencimento?: string | null }, hoje: string = hojeLocal()): string {

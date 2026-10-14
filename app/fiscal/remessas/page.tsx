@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
@@ -148,7 +149,7 @@ export default function RemessasLogisticasPage() {
         nf_retorno_chave:    res.chave,
         nf_retorno_numero:   res.numero,
         nf_retorno_protocolo: res.protocolo,
-        nf_retorno_data:     new Date().toISOString().split("T")[0],
+        nf_retorno_data:     hojeLocal(),
         status:              "retornada",
       });
       setRemessas(prev => prev.map(r => r.id === modalRetorno.id ? { ...r, nf_retorno_chave: res.chave, nf_retorno_numero: res.numero, status: "retornada" } : r));

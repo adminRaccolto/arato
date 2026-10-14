@@ -8,6 +8,7 @@
  * Retorna: { importados_nfe, duplicados_nfe, erros, total_xmls }
  */
 
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
 import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
@@ -304,7 +305,7 @@ export async function POST(req: NextRequest) {
     const novoCfg = {
       ...cfg,
       cnpjs_destino:    cnpjs,
-      ultima_sync_data: new Date().toISOString().slice(0, 10),
+      ultima_sync_data: hojeLocal(),
       ultima_sync_ts:   new Date().toISOString(),
       total_importado:  String((parseInt(String(cfg.total_importado || "0")) + importados_nfe)),
     };

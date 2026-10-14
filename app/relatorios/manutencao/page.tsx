@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -15,7 +16,7 @@ const fmtBRL  = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 const fmtDate = (s?: string) =>
   s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const hoje      = () => new Date().toISOString().slice(0, 10);
+const hoje      = () => hojeLocal();
 const anoAtras  = () => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().slice(0, 10); };
 
 const TIPO_MANUT_LABEL: Record<string, string> = {

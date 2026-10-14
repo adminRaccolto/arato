@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -98,7 +99,7 @@ const PIPELINE: StatusCarga[] = ["rascunho","em_transito","entregue","corrigindo
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt  = (n?: number | null) => n != null ? n.toLocaleString("pt-BR") : "—";
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeLocal();
 
 const campo = (label: string, children: React.ReactNode) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

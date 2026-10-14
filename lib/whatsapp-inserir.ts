@@ -1,4 +1,5 @@
 // Executa as inserções no banco após confirmação do usuário
+import { hojeLocal } from "./data-local";
 import { createClient } from "@supabase/supabase-js";
 import type { FluxoNome } from "./whatsapp-flows";
 
@@ -470,7 +471,7 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
 
   const dataEntrega   = dados.data_entrega   ? parseData(String(dados.data_entrega))   : "";
   const dataPagamento = dados.data_pagamento ? parseData(String(dados.data_pagamento)) : "";
-  const dataContrato  = dados.data_contrato  ? parseData(String(dados.data_contrato))  : new Date().toISOString().split("T")[0];
+  const dataContrato  = dados.data_contrato  ? parseData(String(dados.data_contrato))  : hojeLocal();
 
   const [anoSafra, ptax] = await Promise.all([
     buscarAnoSafraContrato(fazendaId, safraStr),
@@ -571,7 +572,7 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
     confirmado:          false,
     status:              "aberto",
     data_contrato:       dataContrato,
-    data_entrega:        dataEntrega || new Date().toISOString().split("T")[0],
+    data_entrega:        dataEntrega || hojeLocal(),
     data_pagamento:      dataPagamento || null,
     cotacao_usd:         cotacaoUsd ?? null,
     observacao:          observacao || null,
@@ -646,7 +647,7 @@ async function inserirRecomendacaoAgronomica(dados: Record<string, unknown>, faz
   const observacoes   = String(dados.observacoes ?? "").trim();
   const confirmado    = dados.confirmado === true;
 
-  const dataRec   = dados.data_recomendacao   ? parseData(String(dados.data_recomendacao))   : new Date().toISOString().split("T")[0];
+  const dataRec   = dados.data_recomendacao   ? parseData(String(dados.data_recomendacao))   : hojeLocal();
   const dataIni   = dados.data_prevista_inicio ? parseData(String(dados.data_prevista_inicio)) : null;
   const dataFim   = dados.data_prevista_fim    ? parseData(String(dados.data_prevista_fim))    : null;
 
@@ -821,7 +822,7 @@ async function inserirRecomendacaoAgronomica(dados: Record<string, unknown>, faz
 async function inserirContratoFinanceiro(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
   const credor   = String(dados.credor_nome ?? dados.credor ?? "").trim();
   const valor    = Number(dados.valor_financiado ?? 0);
-  const dataContrato = dados.data_contrato ? parseData(String(dados.data_contrato)) : new Date().toISOString().split("T")[0];
+  const dataContrato = dados.data_contrato ? parseData(String(dados.data_contrato)) : hojeLocal();
 
   if (!credor) return { ok: false, mensagem: "❓ Qual o nome do banco/credor?" };
   if (valor <= 0) return { ok: false, mensagem: "❓ Qual o valor financiado?" };
@@ -921,7 +922,7 @@ export async function executarInsercao(
 
 // ── Abastecimento ───────────────────────────────────────────────────────────
 async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = hojeLocal();
 
   // 1. Bomba obrigatória
   const bombaStr = String(dados.bomba_nome ?? "").trim();
@@ -1351,7 +1352,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Pulverização ${tipoProduto} — ${insumo.nome}`,
           categoria: "Insumos — Defensivos",
-          data_lancamento: new Date().toISOString().split("T")[0],
+          data_lancamento: hojeLocal(),
           data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
           ciclo_id: ciclo?.id ?? null,
         };
@@ -1433,7 +1434,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Adubação de Base — ${insumo.nome}`,
           categoria: "Insumos — Fertilizantes",
-          data_lancamento: new Date().toISOString().split("T")[0],
+          data_lancamento: hojeLocal(),
           data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
           ciclo_id: ciclo?.id ?? null,
         };
@@ -1512,7 +1513,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Plantio — ${insumo.nome}`,
           categoria: "Insumos — Sementes",
-          data_lancamento: new Date().toISOString().split("T")[0],
+          data_lancamento: hojeLocal(),
           data_vencimento: dataOp, valor: custoSementes, status: "em_aberto",
           ciclo_id: ciclo?.id ?? null,
         };
@@ -1605,7 +1606,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Correção de Solo — ${insumo.nome}`,
           categoria: "Insumos — Corretivos",
-          data_lancamento: new Date().toISOString().split("T")[0],
+          data_lancamento: hojeLocal(),
           data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
           ciclo_id: ciclo?.id ?? null,
         };
@@ -1655,7 +1656,7 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
     }
     unidadeFinal = String(insumo.unidade ?? unidadeUsuario);
 
-    const hojeEntrada = new Date().toISOString().split("T")[0];
+    const hojeEntrada = hojeLocal();
     if (await existeDuplicataRecente("movimentacoes_estoque", {
       fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada", motivo: "compra", quantidade: qtdFinal, data: hojeEntrada,
     })) {
@@ -1680,7 +1681,7 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
   await sb().from("lancamentos").insert({
     fazenda_id: fazendaId, tipo: "pagar",
     descricao: `Compra ${insumo?.nome ?? dados.produto} — ${dados.fornecedor ?? ""}`,
-    categoria: "insumo", data_lancamento: new Date().toISOString().split("T")[0],
+    categoria: "insumo", data_lancamento: hojeLocal(),
     data_vencimento: vencimento, valor, moeda: "BRL", status: "em_aberto",
   });
 
@@ -1711,7 +1712,7 @@ async function inserirSaidaEstoque(dados: Record<string, unknown>, fazendaId: st
     return { ok: false, mensagem: `❌ Estoque insuficiente. Disponível: ${Number(insumo.estoque ?? 0).toFixed(2)} ${unidadeInsumo}` };
   }
 
-  const hojeSaida = new Date().toISOString().split("T")[0];
+  const hojeSaida = hojeLocal();
   if (await existeDuplicataRecente("movimentacoes_estoque", {
     fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "saida", motivo: "baixa_uso", quantidade: qtdFinal, data: hojeSaida,
   })) {
@@ -1741,7 +1742,7 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     return { ok: false, mensagem: `❓ Qual o valor da conta a ${label}? (ex: R$ 1.500,00)` };
   }
   const vencimento = parseData(String(dados.vencimento ?? "hoje"));
-  const hoje       = new Date().toISOString().split("T")[0];
+  const hoje       = hojeLocal();
 
   // ja_pago (CP) ou ja_recebido (CR)
   const jaVStrCP = String(dados.ja_pago ?? "").toLowerCase();
@@ -1932,7 +1933,7 @@ async function inserirRomaneio(dados: Record<string, unknown>, fazendaId: string
     placa_veiculo: placaRom,
     peso_bruto_kg: pesoBruto, tara_kg: tara,
     peso_liquido_kg: liquido, total_sacas: sacas,
-    data_romaneio: new Date().toISOString().split("T")[0],
+    data_romaneio: hojeLocal(),
   });
 
   if (error) return { ok: false, mensagem: `❌ Erro: ${error.message}` };
@@ -2213,7 +2214,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   const razao       = String(dados.razao_social ?? "Fornecedor").trim();
   const numeroNf    = String(dados.numero_nf ?? "");
   const chaveAcesso = String(dados.chave_acesso ?? "").replace(/\D/g, "") || null;
-  const dataEmissao = String(dados.data_emissao ?? new Date().toISOString().split("T")[0]);
+  const dataEmissao = String(dados.data_emissao ?? hojeLocal());
   const valorTotal  = Number(dados.valor_total ?? 0);
   const vencimento  = parseData(String(dados.vencimento ?? "hoje"));
   const confirmado  = dados.confirmado === true;
@@ -2293,7 +2294,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   }
 
   // ── Salvar ──────────────────────────────────────────────────────────────
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = hojeLocal();
 
   // Dedup: chave_acesso é chave permanente (quando extraída da foto); sem ela,
   // cai para número+CNPJ+valor dentro de uma janela recente (mesma lógica do

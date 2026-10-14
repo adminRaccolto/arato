@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../../components/OperationalUI";
 import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
@@ -565,7 +566,7 @@ export default function RelAplicacoesPage() {
       },
     });
 
-    const nome = `aplicacoes_${fazenda?.nome?.replace(/\s+/g,"_") ?? "fazenda"}_${new Date().toISOString().slice(0,10)}.pdf`;
+    const nome = `aplicacoes_${fazenda?.nome?.replace(/\s+/g,"_") ?? "fazenda"}_${hojeLocal()}.pdf`;
     doc.save(nome);
   };
 
@@ -640,7 +641,7 @@ export default function RelAplicacoesPage() {
     XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
     XLSX.utils.book_append_sheet(wb, ws2, "Aplicações");
 
-    const nome = `aplicacoes_${fazenda?.nome?.replace(/\s+/g, "_") ?? "fazenda"}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    const nome = `aplicacoes_${fazenda?.nome?.replace(/\s+/g, "_") ?? "fazenda"}_${hojeLocal()}.xlsx`;
     XLSX.writeFile(wb, nome);
   };
 

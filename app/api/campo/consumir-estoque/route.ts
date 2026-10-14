@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
       descricao:       descricao_lancamento,
       categoria:       categoria_lancamento,
       operacao_gerencial_id: ogId,
-      data_lancamento: new Date().toISOString().slice(0, 10),
+      data_lancamento: hojeLocal(),
       data_vencimento: data,
       valor:           custoTotal,
       ciclo_id:        ciclo_id ?? null,

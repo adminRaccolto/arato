@@ -12,6 +12,7 @@
 // a VÁRIAS NFs pendentes de uma vez, processando-as quando o tipo de
 // destino é "Apropriação Direta" (sem entrada em estoque).
 // ═══════════════════════════════════════════════════════════════════════════
+import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { useState, useEffect } from "react";
@@ -164,7 +165,7 @@ export default function ModalProcessarLote({
             nfTyped.emitente_nome,
             // Bug real 02/10/2026: ordem invertida (data_emissao primeiro) descartava a
             // "Data de Entrada" digitada no cabeçalho — ver mesmo fix em ModalNf.tsx.
-            nfTyped.data_entrada ?? nfTyped.data_emissao ?? new Date().toISOString().slice(0, 10),
+            nfTyped.data_entrada ?? nfTyped.data_emissao ?? hojeLocal(),
             nfTyped.emitente_cnpj ?? undefined,
             {
               nfeNumero:             nfTyped.numero,

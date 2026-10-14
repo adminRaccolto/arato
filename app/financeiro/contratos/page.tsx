@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -242,7 +243,7 @@ export default function ContratosFinanceiros() {
   const [prazoMap, setPrazoMap]                   = useState<Record<string, number>>({});
 
   // modal de baixa de parcela
-  const TODAY_STR = new Date().toISOString().slice(0, 10);
+  const TODAY_STR = hojeLocal();
   const [modalBaixaParcela, setModalBaixaParcela] = useState<ParcelaPagamento | null>(null);
   const [baixaPData,   setBaixaPData]   = useState(TODAY_STR);
   const [baixaPValor,  setBaixaPValor]  = useState("");
@@ -873,7 +874,7 @@ export default function ContratosFinanceiros() {
           await reabrirLancamento(l.id);
         }
       }
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
       const novoStatus = p.data_vencimento < hoje ? "vencido" : "em_aberto";
       const { error } = await supabase
         .from("parcelas_pagamento")
@@ -925,7 +926,7 @@ export default function ContratosFinanceiros() {
       .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
       .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeLocal();
     const ogMap = await buscarOgsCf(fazendaId);
     const tipoContrato   = fC.tipo || contratoModal.tipo;
     const moedaCalc      = fC.moeda || contratoModal.moeda;

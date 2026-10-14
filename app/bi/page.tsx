@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import React, { useState, useEffect, useCallback } from "react";
@@ -82,7 +83,7 @@ type GrupoKey = typeof CF_GRUPOS[number]["key"];
 const fmtR  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const fmtR2 = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtN  = (v: number, d = 1) => v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
-const hoje  = () => new Date().toISOString().slice(0, 10);
+const hoje  = () => hojeLocal();
 const dias  = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const fmtDt = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 const pct   = (v: number, total: number) => total > 0 ? Math.min(100, Math.max(0, (v / total) * 100)) : 0;
@@ -4329,7 +4330,7 @@ export default function BI() {
             ];
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lancSheet), "Lançamentos");
 
-            XLSX.writeFile(wb, `RecursosTerceiros_${fazNome.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`);
+            XLSX.writeFile(wb, `RecursosTerceiros_${fazNome.replace(/\s+/g, "_")}_${hojeLocal()}.xlsx`);
             setExportandoRT(false);
           }
 

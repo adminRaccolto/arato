@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateFazendaAccess } from "../../../lib/api-auth";
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
         tipo:       "entrada",
         motivo:     "estoque_inicial",
         quantidade: estoqueInicial,
-        data:       new Date().toISOString().slice(0, 10),
+        data:       hojeLocal(),
         observacao: "Saldo inicial cadastrado",
         auto:       true,
       });
@@ -107,7 +108,7 @@ export async function PATCH(req: NextRequest) {
           tipo:       delta > 0 ? "entrada" : "saida",
           motivo:     "ajuste_manual",
           quantidade: Math.abs(delta),
-          data:       new Date().toISOString().slice(0, 10),
+          data:       hojeLocal(),
           observacao: "Ajuste via cadastro de insumos",
           auto:       false,
         });

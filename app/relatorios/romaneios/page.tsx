@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -63,7 +64,7 @@ function RelatorioRomaneios() {
   // Filtros comuns
   const [filtFaz,   setFiltFaz]   = useState("");
   const [filtDe,    setFiltDe]    = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); });
-  const [filtAte,   setFiltAte]   = useState(new Date().toISOString().slice(0, 10));
+  const [filtAte,   setFiltAte]   = useState(hojeLocal());
   const [filtBusca, setFiltBusca] = useState("");
 
   // Filtros entrada

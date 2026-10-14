@@ -6,6 +6,7 @@
  * Ação "baixar":  salva data_baixa, valor_pago, status e sincroniza parcelas_pagamento.
  * Ação "reabrir": reseta data_baixa, valor_pago, status para em_aberto/vencido.
  */
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     if (body.acao === "reabrir") {
       const { data: l } = await sb.from("lancamentos").select("data_vencimento").eq("id", id).single();
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
       const novoStatus = l?.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
       const { error } = await sb.from("lancamentos")
         .update({ status: novoStatus, data_baixa: null, valor_pago: null, lote_id: null })

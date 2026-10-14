@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -409,7 +410,7 @@ export async function POST(request: NextRequest) {
         destinatario:      destinatarioDados.nome,
         cnpj_destinatario: (destinatarioDados.cpf_cnpj ?? "").replace(/\D/g, "") || undefined,
         valor_total:       valorTotalItens,
-        data_emissao:      new Date().toISOString().slice(0, 10),
+        data_emissao:      hojeLocal(),
         status:            "autorizada",
         chave_acesso:      resultado.chave,
         xml_url:           resultado.xmlUrl,
@@ -734,7 +735,7 @@ async function _reverterMovimentacoes(
       motivo:          `Cancelamento — Transferência ${numero}`,
       quantidade:      m.quantidade,
       valor_unitario:  m.valor_unitario ?? null,
-      data:            new Date().toISOString().slice(0, 10),
+      data:            hojeLocal(),
       deposito_id:     m.deposito_id ?? null,
       observacao:      `Reversão de estoque — transferência cancelada`,
       lote_semente:    m.lote_semente ?? null,

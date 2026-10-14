@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -98,7 +99,7 @@ export default function Pluviometria() {
   const [leituras, setLeituras] = useState<LeituraManual[]>([]);
   const [modalLeit, setModalLeit] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [lData,   setLData]   = useState(() => new Date().toISOString().split("T")[0]);
+  const [lData,   setLData]   = useState(() => hojeLocal());
   const [lHora,   setLHora]   = useState(() => `${new Date().getHours().toString().padStart(2,"0")}:00`);
   const [lMm,     setLMm]     = useState("");
   const [lDur,    setLDur]    = useState("");
@@ -185,7 +186,7 @@ export default function Pluviometria() {
       const temperature_2m_max = daily.temperature_2m_max as number[];
       const temperature_2m_min = daily.temperature_2m_min as number[];
       const et0_fao_evapotranspiration = daily.et0_fao_evapotranspiration as number[];
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
       const resultado: DiaClima[] = time.map((d: string, i: number) => ({
         data: d,
         precip_mm: precipitation_sum[i] ?? 0,

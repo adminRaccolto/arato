@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -186,8 +187,8 @@ function FaturamentoInner() {
   const [tabNFe,       setTabNFe]      = useState<TabNFe>("produtor");
   const [fVenda,       setFVenda]      = useState(() => ({
     ...FVENDA_INICIAL,
-    data_emissao: new Date().toISOString().slice(0, 10),
-    data_saida:   new Date().toISOString().slice(0, 10),
+    data_emissao: hojeLocal(),
+    data_saida:   hojeLocal(),
     hora_saida:   new Date().toTimeString().slice(0, 8),
   }));
   const fv = (k: Partial<typeof FVENDA_INICIAL>) => setFVenda(p => ({ ...p, ...k }));
@@ -315,7 +316,7 @@ function FaturamentoInner() {
         setContratoSelecionado(contrato);
         setRomaneios(roms);
         // Pré-preenche e abre modal direto no passo "form"
-        const hoje  = new Date().toISOString().slice(0, 10);
+        const hoje  = hojeLocal();
         const agora = new Date().toTimeString().slice(0, 8);
         setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
         setNfeItens([]);
@@ -339,7 +340,7 @@ function FaturamentoInner() {
 
   // ── Abrir modal ───────────────────────────────────────────────────────────
   function abrirModal() {
-    const hoje  = new Date().toISOString().slice(0, 10);
+    const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
     setNfeItens([]);
@@ -382,7 +383,7 @@ function FaturamentoInner() {
     const precoKg    = contrato.preco ?? 0;
     const valorTotal = +(pesoKg * precoKg).toFixed(2);
 
-    const hoje  = new Date().toISOString().slice(0, 10);
+    const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
 
     setFVenda({
@@ -443,7 +444,7 @@ function FaturamentoInner() {
   // ── Pré-preencher avulsa ──────────────────────────────────────────────────
   function preencherAvulsa(tipo: TipoAvulsa, cfop: string) {
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === cfop);
-    const hoje  = new Date().toISOString().slice(0, 10);
+    const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     setFVenda(p => ({
       ...p,
@@ -462,7 +463,7 @@ function FaturamentoInner() {
   // Espelha CFOP, destinatário e itens da remessa de origem; referencia a NF
   // original via nf_ref_chave/numero (NFref no XML) para o retorno ser rastreável.
   function abrirRetornoDoGrid(nota: NotaFiscal) {
-    const hoje  = new Date().toISOString().slice(0, 10);
+    const hoje  = hojeLocal();
     const agora = new Date().toTimeString().slice(0, 8);
     const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
     const cfopRetorno = ["5.905", "5905"].includes(nota.cfop) ? "5.906" : "6.906";

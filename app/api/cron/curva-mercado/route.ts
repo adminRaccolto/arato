@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const hoje   = new Date().toISOString().slice(0, 10);
+  const hoje   = hojeLocal();
   const inicio = Date.now();
   console.log("[curva-mercado] inicio", { hoje });
 

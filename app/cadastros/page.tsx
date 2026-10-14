@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -2353,8 +2354,8 @@ function CadastrosInner() {
     if (erros.length) { setErroModal(`Preencha: ${erros.join(", ")}`); return; }
     setErroModal("");
     const mesRef = fPremiacao.mes_referencia; // YYYY-MM
-    const dataVenc = fPremiacao.data_pagamento || (mesRef ? `${mesRef}-05` : new Date().toISOString().slice(0, 10));
-    const dataHoje = new Date().toISOString().slice(0, 10);
+    const dataVenc = fPremiacao.data_pagamento || (mesRef ? `${mesRef}-05` : hojeLocal());
+    const dataHoje = hojeLocal();
     // Determina o código OG conforme área de trabalho do funcionário
     const isAdm = editFunc.area_trabalho === "administrativo";
     const ogCode = isAdm ? "2.01.02.01.03.004" : "2.01.01.10.004";
@@ -4446,7 +4447,7 @@ function CadastrosInner() {
                       ];
                       const wb = XLSX.utils.book_new();
                       XLSX.utils.book_append_sheet(wb, ws, "Plano de Contas");
-                      XLSX.writeFile(wb, `plano_gerencial_${new Date().toISOString().split("T")[0]}.xlsx`);
+                      XLSX.writeFile(wb, `plano_gerencial_${hojeLocal()}.xlsx`);
                     }}
                     style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid #16A34A", borderRadius: 8, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
                   >⬇ XLSX</OperationalButton>
@@ -4953,7 +4954,7 @@ function CadastrosInner() {
                       ];
                       const wb = XLSX.utils.book_new();
                       XLSX.utils.book_append_sheet(wb, ws, "Insumos");
-                      XLSX.writeFile(wb, `insumos_export_${new Date().toISOString().split("T")[0]}.xlsx`);
+                      XLSX.writeFile(wb, `insumos_export_${hojeLocal()}.xlsx`);
                     }}
                     style={{ fontSize: 13, padding: "7px 14px", border: "0.5px solid #16A34A", borderRadius: 8, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
                   >⬇ Exportar XLSX</OperationalButton>
@@ -5001,7 +5002,7 @@ function CadastrosInner() {
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "var(--text-1)", fontSize: 12 }}>
                                 {total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: ins.validade && ins.validade < new Date().toISOString().split("T")[0] ? "#E24B4A" : "var(--text-2)" }}>
+                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: ins.validade && ins.validade < hojeLocal() ? "#E24B4A" : "var(--text-2)" }}>
                                 {ins.validade ? new Date(ins.validade + "T12:00").toLocaleDateString("pt-BR") : "—"}
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
@@ -7689,7 +7690,7 @@ function CadastrosInner() {
         const diffHA = totalMatHA - totalFazHA;
         const matStatus = totalMatHA === 0 ? "vazio" : Math.abs(diffHA) < 0.01 ? "ok" : diffHA < 0 ? "deficit" : "sobreposicao";
         const totalArrHA = fazArrendamentos.reduce((s, a) => s + (Number(a.area_ha) || 0), 0);
-        const hoje = new Date().toISOString().slice(0, 10);
+        const hoje = hojeLocal();
         const diasAte = (d?: string) => d ? Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) : null;
         const certBadge = (venc?: string) => {
           const d = diasAte(venc);

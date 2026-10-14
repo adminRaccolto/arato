@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -70,7 +71,7 @@ interface ConfigSafra {
 const fmtR   = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtN   = (v: number, d = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtDt  = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
-const hoje   = () => new Date().toISOString().slice(0, 10);
+const hoje   = () => hojeLocal();
 const FORMA_LABEL: Record<FormaPage, string> = {
   sc_soja:       "Sacas de Soja",
   sc_milho:      "Sacas de Milho",

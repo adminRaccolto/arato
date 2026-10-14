@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -283,7 +284,7 @@ export default function TransferenciaMaquinasPage() {
         nf_saida_chave: res.chave,
         nf_saida_numero: res.numero,
         nf_saida_protocolo: res.protocolo,
-        nf_saida_data: new Date().toISOString().split("T")[0],
+        nf_saida_data: hojeLocal(),
       });
       setItens(prev => [novo, ...prev]);
       setModalNova(false);
@@ -305,7 +306,7 @@ export default function TransferenciaMaquinasPage() {
       setRetSalvando(true);
       setRetErro("");
       try {
-        await atualizarTransferenciaMaquina(modalRet.id, { status: "retornada", nf_retorno_data: new Date().toISOString().split("T")[0] });
+        await atualizarTransferenciaMaquina(modalRet.id, { status: "retornada", nf_retorno_data: hojeLocal() });
         setItens(prev => prev.map(i => i.id === modalRet.id ? { ...i, status: "retornada" } : i));
         setModalRet(null);
       } catch (e) {
@@ -365,7 +366,7 @@ export default function TransferenciaMaquinasPage() {
         nf_retorno_chave: res.chave,
         nf_retorno_numero: res.numero,
         nf_retorno_protocolo: res.protocolo,
-        nf_retorno_data: new Date().toISOString().split("T")[0],
+        nf_retorno_data: hojeLocal(),
       });
       setItens(prev => prev.map(i => i.id === modalRet.id ? { ...i, status: "retornada", nf_retorno_chave: res.chave, nf_retorno_numero: res.numero } : i));
       setModalRet(null);

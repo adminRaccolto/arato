@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -129,7 +130,7 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
   const [form, setForm] = useState({
     conta_id: "",
     valor: "",
-    data_pagamento: new Date().toISOString().split("T")[0],
+    data_pagamento: hojeLocal(),
     metodo_pagamento: "manual" as MetodoPagamento,
     descricao: "",
   });

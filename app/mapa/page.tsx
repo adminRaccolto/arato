@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -87,7 +88,7 @@ export default function MapaPage() {
     if (!fIdEfetivo) return;
     setLoading(true);
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeLocal();
     const [{ data: ts }, { data: ciclosAtivos }] = await Promise.all([
       supabase.from("talhoes").select("id,nome,area_ha,tipo_solo,lat,lng,kml_url").eq("fazenda_id", fIdEfetivo).order("nome"),
       supabase.from("ciclos")

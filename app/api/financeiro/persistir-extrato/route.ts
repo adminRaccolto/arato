@@ -7,6 +7,7 @@
  * Também baixa lançamentos (status=baixado) via service_role_key para
  * evitar falhas silenciosas por JWT expirado no caso N:1 (bordero).
  */
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
@@ -278,7 +279,7 @@ export async function DELETE(req: NextRequest) {
     }
     const lancIds = Array.from(new Set(trans.flatMap(t => t.lancamento_ids?.length ? t.lancamento_ids : t.lancamento_id ? [t.lancamento_id] : [])));
     let reabertos = 0;
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeLocal();
     for (let i = 0; i < lancIds.length; i += 200) {
       const lote = lancIds.slice(i, i + 200);
       await sb.from("lancamentos").update({ conciliado: false }).in("id", lote);

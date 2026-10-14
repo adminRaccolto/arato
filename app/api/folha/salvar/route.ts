@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
 import { createClient } from "@supabase/supabase-js";
@@ -211,7 +212,7 @@ export async function POST(req: Request) {
         }
       }
 
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
       // Data de pagamento: a escolhida ao gerar a folha (folha_pagamento.data_vencimento, Seção 341);
       // sem ela, o padrão é dia 05 do mês seguinte à competência.
       const { data: folhaRow } = await sb.from("folha_pagamento").select("*").eq("id", id).maybeSingle();

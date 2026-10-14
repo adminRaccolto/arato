@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 export const dynamic = "force-dynamic";
 import SelectField from "../../../components/SelectField";
@@ -275,7 +276,7 @@ async function syncExtratoTransacoes(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDt  = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
-const hoje   = () => new Date().toISOString().slice(0, 10);
+const hoje   = () => hojeLocal();
 
 const ehParcial = (l: Lancamento) =>
   l.valor_pago !== undefined && l.valor_pago !== null && l.valor_pago > 0 && l.valor_pago < l.valor;

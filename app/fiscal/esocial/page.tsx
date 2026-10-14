@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -168,7 +169,7 @@ export default function EsocialPage() {
   const trabMap = Object.fromEntries(trabalhadores.map(t => [t.id, t]));
 
   async function desligarTrabalhador(t: Trabalhador) {
-    const data = prompt("Data de desligamento (AAAA-MM-DD):", new Date().toISOString().split("T")[0]);
+    const data = prompt("Data de desligamento (AAAA-MM-DD):", hojeLocal());
     if (!data) return;
     await supabase.from("funcionarios").update({ ativo: false, data_demissao: data }).eq("id", t.id);
     await supabase.from("esocial_eventos").insert({

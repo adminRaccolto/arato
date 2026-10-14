@@ -3,6 +3,7 @@
  * Salva (INSERT ou UPDATE) uma apólice de seguro, lançamentos de prêmio e parcelas.
  * Usa service_role_key — imune a JWT expirado e RLS.
  */
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
     };
 
     const sb = admin();
-    const today = new Date().toISOString().slice(0, 10);
+    const today = hojeLocal();
 
     let apoliceId: string;
 

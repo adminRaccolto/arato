@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -297,7 +298,7 @@ export default function FolhaEmpresaPage() {
           descricao: `Salário ${nomeMes(folha.competencia)} — ${it.nome_funcionario}`,
           valor: liq, moeda: "BRL", status: "em_aberto", categoria: "Pessoal / Salários",
           operacao_gerencial_id: ogSalario ?? null,
-          data_vencimento: vencimentoSalario(folha.competencia), data_lancamento: new Date().toISOString().slice(0,10),
+          data_vencimento: vencimentoSalario(folha.competencia), data_lancamento: hojeLocal(),
         }).select("id").single();
         if (lancamento?.id) await supabase.from("folha_funcionarios").update({ cp_lancamento_id: lancamento.id }).eq("id", it.id);
       }
@@ -511,7 +512,7 @@ export default function FolhaEmpresaPage() {
               <>
                 <div style={{ ...S.card, padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
                   <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
-                  <div style={{ marginLeft:"auto" }}><OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data:new Date().toISOString().slice(0,10), competencia_ref:compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>+ Novo Adiantamento</OperationalButton></div>
+                  <div style={{ marginLeft:"auto" }}><OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data:hojeLocal(), competencia_ref:compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>+ Novo Adiantamento</OperationalButton></div>
                 </div>
                 {adiantamentos.length === 0 ? (
                   <div data-arato-statistic="display" style={{ ...S.card, padding:32, textAlign:"center", color:"#888" }}><div style={{ fontSize:32, marginBottom:8 }}>💵</div><div>Nenhum adiantamento registrado.</div></div>

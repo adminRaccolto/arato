@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -482,7 +483,7 @@ export default function ParceriasPage() {
   const abrirApuracao = async (parcId: string, parcNome: string) => {
     setApurParcId(parcId);
     setApurParcNome(parcNome);
-    setApurForm({ ciclo_id: "", ano_safra_id: "", receita_total: "", data_apuracao: new Date().toISOString().slice(0, 10), observacao: "", custos: {} });
+    setApurForm({ ciclo_id: "", ano_safra_id: "", receita_total: "", data_apuracao: hojeLocal(), observacao: "", custos: {} });
     setApurCotas([]);
     setCalculado(false);
     const [{ data: pts }, { data: dst }] = await Promise.all([

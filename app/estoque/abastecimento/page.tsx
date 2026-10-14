@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -91,10 +92,10 @@ export default function AbastecimentoPage() {
   const [fDestLivre,    setFDestLivre]    = useState("");
   const [fQuantidade,   setFQuantidade]   = useState("");
   const [fValUnit,      setFValUnit]      = useState("");
-  const [fData,         setFData]         = useState(() => new Date().toISOString().split("T")[0]);
+  const [fData,         setFData]         = useState(() => hojeLocal());
   const [fObs,          setFObs]          = useState("");
   const [fGerarCP,      setFGerarCP]      = useState(false);
-  const [fVencimento,   setFVencimento]   = useState(() => new Date().toISOString().split("T")[0]);
+  const [fVencimento,   setFVencimento]   = useState(() => hojeLocal());
   const [fHorimetro,    setFHorimetro]    = useState("");
   const [fAnoSafra,     setFAnoSafra]     = useState("");
   // Ano Safra é obrigatório (DRE por ano safra): abastecimento novo abre com o vigente
@@ -194,7 +195,7 @@ export default function AbastecimentoPage() {
   const totalCustoMes   = historico.reduce((s, h) => s + h.valor_total, 0);
   const totalAbastMes   = historico.length;
   const litrosHoje      = historico
-    .filter(h => h.data === new Date().toISOString().split("T")[0])
+    .filter(h => h.data === hojeLocal())
     .reduce((s, h) => s + h.quantidade_l, 0);
 
   // ─── Salvar abastecimento ────────────────────────────────────────────────────
@@ -336,8 +337,8 @@ export default function AbastecimentoPage() {
     setFBomba(""); setFDestTipo("maquina"); setFMaquina(""); setFFuncionario(""); setFDestLivre("");
     setFQuantidade(""); setFValUnit(""); setFObs(""); setFHorimetro(""); setFGerarCP(false);
     setFAnoSafra(""); setFCiclo("");
-    setFData(new Date().toISOString().split("T")[0]);
-    setFVencimento(new Date().toISOString().split("T")[0]);
+    setFData(hojeLocal());
+    setFVencimento(hojeLocal());
     setErroModal(""); setModal(true);
   }
 

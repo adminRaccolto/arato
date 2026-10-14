@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback, Suspense } from "react";
@@ -320,7 +321,7 @@ function OperacoesGerenciaisContent() {
     ws["!cols"] = [{ wch: 18 }, { wch: 45 }, { wch: 10 }, { wch: 7 }, { wch: 6 }, { wch: 10 }, { wch: 8 }, { wch: 14 }, { wch: 40 }, { wch: 14 }, { wch: 40 }, { wch: 8 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Operações Gerenciais");
-    XLSX.writeFile(wb, `operacoes_gerenciais_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(wb, `operacoes_gerenciais_${hojeLocal()}.xlsx`);
   }
 
   // ── helper: select de conta do plano ──────────────────────────────────────

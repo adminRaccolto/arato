@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
@@ -82,7 +83,7 @@ export default function LogSistema() {
   const [pagina, setPagina]       = useState(1);
   const POR_PAGINA = 50;
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   const [filtro, setFiltro] = useState<FiltroLog>({
     modulo: "", acao: "", usuario: "", inicio: "", fim: hoje, busca: "",
   });
@@ -167,7 +168,7 @@ export default function LogSistema() {
                 ].map(r => r.join(";")).join("\n");
                 const a = document.createElement("a");
                 a.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csv);
-                a.download = `logs_${new Date().toISOString().slice(0,10)}.csv`;
+                a.download = `logs_${hojeLocal()}.csv`;
                 a.click();
               }}
               style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>

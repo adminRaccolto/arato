@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -198,7 +199,7 @@ export default function AuditoriaPage() {
   };
 
   // Filtros
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   const [fDe,     setFDe]     = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); });
   const [fAte,    setFAte]    = useState(hoje);
   const [fTabela, setFTabela] = useState("");

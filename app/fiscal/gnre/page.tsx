@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -116,7 +117,7 @@ export default function GnrePage() {
 
   // Auto-atualiza vencidas
   useEffect(() => {
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = hojeLocal();
     const vencidas = guias.filter(g => g.status === "emitida" && g.vencimento && g.vencimento < hoje);
     vencidas.forEach(g => {
       supabase.from("gnre_guias").update({ status: "vencida" }).eq("id", g.id).then(() => {});
@@ -188,7 +189,7 @@ export default function GnrePage() {
   function fecharModal() { setModal(false); setEditando(null); setForm({ ...VAZIO }); }
 
   // ── Filtros e KPIs ────────────────────────────────────────
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = hojeLocal();
   const ativas = guias.filter(g => g.status !== "cancelada");
   const pendente  = ativas.filter(g => g.status === "emitida").reduce((s, g) => s + g.valor_total, 0);
   const vencida   = ativas.filter(g => g.status === "vencida").reduce((s, g) => s + g.valor_total, 0);

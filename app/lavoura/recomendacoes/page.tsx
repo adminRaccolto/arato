@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -126,7 +127,7 @@ function ModalNova({
     ciclo_id: recEdit?.ciclo_id ?? "",
     agronomo_nome: recEdit?.agronomo_nome ?? "",
     agronomo_crea: recEdit?.agronomo_crea ?? "",
-    data_recomendacao: recEdit?.data_recomendacao ?? new Date().toISOString().slice(0,10),
+    data_recomendacao: recEdit?.data_recomendacao ?? hojeLocal(),
     data_prevista_inicio: recEdit?.data_prevista_inicio ?? "",
     data_prevista_fim: recEdit?.data_prevista_fim ?? "",
     remonte_pct: String(recEdit?.remonte_pct ?? "0"),
@@ -863,7 +864,7 @@ export default function RecomendacoesPage() {
     if (areaExecDelta > 0) {
       const areaExec = areaExecDelta;
       const produtos = modalExec.produtos;
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeLocal();
 
       if (rec.tipo === "pulverizacao") {
         // 1. Criar registro de pulverização

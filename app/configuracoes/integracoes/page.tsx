@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -185,7 +186,7 @@ function ModalSieg({
       if (data.sucesso) {
         setCfg(prev => ({
           ...prev,
-          ultima_sync_data: new Date().toISOString().slice(0, 10),
+          ultima_sync_data: hojeLocal(),
           total_importado: String((parseInt(prev.total_importado || "0") + (data.importados_nfe ?? 0))),
         }));
       }

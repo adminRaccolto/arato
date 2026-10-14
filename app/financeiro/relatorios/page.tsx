@@ -168,7 +168,7 @@ function FinanceiroRelatoriosInner() {
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
-  const [mensalInicio, setMensalInicio] = useState(() => new Date().toISOString().split("T")[0]);
+  const [mensalInicio, setMensalInicio] = useState(() => hojeLocal());
   const [mensalFim,    setMensalFim]    = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split("T")[0]; });
 
   // CP/CR — filtros (devem ficar no topo — Rules of Hooks)

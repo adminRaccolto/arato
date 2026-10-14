@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -120,7 +121,7 @@ const CAB_VAZIO = () => ({
   prestador_id: "", prestador_nome: "", prestador_cnpj: "",
   tomador_id: "", tomador_tipo: "" as "produtor" | "empresa" | "pessoa" | "", tomador_nome: "", tomador_cnpj: "",
   municipio_prestacao: "",
-  data_prestacao: new Date().toISOString().split("T")[0],
+  data_prestacao: hojeLocal(),
   competencia: new Date().toISOString().substring(0, 7),
   codigo_servico: "", cnae: "", discriminacao: "",
   valor_servico: "", valor_deducoes: "0",
@@ -160,7 +161,7 @@ export default function NfServicoPage() {
 
   // ── SIEG ────────────────────────────────────────────────────
   const [siegDtInicio,      setSiegDtInicio]      = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
-  const [siegDtFim,         setSiegDtFim]         = useState(() => new Date().toISOString().slice(0,10));
+  const [siegDtFim,         setSiegDtFim]         = useState(() => hojeLocal());
   const [siegForceReimport, setSiegForceReimport] = useState(false);
   const [siegSyncing,       setSiegSyncing]       = useState(false);
   const [siegSyncMsg,       setSiegSyncMsg]       = useState("");

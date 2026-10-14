@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../lib/data-local";
 import SelectField from "./SelectField";
 import InputData from "../components/InputData";
 import { useEffect, useMemo, useState } from "react";
@@ -20,7 +21,7 @@ const lbl = { display: "block", fontSize: 11, fontWeight: 600, color: "var(--tex
 export default function RescisaoFuncionario({ func, fazendaId, ferias, onChanged }: {
   func: Funcionario; fazendaId: string; ferias: FuncionarioFerias[]; onChanged: (f: Partial<Funcionario>) => void;
 }) {
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocal();
   const salario = salarioReferencia(func);
   const [registros, setRegistros] = useState<RescisaoRegistro[]>([]);
   const [tipo, setTipo] = useState<TipoDesligamento>("sem_justa_causa");

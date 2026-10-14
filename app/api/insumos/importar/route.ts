@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
             motivo:         "inventario",
             quantidade:     estoqueQtd,
             valor_unitario: valorUnit > 0 ? valorUnit : null,
-            data:           new Date().toISOString().split("T")[0],
+            data:           hojeLocal(),
             deposito_id:    depId,
             observacao:     "Saldo inicial — importação",
             auto:           true,

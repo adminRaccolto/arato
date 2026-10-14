@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Documentos Fiscais — NF de Produtos + NF de Serviços + CT-e unificados
@@ -302,7 +303,7 @@ export default function DocumentosFiscaisPage() {
     if (!d.fazenda_id || !d.chave) return;
     setSiegReimp(p => ({ ...p, [d.id]: true }));
     try {
-      const base = d.data_doc ?? new Date().toISOString().slice(0, 10);
+      const base = d.data_doc ?? hojeLocal();
       const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
       const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
       const res = await fetch("/api/integracoes/sieg-sync", {

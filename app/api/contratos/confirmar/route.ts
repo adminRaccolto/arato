@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
       const dataRef =
         body.data_pagamento ||
         body.data_entrega ||
-        new Date().toISOString().split("T")[0];
+        hojeLocal();
 
       // Resolve a Operação Gerencial de venda pelo produto do contrato (soja/milho/algodão/...)
       const { data: fazendaRow } = await sb.from("fazendas").select("conta_id").eq("id", body.fazenda_id).maybeSingle();
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
         descricao: `Pedido de Venda — ${compradorNome} (Contrato ${body.numero ?? body.contrato_id.slice(-6)})`,
         categoria: "Pedido de Venda — Grãos",
         operacao_gerencial_id: ogVenda,
-        data_lancamento: new Date().toISOString().split("T")[0],
+        data_lancamento: hojeLocal(),
         data_vencimento: dataRef,
         valor: body.valor_total,
         moeda: body.moeda,

@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import InputData from "../../../components/InputData";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
@@ -14,7 +15,7 @@ const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 const fmtDate = (s?: string) =>
   s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeLocal();
 const mesInicio = () => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); };
 
 // ─── constantes ──────────────────────────────────────────────────────────────

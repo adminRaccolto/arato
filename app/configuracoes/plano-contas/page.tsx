@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -216,7 +217,7 @@ export default function PlanoContasPage() {
     ws["!cols"] = [{ wch: 14 }, { wch: 45 }, { wch: 10 }, { wch: 10 }, { wch: 7 }, { wch: 14 }, { wch: 11 }, { wch: 12 }, { wch: 8 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Plano de Contas");
-    XLSX.writeFile(wb, `plano_contas_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(wb, `plano_contas_${hojeLocal()}.xlsx`);
   }
 
   // ── Contagens para os filtros ──────────────────────────────────────────────

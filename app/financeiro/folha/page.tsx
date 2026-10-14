@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -1027,7 +1028,7 @@ export default function FolhaPagamentoPage() {
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize:13, color:"#555" }}>{adiantamentos.filter(a=>a.status==="pendente").length} adiantamentos pendentes</span>
               <div style={{ marginLeft:"auto" }}>
-                <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data: new Date().toISOString().slice(0,10), competencia_ref: compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>
+                <OperationalButton data-arato-button="secondary" onClick={()=>{ setAdiEdit({ data: hojeLocal(), competencia_ref: compAtual() }); setModalAdi(true); }} style={S.btn("#1A4870")}>
                   + Novo Adiantamento
                 </OperationalButton>
               </div>

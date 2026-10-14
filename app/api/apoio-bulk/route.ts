@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === "baixar") {
-    const data_baixa = payload?.data_baixa ?? new Date().toISOString().slice(0, 10);
+    const data_baixa = payload?.data_baixa ?? hojeLocal();
     for (let s = 0; s < idsPermitidos.length; s += BATCH) {
       const chunk = idsPermitidos.slice(s, s + BATCH);
       const { error } = await admin

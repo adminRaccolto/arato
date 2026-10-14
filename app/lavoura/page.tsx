@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -75,7 +76,7 @@ const fmtData = (iso?: string | null) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 };
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeLocal();
 
 // ── estilos ───────────────────────────────────────────────
 const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };

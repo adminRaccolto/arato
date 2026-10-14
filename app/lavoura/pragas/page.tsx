@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -146,7 +147,7 @@ export default function PragasPage() {
   // Campos do formulário
   const [fCiclo,      setFCiclo]      = useState("");
   const [fTalhao,     setFTalhao]     = useState("");
-  const [fData,       setFData]       = useState(() => new Date().toISOString().split("T")[0]);
+  const [fData,       setFData]       = useState(() => hojeLocal());
   const [fTipo,       setFTipo]       = useState<Monitoramento["tipo"]>("praga");
   const [fNome,       setFNome]       = useState("");
   const [fNomeCustom, setFNomeCustom] = useState("");
@@ -281,7 +282,7 @@ export default function PragasPage() {
   }
 
   function abrirModal() {
-    setFCiclo(""); setFTalhao(""); setFData(new Date().toISOString().split("T")[0]);
+    setFCiclo(""); setFTalhao(""); setFData(hojeLocal());
     setFTipo("praga"); setFNome(""); setFNomeCustom(""); setFNivel(1);
     setFPct(""); setFEstagio(""); setFAcao(""); setFObs(""); setFRecId("");
     setGpsLat(null); setGpsLng(null); setGpsAcc(null); setGpsErro(""); setFotos([]);
@@ -537,7 +538,7 @@ export default function PragasPage() {
                   const csv = ["Talhão,Data,Tipo,Ocorrência,Nível,Lat,Lng,Precisão(m),%Plantas,Ação", ...rows].join("\n");
                   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
                   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-                  a.download = `monitoramento_gps_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+                  a.download = `monitoramento_gps_${hojeLocal()}.csv`; a.click();
                 }}
                 style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
               >

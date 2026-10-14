@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { statusAsaasParaLocal } from "../../../../lib/asaas";
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
         .from("pagamentos")
         .update({
           status: statusLocal,
-          data_pagamento: statusLocal === "pago" ? new Date().toISOString().split("T")[0] : null,
+          data_pagamento: statusLocal === "pago" ? hojeLocal() : null,
         })
         .eq("id", pagamento.id);
     }

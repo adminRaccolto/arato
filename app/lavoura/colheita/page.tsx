@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -32,7 +33,7 @@ import type { ColheitaRegistro, RomaneioEntrada, Ciclo, AnoSafra, Talhao, Deposi
 // Helpers
 // ────────────────────────────────────────────────────────────
 
-const hoje = () => new Date().toISOString().split("T")[0];
+const hoje = () => hojeLocal();
 const fmt  = (n: number, d = 0) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 /** Desconto umidade: ((U - U_pad) / (100 - U_pad)) × PL  — só se U > U_pad */

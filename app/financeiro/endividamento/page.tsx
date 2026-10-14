@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import React, { useState, useEffect, useCallback } from "react";
@@ -52,7 +53,7 @@ const fmtData = (s?: string | null) => {
   const [y, m, d] = s.slice(0, 10).split("-");
   return `${d}/${m}/${y}`;
 };
-const hoje = new Date().toISOString().slice(0, 10);
+const hoje = hojeLocal();
 const anoAtual = hoje.slice(0, 4);
 
 const TIPO_AMORT_LABEL: Record<string, string> = {

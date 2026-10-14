@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../lib/data-local";
 import SelectField from "./SelectField";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -167,7 +168,7 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
       // select de Ano Safra ficava vazio na tela mesmo com o ciclo certo já selecionado
       // (o campo "Ano Safra" nunca era escrito, só "Ciclo").
       if (!values.cicloId) {
-        const hoje = new Date().toISOString().slice(0, 10);
+        const hoje = hojeLocal();
         const ativo = lista.find(c => c.data_inicio && c.data_fim && c.data_inicio <= hoje && hoje <= c.data_fim);
         if (ativo) onChange({ ...values, cicloId: ativo.id, anoSafraId: values.anoSafraId || ativo.ano_safra_id });
       }

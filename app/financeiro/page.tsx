@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
@@ -27,7 +28,7 @@ type Previsao = {
   valor: number;
 };
 
-const TODAY        = new Date().toISOString().split("T")[0];
+const TODAY        = hojeLocal();
 const COTACAO_USD  = 5.12;
 
 // ── formatação ───────────────────────────────────────────────

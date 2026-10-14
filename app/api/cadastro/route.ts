@@ -1,3 +1,4 @@
+import { hojeLocal } from "../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { criarCliente, criarCobranca, buscarPixQrCode, proximoVencimento } from "../../../lib/asaas";
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
         nome_fazenda,
         crm_stage: "aguardando_pagamento",
         origem: "site",
-        data_inicio: new Date().toISOString().split("T")[0],
+        data_inicio: hojeLocal(),
         data_vencimento: (() => {
           const d = new Date();
           d.setDate(d.getDate() + plano.trial_dias);
@@ -132,7 +133,7 @@ export async function POST(req: Request) {
         status: "trial",
 
         preco,
-        data_inicio: new Date().toISOString().split("T")[0],
+        data_inicio: hojeLocal(),
         trial_fim: trialFim.toISOString().split("T")[0],
         data_proximo_pagamento: trialFim.toISOString().split("T")[0],
       })

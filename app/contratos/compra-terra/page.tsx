@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -118,7 +119,7 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 const fmt    = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtHa  = (v: number | null | undefined) => v ? v.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " ha" : "—";
 const fmtSc  = (v: number | null | undefined) => v ? v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " sc" : "—";
-const TODAY  = new Date().toISOString().split("T")[0];
+const TODAY  = hojeLocal();
 
 function displayBRL(stored: string): string {
   if (!stored) return "";

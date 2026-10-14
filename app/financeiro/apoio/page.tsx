@@ -1,4 +1,5 @@
 "use client";
+import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -80,7 +81,7 @@ function periodoApoio() {
 }
 
 function hoje() {
-  return new Date().toISOString().slice(0, 10);
+  return hojeLocal();
 }
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
