@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-d",
+    data: "14/10/2026",
+    titulo: "Encargos zerados no cadastro valem na folha",
+    modulos: ["Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Zerar FGTS, INSS Empregador, SAT/RAT, Sistema S ou as provisões no cadastro do funcionário não funcionava: ao salvar, o zero voltava ao percentual padrão, e a folha ignorava o cadastro e gerava FGTS 8% e INSS patronal 28%. Agora o zero é salvo e a folha usa os percentuais do cadastro (INSS patronal = INSS Empregador + SAT/RAT + Sistema S). Folhas em rascunho recalculam ao reabrir; folhas fechadas não mudam. INSS e IRRF do funcionário continuam pela tabela." },
+    ],
+    onde: "Cadastros → Funcionários → Remuneração; Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.14-c",
     data: "14/10/2026",
     titulo: "Documentos Fiscais mais rápida",

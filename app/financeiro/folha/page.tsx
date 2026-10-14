@@ -22,6 +22,10 @@ interface Funcionario {
   vale_transporte?: number;
   vale_refeicao?: number;
   outros_beneficios?: number;
+  fgts_pct?: number | null;
+  inss_empregador_pct?: number | null;
+  sat_rat_pct?: number | null;
+  sistema_s_pct?: number | null;
   tipo?: string;
   ativo?: boolean;
   empresa_id?: string | null;
@@ -52,6 +56,9 @@ interface FolhaFunc {
   inss_patronal: number;
   fgts: number;
   cp_lancamento_id?: string;
+  // Percentuais de encargo do cadastro do funcionário (não gravados na folha) — zero no cadastro vale zero aqui
+  fgts_pct?: number;
+  inss_pat_pct?: number;
 }
 interface Folha {
   id: string;
@@ -110,6 +117,15 @@ function liquido(f: FolhaFunc) {
   ) * 100) / 100);
 }
 
+// Percentuais de encargo do cadastro do funcionário. Cadastro sem nenhum percentual salvo usa o padrão antigo (8% / 28%).
+function pctsEncargos(cad: { fgts_pct?: number | null; inss_empregador_pct?: number | null; sat_rat_pct?: number | null; sistema_s_pct?: number | null }) {
+  const tem = cad.inss_empregador_pct != null || cad.sat_rat_pct != null || cad.sistema_s_pct != null;
+  return {
+    fgts_pct: cad.fgts_pct ?? undefined,
+    inss_pat_pct: tem ? (cad.inss_empregador_pct ?? 0) + (cad.sat_rat_pct ?? 0) + (cad.sistema_s_pct ?? 0) : undefined,
+  };
+}
+
 // INSS Patronal só se aplica a funcionário vinculado a Empresa (empresa_id).
 // Vinculado a Produtor Rural (CPF): o empregador PF recolhe Funrural em vez
 // de INSS Patronal sobre a folha — não faz sentido gerar/mostrar esse encargo
@@ -117,7 +133,10 @@ function liquido(f: FolhaFunc) {
 function recalc(f: FolhaFunc): FolhaFunc {
   const bruto = (f.salario_base || 0) + (f.gratificacao || 0);
   const inss  = calcINSS(bruto);
-  return { ...f, salario_bruto: bruto, inss_trabalhador: inss, irrf: calcIRRF(bruto, inss), fgts: calcFGTS(bruto), inss_patronal: f.empresa_id ? calcINSSPat(bruto) : 0 };
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const fgts = f.fgts_pct == null ? calcFGTS(bruto) : r2(bruto * f.fgts_pct / 100);
+  const patronal = f.empresa_id ? (f.inss_pat_pct == null ? calcINSSPat(bruto) : r2(bruto * f.inss_pat_pct / 100)) : 0;
+  return { ...f, salario_bruto: bruto, inss_trabalhador: inss, irrf: calcIRRF(bruto, inss), fgts, inss_patronal: patronal };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -255,7 +274,7 @@ export default function FolhaPagamentoPage() {
         // Busca funcionários de todas as fazendas da conta via fazendaIds (join !inner
         // filtrado por conta_id falha silenciosamente no Supabase JS — usar in() diretamente)
         supabase.from("funcionarios")
-          .select("id,fazenda_id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,tipo,empresa_id,produtor_id,ativo")
+          .select("id,fazenda_id,nome,funcao,salario_base,complemento_salarial,vale_transporte,vale_refeicao,outros_beneficios,fgts_pct,inss_empregador_pct,sat_rat_pct,sistema_s_pct,tipo,empresa_id,produtor_id,ativo")
           .in("fazenda_id", fids)
           .eq("ativo", true)
           .order("nome"),
@@ -353,6 +372,7 @@ export default function FolhaPagamentoPage() {
           if (cad) {
             Object.assign(base, recalc({
               ...base,
+              ...pctsEncargos(cad),
               salario_base: cad.salario_base ?? base.salario_base,
               complemento_salarial: cad.complemento_salarial ?? 0,
               vale_transporte: cad.vale_transporte ?? 0,
@@ -402,6 +422,7 @@ export default function FolhaPagamentoPage() {
           .filter(a => a.funcionario_id === f.id)
           .reduce((s, a) => s + a.valor, 0);
         return recalc({
+          ...pctsEncargos(f),
           funcionario_id: f.id,
           fazenda_id: f.fazenda_id,
           empresa_id: f.empresa_id ?? null,
