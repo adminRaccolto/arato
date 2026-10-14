@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, createContext, useContext, useId, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode, type Ref, type TableHTMLAttributes } from "react";
+import { cloneElement, createContext, useContext, useId, useMemo, useCallback, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode, type Ref, type TableHTMLAttributes } from "react";
 import { usePathname } from "next/navigation";
 import { contains, element, filterValue, nodes, tableModel, textOf } from "../lib/operational-view";
 import { modernNavigation } from "../lib/modern-navigation";
@@ -42,6 +42,7 @@ type FiltersProps = HTMLAttributes<HTMLDivElement> & { "data-arato-filters"?: st
 export function OperationalFilters({ children, className, ...props }: FiltersProps) {
   const active = useContext(OperationalContext), panelId = useId();
   const [expanded, setExpanded] = useState(false);
+  if (!active) return <div className={className} {...props}>{children}</div>;
   const parts = nodes(children);
   const fields = parts.filter(n => element(n) && contains([n], e => /^(?:input|select|textarea)$/.test(String(e.type)) || e.props.value !== undefined || e.props.selecionados instanceof Set));
   const search = fields.find(n => contains([n], e => e.type === "input" && e.props.type !== "date" && /busca|pesquis|descri|nome|nº|nf/i.test(String(e.props.placeholder ?? ""))) || /buscar|pesquisar/i.test(textOf(n)));
@@ -51,7 +52,6 @@ export function OperationalFilters({ children, className, ...props }: FiltersPro
     const label = element(n) ? nodes(n.props.children).find(child => element(child) && child.type === "label") : undefined;
     return filterValue([n]).map(value => ({ label: label ? textOf(label) : "", value }));
   });
-  if (!active) return <div className={className} {...props}>{children}</div>;
   // Small contextual selectors (e.g. a page's farm selector) do not become a filter panel.
   if (fields.length < 2) return <div className={`op-inline-controls ${className ?? ""}`} {...props}>{children}</div>;
   return <div className={`op-filters ${className ?? ""}`} {...props} data-op-expanded={expanded}>
@@ -70,36 +70,59 @@ export function OperationalFilters({ children, className, ...props }: FiltersPro
 }
 
 type GridProps = TableHTMLAttributes<HTMLTableElement> & { tools?: ReactNode; ref?: Ref<HTMLTableElement>; "data-arato-grid"?: string; "data-op-title"?: string };
-export function OperationalGrid({ children, tools, className, ref: suppliedRef, ...props }: GridProps) {
-  const active = useContext(OperationalContext), layout = useLayout();
+export function OperationalGrid({ children, tools, ...props }: GridProps) {
+  const active = useContext(OperationalContext);
+  // The original layout must not parse or decorate the operational grid.
+  if (!active) return <table {...props}>{children}</table>;
+  return <ActiveOperationalGrid {...props} tools={tools}>{children}</ActiveOperationalGrid>;
+}
+
+function ActiveOperationalGrid({ children, tools, className, ref: suppliedRef, ...props }: GridProps) {
+  const layout = useLayout();
   const [view, setView] = useState<"table" | "cards">("table"), [columnsOpen, setColumnsOpen] = useState(false), [hidden, setHidden] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState(""), [findResult, setFindResult] = useState(""), [expanded, setExpanded] = useState(false);
   const table = useRef<HTMLTableElement>(null), workspace = useRef<HTMLElement>(null), menuId = useId();
-  const model = tableModel(children);
-  const labels = model.headers.map((h, i) => textOf(h.props.children) || (contains(h.props.children, child => child.type === "input" && child.props.type === "checkbox") ? "Selecionar" : `Coluna ${i + 1}`));
+  const model = useMemo(() => tableModel(children), [children]);
+  const labels = useMemo(() => model.headers.map((h, i) => textOf(h.props.children) || (contains(h.props.children, child => child.type === "input" && child.props.type === "checkbox") ? "Selecionar" : `Coluna ${i + 1}`)), [model.headers]);
   // Operational commands and selection always remain available, even when columns are customized.
-  const protectedColumns = new Set(model.headers.flatMap((h, i) => /aç[õo]es|op[çc][õo]es/i.test(labels[i]) || contains([h], e => e.type === "input") || model.rows.some(row => { const cell = nodes(row.props.children)[i]; return contains([cell], e => e.type === "button" || e.type === OperationalButton || e.type === "input" || e.type === "a"); }) ? [labels[i]] : []));
+  const protectedColumns = useMemo(() => {
+    const protectedLabels = new Set<string>();
+    if (!model.regular || tools) return protectedLabels;
+    model.headers.forEach((header, i) => {
+      if (/aç[õo]es|op[çc][õo]es/i.test(labels[i]) || contains(header.props.children, e => e.type === "input")) protectedLabels.add(labels[i]);
+    });
+    for (const cells of model.rowCells.values()) {
+      cells.forEach((cell, i) => {
+        if (!protectedLabels.has(labels[i]) && contains(cell, e => e.type === "button" || e.type === OperationalButton || e.type === "input" || e.type === "a")) protectedLabels.add(labels[i]);
+      });
+      if (protectedLabels.size === labels.length) break;
+    }
+    return protectedLabels;
+  }, [model, labels, tools]);
   const cards = model.cards && view === "cards";
-  function tableRef(node: HTMLTableElement | null) {
+  const tableRef = useCallback((node: HTMLTableElement | null) => {
     table.current = node;
     if (typeof suppliedRef === "function") return suppliedRef(node);
     if (suppliedRef) suppliedRef.current = node;
-  }
-  function decorate(children: ReactNode): ReactNode {
-    return nodes(children).map(node => {
-      if (!element(node)) return node;
-      if (node.type === "thead" || node.type === "tbody" || node.type === "tfoot") return cloneElement(node, {}, decorate(node.props.children));
-      if (node.type !== "tr") return node;
-      let column = 0;
-      const wide = contains(node.props.children, child => child.type === "table" || child.props["data-arato-grid"] !== undefined);
-      return cloneElement(node, { "data-op-wide-row": wide || undefined }, nodes(node.props.children).map(cell => {
-        if (!element(cell) || !["td", "th"].includes(String(cell.type))) return cell;
-        const span = Number(cell.props.colSpan ?? 1), label = labels[column];
-        column += span;
-        return cloneElement(cell, { "data-op-label": span === 1 ? label : undefined, "data-op-spanned-cell": span > 1 || undefined, "data-op-column-hidden": model.regular && !protectedColumns.has(label) && hidden.has(label) ? "true" : undefined });
-      }));
-    });
-  }
+  }, [suppliedRef]);
+  const decoratedChildren = useMemo(() => {
+    function decorate(children: ReactNode): ReactNode {
+      return nodes(children).map(node => {
+        if (!element(node)) return node;
+        if (node.type === "thead" || node.type === "tbody" || node.type === "tfoot") return cloneElement(node, {}, decorate(node.props.children));
+        if (node.type !== "tr") return node;
+        let column = 0;
+        const wide = contains(node.props.children, child => child.type === "table" || child.props["data-arato-grid"] !== undefined);
+        return cloneElement(node, { "data-op-wide-row": wide || undefined }, nodes(node.props.children).map(cell => {
+          if (!element(cell) || !["td", "th"].includes(String(cell.type))) return cell;
+          const span = Number(cell.props.colSpan ?? 1), label = labels[column];
+          column += span;
+          return cloneElement(cell, { "data-op-label": span === 1 ? label : undefined, "data-op-spanned-cell": span > 1 || undefined, "data-op-column-hidden": model.regular && !protectedColumns.has(label) && hidden.has(label) ? "true" : undefined });
+        }));
+      });
+    }
+    return model.decoratable ? decorate(children) : children;
+  }, [children, model.decoratable, model.regular, labels, protectedColumns, hidden]);
   function locate() {
     const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const needle = normalize(query.trim());
@@ -113,7 +136,6 @@ export function OperationalGrid({ children, tools, className, ref: suppliedRef, 
     first?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     setFindResult(needle ? `${count} correspondência${count === 1 ? "" : "s"}` : "");
   }
-  if (!active) return <table {...props} ref={tableRef} className={className}>{children}</table>;
   return <section className="op-grid-workspace" ref={workspace} aria-label={props["aria-label"] ?? props["data-op-title"] ?? "Área de registros"} data-op-view={cards ? "cards" : "table"} data-op-expanded={expanded || undefined} onKeyDown={event => { if (event.key === "Escape" && !event.defaultPrevented && expanded) { event.preventDefault(); setExpanded(false); } }}>
     <div className="op-grid-tools">
       <div className="op-grid-caption"><span className="op-grid-icon"><Icon name="table" /></span><div><strong>{props["data-op-title"] ?? "Registros"}</strong><span>{model.dataRows.length} linha{model.dataRows.length === 1 ? "" : "s"} na tabela</span></div></div>
@@ -125,8 +147,8 @@ export function OperationalGrid({ children, tools, className, ref: suppliedRef, 
         <button type="button" className="op-tool" aria-label={expanded ? "Restaurar área da tabela" : "Ampliar área da tabela"} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}><Icon name="expand" size={17} /></button>
       </div>
     </div>
-    {model.regular && <div className="op-columns" id={menuId} hidden={!columnsOpen}><strong>Informações visíveis</strong>{labels.map((label, i) => <label key={`${label}-${i}`}><input type="checkbox" disabled={protectedColumns.has(label)} checked={protectedColumns.has(label) || !hidden.has(label)} onChange={() => setHidden(previous => { const next = new Set(previous); if (next.has(label)) next.delete(label); else next.add(label); return next; })} />{label}</label>)}<button type="button" className="op-tool" onClick={() => setHidden(new Set())}>Mostrar todas</button></div>}
-    <div className="op-grid-scroll"><table {...props} ref={tableRef} className={`op-data-table ${className ?? ""}`}>{model.decoratable ? decorate(children) : children}</table></div>
+    {model.regular && !tools && <div className="op-columns" id={menuId} hidden={!columnsOpen}><strong>Informações visíveis</strong>{labels.map((label, i) => <label key={`${label}-${i}`}><input type="checkbox" disabled={protectedColumns.has(label)} checked={protectedColumns.has(label) || !hidden.has(label)} onChange={() => setHidden(previous => { const next = new Set(previous); if (next.has(label)) next.delete(label); else next.add(label); return next; })} />{label}</label>)}<button type="button" className="op-tool" onClick={() => setHidden(new Set())}>Mostrar todas</button></div>}
+    <div className="op-grid-scroll"><table {...props} ref={tableRef} className={`op-data-table ${className ?? ""}`}>{decoratedChildren}</table></div>
     <div className="op-grid-footer"><span className="op-grid-note"><span className="op-live-dot" />{cards ? "Informações organizadas por registro" : "Ações e seleção disponíveis nas linhas"}</span><form className="op-grid-find" onSubmit={e => { e.preventDefault(); locate(); }}><Icon name="search" size={14} /><input aria-label="Localizar texto nesta tabela" placeholder="Localizar na tabela…" value={query} onChange={e => { setQuery(e.target.value); setFindResult(""); if (!e.target.value) for (const row of table.current?.querySelectorAll("[data-op-found]") ?? []) row.removeAttribute("data-op-found"); }} /><button type="submit" className="op-tool">Localizar</button></form><span className="op-find-result" role="status">{findResult}</span></div>
   </section>;
 }

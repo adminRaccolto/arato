@@ -11,7 +11,12 @@ export function textOf(children: ReactNode): string {
   return nodes(children).map(child => typeof child === "string" || typeof child === "number" ? String(child) : element(child) ? textOf(child.props.children) : "").join(" ").replace(/\s+/g, " ").trim();
 }
 export function contains(children: ReactNode, predicate: (child: PresentationElement) => boolean): boolean {
-  return nodes(children).some(child => element(child) && (predicate(child) || contains(child.props.children, predicate)));
+  // Inspection does not need Children.toArray's element cloning and key rewriting.
+  let found = false;
+  Children.forEach(children, child => {
+    if (!found && element(child)) found = (child.type !== Fragment && predicate(child)) || contains(child.props.children, predicate);
+  });
+  return found;
 }
 export function filterValue(children: ReactNode): string[] {
   return nodes(children).flatMap(child => {
@@ -39,16 +44,26 @@ export function tableModel(children: ReactNode) {
   const headers = headerRows.length === 1 && element(headerRows[0]) ? nodes(headerRows[0].props.children).filter(element) : [];
   const bodies = parts.filter(p => element(p) && p.type === "tbody");
   const rows = bodies.flatMap(body => element(body) ? nodes(body.props.children).filter(p => element(p) && p.type === "tr") : []).filter(element);
-  const dataRows = rows.filter(row => typeof row.props.onClick === "function" || nodes(row.props.children).filter(element).some(cell => cell.type === "td" && Number(cell.props.colSpan ?? 1) === 1));
   const simpleHeader = headers.length > 1 && headers.every(h => h.type === "th" && Number(h.props.colSpan ?? 1) === 1 && Number(h.props.rowSpan ?? 1) === 1);
-  const regular = simpleHeader
-    && rows.every(row => { const cells = nodes(row.props.children).filter(element); return cells.length === headers.length && cells.every(cell => cell.type === "td" && Number(cell.props.colSpan ?? 1) === 1 && Number(cell.props.rowSpan ?? 1) === 1); });
-  // Horizontal spans (borderô summaries and expanded details) fit inside a card. Vertical spans do not.
-  const cardStructure = simpleHeader && rows.every(row => {
+  const rowCells = new Map<PresentationElement, PresentationElement[]>();
+  const dataRows: PresentationElement[] = [];
+  let regular = simpleHeader, cardStructure = simpleHeader;
+  for (const row of rows) {
     const cells = nodes(row.props.children).filter(element);
-    return cells.length > 0 && cells.every(cell => cell.type === "td" && Number(cell.props.rowSpan ?? 1) === 1 && Number(cell.props.colSpan ?? 1) >= 1)
-      && cells.reduce((sum, cell) => sum + Number(cell.props.colSpan ?? 1), 0) === headers.length;
-  });
+    rowCells.set(row, cells);
+    if (typeof row.props.onClick === "function" || cells.some(cell => cell.type === "td" && Number(cell.props.colSpan ?? 1) === 1)) dataRows.push(row);
+    let columns = 0;
+    if (!cells.length) cardStructure = false;
+    if (cells.length !== headers.length) regular = false;
+    for (const cell of cells) {
+      const span = Number(cell.props.colSpan ?? 1), verticalSpan = Number(cell.props.rowSpan ?? 1);
+      columns += span;
+      if (cell.type !== "td" || verticalSpan !== 1 || span !== 1) regular = false;
+      if (cell.type !== "td" || verticalSpan !== 1 || span < 1) cardStructure = false;
+    }
+    // Horizontal borderô summaries fit inside a card. Vertical spans do not.
+    if (columns !== headers.length) cardStructure = false;
+  }
   const editable = contains(bodies, cell => cell.type === "input" && cell.props.type !== "checkbox" || cell.type === "select" || cell.type === "textarea" || typeof cell.type !== "string" && cell.props.value !== undefined && typeof cell.props.onChange === "function");
-  return { parts, headers, rows, dataRows, regular, decoratable: simpleHeader, cards: cardStructure && !editable };
+  return { parts, headers, rows, rowCells, dataRows, regular, decoratable: simpleHeader, cards: cardStructure && !editable };
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Fragment } from "react";
-import { filterValue, nodes, tableModel } from "./operational-view";
+import { contains, filterValue, nodes, tableModel } from "./operational-view";
 
 test("fichas preservam seleção, ações e identidade dos registros", () => {
   const change = () => {}, command = () => {};
@@ -41,4 +41,14 @@ test("matrizes editáveis não oferecem fichas que alterariam o formulário", ()
 
 test("critérios mostram datas, zero e os rótulos das opções sem chamar handlers", () => {
   assert.deepEqual(filterValue(<><input type="date" value="2026-10-14" readOnly /><input value={0} readOnly /><select value="empresa" onChange={() => {}}><option value="produtor">Produtor</option><option value="empresa">Empresa</option></select></>), ["14/10/2026", "0", "Empresa"]);
+});
+
+
+test("inspeção preserva os elementos recebidos e não executa componentes", () => {
+  let invoked = false;
+  function CustomControl() { invoked = true; return <input />; }
+  const control = <CustomControl />;
+  assert.equal(contains(<><span>Texto</span>{control}</>, child => child === control), true);
+  assert.equal(invoked, false);
+  assert.equal(contains(<><span>Texto</span></>, child => child.type === Fragment), false);
 });

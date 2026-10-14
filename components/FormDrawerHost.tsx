@@ -64,7 +64,7 @@ export default function FormDrawerHost() {
         panel.style.setProperty("--arato-drawer-width", `${drawerWidth(panel)}px`);
       }
     }
-    function scan() {
+    function scan(candidates: Iterable<HTMLElement>) {
       const previousActive = active;
       let returnFocus: HTMLElement | null = null;
       for (const [overlay, layer] of layers) {
@@ -73,7 +73,8 @@ export default function FormDrawerHost() {
         layer.restore.reverse().forEach(restore => restore());
         layers.delete(overlay);
       }
-      for (const overlay of document.querySelectorAll<HTMLElement>(overlays)) {
+      for (const overlay of candidates) {
+        if (!overlay.isConnected) continue;
         const existing = layers.get(overlay);
         if (existing) { adaptForm(overlay, existing); continue; }
         if (!fullScreenOverlay(overlay) || getComputedStyle(overlay).display === "none") continue;
@@ -117,13 +118,39 @@ export default function FormDrawerHost() {
         (event.shiftKey ? last : first)?.focus();
       }
     }
-    const observer = new MutationObserver(scan);
+    // Only inspect changed overlay subtrees, once per frame. Ordinary grid text
+    // and row updates must not trigger a search across the whole document.
+    const pending = new Set<HTMLElement>();
+    let frame: number | undefined;
+    function collect(node: Node) {
+      if (!(node instanceof HTMLElement)) return;
+      if (node.matches(overlays)) pending.add(node);
+      for (const overlay of node.querySelectorAll<HTMLElement>(overlays)) pending.add(overlay);
+    }
+    const observer = new MutationObserver(records => {
+      for (const record of records) {
+        if (record.target instanceof Element) {
+          const overlay = record.target.closest<HTMLElement>(overlays);
+          if (overlay) pending.add(overlay);
+        }
+        for (const node of record.addedNodes) collect(node);
+      }
+      const removedLayer = [...layers].some(([overlay, layer]) => !overlay.isConnected || !layer.panel.isConnected);
+      if ((!pending.size && !removedLayer) || frame !== undefined) return;
+      frame = requestAnimationFrame(() => {
+        frame = undefined;
+        const candidates = [...pending];
+        pending.clear();
+        scan(candidates);
+      });
+    });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-arato-dialog", "data-arato-drawer-width"] });
     document.addEventListener("focusin", focus);
     document.addEventListener("keydown", keyboard);
-    scan();
+    scan(document.querySelectorAll<HTMLElement>(overlays));
     return () => {
       observer.disconnect();
+      if (frame !== undefined) cancelAnimationFrame(frame);
       document.removeEventListener("focusin", focus);
       document.removeEventListener("keydown", keyboard);
       for (const layer of layers.values()) layer.restore.reverse().forEach(restore => restore());

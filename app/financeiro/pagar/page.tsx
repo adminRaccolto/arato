@@ -36,6 +36,7 @@ import { useLayout } from "../../../components/LayoutProvider";
 import { MONEY_COLUMNS, modernMoneyColumns } from "../../../lib/modern-grid";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
+import GridPagination, { useGridPagination } from "../../../components/GridPagination";
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -320,6 +321,9 @@ export default function ContasAPagarPage() {
     const dy = y.kind === "lanc" ? (y.l[ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento"] ?? "") : y.data;
     return ordemAsc ? dx.localeCompare(dy) : dy.localeCompare(dx);
   });
+  const gridPagination = useGridPagination(linhasComBordero, JSON.stringify([
+    [...fOrigem].sort(), [...fStatus].sort(), fBusca, fDataDe, fDataAte, ordenarPor, ordemAsc,
+  ]));
 
   // ── Baixar (com encargos) ──────────────────────────────────
   const [modalBaixa,   setModalBaixa]   = useState<RelLancamento | null>(null);
@@ -1319,7 +1323,7 @@ export default function ContasAPagarPage() {
                 title="Clique com botão direito para configurar colunas">
                 {colunasVisiveis.map(c => { const h = c.label; if (c.key === "checkbox") return (
                   <th key="checkbox" style={{ padding: "7px 8px", width: 30, background: "#F4F6FA" }}>
-                    <input type="checkbox" style={{ cursor: "pointer" }}
+                    <input type="checkbox" aria-label="Selecionar todos os títulos do filtro" title="Seleciona todos os títulos disponíveis no filtro, em todas as páginas" style={{ cursor: "pointer" }}
                       checked={idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id))}
                       onChange={toggleTodos} />
                   </th>
@@ -1343,7 +1347,7 @@ export default function ContasAPagarPage() {
               {carregando && (
                 <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
-              {!carregando && linhasComBordero.map(entry => {
+              {!carregando && gridPagination.rows.map(entry => {
                 if (entry.kind === "bordero") {
                   const b = entry.b;
                   const pago = entry.pago;
@@ -1475,6 +1479,7 @@ export default function ContasAPagarPage() {
             </tbody>
           </OperationalGrid>
         </div>
+        {!carregando && <GridPagination pagination={gridPagination} />}
         <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span></div></div>
       </div>
 
