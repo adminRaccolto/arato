@@ -13,6 +13,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
+import { statusEfetivo, filtrarTitulos, dedupeTitulos, hojeLocal } from "../../../lib/financeiro/titulos";
 import PosicaoComercializacaoRelatorioTab from "../../../components/relatorios/PosicaoComercializacaoRelatorioTab";
 
 type AbaFin = "fluxo" | "dfc" | "posicao" | "cpcr" | "comercializacao";
@@ -63,16 +64,8 @@ const fmtBRL = (v: number, decimais = 0) =>
 const fmtNum = (v: number, dec = 0) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
-// Replica a lógica do statusEfetivo do módulo CP/CR para filtros no relatório
-const hoje = new Date().toISOString().split("T")[0];
-const statusEfetivo = (l: { status: string; natureza?: string; data_vencimento?: string }): string => {
-  if (l.status === "baixado" || l.status === "parcial") return l.status;
-  if (l.natureza === "previsao") return l.status;
-  const venc = l.data_vencimento ?? "";
-  if (venc && venc < hoje) return "vencido";
-  if (venc && venc === hoje) return "vencendo";
-  return l.status;
-};
+// Regras de status/filtro/duplicidade dos títulos: lib/financeiro/titulos.ts (única, com teste automático)
+const hoje = hojeLocal();
 
 const aplicarMascara = (raw: string): string => {
   const nums = raw.replace(/\D/g, "");
@@ -275,7 +268,7 @@ function FinanceiroRelatoriosInner() {
         : Promise.resolve({ data: [] }),
     ]).then(([lans, ops, apoioRes, apoioLancsRes]) => {
       // Um título nunca entra duas vezes no relatório (mesma fazenda repetida na lista, ou id presente nas duas fontes)
-      setLancamentos(Array.from(new Map(lans.map(l => [l.id, l])).values()));
+      setLancamentos(dedupeTitulos(lans));
       setOperacoesGer(ops);
       const ids = ((apoioRes as { data: { lancamento_id: string }[] | null }).data ?? []).map(b => b.lancamento_id);
       setApoioBaixasIds(new Set(ids));
@@ -1789,21 +1782,11 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 // ── filtrar ───────────────────────────────────────────
-                const lancsCPCR = lancamentos.filter(l => {
-                  if (l.moeda === "barter") return false;
-                  const dt = l.data_vencimento ?? l.data_lancamento ?? "";
-                  if (inicioCPCR && dt < inicioCPCR) return false;
-                  if (fimCPCR   && dt > fimCPCR)   return false;
-                  if (tipoCPCR !== "todos" && l.tipo !== tipoCPCR) return false;
-                  if (statusCPCR.size > 0 && !statusCPCR.has(statusEfetivo(l))) return false;
-                  if (catCPCR.size > 0 && !catCPCR.has(l.categoria ?? "")) return false;
-                  if (prodCPCR.size > 0 && !prodCPCR.has(l.produtor_id ?? "")) return false;
-                  if (fornCPCR.trim()) {
-                    const nomeForn = ((l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "").toLowerCase();
-                    if (!nomeForn.includes(fornCPCR.trim().toLowerCase())) return false;
-                  }
-                  return true;
-                });
+                const lancsCPCR = filtrarTitulos(
+                  lancamentos,
+                  { inicio: inicioCPCR, fim: fimCPCR, tipo: tipoCPCR, status: statusCPCR, categorias: catCPCR, produtores: prodCPCR, fornecedor: fornCPCR },
+                  l => ((l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? ""),
+                );
 
                 const categorias = [...new Set(lancamentos.filter(l => l.moeda !== "barter").map(l => l.categoria).filter(Boolean))].sort() as string[];
                 const produtoresPresentes = produtores.filter(p => lancamentos.some(l => l.produtor_id === p.id));
