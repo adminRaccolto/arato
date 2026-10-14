@@ -16744,3 +16744,24 @@ CREATE TRIGGER trg_sync_conciliado_titulos_upd
   EXECUTE FUNCTION fn_sync_conciliado_titulos();
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 347 — NF-e transmitida só vira "cancelada" pelo evento oficial na SEFAZ
+-- =============================================================================
+-- Telas antigas (navegador com versão desatualizada) ainda mudavam o status para cancelada só no sistema, deixando a
+-- NF-e autorizada na SEFAZ (caso NF 44/930, 14/10/2026). Usuário logado pelo navegador (anon/authenticated) não consegue
+-- mais marcar uma nota COM chave de acesso como cancelada; as rotas do servidor (service_role), que só gravam depois de a
+-- SEFAZ aceitar o evento, e o SQL Editor continuam livres.
+CREATE OR REPLACE FUNCTION fn_nfe_cancelada_so_pela_sefaz() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status = 'cancelada' AND OLD.status IS DISTINCT FROM 'cancelada' AND OLD.chave_acesso IS NOT NULL
+     AND current_user IN ('anon', 'authenticated') THEN
+    RAISE EXCEPTION 'NF-e transmitida só é cancelada pelo evento oficial na SEFAZ (Fiscal > Monitor de NF-e Emitidas).';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_nfe_cancelada_so_pela_sefaz ON notas_fiscais;
+CREATE TRIGGER trg_nfe_cancelada_so_pela_sefaz BEFORE UPDATE OF status ON notas_fiscais
+  FOR EACH ROW EXECUTE FUNCTION fn_nfe_cancelada_so_pela_sefaz();
+
+NOTIFY pgrst, 'reload schema';
