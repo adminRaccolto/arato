@@ -3156,6 +3156,12 @@ export async function processarNfEntrada(
   const { data: nfCfopRow } = await supabase.from("nf_entradas").select("cfop").eq("id", nfId).maybeSingle();
   const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(((nfCfopRow?.cfop as string | null) ?? "").trim());
 
+  // Trava de duplicidade: se a NF JÁ tem título ativo (produtor ou empresa), processar de novo nunca cria outro.
+  // Achado 14/10/2026: reprocessamentos da mesma NF geraram um segundo CP em aberto ao lado do já baixado
+  // (5 NFs, R$ 1.768,64 a pagar em dobro). Estornar a NF cancela os títulos, então o reprocesso legítimo segue livre.
+  const { data: cpsAtivosProd } = await supabase.from("lancamentos").select("id").eq("nf_entrada_id", nfId).neq("status", "cancelado").limit(1);
+  const jaTemCpAtivo = !!cpsAtivosProd?.length;
+
   if (!nfSemPagamento && (!temRemessa || temOutros || temVef)) {
     // NF com Condição de Pagamento "Parcelado" nunca reaproveita o lançamento único do
     // pedido — o reaproveitamento (abaixo) só sabe ATUALIZAR um título, nunca dividir em
@@ -3230,6 +3236,9 @@ export async function processarNfEntrada(
       }).eq("id", lancamentoIdPedido);
       nfUpdates.lancamento_id = lancamentoIdPedido;
 
+    } else if (jaTemCpAtivo && !empresaDestinoId) {
+      // título já existe para esta NF — não duplica
+      if (cpsAtivosProd?.[0]?.id) nfUpdates.lancamento_id = cpsAtivosProd[0].id;
     } else if (empresaDestinoId) {
       // ── CP para Empresa (módulo Empresas) ───────────────────────────────────
       // cnpj_destino da NF bate com CNPJ de empresa cadastrada → empresa_lancamentos
