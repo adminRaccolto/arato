@@ -43,7 +43,7 @@ import {
   listarCiclos,
   listarPedidoCompraItens,
   listarTransferenciasMaquinas, atualizarTransferenciaMaquina,
-  processarDevolucaoCompra, insumoAtivo } from "../../lib/db";
+  processarDevolucaoCompra, devolvidoPorItem, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
 import type { TransferenciaMaquina, NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
@@ -1701,15 +1701,20 @@ export default function ModalNf({
       const somaItensGross = itensDB.reduce((s, i) => s + (i.valor_total || 0), 0);
       const fatorDesconto = somaItensGross > 0 && nf.valor_total > 0 ? nf.valor_total / somaItensGross : 1;
       setDevFatorDesconto(fatorDesconto);
-      const devs: DevItem[] = itensDB
-        .filter(i => i.insumo_id && i.tipo_apropiacao === "estoque")
+      // Estoque (com insumo) e Apropriação Direta entram; o que já foi devolvido antes sai do disponível
+      const elegiveis = itensDB.filter(i => (i.insumo_id && i.tipo_apropiacao === "estoque") || i.tipo_apropiacao === "direto");
+      const jaDevolvido = await devolvidoPorItem(elegiveis.map(i => i.id));
+      const devs: DevItem[] = elegiveis
+        .filter(i => i.quantidade - (jaDevolvido[i.id] ?? 0) > 0.0005)
         .map(i => ({
           key:                 i.id,
-          insumo_id:           i.insumo_id!,
+          insumo_id:           i.tipo_apropiacao === "estoque" ? i.insumo_id! : undefined,
+          origem_item_id:      i.id,
+          tipo_apropiacao:     (i.tipo_apropiacao === "direto" ? "direto" : "estoque") as "estoque" | "direto",
           descricao_produto:   i.descricao_produto,
           unidade:             i.unidade,
           deposito_id:         i.deposito_id,
-          qtdOriginal:         i.quantidade,
+          qtdOriginal:         i.quantidade - (jaDevolvido[i.id] ?? 0),
           qtdOriginalNF:       i.qtd_nf ?? undefined,
           unidadeOriginalNF:   i.unidade_nf ?? undefined,
           ncm:                 i.ncm ?? undefined,
@@ -1741,7 +1746,7 @@ export default function ModalNf({
         return;
       }
       if (!i.ncm) {
-        setDevErr(`"${i.descricao_produto}" está sem NCM na NF original — corrija o cadastro do insumo antes de devolver.`);
+        setDevErr(`"${i.descricao_produto}" está sem NCM na NF original — corrija o cadastro do insumo (ou o item da NF) antes de devolver.`);
         return;
       }
     }
@@ -4025,7 +4030,7 @@ export default function ModalNf({
               {/* Grid de itens */}
               {devItens.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-3)", fontSize: 13 }}>
-                  Nenhum item de estoque encontrado na NF de origem.
+                  Nenhum item de estoque ou de Apropriação Direta com saldo a devolver na NF de origem.
                 </div>
               ) : (
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
@@ -4038,6 +4043,7 @@ export default function ModalNf({
                     <div data-arato-item-grid="true" key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
                       <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>
                         {it.descricao_produto}
+                        {it.tipo_apropiacao === "direto" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: "#7B4A00", background: "#FBF3E0", borderRadius: 4, padding: "1px 6px" }}>Aprop. Direta: reverte o custo</span>}
                         {it.qtdOriginalNF != null && it.unidadeOriginalNF && it.unidadeOriginalNF !== it.unidade && (
                           <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>
                             NF original: {it.qtdOriginalNF.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {it.unidadeOriginalNF}

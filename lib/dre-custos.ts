@@ -110,11 +110,18 @@ export async function carregarCustosAno(p: {
 
   const ogIds = [...new Set(tits.map(t => t.operacao_gerencial_id).filter(Boolean))] as string[];
   const nfIds = [...new Set(tits.map(t => t.nf_entrada_id).filter(Boolean))] as string[];
-  type Item = { nf_entrada_id: string; tipo_apropiacao: string; valor_total: number; operacao_gerencial_id: string | null; e_combustivel: boolean | null; maquina_id: string | null; maquinas_rateio: unknown[] | null };
+  type Item = { id: string; nf_entrada_id: string; tipo_apropiacao: string; valor_total: number; operacao_gerencial_id: string | null; e_combustivel: boolean | null; maquina_id: string | null; maquinas_rateio: unknown[] | null };
   const itensPorNf = new Map<string, Item[]>();
   for (const l of lotes(nfIds, 100)) {
-    const { data } = await supabase.from("nf_entrada_itens").select("nf_entrada_id,tipo_apropiacao,valor_total,operacao_gerencial_id,e_combustivel,maquina_id,maquinas_rateio").in("nf_entrada_id", l);
+    const { data } = await supabase.from("nf_entrada_itens").select("id,nf_entrada_id,tipo_apropiacao,valor_total,operacao_gerencial_id,e_combustivel,maquina_id,maquinas_rateio").in("nf_entrada_id", l);
     for (const it of (data ?? []) as Item[]) { (itensPorNf.get(it.nf_entrada_id) ?? itensPorNf.set(it.nf_entrada_id, []).get(it.nf_entrada_id)!).push(it); ogIds.push(...(it.operacao_gerencial_id ? [it.operacao_gerencial_id] : [])); }
+  }
+  // Devolução de compra de item em Apropriação Direta: o valor devolvido (líquido) abate o custo do item
+  const devolvidoItem: Record<string, number> = {};
+  const idsItens = [...itensPorNf.values()].flat().filter(i => i.tipo_apropiacao === "direto").map(i => i.id);
+  for (const l of lotes(idsItens, 100)) {
+    const { data } = await supabase.from("nf_entrada_itens").select("origem_item_id,valor_total").in("origem_item_id", l);
+    for (const d of data ?? []) devolvidoItem[d.origem_item_id as string] = (devolvidoItem[d.origem_item_id as string] ?? 0) + Number(d.valor_total || 0);
   }
   const ogClass: Record<string, string> = {};
   for (const l of lotes([...new Set(ogIds)], 150)) {
@@ -134,7 +141,7 @@ export async function carregarCustosAno(p: {
         const viraConsumo = i.tipo_apropiacao !== "direto" || (i.e_combustivel && i.maquina_id) || (i.maquinas_rateio?.length ?? 0) > 0;
         if (viraConsumo) continue;
         const oc = i.operacao_gerencial_id ? ogClass[i.operacao_gerencial_id] : (t.operacao_gerencial_id ? ogClass[t.operacao_gerencial_id] : undefined);
-        add(t.ciclo_id, grupoDoTitulo(t.categoria, oc), valor * (Number(i.valor_total || 0) / soma));
+        add(t.ciclo_id, grupoDoTitulo(t.categoria, oc), Math.max(0, valor * (Number(i.valor_total || 0) / soma) - (devolvidoItem[i.id] ?? 0)));
       }
     } else {
       add(t.ciclo_id, grupoDoTitulo(t.categoria, t.operacao_gerencial_id ? ogClass[t.operacao_gerencial_id] : undefined), valor);

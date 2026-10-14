@@ -3469,13 +3469,28 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
 //   - Cria CR (Conta a Receber) pelo valor devolvido — fornecedor deve o dinheiro de volta
 //   - Cria registro na nf_entradas com tipo_entrada = "devolucao_compra"
 export interface ItemDevolucao {
-  insumo_id: string;
+  insumo_id?: string;                       // só itens de estoque; Apropriação Direta não tem movimento de estoque
+  origem_item_id?: string;                  // item da NF de origem que está sendo devolvido
+  tipo_apropiacao?: "estoque" | "direto";   // padrão "estoque"
   descricao_produto: string;
   unidade: string;
   deposito_id?: string;
   quantidade_devolver: number;
   valor_unitario: number;
   valor_total: number;
+}
+
+/** Quantidade já devolvida de cada item da NF de origem (devoluções registradas com origem_item_id). */
+export async function devolvidoPorItem(origemItemIds: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  if (!origemItemIds.length) return out;
+  const { data, error } = await supabase.from("nf_entrada_itens").select("origem_item_id, quantidade").in("origem_item_id", origemItemIds);
+  if (error) return out; // coluna ainda não existe (Seção 345): sem controle de devolvido
+  for (const r of data ?? []) {
+    const k = r.origem_item_id as string;
+    out[k] = (out[k] ?? 0) + Number(r.quantidade || 0);
+  }
+  return out;
 }
 
 export async function processarDevolucaoCompra(
@@ -3523,13 +3538,23 @@ export async function processarDevolucaoCompra(
 
   // 2. Para cada item: cria item na NF de devolução + saída de estoque
   for (const item of itens) {
+    const direto = item.tipo_apropiacao === "direto";
+    // Apropriação Direta: antes de gravar a devolução, mede o que já foi devolvido desse item — a reversão
+    // do consumo é proporcional ao que ainda restava.
+    let qtdAntes = 0, qtdOrig = 0;
+    if (direto && item.origem_item_id) {
+      const { data: orig } = await supabase.from("nf_entrada_itens").select("quantidade").eq("id", item.origem_item_id).maybeSingle();
+      qtdOrig = Number(orig?.quantidade || 0);
+      qtdAntes = (await devolvidoPorItem([item.origem_item_id]))[item.origem_item_id] ?? 0;
+    }
     // Insere item na NF
     const { data: nfItem, error: errItem } = await supabase
       .from("nf_entrada_itens")
       .insert({
         nf_entrada_id:    nfDev.id,
         fazenda_id,
-        insumo_id:        item.insumo_id,
+        insumo_id:        item.insumo_id ?? null,
+        ...(item.origem_item_id ? { origem_item_id: item.origem_item_id } : {}),
         deposito_id:      item.deposito_id ?? null,
         descricao_produto: item.descricao_produto,
         descricao_nf:     item.descricao_produto,
@@ -3539,16 +3564,41 @@ export async function processarDevolucaoCompra(
         quantidade:       item.quantidade_devolver,
         valor_unitario:   item.valor_unitario,
         valor_total:      item.valor_total,
-        tipo_apropiacao:  "estoque" as NfEntradaItem["tipo_apropiacao"],
+        tipo_apropiacao:  (direto ? "direto" : "estoque") as NfEntradaItem["tipo_apropiacao"],
         alerta_preco:     false,
       })
       .select()
       .single();
     if (errItem) throw errItem;
 
+    // ── Apropriação Direta: reverte o consumo, proporcional à quantidade devolvida ──
+    // O custo de item direto puro vive no CP da NF (o DRE desconta o valor das devoluções registradas);
+    // o que virou abastecimento ou manutenção de máquina vive nesses registros — reduzidos aqui.
+    if (direto) {
+      const restanteAntes = Math.max(0, qtdOrig - qtdAntes);
+      const fator = restanteAntes > 0 ? Math.max(0, (restanteAntes - item.quantidade_devolver) / restanteAntes) : 0;
+      if (item.origem_item_id) {
+        const { data: manut } = await supabase.from("historico_manutencao").select("id, custo, descricao").eq("nf_entrada_item_id", item.origem_item_id);
+        for (const m of manut ?? []) {
+          await supabase.from("historico_manutencao").update({
+            custo: Math.round(Number(m.custo || 0) * fator * 100) / 100,
+            descricao: `${m.descricao ?? ""} [devolução NF ${numero}: -${item.quantidade_devolver}]`.trim(),
+          }).eq("id", m.id);
+        }
+        const { data: abas } = await supabase.from("abastecimentos").select("id, quantidade_l, valor_total").eq("nf_entrada_item_id", item.origem_item_id);
+        for (const a of abas ?? []) {
+          await supabase.from("abastecimentos").update({
+            quantidade_l: Math.round(Number(a.quantidade_l || 0) * fator * 1000) / 1000,
+            valor_total:  Math.round(Number(a.valor_total || 0) * fator * 100) / 100,
+          }).eq("id", a.id);
+        }
+      }
+      continue; // sem movimento de estoque
+    }
+
     // Saída do estoque (desbita o insumo que está sendo devolvido)
     const { error: errMov } = await supabase.from("movimentacoes_estoque").insert({
-      insumo_id:          item.insumo_id,
+      insumo_id:          item.insumo_id!,
       fazenda_id,
       tipo:               "saida",
       quantidade:         item.quantidade_devolver,
@@ -3565,7 +3615,7 @@ export async function processarDevolucaoCompra(
     const { data: ins, error: errIns } = await supabase
       .from("insumos")
       .select("estoque")
-      .eq("id", item.insumo_id)
+      .eq("id", item.insumo_id!)
       .single();
     if (errIns) throw errIns;
     if (ins) {
@@ -3573,7 +3623,7 @@ export async function processarDevolucaoCompra(
       const { error: errUpdIns } = await supabase
         .from("insumos")
         .update({ estoque: novoSaldo })
-        .eq("id", item.insumo_id);
+        .eq("id", item.insumo_id!);
       if (errUpdIns) throw errUpdIns;
     }
   }

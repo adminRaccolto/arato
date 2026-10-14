@@ -16683,3 +16683,13 @@ DO $$ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 345 — Devolução de compra de item em Apropriação Direta
+-- =============================================================================
+-- nf_entrada_itens.origem_item_id: item da NF de origem que a devolução está devolvendo. Serve para (a) limitar a
+-- devolução ao saldo ainda não devolvido e (b) o DRE abater o custo direto proporcional ao devolvido.
+ALTER TABLE nf_entrada_itens ADD COLUMN IF NOT EXISTS origem_item_id uuid REFERENCES nf_entrada_itens(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_nf_itens_origem ON nf_entrada_itens(origem_item_id) WHERE origem_item_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

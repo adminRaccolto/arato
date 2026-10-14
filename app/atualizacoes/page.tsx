@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-b",
+    data: "14/10/2026",
+    titulo: "Devolução de compra em Apropriação Direta",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "A devolução de compra agora aceita itens lançados em Apropriação Direta, com a quantidade a devolver informada por item da NF. O custo é revertido proporcionalmente: o DRE e os custos do ciclo abatem o valor devolvido e, se o item virou abastecimento ou manutenção de máquina, esse registro é reduzido na mesma proporção. A devolução passa a respeitar o saldo ainda não devolvido de cada item. Requer a Seção 345 do supabase_migrations.sql." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada → Devolver",
+  },
+  {
     versao: "2026.10.14-a",
     data: "14/10/2026",
     titulo: "Adiantamento de gratificação na folha",
