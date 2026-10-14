@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-x",
+    data: "14/10/2026",
+    titulo: "Devolução aparece no Monitor e pode ser cancelada",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A NF-e de devolução de compra não aparecia no Monitor de NF-e Emitidas e por isso não dava para cancelá-la. Agora ela é registrada no Monitor ao ser emitida. Cancelando no Monitor, a SEFAZ cancela a NF-e e o sistema desfaz a devolução (estoque, título a receber do fornecedor, itens e saldo devolvido), liberando para devolver de novo com a NF-e certa. O CFOP sugerido por produto também passou a entender os CFOPs de saída do fornecedor (5102, 5405 etc.), e a lista ganhou 5410, 6410, 5411 e 6411 (substituição tributária)." },
+    ],
+    onde: "Fiscal → Monitor de NF-e Emitidas; Documentos Fiscais → Devolver",
+  },
+  {
     versao: "2026.10.14-w",
     data: "14/10/2026",
     titulo: "Pedido de Compra: só o saldo no Fluxo de Caixa",

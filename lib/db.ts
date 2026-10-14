@@ -3671,6 +3671,7 @@ export async function processarDevolucaoCompra(
     descricao:       `Devolução de Compra NF ${numero} — ${emitente_nome}`,
     categoria:       "devolucao",
     operacao_gerencial_id: ogDevolucao ?? null,
+    nf_entrada_id:   nfDev.id,   // liga o título à NF de devolução (estorno/cancelamento da devolução o encontra)
     data_lancamento: data_emissao,
     data_vencimento: data_vencimento ?? data_emissao,
     valor:           valorTotal,

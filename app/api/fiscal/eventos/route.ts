@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cancelarNFeEmitida, corrigirNFeEmitida } from "../../../../lib/nfe/index";
@@ -6,6 +6,32 @@ import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../.
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge, precisa de Node
 export const dynamic = "force-dynamic";
+
+/** Desfaz o lançamento de uma NF de devolução de compra cuja NF-e foi cancelada. Devolve a mensagem de aviso, se houver. */
+async function reverterDevolucaoCompra(adm: SupabaseClient, nfDevId: string): Promise<string | undefined> {
+  const avisos: string[] = [];
+  // 1) estoque: a devolução deu SAÍDA; cancelar devolve a quantidade ao insumo
+  const { data: movs } = await adm.from("movimentacoes_estoque").select("id, insumo_id, quantidade, tipo").eq("nf_entrada_id", nfDevId);
+  for (const m of (movs ?? []) as { id: string; insumo_id: string | null; quantidade: number; tipo: string }[]) {
+    if (!m.insumo_id) continue;
+    const { data: ins } = await adm.from("insumos").select("estoque").eq("id", m.insumo_id).maybeSingle();
+    if (!ins) continue;
+    const delta = m.tipo === "saida" ? Number(m.quantidade) : -Number(m.quantidade);
+    await adm.from("insumos").update({ estoque: (Number((ins as { estoque: number | null }).estoque) || 0) + delta }).eq("id", m.insumo_id);
+  }
+  if (movs?.length) await adm.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nfDevId);
+  // 2) título a receber do fornecedor — só some se ainda estiver em aberto
+  const { data: crs } = await adm.from("lancamentos").select("id, status, valor").eq("nf_entrada_id", nfDevId);
+  for (const cr of (crs ?? []) as { id: string; status: string; valor: number }[]) {
+    if (["em_aberto", "vencido", "vencendo"].includes(cr.status)) await adm.from("lancamentos").delete().eq("id", cr.id);
+    else avisos.push(`o título a receber da devolução (R$ ${Number(cr.valor).toFixed(2)}) já foi baixado: estorne a baixa e exclua-o`);
+  }
+  // 3) itens da devolução saem (libera o saldo devolvido na NF de origem) e a NF de devolução fica cancelada
+  await adm.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfDevId);
+  await adm.from("nf_entradas").update({ status: "cancelada" }).eq("id", nfDevId);
+  avisos.push("custos de Apropriação Direta ligados a abastecimento ou manutenção de máquina que a devolução tinha reduzido NÃO são restaurados automaticamente — confira se houver");
+  return avisos.length ? `Devolução desfeita no sistema; atenção: ${avisos.join("; ")}.` : undefined;
+}
 
 // Eventos de NF-e já autorizada (Cancelamento e Carta de Correção) pro Fiscal
 // → Monitor de Notas Emitidas — até 23/09/2026 "Cancelar NF-e" nessa tela era
@@ -63,7 +89,15 @@ export async function POST(request: NextRequest) {
           dados_nf_json: { ...dj, cancelamento_protocolo: resultado.protocoloEvento, cancelamento_justificativa: justificativa, cancelamento_data: new Date().toISOString() },
         }).eq("id", nota_id);
       }
-      return NextResponse.json({ ok: resultado.sucesso, cStat: resultado.cStat, xMotivo: resultado.xMotivo, protocolo: resultado.protocoloEvento });
+      // NF-e de DEVOLUÇÃO de compra cancelada na SEFAZ: desfaz a devolução no sistema (estoque, título a receber do
+      // fornecedor e o saldo devolvido dos itens), para o saldo voltar a poder ser devolvido com a NF-e correta.
+      let avisoDevolucao: string | undefined;
+      const devId = dj.devolucao_nf_entrada_id as string | undefined;
+      if (resultado.sucesso && devId) {
+        try { avisoDevolucao = await reverterDevolucaoCompra(adm, devId); }
+        catch (e) { avisoDevolucao = `A NF-e foi cancelada, mas não consegui desfazer a devolução no sistema (${e instanceof Error ? e.message : String(e)}). Estorne-a manualmente.`; }
+      }
+      return NextResponse.json({ ok: resultado.sucesso, cStat: resultado.cStat, xMotivo: resultado.xMotivo, protocolo: resultado.protocoloEvento, aviso: avisoDevolucao });
     }
 
     if (acao === "carta_correcao") {

@@ -44,7 +44,7 @@ import {
   listarCiclos,
   listarPedidoCompraItens,
   listarTransferenciasMaquinas, atualizarTransferenciaMaquina,
-  processarDevolucaoCompra, devolvidoPorItem, insumoAtivo } from "../../lib/db";
+  processarDevolucaoCompra, devolvidoPorItem, criarNotaFiscal, insumoAtivo } from "../../lib/db";
 import type { ItemDevolucao } from "../../lib/db";
 import { useAuth } from "../AuthProvider";
 import type { TransferenciaMaquina, NfEntrada, NfEntradaItem, Insumo, Deposito, BombaCombustivel, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo, ProdutorIE, PedidoCompraItem } from "../../lib/supabase";
@@ -352,6 +352,10 @@ const numBR = (v: unknown): number => {
 
 // CFOPs de devolução de compra oferecidos (cada item da NF de devolução escolhe o seu)
 const CFOPS_DEVOLUCAO: { v: string; l: string }[] = [
+  { v: "5410", l: "5410 — Dev. de compra p/ industrialização c/ substituição tributária" },
+  { v: "6410", l: "6410 — Dev. de compra p/ industrialização c/ substituição tributária (interestadual)" },
+  { v: "5411", l: "5411 — Dev. de compra p/ comercialização c/ substituição tributária" },
+  { v: "6411", l: "6411 — Dev. de compra p/ comercialização c/ substituição tributária (interestadual)" },
   { v: "5201", l: "5201 — Dev. compra intraestadual" },
   { v: "6201", l: "6201 — Dev. compra interestadual" },
   { v: "5202", l: "5202 — Dev. compra c/ substituição" },
@@ -1710,6 +1714,9 @@ export default function ModalNf({
     const CFOP_DEV: Record<string, string> = {
       "1102": "5202", "2102": "6202", "1101": "5201", "2101": "6201", "1201": "5201", "2201": "6201",
       "1556": "5556", "2556": "6556", "1407": "5413", "2407": "6413", "1403": "5202", "2403": "6202",
+      // CFOP de SAÍDA do fornecedor (como vem no XML recebido): 5xxx/6xxx → devolução de compra correspondente
+      "5101": "5201", "5102": "5202", "5103": "5201", "5105": "5201", "5401": "5410", "5403": "5411", "5405": "5411",
+      "6101": "6201", "6102": "6202", "6103": "6201", "6105": "6201", "6401": "6410", "6403": "6411", "6405": "6411",
     };
     const cfopPadrao = CFOP_DEV[(nf.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? "5201";
     setDevCfop(cfopPadrao);
@@ -1862,13 +1869,13 @@ export default function ModalNf({
           fin_nfe:  "4",   // devolução — SEFAZ rejeita (328) CFOP de devolução sem essa finalidade
         }),
       });
-      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
+      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string; xmlUrl?: string; emit_razao?: string; emit_cnpj?: string; emit_ie?: string; emit_endereco?: string; emit_numero?: string; emit_bairro?: string; emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string };
       if (!res.sucesso || !res.chave) {
         setDevErr(`SEFAZ ${res.cStat}: ${res.xMotivo}`);
         return;
       }
       const serieReal = res.chave.substring(22, 25).replace(/^0+(?=\d)/, "") || "0";
-      await processarDevolucaoCompra(
+      const nfDevolucao = await processarDevolucaoCompra(
         devNfOrig.fazenda_id,
         devNfOrig.id,
         res.numero ?? "",
@@ -1883,6 +1890,30 @@ export default function ModalNf({
         itensParaDevolver,
         { chave_acesso: res.chave, protocolo: res.protocolo },
       );
+      // Registra a NF-e de devolução no Monitor de NF-e Emitidas (tabela notas_fiscais) — sem isso ela só existia como
+      // lançamento de entrada e não dava para consultar o DANFE nem CANCELAR no Monitor.
+      try {
+        const cfopCab = [...itensParaDevolver].sort((a, b) => b.valor_total - a.valor_total)[0].cfop;
+        await criarNotaFiscal({
+          fazenda_id: devNfOrig.fazenda_id, numero: res.numero ?? "", serie: serieReal, tipo: "saida",
+          cfop: cfopCab.length === 4 ? `${cfopCab.slice(0, 1)}.${cfopCab.slice(1)}` : cfopCab,
+          natureza: "Devolução de Compra", destinatario: devNfOrig.emitente_nome,
+          cnpj_destinatario: (devNfOrig.emitente_cnpj ?? "").replace(/\D/g, "") || undefined,
+          valor_total: itensParaDevolver.reduce((s, i) => s + i.valor_total, 0), data_emissao: devData,
+          status: "autorizada", chave_acesso: res.chave, xml_url: res.xmlUrl, auto: false, tipo_emissao: 1,
+          observacao: `Devolução da NF ${devNfOrig.numero}/${devNfOrig.serie}${devObs ? ` — ${devObs}` : ""}`,
+          itens_json: itensNfe.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario })),
+          dados_nf_json: {
+            modulo_key: fiscalModulos[0].modulo, protocolo_autorizacao: res.protocolo || undefined,
+            emit_razao: res.emit_razao, emit_cnpj: res.emit_cnpj, emit_ie: res.emit_ie, emit_endereco: res.emit_endereco,
+            emit_numero: res.emit_numero, emit_bairro: res.emit_bairro, emit_municipio: res.emit_municipio, emit_uf: res.emit_uf,
+            emit_cep: res.emit_cep, emit_fone: res.emit_fone,
+            devolucao_nf_entrada_id: nfDevolucao.id, nf_origem_id: devNfOrig.id,
+          },
+        } as never);
+      } catch (e) {
+        console.error("[devolucao] não registrou no Monitor de NF-e:", e);
+      }
       onSaved();
       setDevModal(false);
     } catch (e: unknown) {
