@@ -185,7 +185,6 @@ export default function RemessasLogisticasPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Remessas Logísticas</h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>NFs 5905/6905 emitidas para armazenagem em condomínio logístico e respectivos retornos 5906/6906</p>
           </div>
         </OperationalHeading>
 

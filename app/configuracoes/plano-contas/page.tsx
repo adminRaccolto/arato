@@ -251,12 +251,9 @@ export default function PlanoContasPage() {
         {aba === "plano" && <>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Plano de Contas</div>
-            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
-              Estrutura contábil formal · SPED ECD · LCDPR · DRE
-            </div>
+            <div data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Plano de Contas</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <OperationalButton data-arato-button="secondary" onClick={exportarXlsx}

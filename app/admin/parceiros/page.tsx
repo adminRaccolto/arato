@@ -134,9 +134,6 @@ export default function AdminParceiros() {
       <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Parceiros BPO</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
-            Empresas de BPO que gerenciam clientes no Arato sob sua própria identidade.
-          </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button data-arato-button="secondary" onClick={() => { setModal("usuario"); setMsg(null); }}

@@ -1972,9 +1972,8 @@ function ParametrosSistemaContent() {
 
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Configurações</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+          <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros do Sistema</h1>
-            <span style={{ fontSize: 12, background: "#FBF3E0", color: "#C9921B", padding: "2px 10px", borderRadius: 12, fontWeight: 600, border: "0.5px solid #C9921B" }}>Configurações externas — sem código</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-2)" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
         </div>

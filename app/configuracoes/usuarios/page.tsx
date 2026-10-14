@@ -604,7 +604,6 @@ export default function UsuariosPermissoes() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>Usuários & Permissões</h1>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#666" }}>Gerencie os usuários e grupos de acesso desta fazenda</p>
           </div>
           <OperationalButton data-arato-button="primary"
             onClick={() => aba === "grupos" ? abrirModalGrupo() : abrirModalUser()}

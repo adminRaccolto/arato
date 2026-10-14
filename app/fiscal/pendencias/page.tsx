@@ -245,14 +245,10 @@ export default function PendenciasFiscaisPage() {
             ← Voltar
           </OperationalButton>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências Fiscais</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
-            Consumos registrados sem documento fiscal — WhatsApp IA ou lançamentos manuais
-          </p>
         </div>
         {totalAguardando > 0 && (
           <div data-arato-statistic="display" style={{ background: "#FFF4E5", border: "0.5px solid #EFB672", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#9D4900" }}>{totalAguardando}</div>
-            <div style={{ fontSize: 11, color: "#9D4900" }}>aguardando NF</div>
           </div>
         )}
       </OperationalHeading>

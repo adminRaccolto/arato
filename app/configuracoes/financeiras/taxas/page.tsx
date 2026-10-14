@@ -107,9 +107,6 @@ export default function TaxasVariaveisPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Taxas de Referência Variável</h1>
-            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
-              CDI, IPCA, SELIC, TR, TJLP e outros — atualizado automaticamente todo dia 1º · Fonte: Banco Central do Brasil
-            </div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <OperationalButton data-arato-button="secondary" onClick={() => setModalManual(true)}

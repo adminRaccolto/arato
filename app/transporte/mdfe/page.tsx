@@ -1030,11 +1030,8 @@ function MdfePageInner() {
       <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>MDF-e — Manifesto de Documentos Fiscais Eletrônico</h1>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-            Vincula CT-e e NF-e por viagem · Frota própria · Motoristas CLT
-          </p>
         </div>
 
         {/* KPI cards */}

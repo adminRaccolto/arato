@@ -329,7 +329,6 @@ export default function PragasPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Monitoramento de Pragas & Doenças</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Scouting por talhão · GPS georreferenciado · Fotos de campo</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a href="/campo/monitoramento" style={{ padding: "8px 14px", background: "#FBF3E0", color: "#C9921B", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>

@@ -358,7 +358,7 @@ export default function DadosAdminPage() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Dados & Limpeza de Clientes</h1>
           <span style={{ padding: "2px 10px", background: "#E24B4A", color: "white", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>ZONA DE PERIGO</span>
         </div>

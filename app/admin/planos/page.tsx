@@ -44,12 +44,8 @@ const COR: Record<PlanoId, { label: string; borda: string }> = {
 export default function PlanosPage() {
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
+      <div data-arato-page-heading="true" style={{ marginBottom: 28 }}>
         <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: "0 0 4px" }}>Planos & Módulos</h1>
-        <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
-          Para alterar preços, edite <code style={{ background: "var(--bg-page)", padding: "1px 6px", borderRadius: 4 }}>lib/planos.ts</code> e faça deploy.
-          Cobrança e links de pagamento são gerenciados pelo <strong>Mentorasys</strong>.
-        </p>
       </div>
 
       {/* Cards dos planos */}

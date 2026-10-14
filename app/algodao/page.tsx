@@ -430,7 +430,6 @@ export default function AlgodaoPage() {
           <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Módulo Algodão
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>Lavoura · Bicudo · Módulos · Algodoeira · HVI · Posição</p>
         </div>
         {/* Seletor de Ciclo */}
         <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>

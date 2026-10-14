@@ -3207,13 +3207,10 @@ function ImportacaoInner() {
     <div style={{ background: "var(--bg-page)", minHeight: "100vh", padding: "24px 28px" }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div data-arato-page-heading="true" style={{ marginBottom: 24 }}>
         <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>
           Importações
         </h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
-          Importe dados em lote via planilha XLSX — exclusivo Raccolto
-        </p>
       </div>
 
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>

@@ -199,11 +199,8 @@ export default function AutomacoesPage() {
       <TopNav />
       <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
-        <div style={{ marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 24 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Automações</h1>
-          <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-            Jobs agendados que rodam automaticamente. Use o toggle para ativar/desativar por fazenda.
-          </p>
         </div>
 
         {/* Banner */}

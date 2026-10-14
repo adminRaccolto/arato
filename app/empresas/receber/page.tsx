@@ -176,7 +176,6 @@ export default function EmpresaReceberPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Contas a Receber — Empresas</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Receitas e faturamentos das empresas não-rurais</p>
           </div>
           <OperationalButton data-arato-button="secondary" style={S.btn("#1A4870")} onClick={abrirNovo}>+ Nova CR</OperationalButton>
         </OperationalHeading>

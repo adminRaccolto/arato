@@ -733,11 +733,8 @@ export default function ConsorciosPage() {
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Consórcios</h1>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-            Cotas em andamento — acompanhe parcelas, contemplações e migração para financiamento
-          </p>
         </div>
 
         {/* KPI cards */}

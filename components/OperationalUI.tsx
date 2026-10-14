@@ -1,9 +1,7 @@
 "use client";
 
 import { cloneElement, createContext, useContext, useId, useMemo, useCallback, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode, type Ref, type TableHTMLAttributes } from "react";
-import { usePathname } from "next/navigation";
 import { contains, element, filterValue, nodes, tableModel, textOf } from "../lib/operational-view";
-import { modernNavigation } from "../lib/modern-navigation";
 import Icon from "./NavigationIcon";
 import { useLayout } from "./LayoutProvider";
 
@@ -16,24 +14,25 @@ export function OperationalButton({ children, className, ...props }: ButtonProps
   const label = textOf(children);
   const selected = props["aria-pressed"] ?? props["aria-selected"] ?? (props as ButtonProps & { "data-arato-tab-active"?: boolean | string })["data-arato-tab-active"];
   const name = /novo|nova|adicionar|incluir|criar/i.test(label) ? "plus" : /salvar|confirmar|aprovar|concluir/i.test(label) ? "check" : /atualizar|recarregar/i.test(label) ? "refresh" : /excluir|remover|apagar/i.test(label) ? "trash" : /exportar|baixar.*(?:pdf|xml|arquivo)|download/i.test(label) ? "download" : /filtr/i.test(label) ? "filter" : /editar|alterar/i.test(label) ? "edit" : null;
+  const hasIcon = !!name && contains(children, e => e.type === "svg");
+  const content = name === "plus" && !hasIcon && typeof children === "string" ? children.replace(/^\s*[+＋]\s*/, "") : children;
   return <button className={`op-button ${className ?? ""}`} {...props} data-op-selected={selected === true || selected === "true" ? "true" : undefined}>
-    {name && !contains(children, e => e.type === "svg") && <Icon name={name} size={16} />}
-    <span className="op-button-label">{children}</span>
+    {name && !hasIcon && <Icon name={name} size={16} />}
+    <span className="op-button-label">{content}</span>
   </button>;
 }
 
 type HeadingProps = HTMLAttributes<HTMLDivElement> & { as?: "div" | "header" };
 export function OperationalHeading({ as: Tag = "div", children, className, ...props }: HeadingProps) {
-  const active = useContext(OperationalContext), pathname = usePathname();
+  const active = useContext(OperationalContext);
   if (!active) return <Tag className={className} {...props}>{children}</Tag>;
-  const group = modernNavigation().find(g => g.links.some(l => l.path.split("?")[0] === pathname));
   const items = nodes(children);
-  const title = items.filter(n => contains([n], e => e.type === "h1"));
+  const title = items.filter(n => contains([n], e => e.type === "h1" || e.props["data-arato-h1"] !== undefined));
   const actions = items.filter(n => !title.includes(n));
   // An outer header containing another heading keeps its tabs and auxiliary content in place.
   if (contains(children, e => e.type === OperationalHeading)) return <Tag className={`op-heading-wrapper ${className ?? ""}`} {...props}>{children}</Tag>;
   return <Tag className={`op-heading ${className ?? ""}`} {...props}>
-    <div className="op-heading-title"><span className="op-eyebrow"><Icon name={group?.icon ?? "box"} size={14} />{group?.label ?? "Operação"}</span>{title.length ? title : children}</div>
+    <div className="op-heading-title">{title.length ? title : children}</div>
     {title.length > 0 && actions.length > 0 && <div className="op-heading-actions">{actions}</div>}
   </Tag>;
 }

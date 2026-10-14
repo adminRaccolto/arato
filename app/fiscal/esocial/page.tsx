@@ -252,9 +252,6 @@ export default function EsocialPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>eSocial Rural</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-              Trabalhadores, eventos e apuração — Produtor Rural
-            </p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             {aba === "trabalhadores" && (

@@ -261,9 +261,6 @@ export default function NovoClientePage() {
           <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Novo Cliente
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
-            Criação manual de conta pelo painel admin
-          </p>
         </div>
         <a href="/admin/clientes" style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}>
           ← Voltar

@@ -23,7 +23,7 @@ export default function RaccotloHub() {
   if (!userRole || (userRole !== "raccotlo" && userRole !== "raccotlo_gestor")) return null;
 
   return (
-    <div style={{
+    <div data-arato-page-heading="true" style={{
       minHeight: "100vh",
       background: "linear-gradient(145deg, #071628 0%, #0D0D0D 55%, #0F3B68 100%)",
       display: "flex", flexDirection: "column", alignItems: "center",
@@ -76,15 +76,6 @@ export default function RaccotloHub() {
             <div style={{ fontSize: 16, fontWeight: 700, color: "#FDE9BB", marginBottom: 8 }}>
               Gestão Arato
             </div>
-            <div style={{ fontSize: 13, color: "rgba(253,233,187,0.65)", lineHeight: 1.5 }}>
-              Clientes, planos, faturamento, identidade e configurações do sistema.
-            </div>
-            <div style={{
-              marginTop: 20, fontSize: 12, fontWeight: 700,
-              color: "#C9921B", letterSpacing: "0.05em",
-            }}>
-              ACESSAR →
-            </div>
           </button>
         )}
 
@@ -102,15 +93,6 @@ export default function RaccotloHub() {
           <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
             Área de Clientes
-          </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
-            Selecione a fazenda de um cliente para acessar o sistema como ele.
-          </div>
-          <div style={{
-            marginTop: 20, fontSize: 12, fontWeight: 700,
-            color: "#C9921B", letterSpacing: "0.05em",
-          }}>
-            SELECIONAR CLIENTE →
           </div>
         </button>
 

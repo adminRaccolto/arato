@@ -1018,7 +1018,6 @@ export default function RecomendacoesPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin:0, fontSize:20, fontWeight:700 }}>Recomendações Agronômicas</h1>
-            <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--text-3)" }}>Emissão e acompanhamento de receituários de campo</p>
           </div>
           <div style={{ display:"flex", gap:10 }}>
             <a href="/lavoura/execucao"

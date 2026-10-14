@@ -411,7 +411,6 @@ function FinanceiroRelatoriosInner() {
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
               {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", comercializacao: "Posição de Comercialização" }[aba]}
             </h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
           </div>
           {aba !== "comercializacao" && <OperationalButton data-arato-button="primary" onClick={() => {
             const fazenda = nomeFazendaSelecionada ?? "";

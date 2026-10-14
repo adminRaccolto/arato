@@ -371,9 +371,6 @@ export default function TriangulacaoPage() {
       <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Triangulação de NF</h1>
-          <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-            Gestão de operações com múltiplos destinatários — Venda a Ordem, Barter, Pagamento a Terceiro e Entrega em Terceiro
-          </p>
         </div>
         <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrir()}>+ Nova Triangulação</OperationalButton>
       </OperationalHeading>

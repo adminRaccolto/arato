@@ -273,7 +273,6 @@ export default function Pluviometria() {
       <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pluviometria</h1>
-          <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>Dados de precipitação por propriedade</div>
         </div>
         {aba === "manual" && (
           <OperationalButton data-arato-button="primary" onClick={() => setModalLeit(true)} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>

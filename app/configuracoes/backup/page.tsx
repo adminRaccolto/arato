@@ -124,11 +124,8 @@ export default function BackupPage() {
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 24 }}>
           <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Proteção de Dados — Backup & Restauração</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
-            Exporta todos os dados da fazenda para um arquivo JSON seguro armazenado na nuvem.
-          </p>
         </div>
 
         {/* Banner resultado */}

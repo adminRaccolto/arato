@@ -180,9 +180,6 @@ export default function PendenciasOperacionais() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>🔔 Central de Pendências</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
-              Transferências aguardando aprovação + operações do WhatsApp sem insumo vinculado
-            </p>
           </div>
           <OperationalButton data-arato-button="primary" onClick={carregar} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
             Atualizar

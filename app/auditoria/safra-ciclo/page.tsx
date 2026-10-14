@@ -283,9 +283,6 @@ export function AuditoriaSafraCicloPainel({ embedded = false }: { embedded?: boo
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 17, fontWeight: 600, margin: 0, color: "var(--text-1)" }}>Auditoria por Ano Safra e Ciclo</h1>
-            <p style={{ fontSize: 12, color: "var(--text-3)", margin: "2px 0 0" }}>
-              Lançamentos financeiros, tesouraria, operações agrícolas, abastecimentos, estoque, compras e contratos — com o ano safra e o ciclo de cada um.
-            </p>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <OperationalButton data-arato-button="secondary" onClick={carregar} disabled={loading} style={chip(false)}>{loading ? "Carregando…" : "↻ Atualizar"}</OperationalButton>

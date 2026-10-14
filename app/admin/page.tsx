@@ -350,13 +350,10 @@ export default function AdminOverview() {
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: 20 }}>
+      <div data-arato-page-heading="true" style={{ marginBottom: 20 }}>
         <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           Painel Administrativo
         </h1>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
-          Gestão de clientes, assinaturas e configurações do Arato
-        </p>
       </div>
 
       {/* Tabs */}

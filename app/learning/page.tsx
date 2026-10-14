@@ -133,9 +133,6 @@ export default function LearningPage() {
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Arato Academy</h1>
-              <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
-                Aprenda a operar o Arato no seu ritmo — do básico ao avançado
-              </p>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 28, fontWeight: 700, color: pct === 100 ? "#16A34A" : "#111111" }}>{pct}%</div>

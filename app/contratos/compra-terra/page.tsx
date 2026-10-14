@@ -594,7 +594,6 @@ export default function CompraTerrPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compra de Terra</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Contratos de aquisição de imóveis rurais</p>
           </div>
           <OperationalButton data-arato-button="primary" onClick={() => abrir()} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             + Novo Contrato

@@ -114,14 +114,10 @@ export default function AdminCampoPage() {
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
-      <div style={{ marginBottom: 20 }}>
+      <div data-arato-page-heading="true" style={{ marginBottom: 20 }}>
         <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           App Campo
         </h1>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
-          Ative o produto por conta. Operadores são criados e geridos pelo próprio cliente, em
-          Configurações › Usuários e Permissões, dentro do Arato Web.
-        </p>
       </div>
 
       <div data-arato-panel="true" style={{ ...card, marginBottom: 20 }}>

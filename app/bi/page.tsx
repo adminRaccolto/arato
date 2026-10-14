@@ -1118,7 +1118,6 @@ export default function BI() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#fff" }}>Raccolto Intelligence</h1>
-              <span style={{ background: "#C9921B", color: "#fff", fontSize: 10, padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>EXCLUSIVO</span>
               {fazenda && <Semaforo saude={saudeGeral} />}
             </div>
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.5)" }}>

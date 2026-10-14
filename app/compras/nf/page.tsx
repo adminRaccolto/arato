@@ -2711,12 +2711,9 @@ export default function NfCompraPage() {
       <main style={{ flex: 1, padding: "24px 28px", width: "100%" }}>
 
         {/* ── Cabeçalho ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Entrada de NF</div>
-            <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
-              {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
-            </div>
+            <div data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Entrada de NF</div>
           </div>
           <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Nova NF Manual</OperationalButton>
         </div>

@@ -297,7 +297,6 @@ export default function CartoesCredito() {
         <OperationalHeading as="header" data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Cartões de Crédito</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)" }}>Faturas geradas automaticamente · Conciliação com extrato do banco</p>
           </div>
         </OperationalHeading>
 

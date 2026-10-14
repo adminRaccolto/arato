@@ -363,12 +363,10 @@ function OperacoesGerenciaisContent() {
       <div style={{ padding: "16px 24px" }}>
 
         {/* ── Cabeçalho ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.2 }}>Operações Gerenciais</div>
-            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-              Categorias de lançamento · CP/CR · NF · Estoque · Financeiro · Contabilidade
-            </div>
+            <div data-arato-h1="true" style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.2 }}>Operações Gerenciais</div>
+
           </div>
           <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
             <OperationalButton data-arato-button="secondary" onClick={exportarXlsx}

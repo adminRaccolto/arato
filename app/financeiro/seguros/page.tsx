@@ -485,9 +485,8 @@ export default function SegurosPage() {
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Seguros</h1>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Apólices, prêmios e sinistros — máquinas, agrícola, patrimonial, vida</p>
         </div>
 
         {/* KPIs */}

@@ -2533,11 +2533,7 @@ function ConciliacaoInner() {
         {/* Header */}
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Financeiro</div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 21, fontWeight: 700, color: "var(--text-1)" }}>Conciliação Bancária</h1>
-            <p style={{ margin: "3px 0 0", fontSize: 13, color: "#666" }}>
-              Importe o OFX · o sistema concilia automaticamente · histórico salvo na nuvem
-            </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
             <div style={{ display: "flex", gap: 8 }}>

@@ -1248,7 +1248,6 @@ function FaturamentoInner() {
         <OperationalHeading data-arato-page-heading="true" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>Faturamento — NF-e de Saída</h1>
-            <p style={{ fontSize:13, color:"#666", margin:"4px 0 0" }}>Emita notas por contrato de venda ou avulsa (remessa, devolução, retorno)</p>
           </div>
           <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirModal}>+ Nova NF-e</OperationalButton>
         </OperationalHeading>

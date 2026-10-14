@@ -488,7 +488,6 @@ export default function DocumentosFiscaisPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Documentos Fiscais</h1>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>NF de Produtos, NF de Serviços e CT-e recebidos, ordenados por data</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <OperationalButton data-arato-button="primary" onClick={() => setModalNf({ id: null })} style={{ ...inp, background: "#0C447C", color: "#fff", fontWeight: 600, cursor: "pointer" }}>

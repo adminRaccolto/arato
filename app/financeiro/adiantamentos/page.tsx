@@ -226,10 +226,9 @@ export default function AdiantamentosPage() {
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Adiantamentos a Fornecedores</div>
-            <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Pré-pagamentos de insumos, serviços e contratos</div>
+            <div data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Adiantamentos a Fornecedores</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (

@@ -4904,9 +4904,6 @@ export default function CentralAtualizacoes() {
 
         <OperationalHeading as="header" data-arato-page-heading="true" style={{ marginBottom: 24 }}>
           <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Central de Atualizações</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>
-            Histórico de melhorias, novidades e correções do sistema Arato
-          </p>
         </OperationalHeading>
 
         {/* Filtro de módulo */}

@@ -280,9 +280,6 @@ export default function RateioPage() {
         <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Regras de Rateio</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>
-              N1 = distribuição entre fazendas · N2 = distribuição entre ciclos dentro da fazenda
-            </p>
           </div>
           <OperationalButton data-arato-button="primary" style={btnV} onClick={tab === "n2" ? abrirNovoN2 : abrirNovoN1}>
             + Nova Regra

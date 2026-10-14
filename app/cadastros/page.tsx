@@ -2530,9 +2530,6 @@ function CadastrosInner() {
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>
               {TAB_GROUPS.flatMap(g => g.tabs).find(t => t.key === aba)?.label ?? "Cadastros"}
             </h1>
-            <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)" }}>
-              {TAB_GROUPS.find(g => g.tabs.some(t => t.key === aba))?.group}
-            </p>
           </div>
         </OperationalHeading>
 

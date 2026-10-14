@@ -656,7 +656,6 @@ function RelFinClassInner() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Analítico: gastos por OG com os lançamentos · Sintético: total de cada OG no período</p>
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 10 }}>

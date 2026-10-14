@@ -304,9 +304,6 @@ export default function PendenciasNfPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências SIEG</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-              NFs importadas automaticamente que aguardam classificação de insumo / categoria
-            </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <a href="/configuracoes/classificacao" style={{ padding: "8px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>

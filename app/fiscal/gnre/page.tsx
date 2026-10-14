@@ -215,9 +215,6 @@ export default function GnrePage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>GNRE</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-              Guias Nacionais de Recolhimento de Tributos Estaduais
-            </p>
           </div>
           <OperationalButton data-arato-button="primary"
             onClick={() => abrirModal()}

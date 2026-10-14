@@ -188,11 +188,8 @@ export default function IdentidadePage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      <div data-arato-page-heading="true" style={{ marginBottom: 28 }}>
         <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 800, color: "#0D0D0D", margin: 0 }}>Identidade Arato</h1>
-        <p style={{ fontSize: 13, color: "#666", margin: "6px 0 0" }}>
-          Configurações visuais e de infraestrutura do produto. Alterações são salvas no Supabase.
-        </p>
       </div>
 
       {/* ── Logo ── */}

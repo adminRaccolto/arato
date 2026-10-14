@@ -218,7 +218,6 @@ export default function BotDiagPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Bot IA — WhatsApp</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>Diagnóstico e controle do assistente via WhatsApp</p>
           </div>
           <OperationalButton data-arato-button="secondary" onClick={carregar} disabled={carregando} style={{ ...btn("#111111"), opacity: carregando ? 0.6 : 1 }}>
             {carregando ? "Verificando…" : "↻ Atualizar status"}

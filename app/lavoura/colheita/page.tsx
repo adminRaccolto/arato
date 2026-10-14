@@ -489,9 +489,6 @@ export default function ColheitaPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-1)", margin: 0 }}>Colheita Própria</h1>
-            <p style={{ fontSize: 13, color: "var(--text-2)", margin: "4px 0 0" }}>
-              Pesagem de caminhões, classificação de grãos e entrada no estoque
-            </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {fazendas.length > 1 && (

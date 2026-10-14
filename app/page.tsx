@@ -634,7 +634,7 @@ export default function Dashboard() {
 
         <div className="arato-new-only op-home-heading">
           <OperationalHeading data-arato-page-heading="true">
-            <div><h1 data-arato-h1="true">Visão operacional</h1><p>Acompanhe as prioridades e o contexto da operação.</p></div>
+            <div><h1 data-arato-h1="true">Visão operacional</h1></div>
           </OperationalHeading>
         </div>
 

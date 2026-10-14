@@ -379,9 +379,6 @@ export default function AplicacoesFinanceirasPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Aplicações Financeiras</h1>
-            <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-              CDB, LCI, LCA, Tesouro Direto, Fundos — controle de aportes, rendimentos e resgates
-            </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (

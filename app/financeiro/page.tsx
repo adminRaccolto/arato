@@ -665,7 +665,6 @@ export default function Financeiro() {
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10 }}>
             <div>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Fluxo de Caixa</h1>
-              <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Projeção dia a dia, DFC mensal e análise Previsto × Realizado</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>Cotação: <strong style={{ color: "#7A4300" }}>US$ 1 = R$ {COTACAO_USD.toFixed(2)}</strong></span>

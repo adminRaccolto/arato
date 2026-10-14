@@ -218,7 +218,6 @@ export default function EmpresaPagarPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Contas a Pagar — Empresas</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Despesas e obrigações das empresas não-rurais</p>
           </div>
           <OperationalButton data-arato-button="secondary" style={S.btn("#1A4870")} onClick={abrirNovo}>+ Nova CP</OperationalButton>
         </OperationalHeading>

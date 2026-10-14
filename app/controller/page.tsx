@@ -108,9 +108,6 @@ export default function ControllerPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Controller</h1>
-            <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
-              Monitoramento automático de inconsistências e alertas operacionais
-            </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {msg && <span style={{ fontSize: 12, color: "var(--text-2)", fontStyle: "italic" }}>{msg}</span>}

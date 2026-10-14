@@ -154,9 +154,8 @@ export default function MigrarNF() {
 
   return (
     <div style={{ padding: "24px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
-      <div style={{ marginBottom: 24 }}>
+      <div data-arato-page-heading="true" style={{ marginBottom: 24 }}>
         <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--text-1)" }}>Migração de NF entre Contratos</h1>
-        <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>Transfere romaneios e NFs emitidas de um contrato para outro, recalculando os saldos</div>
       </div>
 
       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>

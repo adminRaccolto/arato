@@ -371,7 +371,6 @@ export default function AbastecimentoPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Abastecimento de Máquinas</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Consumo de combustível das bombas da fazenda — dedução de estoque e custo</p>
           </div>
           <OperationalButton data-arato-button="primary"
             onClick={abrirModal}

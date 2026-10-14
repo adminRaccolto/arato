@@ -277,7 +277,6 @@ export default function TransporteCadastrosPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Cadastros de Transporte</h1>
-            <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Transportadoras, veículos e motoristas — usados em NF-e, CT-e e MDF-e</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar…"

@@ -160,7 +160,6 @@ export default function DREEmpresasPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>DRE por Empresa</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Demonstrativo de Resultado por empresa não-rural no período</p>
           </div>
           <OperationalButton data-arato-button="secondary" style={S.btn("#555")} onClick={() => window.print()}>Imprimir</OperationalButton>
         </OperationalHeading>

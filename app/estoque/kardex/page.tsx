@@ -351,9 +351,6 @@ export default function Kardex() {
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>
                 Kardex — Ficha de Estoque
               </h1>
-              <p style={{ margin: "2px 0 0", fontSize: 13, color: "#666" }}>
-                Movimentações por produto com custo médio ponderado
-              </p>
             </div>
             {gerado && (
               <div style={{ display: "flex", gap: 8 }}>

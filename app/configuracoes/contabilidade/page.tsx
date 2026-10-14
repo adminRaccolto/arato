@@ -148,12 +148,8 @@ export default function ContabilidadePage() {
       <TopNav />
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
-        <div style={{ marginBottom: 24 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 24 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>Configuração Contábil</h1>
-          <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-            Parâmetros para geração do SPED ECD (Escrituração Contábil Digital).
-            Cada entidade — Produtor Rural (PF) e Empresa (PJ) — tem seu próprio livro contábil.
-          </p>
         </div>
 
         {/* Info box */}

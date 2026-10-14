@@ -123,9 +123,6 @@ export default function OperacoesTesourariaPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Operações de Tesouraria</h1>
-            <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-              Gerencie os tipos de operações disponíveis ao registrar lançamentos de tesouraria.
-            </p>
           </div>
           {fazendasConta.length > 1 && (
             <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={{ ...inp, width: "auto" }}>

@@ -335,7 +335,6 @@ function RelManutInner() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Histórico de manutenções agrupado por equipamento</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {gerado && (

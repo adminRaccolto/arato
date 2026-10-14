@@ -632,9 +632,6 @@ export default function ParceriasPage() {
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 700, color: C.txt, margin: 0 }}>Parcerias & Grupos Econômicos</h1>
-              <p style={{ fontSize: 13, color: C.ter, margin: "4px 0 0" }}>
-                Lei 4.504/1964 (Estatuto da Terra) · LCDPR IN RFB 1.848/2018 · SPED ECD Leiaute 10
-              </p>
             </div>
           </OperationalHeading>
         </div>

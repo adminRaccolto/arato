@@ -502,7 +502,6 @@ export default function Planejamento() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Planejamento de Safra</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Orçamento, comparativo planejado × realizado, agenda e recomendações técnicas</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             {aba === "orcamento" && orcamento && (

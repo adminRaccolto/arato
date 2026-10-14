@@ -258,9 +258,6 @@ export default function TesourariaPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Lançamento de Tesouraria</h1>
-            <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-              Registre operações financeiras de tesouraria: transferências, ajustes de saldo, seguros, consórcios e outros.
-            </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {fazendasConta.length > 1 && (

@@ -217,7 +217,7 @@ function ConfiguracoesInner() {
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
                 {aba === "plano_contas" ? "Plano de Contas" : aba === "certificado" ? "Certificado A1" : "Configurações"}
               </h1>
-              {aba === "hub" && <p style={{ margin: 0, fontSize: 11, color: "#666" }}>Acesso de suporte e cotações</p>}
+              {aba === "hub" && null}
             </div>
           </div>
           {diasCertMin !== null && diasCertMin <= 30 && (

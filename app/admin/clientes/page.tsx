@@ -635,9 +635,6 @@ export default function ClientesPage() {
           <h1 data-arato-h1="true" style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Clientes
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
-            Gestão completa da base de clientes
-          </p>
         </div>
         <button data-arato-button="primary" style={btnPrimary} onClick={() => router.push("/admin/clientes/novo")}>
           + Novo Cliente

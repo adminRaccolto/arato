@@ -665,9 +665,6 @@ export default function DrePage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>DRE Agrícola</h1>
-            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-              Demonstrativo de Resultado do Exercício — análise econômica por ciclo de produção
-            </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <OperationalButton data-arato-button="secondary"

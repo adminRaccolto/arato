@@ -288,9 +288,6 @@ export default function PlanoAgricola() {
         <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Planejamento Agrícola</h1>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>
-              Operações por ciclo · Ciclos cadastrados em <strong>Cadastros → Safras &amp; Ciclos</strong>
-            </p>
           </div>
         </OperationalHeading>
 

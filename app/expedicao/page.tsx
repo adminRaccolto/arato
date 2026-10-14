@@ -394,8 +394,8 @@ export default function Expedicao() {
           overflow: "hidden",
         }}>
           {/* Header */}
-          <div style={{ padding: "20px 20px 14px", borderBottom: "0.5px solid var(--bg-tag)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>Comercial</div>
+          <div data-arato-page-heading="true" style={{ padding: "20px 20px 14px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+
             <h1 data-arato-h1="true" style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Expedição de Grãos</h1>
 
             {/* Filtros */}

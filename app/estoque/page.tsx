@@ -1011,7 +1011,6 @@ export default function Estoque() {
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 0 }}>
             <div>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Estoque</h1>
-              <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Insumos, produtos, NF de entrada e movimentações</p>
             </div>
             <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {fazendasConta.length > 1 && (

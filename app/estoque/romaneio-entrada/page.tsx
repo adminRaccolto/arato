@@ -392,7 +392,6 @@ const salvar = async (confirmar = false) => {
       <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
-          <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Relatório de recebimento de grãos — pesagem própria e tickets de terceiros</p>
         </div>
         <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Novo Romaneio</OperationalButton>
       </OperationalHeading>

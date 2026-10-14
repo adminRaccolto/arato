@@ -936,7 +936,6 @@ export default function Arrendamentos() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos de Arrendamento</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Gestão de contratos, parcelas automáticas por safra e calendário de vencimentos</p>
           </div>
           <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditContrato(null); setFC(initFC()); setModalContrato(true); }}>
             + Novo Contrato

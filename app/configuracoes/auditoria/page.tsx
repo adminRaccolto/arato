@@ -279,12 +279,8 @@ export default function AuditoriaPage() {
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 20 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Monitor de Auditoria</h1>
-          <p style={{ fontSize: 12, color: "#888", margin: "4px 0 0" }}>
-            Histórico de inserções, alterações e exclusões nas tabelas críticas do sistema.
-            Os registros começam a partir da ativação do monitor.
-          </p>
         </div>
 
         {/* Stat cards */}

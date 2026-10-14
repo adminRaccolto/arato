@@ -423,10 +423,9 @@ export default function FolhaEmpresaPage() {
       <div style={S.body}>
 
         {/* Cabeçalho */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Folha de Pagamento — Empresa</h1>
-            <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>Processamento mensal para funcionários da empresa</p>
           </div>
         </div>
 

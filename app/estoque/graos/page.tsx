@@ -491,8 +491,8 @@ export default function EstoqueGraosPage() {
       <TopNav />
       {/* Header */}
       <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "14px 22px" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Estoque de Grãos</div>
-        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Soja · Milho · Algodão · Sorgo — posição, qualidade e quebra técnica</div>
+        <div data-arato-h1="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Estoque de Grãos</div>
+
       </OperationalHeading>
 
       {/* Filtros globais */}

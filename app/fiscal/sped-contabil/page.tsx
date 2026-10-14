@@ -395,9 +395,6 @@ export default function SpedContabilPage() {
           <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
               <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
-              <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
-                Gera o arquivo de transmissão no formato aceito pelo Domínio e pela Receita Federal (Leiaute 10).
-              </p>
             </div>
             <a
               href="/configuracoes/contabilidade"

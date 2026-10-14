@@ -1594,11 +1594,8 @@ function CtePageInner() {
       <main style={{ maxWidth: 1680, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div style={{ marginBottom: 22 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 22 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>CT-e — Conhecimento de Transporte Eletrônico</h1>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
-            Frota própria · Modal rodoviário · Motoristas CLT
-          </p>
         </div>
 
         {/* KPI cards */}

@@ -189,9 +189,8 @@ function RelatorioRomaneios() {
     <>
       <TopNav />
       <div style={{ padding: "24px 28px", fontFamily: "system-ui, sans-serif", fontSize: 13, background: "var(--bg-page)", minHeight: "100vh" }}>
-        <div style={{ marginBottom: 20 }}>
+        <div data-arato-page-heading="true" style={{ marginBottom: 20 }}>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Romaneios</h1>
-          <p style={{ fontSize: 13, color: "var(--text-2)", margin: "4px 0 0" }}>Romaneios de entrada (lavoura → armazém) e saída (entrega por contrato)</p>
         </div>
 
         {/* Abas */}

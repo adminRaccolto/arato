@@ -484,7 +484,6 @@ export default function AcertoFretePage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Acerto de Frete</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-2)" }}>Fechamento mensal de motoristas TAC (autônomos) — fretes, combustível, adiantamentos</p>
           </div>
           {fazendasConta.length > 1 && (
             <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)}
