@@ -206,6 +206,8 @@ export default function DocumentosFiscaisPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<RelDocFiscal[] | null>(null);
+  // Só as primeiras linhas são desenhadas (milhares de linhas no DOM travavam a tela); os totais usam todas
+  const [qtdVisivel, setQtdVisivel] = useState(100);
   // Ordenação da lista: pela data da nota (padrão) ou pela data de cadastro no sistema
   const [ordenarPor, setOrdenarPor] = useState<"data_doc" | "created_at">("data_doc");
 
@@ -254,6 +256,7 @@ export default function DocumentosFiscaisPage() {
         if (!data || data.length < PAGE) break;
       }
       setResultado(todas);
+      setQtdVisivel(100);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar documentos fiscais.");
     } finally {
@@ -682,7 +685,7 @@ export default function DocumentosFiscaisPage() {
               {carregando && (
                 <tr><td colSpan={15} style={{ padding: 32, textAlign: "center", color: "#888" }}>Carregando...</td></tr>
               )}
-              {!carregando && linhas.map(d => {
+              {!carregando && linhas.slice(0, qtdVisivel).map(d => {
                 const tm = TIPO_OPCOES.find(t => t.v === d.tipo_doc);
                 const sm = STATUS_OPCOES.find(s => s.v === d.status_normalizado);
                 return (
@@ -755,6 +758,14 @@ export default function DocumentosFiscaisPage() {
                   </tr>
                 );
               })}
+              {!carregando && linhas.length > qtdVisivel && (
+                <tr><td colSpan={15} style={{ padding: 14, textAlign: "center", color: "#555", fontSize: 12 }}>
+                  Mostrando {qtdVisivel} de {linhas.length} documentos.{" "}
+                  <button onClick={() => setQtdVisivel(q => q + 200)} style={{ border: "none", background: "transparent", color: "#0C447C", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>Mostrar mais 200</button>
+                  {" · "}
+                  <button onClick={() => setQtdVisivel(linhas.length)} style={{ border: "none", background: "transparent", color: "#0C447C", cursor: "pointer", fontWeight: 600, fontSize: 12 }}>Mostrar todos</button>
+                </td></tr>
+              )}
               {!carregando && linhas.length === 0 && (
                 <tr><td colSpan={15} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum documento encontrado para esse filtro.</td></tr>
               )}

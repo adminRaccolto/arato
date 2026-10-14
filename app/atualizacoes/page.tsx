@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-c",
+    data: "14/10/2026",
+    titulo: "Documentos Fiscais mais rápida",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A tela de Documentos Fiscais (Notas de Terceiro) travava em contas com muitos documentos por desenhar todas as linhas de uma vez. Agora mostra as 100 primeiras, com os botões Mostrar mais 200 e Mostrar todos; os totais por tipo continuam somando tudo." },
+    ],
+    onde: "Documentos Fiscais",
+  },
+  {
     versao: "2026.10.14-b",
     data: "14/10/2026",
     titulo: "Devolução de compra em Apropriação Direta",
