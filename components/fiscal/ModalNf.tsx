@@ -4033,6 +4033,10 @@ export default function ModalNf({
                     <option value="6201">6201 — Dev. compra interestadual</option>
                     <option value="5202">5202 — Dev. compra c/ substituição</option>
                     <option value="6202">6202 — Dev. compra c/ substituição interestadual</option>
+                    <option value="5556">5556 — Dev. compra de material de uso ou consumo</option>
+                    <option value="6556">6556 — Dev. compra de material de uso ou consumo (interestadual)</option>
+                    <option value="5413">5413 — Dev. material de uso ou consumo c/ substituição tributária</option>
+                    <option value="6413">6413 — Dev. material de uso ou consumo c/ substituição tributária (interestadual)</option>
                   </SelectField>
                 </div>
                 <div>

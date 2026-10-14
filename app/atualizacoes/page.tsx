@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-g",
+    data: "14/10/2026",
+    titulo: "CFOPs de devolução de uso e consumo",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "A lista de CFOP da NF de Devolução de Compra ganhou 5556 e 6556 (devolução de compra de material de uso ou consumo) e 5413 e 6413 (devolução de material de uso ou consumo com substituição tributária), além dos 5201, 6201, 5202 e 6202 que já existiam." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada → Devolver",
+  },
+  {
     versao: "2026.10.14-f",
     data: "14/10/2026",
     titulo: "NF não é mais lançada em duplicidade",
