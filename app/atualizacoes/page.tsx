@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-u",
+    data: "14/10/2026",
+    titulo: "Funcionários: coluna Produtor / Empresa",
+    modulos: ["Cadastros"],
+    itens: [
+      { tipo: "novo", texto: "A lista de Funcionários ganhou a coluna Produtor / Empresa, mostrando a quem o funcionário está vinculado (o produtor, ou a empresa quando for o caso), e a busca da tela também encontra pelo nome do produtor ou da empresa." },
+    ],
+    onde: "Cadastros → Funcionários",
+  },
+  {
     versao: "2026.10.14-t",
     data: "14/10/2026",
     titulo: "CFOP por produto na devolução",

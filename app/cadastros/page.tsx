@@ -5890,13 +5890,15 @@ function CadastrosInner() {
                   </div>
                 </OperationalFilters>
                 <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <TH cols={["Nome", "Vínculo", "Função", "Admissão", "Salário Base", "Custo Total Est.", "Status", ""]} />
+                  <TH cols={["Nome", "Vínculo", "Produtor / Empresa", "Função", "Admissão", "Salário Base", "Custo Total Est.", "Status", ""]} />
                   <tbody>
-                    {funcs.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
+                    {funcs.length === 0 && <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
                     {funcs.filter(f => {
                       if (!buscaFunc.trim()) return true;
                       const q = buscaFunc.toLowerCase();
+                      const empregador = (produtores.find(p => p.id === f.produtor_id)?.nome ?? empresas.find(e => e.id === f.empresa_id)?.nome ?? "").toLowerCase();
                       return f.nome.toLowerCase().includes(q) ||
+                        empregador.includes(q) ||
                         (f.funcao ?? "").toLowerCase().includes(q) ||
                         f.tipo.toLowerCase().includes(q) ||
                         (f.area_trabalho ?? "").toLowerCase().includes(q);
@@ -5918,6 +5920,10 @@ function CadastrosInner() {
                         <tr key={f.id} style={{ borderBottom: i < funcs.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                           <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{f.nome}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.tipo.toUpperCase(), bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "left", color: "var(--text-1)" }}>
+                            {produtores.find(p => p.id === f.produtor_id)?.nome ?? empresas.find(e => e.id === f.empresa_id)?.nome ?? <span style={{ color: "var(--text-3)" }}>—</span>}
+                            {f.empresa_id && !f.produtor_id && <div style={{ fontSize: 10, color: "var(--text-3)" }}>Empresa</div>}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{f.funcao || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{f.data_admissao || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-1)" }}>{sal > 0 ? `R$ ${sal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
