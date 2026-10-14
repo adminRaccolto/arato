@@ -1743,7 +1743,8 @@ export default function ModalNf({
         .map(i => ({
           key:                 i.id,
           insumo_id:           i.tipo_apropiacao === "estoque" ? i.insumo_id! : undefined,
-          cfop:                cfopPadrao,
+          // CFOP de cada produto: sugerido pelo CFOP que o PRÓPRIO item tinha na NF de compra; sem ele, o do cabeçalho
+          cfop:                CFOP_DEV[(i.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? cfopPadrao,
           origem_item_id:      i.id,
           tipo_apropiacao:     (i.tipo_apropiacao === "direto" ? "direto" : "estoque") as "estoque" | "direto",
           descricao_produto:   i.descricao_produto,
@@ -4020,7 +4021,7 @@ export default function ModalNf({
 
       {devModal && devNfOrig && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
-          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 980, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -4072,13 +4073,13 @@ export default function ModalNf({
                 </div>
               ) : (
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px 150px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                    {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução", "CFOP"].map((h, i) => (
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 70px 90px 100px 110px 250px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
+                    {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução", "CFOP deste produto"].map((h, i) => (
                       <div key={i} style={{ padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</div>
                     ))}
                   </div>
                   {devItens.map(it => (
-                    <div data-arato-item-grid="true" key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px 150px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
+                    <div data-arato-item-grid="true" key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 70px 90px 100px 110px 250px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
                       <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>
                         {it.descricao_produto}
                         {it.tipo_apropiacao === "direto" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: "#7B4A00", background: "#FBF3E0", borderRadius: 4, padding: "1px 6px" }}>Aprop. Direta: reverte o custo</span>}
@@ -4114,7 +4115,7 @@ export default function ModalNf({
                       </div>
                       <div style={{ padding: "6px 8px" }}>
                         <select value={it.cfop} onChange={e => setDevItens(prev => prev.map(x => x.key === it.key ? { ...x, cfop: e.target.value } : x))} style={{ ...inp, padding: "5px 6px", fontSize: 12 }}>
-                          {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.v}</option>)}
+                          {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.l}</option>)}
                         </select>
                       </div>
                     </div>

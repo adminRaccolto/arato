@@ -3499,6 +3499,7 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
 export interface ItemDevolucao {
   insumo_id?: string;                       // só itens de estoque; Apropriação Direta não tem movimento de estoque
   origem_item_id?: string;                  // item da NF de origem que está sendo devolvido
+  cfop?: string;                            // CFOP deste produto na NF de devolução
   tipo_apropiacao?: "estoque" | "direto";   // padrão "estoque"
   descricao_produto: string;
   unidade: string;
@@ -3582,6 +3583,7 @@ export async function processarDevolucaoCompra(
         nf_entrada_id:    nfDev.id,
         fazenda_id,
         insumo_id:        item.insumo_id ?? null,
+        ...(item.cfop ? { cfop: item.cfop } : {}),
         ...(item.origem_item_id ? { origem_item_id: item.origem_item_id } : {}),
         deposito_id:      item.deposito_id ?? null,
         descricao_produto: item.descricao_produto,

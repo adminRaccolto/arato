@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-t",
+    data: "14/10/2026",
+    titulo: "CFOP por produto na devolução",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Na janela Devolver, cada produto da NF tem o seu campo CFOP (coluna CFOP deste produto, mais larga e com o nome do CFOP). Ele já vem sugerido pelo CFOP que o próprio produto tinha na NF de compra, e o CFOP escolhido fica gravado no item da NF de devolução. A janela ficou mais larga para a coluna caber sem rolar." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada → Devolver",
+  },
+  {
     versao: "2026.10.14-s",
     data: "14/10/2026",
     titulo: "Baixa não passa do valor do título",
