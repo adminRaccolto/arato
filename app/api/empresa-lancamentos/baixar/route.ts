@@ -4,6 +4,7 @@
  * um lançamento de empresa_lancamentos — mesma regra do /api/financeiro/baixar do produtor.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
 import { createClient } from "@supabase/supabase-js";
 import { getSessionUser, validateFazendaAccess } from "../../../../lib/api-auth";
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const sb = admin();
     const { data: atual } = await sb.from("empresa_lancamentos")
-      .select("fazenda_id, status, observacao, data_prorrogacao, valor, moeda, cotacao_usd, valor_pago, data_vencimento, valor_desconto")
+      .select("fazenda_id, status, observacao, data_prorrogacao, valor, moeda, cotacao_usd, valor_pago, data_vencimento, valor_desconto, valor_multa, valor_juros")
       .eq("id", body.lancamento_id).maybeSingle();
     if (!atual) return NextResponse.json({ ok: false, error: "Lançamento não encontrado" }, { status: 404 });
 
@@ -76,6 +77,15 @@ export async function POST(req: NextRequest) {
     const novoTotal  = ((atual.valor_pago as number | null) ?? 0) + agora;
     const descAcum   = ((atual.valor_desconto as number | null) ?? 0) + (body.desconto_valor ?? 0);
     const novoStatus = novoTotal + descAcum >= valorTotal - 0.01 ? "pago" : "parcial";
+    const tetoEmp = {
+      valor: atual.valor, moeda: atual.moeda, cotacao_usd: atual.cotacao_usd,
+      valor_multa: body.multa_valor ?? (atual.valor_multa as number | null),
+      valor_juros: body.juros_valor ?? (atual.valor_juros as number | null),
+      valor_desconto: descAcum,
+    };
+    if (excedeLimiteBaixa(tetoEmp, novoTotal)) {
+      return NextResponse.json({ ok: false, error: mensagemExcesso(tetoEmp, novoTotal) }, { status: 422 });
+    }
 
     const patch: Record<string, unknown> = {
       status: novoStatus,

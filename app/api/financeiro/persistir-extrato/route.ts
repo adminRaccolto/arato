@@ -9,6 +9,7 @@
  */
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
+import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
 import { createClient } from "@supabase/supabase-js";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
 
@@ -106,6 +107,8 @@ export async function POST(req: NextRequest) {
           // Título de EMPRESA (empresa_lancamentos): baixa na própria tabela. Status da empresa é
         // pendente/pago — "parcial" vira pendente com valor_pago; conta bancária (uuid) não é gravada aqui.
         if (idsEmpresa.has(item.id)) {
+          const { data: curE } = await sb.from("empresa_lancamentos").select("valor,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto").eq("id", item.id).maybeSingle();
+          if (curE && excedeLimiteBaixa(curE, item.valor_pago)) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${mensagemExcesso(curE, item.valor_pago)}`; }
           const r = await sb.from("empresa_lancamentos").update(
             (item.status ?? "baixado") === "baixado"
               ? { status: "pago", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
@@ -114,6 +117,8 @@ export async function POST(req: NextRequest) {
           if (r.error) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${r.error.message}`; }
           return null;
         }
+        const { data: curP } = await sb.from("lancamentos").select("valor,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto").eq("id", item.id).maybeSingle();
+        if (curP && excedeLimiteBaixa(curP, item.valor_pago)) { idsFalhosBaixa.add(item.id); return `baixa ${item.id}: ${mensagemExcesso(curP, item.valor_pago)}`; }
         const r = await sb.from("lancamentos").update({
             status:     item.status ?? "baixado",
             data_baixa: item.data_baixa,

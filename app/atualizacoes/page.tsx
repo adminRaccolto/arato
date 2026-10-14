@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-s",
+    data: "14/10/2026",
+    titulo: "Baixa não passa do valor do título",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O sistema aceitava baixar um valor maior que o título (inclusive repetindo a mesma baixa duas vezes, que somava o pagamento em dobro). Agora o total pago nunca passa do valor do título; juros e multa só ampliam o limite quando informados na baixa. Vale para Contas a Pagar, a Receber, Empresa e para a baixa feita ao conciliar. A auditoria diária passou a contar baixas acima do valor." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber / Conciliação",
+  },
+  {
     versao: "2026.10.14-r",
     data: "14/10/2026",
     titulo: "Parcelar título já lançado no Contas a Pagar",

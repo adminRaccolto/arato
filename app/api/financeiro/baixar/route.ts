@@ -8,6 +8,7 @@
  */
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
+import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
 import { createClient } from "@supabase/supabase-js";
 
 const admin = () =>
@@ -154,7 +155,7 @@ export async function POST(req: NextRequest) {
 
     // ── BAIXAR ──────────────────────────────────────────────────────────────
     const { data: atual } = await sb.from("lancamentos")
-      .select("valor, cotacao_usd, moeda, valor_pago, contrato_financeiro_id, data_vencimento")
+      .select("valor, cotacao_usd, moeda, valor_pago, contrato_financeiro_id, data_vencimento, valor_multa, valor_juros, valor_desconto")
       .eq("id", id).single();
 
     const cotacao    = (atual?.cotacao_usd as number | null) ?? 5.12;
@@ -164,6 +165,17 @@ export async function POST(req: NextRequest) {
     const novoTotal  = jaRPago + agora;
     const desconto   = body.desconto_valor ?? 0;
     const novoStatus = novoTotal + desconto >= valorTotal - 0.01 ? "baixado" : "parcial";
+
+    // Ninguém paga/recebe mais do que o título vale (juros e multa só contam se informados na baixa)
+    const tetoTitulo = {
+      valor: atual?.valor, moeda: atual?.moeda, cotacao_usd: atual?.cotacao_usd,
+      valor_multa: body.multa_valor ?? (atual?.valor_multa as number | null),
+      valor_juros: body.juros_valor ?? (atual?.valor_juros as number | null),
+      valor_desconto: body.desconto_valor ?? (atual?.valor_desconto as number | null),
+    };
+    if (excedeLimiteBaixa(tetoTitulo, novoTotal)) {
+      return NextResponse.json({ ok: false, error: mensagemExcesso(tetoTitulo, novoTotal) }, { status: 422 });
+    }
 
     const patch: Record<string, unknown> = {
       status:         novoStatus,

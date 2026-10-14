@@ -3,13 +3,15 @@
  * saiu de sincronia, ANTES de o usuário descobrir na tela:
  *   1. NF de entrada com a mesma chave de acesso mais de uma vez;
  *   2. título a pagar duplicado (mesma NF, mesmo valor, mesmo vencimento);
- *   3. espelho rel_lancamentos com quantidade diferente da origem (lancamentos / empresa_lancamentos).
+ *   3. baixa com valor pago acima do valor do título (mais juros/multa informados);
+ *   4. espelho rel_lancamentos com quantidade diferente da origem (lancamentos / empresa_lancamentos).
  * Só avisa por e-mail quando algum número AUMENTOU em relação à última execução (a última fica em
  * arquivos/auditoria/ultima.json), para o aviso não repetir todo dia o que já é conhecido.
  */
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { excedeLimiteBaixa } from "../../../../lib/financeiro/baixa";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -65,6 +67,11 @@ export async function GET(req: Request) {
     }
     const titDuplicados = [...porTit.values()].filter(a => a.length > 1);
 
+    // 3a) baixa acima do valor do título (pago > valor + multa + juros − desconto)
+    const pagos = await todas<{ id: string; valor: number; moeda: string | null; cotacao_usd: number | null; valor_pago: number; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null }>(
+      sb, "lancamentos", "id,valor,moeda,cotacao_usd,valor_pago,valor_multa,valor_juros,valor_desconto", q => q.gt("valor_pago", 0).neq("moeda", "barter"));
+    const baixasAcima = pagos.filter(t => excedeLimiteBaixa(t, Number(t.valor_pago)));
+
     // 3) espelho rel_lancamentos x origem
     const [nLanc, nRelLanc, nEmp, nRelEmp] = await Promise.all([
       contar(sb, "lancamentos"),
@@ -77,6 +84,7 @@ export async function GET(req: Request) {
       nf_chave_repetida: gruposNf.length,
       nf_chave_repetida_processada_2x: nfDuplicadaProcessada.length,
       titulos_pagar_duplicados: titDuplicados.length,
+      baixas_acima_do_valor: baixasAcima.length,
       espelho_lancamentos_diferenca: Math.abs(nLanc - nRelLanc),
       espelho_empresa_diferenca: Math.abs(nEmp - nRelEmp),
     };
