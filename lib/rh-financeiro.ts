@@ -25,10 +25,18 @@ const ogCodigo = (f: Funcionario, base: "002" | "008" | "013") =>
 
 async function criarCP(f: Funcionario, fazendaId: string, descricao: string, categoria: string, valor: number, vencimento: string, og: "002" | "008" | "013") {
   const ogId = await resolverOperacaoGerencialPorClassificacao(fazendaId, ogCodigo(f, og));
+  // Mesmo vínculo da folha: Ano Safra da data do vencimento (obrigatório no sistema) e empregador do funcionário
+  let anoSafraId: string | undefined;
+  try {
+    const { data } = await supabase.rpc("fn_ano_safra_da_data", { p_fazenda: fazendaId, p_data: vencimento });
+    if (typeof data === "string") anoSafraId = data;
+  } catch { /* sem ano safra para a data: segue sem, como antes */ }
+  const emp = f as unknown as { produtor_id?: string | null; empresa_id?: string | null };
   const l = await criarLancamento({
     fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL", descricao, categoria, valor,
     data_lancamento: iso(new Date()), data_vencimento: vencimento, status: "em_aberto",
     auto: false, origem_lancamento: "manual", funcionario_id: f.id, operacao_gerencial_id: ogId,
+    ano_safra_id: anoSafraId, produtor_id: emp.produtor_id ?? undefined, empresa_id: emp.empresa_id ?? undefined,
   } as never);
   return l.id as string;
 }

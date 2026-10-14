@@ -2389,6 +2389,28 @@ function CadastrosInner() {
     setFPremiacao({ mes_referencia: "", data_pagamento: "", descricao: "", valor: "" });
   });
 
+  // "+ Lançar férias": abre a concessão no período mais antigo ainda em aberto; se o funcionário não tem nenhum
+  // período (sem data de admissão, por exemplo), cria um período avulso para a concessão poder ser lançada.
+  const lancarFeriasAvulsa = async () => {
+    if (!editFunc || !fazIdEff) return;
+    const abertos = ferias.filter(f => f.status !== "concedido" && f.status !== "gozado")
+      .sort((a, b) => a.periodo_inicio.localeCompare(b.periodo_inicio));
+    if (abertos.length) { setModalGozo(abertos[0]); return; }
+    const fim = new Date(); fim.setDate(fim.getDate() - 1);
+    const ini = new Date(fim); ini.setFullYear(ini.getFullYear() - 1); ini.setDate(ini.getDate() + 1);
+    const adm = editFunc.data_admissao;
+    const periodoInicio = adm ? adm.slice(0, 10) : ini.toISOString().slice(0, 10);
+    const pf = adm ? new Date(adm.slice(0, 10) + "T12:00:00") : ini;
+    const periodoFim = new Date(pf); periodoFim.setFullYear(periodoFim.getFullYear() + 1); periodoFim.setDate(periodoFim.getDate() - 1);
+    const { data, error } = await supabase.from("funcionario_ferias").insert({
+      funcionario_id: editFunc.id, fazenda_id: fazIdEff, periodo_inicio: periodoInicio,
+      periodo_fim: periodoFim.toISOString().slice(0, 10), status: "disponivel",
+    }).select().single();
+    if (error || !data) { alert("Não foi possível criar o período de férias: " + (error?.message ?? "erro desconhecido")); return; }
+    setFerias(prev => [...prev, data as FuncionarioFerias]);
+    setModalGozo(data as FuncionarioFerias);
+  };
+
   const salvarGozo = async () => salvar(async () => {
     if (!modalGozo) return;
     const dados: Partial<FuncionarioFerias> = {
@@ -10505,7 +10527,11 @@ function CadastrosInner() {
             {/* ABA FÉRIAS */}
             {abaFunc === "ferias" && (
               <div>
-                {ferias.length === 0 && <div style={{ padding: "20px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{editFunc ? "Nenhum período aquisitivo encontrado. Salve com data de admissão para calcular automaticamente." : "Salve o funcionário com data de admissão para calcular períodos de férias."}</div>}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-2)" }}>Concessão de férias: calcula o valor (dias/30 + 1/3 e abono) e lança no Contas a Pagar</span>
+                  {editFunc && <OperationalButton data-arato-button="primary" style={btnV} onClick={lancarFeriasAvulsa}>+ Lançar férias</OperationalButton>}
+                </div>
+                {ferias.length === 0 && <div style={{ padding: "20px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{editFunc ? "Nenhum período aquisitivo encontrado (preencha a data de admissão para calculá-los automaticamente). Você pode lançar as férias mesmo assim em + Lançar férias." : "Salve o funcionário com data de admissão para calcular períodos de férias."}</div>}
                 {ferias.length > 0 && (
                   <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
@@ -10543,7 +10569,7 @@ function CadastrosInner() {
                               {fer.lancado_financeiro ? `R$ ${((fer.valor_ferias ?? 0) + (fer.valor_abono ?? 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
                             </td>
                             <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
-                              {(fer.status === "disponivel" || fer.status === "vencido") && (
+                              {fer.status !== "concedido" && fer.status !== "gozado" && (
                                 <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => setModalGozo(fer)}>
                                   Conceder
                                 </OperationalButton>

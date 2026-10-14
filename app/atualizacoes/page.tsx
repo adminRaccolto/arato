@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-v",
+    data: "14/10/2026",
+    titulo: "Lançar férias do funcionário",
+    modulos: ["Cadastros", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Sem data de admissão o funcionário ficava sem períodos de férias e, sem períodos, sem nenhum botão para lançar. Agora a aba Férias tem + Lançar férias sempre visível (cria um período avulso se não houver nenhum) e o botão Conceder aparece em qualquer período ainda não concedido ou gozado, inclusive em formação. O CP de férias passa a sair com o Ano Safra da data de vencimento e com o produtor ou a empresa do funcionário." },
+    ],
+    onde: "Cadastros → Funcionários → Editar → Férias",
+  },
+  {
     versao: "2026.10.14-u",
     data: "14/10/2026",
     titulo: "Funcionários: coluna Produtor / Empresa",
