@@ -56,6 +56,7 @@ import {
 } from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
+import { statusExibido } from "../../../lib/financeiro/titulos";
 import { filtrarTitulo, filtrarBordero, tituloVinculado, vinculosBorderos, vencimentoBordero } from "../../../lib/financeiro/cp-grid";
 import { arredondarMoeda, resumoBordero } from "../../../lib/financeiro/saldo-bordero";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
@@ -1376,7 +1377,7 @@ export default function ContasAPagarPage() {
                   );
                 }
                 const l = entry.l;
-                const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
+                const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
                 const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
                 const celulasGrid: Record<string, ReactNode> = {
@@ -1543,7 +1544,7 @@ export default function ContasAPagarPage() {
       {popover && (() => {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
-        const sm = STATUS_OPCOES.find(s => s.v === l.status_normalizado);
+        const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
         const nome = l.empresa_nome ?? l.pessoa_nome ?? l.descricao ?? "—";
         const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
         const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";

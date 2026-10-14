@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-n",
+    data: "14/10/2026",
+    titulo: "Selo Vencido sempre de acordo com a data",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Em Contas a Pagar e a Receber, o selo da linha podia mostrar Em Aberto para um título já vencido (o status gravado só era atualizado pela rotina das 06h). Agora o selo usa o mesmo critério do relatório e do filtro de status: em aberto com vencimento anterior a hoje aparece como Vencido na hora." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.14-m",
     data: "14/10/2026",
     titulo: "Data de hoje correta à noite",

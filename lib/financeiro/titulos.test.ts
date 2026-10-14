@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dedupeTitulos, filtrarTitulos, hojeLocal, statusEfetivo, type TituloBase } from "./titulos.ts";
+import { dedupeTitulos, filtrarTitulos, hojeLocal, statusEfetivo, statusExibido, type TituloBase } from "./titulos.ts";
 
 const HOJE = "2026-10-14";
 const t = (o: Partial<TituloBase> & { id: string }): TituloBase => ({ tipo: "pagar", status: "em_aberto", data_vencimento: "2026-10-01", ...o });
@@ -57,4 +57,15 @@ test("dedupe: o mesmo id nunca aparece duas vezes", () => {
 
 test("hojeLocal usa o dia local, não o UTC", () => {
   assert.equal(hojeLocal(new Date(2026, 9, 14, 22, 30)), "2026-10-14");
+});
+
+test("selo da linha: em aberto com data passada vira vencido; baixado/parcial/cancelado e a vencer ficam como estão", () => {
+  assert.equal(statusExibido("em_aberto", "2026-10-13", HOJE), "vencido");
+  assert.equal(statusExibido("em_aberto", HOJE, HOJE), "em_aberto");
+  assert.equal(statusExibido("em_aberto", "2026-12-01", HOJE), "em_aberto");
+  assert.equal(statusExibido("baixado", "2020-01-01", HOJE), "baixado");
+  assert.equal(statusExibido("parcial", "2020-01-01", HOJE), "parcial");
+  assert.equal(statusExibido("cancelado", "2020-01-01", HOJE), "cancelado");
+  assert.equal(statusExibido("vencido", "2026-12-01", HOJE), "vencido");
+  assert.equal(statusExibido(null, null, HOJE), "");
 });

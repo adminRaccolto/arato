@@ -71,3 +71,14 @@ export function filtrarTitulos<T extends TituloBase>(
     return true;
   });
 }
+
+/**
+ * Status mostrado nas telas de Contas a Pagar/Receber (vindo de rel_lancamentos.status_normalizado, que só vira
+ * "vencido" quando o cron das 06h roda). Título em aberto com vencimento anterior a hoje é exibido como vencido
+ * na hora — o mesmo critério do relatório e do filtro de status —, para o selo da linha nunca contradizer a data.
+ */
+export function statusExibido(statusNormalizado: string | null | undefined, vencimento: string | null | undefined, hoje: string = hojeLocal()): string {
+  const st = statusNormalizado ?? "";
+  if (st === "em_aberto" && vencimento && vencimento < hoje) return "vencido";
+  return st;
+}
