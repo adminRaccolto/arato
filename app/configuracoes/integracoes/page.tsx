@@ -923,7 +923,6 @@ export default function IntegracoesPage() {
   }
 
   const itensCatalogo = catalogo.filter(c => c.categoria === abaCat);
-  const totalAtivos   = configs.filter(c => c.ativo).length + (siegAtivo ? 1 : 0);
   const fmtData = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : null;
 
   return (
@@ -935,9 +934,6 @@ export default function IntegracoesPage() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Integrações</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-3)" }}>
-              {totalAtivos > 0 ? `${totalAtivos} integração${totalAtivos > 1 ? "ões" : ""} ativa${totalAtivos > 1 ? "s" : ""}` : "Nenhuma integração ativa"}
-            </p>
           </div>
         </OperationalHeading>
 
