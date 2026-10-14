@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalHeading } from "../../../components/OperationalUI";
 import { useState, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -391,7 +392,7 @@ export default function SpedContabilPage() {
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
               <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#111111", margin: 0 }}>SPED ECD — Escrituração Contábil Digital</h1>
               <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
@@ -404,7 +405,7 @@ export default function SpedContabilPage() {
             >
               ⚙ Configurar dados contábeis →
             </a>
-          </div>
+          </OperationalHeading>
         </div>
 
         {/* Como funciona */}
@@ -425,7 +426,7 @@ export default function SpedContabilPage() {
               <label data-arato-label="true" style={lbl}>Entidade Contábil</label>
               <div style={{ display: "flex", gap: 8 }}>
                 {([["pf", "Produtor / PF"], ["pj", "Empresa / PJ"]] as [string, string][]).map(([v, l]) => (
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     key={v}
                     onClick={() => setEntidade(v as "pf" | "pj")}
                     style={{
@@ -436,7 +437,7 @@ export default function SpedContabilPage() {
                     }}
                   >
                     {l}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -457,7 +458,7 @@ export default function SpedContabilPage() {
             <label data-arato-label="true" style={{ ...lbl, marginBottom: 10 }}>Vínculos de Atividade a incluir</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
               {VINCULOS_DISPONIVEIS.map(vd => (
-                <button data-arato-button="toggle"
+                <OperationalButton data-arato-button="toggle"
                   key={vd.id}
                   onClick={() => toggleVinculo(vd.id)}
                   style={{
@@ -468,7 +469,7 @@ export default function SpedContabilPage() {
                   }}
                 >
                   {vinculos.includes(vd.id) ? "✓ " : ""}{vd.label}
-                </button>
+                </OperationalButton>
               ))}
             </div>
             <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
@@ -523,14 +524,14 @@ export default function SpedContabilPage() {
 
         {/* Ações */}
         <div style={{ display: "flex", gap: 12 }}>
-          <button data-arato-button="secondary"
+          <OperationalButton data-arato-button="secondary"
             onClick={() => gerar(false)}
             disabled={loading}
             style={{ padding: "10px 24px", background: "var(--bg-page)", border: "0.5px solid #2A2A2A", color: "#2A2A2A", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
           >
             {loading ? "Analisando..." : "Analisar (sem baixar)"}
-          </button>
-          <button data-arato-button="toggle"
+          </OperationalButton>
+          <OperationalButton data-arato-button="toggle"
             onClick={() => gerar(true)}
             disabled={loading || (preview !== null && preview.total === 0)}
             style={{
@@ -540,7 +541,7 @@ export default function SpedContabilPage() {
             }}
           >
             {loading ? "Gerando..." : "Baixar SPED ECD (.txt)"}
-          </button>
+          </OperationalButton>
         </div>
 
         {/* Nota rodapé */}

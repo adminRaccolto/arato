@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -756,7 +757,7 @@ export default function ConsorciosPage() {
 
         {/* Banner IA Extrato Consórcio */}
         {contaModulosOverrides["ia_consorcio"] === true && (
-          <div data-arato-panel="true" data-arato-filters="true" style={{ background: "linear-gradient(135deg,#E8F0FE,#F0F4FF)", border: "0.5px solid #B8CCF8", borderRadius: 12, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "linear-gradient(135deg,#E8F0FE,#F0F4FF)", border: "0.5px solid #B8CCF8", borderRadius: 12, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 2 }}>
                 🤖 Importar Extrato de Consórcio com IA
@@ -776,7 +777,7 @@ export default function ConsorciosPage() {
                 onChange={e => { const f = e.target.files?.[0]; if (f) extrairPdfConsorcio(f); e.target.value = ""; }}
               />
             </label>
-          </div>
+          </OperationalFilters>
         )}
 
         {/* Alerta parcelas atrasadas */}
@@ -792,13 +793,13 @@ export default function ConsorciosPage() {
             { id: "lista",    label: "Consórcios"                 },
             { id: "parcelas", label: "Próximas Parcelas"          },
           ] as { id: typeof aba; label: string }[]).map(a => (
-            <button data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{
+            <OperationalButton data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{
               padding: "9px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.id ? 700 : 400,
               color: aba === a.id ? "#111111" : "#666",
               borderBottom: aba === a.id ? "2.5px solid #111111" : "2.5px solid transparent",
               marginBottom: -1,
-            }}>{a.label}</button>
+            }}>{a.label}</OperationalButton>
           ))}
         </div>
 
@@ -814,9 +815,9 @@ export default function ConsorciosPage() {
                   placeholder="Filtrar por grupo ou número da cota…"
                   style={{ width: "100%", padding: "8px 10px 8px 32px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-page)", color: "var(--text-1)", boxSizing: "border-box" }}
                 />
-                {busca && <button data-arato-button="icon" onClick={() => setBusca("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 14 }}>✕</button>}
+                {busca && <OperationalButton data-arato-button="icon" onClick={() => setBusca("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 14 }}>✕</OperationalButton>}
               </div>
-              <button data-arato-button="primary" onClick={() => abrirConsorcio()} style={btnV}>+ Novo Consórcio</button>
+              <OperationalButton data-arato-button="primary" onClick={() => abrirConsorcio()} style={btnV}>+ Novo Consórcio</OperationalButton>
             </div>
 
             {(() => {
@@ -895,18 +896,18 @@ export default function ConsorciosPage() {
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
                           {badge(sm.label, sm.bg, sm.cl)}
                           {c.status === "a_contemplar" && (
-                            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirContemplacao(c); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirContemplacao(c); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>
                               Contemplar
-                            </button>
+                            </OperationalButton>
                           )}
                           {parcelasC.length === 0 && (
-                            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); gerarParcelas(c); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                               Plano de parcelas
-                            </button>
+                            </OperationalButton>
                           )}
-                          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                          <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                             Editar
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
 
@@ -918,16 +919,16 @@ export default function ConsorciosPage() {
                               Parcelas ({parcelasC.length}) — mensalidade mensal {fmtBRL(c.valor_parcela_mensal)}
                             </div>
                             {parcelasC.length > 0 && (
-                              <button data-arato-button="secondary" onClick={() => abrirGridConsorcio(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                              <OperationalButton data-arato-button="secondary" onClick={() => abrirGridConsorcio(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                                 Editar plano
-                              </button>
+                              </OperationalButton>
                             )}
                           </div>
                           {parcelasC.length === 0 ? (
                             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Clique em "Plano de parcelas" para criar o cronograma.</div>
                           ) : (
                             <div style={{ maxHeight: 240, overflowY: "auto" }}>
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-tag)", position: "sticky", top: 0 }}>
                                     {["Nº", "Vencimento", "Valor", "Status", ""].map(h => (
@@ -948,9 +949,9 @@ export default function ConsorciosPage() {
                                         </td>
                                         <td style={{ padding: "5px 10px", textAlign: "right" }}>
                                           {!p.pago && (
-                                            <button data-arato-button="secondary" onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "3px 8px", border: "0.5px solid #11111150", borderRadius: 5, background: "#E8E8E8", cursor: "pointer", fontSize: 10, color: "#0D0D0D", fontWeight: 600 }}>
+                                            <OperationalButton data-arato-button="secondary" onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "3px 8px", border: "0.5px solid #11111150", borderRadius: 5, background: "#E8E8E8", cursor: "pointer", fontSize: 10, color: "#0D0D0D", fontWeight: 600 }}>
                                               Pagar
-                                            </button>
+                                            </OperationalButton>
                                           )}
                                         </td>
                                       </tr>
@@ -960,7 +961,7 @@ export default function ConsorciosPage() {
                                     <tr><td colSpan={5} style={{ padding: "6px 10px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>+ {parcelasC.length - 36} parcelas futuras</td></tr>
                                   )}
                                 </tbody>
-                              </table>
+                              </OperationalGrid>
                             </div>
                           )}
                         </div>
@@ -995,7 +996,7 @@ export default function ConsorciosPage() {
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-card)" }}>
                       {["Vencimento", "Consórcio", "Cota", "Parcela Nº", "Valor", "Status", ""].map(h => (
@@ -1019,16 +1020,16 @@ export default function ConsorciosPage() {
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             {!p.pago && (
-                              <button data-arato-button="secondary" onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
+                              <OperationalButton data-arato-button="secondary" onClick={() => { setModalParcela(p); setParcelaData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>
                                 Pagar
-                              </button>
+                              </OperationalButton>
                             )}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -1049,7 +1050,7 @@ export default function ConsorciosPage() {
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "12px 20px", overflowY: "auto", flex: 1 }}>
               {gridModal.err && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#791F1F", marginBottom: 10 }}>{gridModal.err}</div>}
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nº", "Vencimento", "Valor (R$)", "Situação", ""].map((h, i) => (
@@ -1072,16 +1073,16 @@ export default function ConsorciosPage() {
                       <td style={{ padding: "5px 8px", fontSize: 11, color: r.pago ? "#166534" : "var(--text-2)" }}>{r.pago ? "Paga" : "A pagar"}</td>
                       <td style={{ padding: "4px 6px", textAlign: "right" }}>
                         {!r.pago && (
-                          <button data-arato-button="danger" title="Remover esta parcela do plano" onClick={() => {
+                          <OperationalButton data-arato-button="danger" title="Remover esta parcela do plano" onClick={() => {
                             if (!window.confirm(`Remover a parcela ${r.numero} (${fmtBRL(r.valor)}) do plano?\n\nAo confirmar, o CP em aberto desta parcela é apagado e o total a pagar do consórcio diminui. Parcela já paga, conciliada ou em borderô não pode ser removida.`)) return;
                             setGridModal(g => g && { ...g, totalPagar: Math.round((g.totalPagar - (Number(r.valor) || 0)) * 100) / 100, rows: g.rows.filter((_, j) => j !== i), err: "" });
-                          }} style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#B91C1C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>🗑</button>
+                          }} style={{ padding: "3px 8px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#B91C1C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>🗑</OperationalButton>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
             {(() => {
               const soma = Math.round(gridModal.rows.reduce((s, r) => s + (Number(r.valor) || 0), 0) * 100) / 100;
@@ -1094,10 +1095,10 @@ export default function ConsorciosPage() {
                     {Math.abs(dif) > 0.01 && <span style={{ color: "#B45309", marginLeft: 12 }}>diferença {fmtBRL(dif)}</span>}
                   </div>
                   <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
-                    <button data-arato-button="secondary" onClick={() => setGridModal(null)} disabled={gridModal.saving} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Fechar sem lançar</button>
-                    <button data-arato-button="primary" onClick={confirmarGrid} disabled={gridModal.saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setGridModal(null)} disabled={gridModal.saving} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Fechar sem lançar</OperationalButton>
+                    <OperationalButton data-arato-button="primary" onClick={confirmarGrid} disabled={gridModal.saving} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
                       {gridModal.saving ? "Salvando…" : "Confirmar e lançar no CP"}
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
               );
@@ -1112,7 +1113,7 @@ export default function ConsorciosPage() {
             {/* Cabeçalho */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{consorEdit ? "Editar Consórcio" : "Novo Consórcio"}</div>
-              <button data-arato-button="icon" onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             {/* Tab bar */}
@@ -1121,14 +1122,14 @@ export default function ConsorciosPage() {
                 const nCiclos = rateioLinhas.filter(l => l.ciclo_id).length;
                 const label = t === "dados" ? "Dados" : nCiclos > 0 ? `Rateio (${nCiclos})` : "Rateio";
                 return (
-                  <button data-arato-tab-active={tabConsor === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
+                  <OperationalButton data-arato-tab-active={tabConsor === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => { setTabConsor(t); setRateioErr(""); setRateioOk(false); }}
                     style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
                       fontWeight: tabConsor === t ? 700 : 400,
                       color: tabConsor === t ? "#111111" : "#666",
                       borderBottom: tabConsor === t ? "2.5px solid #111111" : "2.5px solid transparent",
                       marginBottom: -1 }}>
                     {label}
-                  </button>
+                  </OperationalButton>
                 );
               })}
             </div>
@@ -1304,19 +1305,19 @@ export default function ConsorciosPage() {
                           />
                           <span style={{ fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>%</span>
                         </div>
-                        <button data-arato-button="danger"
+                        <OperationalButton data-arato-button="danger"
                           onClick={() => setRateioLinhas(ls => ls.filter((_, i) => i !== idx))}
                           style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, cursor: "pointer", fontSize: 16, color: "#791F1F" }}
-                        >×</button>
+                        >×</OperationalButton>
                       </div>
                     );
                   })}
                 </div>
 
-                <button data-arato-button="secondary"
+                <OperationalButton data-arato-button="secondary"
                   onClick={() => setRateioLinhas(ls => [...ls, { ciclo_id: "", percentual: "" }])}
                   style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", cursor: "pointer", fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}
-                >+ Adicionar Ciclo</button>
+                >+ Adicionar Ciclo</OperationalButton>
 
                 {/* Barra de total */}
                 {rateioLinhas.length > 0 && (() => {
@@ -1359,20 +1360,20 @@ export default function ConsorciosPage() {
               )}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 {consorEdit && tabConsor === "dados" && (
-                  <button data-arato-button="danger" onClick={excluirConsorcio} disabled={cSaving} style={{ ...btnR, color: "#B91C1C", borderColor: "#FCA5A5", background: "#FEF2F2", marginRight: "auto" }}>
+                  <OperationalButton data-arato-button="danger" onClick={excluirConsorcio} disabled={cSaving} style={{ ...btnR, color: "#B91C1C", borderColor: "#FCA5A5", background: "#FEF2F2", marginRight: "auto" }}>
                     Excluir consórcio
-                  </button>
+                  </OperationalButton>
                 )}
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalConsor(false)}>Cancelar</OperationalButton>
                 {tabConsor === "dados" && (
-                  <button data-arato-button="toggle" onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
+                  <OperationalButton data-arato-button="toggle" onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#111111", cursor: cSaving ? "default" : "pointer" }}>
                     {cSaving ? "Salvando…" : "Salvar"}
-                  </button>
+                  </OperationalButton>
                 )}
                 {tabConsor === "rateio" && (
-                  <button data-arato-button="toggle" onClick={salvarRateio} disabled={rateioSaving || !consorEdit} style={{ ...btnV, background: rateioSaving || !consorEdit ? "var(--text-muted)" : "#111111", cursor: rateioSaving || !consorEdit ? "default" : "pointer" }}>
+                  <OperationalButton data-arato-button="toggle" onClick={salvarRateio} disabled={rateioSaving || !consorEdit} style={{ ...btnV, background: rateioSaving || !consorEdit ? "var(--text-muted)" : "#111111", cursor: rateioSaving || !consorEdit ? "default" : "pointer" }}>
                     {rateioSaving ? "Salvando…" : "Salvar Rateio"}
-                  </button>
+                  </OperationalButton>
                 )}
               </div>
             </div>
@@ -1393,7 +1394,7 @@ export default function ConsorciosPage() {
                   {modalContempl.administradora} — Cota {modalContempl.numero_cota} · Crédito {fmtBRL(modalContempl.valor_credito)}
                 </div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalContempl(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalContempl(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {contemplErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{contemplErr}</div>}
@@ -1405,8 +1406,8 @@ export default function ConsorciosPage() {
               <div data-arato-dialog-body="true" data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
                 <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <label data-arato-label="true" style={{ ...lbl, margin: 0 }}>Lances (deixe vazio se contemplado por sorteio)</label>
-                  <button data-arato-button="secondary" type="button" onClick={() => setLancesForm(ls => [...ls, { tipo: "dinheiro", valor: 0, data: contemplForm.data_contemplacao, conta_bancaria_id: contemplForm.conta_bancaria_id, origem: "" }])}
-                    style={{ ...btnR, padding: "4px 10px", fontSize: 12 }}>+ Lance</button>
+                  <OperationalButton data-arato-button="secondary" type="button" onClick={() => setLancesForm(ls => [...ls, { tipo: "dinheiro", valor: 0, data: contemplForm.data_contemplacao, conta_bancaria_id: contemplForm.conta_bancaria_id, origem: "" }])}
+                    style={{ ...btnR, padding: "4px 10px", fontSize: 12 }}>+ Lance</OperationalButton>
                 </div>
                 {lancesForm.map((l, i) => (
                   <div data-arato-fields="true" key={i} style={{ display: "grid", gridTemplateColumns: "130px 1fr 28px", gap: 8, marginBottom: 8, alignItems: "end" }}>
@@ -1439,7 +1440,7 @@ export default function ConsorciosPage() {
                         </div>
                       )}
                     </div>
-                    <button data-arato-button="danger" type="button" onClick={() => setLancesForm(ls => ls.filter((_, j) => j !== i))} style={{ height: 34, border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>×</button>
+                    <OperationalButton data-arato-button="danger" type="button" onClick={() => setLancesForm(ls => ls.filter((_, j) => j !== i))} style={{ height: 34, border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>×</OperationalButton>
                   </div>
                 ))}
                 {lancesForm.length > 0 && (() => {
@@ -1497,10 +1498,10 @@ export default function ConsorciosPage() {
               )}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalContempl(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={confirmarContemplacao} disabled={contemplSaving} style={{ ...btnV, background: contemplSaving ? "var(--text-muted)" : "#16A34A", cursor: contemplSaving ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalContempl(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={confirmarContemplacao} disabled={contemplSaving} style={{ ...btnV, background: contemplSaving ? "var(--text-muted)" : "#16A34A", cursor: contemplSaving ? "default" : "pointer" }}>
                 {contemplSaving ? "Confirmando…" : "Confirmar Contemplação"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1517,17 +1518,17 @@ export default function ConsorciosPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Confirmar Pagamento</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Parcela {modalParcela.numero_parcela} — {fmtBRL(modalParcela.valor)} — venc. {fmtData(modalParcela.data_vencimento)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalParcela(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalParcela(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
               <label data-arato-label="true" style={lbl}>Data do Pagamento</label>
               <InputData type="date" value={parcelaData} onChange={e => setParcelaData(e.target.value)} style={inp} />
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalParcela(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#111111", cursor: parcelaSaving ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalParcela(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#111111", cursor: parcelaSaving ? "default" : "pointer" }}>
                 {parcelaSaving ? "Salvando…" : "Confirmar Pagamento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

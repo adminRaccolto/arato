@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
@@ -53,7 +54,7 @@ export default function Propriedades() {
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Propriedades e Talhões</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Visão geral das fazendas e talhões cadastrados</p>
@@ -62,14 +63,14 @@ export default function Propriedades() {
             style={{ background: "#1A5C38", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             + Nova Fazenda
           </Link>
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 
           {erro && (
             <div style={{ background: "#FDECEA", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#8B1A1A", display: "flex", gap: 8 }}>
               ✕ {erro}
-              <button data-arato-button="secondary" onClick={carregar} style={{ marginLeft: "auto", fontSize: 11, color: "#8B1A1A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
+              <OperationalButton data-arato-button="secondary" onClick={carregar} style={{ marginLeft: "auto", fontSize: 11, color: "#8B1A1A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</OperationalButton>
             </div>
           )}
 
@@ -152,7 +153,7 @@ export default function Propriedades() {
                           </div>
 
                           {fazenda.talhoes.length > 0 ? (
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Talhão", "Área (ha)", "Solo", "Safra Ativa", "GPS"].map((h, i) => (
@@ -182,7 +183,7 @@ export default function Propriedades() {
                                   );
                                 })}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           ) : (
                             <div style={{ padding: "20px 16px", textAlign: "center", color: "#444", fontSize: 12 }}>
                               Nenhum talhão.{" "}

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import React, { useState, useEffect, Suspense } from "react";
@@ -330,7 +331,7 @@ function RelManutInner() {
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Histórico de manutenções agrupado por equipamento</p>
@@ -338,26 +339,26 @@ function RelManutInner() {
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {gerado && (
               <>
-                <button data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <OperationalButton data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   PDF / Imprimir
-                </button>
-                <button data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                </OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Exportar Excel
-                </button>
+                </OperationalButton>
               </>
             )}
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Filtros */}
         <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
           {/* Modo de filtro */}
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
             {(["data", "safra"] as const).map(m => (
-              <button data-arato-button="secondary" key={m} onClick={() => setModoFiltro(m)}
+              <OperationalButton data-arato-button="secondary" key={m} onClick={() => setModoFiltro(m)}
                 style={{ ...btn(modoFiltro === m), padding: "7px 18px" }}>
                 {m === "data" ? "Intervalo de Datas" : "Por Safra / Ciclo"}
-              </button>
+              </OperationalButton>
             ))}
           </div>
 
@@ -397,10 +398,10 @@ function RelManutInner() {
               <label data-arato-label="true" style={lbl}>Tipo de Equipamento</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Object.entries(TIPO_MAQUINA_LABEL).map(([k, v]) => (
-                  <button data-arato-button="toggle" key={k} onClick={() => toggleSet(tiposMaqSel, k, setTiposMaqSel)}
+                  <OperationalButton data-arato-button="toggle" key={k} onClick={() => toggleSet(tiposMaqSel, k, setTiposMaqSel)}
                     style={btn(tiposMaqSel.has(k))}>
                     {v}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -409,10 +410,10 @@ function RelManutInner() {
               <label data-arato-label="true" style={lbl}>Tipo de Manutenção</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Object.entries(TIPO_MANUT_LABEL).map(([k, v]) => (
-                  <button data-arato-button="toggle" key={k} onClick={() => toggleSet(tiposManutSel, k, setTiposManutSel)}
+                  <OperationalButton data-arato-button="toggle" key={k} onClick={() => toggleSet(tiposManutSel, k, setTiposManutSel)}
                     style={btn(tiposManutSel.has(k), TIPO_MANUT_COR[k])}>
                     {v}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -420,27 +421,27 @@ function RelManutInner() {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                 <label data-arato-label="true" style={{ ...lbl, margin: 0 }}>Equipamentos</label>
-                <button data-arato-button="secondary" onClick={() => setMaquinasSel(new Set(maquinas.map(m => m.id)))}
-                  style={{ fontSize: 11, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Todos</button>
-                <button data-arato-button="secondary" onClick={() => setMaquinasSel(new Set())}
-                  style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Nenhum</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setMaquinasSel(new Set(maquinas.map(m => m.id)))}
+                  style={{ fontSize: 11, color: "#111111", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Todos</OperationalButton>
+                <OperationalButton data-arato-button="secondary" onClick={() => setMaquinasSel(new Set())}
+                  style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Nenhum</OperationalButton>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 100, overflowY: "auto" }}>
                 {maquinas.filter(m => tiposMaqSel.has(m.tipo)).map(m => (
-                  <button data-arato-button="secondary" key={m.id} onClick={() => toggleSet(maquinasSel, m.id, setMaquinasSel)}
+                  <OperationalButton data-arato-button="secondary" key={m.id} onClick={() => toggleSet(maquinasSel, m.id, setMaquinasSel)}
                     style={btn(maquinasSel.has(m.id))}>
                     {m.nome}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button data-arato-button="primary" onClick={gerar} disabled={loading}
+            <OperationalButton data-arato-button="primary" onClick={gerar} disabled={loading}
               style={{ padding: "10px 28px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {loading ? "Gerando..." : "Gerar Relatório"}
-            </button>
+            </OperationalButton>
           </div>
         </div>
 
@@ -471,7 +472,7 @@ function RelManutInner() {
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                 <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Data", "Tipo", "Serviço / Descrição", "Custo"].map(h => (
@@ -533,7 +534,7 @@ function RelManutInner() {
                         </td>
                       </tr>
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
               </div>
             )}

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -103,7 +104,7 @@ function Modal({ titulo, subtitulo, children, onClose, width = 760 }: {
             <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: C.txt }}>{titulo}</div>
             {subtitulo && <div style={{ fontSize: 12, color: C.ter, marginTop: 2 }}>{subtitulo}</div>}
           </div>
-          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.ter, lineHeight: 1 }}>✕</button>
+          <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: C.ter, lineHeight: 1 }}>✕</OperationalButton>
         </div>
         <div data-arato-dialog-body="true" style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>{children}</div>
       </div>
@@ -627,14 +628,14 @@ export default function ParceriasPage() {
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.mostr, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>FISCAL / CADASTROS</div>
-          <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 700, color: C.txt, margin: 0 }}>Parcerias & Grupos Econômicos</h1>
               <p style={{ fontSize: 13, color: C.ter, margin: "4px 0 0" }}>
                 Lei 4.504/1964 (Estatuto da Terra) · LCDPR IN RFB 1.848/2018 · SPED ECD Leiaute 10
               </p>
             </div>
-          </div>
+          </OperationalHeading>
         </div>
 
         {/* Abas */}
@@ -643,12 +644,12 @@ export default function ParceriasPage() {
             const labels = { parcerias: "Parcerias Agrícolas", grupos: "Grupos Econômicos", apuracao: "Apuração & SPED" };
             const ativo = aba === a;
             return (
-              <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
+              <OperationalButton data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{
                 padding: "8px 18px", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer",
                 borderRadius: "6px 6px 0 0", background: ativo ? C.branco : "transparent",
                 color: ativo ? C.azul : C.sub,
                 borderBottom: ativo ? `2px solid ${C.azul}` : "2px solid transparent",
-              }}>{labels[a]}</button>
+              }}>{labels[a]}</OperationalButton>
             );
           })}
         </div>
@@ -660,7 +661,7 @@ export default function ParceriasPage() {
               <div style={{ fontSize: 13, color: C.ter }}>
                 {parcerias.length} parceria{parcerias.length !== 1 ? "s" : ""} cadastrada{parcerias.length !== 1 ? "s" : ""}
               </div>
-              <button data-arato-button="secondary" onClick={() => abrirModalParceria()} style={btn(C.verde)}>+ Nova Parceria</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => abrirModalParceria()} style={btn(C.verde)}>+ Nova Parceria</OperationalButton>
             </div>
 
             {loadingParc ? (
@@ -693,12 +694,12 @@ export default function ParceriasPage() {
                       {p.descricao && <div style={{ fontSize: 12, color: C.ter, marginTop: 2 }}>{p.descricao}</div>}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirApuracao(p.id, p.nome); }}
-                        style={btn(C.mostrClr, C.mostr, { fontSize: 12, padding: "5px 10px" })}>Apurar</button>
-                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirModalParceria(p); }}
-                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</button>
-                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); excluirParceria(p.id, p.nome); }}
-                        style={btn(C.vermClr, C.verm, { fontSize: 12, padding: "5px 10px" })}>Excluir</button>
+                      <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirApuracao(p.id, p.nome); }}
+                        style={btn(C.mostrClr, C.mostr, { fontSize: 12, padding: "5px 10px" })}>Apurar</OperationalButton>
+                      <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirModalParceria(p); }}
+                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</OperationalButton>
+                      <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); excluirParceria(p.id, p.nome); }}
+                        style={btn(C.vermClr, C.verm, { fontSize: 12, padding: "5px 10px" })}>Excluir</OperationalButton>
                       <span style={{ color: C.ter }}>{aberto ? "▲" : "▼"}</span>
                     </div>
                   </div>
@@ -760,7 +761,7 @@ export default function ParceriasPage() {
                       {(apurMap[p.id] ?? []).length > 0 && (
                         <div style={{ marginTop: 16, borderTop: `1px solid ${C.borda}`, paddingTop: 14 }}>
                           <div style={{ ...lbl, marginBottom: 8 }}>Apurações de Resultado</div>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                             <thead>
                               <tr>
                                 {["Data", "Receita Total", "Custo Total", "Resultado", "Status", ""].map(h => (
@@ -783,7 +784,7 @@ export default function ParceriasPage() {
                                     </span>
                                   </td>
                                   <td style={{ padding: "8px 10px" }}>
-                                    <button data-arato-button="secondary"
+                                    <OperationalButton data-arato-button="secondary"
                                       onClick={async () => {
                                         const txt = gerarSpedParceria(p, ptcMap[p.id] ?? [], [a]);
                                         const blob = new Blob([txt], { type: "text/plain" });
@@ -794,19 +795,19 @@ export default function ParceriasPage() {
                                       }}
                                       style={btn(C.infClr, C.inf, { fontSize: 11, padding: "3px 8px" })}>
                                       ⬇ SPED
-                                    </button>
+                                    </OperationalButton>
                                   </td>
                                 </tr>
                               ))}
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                         </div>
                       )}
 
                       {/* LCDPR */}
                       {(ptcMap[p.id] ?? []).length > 0 && (apurMap[p.id] ?? []).length > 0 && (
                         <div style={{ marginTop: 12 }}>
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => {
                               const txt = gerarLcdprParticipante(p, ptcMap[p.id] ?? [], apurMap[p.id] ?? []);
                               const blob = new Blob([txt], { type: "text/plain" });
@@ -817,7 +818,7 @@ export default function ParceriasPage() {
                             }}
                             style={btn(C.mostrClr, C.mostr, { fontSize: 12 })}>
                             ⬇ Exportar LCDPR (cota-parte por participante)
-                          </button>
+                          </OperationalButton>
                         </div>
                       )}
                     </div>
@@ -836,7 +837,7 @@ export default function ParceriasPage() {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ fontSize: 13, color: C.ter }}>{grupos.length} grupo{grupos.length !== 1 ? "s" : ""} cadastrado{grupos.length !== 1 ? "s" : ""}</div>
-              <button data-arato-button="secondary" onClick={() => abrirModalGrupo()} style={btn(C.verde)}>+ Novo Grupo</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => abrirModalGrupo()} style={btn(C.verde)}>+ Novo Grupo</OperationalButton>
             </div>
 
             {loadingGrp ? (
@@ -862,14 +863,14 @@ export default function ParceriasPage() {
                       {g.cnpj_controlador && <div style={{ fontSize: 12, color: C.ter }}>CNPJ Controladora: {g.cnpj_controlador}</div>}
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirModalGrupo(g); }}
-                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</button>
-                      <button data-arato-button="secondary" onClick={async e => {
+                      <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirModalGrupo(g); }}
+                        style={btn(C.azulClr, C.azul, { fontSize: 12, padding: "5px 10px" })}>Abrir</OperationalButton>
+                      <OperationalButton data-arato-button="secondary" onClick={async e => {
                         e.stopPropagation();
                         if (!confirm(`Excluir grupo "${g.nome}"?`)) return;
                         await supabase.from("grupos_economicos").delete().eq("id", g.id);
                         setGrupos(gs => gs.filter(x => x.id !== g.id));
-                      }} style={btn(C.vermClr, C.verm, { fontSize: 12, padding: "5px 10px" })}>Excluir</button>
+                      }} style={btn(C.vermClr, C.verm, { fontSize: 12, padding: "5px 10px" })}>Excluir</OperationalButton>
                       <span style={{ color: C.ter }}>{aberto ? "▲" : "▼"}</span>
                     </div>
                   </div>
@@ -879,7 +880,7 @@ export default function ParceriasPage() {
                       {(membrosMap[g.id] ?? []).length === 0 ? (
                         <div style={{ fontSize: 13, color: C.ter }}>Nenhum membro. Edite o grupo para adicionar.</div>
                       ) : (
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                           <thead>
                             <tr>
                               {["Entidade", "CPF / CNPJ", "Papel", "Participação %"].map(h => (
@@ -906,7 +907,7 @@ export default function ParceriasPage() {
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </OperationalGrid>
                       )}
                     </div>
                   )}
@@ -965,12 +966,12 @@ export default function ParceriasPage() {
             {(["geral", "participantes", "distribuicao"] as const).map(a => {
               const labels = { geral: "Dados Gerais", participantes: `Participantes (${participants.length})`, distribuicao: `Distribuição de Custos (${distribs.length})` };
               return (
-                <button data-arato-tab-active={abaMod === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaMod(a)} style={{
+                <OperationalButton data-arato-tab-active={abaMod === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaMod(a)} style={{
                   padding: "7px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
                   borderRadius: "5px 5px 0 0", background: abaMod === a ? C.branco : "transparent",
                   color: abaMod === a ? C.azul : C.sub,
                   borderBottom: abaMod === a ? `2px solid ${C.azul}` : "2px solid transparent",
-                }}>{labels[a]}</button>
+                }}>{labels[a]}</OperationalButton>
               );
             })}
           </div>
@@ -1036,9 +1037,9 @@ export default function ParceriasPage() {
                   </span>
                   {Math.abs(totalPct - 100) < 0.1 && <span style={{ color: C.verde, marginLeft: 6 }}>✓ OK</span>}
                 </div>
-                <button data-arato-button="secondary" onClick={() => setParticipants(p => [...p, {
+                <OperationalButton data-arato-button="secondary" onClick={() => setParticipants(p => [...p, {
                   nome: "", cpf_cnpj: "", percentual: "", papel: "parceiro", responsavel_nfe: false, observacao: ""
-                }])} style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Participante</button>
+                }])} style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Participante</OperationalButton>
               </div>
 
               {participants.length === 0 && (
@@ -1051,8 +1052,8 @@ export default function ParceriasPage() {
                 <div data-arato-panel="true" key={i} style={{ background: C.fundo, borderRadius: 8, padding: 14, marginBottom: 10, border: `0.5px solid ${C.borda}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <span style={{ fontWeight: 600, fontSize: 13, color: C.sub }}>Participante {i + 1}</span>
-                    <button data-arato-button="secondary" onClick={() => setParticipants(p => p.filter((_, j) => j !== i))}
-                      style={{ background: "none", border: "none", color: C.verm, cursor: "pointer", fontSize: 13 }}>Remover</button>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setParticipants(p => p.filter((_, j) => j !== i))}
+                      style={{ background: "none", border: "none", color: C.verm, cursor: "pointer", fontSize: 13 }}>Remover</OperationalButton>
                   </div>
                   <Grid cols={3}>
                     <Campo label="Nome *">
@@ -1119,8 +1120,8 @@ export default function ParceriasPage() {
                 Por padrão, todos os custos são divididos proporcionalmente ao % de cada participante. Adicione regras abaixo <strong>apenas quando houver exceção</strong> (ex.: sementes 100% do parceiro A, outros 50/50).
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                <button data-arato-button="secondary" onClick={() => setDistribs(d => [...d, { participante_idx: 0, tipo_custo: "todos", percentual: "" }])}
-                  style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Regra de Exceção</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setDistribs(d => [...d, { participante_idx: 0, tipo_custo: "todos", percentual: "" }])}
+                  style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Regra de Exceção</OperationalButton>
               </div>
               {distribs.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 32, color: C.ter, fontSize: 13 }}>
@@ -1144,8 +1145,8 @@ export default function ParceriasPage() {
                     <InputNumerico min={0} max={100} style={inp()} value={d.percentual} placeholder="50.00"
                       onChange={v => setDistribs(ds => ds.map((x, j) => j === i ? { ...x, percentual: v } : x))} />
                   </Campo>
-                  <button data-arato-button="icon" onClick={() => setDistribs(ds => ds.filter((_, j) => j !== i))}
-                    style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", fontSize: 13, marginTop: 18 }}>✕</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setDistribs(ds => ds.filter((_, j) => j !== i))}
+                    style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", fontSize: 13, marginTop: 18 }}>✕</OperationalButton>
                 </div>
               ))}
             </div>
@@ -1154,10 +1155,10 @@ export default function ParceriasPage() {
           {errMsg && <div style={{ background: C.vermClr, color: C.verm, padding: "8px 12px", borderRadius: 6, fontSize: 13, marginTop: 12 }}>{errMsg}</div>}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, borderTop: `1px solid ${C.borda}`, paddingTop: 16 }}>
-            <button data-arato-button="secondary" onClick={() => setModalParc(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
-            <button data-arato-button="secondary" onClick={salvarParceria} disabled={salvando} style={btn(C.verde, "#fff", { opacity: salvando ? 0.6 : 1 })}>
+            <OperationalButton data-arato-button="secondary" onClick={() => setModalParc(false)} style={btn(C.fundo, C.sub)}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="secondary" onClick={salvarParceria} disabled={salvando} style={btn(C.verde, "#fff", { opacity: salvando ? 0.6 : 1 })}>
               {salvando ? "Salvando…" : "Salvar Parceria"}
-            </button>
+            </OperationalButton>
           </div>
         </Modal>
       )}
@@ -1190,8 +1191,8 @@ export default function ParceriasPage() {
             <div style={{ borderTop: `1px solid ${C.borda}`, paddingTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ ...lbl }}>Membros do Grupo</div>
-                <button data-arato-button="secondary" onClick={() => setMembros(m => [...m, { nome_entidade: "", cpf_cnpj: "", papel: "subsidiaria", percentual_participacao: "" }])}
-                  style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Membro</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setMembros(m => [...m, { nome_entidade: "", cpf_cnpj: "", papel: "subsidiaria", percentual_participacao: "" }])}
+                  style={btn(C.azulClr, C.azul, { fontSize: 12 })}>+ Membro</OperationalButton>
               </div>
               {membros.map((m, i) => (
                 <div data-arato-item-grid="true" key={i} style={{ display: "grid", gridTemplateColumns: "3fr 2fr 2fr 1fr auto", gap: 10, alignItems: "flex-end", marginBottom: 8 }}>
@@ -1213,15 +1214,15 @@ export default function ParceriasPage() {
                     <InputNumerico min={0} max={100} style={inp()} value={m.percentual_participacao}
                       onChange={v => setMembros(ms => ms.map((x, j) => j === i ? { ...x, percentual_participacao: v } : x))} />
                   </Campo>
-                  <button data-arato-button="icon" onClick={() => setMembros(ms => ms.filter((_, j) => j !== i))}
-                    style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", marginTop: 18 }}>✕</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setMembros(ms => ms.filter((_, j) => j !== i))}
+                    style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", marginTop: 18 }}>✕</OperationalButton>
                 </div>
               ))}
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, borderTop: `1px solid ${C.borda}`, paddingTop: 16 }}>
-            <button data-arato-button="secondary" onClick={() => setModalGrp(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
-            <button data-arato-button="secondary" onClick={salvarGrupo} style={btn(C.verde)}>Salvar Grupo</button>
+            <OperationalButton data-arato-button="secondary" onClick={() => setModalGrp(false)} style={btn(C.fundo, C.sub)}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="secondary" onClick={salvarGrupo} style={btn(C.verde)}>Salvar Grupo</OperationalButton>
           </div>
         </Modal>
       )}
@@ -1267,15 +1268,15 @@ export default function ParceriasPage() {
                 onChange={e => setApurForm(f => ({ ...f, observacao: e.target.value }))} />
             </Campo>
 
-            <button data-arato-button="secondary" onClick={calcularApuracao} style={btn(C.azul, "#fff", { fontSize: 14, padding: "10px 20px" })}>
+            <OperationalButton data-arato-button="secondary" onClick={calcularApuracao} style={btn(C.azul, "#fff", { fontSize: 14, padding: "10px 20px" })}>
               Calcular Distribuição das Cotas
-            </button>
+            </OperationalButton>
 
             {/* Resultado */}
             {calculado && apurCotas.length > 0 && (
               <div style={{ background: C.fundo, borderRadius: 8, padding: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: C.txt, marginBottom: 12 }}>Resultado por Participante</div>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr>
                       {["Participante", "%", "Receita Cota", "Custo Cota", "Resultado", "Conta D", "Conta C"].map(h => (
@@ -1306,7 +1307,7 @@ export default function ParceriasPage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
                 <div style={{ marginTop: 10, fontSize: 12, color: C.ter }}>
                   Contas contábeis opcionais para geração dos lançamentos SPED ECD (Bloco I, registro I155).
                 </div>
@@ -1314,9 +1315,9 @@ export default function ParceriasPage() {
             )}
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, borderTop: `1px solid ${C.borda}`, paddingTop: 16 }}>
-            <button data-arato-button="secondary" onClick={() => setApurModal(false)} style={btn(C.fundo, C.sub)}>Cancelar</button>
+            <OperationalButton data-arato-button="secondary" onClick={() => setApurModal(false)} style={btn(C.fundo, C.sub)}>Cancelar</OperationalButton>
             {calculado && (
-              <button data-arato-button="secondary" onClick={salvarApuracaoFinal} style={btn(C.verde)}>Salvar Apuração</button>
+              <OperationalButton data-arato-button="secondary" onClick={salvarApuracaoFinal} style={btn(C.verde)}>Salvar Apuração</OperationalButton>
             )}
           </div>
         </Modal>

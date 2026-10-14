@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo, Suspense } from "react";
@@ -194,8 +195,8 @@ function RelatorioRomaneios() {
 
         {/* Abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 6, marginBottom: 20, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 4, width: "fit-content" }}>
-          <button data-arato-tab-active={aba === ("entrada")} data-arato-tab="true" data-arato-button="toggle" style={tabStyle(aba === "entrada")} onClick={() => setAba("entrada")}>Entrada (Lavoura → Armazém)</button>
-          <button data-arato-tab-active={aba === ("saida")} data-arato-tab="true" data-arato-button="toggle" style={tabStyle(aba === "saida")}   onClick={() => setAba("saida")}>Saída (Entrega por Contrato)</button>
+          <OperationalButton data-arato-tab-active={aba === ("entrada")} data-arato-tab="true" data-arato-button="toggle" style={tabStyle(aba === "entrada")} onClick={() => setAba("entrada")}>Entrada (Lavoura → Armazém)</OperationalButton>
+          <OperationalButton data-arato-tab-active={aba === ("saida")} data-arato-tab="true" data-arato-button="toggle" style={tabStyle(aba === "saida")}   onClick={() => setAba("saida")}>Saída (Entrega por Contrato)</OperationalButton>
         </div>
 
         {/* Filtros */}
@@ -245,9 +246,9 @@ function RelatorioRomaneios() {
               <input style={inp} placeholder="placa, motorista, produto…" value={filtBusca} onChange={e => setFiltBusca(e.target.value)} />
             </div>
             <div>
-              <button data-arato-button="primary" onClick={buscar} disabled={loading} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, width: "100%" }}>
+              <OperationalButton data-arato-button="primary" onClick={buscar} disabled={loading} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, width: "100%" }}>
                 {loading ? "Buscando…" : "Buscar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -276,7 +277,7 @@ function RelatorioRomaneios() {
               <span style={{ fontSize: 12, color: "var(--text-2)" }}>{entradaFilt.length} registros</span>
             </div>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     <TH>Data</TH>
@@ -332,7 +333,7 @@ function RelatorioRomaneios() {
                     </tr>
                   </tfoot>
                 )}
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         </>)}
@@ -360,9 +361,9 @@ function RelatorioRomaneios() {
               <input type="checkbox" checked={agrupar} onChange={e => setAgrupar(e.target.checked)} />
               Agrupar por contrato
             </label>
-            <button data-arato-button="primary" onClick={() => window.print()} style={{ marginLeft: "auto", padding: "6px 14px", background: "#0B1E35", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+            <OperationalButton data-arato-button="primary" onClick={() => window.print()} style={{ marginLeft: "auto", padding: "6px 14px", background: "#0B1E35", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
               Imprimir
-            </button>
+            </OperationalButton>
           </div>
 
           {/* Tabela agrupada por contrato */}
@@ -405,7 +406,7 @@ function RelatorioRomaneios() {
                     </div>
                     {exp && (
                       <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <thead>
                             <tr>
                               <TH>Data</TH>
@@ -450,7 +451,7 @@ function RelatorioRomaneios() {
                               <td style={{ padding: "8px 12px", borderTop: "0.5px solid var(--border-table)" }}></td>
                             </tr>
                           </tfoot>
-                        </table>
+                        </OperationalGrid>
                       </div>
                     )}
                   </div>
@@ -465,7 +466,7 @@ function RelatorioRomaneios() {
                 <span style={{ fontSize: 12, color: "var(--text-2)" }}>{saidaFilt.length} registros</span>
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       <TH>Data</TH>
@@ -513,7 +514,7 @@ function RelatorioRomaneios() {
                       </tr>
                     </tfoot>
                   )}
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           )}

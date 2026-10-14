@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -231,7 +232,7 @@ export default function AdubacaoBasePage() {
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Adubação de Base</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>NPK, micronutrientes, adubação foliar e fertirrigação</p>
@@ -247,9 +248,9 @@ export default function AdubacaoBasePage() {
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setEditandoId(null); setModal(true); }}>+ Registrar Aplicação</button>
+            <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setEditandoId(null); setModal(true); }}>+ Registrar Aplicação</OperationalButton>
           </div>
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>
           {/* Stats */}
@@ -272,7 +273,7 @@ export default function AdubacaoBasePage() {
             </div>
           ) : (
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Fazenda", "Ano Safra", "Ciclo", "Talhão", "Modalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
@@ -299,15 +300,15 @@ export default function AdubacaoBasePage() {
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button data-arato-button="danger" style={{ ...btnX, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }} onClick={() => abrirEditar(r)}>✎ Editar</button>
-                            <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</button>
+                            <OperationalButton data-arato-button="danger" style={{ ...btnX, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }} onClick={() => abrirEditar(r)}>✎ Editar</OperationalButton>
+                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir registro?")) excluirAdubacao(r.id).then(() => setRegistros(x => x.filter(x2 => x2.id !== r.id))); }}>✕</OperationalButton>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           )}
         </div>
@@ -391,14 +392,14 @@ export default function AdubacaoBasePage() {
                   <div style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)", textAlign: "center" as const }}>
                     {qtd > 0 ? fmtN(qtd, 3) : "—"} kg
                   </div>
-                  <button data-arato-button="danger" style={btnX} onClick={() => removeItem(idx)}>✕</button>
+                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => removeItem(idx)}>✕</OperationalButton>
                   {ins && <div style={{ gridColumn: "1/-1", fontSize: 10, color: "#111111", marginTop: -4 }}>
                     Estoque atual: {fmtN(ins.estoque, 0)} {ins.unidade} · Custo médio: {fmtBRL(ins.custo_medio ?? ins.valor_unitario ?? 0)}/{ins.unidade || "kg"}
                   </div>}
                 </div>
               );
             })}
-            <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12, padding: "5px 12px" }} onClick={addItem}>+ Adicionar fertilizante</button>
+            <OperationalButton data-arato-button="secondary" style={{ ...btnR, fontSize: 12, padding: "5px 12px" }} onClick={addItem}>+ Adicionar fertilizante</OperationalButton>
 
             {/* Preview custo */}
             {custoTotal > 0 && (
@@ -416,13 +417,13 @@ export default function AdubacaoBasePage() {
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => { setModal(false); setEditandoId(null); }}>Cancelar</button>
-              <button data-arato-button="primary"
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModal(false); setEditandoId(null); }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary"
                 style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_aplicacao ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.area_ha || !f.data_aplicacao}
                 onClick={salvar}>
                 {salvando ? "Salvando…" : editandoId ? "⟳ Salvar edição (reajusta o estoque)" : "⟳ Registrar e baixar estoque"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -436,7 +437,7 @@ export default function AdubacaoBasePage() {
             onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
               <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Detalhe da Aplicação</div>
-              <button data-arato-button="icon" style={{ ...btnR, padding: "4px 10px", fontSize: 12 }} onClick={() => setDetalhe(null)}>✕</button>
+              <OperationalButton data-arato-button="icon" style={{ ...btnR, padding: "4px 10px", fontSize: 12 }} onClick={() => setDetalhe(null)}>✕</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>
               {MODALIDADES[detalhe.modalidade].label} · {fmtData(detalhe.data_aplicacao)}
@@ -461,7 +462,7 @@ export default function AdubacaoBasePage() {
             ) : detalheItens.length === 0 ? (
               <div style={{ fontSize: 12, color: "var(--text-2)" }}>Nenhum produto registrado.</div>
             ) : (
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr>
                     {["Produto", "Dose (kg/ha)", "Qtd. Total", "Custo"].map((h, i) => (
@@ -479,13 +480,13 @@ export default function AdubacaoBasePage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-              <button data-arato-button="secondary" style={{ ...btnR, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}
-                onClick={() => { const r = detalhe; setDetalhe(null); abrirEditar(r); }}>✎ Editar</button>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
+              <OperationalButton data-arato-button="secondary" style={{ ...btnR, background: "var(--bg-page)", color: "var(--text-1)", border: "0.5px solid var(--border-table)" }}
+                onClick={() => { const r = detalhe; setDetalhe(null); abrirEditar(r); }}>✎ Editar</OperationalButton>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setDetalhe(null)}>Fechar</OperationalButton>
             </div>
           </div>
         </div>

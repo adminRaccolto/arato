@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -369,22 +370,22 @@ function OperacoesGerenciaisContent() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
-            <button data-arato-button="secondary" onClick={exportarXlsx}
+            <OperationalButton data-arato-button="secondary" onClick={exportarXlsx}
               style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #16A34A", borderRadius: 7, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}>
               ⬇ XLSX
-            </button>
-            <button data-arato-button="secondary" onClick={importarPadrao} disabled={seeding}
+            </OperationalButton>
+            <OperationalButton data-arato-button="secondary" onClick={importarPadrao} disabled={seeding}
               style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #C9921B", borderRadius: 7, background: "#FBF3E0", color: "#7A5A10", cursor: seeding ? "not-allowed" : "pointer", fontWeight: 600, opacity: seeding ? 0.7 : 1 }}>
               {seeding ? "Importando…" : "↓ Importar Padrão"}
-            </button>
+            </OperationalButton>
             <a href="/configuracoes/plano-contas"
               style={{ fontSize: 11, padding: "6px 12px", border: "0.5px solid #111111", borderRadius: 7, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
               → Plano de Contas
             </a>
-            <button data-arato-button="primary" onClick={abrirNovo}
+            <OperationalButton data-arato-button="primary" onClick={abrirNovo}
               style={{ fontSize: 11, padding: "6px 14px", border: "none", borderRadius: 7, background: "#111111", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
               + Nova Operação
-            </button>
+            </OperationalButton>
           </div>
         </div>
 
@@ -396,29 +397,29 @@ function OperacoesGerenciaisContent() {
             { label: "Despesas",           value: totalDespesa,  color: "#633806", bg: "#FAEEDA", onClick: () => setFiltroTipo("despesa")  },
             { label: "Com Conta Contábil", value: totalComConta, color: "#4B1A8A", bg: "#F0EAF8", onClick: () => {} },
           ].map((k, i) => (
-            <button data-arato-button="secondary" key={k.label} onClick={k.onClick} style={{
+            <OperationalButton data-arato-button="secondary" key={k.label} onClick={k.onClick} style={{
               flex: 1, padding: "10px 18px", border: "none", borderRight: i < 3 ? "0.5px solid var(--border-table)" : "none",
               background: "transparent", cursor: "pointer", textAlign: "left",
               display: "flex", alignItems: "center", gap: 12,
             }}>
               <span style={{ fontSize: 24, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{k.value}</span>
               <span style={{ fontSize: 11, color: k.color, opacity: 0.75, lineHeight: 1.3 }}>{k.label}</span>
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
         {/* ── Filtros ── */}
-        <div data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
             {(["todos", "receita", "despesa"] as const).map(f => (
-              <button data-arato-button="toggle" key={f} onClick={() => setFiltroTipo(f)} style={{
+              <OperationalButton data-arato-button="toggle" key={f} onClick={() => setFiltroTipo(f)} style={{
                 padding: "5px 14px", border: "none", borderRight: f !== "despesa" ? "0.5px solid var(--border-table)" : "none",
                 background: filtroTipo === f ? "#E8E8E8" : "var(--bg-card)",
                 color: filtroTipo === f ? "#0D0D0D" : "var(--text-3)",
                 fontWeight: filtroTipo === f ? 600 : 400, fontSize: 12, cursor: "pointer",
               }}>
                 {f === "todos" ? "Todos" : f === "receita" ? "Receitas" : "Despesas"}
-              </button>
+              </OperationalButton>
             ))}
           </div>
           <input
@@ -431,7 +432,7 @@ function OperacoesGerenciaisContent() {
             Mostrar inativas
           </label>
           <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{opsFiltradas.length} de {ops.length}</span>
-        </div>
+        </OperationalFilters>
 
         {/* ── Tabela full-width ── */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
@@ -439,7 +440,7 @@ function OperacoesGerenciaisContent() {
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando operações…</div>
           ) : (
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 900 }}>
                 <colgroup>
                   <col style={{ width: 130 }} />  {/* Código */}
                   <col />                          {/* Descrição — flex */}
@@ -540,19 +541,19 @@ function OperacoesGerenciaisContent() {
                         {/* Ações */}
                         <td style={{ padding: "5px 10px" }}>
                           <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
-                            <button data-arato-button="icon" onClick={() => abrirEditar(o)} title="Editar"
-                              style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>✎</button>
-                            <button data-arato-button="secondary" onClick={() => duplicar(o)} title="Duplicar — cria uma nova operação com a mesma configuração"
-                              style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>⧉</button>
-                            <button data-arato-button="danger" onClick={() => excluir(o)} title="Excluir"
-                              style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "#791F1F" }}>✕</button>
+                            <OperationalButton data-arato-button="icon" onClick={() => abrirEditar(o)} title="Editar"
+                              style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>✎</OperationalButton>
+                            <OperationalButton data-arato-button="secondary" onClick={() => duplicar(o)} title="Duplicar — cria uma nova operação com a mesma configuração"
+                              style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>⧉</OperationalButton>
+                            <OperationalButton data-arato-button="danger" onClick={() => excluir(o)} title="Excluir"
+                              style={{ background: "#FCEBEB", border: "0.5px solid #F5C2C2", borderRadius: 5, padding: "2px 7px", cursor: "pointer", fontSize: 12, color: "#791F1F" }}>✕</OperationalButton>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           )}
         </div>
@@ -572,7 +573,7 @@ function OperacoesGerenciaisContent() {
               <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
                 {editOp ? `Editar — ${editOp.classificacao} · ${editOp.descricao}` : "Nova Operação Gerencial"}
               </div>
-              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</OperationalButton>
             </div>
 
             {/* Cabeçalho fixo do formulário */}
@@ -671,7 +672,7 @@ function OperacoesGerenciaisContent() {
                   !form.permite_contrato_financeiro && !form.permite_estoque && !form.permite_pedidos_venda &&
                   !form.permite_manutencao && !form.permite_combustivel;
                 return (
-                  <button data-arato-tab-active={abaModal === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaModal(a.key)} style={{
+                  <OperationalButton data-arato-tab-active={abaModal === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaModal(a.key)} style={{
                     padding: "9px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                     borderBottom: abaModal === a.key ? "2px solid #2A2A2A" : "2px solid transparent",
                     color: abaModal === a.key ? "#2A2A2A" : "var(--text-2)",
@@ -682,7 +683,7 @@ function OperacoesGerenciaisContent() {
                     ) : a.key === "contabilidade" && (form.conta_debito || form.conta_credito) ? (
                       <span>{a.label} <span style={{ marginLeft: 4, fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>✓</span></span>
                     ) : a.label}
-                  </button>
+                  </OperationalButton>
                 );
               })}
             </div>
@@ -936,10 +937,10 @@ function OperacoesGerenciaisContent() {
               <div style={{ padding: "8px 20px", background: "#FCEBEB", borderTop: "0.5px solid #F5C2C2", fontSize: 12, color: "#791F1F", flexShrink: 0 }}>{erro}</div>
             )}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
-              <button data-arato-button="secondary" onClick={() => setModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", cursor: salvando ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando…" : editOp ? "Salvar Alterações" : "Criar Operação"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

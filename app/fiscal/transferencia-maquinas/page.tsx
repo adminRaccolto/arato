@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -390,13 +391,13 @@ export default function TransferenciaMaquinasPage() {
     <>
       <TopNav />
       <main style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px" }}>
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Transferência de Máquinas e Equipamentos</h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>Remessa e retorno de ativo imobilizado — conserto, transferência entre fazendas, comodato dado/recebido, equipamento de prestador de serviço</p>
           </div>
-          <button data-arato-button="primary" style={btnV} onClick={abrirNova}>+ Nova Movimentação</button>
-        </div>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNova}>+ Nova Movimentação</OperationalButton>
+        </OperationalHeading>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
           {[
@@ -411,7 +412,7 @@ export default function TransferenciaMaquinasPage() {
           ))}
         </div>
 
-        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por máquina, destinatário, nº NF…" style={{ ...inp, maxWidth: 320 }} />
           <SelectField value={filtroSt} onChange={e => setFiltroSt(e.target.value)} style={{ ...inp, maxWidth: 180 }}>
             <option value="">Todos os status</option>
@@ -419,10 +420,10 @@ export default function TransferenciaMaquinasPage() {
             <option value="retornada">Retornada</option>
             <option value="cancelada">Cancelada</option>
           </SelectField>
-        </div>
+        </OperationalFilters>
 
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["Máquina/Equip.", "Direção", "Motivo", "Contraparte", "NF Remessa", "Valor", "Status", ""].map(h => (
@@ -454,16 +455,16 @@ export default function TransferenciaMaquinasPage() {
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right" }}>
                       {i.status === "emitida" && motivoCfgLinha.temEtapa2 && (
-                        <button data-arato-button="primary" onClick={() => { setModalRet(i); setRetErro(""); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                        <OperationalButton data-arato-button="primary" onClick={() => { setModalRet(i); setRetErro(""); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                           {labelBotaoRetorno}
-                        </button>
+                        </OperationalButton>
                       )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
       </main>
 
@@ -473,7 +474,7 @@ export default function TransferenciaMaquinasPage() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{MOTIVOS[f.motivo].direcao === "entrada" ? "Novo Registro — Bem de Terceiro" : "Nova Transferência de Máquina/Equipamento"}</div>
-              <button data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {erro && <div style={{ gridColumn: "1 / -1", background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{erro}</div>}
@@ -482,7 +483,7 @@ export default function TransferenciaMaquinasPage() {
                 <label data-arato-label="true" style={lbl}>Máquina própria ou de terceiro?</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([["saida", "Própria (sai da fazenda)"], ["entrada", "De terceiro (entra na fazenda)"]] as const).map(([dir, label]) => (
-                    <button data-arato-button="toggle" key={dir} type="button"
+                    <OperationalButton data-arato-button="toggle" key={dir} type="button"
                       onClick={() => setF(p => ({ ...p, motivo: (dir === "saida" ? "conserto" : "comodato_recebido") as MotivoTransferenciaMaquina, maquina_id: "", maquina_nome_livre: "" }))}
                       style={{
                         flex: 1, padding: "9px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
@@ -491,7 +492,7 @@ export default function TransferenciaMaquinasPage() {
                         color: MOTIVOS[f.motivo].direcao === dir ? "#0B2D50" : "var(--text-2)",
                       }}>
                       {label}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
               </div>
@@ -596,10 +597,10 @@ export default function TransferenciaMaquinasPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
-              <button data-arato-button="primary" onClick={emitirRemessa} disabled={salvando} style={{ ...btnV, cursor: salvando ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={emitirRemessa} disabled={salvando} style={{ ...btnV, cursor: salvando ? "default" : "pointer" }}>
                 {salvando ? "Salvando…" : (MOTIVOS[f.motivo].emiteNfEtapa1 ? "Emitir NF de Remessa" : "Registrar Entrada")}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -614,7 +615,7 @@ export default function TransferenciaMaquinasPage() {
           <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, width: 460 }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{titulo}</div>
-              <button data-arato-button="icon" onClick={() => setModalRet(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalRet(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>
               {retErro && <div style={{ marginBottom: 14, background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{retErro}</div>}
@@ -626,10 +627,10 @@ export default function TransferenciaMaquinasPage() {
                 : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Sem NF nesta etapa — só fecha o registro de controle.</div>}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalRet(null)}>Cancelar</button>
-              <button data-arato-button="primary" onClick={emitirRetorno} disabled={retSalvando} style={{ ...btnV, background: "#1A6B3C", cursor: retSalvando ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalRet(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={emitirRetorno} disabled={retSalvando} style={{ ...btnV, background: "#1A6B3C", cursor: retSalvando ? "default" : "pointer" }}>
                 {retSalvando ? "Salvando…" : (motivoCfgRet.emiteNfEtapa2 ? "Emitir NF" : "Confirmar Saída")}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

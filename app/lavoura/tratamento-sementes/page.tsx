@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputNumerico from "../../../components/InputNumerico";
 import InputData from "../../../components/InputData";
@@ -645,22 +646,22 @@ export default function TratamentoSementesPage() {
 
               {/* Remover */}
               {!readOnly && (
-                <button data-arato-button="icon"
+                <OperationalButton data-arato-button="icon"
                   onClick={() => removeItem(it._key, lista, setLista)}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "#B91C1C", fontSize: 16, padding: 0 }}
                   title="Remover"
-                >×</button>
+                >×</OperationalButton>
               )}
             </div>
           );
         })}
         {!readOnly && (
-          <button data-arato-button="secondary"
+          <OperationalButton data-arato-button="secondary"
             onClick={() => addItem(lista, setLista)}
             style={{ ...btnSm("#F4F6FA", "#111111"), border: "0.5px dashed #111111", marginTop: 4 }}
           >
             + Produto
-          </button>
+          </OperationalButton>
         )}
       </div>
     );
@@ -673,7 +674,7 @@ export default function TratamentoSementesPage() {
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Tratamento de Sementes</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
@@ -691,17 +692,17 @@ export default function TratamentoSementesPage() {
               </SelectField>
             )}
             {aba === "ordens" && (
-              <button data-arato-button="secondary" onClick={() => { setEditando(null); setForm(formVazio); setItens([novoItem()]); setAnoSafraSel(""); setModalOrdem(true); }} style={btn()}>
+              <OperationalButton data-arato-button="secondary" onClick={() => { setEditando(null); setForm(formVazio); setItens([novoItem()]); setAnoSafraSel(""); setModalOrdem(true); }} style={btn()}>
                 + Nova Ordem
-              </button>
+              </OperationalButton>
             )}
             {aba === "receitas" && (
-              <button data-arato-button="secondary" onClick={() => { setEditandoReceita(null); setFormReceita({ nome: "", cultura: "soja", descricao: "" }); setItensReceita([novoItem()]); setModalReceita(true); }} style={btn()}>
+              <OperationalButton data-arato-button="secondary" onClick={() => { setEditandoReceita(null); setFormReceita({ nome: "", cultura: "soja", descricao: "" }); setItensReceita([novoItem()]); setModalReceita(true); }} style={btn()}>
                 + Nova Receita
-              </button>
+              </OperationalButton>
             )}
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 20 }}>
@@ -709,13 +710,13 @@ export default function TratamentoSementesPage() {
             { id: "ordens",   label: "Ordens de Tratamento" },
             { id: "receitas", label: "Receitas Salvas" },
           ].map(a => (
-            <button data-arato-tab-active={aba === (a.id as typeof aba)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)} style={{
+            <OperationalButton data-arato-tab-active={aba === (a.id as typeof aba)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)} style={{
               padding: "8px 18px", border: "none", borderRadius: 8, cursor: "pointer",
               background: aba === a.id ? "#111111" : "#fff",
               color:      aba === a.id ? "#fff"    : "#555",
               fontWeight: aba === a.id ? 600        : 400,
               fontSize: 13, boxShadow: "0 1px 3px #0001",
-            }}>{a.label}</button>
+            }}>{a.label}</OperationalButton>
           ))}
         </div>
 
@@ -739,7 +740,7 @@ export default function TratamentoSementesPage() {
 
             {/* Filtros */}
             <div data-arato-panel="true" style={{ ...card, padding: "14px 20px", marginBottom: 16 }}>
-              <div data-arato-filters="true" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 {/* Status */}
                 <div style={{ display: "flex", gap: 4 }}>
                   {[
@@ -749,11 +750,11 @@ export default function TratamentoSementesPage() {
                     { id: "concluida",     label: "Concluídas" },
                     { id: "cancelada",     label: "Canceladas" },
                   ].map(s => (
-                    <button data-arato-button="toggle" key={s.id} onClick={() => setFiltroStatus(s.id)} style={{
+                    <OperationalButton data-arato-button="toggle" key={s.id} onClick={() => setFiltroStatus(s.id)} style={{
                       padding: "5px 12px", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12,
                       background: filtroStatus === s.id ? "#111111" : "#F4F6FA",
                       color:      filtroStatus === s.id ? "#fff"    : "#555",
-                    }}>{s.label}</button>
+                    }}>{s.label}</OperationalButton>
                   ))}
                 </div>
 
@@ -777,12 +778,12 @@ export default function TratamentoSementesPage() {
                 <span style={{ fontSize: 12, color: "#888", marginLeft: "auto" }}>
                   {listaFiltrada.length} ordem{listaFiltrada.length !== 1 ? "ns" : ""}
                 </span>
-              </div>
+              </OperationalFilters>
             </div>
 
             {/* Tabela */}
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>
                     {["Nº", "Safra / Ciclo", "Cultura / Cultivar", "Lote", "Qtd. (sc)", "Produtos", "Data Prev.", "Status", ""].map(h => (
@@ -844,35 +845,35 @@ export default function TratamentoSementesPage() {
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                             {/* Detalhe */}
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={() => { setDetalhe(t); setModalDetalhe(true); }}
                               style={btnSm("#F4F6FA", "#111111")}
                               title="Ver detalhe"
-                            >Detalhe</button>
+                            >Detalhe</OperationalButton>
 
                             {/* Iniciar */}
                             {t.status === "planejada" && (
-                              <button data-arato-button="secondary" onClick={() => iniciarTratamento(t)} style={btnSm("#FBF3E0", "#C9921B")}>Iniciar</button>
+                              <OperationalButton data-arato-button="secondary" onClick={() => iniciarTratamento(t)} style={btnSm("#FBF3E0", "#C9921B")}>Iniciar</OperationalButton>
                             )}
 
                             {/* Concluir */}
                             {t.status === "em_tratamento" && (
-                              <button data-arato-button="secondary" onClick={() => abrirConcluir(t)} style={btnSm("#DCFCE7", "#15803D")}>Concluir</button>
+                              <OperationalButton data-arato-button="secondary" onClick={() => abrirConcluir(t)} style={btnSm("#DCFCE7", "#15803D")}>Concluir</OperationalButton>
                             )}
 
                             {/* Editar */}
                             {(t.status === "planejada") && (
-                              <button data-arato-button="secondary" onClick={() => abrirEditar(t)} style={btnSm("#F4F6FA", "#111111")}>Abrir</button>
+                              <OperationalButton data-arato-button="secondary" onClick={() => abrirEditar(t)} style={btnSm("#F4F6FA", "#111111")}>Abrir</OperationalButton>
                             )}
 
                             {/* Cancelar */}
                             {["planejada", "em_tratamento"].includes(t.status) && (
-                              <button data-arato-button="secondary" onClick={() => cancelarOrdem(t)} style={btnSm("#FEECEC", "#B91C1C")}>Cancelar</button>
+                              <OperationalButton data-arato-button="secondary" onClick={() => cancelarOrdem(t)} style={btnSm("#FEECEC", "#B91C1C")}>Cancelar</OperationalButton>
                             )}
 
                             {/* Excluir */}
                             {t.status === "cancelada" && (
-                              <button data-arato-button="secondary" onClick={() => excluirOrdem(t)} style={btnSm("#FEECEC", "#B91C1C")}>Excluir</button>
+                              <OperationalButton data-arato-button="secondary" onClick={() => excluirOrdem(t)} style={btnSm("#FEECEC", "#B91C1C")}>Excluir</OperationalButton>
                             )}
                           </div>
                         </td>
@@ -880,7 +881,7 @@ export default function TratamentoSementesPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </>
         )}
@@ -904,7 +905,7 @@ export default function TratamentoSementesPage() {
                     {r.descricao && <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{r.descricao}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button data-arato-button="secondary"
+                    <OperationalButton data-arato-button="secondary"
                       onClick={() => {
                         setEditandoReceita(r);
                         setFormReceita({ nome: r.nome, cultura: r.cultura ?? "soja", descricao: r.descricao ?? "" });
@@ -921,15 +922,15 @@ export default function TratamentoSementesPage() {
                         setModalReceita(true);
                       }}
                       style={btnSm("#F4F6FA", "#111111")}
-                    >Abrir</button>
-                    <button data-arato-button="secondary"
+                    >Abrir</OperationalButton>
+                    <OperationalButton data-arato-button="secondary"
                       onClick={async () => {
                         if (!confirm(`Excluir receita "${r.nome}"?`)) return;
                         await excluirReceita(r.id);
                         await carregar();
                       }}
                       style={btnSm("#FEECEC", "#B91C1C")}
-                    >Excluir</button>
+                    >Excluir</OperationalButton>
                   </div>
                 </div>
 
@@ -973,7 +974,7 @@ export default function TratamentoSementesPage() {
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
                 {editando ? `Editar Ordem #${String(editando.numero ?? "").padStart(3, "0")}` : "Nova Ordem de Tratamento"}
               </h2>
-              <button data-arato-button="icon" onClick={() => { setModalOrdem(false); setEditando(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => { setModalOrdem(false); setEditando(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</OperationalButton>
             </div>
 
             {erro && <div style={{ background: "#FEECEC", border: "0.5px solid #F4B3B3", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#B91C1C" }}>{erro}</div>}
@@ -1112,10 +1113,10 @@ export default function TratamentoSementesPage() {
 
             {/* Botões */}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" onClick={() => { setModalOrdem(false); setEditando(null); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Cancelar</button>
-              <button data-arato-button="secondary" onClick={salvarOrdem} disabled={salvando} style={btn()}>
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalOrdem(false); setEditando(null); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="secondary" onClick={salvarOrdem} disabled={salvando} style={btn()}>
                 {salvando ? "Salvando..." : editando ? "Salvar Alterações" : "Criar Ordem"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1131,7 +1132,7 @@ export default function TratamentoSementesPage() {
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
                 Concluir Ordem #{String(concluindo.numero ?? "").padStart(3, "0")}
               </h2>
-              <button data-arato-button="icon" onClick={() => { setModalConcluir(false); setConcluindo(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => { setModalConcluir(false); setConcluindo(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13 }}>
@@ -1244,10 +1245,10 @@ export default function TratamentoSementesPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" onClick={() => { setModalConcluir(false); setConcluindo(null); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Cancelar</button>
-              <button data-arato-button="secondary" onClick={confirmarConclusao} disabled={salvando} style={btn("#15803D")}>
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalConcluir(false); setConcluindo(null); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="secondary" onClick={confirmarConclusao} disabled={salvando} style={btn("#15803D")}>
                 {salvando ? "Salvando..." : "Confirmar Conclusão"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1271,7 +1272,7 @@ export default function TratamentoSementesPage() {
                   </h2>
                   <div data-arato-dialog-body="true" style={{ marginTop: 4 }}><StatusBadge status={detalhe.status} /></div>
                 </div>
-                <button data-arato-button="icon" onClick={() => { setModalDetalhe(false); setDetalhe(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => { setModalDetalhe(false); setDetalhe(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</OperationalButton>
               </div>
 
               {/* Info grid */}
@@ -1359,7 +1360,7 @@ export default function TratamentoSementesPage() {
               )}
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
-                <button data-arato-button="secondary" onClick={() => { setModalDetalhe(false); setDetalhe(null); }} style={btn()}>Fechar</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => { setModalDetalhe(false); setDetalhe(null); }} style={btn()}>Fechar</OperationalButton>
               </div>
             </div>
           </div>
@@ -1376,7 +1377,7 @@ export default function TratamentoSementesPage() {
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
                 {editandoReceita ? "Editar Receita" : "Nova Receita de Tratamento"}
               </h2>
-              <button data-arato-button="icon" onClick={() => { setModalReceita(false); setEditandoReceita(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => { setModalReceita(false); setEditandoReceita(null); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#555" }}>×</OperationalButton>
             </div>
 
             {erro && <div style={{ background: "#FEECEC", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#B91C1C" }}>{erro}</div>}
@@ -1406,10 +1407,10 @@ export default function TratamentoSementesPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" onClick={() => { setModalReceita(false); setEditandoReceita(null); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Cancelar</button>
-              <button data-arato-button="secondary" onClick={salvarReceitaHandler} disabled={salvando || !formReceita.nome.trim()} style={btn()}>
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalReceita(false); setEditandoReceita(null); }} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="secondary" onClick={salvarReceitaHandler} disabled={salvando || !formReceita.nome.trim()} style={btn()}>
                 {salvando ? "Salvando..." : editandoReceita ? "Salvar Alterações" : "Criar Receita"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

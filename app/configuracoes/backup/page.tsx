@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -134,7 +135,7 @@ export default function BackupPage() {
         {resultado && (
           <div style={{ marginBottom: 18, padding: "12px 16px", borderRadius: 8, background: resultado.tipo === "ok" ? "#ECFDF5" : "#FCEBEB", border: `0.5px solid ${resultado.tipo === "ok" ? "#BBF7D0" : "#FECACA"}`, color: resultado.tipo === "ok" ? "#14532D" : "#791F1F", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <span>{resultado.tipo === "ok" ? "✓ " : "✗ "}{resultado.msg}</span>
-            <button data-arato-button="icon" onClick={() => { setResultado(null); setDetalhes(null); }} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "inherit", padding: 0, flexShrink: 0 }}>✕</button>
+            <OperationalButton data-arato-button="icon" onClick={() => { setResultado(null); setDetalhes(null); }} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, color: "inherit", padding: 0, flexShrink: 0 }}>✕</OperationalButton>
           </div>
         )}
 
@@ -180,7 +181,7 @@ export default function BackupPage() {
               armazenado com segurança no Supabase Storage.
             </div>
           </div>
-          <button data-arato-button="toggle"
+          <OperationalButton data-arato-button="toggle"
             onClick={criarBackup}
             disabled={criando}
             style={{
@@ -190,16 +191,16 @@ export default function BackupPage() {
             }}
           >
             {criando ? "Gerando backup…" : "Criar Backup Agora"}
-          </button>
+          </OperationalButton>
         </div>
 
         {/* Tabela de backups */}
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden", marginBottom: 22 }}>
           <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Histórico de Backups</span>
-            <button data-arato-button="secondary" onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
+            <OperationalButton data-arato-button="secondary" onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
               {loading ? "…" : "↻ Atualizar"}
-            </button>
+            </OperationalButton>
           </div>
 
           {loading ? (
@@ -213,7 +214,7 @@ export default function BackupPage() {
               </div>
             </div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Data/Hora", "Arquivo", "Tamanho", "Ações"].map((h, i) => (
@@ -238,18 +239,18 @@ export default function BackupPage() {
                         </a>
                       )}
                       {podeRestaurar && (
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => { setModalRestaura(b); setConfirmacao(""); setResultado(null); setDetalhes(null); }}
                           style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #FECACA", background: "#FFF8F8", fontSize: 11, color: "#791F1F", cursor: "pointer", fontWeight: 600 }}
                         >
                           ↩ Restaurar
-                        </button>
+                        </OperationalButton>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           )}
         </div>
 
@@ -348,19 +349,19 @@ export default function BackupPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => { setModalRestaura(null); setConfirmacao(""); }}
                 style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Cancelar
-              </button>
-              <button data-arato-button="toggle"
+              </OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={restaurarBackup}
                 disabled={confirmacao !== "RESTAURAR" || !!restaurando}
                 style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: confirmacao !== "RESTAURAR" || restaurando ? "#ccc" : "#E24B4A", color: "#fff", fontSize: 13, fontWeight: 700, cursor: confirmacao !== "RESTAURAR" || restaurando ? "not-allowed" : "pointer" }}
               >
                 {restaurando ? "Restaurando…" : "Confirmar Restauração"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

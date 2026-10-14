@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -367,15 +368,15 @@ export default function TriangulacaoPage() {
       <TopNav />
       <div style={{ padding: "24px 32px", fontFamily: "Inter, sans-serif", maxWidth: 1300, margin: "0 auto" }}>
       {/* Header */}
-      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Triangulação de NF</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Gestão de operações com múltiplos destinatários — Venda a Ordem, Barter, Pagamento a Terceiro e Entrega em Terceiro
           </p>
         </div>
-        <button data-arato-button="primary" style={btnV} onClick={() => abrir()}>+ Nova Triangulação</button>
-      </div>
+        <OperationalButton data-arato-button="primary" style={btnV} onClick={() => abrir()}>+ Nova Triangulação</OperationalButton>
+      </OperationalHeading>
 
       {/* KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
@@ -401,7 +402,7 @@ export default function TriangulacaoPage() {
       </div>
 
       {/* Filtros */}
-      <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+      <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         <input style={{ ...inp, width: 220 }} placeholder="Buscar produtor, trading, contrato…" value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} />
         <SelectField style={{ ...inp, width: 200 }} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value as TipoTriang | "")}>
           <option value="">Todos os tipos</option>
@@ -412,11 +413,11 @@ export default function TriangulacaoPage() {
           {(Object.keys(STATUS_META) as StatusTriang[]).map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
         </SelectField>
         {(filtroTipo || filtroStatus || filtroBusca) && (
-          <button data-arato-button="secondary" style={btnO} onClick={() => { setFiltroTipo(""); setFiltroStatus(""); setFiltroBusca(""); }}>
+          <OperationalButton data-arato-button="secondary" style={btnO} onClick={() => { setFiltroTipo(""); setFiltroStatus(""); setFiltroBusca(""); }}>
             Limpar filtros
-          </button>
+          </OperationalButton>
         )}
-      </div>
+      </OperationalFilters>
 
       {/* Lista */}
       {loading ? (
@@ -465,20 +466,20 @@ export default function TriangulacaoPage() {
                     {pBNome !== "—"   && <><span>→</span><span style={{ fontWeight: 600, color: "#14532D" }}>{pBNome}</span></>}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => {
+                    <OperationalButton data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => {
                       setExpandido(p => { const s = new Set(p); s.has(item.id) ? s.delete(item.id) : s.add(item.id); return s; });
                     }}>
                       {exp ? "▲ Fechar" : "▼ Documentos"}
-                    </button>
-                    <button data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => abrir(item)}>Abrir</button>
+                    </OperationalButton>
+                    <OperationalButton data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12 }} onClick={() => abrir(item)}>Abrir</OperationalButton>
                     {item.status === "em_andamento" && (
-                      <button data-arato-button="primary" style={{ ...btnV, padding: "5px 12px", fontSize: 12, background: "#16A34A" }} onClick={() => marcarConcluido(item)}>
+                      <OperationalButton data-arato-button="primary" style={{ ...btnV, padding: "5px 12px", fontSize: 12, background: "#16A34A" }} onClick={() => marcarConcluido(item)}>
                         ✓ Concluir
-                      </button>
+                      </OperationalButton>
                     )}
-                    <button data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12, color: "#E24B4A", borderColor: "#E24B4A" }} onClick={() => excluir(item.id)}>
+                    <OperationalButton data-arato-button="secondary" style={{ ...btnO, padding: "5px 12px", fontSize: 12, color: "#E24B4A", borderColor: "#E24B4A" }} onClick={() => excluir(item.id)}>
                       Excluir
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
 
@@ -584,7 +585,7 @@ export default function TriangulacaoPage() {
                   {step === 1 ? "Passo 1 — Selecionar tipo" : step === 2 ? "Passo 2 — Dados da operação" : "Passo 3 — Revisar e gerar documentos"}
                 </div>
               </div>
-              <button data-arato-button="icon" style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }} onClick={() => setModal(false)}>✕</button>
+              <OperationalButton data-arato-button="icon" style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }} onClick={() => setModal(false)}>✕</OperationalButton>
             </div>
 
             {/* Progress */}
@@ -1004,16 +1005,16 @@ export default function TriangulacaoPage() {
 
             {/* Footer do modal */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "var(--bg-card)" }}>
-              <button data-arato-button="secondary" style={btnO} onClick={() => step === 1 ? setModal(false) : setStep(s => (s - 1) as 1|2|3)}>
+              <OperationalButton data-arato-button="secondary" style={btnO} onClick={() => step === 1 ? setModal(false) : setStep(s => (s - 1) as 1|2|3)}>
                 {step === 1 ? "Cancelar" : "← Voltar"}
-              </button>
+              </OperationalButton>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
                 {step < 3 && (
-                  <button data-arato-button="secondary" style={btnO} onClick={async () => { await salvar(); }}>
+                  <OperationalButton data-arato-button="secondary" style={btnO} onClick={async () => { await salvar(); }}>
                     Salvar rascunho
-                  </button>
+                  </OperationalButton>
                 )}
-                <button data-arato-button="primary"
+                <OperationalButton data-arato-button="primary"
                   style={{ ...btnV, opacity: salvando ? 0.6 : 1 }}
                   disabled={salvando}
                   onClick={() => {
@@ -1022,7 +1023,7 @@ export default function TriangulacaoPage() {
                   }}
                 >
                   {salvando ? "Salvando…" : step === 3 ? "✓ Salvar e gerar documentos" : "Próximo →"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

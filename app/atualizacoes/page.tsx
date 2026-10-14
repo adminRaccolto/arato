@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalHeading } from "../../components/OperationalUI";
 import { useState } from "react";
 import TopNav from "../../components/TopNav";
 
@@ -4821,24 +4822,24 @@ export default function CentralAtualizacoes() {
       <TopNav />
       <main style={{ flex: 1, padding: "24px 28px", maxWidth: 900, width: "100%" }}>
 
-        <header data-arato-page-heading="true" style={{ marginBottom: 24 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ marginBottom: 24 }}>
           <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Central de Atualizações</h1>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>
             Histórico de melhorias, novidades e correções do sistema Arato
           </p>
-        </header>
+        </OperationalHeading>
 
         {/* Filtro de módulo */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-          <button data-arato-button="toggle" onClick={() => setFiltro("todos")}
+          <OperationalButton data-arato-button="toggle" onClick={() => setFiltro("todos")}
             style={{ padding: "5px 14px", borderRadius: 20, border: "0.5px solid var(--border-table)", background: filtro === "todos" ? "#1A4870" : "var(--bg-card)", color: filtro === "todos" ? "#fff" : "var(--text-1)", fontSize: 12, fontWeight: filtro === "todos" ? 600 : 400, cursor: "pointer" }}>
             Todos os módulos
-          </button>
+          </OperationalButton>
           {modulos.map(m => (
-            <button data-arato-button="toggle" key={m} onClick={() => setFiltro(m)}
+            <OperationalButton data-arato-button="toggle" key={m} onClick={() => setFiltro(m)}
               style={{ padding: "5px 14px", borderRadius: 20, border: `0.5px solid ${filtro === m ? (MODULO_COR[m] ?? "#1A4870") : "var(--border-table)"}`, background: filtro === m ? (MODULO_COR[m] ?? "#1A4870") : "var(--bg-card)", color: filtro === m ? "#fff" : "var(--text-1)", fontSize: 12, fontWeight: filtro === m ? 600 : 400, cursor: "pointer" }}>
               {m}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 

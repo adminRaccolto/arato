@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -1634,33 +1635,33 @@ export default function Contratos() {
       <TopNav />
       <main style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
 
-        <header data-arato-page-heading="true" style={{ background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)", padding:"10px 22px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)", padding:"10px 22px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin:0, fontSize:17, fontWeight:600, color:"var(--text-1)" }}>Comercialização de Grãos</h1>
             <p style={{ margin:0, fontSize:11, color:"#444" }}>Contratos de venda, fixações, expedição e posição de estoque</p>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button data-arato-button="secondary" onClick={abrirModalLote}
+            <OperationalButton data-arato-button="secondary" onClick={abrirModalLote}
               title="Encerrar contratos ou safras em lote por ano safra"
               style={{ background:"var(--bg-card)", color:"var(--text-2)", border:"0.5px solid #CCC", borderRadius:8, padding:"8px 12px", fontSize:12, cursor:"pointer" }}>
               ⊘ Encerramento em Lote
-            </button>
-            <button data-arato-button="primary" onClick={() => { setFRom(ROM_VAZIO()); setModalRomaneio(true); }}
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={() => { setFRom(ROM_VAZIO()); setModalRomaneio(true); }}
               style={{ background:"#2A2A2A", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               + Romaneio
-            </button>
-            <button data-arato-button="primary" onClick={abrirNovo}
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={abrirNovo}
               style={{ background:"#C9921B", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               + Novo Contrato
-            </button>
+            </OperationalButton>
           </div>
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding:"16px 22px", flex:1, overflowY:"auto" }}>
           {erro && (
             <div style={{ background:"#FDECEA", border:"0.5px solid #E24B4A60", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, color:"#8B1A1A", display:"flex", gap:8 }}>
               <span>✕ {erro}</span>
-              <button data-arato-button="secondary" onClick={carregarTudo} style={{ marginLeft:"auto", fontSize:11, color:"#8B1A1A", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}>Tentar novamente</button>
+              <OperationalButton data-arato-button="secondary" onClick={carregarTudo} style={{ marginLeft:"auto", fontSize:11, color:"#8B1A1A", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}>Tentar novamente</OperationalButton>
             </div>
           )}
           {loading && <div style={{ textAlign:"center", padding:40, color:"#444" }}>Carregando…</div>}
@@ -1687,7 +1688,7 @@ export default function Contratos() {
                   { key:"expedicao", label:"Expedição / Romaneios",  count: todosRomaneios.length },
                   { key:"posicao",   label:"Posição de Estoque",     count: null },
                 ] as { key: AbaLista; label: string; count: number|null }[]).map(a => (
-                  <button data-arato-tab-active={abaLista === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaLista(a.key)} style={{
+                  <OperationalButton data-arato-tab-active={abaLista === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAbaLista(a.key)} style={{
                     padding:"11px 20px", border:"none", background:"transparent", cursor:"pointer",
                     fontWeight: abaLista===a.key ? 600 : 400, fontSize:13,
                     color: abaLista===a.key ? "var(--text-1)" : "var(--text-2)",
@@ -1696,7 +1697,7 @@ export default function Contratos() {
                   }}>
                     {a.label}
                     {a.count !== null && <span style={{ fontSize:10, background: abaLista===a.key?"#E8E8E8":"var(--border-row)", color: abaLista===a.key?"#0D0D0D":"var(--text-2)", padding:"1px 6px", borderRadius:8 }}>{a.count}</span>}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
 
@@ -1704,7 +1705,7 @@ export default function Contratos() {
               {abaLista === "contratos" && (
                 <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
                   {/* barra de filtros */}
-                  <div data-arato-filters="true" style={{ padding:"10px 14px", borderBottom:"0.5px solid var(--bg-tag)", background:"#FAFBFD", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                  <OperationalFilters data-arato-filters="true" style={{ padding:"10px 14px", borderBottom:"0.5px solid var(--bg-tag)", background:"#FAFBFD", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
                     {/* busca livre */}
                     <input value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} placeholder="🔍 Buscar contrato, comprador…"
                       style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none", minWidth:190 }} />
@@ -1751,21 +1752,21 @@ export default function Contratos() {
                       <option value="cancelado">Cancelado</option>
                     </SelectField>
                     {hasAnyFilter && (
-                      <button data-arato-button="secondary" onClick={limparFiltros}
+                      <OperationalButton data-arato-button="secondary" onClick={limparFiltros}
                         style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:11, color:"var(--text-2)", background:"var(--bg-card)", cursor:"pointer" }}>
                         ✕ Limpar
-                      </button>
+                      </OperationalButton>
                     )}
                     <span style={{ marginLeft:"auto", fontSize:11, color:"var(--text-3)" }}>
                       {contratosFiltrados.length}{hasAnyFilter ? ` de ${contratos.length}` : ""} contrato{contratosFiltrados.length !== 1 ? "s" : ""}
                     </span>
-                  </div>
+                  </OperationalFilters>
                   {contratosFiltrados.length === 0 ? (
                     <div style={{ padding:32, textAlign:"center", color:"#444", fontSize:12 }}>
                       {contratos.length === 0 ? "Nenhum contrato. Clique em + Novo Contrato para começar." : "Nenhum contrato encontrado para os filtros selecionados."}
                     </div>
                   ) : (
-                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
                         <tr style={{ background:"var(--bg-page)" }}>
                           {["Contrato","Produtor / Cliente","Produto","Volume","Entregue","Saldo","Preço","Prazo","Status",""].map((h,i) => (
@@ -1840,9 +1841,9 @@ export default function Contratos() {
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"right" }}>
                                   <div style={{ display:"flex", gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
-                                    <button data-arato-button="secondary" style={{ padding:"3px 9px", border:"0.5px solid var(--border-table)", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c, false)}>Abrir</button>
+                                    <OperationalButton data-arato-button="secondary" style={{ padding:"3px 9px", border:"0.5px solid var(--border-table)", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c, false)}>Abrir</OperationalButton>
                                     {c.status !== "encerrado" && c.status !== "cancelado" && (
-                                      <button data-arato-button="secondary" style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
+                                      <OperationalButton data-arato-button="secondary" style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
                                         onClick={async () => {
                                           // Se for cessão, avisa sobre a liquidação automática dos CPs
                                           const debs = (c as {dado_em_cessao?:boolean}).dado_em_cessao
@@ -1863,12 +1864,12 @@ export default function Contratos() {
                                           await carregarTudo();
                                         }}>
                                         Encerrar
-                                      </button>
+                                      </OperationalButton>
                                     )}
-                                    <button data-arato-button="danger" style={{ padding:"3px 9px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
+                                    <OperationalButton data-arato-button="danger" style={{ padding:"3px 9px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
                                       onClick={async () => { if (confirm(`Excluir contrato ${c.numero} permanentemente? Esta ação não pode ser desfeita.`)) { await excluirContrato(c.id); await carregarTudo(); } }}>
                                       Excluir
-                                    </button>
+                                    </OperationalButton>
                                     <span style={{ color:"#444", fontSize:10, display:"inline-block", transform: exp?"rotate(90deg)":"rotate(0deg)", transition:"transform 0.15s", cursor:"pointer", padding:"4px" }} onClick={() => toggleExpand(c.id)}>▶</span>
                                   </div>
                                 </td>
@@ -1881,7 +1882,7 @@ export default function Contratos() {
                                       {c.itens && c.itens.length > 0 && (
                                         <div style={{ marginBottom:12 }}>
                                           <div style={{ fontSize:11, fontWeight:600, color:"var(--text-2)", marginBottom:6 }}>Itens do Contrato</div>
-                                          <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
+                                          <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
                                             <thead>
                                               <tr style={{ background:"var(--bg-page)" }}>
                                                 {["Tipo","Produto","Qtd","Unid","Vlr Unit.","Vlr Total","Classificação"].map((h,i) => (
@@ -1902,7 +1903,7 @@ export default function Contratos() {
                                                 </tr>
                                               ))}
                                             </tbody>
-                                          </table>
+                                          </OperationalGrid>
                                         </div>
                                       )}
                                       {/* Romaneios */}
@@ -1910,7 +1911,7 @@ export default function Contratos() {
                                       {c.romaneios.length === 0 ? (
                                         <div style={{ fontSize:11, color:"var(--text-3)", padding:"8px 0" }}>Nenhum romaneio lançado.</div>
                                       ) : (
-                                        <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
+                                        <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
                                           <thead>
                                             <tr style={{ background:"#FBF0D8" }}>
                                               {["Romaneio","Data","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e",""].map((h,i) => (
@@ -1932,20 +1933,20 @@ export default function Contratos() {
                                                   {r.nfe_numero ? badge(`✓ ${r.nfe_numero}`) : <span style={{ fontSize:10, background:"#FAEEDA", color:"#633806", padding:"2px 6px", borderRadius:6 }}>⟳ Gerando…</span>}
                                                 </td>
                                                 <td style={{ padding:"6px 10px", whiteSpace:"nowrap" }}>
-                                                  <button data-arato-button="secondary" onClick={e=>{e.stopPropagation();abrirEditarRomaneio(r);}} style={{ fontSize:10, padding:"2px 7px", border:"0.5px solid #1A4870", borderRadius:5, background:"transparent", color:"#1A4870", cursor:"pointer", marginRight:4 }}>✏ Editar</button>
-                                                  <button data-arato-button="secondary" onClick={e=>{e.stopPropagation();deletarRomaneio(r);}} style={{ fontSize:10, padding:"2px 7px", border:"0.5px solid #E24B4A", borderRadius:5, background:"transparent", color:"#E24B4A", cursor:"pointer" }}>🗑</button>
+                                                  <OperationalButton data-arato-button="secondary" onClick={e=>{e.stopPropagation();abrirEditarRomaneio(r);}} style={{ fontSize:10, padding:"2px 7px", border:"0.5px solid #1A4870", borderRadius:5, background:"transparent", color:"#1A4870", cursor:"pointer", marginRight:4 }}>✏ Editar</OperationalButton>
+                                                  <OperationalButton data-arato-button="secondary" onClick={e=>{e.stopPropagation();deletarRomaneio(r);}} style={{ fontSize:10, padding:"2px 7px", border:"0.5px solid #E24B4A", borderRadius:5, background:"transparent", color:"#E24B4A", cursor:"pointer" }}>🗑</OperationalButton>
                                                 </td>
                                               </tr>
                                             ))}
                                           </tbody>
-                                        </table>
+                                        </OperationalGrid>
                                       )}
                                       <div style={{ marginTop:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                                         <span style={{ fontSize:11, color:"var(--text-2)" }}>{c.romaneios.length} romaneio(s) · {(c.entregue_sc??0).toLocaleString("pt-BR")} sc expedidas · saldo {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc</span>
-                                        <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setFRom({ ...ROM_VAZIO(), contratoId: c.id }); setModalRomaneio(true); }}
+                                        <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); setFRom({ ...ROM_VAZIO(), contratoId: c.id }); setModalRomaneio(true); }}
                                           style={{ fontSize:11, padding:"5px 12px", border:"0.5px solid #111111", borderRadius:6, background:"#E8E8E8", color:"#0D0D0D", cursor:"pointer", fontWeight:600 }}>
                                           + Lançar Romaneio
-                                        </button>
+                                        </OperationalButton>
                                       </div>
 
                                       {/* ── Adiantamentos ── */}
@@ -1970,16 +1971,16 @@ export default function Contratos() {
                                                   <span style={{ background:"#DCFCE7", color:"#15803D", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>✓ Totalmente aplicado</span>
                                                 )}
                                               </div>
-                                              <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setAdiantContratoId(c.id); setFAdiant({ data:TODAY, valor:"", descricao:"" }); setModalAdiant(true); }}
+                                              <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); setAdiantContratoId(c.id); setFAdiant({ data:TODAY, valor:"", descricao:"" }); setModalAdiant(true); }}
                                                 style={{ fontSize:11, padding:"4px 10px", border:"0.5px solid #C9921B", borderRadius:6, background:"#FBF3E0", color:"#7A5A12", cursor:"pointer", fontWeight:600 }}>
                                                 + Registrar Adiantamento
-                                              </button>
+                                              </OperationalButton>
                                             </div>
                                             {adts.length === 0 ? (
                                               <div style={{ fontSize:11, color:"var(--text-muted)", fontStyle:"italic" }}>Nenhum adiantamento registrado para este contrato.</div>
                                             ) : (
                                               <>
-                                                <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:11, background:"#FAFBFD", border:"0.5px solid var(--bg-tag)", borderRadius:8, overflow:"hidden" }}>
+                                                <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:11, background:"#FAFBFD", border:"0.5px solid var(--bg-tag)", borderRadius:8, overflow:"hidden" }}>
                                                   <thead>
                                                     <tr style={{ background:"#FBF3E0" }}>
                                                       {["Data","Valor recebido","Aplicado","Saldo","Status"].map((h,i) => (
@@ -2000,7 +2001,7 @@ export default function Contratos() {
                                                       </tr>
                                                     ))}
                                                   </tbody>
-                                                </table>
+                                                </OperationalGrid>
                                                 <div style={{ display:"flex", gap:20, padding:"6px 10px", fontSize:11, color:"var(--text-2)" }}>
                                                   <span>Total recebido: <strong>{fmtR$(totalRec)}</strong></span>
                                                   <span>Aplicado em entregas: <strong>{fmtR$(totalApl)}</strong></span>
@@ -2019,7 +2020,7 @@ export default function Contratos() {
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   )}
                 </div>
               )}
@@ -2029,12 +2030,12 @@ export default function Contratos() {
                 <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
                   <div style={{ padding:"12px 16px", borderBottom:"0.5px solid var(--border-row)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <span style={{ fontSize:12, color:"var(--text-2)" }}>{todosRomaneios.length} romaneios · {todosRomaneios.reduce((a,r)=>a+(r.sacas??0),0).toLocaleString("pt-BR")} sc expedidas</span>
-                    <button data-arato-button="secondary" onClick={() => setModalRomaneio(true)} style={{ fontSize:12, padding:"5px 14px", border:"0.5px solid #111111", borderRadius:6, background:"#E8E8E8", color:"#0D0D0D", cursor:"pointer", fontWeight:600 }}>+ Novo Romaneio</button>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setModalRomaneio(true)} style={{ fontSize:12, padding:"5px 14px", border:"0.5px solid #111111", borderRadius:6, background:"#E8E8E8", color:"#0D0D0D", cursor:"pointer", fontWeight:600 }}>+ Novo Romaneio</OperationalButton>
                   </div>
                   {todosRomaneios.length === 0 ? (
                     <div style={{ padding:24, textAlign:"center", color:"#444", fontSize:12 }}>Nenhum romaneio registrado.</div>
                   ) : (
-                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
                         <tr style={{ background:"var(--bg-page)" }}>
                           {["Romaneio","Data","Contrato","Comprador","Produto","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e",""].map((h,i) => (
@@ -2075,14 +2076,14 @@ export default function Contratos() {
                                 }
                               </td>
                               <td style={{ padding:"9px 12px", whiteSpace:"nowrap" }}>
-                                <button data-arato-button="secondary" onClick={()=>abrirEditarRomaneio(r)} style={{ fontSize:10, padding:"3px 8px", border:"0.5px solid #1A4870", borderRadius:5, background:"transparent", color:"#1A4870", cursor:"pointer", marginRight:4 }}>✏ Editar</button>
-                                <button data-arato-button="secondary" onClick={()=>deletarRomaneio(r)} style={{ fontSize:10, padding:"3px 8px", border:"0.5px solid #E24B4A", borderRadius:5, background:"transparent", color:"#E24B4A", cursor:"pointer" }}>🗑</button>
+                                <OperationalButton data-arato-button="secondary" onClick={()=>abrirEditarRomaneio(r)} style={{ fontSize:10, padding:"3px 8px", border:"0.5px solid #1A4870", borderRadius:5, background:"transparent", color:"#1A4870", cursor:"pointer", marginRight:4 }}>✏ Editar</OperationalButton>
+                                <OperationalButton data-arato-button="secondary" onClick={()=>deletarRomaneio(r)} style={{ fontSize:10, padding:"3px 8px", border:"0.5px solid #E24B4A", borderRadius:5, background:"transparent", color:"#E24B4A", cursor:"pointer" }}>🗑</OperationalButton>
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   )}
                 </div>
               )}
@@ -2094,7 +2095,7 @@ export default function Contratos() {
                     <div style={{ textAlign:"center", padding:48, color:"var(--text-3)", fontSize:13 }}>Nenhum contrato ativo com saldo.</div>
                   ) : (
                     <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden" }}>
-                      <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                         <thead>
                           <tr style={{ background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)" }}>
                             <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Cultura</th>
@@ -2121,7 +2122,7 @@ export default function Contratos() {
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </OperationalGrid>
                     </div>
                   )}
                 </div>
@@ -2159,26 +2160,26 @@ export default function Contratos() {
                   </SelectField>
                 </div>
                 {viewOnly && editContrato && (
-                  <button data-arato-button="primary" onClick={() => setViewOnly(false)}
+                  <OperationalButton data-arato-button="primary" onClick={() => setViewOnly(false)}
                     style={{ padding:"5px 14px", border:"none", borderRadius:6, background:"#C9921B", color:"white", cursor:"pointer", fontSize:12, fontWeight:600 }}>
                     ✏ Editar
-                  </button>
+                  </OperationalButton>
                 )}
-                <button data-arato-button="secondary" onClick={() => setModalContrato(false)} style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:12 }}>✕ Fechar</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalContrato(false)} style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:12 }}>✕ Fechar</OperationalButton>
               </div>
             </div>
 
             {/* Abas Principal / Adicionais */}
             <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)" }}>
               {(["principal","adicionais"] as AbaForm[]).map(a => (
-                <button data-arato-tab-active={abaForm === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaForm(a)} style={{
+                <OperationalButton data-arato-tab-active={abaForm === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaForm(a)} style={{
                   padding:"9px 20px", border:"none", background:"transparent", cursor:"pointer",
                   fontWeight: abaForm===a?600:400, fontSize:13,
                   color: abaForm===a?"var(--text-1)":"var(--text-2)",
                   borderBottom: abaForm===a?"2px solid #111111":"2px solid transparent",
                 }}>
                   {a==="principal" ? "Principal" : "Adicionais"}
-                </button>
+                </OperationalButton>
               ))}
             </div>
 
@@ -2234,10 +2235,10 @@ export default function Contratos() {
                             </span>
                           )}
                           {iaVendaResultado && !iaVendaExtraindo && (
-                            <button data-arato-button="secondary" onClick={() => setIaVendaMostrarDebug(v => !v)}
+                            <OperationalButton data-arato-button="secondary" onClick={() => setIaVendaMostrarDebug(v => !v)}
                               style={{ padding: "4px 10px", background: "transparent", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 11, color: "#7A4300", cursor: "pointer" }}>
                               {iaVendaMostrarDebug ? "Ocultar" : "Ver extraído"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {iaVendaPdfNome && !iaVendaExtraindo && (
                             <span style={{ fontSize: 11, color: "#7A4300", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {iaVendaPdfNome}</span>
@@ -2582,10 +2583,10 @@ export default function Contratos() {
                   <div style={{ border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden", marginBottom:8 }}>
                     <div data-arato-dialog-heading="true" style={{ padding:"8px 14px", background:"var(--bg-page)", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens do Contrato</span>
-                      <button data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }}
-                        onClick={() => { setItens(p => [...p, itemVazio()]); setErrosContrato([]); }}>+ Item</button>
+                      <OperationalButton data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }}
+                        onClick={() => { setItens(p => [...p, itemVazio()]); setErrosContrato([]); }}>+ Item</OperationalButton>
                     </div>
-                    <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
                         <tr style={{ background:"var(--bg-card)" }}>
                           {["Tipo","Item / Produto","Peso (kg)","Equiv. (sc)", fC.moeda === "USD" ? "Valor (US$/sc)" : "Valor (R$/sc)","Valor Total",""].map((h,i) => (
@@ -2631,12 +2632,12 @@ export default function Contratos() {
                                 value={(it.valor_total??0).toLocaleString("pt-BR",{style:"currency",currency: fC.moeda === "USD" ? "USD" : "BRL"})} readOnly />
                             </td>
                             <td style={{ padding:"6px 8px", width:34 }}>
-                              {itens.length > 1 && <button data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_,i)=>i!==idx))}>✕</button>}
+                              {itens.length > 1 && <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_,i)=>i!==idx))}>✕</OperationalButton>}
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                     {/* Rodapé de totais */}
                     {(() => {
                       const fmtValor = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
@@ -2792,11 +2793,11 @@ export default function Contratos() {
                         </div>
                         {fC.local_entrega_nome && (
                           <div style={{ gridColumn:"1/-1" }}>
-                            <button data-arato-button="secondary" type="button"
+                            <OperationalButton data-arato-button="secondary" type="button"
                               onClick={() => setFC(p=>({...p, local_entrega_pessoa_id:"", local_entrega_nome:"", local_entrega_cnpj:"", local_entrega_logradouro:"", local_entrega_municipio:"", local_entrega_uf:"", local_entrega_cep:""}))}
                               style={{ fontSize:11, color:"#E24B4A", background:"none", border:"none", cursor:"pointer", padding:0 }}>
                               ✕ Limpar local de entrega (usar endereço do comprador)
-                            </button>
+                            </OperationalButton>
                           </div>
                         )}
                       </div>
@@ -2889,10 +2890,10 @@ export default function Contratos() {
                                   <label data-arato-label="true" style={lbl}>Data da Cessão</label>
                                   <InputData type="date" style={inp} value={benef.data} onChange={e => setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.map((b, i) => i===bi ? { ...b, data:e.target.value } : b) }))} />
                                 </div>
-                                <button data-arato-button="icon" type="button" onClick={() => {
+                                <OperationalButton data-arato-button="icon" type="button" onClick={() => {
                                   setFC(p => ({ ...p, cessao_beneficiarios: p.cessao_beneficiarios.filter((_, i) => i !== bi) }));
                                   setCessaoSelecionados(prev => { const n={...prev}; Object.keys(n).filter(k => n[k].fornId === benef.fornecedor_id).forEach(k => delete n[k]); return n; });
-                                }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, color:"#E24B4A", padding:"0 4px", alignSelf:"flex-end", marginBottom:2 }}>×</button>
+                                }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, color:"#E24B4A", padding:"0 4px", alignSelf:"flex-end", marginBottom:2 }}>×</OperationalButton>
                               </div>
                               <div style={{ marginTop:8 }}>
                                 <label data-arato-label="true" style={lbl}>Observação</label>
@@ -2903,20 +2904,20 @@ export default function Contratos() {
                                   Débitos vinculados: <strong>{debsBenef.length}</strong>
                                   {debsBenef.length > 0 && <span style={{ marginLeft:6, color:"#111" }}>— Total: R$ {totalBenef.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>}
                                 </span>
-                                <button data-arato-button="toggle" type="button" disabled={!benef.fornecedor_id}
+                                <OperationalButton data-arato-button="toggle" type="button" disabled={!benef.fornecedor_id}
                                   onClick={() => abrirModalCessao(benef.fornecedor_id)}
                                   style={{ padding:"5px 12px", border:"0.5px solid #111", borderRadius:6, background: benef.fornecedor_id ? "#EEEEEE" : "var(--bg-page)", color: benef.fornecedor_id ? "#111" : "var(--text-muted)", fontSize:11, fontWeight:600, cursor: benef.fornecedor_id ? "pointer" : "not-allowed" }}>
                                   Vincular Débitos CP / PC →
-                                </button>
+                                </OperationalButton>
                               </div>
                             </div>
                           );
                         })}
-                        <button data-arato-button="secondary" type="button"
+                        <OperationalButton data-arato-button="secondary" type="button"
                           onClick={() => setFC(p => ({ ...p, cessao_beneficiarios: [...p.cessao_beneficiarios, { key:`k${Date.now()}`, fornecedor_id:"", fornecedor_nome:"", data:"", obs:"" }] }))}
                           style={{ padding:"6px 14px", border:"0.5px dashed var(--border-table)", borderRadius:7, background:"transparent", color:"#1A4870", fontSize:12, fontWeight:600, cursor:"pointer", width:"100%" }}>
                           + Adicionar fornecedor beneficiário
-                        </button>
+                        </OperationalButton>
                       </div>
                     )}
                   </div>
@@ -2938,17 +2939,17 @@ export default function Contratos() {
                     Preencha antes de salvar: <strong>{errosContrato.join(", ")}</strong>
                   </div>
                 )}
-                <button data-arato-button="secondary" style={btnR} onClick={() => { setModalContrato(false); setErrosContrato([]); }}>{viewOnly ? "Fechar" : "Cancelar"}</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalContrato(false); setErrosContrato([]); }}>{viewOnly ? "Fechar" : "Cancelar"}</OperationalButton>
                 {!viewOnly && (
-                  <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarContrato}>
+                  <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarContrato}>
                     {salvando ? "Salvando…" : editContrato ? "Salvar Alterações" : "Salvar Contrato"}
-                  </button>
+                  </OperationalButton>
                 )}
                 {viewOnly && editContrato && (
-                  <button data-arato-button="primary" onClick={() => setViewOnly(false)}
+                  <OperationalButton data-arato-button="primary" onClick={() => setViewOnly(false)}
                     style={{ padding:"8px 20px", border:"none", borderRadius:8, background:"#C9921B", color:"white", cursor:"pointer", fontSize:13, fontWeight:600 }}>
                     ✏ Editar este Contrato
-                  </button>
+                  </OperationalButton>
                 )}
               </div>
             </div>
@@ -3039,7 +3040,7 @@ export default function Contratos() {
                       Padrão {produto_rom}: Umidade {clsComm.umidade_padrao}% · Impureza {clsComm.impureza_padrao}% · Avariados {clsComm.avariados_padrao}%
                     </span>
                   </div>
-                  <button data-arato-button="secondary"
+                  <OperationalButton data-arato-button="secondary"
                     type="button"
                     onClick={() => setFRom(p => ({
                       ...p,
@@ -3057,7 +3058,7 @@ export default function Contratos() {
                     style={{ fontSize:11, fontWeight:600, color:"#111111", background:"#E8E8E8", border:"0.5px solid #A8C8E8", borderRadius:6, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" }}
                   >
                     ✦ Class. Padrão
-                  </button>
+                  </OperationalButton>
                 </div>
 
                 {/* ── Umidade + Impureza + PH ── */}
@@ -3259,8 +3260,8 @@ export default function Contratos() {
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:8 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => { setModalRomaneio(false); setEditRomaneio(null); setFRom(ROM_VAZIO()); }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={gerarRomaneio}
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalRomaneio(false); setEditRomaneio(null); setFRom(ROM_VAZIO()); }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={gerarRomaneio}
                 disabled={salvando||!contratoSel||!fRom.placa||plCalc<=0}
                 title={
                   !contratoSel ? "Selecione o contrato" :
@@ -3270,7 +3271,7 @@ export default function Contratos() {
                 }
                 style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1, background: fRom.pesoEstimado ? "#C9921B" : "#1A5CB8" }}>
                 {salvando ? "Salvando…" : editRomaneio ? "Salvar Alterações" : "Confirmar Pesagem"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -3332,7 +3333,7 @@ export default function Contratos() {
                       Fornecedor: <strong>{fornNome}</strong> — selecione as CPs ou Pedidos de Compra que serão quitados.
                     </p>
                   </div>
-                  <button data-arato-button="icon" onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</OperationalButton>
                 </div>
                 <div data-arato-dialog-body="true" style={{ display:"flex", gap:16, marginTop:10, fontSize:12 }}>
                   <span>Valor do Contrato: <strong style={{ color:"#111" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
@@ -3371,7 +3372,7 @@ export default function Contratos() {
                                 <span style={{ fontSize:12, color:"#1A4870" }}>Total: R$ {totalPc.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span>
                               </div>
                               {/* CPs do pedido */}
-                              <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                                 <thead>
                                   <tr style={{ borderBottom:"0.5px solid var(--border-table)", color:"#666", textAlign:"left" }}>
                                     <th style={{ padding:"6px 8px", width:28 }}>✓</th>
@@ -3382,7 +3383,7 @@ export default function Contratos() {
                                   </tr>
                                 </thead>
                                 <tbody>{lancs.map(renderRow)}</tbody>
-                              </table>
+                              </OperationalGrid>
                             </div>
                           );
                         })}
@@ -3395,7 +3396,7 @@ export default function Contratos() {
                         {Object.keys(porPC).length > 0 && (
                           <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>CPs avulsas (sem Pedido de Compra)</div>
                         )}
-                        <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                           <thead>
                             <tr style={{ borderBottom:"0.5px solid var(--border-table)", color:"#666", textAlign:"left" }}>
                               <th style={{ padding:"8px", width:28 }}>✓</th>
@@ -3406,7 +3407,7 @@ export default function Contratos() {
                             </tr>
                           </thead>
                           <tbody>{semPC.map(renderRow)}</tbody>
-                        </table>
+                        </OperationalGrid>
                       </div>
                     )}
                   </>
@@ -3414,8 +3415,8 @@ export default function Contratos() {
               </div>
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding:"14px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalCessao(false)}>Fechar</button>
-                <button data-arato-button="primary" style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalCessao(false)}>Fechar</OperationalButton>
+                <OperationalButton data-arato-button="primary" style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</OperationalButton>
               </div>
             </div>
           </div>
@@ -3433,7 +3434,7 @@ export default function Contratos() {
                 <div data-arato-dialog-body="true" style={{ fontWeight:700, fontSize:16, color:"var(--text-1)" }}>⊘ Encerramento em Lote</div>
                 <div data-arato-dialog-body="true" style={{ fontSize:12, color:"var(--text-2)", marginTop:3 }}>Selecione as safras e a ação a realizar</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalLote(false)} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--text-3)", lineHeight:1 }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalLote(false)} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--text-3)", lineHeight:1 }}>✕</OperationalButton>
             </div>
 
             {/* tipo de ação */}
@@ -3444,7 +3445,7 @@ export default function Contratos() {
                   { id:"contratos" as const, label:"Encerrar contratos", sub:"Marca os contratos abertos como Encerrado. A safra permanece ativa." },
                   { id:"safra"     as const, label:"Encerrar safra completa", sub:"Encerra a safra e bloqueia novos lançamentos. Inclui todos os contratos abertos." },
                 ] as { id:"contratos"|"safra"; label:string; sub:string }[]).map(op => (
-                  <button data-arato-button="toggle" key={op.id} onClick={() => setLoteOp(op.id)}
+                  <OperationalButton data-arato-button="toggle" key={op.id} onClick={() => setLoteOp(op.id)}
                     style={{ flex:1, textAlign:"left", padding:"12px 14px", borderRadius:10, border: loteOp===op.id ? "2px solid #2A2A2A" : "1.5px solid var(--border-table)", background: loteOp===op.id ? "#E8E8E8" : "var(--bg-card)", cursor:"pointer" }}>
                     <div style={{ fontWeight:600, fontSize:13, color: loteOp===op.id ? "#0D0D0D" : "var(--text-1)" }}>{op.label}</div>
                     <div style={{ fontSize:11, color:"var(--text-2)", marginTop:3 }}>{op.sub}</div>
@@ -3453,7 +3454,7 @@ export default function Contratos() {
                         ⚠ Safras encerradas não aceitam novos contratos, romaneios ou operações de lavoura.
                       </div>
                     )}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -3490,10 +3491,10 @@ export default function Contratos() {
                         </div>
                       </div>
                       {isEnc && loteOp === "contratos" && (
-                        <button data-arato-button="secondary" onClick={async e => { e.stopPropagation(); if (!confirm(`Reabrir a safra "${a.descricao}"?`)) return; await reabrirAnoSafra(a.id); setAnosSafra(prev => prev.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)); }}
+                        <OperationalButton data-arato-button="secondary" onClick={async e => { e.stopPropagation(); if (!confirm(`Reabrir a safra "${a.descricao}"?`)) return; await reabrirAnoSafra(a.id); setAnosSafra(prev => prev.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)); }}
                           style={{ fontSize:11, background:"var(--bg-card)", color:"#111111", border:"0.5px solid #111111", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
                           ↩ Reabrir
-                        </button>
+                        </OperationalButton>
                       )}
                     </div>
                   );
@@ -3516,14 +3517,14 @@ export default function Contratos() {
                   : "Nenhuma safra selecionada"}
               </div>
               <div data-arato-dialog-body="true" style={{ display:"flex", gap:10 }}>
-                <button data-arato-button="secondary" onClick={() => setModalLote(false)}
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalLote(false)}
                   style={{ background:"var(--bg-card)", color:"var(--text-2)", border:"0.5px solid #CCC", borderRadius:8, padding:"9px 16px", fontSize:13, cursor:"pointer" }}>
                   Fechar
-                </button>
-                <button data-arato-button="toggle" onClick={executarLote} disabled={loteSafras.size === 0 || loteSalvando}
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={executarLote} disabled={loteSafras.size === 0 || loteSalvando}
                   style={{ background: loteSalvando||loteSafras.size===0 ? "#ccc" : loteOp==="safra" ? "#E24B4A" : "#2A2A2A", color:"#fff", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600, cursor: loteSafras.size===0||loteSalvando ? "default" : "pointer" }}>
                   {loteSalvando ? "Processando…" : loteOp==="safra" ? "⊘ Encerrar Safras Selecionadas" : "⊘ Encerrar Contratos Selecionados"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
 
@@ -3581,12 +3582,12 @@ export default function Contratos() {
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalAdiant(false)}>Cancelar</button>
-              <button data-arato-button="primary" onClick={registrarAdiantamento}
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAdiant(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={registrarAdiantamento}
                 disabled={salvandoAdiant || !adiantContratoId || !fAdiant.valor || parseFloat(fAdiant.valor||"0") <= 0}
                 style={{ ...btnV, opacity: salvandoAdiant||!adiantContratoId||!fAdiant.valor||parseFloat(fAdiant.valor||"0")<=0?0.5:1 }}>
                 {salvandoAdiant ? "Salvando…" : "Registrar Adiantamento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

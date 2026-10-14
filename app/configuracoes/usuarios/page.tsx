@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -168,7 +169,7 @@ function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onC
       <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
         <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+          <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</OperationalButton>
         </div>
         <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>{children}</div>
       </div>
@@ -204,7 +205,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
 
   return (
     <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
             <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border-row)" }}>Módulo</th>
@@ -232,12 +233,12 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                     return (
                       <td key={acao} style={{ padding: "6px 10px", textAlign: "center" }}>
                         {modsComAcao.length > 0 ? (
-                          <button data-arato-button="toggle"
+                          <OperationalButton data-arato-button="toggle"
                             onClick={() => toggleGrupo(grupo, acao)}
                             title={`${todosOn ? "Desativar" : "Ativar"} "${ACAO_META[acao].label}" em todo o grupo ${grupo}`}
                             style={{ width: 20, height: 20, borderRadius: 5, border: `0.5px solid ${todosOn ? ACAO_META[acao].cor : algumOn ? ACAO_META[acao].cor + "80" : "var(--border-table)"}`, background: todosOn ? ACAO_META[acao].bg : algumOn ? ACAO_META[acao].bg + "80" : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
                             {todosOn ? "✓" : algumOn ? "−" : ""}
-                          </button>
+                          </OperationalButton>
                         ) : <span style={{ color: "#ddd", fontSize: 10 }}>—</span>}
                       </td>
                     );
@@ -256,12 +257,12 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                         return (
                           <td key={acao} style={{ padding: "7px 10px", textAlign: "center" }}>
                             {disponivel ? (
-                              <button data-arato-button="toggle"
+                              <OperationalButton data-arato-button="toggle"
                                 onClick={() => toggle(mod.id, acao)}
                                 title={`${ativo ? "Remover" : "Conceder"} permissão "${ACAO_META[acao].label}" em ${mod.label}`}
                                 style={{ width: 22, height: 22, borderRadius: 6, border: `0.5px solid ${ativo ? ACAO_META[acao].cor : "var(--border-table)"}`, background: ativo ? ACAO_META[acao].bg : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: ativo ? ACAO_META[acao].cor : "#bbb", transition: "all 0.1s" }}>
                                 {ativo ? "✓" : ""}
-                              </button>
+                              </OperationalButton>
                             ) : (
                               <span style={{ color: "#E8ECF2", fontSize: 11 }}>—</span>
                             )}
@@ -269,11 +270,11 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                         );
                       })}
                       <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => toggleTudo(mod.id)}
                           style={{ fontSize: 10, color: tudo ? "#E24B4A" : "#16A34A", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                           {tudo ? "Nenhum" : "Tudo"}
-                        </button>
+                        </OperationalButton>
                       </td>
                     </tr>
                   );
@@ -282,7 +283,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
             );
           })}
         </tbody>
-      </table>
+      </OperationalGrid>
     </div>
   );
 }
@@ -600,21 +601,21 @@ export default function UsuariosPermissoes() {
 
       <div style={{ padding: "24px 28px", flex: 1 }}>
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>Usuários & Permissões</h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#666" }}>Gerencie os usuários e grupos de acesso desta fazenda</p>
           </div>
-          <button data-arato-button="primary"
+          <OperationalButton data-arato-button="primary"
             onClick={() => aba === "grupos" ? abrirModalGrupo() : abrirModalUser()}
             style={{ ...btnV, fontSize: 12 }}>
             + {aba === "grupos" ? "Novo Grupo" : "Novo Usuário"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {erro && (
           <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 16px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>
-            ⚠ {erro} <button data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", color: "#791F1F", cursor: "pointer", marginLeft: 8 }}>✕</button>
+            ⚠ {erro} <OperationalButton data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", color: "#791F1F", cursor: "pointer", marginLeft: 8 }}>✕</OperationalButton>
           </div>
         )}
 
@@ -624,14 +625,14 @@ export default function UsuariosPermissoes() {
             { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
             { key: "usuarios", label: `Usuários (${usuarios.length})`        },
           ] as { key: typeof aba; label: string }[]).map(a => (
-            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <OperationalButton data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
               color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
               borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
             }}>
               {a.label}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -642,7 +643,7 @@ export default function UsuariosPermissoes() {
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : grupos.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                Nenhum grupo criado. <button data-arato-button="secondary" onClick={() => abrirModalGrupo()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                Nenhum grupo criado. <OperationalButton data-arato-button="secondary" onClick={() => abrirModalGrupo()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</OperationalButton>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
@@ -657,14 +658,14 @@ export default function UsuariosPermissoes() {
                           {g.descricao && <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{g.descricao}</div>}
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button data-arato-button="secondary" onClick={() => abrirModalGrupo(g)}
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirModalGrupo(g)}
                             style={{ padding: "4px 10px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                             Editar
-                          </button>
-                          <button data-arato-button="danger" onClick={() => excluirGrupo(g.id)}
+                          </OperationalButton>
+                          <OperationalButton data-arato-button="danger" onClick={() => excluirGrupo(g.id)}
                             style={{ padding: "4px 10px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, fontSize: 11, color: "#E24B4A", cursor: "pointer" }}>
                             ✕
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
 
@@ -741,7 +742,7 @@ export default function UsuariosPermissoes() {
                   Base legal LGPD: Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação a qualquer tempo
                 </p>
               </div>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="toggle"
                 onClick={toggleRaccolto}
                 disabled={salvandoRaccolto}
                 style={{
@@ -754,13 +755,13 @@ export default function UsuariosPermissoes() {
                 }}
               >
                 {salvandoRaccolto ? "Salvando…" : raccoltoAcesso ? "Desativar Acesso" : "Ativar Acesso Raccolto"}
-              </button>
+              </OperationalButton>
             </div>
 
             {carregando ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : (
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 16 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginTop: 16 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nome", "E-mail", "Grupo de Acesso", "Status", ""].map(h => (
@@ -771,7 +772,7 @@ export default function UsuariosPermissoes() {
                 <tbody>
                   {usuarios.length === 0 && (
                     <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-                      Nenhum usuário cadastrado. <button data-arato-button="secondary" onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
+                      Nenhum usuário cadastrado. <OperationalButton data-arato-button="secondary" onClick={() => abrirModalUser()} style={{ color: "#111111", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</OperationalButton>
                     </td></tr>
                   )}
                   {usuarios.map((u, i) => {
@@ -799,21 +800,21 @@ export default function UsuariosPermissoes() {
                         </td>
                         <td style={{ padding: "11px 16px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                            <button data-arato-button="secondary" onClick={() => abrirModalUser(u)}
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrirModalUser(u)}
                               style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#111111", cursor: "pointer", fontWeight: 600 }}>
                               Editar
-                            </button>
-                            <button data-arato-button="danger" onClick={() => excluirUser(u.id)}
+                            </OperationalButton>
+                            <OperationalButton data-arato-button="danger" onClick={() => excluirUser(u.id)}
                               style={{ padding: "4px 10px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, fontSize: 11, color: "#E24B4A", cursor: "pointer" }}>
                               ✕
-                            </button>
+                            </OperationalButton>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             )}
           </div>
         )}
@@ -832,15 +833,15 @@ export default function UsuariosPermissoes() {
               <label data-arato-label="true" style={lbl}>Perfil predefinido — clique para aplicar</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                 {Object.entries(PERFIS_PRESET).map(([id, p]) => (
-                  <button data-arato-button="toggle" key={id} onClick={() => aplicarPreset(id)}
+                  <OperationalButton data-arato-button="toggle" key={id} onClick={() => aplicarPreset(id)}
                     style={{ padding: "6px 14px", border: `1.5px solid ${presetAtivo === id ? p.cor : p.cor + "40"}`, borderRadius: 8, background: presetAtivo === id ? p.cor + "18" : p.cor + "08", color: p.cor, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {presetAtivo === id ? "✓ " : ""}{p.label}
-                  </button>
+                  </OperationalButton>
                 ))}
-                <button data-arato-button="secondary" onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
+                <OperationalButton data-arato-button="secondary" onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
                   style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
                   Limpar tudo
-                </button>
+                </OperationalButton>
               </div>
               {presetAtivo && PERFIS_PRESET[presetAtivo] && (
                 <div style={{ padding: "8px 12px", background: PERFIS_PRESET[presetAtivo].cor + "08", border: `0.5px solid ${PERFIS_PRESET[presetAtivo].cor}30`, borderRadius: 8, fontSize: 11, color: "#444" }}>
@@ -858,10 +859,10 @@ export default function UsuariosPermissoes() {
           </div>
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, paddingTop: 16, borderTop: "0.5px solid var(--border-row)" }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>
               {salvando ? "Salvando…" : "Salvar Grupo"}
-            </button>
+            </OperationalButton>
           </div>
         </Modal>
       )}
@@ -893,7 +894,7 @@ export default function UsuariosPermissoes() {
                   </div>
                 </div>
               )}
-              <button data-arato-button="primary" onClick={() => setModalUser(false)} style={{ ...btnV, fontSize: 12 }}>Fechar</button>
+              <OperationalButton data-arato-button="primary" onClick={() => setModalUser(false)} style={{ ...btnV, fontSize: 12 }}>Fechar</OperationalButton>
             </div>
           )}
 
@@ -919,10 +920,10 @@ export default function UsuariosPermissoes() {
                         onChange={e => setFUser(p => ({ ...p, senha: e.target.value }))}
                         placeholder="Mín. 6 caracteres"
                       />
-                      <button data-arato-button="secondary" type="button" onClick={() => setSenhaVisivel(v => !v)}
+                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => setSenhaVisivel(v => !v)}
                         style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}>
                         {senhaVisivel ? "🙈" : "👁"}
-                      </button>
+                      </OperationalButton>
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>O usuário será solicitado a trocar essa senha no primeiro acesso.</div>
                   </div>
@@ -986,9 +987,9 @@ export default function UsuariosPermissoes() {
                         {campoPerfilExistente && (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span style={{ fontSize: 12, color: "var(--text-2)", fontFamily: "monospace" }}>{campoPerfilExistente.email}</span>
-                            <button data-arato-button="secondary" type="button" style={{ ...btnR, fontSize: 11, padding: "6px 10px" }} disabled={campoSalvando} onClick={resetarPinCampo}>
+                            <OperationalButton data-arato-button="secondary" type="button" style={{ ...btnR, fontSize: 11, padding: "6px 10px" }} disabled={campoSalvando} onClick={resetarPinCampo}>
                               Resetar PIN
-                            </button>
+                            </OperationalButton>
                           </div>
                         )}
                       </div>
@@ -1013,14 +1014,14 @@ export default function UsuariosPermissoes() {
               </div>
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
-                <button data-arato-button="primary"
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalUser(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary"
                   style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim()) ? 0.5 : 1 }}
                   disabled={salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim())}
                   onClick={salvarUser}
                 >
                   {salvando ? "Criando…" : editUser ? "Salvar" : "Criar Usuário"}
-                </button>
+                </OperationalButton>
               </div>
             </>
           )}

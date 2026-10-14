@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../components/AuthProvider";
@@ -235,7 +236,7 @@ export default function MapaPage() {
             fontSize: 12, color: msg.startsWith("Erro") ? "#B91C1C" : "#15803D",
           }}>
             {msg}
-            <button data-arato-button="icon" onClick={() => setMsg(null)} style={{ float: "right", background: "none", border: "none", cursor: "pointer", color: "inherit", fontSize: 14 }}>×</button>
+            <OperationalButton data-arato-button="icon" onClick={() => setMsg(null)} style={{ float: "right", background: "none", border: "none", cursor: "pointer", color: "inherit", fontSize: 14 }}>×</OperationalButton>
           </div>
         )}
 
@@ -301,7 +302,7 @@ export default function MapaPage() {
                         sem KML
                       </span>
                     )}
-                    <button data-arato-button="secondary"
+                    <OperationalButton data-arato-button="secondary"
                       onClick={e => { e.stopPropagation(); setUploadId(t.id); fileRef.current?.click(); }}
                       disabled={uploading}
                       style={{
@@ -310,7 +311,7 @@ export default function MapaPage() {
                       }}
                     >
                       {uploading && uploadId === t.id ? "Enviando…" : t.kml_url ? "↻ KML" : "+ KML"}
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
               );
@@ -349,7 +350,7 @@ export default function MapaPage() {
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{selecionado.nome}</div>
-              <button data-arato-button="icon" onClick={() => setSelecionado(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setSelecionado(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1 }}>×</OperationalButton>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[

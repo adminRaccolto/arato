@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import SidebarAtalhos from "../components/SidebarAtalhos";
 import OliviaWidget from "../components/OliviaWidget";
 import "./globals.css";
+import "./operational.css";
 import AppearanceProvider from "../components/AppearanceProvider";
 import LayoutProvider from "../components/LayoutProvider";
 import LayoutShell from "../components/LayoutShell";

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -176,17 +177,17 @@ export default function PendenciasOperacionais() {
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px", width: "100%" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>🔔 Central de Pendências</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
               Transferências aguardando aprovação + operações do WhatsApp sem insumo vinculado
             </p>
           </div>
-          <button data-arato-button="primary" onClick={carregar} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
+          <OperationalButton data-arato-button="primary" onClick={carregar} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
             Atualizar
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* ── Seção: Transferências de Insumos pendentes ── */}
         {solTransf.length > 0 && (
@@ -285,9 +286,9 @@ export default function PendenciasOperacionais() {
         </div>
 
         {/* Filtros */}
-        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           {(["todos", "pendente", "resolvida", "cancelada"] as const).map(s => (
-            <button data-arato-button="toggle"
+            <OperationalButton data-arato-button="toggle"
               key={s}
               onClick={() => setFiltroStatus(s)}
               style={{
@@ -298,7 +299,7 @@ export default function PendenciasOperacionais() {
               }}
             >
               {s === "todos" ? "Todos" : s === "pendente" ? "Pendentes" : s === "resolvida" ? "Resolvidas" : "Canceladas"}
-            </button>
+            </OperationalButton>
           ))}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 12, color: "#666" }}>Tipo:</span>
@@ -313,7 +314,7 @@ export default function PendenciasOperacionais() {
               ))}
             </SelectField>
           </div>
-        </div>
+        </OperationalFilters>
 
         {/* Lista */}
         {loading ? (
@@ -420,7 +421,7 @@ export default function PendenciasOperacionais() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                     {p.status === "pendente" && (
                       <>
-                        <button data-arato-button="primary"
+                        <OperationalButton data-arato-button="primary"
                           onClick={() => setModal(p)}
                           style={{
                             background: "#1A5C38", color: "#fff", border: "none",
@@ -429,8 +430,8 @@ export default function PendenciasOperacionais() {
                           }}
                         >
                           Resolver
-                        </button>
-                        <button data-arato-button="secondary"
+                        </OperationalButton>
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => setCancelId(p.id)}
                           style={{
                             background: "none", color: "#E24B4A", border: "0.5px solid #E24B4A",
@@ -439,7 +440,7 @@ export default function PendenciasOperacionais() {
                           }}
                         >
                           Cancelar
-                        </button>
+                        </OperationalButton>
                       </>
                     )}
                   </div>
@@ -464,7 +465,7 @@ export default function PendenciasOperacionais() {
                   Vincule o insumo correto para reprocessar a operação completa.
                 </p>
               </div>
-              <button data-arato-button="icon" onClick={() => setModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", padding: "0 4px" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", padding: "0 4px" }}>×</OperationalButton>
             </div>
 
             {/* Quem enviou */}
@@ -577,14 +578,14 @@ export default function PendenciasOperacionais() {
 
             {/* Botões */}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => setModal(null)}
                 disabled={resolving}
                 style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "9px 20px", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Fechar
-              </button>
-              <button data-arato-button="toggle"
+              </OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={confirmarResolucao}
                 disabled={!insumoSel || resolving}
                 style={{
@@ -595,7 +596,7 @@ export default function PendenciasOperacionais() {
                 }}
               >
                 {resolving ? "Processando..." : "Confirmar e Reprocessar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -610,20 +611,20 @@ export default function PendenciasOperacionais() {
               A operação continuará registrada mas sem o item de insumo. O custo e o estoque <strong>não</strong> serão afetados. Esta ação não pode ser desfeita.
             </p>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => setCancelId(null)}
                 disabled={canceling}
                 style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}
               >
                 Não cancelar
-              </button>
-              <button data-arato-button="danger"
+              </OperationalButton>
+              <OperationalButton data-arato-button="danger"
                 onClick={confirmarCancelamento}
                 disabled={canceling}
                 style={{ background: "#E24B4A", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700 }}
               >
                 {canceling ? "Cancelando..." : "Sim, cancelar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

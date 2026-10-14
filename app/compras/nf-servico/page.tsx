@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -855,12 +856,12 @@ export default function NfServicoPage() {
               Notas Fiscais de Serviços (NFS-e) · {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
             </div>
           </div>
-          <button data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Nova NF de Serviço</button>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Nova NF de Serviço</OperationalButton>
         </div>
 
         {/* ── Painel SIEG ── */}
         <div data-arato-panel="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 18px", marginBottom: 18 }}>
-          <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <OperationalFilters data-arato-filters="true" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginRight: 4 }}>⟳ Sincronizar SIEG — NFS-e</span>
             {siegProdutores.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -886,14 +887,14 @@ export default function NfServicoPage() {
               <input type="checkbox" checked={siegForceReimport} onChange={e => setSiegForceReimport(e.target.checked)} style={{ cursor: "pointer" }} />
               Forçar re-importação
             </label>
-            <button data-arato-button="toggle" onClick={sincronizarSiegNfse} disabled={siegSyncing}
+            <OperationalButton data-arato-button="toggle" onClick={sincronizarSiegNfse} disabled={siegSyncing}
               style={{ padding: "6px 18px", background: siegSyncing ? "var(--border-table)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
-            </button>
+            </OperationalButton>
             {siegSyncMsg && (
               <span style={{ fontSize: 12, fontWeight: 600, color: siegSyncMsg.startsWith("✗") ? "#E24B4A" : "#16A34A" }}>{siegSyncMsg}</span>
             )}
-          </div>
+          </OperationalFilters>
           {siegSyncMsg && !siegSyncMsg.startsWith("✗") && (
             <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 6 }}>
               NFS-e importadas com status <strong>Pendente</strong> — abra cada uma para classificar operação gerencial e centro de custo antes de processar.
@@ -925,7 +926,7 @@ export default function NfServicoPage() {
         </div>
 
         {/* ── Filtros — mesmo padrão da NF-e ── */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <input
             placeholder="Buscar por nº, prestador ou CPF/CNPJ do tomador…"
             value={busca} onChange={e => setBusca(e.target.value)}
@@ -961,12 +962,12 @@ export default function NfServicoPage() {
             <InputData type="month" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             {(filtroDataDe || filtroDataAte) && (
-              <button data-arato-button="icon" onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
-                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro">✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
+                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro">✕</OperationalButton>
             )}
           </div>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFilt.length} resultado{nfsFilt.length !== 1 ? "s" : ""}</span>
-        </div>
+        </OperationalFilters>
 
         {/* ── Barra de ações em lote ── */}
         {selectedNfs.size > 0 && (
@@ -974,7 +975,7 @@ export default function NfServicoPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
               {selectedNfs.size} NFS-e selecionada{selectedNfs.size > 1 ? "s" : ""}
             </span>
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={() => {
                 const sel = nfsFilt.filter(n => selectedNfs.has(n.id));
                 if (!sel.length) return;
@@ -1012,13 +1013,13 @@ export default function NfServicoPage() {
               style={{ padding: "6px 16px", background: "transparent", color: "#fff", border: "0.5px solid rgba(255,255,255,0.5)", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}
             >
               🖨 Imprimir
-            </button>
-            <button data-arato-button="secondary"
+            </OperationalButton>
+            <OperationalButton data-arato-button="secondary"
               onClick={() => setSelectedNfs(new Set())}
               style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
             >
               Limpar seleção
-            </button>
+            </OperationalButton>
           </div>
         )}
 
@@ -1030,7 +1031,7 @@ export default function NfServicoPage() {
             </div>
           ) : (
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1060 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1060 }}>
               <colgroup>
                 <col style={{ width: 36 }} />   {/* checkbox */}
                 <col style={{ width: 100 }} />  {/* Nº/Série */}
@@ -1135,9 +1136,9 @@ export default function NfServicoPage() {
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ display: "flex", gap: 7, justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
                           {/* Ver — abre em modo somente leitura */}
-                          <button data-arato-button="secondary" onClick={() => abrirEditar(nf, true)} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-1)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirEditar(nf, true)} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-1)", fontWeight: 600, whiteSpace: "nowrap" }}>
                             Ver
-                          </button>
+                          </OperationalButton>
                           {/* Recibo — comprovante interno imprimível (NFS-e não tem layout
                               nacional padronizado como a DANFE, então isto não é o documento
                               oficial da prefeitura, só um resumo organizado do que já temos) */}
@@ -1148,27 +1149,27 @@ export default function NfServicoPage() {
                           </a>
                           {/* Proc — processa (pendente/digitando) */}
                           {(nf.status === "pendente" || nf.status === "digitando") && (
-                            <button data-arato-button="primary" onClick={() => abrirEditar(nf, false)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            <OperationalButton data-arato-button="primary" onClick={() => abrirEditar(nf, false)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}>
                               Proc
-                            </button>
+                            </OperationalButton>
                           )}
                           {/* Estornar — processada */}
                           {nf.status === "processada" && (
-                            <button data-arato-button="secondary" onClick={() => estornarNf(nf)} title="Estornar NFS-e" style={{ padding: "4px 7px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 13, color: "#7A4800", lineHeight: 1 }}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => estornarNf(nf)} title="Estornar NFS-e" style={{ padding: "4px 7px", border: "0.5px solid #EF9F2750", borderRadius: 6, background: "#FEF3E2", cursor: "pointer", fontSize: 13, color: "#7A4800", lineHeight: 1 }}>
                               ↺
-                            </button>
+                            </OperationalButton>
                           )}
                           {/* Cancelar — pendente/digitando */}
                           {(nf.status === "pendente" || nf.status === "digitando") && (
-                            <button data-arato-button="icon" onClick={() => cancelarNf(nf)} title="Cancelar" style={{ padding: "4px 7px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                            <OperationalButton data-arato-button="icon" onClick={() => cancelarNf(nf)} title="Cancelar" style={{ padding: "4px 7px", border: "0.5px solid #88888840", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
                               ✕
-                            </button>
+                            </OperationalButton>
                           )}
                           {/* Excluir — ícone lixeira */}
                           {nf.status !== "cancelada" && (
-                            <button data-arato-button="danger" onClick={() => iniciarExclusao(nf)} title="Excluir" style={{ padding: "4px 7px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
+                            <OperationalButton data-arato-button="danger" onClick={() => iniciarExclusao(nf)} title="Excluir" style={{ padding: "4px 7px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
                               🗑
-                            </button>
+                            </OperationalButton>
                           )}
                         </div>
                       </td>
@@ -1176,7 +1177,7 @@ export default function NfServicoPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
             </div>
           )}
         </div>
@@ -1215,14 +1216,14 @@ export default function NfServicoPage() {
                   );
                 })}
               </div>
-              <button data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: 24 }}>
               {viewOnly && (
                 <div data-arato-dialog-heading="true" style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span>🔒 Modo visualização — clique em <strong>Editar</strong> para fazer alterações</span>
-                  <button data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</button>
+                  <OperationalButton data-arato-button="primary" onClick={() => setViewOnly(false)} style={{ padding: "4px 12px", border: "none", borderRadius: 6, background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✏ Editar</OperationalButton>
                 </div>
               )}
               {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{err}</div>}
@@ -1333,8 +1334,8 @@ export default function NfServicoPage() {
 
                 </div>
                 <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                  <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</button>
-                  {!viewOnly && <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</button>}
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</OperationalButton>
+                  {!viewOnly && <OperationalButton data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("servico"); }}>Próximo →</OperationalButton>}
                 </div>
                 </>
               )}
@@ -1385,10 +1386,10 @@ export default function NfServicoPage() {
 
                 </div>
                 <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
-                  <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</button>
+                  <OperationalButton data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("prestador"); }}>← Voltar</OperationalButton>
                   <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                    <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</button>
-                    {!viewOnly && <button data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</button>}
+                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</OperationalButton>
+                    {!viewOnly && <OperationalButton data-arato-button="toggle" style={btnV} onClick={() => { setErr(""); setEtapa("tributacao"); }}>Próximo →</OperationalButton>}
                   </div>
                 </div>
                 </>
@@ -1425,12 +1426,12 @@ export default function NfServicoPage() {
                     <div>
                       <label data-arato-label="true" style={lbl}>ISS Retido pelo Tomador?</label>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                        <button data-arato-button="toggle"
+                        <OperationalButton data-arato-button="toggle"
                           onClick={() => setCab(p=>({...p, iss_retido: !p.iss_retido}))}
                           style={{ ...toggle, background: cab.iss_retido ? "#E24B4A" : "var(--border-table)" }}
                         >
                           <div style={{ position: "absolute", top: 2, left: cab.iss_retido ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "var(--bg-card)", transition: "left 0.2s" }} />
-                        </button>
+                        </OperationalButton>
                         <span style={{ fontSize: 13, color: cab.iss_retido ? "#791F1F" : "var(--text-2)", fontWeight: cab.iss_retido ? 600 : 400 }}>
                           {cab.iss_retido ? "Retido (desconta do líquido)" : "Não retido (prestador recolhe)"}
                         </span>
@@ -1545,10 +1546,10 @@ export default function NfServicoPage() {
                     <label data-arato-label="true" style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
                     <div style={{ display: "flex", gap: 6, marginBottom: nfCondicao === "prazo" ? 10 : 0 }}>
                       {(["avista", "prazo"] as const).map(v => (
-                        <button data-arato-button="toggle" key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
+                        <OperationalButton data-arato-button="toggle" key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
                           style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${nfCondicao === v ? "#1A4870" : "var(--border-table)"}`, background: nfCondicao === v ? "#1A4870" : "var(--bg-card)", color: nfCondicao === v ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                           {v === "avista" ? "À Vista" : "Parcelado"}
-                        </button>
+                        </OperationalButton>
                       ))}
                     </div>
                     {nfCondicao === "prazo" && (
@@ -1570,10 +1571,10 @@ export default function NfServicoPage() {
                               <option value="12">Anual</option>
                             </SelectField>
                           </div>
-                          <button data-arato-button="primary" onClick={gerarParcelasServico}
+                          <OperationalButton data-arato-button="primary" onClick={gerarParcelasServico}
                             style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                             Gerar parcelas
-                          </button>
+                          </OperationalButton>
                         </div>
                         {nfParcelas.length > 0 && (
                           <div>
@@ -1622,16 +1623,16 @@ export default function NfServicoPage() {
 
                 </div>
                 <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
-                  <button data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</button>
+                  <OperationalButton data-arato-button="toggle" style={btnR} onClick={() => { setErr(""); setEtapa("servico"); }}>← Voltar</OperationalButton>
                   <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                    <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</button>
+                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Fechar</OperationalButton>
                     {!viewOnly && <>
-                      <button data-arato-button="secondary" style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
+                      <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => salvar("pendente")} disabled={saving}>
                         {saving ? "Salvando…" : "Salvar como Pendente"}
-                      </button>
-                      <button data-arato-button="toggle" style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
+                      </OperationalButton>
+                      <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: saving ? "#ccc" : "#111111" }} onClick={() => salvar("processada")} disabled={saving}>
                         {saving ? "Processando…" : "✓ Processar NF"}
-                      </button>
+                      </OperationalButton>
                     </>}
                   </div>
                 </div>
@@ -1655,7 +1656,7 @@ export default function NfServicoPage() {
                   A NFS-e <strong>{modalExcluir.nf.numero_nf}</strong> possui um lançamento financeiro que já foi <strong>baixado (pago)</strong>. Não é possível excluir — estorne o pagamento no Contas a Pagar primeiro.
                 </div>
                 <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)}>Fechar</OperationalButton>
                 </div>
               </>
             ) : (
@@ -1674,14 +1675,14 @@ export default function NfServicoPage() {
                 </div>
 
                 <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</OperationalButton>
+                  <OperationalButton data-arato-button="toggle"
                     onClick={confirmarExclusao}
                     disabled={modalExcluir.excluindo}
                     style={{ padding: "8px 18px", background: modalExcluir.excluindo ? "var(--text-muted)" : "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: modalExcluir.excluindo ? "default" : "pointer", fontSize: 13 }}
                   >
                     {modalExcluir.excluindo ? "Excluindo…" : "Confirmar Exclusão"}
-                  </button>
+                  </OperationalButton>
                 </div>
               </>
             )}

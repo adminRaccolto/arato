@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -150,7 +151,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
         </div>
         <div ref={dropdownRef} style={{ position: "relative" }}>
           <label data-arato-label="true" style={lbl}>Ciclos</label>
-          <button data-arato-button="secondary" onClick={() => setDropdownAberto(v => !v)} style={{
+          <OperationalButton data-arato-button="secondary" onClick={() => setDropdownAberto(v => !v)} style={{
             ...inp, display: "flex", justifyContent: "space-between", alignItems: "center",
             cursor: "pointer", textAlign: "left", background: "var(--bg-card)",
           }}>
@@ -160,7 +161,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                 : `${ciclosSel.length} ciclo${ciclosSel.length !== 1 ? "s" : ""} selecionado${ciclosSel.length !== 1 ? "s" : ""}${areaTotal > 0 ? ` · ${fmtNum(areaTotal, 0)} ha` : ""}`}
             </span>
             <span style={{ color: "var(--text-3)", fontSize: 11 }}>{dropdownAberto ? "▲" : "▼"}</span>
-          </button>
+          </OperationalButton>
 
           {dropdownAberto && (
             <div style={{
@@ -175,17 +176,17 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                   placeholder="Buscar por fazenda ou ciclo…"
                   style={{ ...inp, flex: 1, padding: "6px 8px", fontSize: 12 }}
                 />
-                <button data-arato-button="secondary" onClick={() => setCicloIds(ciclosFiltrados.map(c => c.id))}
+                <OperationalButton data-arato-button="secondary" onClick={() => setCicloIds(ciclosFiltrados.map(c => c.id))}
                   style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
                   Todos
-                </button>
-                <button data-arato-button="secondary" onClick={() => setCicloIds([])}
+                </OperationalButton>
+                <OperationalButton data-arato-button="secondary" onClick={() => setCicloIds([])}
                   style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", whiteSpace: "nowrap" }}>
                   Limpar
-                </button>
+                </OperationalButton>
               </div>
               <div style={{ overflowY: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ position: "sticky", top: 0, background: "var(--bg-page)" }}>
                       <th style={{ width: 32 }} />
@@ -221,7 +222,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                       <tr><td colSpan={4} style={{ padding: 16, textAlign: "center", fontSize: 12, color: "#999" }}>Nenhum ciclo cadastrado</td></tr>
                     )}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           )}
@@ -453,17 +454,17 @@ function CustosInner() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Custos</div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
               {aba === "dre" ? "DRE Agrícola" : aba === "custoha" ? "Custo / ha" : aba === "produtividade" ? "Produtividade" : "Custos Totais"}
             </h1>
           </div>
-          <button data-arato-button="primary" onClick={() => window.print()} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <OperationalButton data-arato-button="primary" onClick={() => window.print()} style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Exportar PDF
-          </button>
-        </header>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* Barra de filtros (todas as abas) */}
         {!initLoading && aba !== "produtividade" && (
@@ -523,7 +524,7 @@ function CustosInner() {
                     </div>
                   </div>
 
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Conta", "Total (R$)", "R$/ha", "R$/sc", "% Receita"].map((h, i) => (
@@ -627,7 +628,7 @@ function CustosInner() {
                         </td>
                       </tr>
                     </tbody>
-                  </table>
+                  </OperationalGrid>
 
                   {/* Ponto de equilíbrio */}
                   {totalSacas > 0 && precoMedioSc > 0 && (

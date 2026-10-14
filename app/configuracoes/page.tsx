@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -210,7 +211,7 @@ function ConfiguracoesInner() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
@@ -220,14 +221,14 @@ function ConfiguracoesInner() {
             </div>
           </div>
           {diasCertMin !== null && diasCertMin <= 30 && (
-            <button data-arato-button="toggle"
+            <OperationalButton data-arato-button="toggle"
               onClick={() => { setAba("certificado"); window.history.replaceState({}, "", "/configuracoes?tab=certificado"); }}
               style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, fontSize: 12, color: "#791F1F", cursor: "pointer", fontWeight: 600 }}
             >
               Certificado A1 vence em {diasCertMin}d — Renovar
-            </button>
+            </OperationalButton>
           )}
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding: "20px 22px", flex: 1, overflowY: "auto" }}>
 
@@ -250,13 +251,13 @@ function ConfiguracoesInner() {
                   </p>
                   <p style={{ margin: "5px 0 0", fontSize: 10, color: "var(--text-muted)" }}>LGPD Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação</p>
                 </div>
-                <button data-arato-button="toggle"
+                <OperationalButton data-arato-button="toggle"
                   onClick={toggleRaccolto}
                   disabled={salvandoRaccolto}
                   style={{ flexShrink: 0, padding: "8px 18px", borderRadius: 8, border: `1px solid ${raccoltoAcesso ? "#E24B4A" : "#111111"}`, background: raccoltoAcesso ? "#FCEBEB" : "#111111", color: raccoltoAcesso ? "#791F1F" : "#fff", fontWeight: 700, fontSize: 13, cursor: salvandoRaccolto ? "wait" : "pointer", whiteSpace: "nowrap" }}
                 >
                   {salvandoRaccolto ? "Salvando…" : raccoltoAcesso ? "Desativar" : "Ativar Acesso Raccolto"}
-                </button>
+                </OperationalButton>
               </div>
 
               {/* Cotação e Basis */}
@@ -286,9 +287,9 @@ function ConfiguracoesInner() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button data-arato-button="primary" onClick={salvarBasis} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                  <OperationalButton data-arato-button="primary" onClick={salvarBasis} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                     Salvar
-                  </button>
+                  </OperationalButton>
                   {basisSalvo && <span style={{ fontSize: 12, color: "#1A5C38", fontWeight: 600 }}>Salvo — dashboard atualizado</span>}
                   <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>Configuração salva localmente neste navegador</span>
                 </div>
@@ -310,7 +311,7 @@ function ConfiguracoesInner() {
                     { key: "custo",   label: "Custos",   count: contas.filter(c => c.tipo === "custo").length },
                     { key: "despesa", label: "Despesas", count: contas.filter(c => c.tipo === "despesa").length },
                   ] as { key: typeof filtroContas; label: string; count: number }[]).map(f => (
-                    <button data-arato-button="toggle" key={f.key} onClick={() => setFiltroContas(f.key)} style={{
+                    <OperationalButton data-arato-button="toggle" key={f.key} onClick={() => setFiltroContas(f.key)} style={{
                       padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
                       borderColor: filtroContas === f.key ? "#111111" : "var(--border-table)",
                       background: filtroContas === f.key ? "#E8E8E8" : "transparent",
@@ -318,7 +319,7 @@ function ConfiguracoesInner() {
                       fontWeight: filtroContas === f.key ? 600 : 400, fontSize: 12, cursor: "pointer",
                     }}>
                       {f.label} <span style={{ fontSize: 10, marginLeft: 3, background: filtroContas === f.key ? "#111111" : "var(--border-row)", color: filtroContas === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 6 }}>{f.count}</span>
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -326,7 +327,7 @@ function ConfiguracoesInner() {
                     <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>{contas.filter(c => c.lcdpr).length}</span>
                     vinculadas ao LCDPR
                   </span>
-                  <button data-arato-button="secondary"
+                  <OperationalButton data-arato-button="secondary"
                     onClick={() => {
                       const linhas = contasFiltradas.map(c => {
                         const ct = corTipoConta(c.tipo);
@@ -358,14 +359,14 @@ function ConfiguracoesInner() {
                     }}
                     className="no-print"
                     style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}
-                  >Imprimir</button>
-                  <button data-arato-button="secondary" onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
+                  >Imprimir</OperationalButton>
+                  <OperationalButton data-arato-button="secondary" onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
                     + Nova conta
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
 
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Código", "Nome da conta", "Tipo", "Natureza", "Operacional", "LCDPR", ""].map((h, i) => (
@@ -400,20 +401,20 @@ function ConfiguracoesInner() {
                             : <span style={{ fontSize: 10, color: "#ccc" }}>—</span>}
                         </td>
                         <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          <button data-arato-button="secondary" onClick={() => abrirEditarConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirEditarConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
-                          </button>
+                          </OperationalButton>
                           {!isGrupo && (
-                            <button data-arato-button="icon" onClick={() => excluirConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
+                            <OperationalButton data-arato-button="icon" onClick={() => excluirConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #E24B4A30", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
                               ×
-                            </button>
+                            </OperationalButton>
                           )}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           )}
 
@@ -427,12 +428,12 @@ function ConfiguracoesInner() {
                     {certs.length === 0 ? "Nenhum certificado configurado" : `${certs.length} certificado${certs.length > 1 ? "s" : ""} — um por produtor/titular`}
                   </div>
                 </div>
-                <button data-arato-button="primary"
+                <OperationalButton data-arato-button="primary"
                   onClick={() => { setCertProdutorId(produtores.length === 1 ? produtores[0].id : ""); setModalCert(true); }}
                   style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
                 >
                   + Adicionar certificado
-                </button>
+                </OperationalButton>
               </div>
 
               {certs.length === 0 ? (
@@ -467,9 +468,9 @@ function ConfiguracoesInner() {
                             <span style={{ fontSize: 11, color: "#EF9F27" }}>Vencimento não informado</span>
                           )}
                         </div>
-                        <button data-arato-button="secondary" onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "transparent", color: "#111111", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                        <OperationalButton data-arato-button="secondary" onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }} style={{ padding: "7px 16px", border: "0.5px solid #111111", borderRadius: 8, background: "transparent", color: "#111111", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                           Atualizar
-                        </button>
+                        </OperationalButton>
                       </div>
                     );
                   })}
@@ -563,11 +564,11 @@ function ConfiguracoesInner() {
               </div>
             )}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => { setModalConta(false); setErroConta(null); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim() || salvConta}
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalConta(false); setErroConta(null); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim() || salvConta}
                 style={{ padding: "8px 20px", background: formConta.codigo.trim() && formConta.nome.trim() ? "#1A5C38" : "#999", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvConta ? "Salvando…" : contaEditCod ? "Salvar alterações" : "Criar conta"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -609,7 +610,7 @@ function ConfiguracoesInner() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#166534", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{certFile.name}</div>
                       <div style={{ fontSize: 11, color: "#166534" }}>{(certFile.size / 1024).toFixed(1)} KB</div>
                     </div>
-                    <button data-arato-button="icon" onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontSize: 18, padding: "0 4px" }}>×</button>
+                    <OperationalButton data-arato-button="icon" onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontSize: 18, padding: "0 4px" }}>×</OperationalButton>
                   </div>
                 ) : (
                   <div
@@ -650,11 +651,11 @@ function ConfiguracoesInner() {
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={fecharModalCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={carregarCertificado} disabled={!certFile || !certSenha.trim() || certCarregando || certSucesso}
+              <OperationalButton data-arato-button="secondary" onClick={fecharModalCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={carregarCertificado} disabled={!certFile || !certSenha.trim() || certCarregando || certSucesso}
                 style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: (!certFile || !certSenha.trim() || certCarregando) ? "not-allowed" : "pointer", fontSize: 13, opacity: (!certFile || !certSenha.trim() || certCarregando) ? 0.5 : 1 }}>
                 {certCarregando ? "Carregando..." : "Carregar certificado"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

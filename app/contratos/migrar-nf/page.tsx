@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -194,7 +195,7 @@ export default function MigrarNF() {
                 Romaneio {romaneioSel?.numero} — NF-e {romaneioSel?.nfe_numero ?? "s/n"} foi migrado de{" "}
                 <strong>{contratoOrigem?.numero}</strong> para <strong>{contratoDestino?.numero}</strong>.
               </div>
-              <button data-arato-button="secondary" onClick={reiniciar} style={btn(true)}>Nova Migração</button>
+              <OperationalButton data-arato-button="secondary" onClick={reiniciar} style={btn(true)}>Nova Migração</OperationalButton>
             </div>
           ) : (
             <div style={{ padding: 24 }}>
@@ -220,9 +221,9 @@ export default function MigrarNF() {
                     </div>
                   )}
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-                    <button data-arato-button="secondary" onClick={() => setPasso(2)} style={btn(!!contratoOrigemId)} disabled={!contratoOrigemId}>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setPasso(2)} style={btn(!!contratoOrigemId)} disabled={!contratoOrigemId}>
                       Próximo →
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
               )}
@@ -269,8 +270,8 @@ export default function MigrarNF() {
                     </div>
                   )}
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-                    <button data-arato-button="primary" onClick={() => setPasso(1)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
-                    <button data-arato-button="secondary" onClick={() => setPasso(3)} style={btn(!!romaneioId)} disabled={!romaneioId}>Próximo →</button>
+                    <OperationalButton data-arato-button="primary" onClick={() => setPasso(1)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</OperationalButton>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setPasso(3)} style={btn(!!romaneioId)} disabled={!romaneioId}>Próximo →</OperationalButton>
                   </div>
                 </div>
               )}
@@ -314,8 +315,8 @@ export default function MigrarNF() {
                       style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
                   </div>
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-                    <button data-arato-button="primary" onClick={() => setPasso(2)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
-                    <button data-arato-button="secondary" onClick={() => setPasso(4)} style={btn(!!contratoDestinoId)} disabled={!contratoDestinoId}>Revisar →</button>
+                    <OperationalButton data-arato-button="primary" onClick={() => setPasso(2)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</OperationalButton>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setPasso(4)} style={btn(!!contratoDestinoId)} disabled={!contratoDestinoId}>Revisar →</OperationalButton>
                   </div>
                 </div>
               )}
@@ -379,10 +380,10 @@ export default function MigrarNF() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <button data-arato-button="primary" onClick={() => setPasso(3)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
-                    <button data-arato-button="primary" onClick={executarMigracao} disabled={executando} style={{ ...btn(true), background: "#16A34A", opacity: executando ? 0.7 : 1 }}>
+                    <OperationalButton data-arato-button="primary" onClick={() => setPasso(3)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</OperationalButton>
+                    <OperationalButton data-arato-button="primary" onClick={executarMigracao} disabled={executando} style={{ ...btn(true), background: "#16A34A", opacity: executando ? 0.7 : 1 }}>
                       {executando ? "Migrando…" : "✓ Confirmar Migração"}
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
               )}

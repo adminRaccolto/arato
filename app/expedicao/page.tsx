@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -494,12 +495,12 @@ export default function Expedicao() {
             <div style={{ background: "var(--bg-card)", padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <button data-arato-button="secondary"
+                  <OperationalButton data-arato-button="secondary"
                     onClick={() => { setContratoSel(null); setCargas([]); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, padding: 0, lineHeight: 1 }}
                   >
                     ←
-                  </button>
+                  </OperationalButton>
                   <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "monospace", color: "#111111" }}>{contratoSel.numero}</span>
                   <span style={{ fontSize: 13, color: "var(--text-2)" }}>—</span>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{contratoSel.comprador}</span>
@@ -508,12 +509,12 @@ export default function Expedicao() {
                   {contratoSel.produto} · {contratoSel.safra} · {contratoSel.modalidade ?? "—"}
                 </div>
               </div>
-              <button data-arato-button="primary"
+              <OperationalButton data-arato-button="primary"
                 onClick={() => { setNova({ data_saida: hoje(), rota: "direto_comprador", destino_razao_social: contratoSel.comprador }); setModalNova(true); }}
                 style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 + Nova Carga
-              </button>
+              </OperationalButton>
             </div>
 
             {/* KPIs do contrato */}
@@ -538,17 +539,17 @@ export default function Expedicao() {
                 <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                   Nenhuma carga registrada para este contrato.
                   <br />
-                  <button data-arato-button="primary"
+                  <OperationalButton data-arato-button="primary"
                     onClick={() => { setNova({ data_saida: hoje(), rota: "direto_comprador", destino_razao_social: contratoSel.comprador }); setModalNova(true); }}
                     style={{ marginTop: 14, padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   >
                     Registrar primeira carga
-                  </button>
+                  </OperationalButton>
                 </div>
               )}
               {!carregandoC && cargas.length > 0 && (
                 <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Nº Carga","Data","Rota","Peso Liq. (kg)","NF-e","MDF-e","Status","Ações"].map(h => (
@@ -586,10 +587,10 @@ export default function Expedicao() {
                               {c.nfe_chave ? (
                                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                   <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{c.nfe_numero} ✔</span>
-                                  <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setModalDanfe(c); }}
+                                  <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); setModalDanfe(c); }}
                                     style={{ padding: "1px 7px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
                                     Ver
-                                  </button>
+                                  </OperationalButton>
                                 </div>
                               ) : c.rota === "transbordo_sem_nf"
                                 ? <span style={{ fontSize: 11, color: "var(--text-3)" }}>N/A</span>
@@ -610,34 +611,34 @@ export default function Expedicao() {
                             <td style={{ padding: "9px 12px" }} onClick={e => e.stopPropagation()}>
                               <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
                                 {c.rota !== "transbordo_sem_nf" && !c.nfe_chave && (
-                                  <button data-arato-button="primary" onClick={() => irParaFaturamento(c)}
+                                  <OperationalButton data-arato-button="primary" onClick={() => irParaFaturamento(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Faturar →
-                                  </button>
+                                  </OperationalButton>
                                 )}
                                 {c.nfe_chave && (
-                                  <button data-arato-button="secondary" onClick={() => setModalDanfe(c)}
+                                  <OperationalButton data-arato-button="secondary" onClick={() => setModalDanfe(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #111111", background: "#E8E8E8", color: "#111111", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Ver NF-e
-                                  </button>
+                                  </OperationalButton>
                                 )}
                                 {!c.mdfe_chave && (
-                                  <button data-arato-button="secondary" onClick={() => setModalMdfe(c)}
+                                  <OperationalButton data-arato-button="secondary" onClick={() => setModalMdfe(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#C9921B", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     MDF-e
-                                  </button>
+                                  </OperationalButton>
                                 )}
                                 {(c.status === "entregue" || c.status === "corrigindo_peso") && !c.peso_liquido_destino_kg && (
-                                  <button data-arato-button="secondary" onClick={() => { setModalPeso(c); setPesoDestino(""); setObsCorrecao(""); }}
+                                  <OperationalButton data-arato-button="secondary" onClick={() => { setModalPeso(c); setPesoDestino(""); setObsCorrecao(""); }}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #E24B4A", background: "#FEE2E2", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                                     Peso
-                                  </button>
+                                  </OperationalButton>
                                 )}
                                 {c.status !== "encerrada" && (
-                                  <button data-arato-button="secondary" onClick={() => avancarStatus(c)}
+                                  <OperationalButton data-arato-button="secondary" onClick={() => avancarStatus(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "#333", fontSize: 11, cursor: "pointer" }}>
                                     →
-                                  </button>
+                                  </OperationalButton>
                                 )}
                               </div>
                             </td>
@@ -645,7 +646,7 @@ export default function Expedicao() {
                         );
                       })}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
               )}
             </div>
@@ -664,7 +665,7 @@ export default function Expedicao() {
                 <h3 data-arato-h3="true" style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>Nova Carga</h3>
                 <div style={{ fontSize: 12, color: "var(--text-3)" }}>Contrato {contratoSel?.numero} — {contratoSel?.comprador}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             {/* Seleção de rota */}
@@ -672,7 +673,7 @@ export default function Expedicao() {
               <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 8 }}>Rota *</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {(["transbordo_sem_nf","transbordo_com_remessa","direto_comprador"] as RotaCarga[]).map(r => (
-                  <button data-arato-button="toggle" key={r} onClick={() => setNova(p => ({ ...p, rota: r }))}
+                  <OperationalButton data-arato-button="toggle" key={r} onClick={() => setNova(p => ({ ...p, rota: r }))}
                     style={{
                       padding: "11px 10px", borderRadius: 8, cursor: "pointer", textAlign: "center",
                       border: nova.rota === r ? "2px solid #111111" : "0.5px solid var(--border)",
@@ -688,7 +689,7 @@ export default function Expedicao() {
                        r === "transbordo_com_remessa" ? "Transbordo\nCFOP 5905" :
                        "Direto Comprador\nCFOP 6101"}
                     </div>
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -753,11 +754,11 @@ export default function Expedicao() {
             )}
             {campo("Observação", inp({ value: nova.observacao ?? "", onChange: e => setNova(p => ({ ...p, observacao: e.target.value })) }))}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button data-arato-button="secondary" onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarNovaCarga} disabled={saving || !nova.rota}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarNovaCarga} disabled={saving || !nova.rota}
                 style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {saving ? "Salvando..." : "Registrar Carga"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -779,7 +780,7 @@ export default function Expedicao() {
                   </span>
                 </div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalCarga(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalCarga(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             {/* Pipeline */}
@@ -833,14 +834,14 @@ export default function Expedicao() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>Série {modalCarga.nfe_serie} Nº {modalCarga.nfe_numero} — Autorizada</div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button data-arato-button="secondary" onClick={() => { setModalDanfe(modalCarga); setModalCarga(null); }}
+                        <OperationalButton data-arato-button="secondary" onClick={() => { setModalDanfe(modalCarga); setModalCarga(null); }}
                           style={{ padding: "3px 10px", background: "#E8E8E8", color: "#111111", border: "0.5px solid #111111", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                           Ver / Imprimir
-                        </button>
-                        <button data-arato-button="secondary" onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
+                        </OperationalButton>
+                        <OperationalButton data-arato-button="secondary" onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
                           style={{ padding: "3px 10px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border)", borderRadius: 5, fontSize: 11, cursor: "pointer" }}>
                           Monitor NF-e
-                        </button>
+                        </OperationalButton>
                       </div>
                     </div>
                     <div style={{ fontSize: 10, fontFamily: "monospace", color: "var(--text-3)", marginTop: 4, wordBreak: "break-all" }}>{modalCarga.nfe_chave}</div>
@@ -850,10 +851,10 @@ export default function Expedicao() {
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
-                    <button data-arato-button="primary" onClick={() => { irParaFaturamento(modalCarga); setModalCarga(null); }}
+                    <OperationalButton data-arato-button="primary" onClick={() => { irParaFaturamento(modalCarga); setModalCarga(null); }}
                       style={{ padding: "4px 12px", background: "#D5E8F5", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       Faturar →
-                    </button>
+                    </OperationalButton>
                   </div>
                 )}
               </div>
@@ -868,10 +869,10 @@ export default function Expedicao() {
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12, color: "#EF9F27" }}>Pendente</span>
-                    <button data-arato-button="secondary" onClick={() => { setModalMdfe(modalCarga); setModalCarga(null); }}
+                    <OperationalButton data-arato-button="secondary" onClick={() => { setModalMdfe(modalCarga); setModalCarga(null); }}
                       style={{ padding: "4px 12px", background: "#FBF3E0", color: "#C9921B", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                       Emitir MDF-e
-                    </button>
+                    </OperationalButton>
                   </div>
                 )}
               </div>
@@ -880,18 +881,18 @@ export default function Expedicao() {
             {/* Ações */}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               {(modalCarga.status === "entregue" || modalCarga.status === "corrigindo_peso") && !modalCarga.peso_liquido_destino_kg && (
-                <button data-arato-button="secondary" onClick={() => { setModalPeso(modalCarga); setModalCarga(null); setPesoDestino(""); setObsCorrecao(""); }}
+                <OperationalButton data-arato-button="secondary" onClick={() => { setModalPeso(modalCarga); setModalCarga(null); setPesoDestino(""); setObsCorrecao(""); }}
                   style={{ padding: "8px 16px", background: "#FEE2E2", color: "#B91C1C", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Informar Peso Destino
-                </button>
+                </OperationalButton>
               )}
               {modalCarga.status !== "encerrada" && (
-                <button data-arato-button="primary" onClick={() => { avancarStatus(modalCarga); setModalCarga(null); }}
+                <OperationalButton data-arato-button="primary" onClick={() => { avancarStatus(modalCarga); setModalCarga(null); }}
                   style={{ padding: "8px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Avançar Status →
-                </button>
+                </OperationalButton>
               )}
-              <button data-arato-button="secondary" onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</OperationalButton>
             </div>
           </div>
         </div>
@@ -910,11 +911,11 @@ export default function Expedicao() {
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Documento Auxiliar da NF-e — {modalDanfe.numero}</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button data-arato-button="primary" onClick={() => window.print()}
+                <OperationalButton data-arato-button="primary" onClick={() => window.print()}
                   style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   🖨 Imprimir
-                </button>
-                <button data-arato-button="icon" onClick={() => setModalDanfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+                </OperationalButton>
+                <OperationalButton data-arato-button="icon" onClick={() => setModalDanfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
               </div>
             </div>
 
@@ -958,7 +959,7 @@ export default function Expedicao() {
               {/* Produto */}
               <div style={{ border: "0.5px solid #999", borderRadius: 4, marginBottom: 12 }}>
                 <div style={{ background: "var(--bg-page)", padding: "5px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase" }}>Produtos / Serviços</div>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Descrição", "NCM", "CFOP", "Qtd", "Un", "Peso Líq. (kg)", "Sacas"].map(h => (
@@ -981,7 +982,7 @@ export default function Expedicao() {
                       <td style={{ padding: "6px 8px" }}>{modalDanfe.peso_liquido_kg != null ? (modalDanfe.peso_liquido_kg / 60).toFixed(1) : "—"}</td>
                     </tr>
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
 
               {/* Pesagem */}
@@ -1013,8 +1014,8 @@ export default function Expedicao() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-              <button data-arato-button="secondary" onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
-              <button data-arato-button="primary" onClick={() => window.print()} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={() => window.print()} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</OperationalButton>
             </div>
           </div>
         </div>
@@ -1028,7 +1029,7 @@ export default function Expedicao() {
           <div style={box(500)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Correção de Peso — {modalPeso.numero}</h3>
-              <button data-arato-button="icon" onClick={() => setModalPeso(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalPeso(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px", marginBottom: 18, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[["Produto", modalPeso.produto], ["Peso Liq. Origem", `${fmt(modalPeso.peso_liquido_kg)} kg`],
@@ -1058,11 +1059,11 @@ export default function Expedicao() {
               {campo("Observação", inp({ value: obsCorrecao, onChange: e => setObsCorrecao(e.target.value), placeholder: "Ex: classificação destino, reclamação..." }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button data-arato-button="secondary" onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarCorrecaoPeso} disabled={!pesoDestino || saving}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarCorrecaoPeso} disabled={!pesoDestino || saving}
                 style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: pesoDestino ? "pointer" : "not-allowed" }}>
                 {saving ? "Salvando..." : "Confirmar e Encerrar Carga"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1079,7 +1080,7 @@ export default function Expedicao() {
                 <h3 data-arato-h3="true" style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>Emitir MDF-e</h3>
                 <div style={{ fontSize: 12, color: "var(--text-3)" }}>Carga {modalMdfe.numero} — {modalMdfe.produto}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalMdfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalMdfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             {modalMdfe.nfe_chave ? (
               <div style={{ background: "#DCFCE7", border: "0.5px solid #16A34A", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12 }}>
@@ -1098,12 +1099,12 @@ export default function Expedicao() {
               A emissão de verdade (veículo, motorista, percurso, UF início/fim, CIOT, assinatura e transmissão à SEFAZ) acontece na tela de MDF-e do módulo Transporte — clique abaixo para continuar com a NF-e já selecionada. Quando autorizado lá, esta carga é atualizada automaticamente.
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button data-arato-button="secondary" onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
               {modalMdfe.nfe_chave && (
-                <button data-arato-button="primary" onClick={() => irParaMdfeReal(modalMdfe)}
+                <OperationalButton data-arato-button="primary" onClick={() => irParaMdfeReal(modalMdfe)}
                   style={{ padding: "8px 22px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   Ir para emissão real do MDF-e →
-                </button>
+                </OperationalButton>
               )}
             </div>
           </div>

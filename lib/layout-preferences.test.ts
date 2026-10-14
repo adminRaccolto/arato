@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
-import { DENSITY_KEY, LAYOUT_KEY, LAYOUT_SCRIPT, hasClientWorkspace, isClientLayout, isPublicLayout, preferenceKey, validDensity, validLayout } from "./layout-preferences";
+import { DENSITY_KEY, LAYOUT_CHOICE_KEY, LAYOUT_KEY, LAYOUT_SCRIPT, OPERATIONAL_UI_KEY, hasClientWorkspace, isClientLayout, isPublicLayout, preferenceKey, savedLayout, validDensity, validLayout } from "./layout-preferences";
 import { NAV, type NavItem } from "./navigation";
 import { activeDestination, canShowLink, modernNavigation } from "./modern-navigation";
 function destinations(source: NavItem[]): Set<string> {
@@ -52,6 +52,42 @@ test("bootstrap restaura o modelo antes da hidratação e suporta storage bloque
     assert.equal(root.dataset.gridDensity, blocked ? "comfortable" : "compact");
     assert.equal(root.dataset.layoutWorkspace, "false");
   }
+});
+test("primeiro acesso e ativação automática anterior conservam o modelo atual", () => {
+  for (const migrated of [false, true]) {
+    const root = { dataset: {} as Record<string, string> };
+    runInNewContext(LAYOUT_SCRIPT, { document: { documentElement: root }, localStorage: { getItem: (key: string) => key === OPERATIONAL_UI_KEY ? migrated ? "1" : null : key === LAYOUT_KEY && migrated ? "new" : null } });
+    assert.equal(root.dataset.layout, "current");
+    assert.equal(root.dataset.layoutWorkspace, "false");
+  }
+});
+test("escolha explícita é respeitada antes da hidratação, inclusive depois do rollout automático", () => {
+  for (const choice of ["new", "current"]) {
+    const root = { dataset: {} as Record<string, string> };
+    runInNewContext(LAYOUT_SCRIPT, { document: { documentElement: root }, localStorage: { getItem: (key: string) => key === LAYOUT_CHOICE_KEY ? choice : key === OPERATIONAL_UI_KEY ? "1" : key === LAYOUT_KEY ? "new" : null } });
+    assert.equal(root.dataset.layout, choice);
+  }
+});
+test("ativação automática e densidade compacta não representam escolha do usuário", () => {
+  const email = "cliente@exemplo.com";
+  const values = new Map([[preferenceKey(email, OPERATIONAL_UI_KEY), "1"], [preferenceKey(email, LAYOUT_KEY), "new"], [preferenceKey(email, DENSITY_KEY), "compact"]]);
+  const storage = { getItem: (key: string) => values.get(key) ?? null };
+  assert.equal(savedLayout(storage, email), "current");
+  values.set(preferenceKey(email, LAYOUT_CHOICE_KEY), "new");
+  assert.equal(savedLayout(storage, email), "new");
+  values.set(preferenceKey(email, LAYOUT_CHOICE_KEY), "current");
+  assert.equal(savedLayout(storage, email), "current");
+});
+test("a escolha de um usuário não ativa o novo modelo para outro", () => {
+  const first = "primeiro@exemplo.com", second = "segundo@exemplo.com";
+  const values = new Map([[LAYOUT_CHOICE_KEY, "new"], [LAYOUT_KEY, "new"], [preferenceKey(first, LAYOUT_CHOICE_KEY), "new"]]);
+  const storage = { getItem: (key: string) => values.get(key) ?? null };
+  assert.equal(savedLayout(storage, first), "new");
+  assert.equal(savedLayout(storage, second), "current");
+});
+test("uma escolha manual anterior à ativação automática permanece válida", () => {
+  const email = "legado@exemplo.com";
+  assert.equal(savedLayout({ getItem: key => key === preferenceKey(email, LAYOUT_KEY) ? "new" : null }, email), "new");
 });
 test("seleção e gestão interna usam o layout original mesmo com cliente anterior selecionado", () => {
   for (const path of ["/seletor-cliente", "/raccotlo", "/admin", "/admin/clientes", "/bpo/seletor-cliente", "/bpo/admin", "/campo", "/login"]) {

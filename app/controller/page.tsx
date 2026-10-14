@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalHeading } from "../../components/OperationalUI";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "@/components/TopNav";
 import { useAuth } from "@/components/AuthProvider";
@@ -104,7 +105,7 @@ export default function ControllerPage() {
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "#111111", margin: 0 }}>Controller</h1>
             <p style={{ margin: "4px 0 0", color: "#666", fontSize: 13 }}>
@@ -113,7 +114,7 @@ export default function ControllerPage() {
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {msg && <span style={{ fontSize: 12, color: "var(--text-2)", fontStyle: "italic" }}>{msg}</span>}
-            <button data-arato-button="primary"
+            <OperationalButton data-arato-button="primary"
               onClick={executarVerificacoes}
               disabled={executando}
               style={{
@@ -123,14 +124,14 @@ export default function ControllerPage() {
               }}
             >
               {executando ? "⟳ Verificando..." : "⟳ Executar Verificações"}
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
           {(["critico", "alto", "medio", "baixo"] as Severidade[]).map(sev => (
-            <button data-arato-button="toggle"
+            <OperationalButton data-arato-button="toggle"
               key={sev}
               onClick={() => setFiltroSev(filtroSev === sev ? "todos" : sev)}
               style={{
@@ -142,17 +143,17 @@ export default function ControllerPage() {
             >
               <div style={{ fontSize: 24, fontWeight: 700, color: SEV_COR[sev] }}>{contadores[sev]}</div>
               <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Alertas {SEV_LABEL[sev]}s</div>
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
         {/* Filtros */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600 }}>FILTRAR:</span>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {(["todos", "Fiscal", "Financeiro", "Contratos", "Lavoura", "Cadastros", "Estoque", "Arrendamentos"] as (Categoria | "todos")[]).map(cat => (
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="toggle"
                 key={cat}
                 onClick={() => setFiltroCat(cat)}
                 style={{
@@ -163,7 +164,7 @@ export default function ControllerPage() {
                 }}
               >
                 {cat === "todos" ? "Todas" : `${CAT_ICONE[cat as Categoria]} ${cat}`}
-              </button>
+              </OperationalButton>
             ))}
           </div>
 
@@ -179,7 +180,7 @@ export default function ControllerPage() {
               Mostrar resolvidos
             </label>
           </div>
-        </div>
+        </OperationalFilters>
 
         {/* Lista de alertas */}
         {loading ? (
@@ -255,7 +256,7 @@ export default function ControllerPage() {
                     {!resolved && (
                       <div style={{ display: "flex", gap: 6, flexShrink: 0, flexDirection: "column", alignItems: "flex-end" }}>
                         {!acked && (
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => ackAlerta(a.id)}
                             style={{
                               background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 6,
@@ -264,9 +265,9 @@ export default function ControllerPage() {
                             }}
                           >
                             Reconhecer
-                          </button>
+                          </OperationalButton>
                         )}
-                        <button data-arato-button="primary"
+                        <OperationalButton data-arato-button="primary"
                           onClick={() => fecharAlerta(a.id)}
                           style={{
                             background: "#16A34A", border: "none", borderRadius: 6,
@@ -275,7 +276,7 @@ export default function ControllerPage() {
                           }}
                         >
                           Resolver ✓
-                        </button>
+                        </OperationalButton>
                       </div>
                     )}
                   </div>

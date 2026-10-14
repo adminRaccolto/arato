@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -268,15 +269,15 @@ export default function Pluviometria() {
   return (
     <div style={{ padding: "24px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
       {/* Cabeçalho */}
-      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pluviometria</h1>
           <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>Dados de precipitação por propriedade</div>
         </div>
         {aba === "manual" && (
-          <button data-arato-button="primary" onClick={() => setModalLeit(true)} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          <OperationalButton data-arato-button="primary" onClick={() => setModalLeit(true)} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
             + Lançar Leitura
-          </button>
+          </OperationalButton>
         )}
         {aba === "api" && (
           <SelectField value={talhaoSel} onChange={e => setTalhaoSel(e.target.value)}
@@ -294,7 +295,7 @@ export default function Pluviometria() {
             )}
           </SelectField>
         )}
-      </div>
+      </OperationalHeading>
 
       {/* Abas */}
       <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
@@ -302,11 +303,11 @@ export default function Pluviometria() {
           { v: "api" as const,    label: "☁ Dados Climáticos (API)" },
           { v: "manual" as const, label: `🌧 Leituras Manuais${leituras.length > 0 ? ` (${leituras.length})` : ""}` },
         ].map(a => (
-          <button data-arato-tab-active={aba === (a.v)} data-arato-tab="true" data-arato-button="toggle" key={a.v} onClick={() => setAba(a.v)} style={{
+          <OperationalButton data-arato-tab-active={aba === (a.v)} data-arato-tab="true" data-arato-button="toggle" key={a.v} onClick={() => setAba(a.v)} style={{
             padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
             fontWeight: aba === a.v ? 700 : 400, color: aba === a.v ? "#111111" : "#666",
             borderBottom: aba === a.v ? "2.5px solid #111111" : "2.5px solid transparent",
-          }}>{a.label}</button>
+          }}>{a.label}</OperationalButton>
         ))}
       </div>
 
@@ -365,11 +366,11 @@ export default function Pluviometria() {
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 {([30, 60, 90] as const).map(p => (
-                  <button data-arato-button="toggle" key={p} onClick={() => setPeriodoExib(p)}
+                  <OperationalButton data-arato-button="toggle" key={p} onClick={() => setPeriodoExib(p)}
                     style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 11, fontWeight: 600, cursor: "pointer",
                       background: periodoExib === p ? "#111111" : "var(--bg-card)", color: periodoExib === p ? "#fff" : "var(--text-2)" }}>
                     {p}d
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -421,7 +422,7 @@ export default function Pluviometria() {
               <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--bg-tag)", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>
                 Previsão — Próximos 7 dias
               </div>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-card)" }}>
                     {["Data", "Chuva (mm)", "T máx / mín", "ETo"].map(h => (
@@ -452,7 +453,7 @@ export default function Pluviometria() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
 
             {/* Resumo mensal */}
@@ -488,7 +489,7 @@ export default function Pluviometria() {
               Histórico — Últimos 30 dias
             </div>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-card)" }}>
                     {["Data", "Precipitação", "Chuva", "T máx", "T mín", "ETo"].map(h => (
@@ -514,7 +515,7 @@ export default function Pluviometria() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
             <div style={{ padding: "8px 16px", fontSize: 10, color: "var(--text-3)", borderTop: "0.5px solid var(--bg-tag)" }}>
               Fonte: Open-Meteo · Dados de reanalise ERA5 para histórico e modelo GFS/ECMWF para previsão · ETo = Evapotranspiração de referência FAO-56
@@ -549,7 +550,7 @@ export default function Pluviometria() {
                 <span style={{ fontSize: 12 }}>Clique em "+ Lançar Leitura" para registrar o pluviômetro.</span>
               </div>
             ) : (
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                     {["Data","Hora","Talhão","Chuva (mm)","Duração","Intensidade","Fonte","Obs."].map(h => (
@@ -584,7 +585,7 @@ export default function Pluviometria() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             )}
           </div>
         </>
@@ -596,7 +597,7 @@ export default function Pluviometria() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 12px 40px rgba(0,0,0,0.2)", overflow: "hidden" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>Lançar Leitura Manual</div>
-              <button data-arato-button="icon" onClick={() => setModalLeit(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalLeit(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -640,10 +641,10 @@ export default function Pluviometria() {
                 <textarea rows={2} value={lObs} onChange={e => setLObs(e.target.value)} placeholder="Granizo, vento forte, relâmpagos..." style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
               </div>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button data-arato-button="secondary" onClick={() => setModalLeit(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
-                <button data-arato-button="toggle" onClick={salvarLeitura} disabled={salvando || !lMm} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: salvando || !lMm ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalLeit(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={salvarLeitura} disabled={salvando || !lMm} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: salvando || !lMm ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                   {salvando ? "Salvando..." : "✓ Registrar Leitura"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

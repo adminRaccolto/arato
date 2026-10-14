@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo } from "react";
@@ -87,7 +88,7 @@ function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onC
       <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
         <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+          <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</OperationalButton>
         </div>
         <div data-arato-dialog-body="true" style={{ padding: 20, overflowY: "auto" }}>{children}</div>
       </div>
@@ -387,13 +388,13 @@ const salvar = async (confirmar = false) => {
     <div style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* Header */}
-      <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+      <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
           <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Relatório de recebimento de grãos — pesagem própria e tickets de terceiros</p>
         </div>
-        <button data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
-      </div>
+        <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Novo Romaneio</OperationalButton>
+      </OperationalHeading>
 
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
@@ -411,7 +412,7 @@ const salvar = async (confirmar = false) => {
       </div>
 
       {/* Filtros */}
-      <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <input style={{ ...inp, width: 180 }} placeholder="Buscar placa, ticket, produto…" value={fBusca} onChange={e => setFBusca(e.target.value)} />
         <SelectField style={{ ...inp, width: 160 }} value={fTipo} onChange={e => setFTipo(e.target.value as typeof fTipo)}>
           <option value="">Todos os tipos</option>
@@ -427,14 +428,14 @@ const salvar = async (confirmar = false) => {
         <InputData type="date" style={{ ...inp, width: 150 }} value={fDe}  onChange={e => setFDe(e.target.value)}  placeholder="De" />
         <InputData type="date" style={{ ...inp, width: 150 }} value={fAte} onChange={e => setFAte(e.target.value)} placeholder="Até" />
         {(fBusca || fTipo || fStatus || fDe || fAte) && (
-          <button data-arato-button="secondary" style={btnR} onClick={() => { setFBusca(""); setFTipo(""); setFStatus(""); setFDe(""); setFAte(""); }}>Limpar</button>
+          <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setFBusca(""); setFTipo(""); setFStatus(""); setFDe(""); setFAte(""); }}>Limpar</OperationalButton>
         )}
         <span style={{ marginLeft: "auto", fontSize: 12, color: "#666" }}>{filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}</span>
-      </div>
+      </OperationalFilters>
 
       {/* Tabela */}
       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#F3F6FB" }}>
               {["Ticket / Data", "Tipo", "Produto / Ciclo", "Origem / Emissor", "Placa", "Peso Líq.", "Sacas", "Status", ""].map(h => (
@@ -496,11 +497,11 @@ const salvar = async (confirmar = false) => {
                   </td>
                   <td style={{ padding: "9px 12px" }}>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 10px", fontSize: 11 }} onClick={() => abrirEditar(r)}>Abrir</button>
+                      <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 10px", fontSize: 11 }} onClick={() => abrirEditar(r)}>Abrir</OperationalButton>
                       {r.status === "rascunho" && (
-                        <button data-arato-button="primary" style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
+                        <OperationalButton data-arato-button="primary" style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</OperationalButton>
                       )}
-                      <button data-arato-button="secondary"
+                      <OperationalButton data-arato-button="secondary"
                         style={{ background: "var(--bg-page)", color: "#111111", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
                         title="Imprimir ticket de balança"
                         onClick={() => {
@@ -533,12 +534,12 @@ const salvar = async (confirmar = false) => {
                             kgSaca: insumoNome ? getClasse(insumoNome).kg_saca : 60,
                           });
                         }}
-                      >🎫</button>
+                      >🎫</OperationalButton>
                       {r.status === "rascunho" && (
-                        <button data-arato-button="danger"
+                        <OperationalButton data-arato-button="danger"
                           style={{ background: "#FEF2F2", color: "#E24B4A", border: "0.5px solid #FECACA", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
                           onClick={() => { if (confirm("Excluir?")) excluirRomaneioEntrada(r.id).then(() => setRomaneios(p => p.filter(x => x.id !== r.id))); }}
-                        >✕</button>
+                        >✕</OperationalButton>
                       )}
                     </div>
                   </td>
@@ -546,7 +547,7 @@ const salvar = async (confirmar = false) => {
               );
             })}
           </tbody>
-        </table>
+        </OperationalGrid>
       </div>
 
       {/* ── Modal Novo / Editar ─────────────────────────────────────────────── */}
@@ -571,12 +572,12 @@ const salvar = async (confirmar = false) => {
           {/* Toggle tipo */}
           <div style={{ display: "flex", gap: 0, marginBottom: 12, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>
             {([["proprio", "Pesagem por Balança", "#2A2A2A"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
-              <button data-arato-button="toggle" key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
+              <OperationalButton data-arato-button="toggle" key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
                 flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
                 background: form.tipo === v ? c : "var(--bg-card)",
                 color:      form.tipo === v ? "#fff" : "var(--text-2)",
                 transition: "background .15s",
-              }}>{l}</button>
+              }}>{l}</OperationalButton>
             ))}
           </div>
 
@@ -585,12 +586,12 @@ const salvar = async (confirmar = false) => {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600, minWidth: 80 }}>Modo:</span>
               {([["balanca", "⚖ Balança Física"], ["manual", "✎ Entrada Manual"]] as const).map(([v, l]) => (
-                <button data-arato-button="toggle" key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
+                <OperationalButton data-arato-button="toggle" key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
                   padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "0.5px solid",
                   background: form.modo_pesagem === v ? "#EBF3FF" : "var(--bg-card)",
                   color:      form.modo_pesagem === v ? "#2A2A2A" : "#777",
                   borderColor: form.modo_pesagem === v ? "#2A2A2A" : "#CDD5E0",
-                }}>{l}</button>
+                }}>{l}</OperationalButton>
               ))}
               {form.modo_pesagem === "balanca" && (
                 <span style={{ fontSize: 11, color: "#444444" }}>Informe os pesos lidos na balança (bruto e tara)</span>
@@ -955,17 +956,17 @@ const salvar = async (confirmar = false) => {
           {editRom?.status === "confirmado" ? (
             <div style={{ textAlign: "right" }}>
               <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, marginRight: 12 }}>✓ Romaneio confirmado — apenas leitura</span>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Fechar</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Fechar</OperationalButton>
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-              <button data-arato-button="secondary" style={{ ...btnR, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(false)}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="secondary" style={{ ...btnR, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(false)}>
                 {salvando ? "Salvando…" : "Salvar Rascunho"}
-              </button>
-              <button data-arato-button="primary" style={{ ...btnG, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(true)}>
+              </OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnG, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={() => salvar(true)}>
                 {salvando ? "Confirmando…" : "✓ Confirmar e Dar Entrada no Estoque"}
-              </button>
+              </OperationalButton>
             </div>
           )}
         </Modal>

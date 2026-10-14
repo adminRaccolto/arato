@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputNumerico from "../../../components/InputNumerico";
 import InputData from "../../../components/InputData";
@@ -368,18 +369,18 @@ export default function AplicacaoAereaPage() {
       <div style={{ padding: "24px 32px", maxWidth: 1280, margin: "0 auto" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Aplicação Aérea</h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>Avião agrícola · Drone/RPAS</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <CascadeSelector contaId={contaId ?? null} fazendaIdFallback={fazendaId} values={cascade} onChange={setCascade} levels={["fazenda"]} />
-            <button data-arato-button="primary" onClick={abrirNovo} style={{ ...btnV, display: "flex", alignItems: "center", gap: 6 }}>
+            <OperationalButton data-arato-button="primary" onClick={abrirNovo} style={{ ...btnV, display: "flex", alignItems: "center", gap: 6 }}>
               + Nova Aplicação
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
@@ -399,14 +400,14 @@ export default function AplicacaoAereaPage() {
         {/* Abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 20 }}>
           {(["operacoes", "empresas"] as const).map(t => (
-            <button data-arato-tab-active={aba === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAba(t)} style={{
+            <OperationalButton data-arato-tab-active={aba === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAba(t)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === t ? 700 : 400,
               color: aba === t ? "#111111" : "var(--text-3)",
               borderBottom: aba === t ? "2px solid #111111" : "2px solid transparent", marginBottom: -1,
             }}>
               {t === "operacoes" ? `Operações (${aplicacoes.length})` : `Empresas Aplicadoras (${empresas.length})`}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -414,7 +415,7 @@ export default function AplicacaoAereaPage() {
         {aba === "operacoes" && (
           <>
             {/* Filtros */}
-            <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
               <SelectField value={filtroCiclo} onChange={e => setFiltroCiclo(e.target.value)} style={{ ...inp, width: 220 }}>
                 <option value="">Todos os ciclos</option>
                 {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ?? ""}</option>)}
@@ -424,7 +425,7 @@ export default function AplicacaoAereaPage() {
                 {Object.entries(TIPO_APLIC).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </SelectField>
               <input placeholder="Buscar empresa, aeronave, piloto…" value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} style={{ ...inp, width: 260 }} />
-            </div>
+            </OperationalFilters>
 
             {/* Lista */}
             {aplicacoesFiltradas.length === 0 ? (
@@ -494,8 +495,8 @@ export default function AplicacaoAereaPage() {
                         </div>
                         {/* Ações */}
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirEditar(a); }} style={btnS}>✎ Editar</button>
-                          <button data-arato-button="danger" onClick={e => { e.stopPropagation(); excluir(a.id); }} style={btnX}>✕</button>
+                          <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirEditar(a); }} style={btnS}>✎ Editar</OperationalButton>
+                          <OperationalButton data-arato-button="danger" onClick={e => { e.stopPropagation(); excluir(a.id); }} style={btnX}>✕</OperationalButton>
                         </div>
                         <span style={{ color: "var(--text-3)", fontSize: 14 }}>{isExp ? "▲" : "▼"}</span>
                       </div>
@@ -550,7 +551,7 @@ export default function AplicacaoAereaPage() {
                             {detalheItens.length === 0 ? (
                               <span style={{ fontSize: 12, color: "var(--text-3)" }}>Não informados</span>
                             ) : (
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ color: "var(--text-3)" }}>
                                     <th style={{ textAlign: "left", padding: "4px 8px 8px 0", fontWeight: 600 }}>Produto</th>
@@ -569,7 +570,7 @@ export default function AplicacaoAereaPage() {
                                     </tr>
                                   ))}
                                 </tbody>
-                              </table>
+                              </OperationalGrid>
                             )}
                             {a.observacao && (
                               <>
@@ -592,9 +593,9 @@ export default function AplicacaoAereaPage() {
         {aba === "empresas" && (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <button data-arato-button="primary" onClick={() => { setFormEmpresa(empresaVazia()); setEditandoEmpresa(null); setModalEmpresa(true); }} style={btnV}>
+              <OperationalButton data-arato-button="primary" onClick={() => { setFormEmpresa(empresaVazia()); setEditandoEmpresa(null); setModalEmpresa(true); }} style={btnV}>
                 + Cadastrar Empresa
-              </button>
+              </OperationalButton>
             </div>
             {empresas.length === 0 ? (
               <div data-arato-statistic="display" style={{ ...card, textAlign: "center", padding: 48, color: "var(--text-3)" }}>
@@ -615,8 +616,8 @@ export default function AplicacaoAereaPage() {
                           {e.cnpj && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>CNPJ: {e.cnpj}</div>}
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button data-arato-button="icon" onClick={() => { setFormEmpresa({ razao_social: e.razao_social, cnpj: e.cnpj ?? "", cloa_numero: e.cloa_numero ?? "", cloa_vencimento: e.cloa_vencimento ?? "", responsavel_tecnico: e.responsavel_tecnico ?? "", crea: e.crea ?? "", telefone: e.telefone ?? "", email: e.email ?? "", observacao: e.observacao ?? "", ativo: true }); setEditandoEmpresa(e.id); setModalEmpresa(true); }} style={btnS}>✎</button>
-                          <button data-arato-button="danger" onClick={async () => { if (confirm("Remover empresa?")) { await excluirEmpresaAplicadora(e.id); if (contaId) setEmpresas(await listarEmpresasAplicadoras(contaId)); } }} style={btnX}>✕</button>
+                          <OperationalButton data-arato-button="icon" onClick={() => { setFormEmpresa({ razao_social: e.razao_social, cnpj: e.cnpj ?? "", cloa_numero: e.cloa_numero ?? "", cloa_vencimento: e.cloa_vencimento ?? "", responsavel_tecnico: e.responsavel_tecnico ?? "", crea: e.crea ?? "", telefone: e.telefone ?? "", email: e.email ?? "", observacao: e.observacao ?? "", ativo: true }); setEditandoEmpresa(e.id); setModalEmpresa(true); }} style={btnS}>✎</OperationalButton>
+                          <OperationalButton data-arato-button="danger" onClick={async () => { if (confirm("Remover empresa?")) { await excluirEmpresaAplicadora(e.id); if (contaId) setEmpresas(await listarEmpresasAplicadoras(contaId)); } }} style={btnX}>✕</OperationalButton>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 12, fontSize: 12 }}>
@@ -657,7 +658,7 @@ export default function AplicacaoAereaPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Aplicação Aérea" : "Nova Aplicação Aérea"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Avião agrícola · Drone/RPAS</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "24px 28px" }}>
@@ -667,7 +668,7 @@ export default function AplicacaoAereaPage() {
                 <label data-arato-label="true" style={lbl}>Tipo de Aeronave</label>
                 <div style={{ display: "flex", gap: 10 }}>
                   {(Object.entries(TIPO_AERONAVE) as [TipoAeronave, typeof TIPO_AERONAVE[TipoAeronave]][]).map(([k, v]) => (
-                    <button data-arato-button="toggle" key={k} onClick={() => sf("tipo_aeronave", k)} style={{
+                    <OperationalButton data-arato-button="toggle" key={k} onClick={() => sf("tipo_aeronave", k)} style={{
                       flex: 1, padding: "10px 16px", border: `2px solid ${form.tipo_aeronave === k ? "#111111" : "var(--border-table)"}`,
                       borderRadius: 10, cursor: "pointer", background: form.tipo_aeronave === k ? "#E8E8E8" : "var(--bg-card)",
                       fontWeight: form.tipo_aeronave === k ? 700 : 400, fontSize: 13, color: form.tipo_aeronave === k ? "#0D0D0D" : "var(--text-2)",
@@ -675,7 +676,7 @@ export default function AplicacaoAereaPage() {
                     }}>
                       <span style={{ fontSize: 22, display: "block", marginBottom: 4 }}>{k === "aviao" ? "✈️" : "🚁"}</span>
                       {v!.label}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
               </div>
@@ -750,13 +751,13 @@ export default function AplicacaoAereaPage() {
                         {talhoes.map(t => {
                           const sel = talhoesSelec.some(x => x.talhao_id === t.id);
                           return (
-                            <button data-arato-button="toggle" key={t.id} onClick={() => toggleTalhao(t)} style={{
+                            <OperationalButton data-arato-button="toggle" key={t.id} onClick={() => toggleTalhao(t)} style={{
                               padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${sel ? "#111111" : "var(--border-table)"}`,
                               background: sel ? "#E8E8E8" : "transparent", cursor: "pointer", fontSize: 12,
                               fontWeight: sel ? 700 : 400, color: sel ? "#0D0D0D" : "var(--text-2)", transition: "all 0.1s",
                             }}>
                               {t.nome} · {fmtN(t.area_ha, 1)} ha
-                            </button>
+                            </OperationalButton>
                           );
                         })}
                       </div>
@@ -772,7 +773,7 @@ export default function AplicacaoAereaPage() {
                 {/* ── COLUNA DIREITA: produtos + parâmetros + condições + docs ── */}
                 <div>
                   <div style={secTit}>Produtos Aplicados</div>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 10 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 10 }}>
                     <thead>
                       <tr style={{ color: "var(--text-3)", fontSize: 11 }}>
                         {["Produto *", "Dose/ha *", "Unid.", "R$/unid", ""].map(h => (
@@ -807,13 +808,13 @@ export default function AplicacaoAereaPage() {
                             <InputNumerico decimais={2} placeholder="R$" value={item.valor_unitario} onChange={v => setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: v } : it))} style={inp} min={0} />
                           </td>
                           <td style={{ padding: "4px 6px" }}>
-                            <button data-arato-button="danger" onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={btnX}>✕</button>
+                            <OperationalButton data-arato-button="danger" onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={btnX}>✕</OperationalButton>
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                  <button data-arato-button="secondary" onClick={() => setItens(prev => [...prev, itemVazio()])} style={{ ...btnR, fontSize: 12, padding: "5px 12px" }}>+ Produto</button>
+                  </OperationalGrid>
+                  <OperationalButton data-arato-button="secondary" onClick={() => setItens(prev => [...prev, itemVazio()])} style={{ ...btnR, fontSize: 12, padding: "5px 12px" }}>+ Produto</OperationalButton>
 
                   <div style={secTit}>Parâmetros Técnicos</div>
                   <div style={gridG("1fr 1fr")}>
@@ -889,10 +890,10 @@ export default function AplicacaoAereaPage() {
 
               {/* Botões — full width */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 20, borderTop: "0.5px solid var(--border-table)" }}>
-                <button data-arato-button="secondary" onClick={() => setModal(false)} style={btnR}>Cancelar</button>
-                <button data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.7 : 1 }}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={btnR}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.7 : 1 }}>
                   {salvando ? "Salvando…" : editando ? "Salvar Alterações" : "Registrar Aplicação"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -905,7 +906,7 @@ export default function AplicacaoAereaPage() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 16, width: 620, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 16px 64px #0005" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 28px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editandoEmpresa ? "Editar Empresa" : "Nova Empresa Aplicadora"}</div>
-              <button data-arato-button="icon" onClick={() => setModalEmpresa(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalEmpresa(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer" }}>✕</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "24px 28px" }}>
               <div data-arato-dialog-body="true" style={gridG("1fr 1fr")}>
@@ -947,10 +948,10 @@ export default function AplicacaoAereaPage() {
                 </div>
               </div>
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                <button data-arato-button="secondary" onClick={() => setModalEmpresa(false)} style={btnR}>Cancelar</button>
-                <button data-arato-button="primary" onClick={salvarEmpresa} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.7 : 1 }}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalEmpresa(false)} style={btnR}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvarEmpresa} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.7 : 1 }}>
                   {salvando ? "Salvando…" : "Salvar Empresa"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

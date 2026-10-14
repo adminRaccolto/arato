@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
@@ -156,17 +157,17 @@ export default function DREEmpresasPage() {
     <div data-arato-page="true" style={S.page}>
       <TopNav />
       <div style={S.body}>
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>DRE por Empresa</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Demonstrativo de Resultado por empresa não-rural no período</p>
           </div>
-          <button data-arato-button="secondary" style={S.btn("#555")} onClick={() => window.print()}>Imprimir</button>
-        </div>
+          <OperationalButton data-arato-button="secondary" style={S.btn("#555")} onClick={() => window.print()}>Imprimir</OperationalButton>
+        </OperationalHeading>
 
         {/* filtros */}
         <div style={{ ...S.card, padding: 14, marginBottom: 20 }}>
-          <div data-arato-filters="true" style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div style={{ flex: "0 0 220px" }}>
               <label data-arato-label="true" style={S.label}>Empresa</label>
               <SelectField style={S.inp} value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}>
@@ -182,8 +183,8 @@ export default function DREEmpresasPage() {
               <label data-arato-label="true" style={S.label}>Até (competência)</label>
               <InputData type="month" style={S.inp} value={fAte} onChange={e => setFAte(e.target.value)} />
             </div>
-            <button data-arato-button="secondary" style={{ ...S.btn("#1A4870"), alignSelf: "flex-end" }} onClick={carregar}>Atualizar</button>
-          </div>
+            <OperationalButton data-arato-button="secondary" style={{ ...S.btn("#1A4870"), alignSelf: "flex-end" }} onClick={carregar}>Atualizar</OperationalButton>
+          </OperationalFilters>
         </div>
 
         {loading && <div style={{ textAlign: "center", padding: 40, color: "#888" }}>Carregando...</div>}
@@ -226,7 +227,7 @@ export default function DREEmpresasPage() {
               </div>
 
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       <th style={{ padding: "8px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#555", borderBottom: "0.5px solid #DDE2EE", background: "#F4F6FA", textAlign: "left" }}>Conta</th>
@@ -273,7 +274,7 @@ export default function DREEmpresasPage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
 
               {/* Análise rápida */}

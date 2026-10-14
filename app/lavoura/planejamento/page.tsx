@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -497,23 +498,23 @@ export default function Planejamento() {
       <div style={{ padding: "28px 32px" }}>
 
         {/* cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Planejamento de Safra</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Orçamento, comparativo planejado × realizado, agenda e recomendações técnicas</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             {aba === "orcamento" && orcamento && (
-              <button data-arato-button="primary" style={btnV} onClick={() => { setFOI(initOI()); setEditOrcItem(null); setModalOrcItem(true); }}>+ Item</button>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setFOI(initOI()); setEditOrcItem(null); setModalOrcItem(true); }}>+ Item</OperationalButton>
             )}
             {aba === "agenda" && (
-              <button data-arato-button="primary" style={btnV} onClick={() => { setEditTarefa(null); setFT({ ...initFT(), ciclo_id: cicloSelOrc }); setModalTarefa(true); }}>+ Nova Tarefa</button>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditTarefa(null); setFT({ ...initFT(), ciclo_id: cicloSelOrc }); setModalTarefa(true); }}>+ Nova Tarefa</OperationalButton>
             )}
             {aba === "recomendacoes" && (
-              <button data-arato-button="primary" style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR({ ...initFR(), ciclo_id: cicloSelOrc }); setModalRec(true); }}>+ Nova Recomendação</button>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR({ ...initFR(), ciclo_id: cicloSelOrc }); setModalRec(true); }}>+ Nova Recomendação</OperationalButton>
             )}
           </div>
-        </div>
+        </OperationalHeading>
 
         {erroInit && <div style={{ background: "#FCEBEB", color: "#791F1F", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 16 }}>{erroInit}</div>}
 
@@ -525,7 +526,7 @@ export default function Planejamento() {
             e crie um Ano Safra e pelo menos um Ciclo.
           </div>
         ) : (
-          <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ minWidth: 180 }}>
               <label data-arato-label="true" style={lbl}>Ano Safra</label>
               <SelectField style={inp} value={anoSelOrc} onChange={e => { setAnoSelOrc(e.target.value); setCicloSelOrc(""); }}>
@@ -545,18 +546,18 @@ export default function Planejamento() {
                 {labelCiclo(cicloSelOrc)}
               </div>
             )}
-          </div>
+          </OperationalFilters>
         )}
 
         {/* abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {ABAS.map(a => (
-            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <OperationalButton data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
               fontSize: 13, fontWeight: aba === a.key ? 700 : 400,
               color: aba === a.key ? "#111111" : "#666",
               borderBottom: aba === a.key ? "2px solid #111111" : "2px solid transparent",
-            }}>{a.label}</button>
+            }}>{a.label}</OperationalButton>
           ))}
         </div>
 
@@ -578,7 +579,7 @@ export default function Planejamento() {
                 <div style={{ fontSize: 34, marginBottom: 12 }}>◻</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhum orçamento para este ciclo</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Crie o orçamento informando área, produtividade esperada e preço de referência</div>
-                <button data-arato-button="primary" style={btnV} onClick={() => { setFOH(initOH()); setModalOrcHeader(true); }}>Criar Orçamento</button>
+                <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setFOH(initOH()); setModalOrcHeader(true); }}>Criar Orçamento</OperationalButton>
               </div>
             )}
 
@@ -654,17 +655,17 @@ export default function Planejamento() {
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button data-arato-button="secondary" style={btnE} onClick={() => {
+                      <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => {
                         setFOH({ nome: orcamento.nome, area_ha: orcamento.area_ha ?? 0, produtividade_esperada: String(orcamento.produtividade_esperada ?? ""), preco_esperado_sc: orcamento.preco_esperado_sc ?? 0 });
                         setModalOrcHeader(true);
-                      }}>Editar cabeçalho</button>
-                      <button data-arato-button="primary" style={btnV} onClick={() => { setFOI(initOI()); setEditOrcItem(null); setModalOrcItem(true); }}>+ Item</button>
+                      }}>Editar cabeçalho</OperationalButton>
+                      <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setFOI(initOI()); setEditOrcItem(null); setModalOrcItem(true); }}>+ Item</OperationalButton>
                     </div>
                   </div>
 
                   {/* tabela agrupada por categoria */}
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Descrição", "Qtd", "Un.", "Valor Unit.", "Total", ""].map((h, i) => (
@@ -699,12 +700,12 @@ export default function Planejamento() {
                                   <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{it.valor_total != null ? fmtR(it.valor_total) : "—"}</td>
                                   <td style={{ padding: "9px 10px", textAlign: "center" }}>
                                     <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                                      <button data-arato-button="secondary" style={btnE} onClick={() => {
+                                      <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => {
                                         setEditOrcItem(it);
                                         setFOI({ categoria: it.categoria, subcategoria: it.subcategoria ?? "", descricao: it.descricao, quantidade: it.quantidade != null ? String(it.quantidade) : "", unidade: it.unidade ?? "kg", valor_unitario: it.valor_unitario ?? 0 });
                                         setModalOrcItem(true);
-                                      }}>Ed</button>
-                                      <button data-arato-button="danger" style={btnX} onClick={() => excluirOrcItem(it.id)}>✕</button>
+                                      }}>Ed</OperationalButton>
+                                      <OperationalButton data-arato-button="danger" style={btnX} onClick={() => excluirOrcItem(it.id)}>✕</OperationalButton>
                                     </div>
                                   </td>
                                 </tr>
@@ -726,7 +727,7 @@ export default function Planejamento() {
                           </tr>
                         )}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                     {orcItens.length === 0 && (
                       <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                         Orçamento criado. Use "+ Item" para adicionar os custos planejados.
@@ -767,7 +768,7 @@ export default function Planejamento() {
 
                 {/* tabela */}
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Categoria", "Planejado", "Realizado", "Desvio (R$)", "Desvio (%)", "Execução"].map((h, i) => (
@@ -822,7 +823,7 @@ export default function Planejamento() {
                         </td>
                       </tr>
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                   {!orcamento && (
                     <div style={{ padding: "20px 24px", background: "#FBF3E0", color: "#7A5A12", fontSize: 12, textAlign: "center" }}>
                       Nenhum orçamento cadastrado para este ciclo — crie o orçamento na aba "Orçamento" para ver o comparativo planejado.
@@ -850,7 +851,7 @@ export default function Planejamento() {
                 </div>
               ))}
             </div>
-            <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
               <SelectField value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as typeof filtroStatus)} style={{ ...inp, width: 160 }}>
                 <option value="todos">Todos os status</option>
                 <option value="pendente">Pendente</option>
@@ -868,7 +869,7 @@ export default function Planejamento() {
                 <option value="">Todos os ciclos</option>
                 {ciclos.map(c => <option key={c.id} value={c.id}>{labelCiclo(c.id)}</option>)}
               </SelectField>
-            </div>
+            </OperationalFilters>
             {loading ? (
               <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             ) : tarefasFiltradas.length === 0 ? (
@@ -876,7 +877,7 @@ export default function Planejamento() {
                 <div style={{ fontSize: 36, marginBottom: 12 }}>◻</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma tarefa encontrada</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Use "+ Nova Tarefa" para criar a agenda do ciclo</div>
-                <button data-arato-button="primary" style={btnV} onClick={() => { setEditTarefa(null); setFT(initFT()); setModalTarefa(true); }}>+ Nova Tarefa</button>
+                <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setEditTarefa(null); setFT(initFT()); setModalTarefa(true); }}>+ Nova Tarefa</OperationalButton>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -907,10 +908,10 @@ export default function Planejamento() {
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         {t.status !== "concluida" && t.status !== "cancelada" && (
-                          <button data-arato-button="secondary" style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }} onClick={() => concluirTarefa(t)}>✓ Concluir</button>
+                          <OperationalButton data-arato-button="secondary" style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }} onClick={() => concluirTarefa(t)}>✓ Concluir</OperationalButton>
                         )}
-                        <button data-arato-button="secondary" style={btnE} onClick={() => abrirEditarTarefa(t)}>Abrir</button>
-                        <button data-arato-button="danger" style={btnX} onClick={() => removerTarefa(t.id)}>Excluir</button>
+                        <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => abrirEditarTarefa(t)}>Abrir</OperationalButton>
+                        <OperationalButton data-arato-button="danger" style={btnX} onClick={() => removerTarefa(t.id)}>Excluir</OperationalButton>
                       </div>
                     </div>
                   );
@@ -930,7 +931,7 @@ export default function Planejamento() {
                 <div style={{ fontSize: 36, marginBottom: 12 }}>◇</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma recomendação técnica</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Registre recomendações do agrônomo para cada ciclo</div>
-                <button data-arato-button="primary" style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR(initFR()); setModalRec(true); }}>+ Nova Recomendação</button>
+                <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR(initFR()); setModalRec(true); }}>+ Nova Recomendação</OperationalButton>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -958,14 +959,14 @@ export default function Planejamento() {
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         {r.status === "pendente" && (
-                          <button data-arato-button="secondary" style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }} onClick={() => aplicarRecomendacao(r)}>✓ Aplicada</button>
+                          <OperationalButton data-arato-button="secondary" style={{ ...btnE, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40" }} onClick={() => aplicarRecomendacao(r)}>✓ Aplicada</OperationalButton>
                         )}
-                        <button data-arato-button="secondary" style={btnE} onClick={() => {
+                        <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => {
                           setEditRec(r);
                           setFR({ titulo: r.titulo, descricao: r.descricao ?? "", tipo: r.tipo, estadio_fenologico: r.estadio_fenologico ?? "", data_recomendacao: r.data_recomendacao ?? hoje(), responsavel_tecnico: r.responsavel_tecnico ?? "", prioridade: r.prioridade, status: r.status, ciclo_id: r.ciclo_id ?? "" });
                           setModalRec(true);
-                        }}>Abrir</button>
-                        <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) { excluirRecomendacao(r.id); setRecomendacoes(p => p.filter(x => x.id !== r.id)); } }}>Excluir</button>
+                        }}>Abrir</OperationalButton>
+                        <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) { excluirRecomendacao(r.id); setRecomendacoes(p => p.filter(x => x.id !== r.id)); } }}>Excluir</OperationalButton>
                       </div>
                     </div>
                   );
@@ -1009,10 +1010,10 @@ export default function Planejamento() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => setModalOrcHeader(false)}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fOH.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fOH.nome.trim()} onClick={salvarOrcamentoHeader}>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalOrcHeader(false)}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fOH.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fOH.nome.trim()} onClick={salvarOrcamentoHeader}>
               {salvando ? "Salvando…" : orcamento ? "Salvar" : "Criar Orçamento"}
-            </button>
+            </OperationalButton>
           </div>
         </Modal>
       )}
@@ -1059,10 +1060,10 @@ export default function Planejamento() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalOrcItem(false); setEditOrcItem(null); setFOI(initOI()); }}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fOI.descricao.trim() ? 0.5 : 1 }} disabled={salvando || !fOI.descricao.trim()} onClick={salvarOrcItem}>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalOrcItem(false); setEditOrcItem(null); setFOI(initOI()); }}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fOI.descricao.trim() ? 0.5 : 1 }} disabled={salvando || !fOI.descricao.trim()} onClick={salvarOrcItem}>
               {salvando ? "Salvando…" : editOrcItem ? "Salvar" : "Adicionar Item"}
-            </button>
+            </OperationalButton>
           </div>
         </Modal>
       )}
@@ -1084,8 +1085,8 @@ export default function Planejamento() {
             <div style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Descrição</label><textarea style={{ ...inp, height: 72, resize: "vertical" }} value={fT.descricao} onChange={e => setFT(p => ({ ...p, descricao: e.target.value }))} placeholder="Produto, dose, observações..." /></div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalTarefa(false); setEditTarefa(null); setFT(initFT()); }}>Cancelar</button>
-            <button data-arato-button="primary" style={btnV} onClick={salvarTarefa} disabled={salvando}>{salvando ? "Salvando..." : editTarefa ? "Salvar" : "Criar Tarefa"}</button>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalTarefa(false); setEditTarefa(null); setFT(initFT()); }}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={btnV} onClick={salvarTarefa} disabled={salvando}>{salvando ? "Salvando..." : editTarefa ? "Salvar" : "Criar Tarefa"}</OperationalButton>
           </div>
         </Modal>
       )}
@@ -1104,8 +1105,8 @@ export default function Planejamento() {
             <div style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Descrição / Detalhes</label><textarea style={{ ...inp, height: 88, resize: "vertical" }} value={fR.descricao} onChange={e => setFR(p => ({ ...p, descricao: e.target.value }))} placeholder="Produto sugerido, dose, volume de calda, janela de aplicação..." /></div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalRec(false); setEditRec(null); setFR(initFR()); }}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnV, background: "#6B3FAD" }} onClick={salvarRecomendacao} disabled={salvando}>{salvando ? "Salvando..." : editRec ? "Salvar" : "Criar Recomendação"}</button>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalRec(false); setEditRec(null); setFR(initFR()); }}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#6B3FAD" }} onClick={salvarRecomendacao} disabled={salvando}>{salvando ? "Salvando..." : editRec ? "Salvar" : "Criar Recomendação"}</OperationalButton>
           </div>
         </Modal>
       )}

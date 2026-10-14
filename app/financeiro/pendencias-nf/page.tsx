@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -300,7 +301,7 @@ export default function PendenciasNfPage() {
       <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências SIEG</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
@@ -315,7 +316,7 @@ export default function PendenciasNfPage() {
               ▶ Executar Sync SIEG
             </a>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
@@ -334,9 +335,9 @@ export default function PendenciasNfPage() {
         </div>
 
         {/* Filtros */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {["pendente", "classificada", "cancelada", "ignorada", "todas"].map(s => (
-            <button data-arato-button="toggle"
+            <OperationalButton data-arato-button="toggle"
               key={s}
               onClick={() => setFiltroStatus(s)}
               style={{
@@ -350,7 +351,7 @@ export default function PendenciasNfPage() {
               {s === "pendente" && totPendentes > 0 && (
                 <span style={{ marginLeft: 6, background: "#C9921B", color: "#fff", borderRadius: 10, fontSize: 10, padding: "1px 5px" }}>{totPendentes}</span>
               )}
-            </button>
+            </OperationalButton>
           ))}
           <input
             value={busca}
@@ -358,7 +359,7 @@ export default function PendenciasNfPage() {
             placeholder="Buscar por fornecedor ou NF..."
             style={{ marginLeft: "auto", padding: "7px 12px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 240 }}
           />
-        </div>
+        </OperationalFilters>
 
         {/* Tabela */}
         {loading ? (
@@ -372,7 +373,7 @@ export default function PendenciasNfPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["NF", "Fornecedor", "CNPJ Emitente", "Emissão", "Valor Total", "Status", ""].map(h => (
@@ -405,17 +406,17 @@ export default function PendenciasNfPage() {
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
-                      <button data-arato-button="secondary"
+                      <OperationalButton data-arato-button="secondary"
                         onClick={() => abrirModal(nf)}
                         style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #111111", background: "transparent", color: "#111111", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                       >
                         {nf.status === "pendente" ? "Classificar" : "Ver Itens"}
-                      </button>
+                      </OperationalButton>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         )}
       </main>
@@ -438,23 +439,23 @@ export default function PendenciasNfPage() {
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
                 {modal.status === "pendente" && (
                   <>
-                    <button data-arato-button="primary"
+                    <OperationalButton data-arato-button="primary"
                       onClick={() => { setModal(null); abrirVincular(modal); }}
                       style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     >
                       📎 Vincular a Previsão
-                    </button>
-                    <button data-arato-button="secondary"
+                    </OperationalButton>
+                    <OperationalButton data-arato-button="secondary"
                       onClick={() => ignorarNf(modal.id)}
                       style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                     >
                       Ignorar NF
-                    </button>
+                    </OperationalButton>
                   </>
                 )}
-                <button data-arato-button="primary" onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                <OperationalButton data-arato-button="primary" onClick={() => setModal(null)} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Fechar
-                </button>
+                </OperationalButton>
               </div>
             </div>
 
@@ -566,7 +567,7 @@ export default function PendenciasNfPage() {
                             </SelectField>
                           </div>
 
-                          <button data-arato-button="toggle"
+                          <OperationalButton data-arato-button="toggle"
                             onClick={() => salvarItemClassif(item)}
                             disabled={!c.categoria && !c.insumo_id}
                             style={{
@@ -578,7 +579,7 @@ export default function PendenciasNfPage() {
                             }}
                           >
                             Salvar
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
                     );
@@ -676,13 +677,13 @@ export default function PendenciasNfPage() {
 
             {/* Footer */}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => setModalVincular(null)}
                 style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancelar
-              </button>
-              <button data-arato-button="toggle"
+              </OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={confirmarVinculo}
                 disabled={!previsaoSel || vinculando}
                 style={{
@@ -693,7 +694,7 @@ export default function PendenciasNfPage() {
                 }}
               >
                 {vinculando ? "Vinculando…" : "📎 Confirmar Vínculo"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -727,19 +728,19 @@ export default function PendenciasNfPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => { setModalRegra(null); setNomeRegra(""); }}
                 style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Não, obrigado
-              </button>
-              <button data-arato-button="primary"
+              </OperationalButton>
+              <OperationalButton data-arato-button="primary"
                 onClick={criarRegra}
                 disabled={criandoRegra}
                 style={{ padding: "8px 20px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 {criandoRegra ? "Salvando…" : "✓ Criar Regra"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

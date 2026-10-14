@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -545,7 +546,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
   );
 
   return (
-    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
         <tr style={{ background: "var(--bg-page)" }}>
           {["Número", "Data", "Destinatário / Remetente", "Natureza / CFOP", "Valor Total", "Status", "Origem", ""].map((h, i) => (
@@ -614,50 +615,50 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       {nota.status === "autorizada" && (
                         <>
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={(e) => { e.stopPropagation(); onImprimirDanfe?.(nota); }}
                             style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                             🖨 Imprimir DANFE
-                          </button>
+                          </OperationalButton>
                           {nota.xml_url && (
-                            <button data-arato-button="secondary" style={{ padding: "5px 12px", border: "0.5px solid #444444", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</button>
+                            <OperationalButton data-arato-button="secondary" style={{ padding: "5px 12px", border: "0.5px solid #444444", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</OperationalButton>
                           )}
                           {onCancelar && (
-                            <button data-arato-button="danger"
+                            <OperationalButton data-arato-button="danger"
                               onClick={(e) => { e.stopPropagation(); onCancelar(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
                               Cancelar NF-e
-                            </button>
+                            </OperationalButton>
                           )}
                           {onComplementar && (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={(e) => { e.stopPropagation(); onComplementar(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
                               Emitir Complementar
-                            </button>
+                            </OperationalButton>
                           )}
                           {onCorrigir && (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={(e) => { e.stopPropagation(); onCorrigir(nota); }}
                               title="Corrigir um dado que não afeta valor, tributo nem identificação das partes"
                               style={{ padding: "5px 12px", border: "0.5px solid #378ADD", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                             >
                               📝 Carta de Correção
-                            </button>
+                            </OperationalButton>
                           )}
                           {onManifestarNF && (() => {
                             const dj = (nota.dados_nf_json ?? {}) as Record<string, unknown>;
                             const fc = String(dj.frete_conta ?? "");
                             const ehCif = fc === "0" || fc === "";
                             return ehCif ? (
-                              <button data-arato-button="primary"
+                              <OperationalButton data-arato-button="primary"
                                 onClick={(e) => { e.stopPropagation(); onManifestarNF(nota); }}
                                 style={{ padding: "5px 12px", border: "0.5px solid #111111", borderRadius: 6, background: "#111111", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                               >
                                 🚛 CT-e / MDF-e
-                              </button>
+                              </OperationalButton>
                             ) : null;
                           })()}
                         </>
@@ -665,13 +666,13 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                       {(nota.status === "rejeitada" || nota.status === "denegada") && (
                         <>
                           {onRetransmitir && (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                               ↺ Corrigir e retransmitir
-                            </button>
+                            </OperationalButton>
                           )}
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const erroInfo = (nota.dados_nf_json as Record<string,unknown>)?.sefaz_erro as string | undefined;
@@ -679,25 +680,25 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
                               }}
                               style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 11 }}>
                               Ver motivo da rejeição
-                            </button>
+                            </OperationalButton>
                         </>
                       )}
                       {nota.status === "em_digitacao" && (() => {
                         const isRascunho = (nota.dados_nf_json as Record<string,unknown>)?.rascunho === true;
                         if (isRascunho && onRetransmitir) {
                           return (
-                            <button data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
+                            <OperationalButton data-arato-button="primary" onClick={(e) => { e.stopPropagation(); onRetransmitir(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                               ▶ Transmitir →
-                            </button>
+                            </OperationalButton>
                           );
                         }
                         if (!isRascunho && onConsultarSefaz) {
                           return (
-                            <button data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }}
+                            <OperationalButton data-arato-button="secondary" onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }}
                               style={{ padding: "5px 12px", border: "0.5px solid #EF9F27", borderRadius: 6, background: "#FAEEDA", color: "#633806", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                               ⟳ Consultar SEFAZ
-                            </button>
+                            </OperationalButton>
                           );
                         }
                         return null;
@@ -710,7 +711,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
           );
         })}
       </tbody>
-    </table>
+    </OperationalGrid>
   );
 }
 
@@ -1873,20 +1874,20 @@ function FiscalInner() {
 
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* Header */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Fiscal — Documentos Eletrônicos</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>NF-e, devolução, cancelamento, complemento · certificado A1 · SEFAZ</p>
           </div>
           {botaoNovo[aba] && (
-            <button data-arato-button="primary"
+            <OperationalButton data-arato-button="primary"
               onClick={botaoNovo[aba]!.onClick}
               style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               {botaoNovo[aba]!.label}
-            </button>
+            </OperationalButton>
           )}
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
           {carregando && <div style={{ textAlign: "center", padding: 40, color: "#444" }}>Carregando…</div>}
@@ -1915,7 +1916,7 @@ function FiscalInner() {
                 <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 10, fontSize: 12, color: "#791F1F", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 16 }}>⚠</span>
                   <span style={{ flex: 1 }}><strong>Certificado A1 vencendo em {certDiasMin} dias</strong> — sem ele, nenhuma NF-e pode ser transmitida à SEFAZ.</span>
-                  <button data-arato-button="toggle" onClick={() => setAba("certificado")} style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "var(--bg-card)", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>Ver certificado</button>
+                  <OperationalButton data-arato-button="toggle" onClick={() => setAba("certificado")} style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "var(--bg-card)", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>Ver certificado</OperationalButton>
                 </div>
               )}
 
@@ -1932,13 +1933,13 @@ function FiscalInner() {
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     {notasContingencia.length > 0 && (
-                      <button data-arato-button="toggle" onClick={() => setAba("contingencia")} style={{ padding: "5px 12px", border: "0.5px solid #D97706", borderRadius: 6, background: "var(--bg-card)", color: "#92400E", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      <OperationalButton data-arato-button="toggle" onClick={() => setAba("contingencia")} style={{ padding: "5px 12px", border: "0.5px solid #D97706", borderRadius: 6, background: "var(--bg-card)", color: "#92400E", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                         Ver {notasContingencia.length} pendente(s) →
-                      </button>
+                      </OperationalButton>
                     )}
-                    <button data-arato-button="primary" onClick={desativarContingencia} style={{ padding: "5px 12px", border: "0.5px solid #92400E", borderRadius: 6, background: "#92400E", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <OperationalButton data-arato-button="primary" onClick={desativarContingencia} style={{ padding: "5px 12px", border: "0.5px solid #92400E", borderRadius: 6, background: "#92400E", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                       Desativar
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
               )}
@@ -1946,7 +1947,7 @@ function FiscalInner() {
               {/* Abas */}
               <div data-arato-tabs="true" style={{ display: "flex", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 12 }}>
                 {ABAS.map(a => (
-                  <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+                  <OperationalButton data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                     color: a.alert ? "#92400E" : (aba === a.key ? "var(--text-1)" : "var(--text-2)"),
@@ -1958,7 +1959,7 @@ function FiscalInner() {
                     {a.count !== undefined && (
                       <span style={{ fontSize: 10, background: a.alert ? "#FEF3C7" : (aba === a.key ? "#E8E8E8" : "var(--border-row)"), color: a.alert ? "#92400E" : (aba === a.key ? "#0D0D0D" : "var(--text-2)"), padding: "1px 6px", borderRadius: 8 }}>{a.count}</span>
                     )}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
 
@@ -1974,10 +1975,10 @@ function FiscalInner() {
                     ].map(f => {
                       const ativo = filtroStatusVenda === f.filter;
                       return (
-                        <button data-arato-button="toggle" key={f.label} onClick={() => setFiltroStatusVenda(ativo ? null : f.filter)}
+                        <OperationalButton data-arato-button="toggle" key={f.label} onClick={() => setFiltroStatusVenda(ativo ? null : f.filter)}
                           style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${ativo ? "#111111" : "var(--border-table)"}`, fontSize: 12, color: ativo ? "#fff" : "#666", background: ativo ? "#111111" : "transparent", cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
                           {f.label} {(f.count ?? 0) > 0 && <span style={{ fontSize: 10, background: ativo ? "rgba(255,255,255,0.25)" : "var(--border-row)", color: ativo ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>{f.count}</span>}
-                        </button>
+                        </OperationalButton>
                       );
                     })}
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{notas.filter(n => n.auto).length}/{notasVenda.length} emitidas automaticamente</span>
@@ -2024,9 +2025,9 @@ function FiscalInner() {
                       <div style={{ fontSize: 32, marginBottom: 12 }}>↩</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma devolução registrada</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF-e de Devolução" para registrar uma devolução de mercadoria.</div>
-                      <button data-arato-button="primary" onClick={() => setModalDevolucao(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      <OperationalButton data-arato-button="primary" onClick={() => setModalDevolucao(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         ◈ Nova NF-e de Devolução
-                      </button>
+                      </OperationalButton>
                     </div>
                   ) : (
                     <TabelaNFe notas={notasDevolucao} />
@@ -2049,9 +2050,9 @@ function FiscalInner() {
                       <div style={{ fontSize: 32, marginBottom: 12 }}>⇄</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111111", marginBottom: 6 }}>Nenhuma NF de Transferência</div>
                       <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>Clique em "Nova NF de Transferência" para emitir.</div>
-                      <button data-arato-button="primary" onClick={() => setModalTransferencia(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                      <OperationalButton data-arato-button="primary" onClick={() => setModalTransferencia(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         ◈ Nova NF de Transferência
-                      </button>
+                      </OperationalButton>
                     </div>
                   ) : (
                     <TabelaNFe notas={notasTransferencia} />
@@ -2092,12 +2093,12 @@ function FiscalInner() {
                               <div style={{ fontSize: 11, color: dentroJanela ? "#16A34A" : "#EF9F27", fontWeight: 600, marginBottom: 4 }}>
                                 {dentroJanela ? "✓ Dentro da janela de 24h" : "⚠ Fora da janela de 24h"}
                               </div>
-                              <button data-arato-button="danger"
+                              <OperationalButton data-arato-button="danger"
                                 onClick={() => setModalCancelamento(n)}
                                 style={{ padding: "5px 12px", border: "0.5px solid #E24B4A", borderRadius: 6, background: "#FCEBEB", color: "#791F1F", cursor: "pointer", fontSize: 11, fontWeight: 600 }}
                               >
                                 Solicitar Cancelamento
-                              </button>
+                              </OperationalButton>
                             </div>
                           </div>
                         );
@@ -2158,9 +2159,9 @@ function FiscalInner() {
                                     {fmtData(n.data_emissao)} · CFOP {n.cfop} · {fmtMoeda(n.valor_total)}
                                   </div>
                                 </div>
-                                <button data-arato-button="primary" style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                                <OperationalButton data-arato-button="primary" style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
                                   Complementar →
-                                </button>
+                                </OperationalButton>
                               </div>
                             ))}
                           </div>
@@ -2171,7 +2172,7 @@ function FiscalInner() {
                       <div>
                         <div style={{ background: "#E8E8E8", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0D0D0D" }}>
                           <strong>Complementando:</strong> NF-e {modalComplemento.numero} — {modalComplemento.destinatario} · {fmtMoeda(modalComplemento.valor_total)} · CFOP {modalComplemento.cfop}
-                          <button data-arato-button="secondary" onClick={() => setModalComplemento(null)} style={{ marginLeft: 12, fontSize: 11, color: "var(--text-2)", background: "none", border: "0.5px solid #ccc", borderRadius: 4, padding: "1px 7px", cursor: "pointer" }}>Trocar</button>
+                          <OperationalButton data-arato-button="secondary" onClick={() => setModalComplemento(null)} style={{ marginLeft: 12, fontSize: 11, color: "var(--text-2)", background: "none", border: "0.5px solid #ccc", borderRadius: 4, padding: "1px 7px", cursor: "pointer" }}>Trocar</OperationalButton>
                         </div>
 
                         <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
@@ -2206,14 +2207,14 @@ function FiscalInner() {
                         </div>
 
                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                          <button data-arato-button="secondary" onClick={() => setModalComplemento(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                          <button data-arato-button="toggle"
+                          <OperationalButton data-arato-button="secondary" onClick={() => setModalComplemento(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+                          <OperationalButton data-arato-button="toggle"
                             onClick={emitirComplemento}
                             disabled={!fComp.valorComplemento || salvando}
                             style={{ padding: "8px 18px", background: !fComp.valorComplemento || salvando ? "#666" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
                           >
                             {salvando ? "Emitindo…" : "◈ Emitir NF-e Complementar"}
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
                     )}
@@ -2227,7 +2228,7 @@ function FiscalInner() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Certificados Digitais A1</div>
-                      <button data-arato-button="primary" onClick={() => {
+                      <OperationalButton data-arato-button="primary" onClick={() => {
                         const total = produtores.length + empresasCert.length;
                         setCertProdId(total === 1
                           ? (produtores.length === 1 ? produtores[0].id : empresasCert[0].id)
@@ -2236,7 +2237,7 @@ function FiscalInner() {
                       }}
                         style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                         + Adicionar certificado
-                      </button>
+                      </OperationalButton>
                     </div>
 
                     {certs.length === 0 ? (
@@ -2288,10 +2289,10 @@ function FiscalInner() {
                                   ⚠ Renove antes de {cert.data_vencimento ? fmtData(cert.data_vencimento) : "—"}. Após o vencimento todas as transmissões serão bloqueadas.
                                 </div>
                               )}
-                              <button data-arato-button="danger" onClick={() => { setCertProdId(cert.produtor_id); setModalCert(true); }}
+                              <OperationalButton data-arato-button="danger" onClick={() => { setCertProdId(cert.produtor_id); setModalCert(true); }}
                                 style={{ marginTop: 10, width: "100%", padding: "7px 0", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 7, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                                 Atualizar certificado
-                              </button>
+                              </OperationalButton>
                             </div>
                           );
                         })}
@@ -2343,15 +2344,15 @@ function FiscalInner() {
                       )}
                     </div>
                     {modoContingencia ? (
-                      <button data-arato-button="primary" onClick={desativarContingencia}
+                      <OperationalButton data-arato-button="primary" onClick={desativarContingencia}
                         style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
                         ✓ Desativar Contingência
-                      </button>
+                      </OperationalButton>
                     ) : (
-                      <button data-arato-button="primary" onClick={() => { setMotivoContAtivacao(""); setModalContingencia(true); }}
+                      <OperationalButton data-arato-button="primary" onClick={() => { setMotivoContAtivacao(""); setModalContingencia(true); }}
                         style={{ padding: "8px 16px", background: "#D97706", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
                         ⚡ Ativar Contingência
-                      </button>
+                      </OperationalButton>
                     )}
                   </div>
 
@@ -2361,12 +2362,12 @@ function FiscalInner() {
                       NF-e pendentes de transmissão ({notasContingencia.length})
                     </div>
                     {notasContingencia.length > 0 && (
-                      <button data-arato-button="toggle"
+                      <OperationalButton data-arato-button="toggle"
                         onClick={transmitirLoteContingencia}
                         disabled={transmitindoLote}
                         style={{ padding: "7px 16px", background: transmitindoLote ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: transmitindoLote ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
                         {transmitindoLote ? "Transmitindo…" : `📤 Transmitir Lote (${notasContingencia.length})`}
-                      </button>
+                      </OperationalButton>
                     )}
                   </div>
 
@@ -2381,7 +2382,7 @@ function FiscalInner() {
                       </div>
                     </div>
                   ) : (
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Número", "Destinatário", "CFOP", "Valor", "Emitida em", "Tempo decorrido", "Prazo (168h)", ""].map((h, i) => (
@@ -2412,15 +2413,15 @@ function FiscalInner() {
                                 </span>
                               </td>
                               <td style={{ padding: "10px 12px" }}>
-                                <button data-arato-button="secondary" onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#111111", cursor: "pointer", fontSize: 11 }}>
+                                <OperationalButton data-arato-button="secondary" onClick={() => window.open(`/comercial/faturamento/danfe/${n.id}`, "_blank")} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "#111111", cursor: "pointer", fontSize: 11 }}>
                                   DANFE
-                                </button>
+                                </OperationalButton>
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   )}
 
                   {notasContingencia.length > 0 && (
@@ -2459,13 +2460,13 @@ function FiscalInner() {
               <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{motivoContAtivacao.length} / 255 caracteres</div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalContingencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalContingencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={ativarContingencia}
                 disabled={motivoContAtivacao.trim().length < 15}
                 style={{ padding: "8px 18px", background: motivoContAtivacao.trim().length >= 15 ? "#D97706" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 ⚡ Ativar Contingência
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2549,7 +2550,7 @@ function FiscalInner() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#155724", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{certFile.name}</div>
                       <div style={{ fontSize: 11, color: "#155724" }}>{(certFile.size / 1024).toFixed(1)} KB</div>
                     </div>
-                    <button data-arato-button="icon" onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#155724", fontSize: 16, padding: "2px 6px" }}>×</button>
+                    <OperationalButton data-arato-button="icon" onClick={() => setCertFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#155724", fontSize: 16, padding: "2px 6px" }}>×</OperationalButton>
                   </div>
                 ) : (
                   <div onClick={() => certFileRef.current?.click()} onDragOver={e => { e.preventDefault(); setCertDrag(true); }} onDragLeave={() => setCertDrag(false)}
@@ -2569,11 +2570,11 @@ function FiscalInner() {
             </div>
             {certOk && <div style={{ marginTop: 14, background: "#D4EDDA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#155724", fontWeight: 600 }}>✓ Certificado carregado com sucesso!</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={fecharCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarCertificado} disabled={!certFile || !certSenha.trim() || certLoading || certOk}
+              <OperationalButton data-arato-button="secondary" onClick={fecharCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarCertificado} disabled={!certFile || !certSenha.trim() || certLoading || certOk}
                 style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: !certFile || !certSenha.trim() || certLoading ? "not-allowed" : "pointer", opacity: !certFile || !certSenha.trim() || certLoading ? 0.5 : 1 }}>
                 {certLoading ? "Carregando..." : "🔒 Carregar certificado"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2650,8 +2651,8 @@ function FiscalInner() {
                   )}
                   {emissores.length === 1 && <span style={{ fontSize: 11, background: "var(--border)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
                   {emissores.length === 0 && <span style={{ fontSize: 11, background: "#E24B4A50", padding: "3px 8px", borderRadius: 5 }}>⚠ Configure Parâmetros Fiscais</span>}
-                  <button data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
-                    style={{ background: "var(--border)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</button>
+                  <OperationalButton data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setModalVenda(false); }}
+                    style={{ background: "var(--border)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</OperationalButton>
                 </div>
               </div>
 
@@ -2688,10 +2689,10 @@ function FiscalInner() {
               {/* Abas */}
               <div data-arato-tabs="true" data-arato-dialog-body="true" data-arato-grid-container="true" style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
                 {tabCfg.map(t => (
-                  <button data-arato-tab-active={tabNFe === (t.key)} data-arato-tab="true" data-arato-button="toggle" key={t.key} onClick={() => setTabNFe(t.key)}
+                  <OperationalButton data-arato-tab-active={tabNFe === (t.key)} data-arato-tab="true" data-arato-button="toggle" key={t.key} onClick={() => setTabNFe(t.key)}
                     style={{ padding: "7px 14px", border: "none", background: tabNFe === t.key ? "#fff" : "transparent", color: tabNFe === t.key ? "#111111" : "#444", fontWeight: tabNFe === t.key ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", borderTop: tabNFe === t.key ? "2px solid #111111" : "2px solid transparent", borderRight: "0.5px solid #c8cdd8" }}>
                     {t.label}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
 
@@ -3061,17 +3062,17 @@ function FiscalInner() {
                 {/* Sub-abas itens */}
                 <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
                   {(["itens","servicos","comissoes","impostos"] as const).map(t => (
-                    <button data-arato-tab-active={subTabItem === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setSubTabItem(t)}
+                    <OperationalButton data-arato-tab-active={subTabItem === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setSubTabItem(t)}
                       style={{ padding: "5px 14px", border: "none", background: subTabItem===t?"#fff":"transparent", color: subTabItem===t?"#111111":"var(--text-2)", fontWeight: subTabItem===t?600:400, fontSize: 12, cursor: "pointer", borderBottom: subTabItem===t?"1px solid #fff":"none" }}>
                       {t.charAt(0).toUpperCase()+t.slice(1)}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
 
                 <div data-arato-dialog-body="true" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
                   {/* Tabela de itens */}
                   <div style={{ flex: 1, overflowY: "auto", background: "var(--bg-card)" }}>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid #E0E4EE" }}>
                           {["Tipo Item","Item","NCM","Quantidade","Un.","Valor Unitário","Valor Total","Valor Financeiro","cClassTrib"].map(h => (
@@ -3115,8 +3116,8 @@ function FiscalInner() {
                             <input style={{ ...inSt, width: 60 }} value={novoItem.cclass_trib} onChange={e => setNovoItem(p => ({...p, cclass_trib:e.target.value}))} />
                           </td>
                           <td style={{ padding: "4px 6px", textAlign:"center" }}>
-                            <button data-arato-button="primary" onClick={addItem} title="Adicionar item"
-                              style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 4, width: 24, height: 24, cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: "1" }}>+</button>
+                            <OperationalButton data-arato-button="primary" onClick={addItem} title="Adicionar item"
+                              style={{ background: "#111111", color: "#fff", border: "none", borderRadius: 4, width: 24, height: 24, cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: "1" }}>+</OperationalButton>
                           </td>
                         </tr>
                         {nfeItens.length === 0 && (
@@ -3134,15 +3135,15 @@ function FiscalInner() {
                             <td style={{ padding: "5px 10px", textAlign:"right" }}>{fmtMoeda(it.valor_financeiro)}</td>
                             <td style={{ padding: "5px 10px", color: "var(--text-2)", fontSize: 11 }}>{it.cclass_trib}</td>
                             <td style={{ padding: "4px 6px", textAlign:"center" }}>
-                              <button data-arato-button="secondary" onClick={() => setEditItemModal({...it})} title="Editar"
-                                style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0D0D0D", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</button>
-                              <button data-arato-button="danger" onClick={() => removeItem(it.id)} title="Remover"
-                                style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 4, color: "#791F1F", width: 22, height: 22, cursor: "pointer", fontSize: 11, marginLeft: 3 }}>−</button>
+                              <OperationalButton data-arato-button="secondary" onClick={() => setEditItemModal({...it})} title="Editar"
+                                style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0D0D0D", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</OperationalButton>
+                              <OperationalButton data-arato-button="danger" onClick={() => removeItem(it.id)} title="Remover"
+                                style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 4, color: "#791F1F", width: 22, height: 22, cursor: "pointer", fontSize: 11, marginLeft: 3 }}>−</OperationalButton>
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   </div>
                 </div>
 
@@ -3157,19 +3158,19 @@ function FiscalInner() {
 
               {/* Barra de ações */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
-                <button data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
+                <OperationalButton data-arato-button="toggle" onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setRetransmitindoNota(null); setRemessaModo(null); setModalVenda(false); }}
                   style={{ padding: "7px 18px", border: "0.5px solid #C8CDD8", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
-                </button>
+                </OperationalButton>
                 {/* Salvar Rascunho — grava sem transmitir à SEFAZ */}
-                <button data-arato-button="primary" onClick={salvarRascunho} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                <OperationalButton data-arato-button="primary" onClick={salvarRascunho} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
                   style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer", opacity: fVenda.destinatario && moduloKeyAtivo && !salvando ? 1 : 0.5 }}>
                   {salvando ? "⟳ Salvando…" : "○ Salvar Rascunho"}
-                </button>
-                <button data-arato-button="toggle" onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
                   style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#111111" : "var(--text-muted)", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   {salvando ? "⟳ Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -3197,11 +3198,11 @@ function FiscalInner() {
               <div data-arato-dialog-body="true"><label data-arato-label="true" style={labelSt}>Valor Unitário</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.valor_unitario} onChange={e => setEditItemModal(p=>p?({...p,valor_unitario:aplicarMascara(e.target.value)}):null)} /></div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setEditItemModal(null)} style={{ padding:"7px 16px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:13 }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={() => { if (editItemModal) saveEditItem(editItemModal); }}
+              <OperationalButton data-arato-button="secondary" onClick={() => setEditItemModal(null)} style={{ padding:"7px 16px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={() => { if (editItemModal) saveEditItem(editItemModal); }}
                 style={{ padding:"7px 16px", background:"#111111", color:"#fff", border:"none", borderRadius:6, fontWeight:600, fontSize:13, cursor:"pointer" }}>
                 Salvar
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -3237,10 +3238,10 @@ function FiscalInner() {
             </div>
             {(() => { const v = fDev.quantidade && fDev.valorUnitario ? Math.round(Number(fDev.quantidade) * desmascarar(fDev.valorUnitario) * 100) / 100 : 0; if (!v) return null; return <div style={{ background: "#FAEEDA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#633806", marginBottom: 12 }}>Valor total da devolução: <strong style={{ fontSize: 15 }}>{fmtMoeda(v)}</strong></div>; })()}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalDevolucao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalDevolucao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={emitirDevolucao} disabled={!fDev.remetente || !fDev.quantidade || !fDev.valorUnitario || salvando} style={{ padding: "8px 18px", background: fDev.remetente && fDev.quantidade && fDev.valorUnitario && !salvando ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Emitindo…" : "⟳ Emitir NF-e de Devolução"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -3256,7 +3257,7 @@ function FiscalInner() {
                 <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>NF de Transferência</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#C9921B", marginTop: 2 }}>CFOP 5.152 / 6.152 — entre estabelecimentos do mesmo produtor</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalTransferencia(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalTransferencia(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>✕</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "18px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -3363,12 +3364,12 @@ function FiscalInner() {
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)" }}>Não gera recebimento financeiro · CFOP {fTransf.cfop}</div>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                <button data-arato-button="secondary" onClick={() => setModalTransferencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                <button data-arato-button="toggle" onClick={emitirTransferencia}
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalTransferencia(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={emitirTransferencia}
                   disabled={!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf}
                   style={{ padding: "8px 18px", background: (!fTransf.produtor_id || !fTransf.fazenda_destino_id || !fTransf.quantidade || !fTransf.valor_unitario || salvandoTransf) ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                   {salvandoTransf ? "⟳ Emitindo…" : "⟳ Emitir NF de Transferência"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -3399,14 +3400,14 @@ function FiscalInner() {
               <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{motivoCancelamento.length} caracteres</div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => { setModalCancelamento(null); setMotivoCancelamento(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalCancelamento(null); setMotivoCancelamento(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={solicitarCancelamento}
                 disabled={motivoCancelamento.length < 15 || salvando}
                 style={{ padding: "8px 18px", background: motivoCancelamento.length >= 15 && !salvando ? "#E24B4A" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
               >
                 {salvando ? "Enviando…" : "Solicitar Cancelamento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -3446,14 +3447,14 @@ function FiscalInner() {
               <div data-arato-dialog-body="true" style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{textoCorrecao.length} caracteres</div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => { setModalCorrecao(null); setTextoCorrecao(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalCorrecao(null); setTextoCorrecao(""); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={enviarCartaCorrecao}
                 disabled={textoCorrecao.trim().length < 15 || enviandoCorrecao}
                 style={{ padding: "8px 18px", background: textoCorrecao.trim().length >= 15 && !enviandoCorrecao ? "#378ADD" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
               >
                 {enviandoCorrecao ? "Enviando…" : "Emitir Carta de Correção"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect } from "react";
@@ -53,7 +54,7 @@ function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onC
       <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
         <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
-          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
+          <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</OperationalButton>
         </div>
         <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>{children}</div>
       </div>
@@ -235,9 +236,9 @@ export default function AdiantamentosPage() {
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
+            <OperationalButton data-arato-button="primary" style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
               + Novo Adiantamento
-            </button>
+            </OperationalButton>
           </div>
         </div>
 
@@ -263,19 +264,19 @@ export default function AdiantamentosPage() {
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
 
           {/* Tabs + Busca */}
-          <div data-arato-filters="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <OperationalFilters data-arato-filters="true" style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <div data-arato-tabs="true" style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {TABS.map(t => (
-                <button data-arato-tab-active={tab === (t.key)} data-arato-tab="true" data-arato-button="toggle" key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
+                <OperationalButton data-arato-tab-active={tab === (t.key)} data-arato-tab="true" data-arato-button="toggle" key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#111111" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
                   {t.label}
                   <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>
                     ({t.key === "todos" ? adiantamentos.length : adiantamentos.filter(a => a.status === t.key).length})
                   </span>
-                </button>
+                </OperationalButton>
               ))}
             </div>
             <input style={{ ...inp, maxWidth: 260, marginLeft: "auto" }} placeholder="Buscar fornecedor, descrição, nº doc..." value={busca} onChange={e => setBusca(e.target.value)} />
-          </div>
+          </OperationalFilters>
 
           {carregando ? (
             <div style={{ padding: 40, textAlign: "center", color: "#666" }}>Carregando…</div>
@@ -284,7 +285,7 @@ export default function AdiantamentosPage() {
               {tab === "em_aberto" ? "Nenhum adiantamento em aberto." : "Nenhum registro encontrado."}
             </div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Fornecedor", "Descrição", "Nº Doc", "Emissão", "Previsão Entrega", "Valor", "Aplicado", "Saldo", "Status", ""].map((h, i) => (
@@ -327,15 +328,15 @@ export default function AdiantamentosPage() {
                       <td style={tdS}>{badge(a.status)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</button>
+                          <OperationalButton data-arato-button="secondary" style={btnSm} onClick={() => abrirDetalhe(a)}>Detalhes</OperationalButton>
                           {(a.status === "em_aberto" || a.status === "parcial") && (
-                            <button data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
+                            <OperationalButton data-arato-button="secondary" style={{ ...btnSm, background: "#FBF3E0", color: "#7A5520", border: "0.5px solid #C9921B40" }}
                               onClick={() => { setModalApliq(a); setFApliq({ ...VAZIO_APLIQ, data_aplicacao: new Date().toISOString().slice(0,10) }); setErro(""); }}>
                               Aplicar
-                            </button>
+                            </OperationalButton>
                           )}
                           {a.status === "em_aberto" && (
-                            <button data-arato-button="danger" style={btnSmX} onClick={() => handleCancelar(a.id)}>Cancelar</button>
+                            <OperationalButton data-arato-button="danger" style={btnSmX} onClick={() => handleCancelar(a.id)}>Cancelar</OperationalButton>
                           )}
                         </div>
                       </td>
@@ -343,7 +344,7 @@ export default function AdiantamentosPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           )}
         </div>
       </div>
@@ -426,10 +427,10 @@ export default function AdiantamentosPage() {
 
           {erro && <div style={{ marginTop: 12, background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", color: "#791F1F", fontSize: 12 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalNovo(false); setErro(""); }}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnAzul }}
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalNovo(false); setErro(""); }}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnAzul }}
               disabled={salvando}
-              onClick={salvarNovo}>{salvando ? "Salvando…" : "Salvar Adiantamento"}</button>
+              onClick={salvarNovo}>{salvando ? "Salvando…" : "Salvar Adiantamento"}</OperationalButton>
           </div>
         </Modal>
       )}
@@ -464,18 +465,18 @@ export default function AdiantamentosPage() {
 
           {/* Botão "Aplicar Tudo" */}
           {(modalApliq.valor - (modalApliq.valor_aplicado ?? 0)) > 0 && (
-            <button data-arato-button="secondary" style={{ ...btnSm, marginTop: 8, color: "#7A5520", background: "#FBF3E0", border: "0.5px solid #C9921B40" }}
+            <OperationalButton data-arato-button="secondary" style={{ ...btnSm, marginTop: 8, color: "#7A5520", background: "#FBF3E0", border: "0.5px solid #C9921B40" }}
               onClick={() => setFApliq(p => ({ ...p, valor_aplicado: String(modalApliq.valor - (modalApliq.valor_aplicado ?? 0)) }))}>
               Aplicar saldo total ({fmtBRL(modalApliq.valor - (modalApliq.valor_aplicado ?? 0))})
-            </button>
+            </OperationalButton>
           )}
 
           {erro && <div style={{ marginTop: 12, background: "#FCEBEB", borderRadius: 8, padding: "8px 12px", color: "#791F1F", fontSize: 12 }}>{erro}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => { setModalApliq(null); setErro(""); }}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnV }}
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalApliq(null); setErro(""); }}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV }}
               disabled={salvando}
-              onClick={salvarApliq}>{salvando ? "Salvando…" : "Confirmar Aplicação"}</button>
+              onClick={salvarApliq}>{salvando ? "Salvando…" : "Confirmar Aplicação"}</OperationalButton>
           </div>
         </Modal>
       )}
@@ -520,7 +521,7 @@ export default function AdiantamentosPage() {
           ) : aplicacoes.length === 0 ? (
             <div style={{ color: "var(--text-3)", fontSize: 13, padding: "12px 0" }}>Nenhuma aplicação registrada.</div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Data", "Descrição", "NF / Ref.", "Valor Aplicado"].map((h, i) => (
@@ -538,7 +539,7 @@ export default function AdiantamentosPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           )}
 
           {modalDetalhe.observacao && (

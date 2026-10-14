@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -213,15 +214,15 @@ export default function EmpresaPagarPage() {
       <TopNav />
       <div style={S.body}>
         {/* cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Contas a Pagar — Empresas</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Despesas e obrigações das empresas não-rurais</p>
           </div>
-          <button data-arato-button="secondary" style={S.btn("#1A4870")} onClick={abrirNovo}>+ Nova CP</button>
-        </div>
+          <OperationalButton data-arato-button="secondary" style={S.btn("#1A4870")} onClick={abrirNovo}>+ Nova CP</OperationalButton>
+        </OperationalHeading>
 
-        {msg && <div style={{ background: "#FFF0F0", border: "0.5px solid #E24B4A", borderRadius: 6, padding: "10px 16px", fontSize: 13, marginBottom: 14, color: "#E24B4A" }}>{msg} <button data-arato-button="icon" onClick={() => setMsg("")} style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>×</button></div>}
+        {msg && <div style={{ background: "#FFF0F0", border: "0.5px solid #E24B4A", borderRadius: 6, padding: "10px 16px", fontSize: 13, marginBottom: 14, color: "#E24B4A" }}>{msg} <OperationalButton data-arato-button="icon" onClick={() => setMsg("")} style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>×</OperationalButton></div>}
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
@@ -239,7 +240,7 @@ export default function EmpresaPagarPage() {
 
         {/* filtros */}
         <div style={{ ...S.card, padding: 14 }}>
-          <div data-arato-filters="true" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div style={{ flex: "0 0 180px" }}>
               <label data-arato-label="true" style={S.label}>Empresa</label>
               <SelectField style={S.inp} value={fEmpresa} onChange={e => setFEmpresa(e.target.value)}>
@@ -266,17 +267,17 @@ export default function EmpresaPagarPage() {
               <label data-arato-label="true" style={S.label}>Buscar</label>
               <input style={S.inp} placeholder="Fornecedor ou descrição..." value={fBusca} onChange={e => setFBusca(e.target.value)} />
             </div>
-          </div>
+          </OperationalFilters>
           {/* status tabs */}
           <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
             {(["aberto","vencido","pago","todos"] as StatusFiltro[]).map(s => (
-              <button data-arato-button="secondary" key={s} onClick={() => setFStatus(s)} style={{ ...S.btn(fStatus === s ? "#1A4870" : "transparent", fStatus === s ? "#fff" : "#555"), border: "0.5px solid #DDE2EE", fontSize: 12, padding: "5px 12px" }}>
+              <OperationalButton data-arato-button="secondary" key={s} onClick={() => setFStatus(s)} style={{ ...S.btn(fStatus === s ? "#1A4870" : "transparent", fStatus === s ? "#fff" : "#555"), border: "0.5px solid #DDE2EE", fontSize: 12, padding: "5px 12px" }}>
                 {{ aberto: "Em Aberto", vencido: "Vencidos", pago: "Pagos", todos: "Todos" }[s]}
                 {" "}({s === "aberto" ? lancamentos.filter(l => l.status==="pendente" && l.data_vencimento>=hoje).length
                        : s === "vencido" ? lancamentos.filter(l => l.status==="pendente" && l.data_vencimento<hoje).length
                        : s === "pago"    ? lancamentos.filter(l => l.status==="pago").length
                        : lancamentos.length})
-              </button>
+              </OperationalButton>
             ))}
           </div>
         </div>
@@ -289,7 +290,7 @@ export default function EmpresaPagarPage() {
             <div style={{ padding: 32, textAlign: "center", color: erroCarga ? "#791F1F" : "#888" }}>{erroCarga ? `Não foi possível carregar os lançamentos: ${erroCarga}` : "Nenhum lançamento encontrado."}</div>
           ) : (
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     {["Nº","Empresa","Fornecedor","Descrição","Categoria","Competência","Vencimento","Valor","Status",""].map(h => (
@@ -316,16 +317,16 @@ export default function EmpresaPagarPage() {
                         <td style={S.td}>
                           <div style={{ display: "flex", gap: 4 }}>
                             {(l.status === "pendente" || l.status === "parcial") && (
-                              <button data-arato-button="secondary" style={{ ...S.btn("#16A34A"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirBaixa(l)}>↓ Baixar</button>
+                              <OperationalButton data-arato-button="secondary" style={{ ...S.btn("#16A34A"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirBaixa(l)}>↓ Baixar</OperationalButton>
                             )}
                             {(l.status === "pago" || l.status === "parcial") && (
-                              <button data-arato-button="secondary" style={{ ...S.btn("#C9921B"), fontSize: 11, padding: "3px 8px" }} title="Reabrir — apaga dados de baixa" onClick={() => reabrir(l)}>↺ Reabrir</button>
+                              <OperationalButton data-arato-button="secondary" style={{ ...S.btn("#C9921B"), fontSize: 11, padding: "3px 8px" }} title="Reabrir — apaga dados de baixa" onClick={() => reabrir(l)}>↺ Reabrir</OperationalButton>
                             )}
                             {l.status !== "pago" && l.status !== "cancelado" && (
-                              <button data-arato-button="secondary" style={{ ...S.btn("#555"), fontSize: 11, padding: "3px 8px" }} title="Reprogramar vencimento" onClick={() => setReprogLanc(l)}>↕</button>
+                              <OperationalButton data-arato-button="secondary" style={{ ...S.btn("#555"), fontSize: 11, padding: "3px 8px" }} title="Reprogramar vencimento" onClick={() => setReprogLanc(l)}>↕</OperationalButton>
                             )}
-                            <button data-arato-button="secondary" style={{ ...S.btn("#1A4870"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirEditar(l)}>✏</button>
-                            <button data-arato-button="icon" style={{ ...S.btn("#E24B4A"), fontSize: 11, padding: "3px 8px" }} onClick={() => excluir(l.id)}>✕</button>
+                            <OperationalButton data-arato-button="secondary" style={{ ...S.btn("#1A4870"), fontSize: 11, padding: "3px 8px" }} onClick={() => abrirEditar(l)}>✏</OperationalButton>
+                            <OperationalButton data-arato-button="icon" style={{ ...S.btn("#E24B4A"), fontSize: 11, padding: "3px 8px" }} onClick={() => excluir(l.id)}>✕</OperationalButton>
                           </div>
                         </td>
                       </tr>
@@ -339,7 +340,7 @@ export default function EmpresaPagarPage() {
                     <td colSpan={2} />
                   </tr>
                 </tfoot>
-              </table>
+              </OperationalGrid>
             </div>
           )}
         </div>
@@ -351,15 +352,15 @@ export default function EmpresaPagarPage() {
           <div style={S.modal} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
               <h3 data-arato-h3="true" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{editId ? "Editar CP" : "Nova Conta a Pagar"}</h3>
-              <button data-arato-button="icon" onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer" }}>×</OperationalButton>
             </div>
 
             {/* abas */}
             <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 18, borderBottom: "0.5px solid #DDE2EE" }}>
               {(["principal","adicionais"] as const).map(a => (
-                <button data-arato-tab-active={tabModal === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setTabModal(a)} style={{ ...S.btn(tabModal === a ? "#1A4870" : "transparent", tabModal === a ? "#fff" : "#555"), borderRadius: "6px 6px 0 0", fontSize: 12 }}>
+                <OperationalButton data-arato-tab-active={tabModal === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setTabModal(a)} style={{ ...S.btn(tabModal === a ? "#1A4870" : "transparent", tabModal === a ? "#fff" : "#555"), borderRadius: "6px 6px 0 0", fontSize: 12 }}>
                   {a === "principal" ? "Principal" : "Adicionais"}
-                </button>
+                </OperationalButton>
               ))}
             </div>
 
@@ -436,8 +437,8 @@ export default function EmpresaPagarPage() {
 
             {msg && <div style={{ marginTop: 12, color: "#E24B4A", fontSize: 13 }}>{msg}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20, borderTop: "0.5px solid #DDE2EE", paddingTop: 16 }}>
-              <button data-arato-button="secondary" style={{ ...S.btn("transparent", "#555"), border: "0.5px solid #DDE2EE" }} onClick={() => setModalOpen(false)}>Cancelar</button>
-              <button data-arato-button="secondary" style={S.btn("#1A4870")} onClick={salvar} disabled={saving}>{saving ? "Salvando..." : editId ? "Salvar" : "Criar"}</button>
+              <OperationalButton data-arato-button="secondary" style={{ ...S.btn("transparent", "#555"), border: "0.5px solid #DDE2EE" }} onClick={() => setModalOpen(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="secondary" style={S.btn("#1A4870")} onClick={salvar} disabled={saving}>{saving ? "Salvando..." : editId ? "Salvar" : "Criar"}</OperationalButton>
             </div>
           </div>
         </div>

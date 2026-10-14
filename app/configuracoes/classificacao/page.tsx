@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -246,7 +247,7 @@ export default function ClassificacaoPage() {
       <TopNav />
       <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Regras de Classificação Automática</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
@@ -254,26 +255,26 @@ export default function ClassificacaoPage() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={carregarPadroesArato}
               disabled={carregandoPad}
               style={{ padding: "9px 16px", borderRadius: 8, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#7A4300", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               {carregandoPad ? "Carregando…" : "Padrões Arato"}
-            </button>
-            <button data-arato-button="primary"
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary"
               onClick={abrirNova}
               style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               + Nova Regra
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {msgPadroes && (
           <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#166534", display: "flex", justifyContent: "space-between" }}>
             {msgPadroes}
-            <button data-arato-button="icon" onClick={() => setMsgPadroes(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>✕</button>
+            <OperationalButton data-arato-button="icon" onClick={() => setMsgPadroes(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>✕</OperationalButton>
           </div>
         )}
 
@@ -319,15 +320,15 @@ export default function ClassificacaoPage() {
               Use <strong>Padrões Arato</strong> para carregar os NCMs mais comuns do agronegócio de uma vez.
             </div>
             {regras.length === 0 && (
-              <button data-arato-button="primary" onClick={carregarPadroesArato} disabled={carregandoPad}
+              <OperationalButton data-arato-button="primary" onClick={carregarPadroesArato} disabled={carregandoPad}
                 style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 Carregar Padrões Arato
-              </button>
+              </OperationalButton>
             )}
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["Regra", "Tipo NF", "Critérios de Match", "Classificação", "Aplicações", "Última", "Ativa", ""].map(h => (
@@ -371,24 +372,24 @@ export default function ClassificacaoPage() {
                       <td style={{ padding: "10px 14px", fontWeight: 700, color: "#111111" }}>{(r.qtd_aplicacoes ?? 0).toLocaleString("pt-BR")}</td>
                       <td style={{ padding: "10px 14px", color: "var(--text-3)", fontSize: 12 }}>{fmtDate(r.ultima_aplicacao)}</td>
                       <td style={{ padding: "10px 14px" }}>
-                        <button data-arato-button="toggle"
+                        <OperationalButton data-arato-button="toggle"
                           onClick={() => toggleAtivo(r)}
                           style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: r.ativo ? "#16A34A" : "var(--border)", position: "relative", transition: "background 0.2s" }}
                         >
                           <span style={{ position: "absolute", top: 3, left: r.ativo ? 21 : 3, width: 16, height: 16, borderRadius: "50%", background: "var(--bg-card)", transition: "left 0.2s", display: "block", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-                        </button>
+                        </OperationalButton>
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button data-arato-button="secondary" onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>Editar</button>
-                          <button data-arato-button="secondary" onClick={() => excluir(r.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #FECACA", background: "var(--bg-card)", color: "#E24B4A", fontSize: 11, cursor: "pointer" }}>Excluir</button>
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>Editar</OperationalButton>
+                          <OperationalButton data-arato-button="secondary" onClick={() => excluir(r.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #FECACA", background: "var(--bg-card)", color: "#E24B4A", fontSize: 11, cursor: "pointer" }}>Excluir</OperationalButton>
                         </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         )}
       </main>
@@ -408,8 +409,8 @@ export default function ClassificacaoPage() {
               <div data-arato-dialog-body="true" style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>Tipo de NF</div>
                 <div style={{ display: "inline-flex", background: "var(--bg-page)", borderRadius: 8, padding: 3, gap: 2 }}>
-                  <button data-arato-button="secondary" style={btnTab(ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "produto", insumo_id: "", centro_custo_id: "" }))}>NF Produto</button>
-                  <button data-arato-button="secondary" style={btnTab(!ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "servico" }))}>NFS Serviço</button>
+                  <OperationalButton data-arato-button="secondary" style={btnTab(ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "produto", insumo_id: "", centro_custo_id: "" }))}>NF Produto</OperationalButton>
+                  <OperationalButton data-arato-button="secondary" style={btnTab(!ehProduto)} onClick={() => setForm(f => ({ ...f, tipo_nf: "servico" }))}>NFS Serviço</OperationalButton>
                 </div>
                 {ehProduto && (
                   <div style={{ marginTop: 8, fontSize: 11, color: "#1e40af", background: "#EEEEEE", border: "0.5px solid #93C5FD", borderRadius: 6, padding: "6px 10px" }}>
@@ -543,10 +544,10 @@ export default function ClassificacaoPage() {
               </div>
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button data-arato-button="secondary" onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-                <button data-arato-button="primary" onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {saving ? "Salvando…" : editId ? "Salvar" : "Criar Regra"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

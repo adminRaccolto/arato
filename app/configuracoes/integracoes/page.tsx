@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -255,13 +256,13 @@ function ModalSieg({
             { id: "config", label: "Configuração" },
             { id: "cert",   label: "Registro no Sieg" },
           ] as const).map(t => (
-            <button data-arato-tab-active={tab === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setTab(t.id)}
+            <OperationalButton data-arato-tab-active={tab === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setTab(t.id)}
               style={{ padding: "9px 20px", border: "none", background: "transparent",
                        borderBottom: tab === t.id ? "2px solid #111111" : "2px solid transparent",
                        color: tab === t.id ? "#111111" : "#666",
                        fontWeight: tab === t.id ? 700 : 400, fontSize: 13, cursor: "pointer" }}>
               {t.label}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -299,12 +300,12 @@ function ModalSieg({
                     : "✓ Será usada a chave global configurada pela Raccolto na Vercel"}
                 </div>
                 {temChaveFazenda && (
-                  <button data-arato-button="secondary"
+                  <OperationalButton data-arato-button="secondary"
                     onClick={() => setCfg(prev => ({ ...prev, api_key: "" }))}
                     style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none",
                              cursor: "pointer", textDecoration: "underline", padding: 0 }}>
                     Limpar (usar global)
-                  </button>
+                  </OperationalButton>
                 )}
               </div>
             </div>
@@ -325,9 +326,9 @@ function ModalSieg({
                       {formatarDoc(doc)}
                     </span>
                     <span style={{ fontSize: 11, color: "var(--text-3)" }}>{doc.length === 11 ? "CPF" : "CNPJ"}</span>
-                    <button data-arato-button="icon" onClick={() => removerDoc(doc)}
+                    <OperationalButton data-arato-button="icon" onClick={() => removerDoc(doc)}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A",
-                               fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>×</button>
+                               fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>×</OperationalButton>
                   </div>
                 ))}
               </div>
@@ -343,7 +344,7 @@ function ModalSieg({
                   {produtoresSugeridos.map(p => {
                     const jaAdicionado = cfg.cnpjs_destino.includes(p.cpf_cnpj);
                     return (
-                      <button data-arato-button="toggle"
+                      <OperationalButton data-arato-button="toggle"
                         key={p.cpf_cnpj}
                         onClick={() => {
                           if (!jaAdicionado) {
@@ -360,7 +361,7 @@ function ModalSieg({
                         title={jaAdicionado ? "Já monitorado" : `Adicionar ${p.cpf_cnpj}`}
                       >
                         {jaAdicionado ? "✓ " : ""}{p.nome}
-                      </button>
+                      </OperationalButton>
                     );
                   })}
                 </div>
@@ -377,14 +378,14 @@ function ModalSieg({
                 style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "0.5px solid var(--border)",
                          fontSize: 13, outline: "none", fontFamily: "monospace" }}
               />
-              <button data-arato-button="toggle" onClick={adicionarDoc} disabled={novoDoc.length < 11}
+              <OperationalButton data-arato-button="toggle" onClick={adicionarDoc} disabled={novoDoc.length < 11}
                 style={{ padding: "8px 18px",
                          background: novoDoc.length >= 11 ? "#111111" : "var(--bg-page)",
                          color: novoDoc.length >= 11 ? "#fff" : "var(--text-3)",
                          border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13,
                          fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
                 + Adicionar
-              </button>
+              </OperationalButton>
             </div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>
               Pressione Enter ou clique Adicionar. Pode cadastrar quantos CPFs/CNPJs precisar.
@@ -431,24 +432,24 @@ function ModalSieg({
             {/* Ações */}
             <div data-arato-dialog-heading="true" style={{ display: "flex", gap: 10, marginTop: 28, justifyContent: "space-between",
                           alignItems: "center" }}>
-              <button data-arato-button="toggle" onClick={sincronizar} disabled={syncing || cfg.cnpjs_destino.length === 0}
+              <OperationalButton data-arato-button="toggle" onClick={sincronizar} disabled={syncing || cfg.cnpjs_destino.length === 0}
                 style={{ padding: "9px 22px",
                          background: syncing || cfg.cnpjs_destino.length === 0 ? "var(--border)" : "#16A34A",
                          color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600,
                          cursor: syncing || cfg.cnpjs_destino.length === 0 ? "not-allowed" : "pointer" }}>
                 {syncing ? "Sincronizando…" : "⟳ Sincronizar Agora"}
-              </button>
+              </OperationalButton>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                <button data-arato-button="secondary" onClick={onClose}
+                <OperationalButton data-arato-button="secondary" onClick={onClose}
                   style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid var(--border)",
                            borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                   Cancelar
-                </button>
-                <button data-arato-button="primary" onClick={salvar} disabled={saving}
+                </OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvar} disabled={saving}
                   style={{ padding: "9px 24px", background: "#111111", color: "#fff",
                            border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {saving ? "Salvando…" : "Salvar"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
 
@@ -536,7 +537,7 @@ function ModalSieg({
               </div>
             )}
 
-            <button data-arato-button="toggle" onClick={registrarTodos} disabled={certSaving}
+            <OperationalButton data-arato-button="toggle" onClick={registrarTodos} disabled={certSaving}
               style={{ width: "100%", padding: "11px 0",
                        background: certSaving ? "var(--border)" : "#111111",
                        color: "#fff", border: "none", borderRadius: 8, fontSize: 14,
@@ -546,7 +547,7 @@ function ModalSieg({
                 : certCnpj
                   ? `Registrar ${formatarDoc(certCnpj)} no Sieg`
                   : `Registrar ${cfg.cnpjs_destino.length} CNPJ(s) no Sieg`}
-            </button>
+            </OperationalButton>
 
             <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--bg-page)",
                           border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 11, color: "#666",
@@ -560,12 +561,12 @@ function ModalSieg({
               <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                             marginBottom: 10 }}>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>Diagnóstico da chave</div>
-                <button data-arato-button="toggle" onClick={testarDiagnostico} disabled={diagLoading}
+                <OperationalButton data-arato-button="toggle" onClick={testarDiagnostico} disabled={diagLoading}
                   style={{ padding: "6px 14px", background: diagLoading ? "var(--bg-page)" : "var(--bg-card)",
                            border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12,
                            cursor: diagLoading ? "not-allowed" : "pointer", color: "#111111", fontWeight: 600 }}>
                   {diagLoading ? "Testando…" : "Testar chave agora"}
-                </button>
+                </OperationalButton>
               </div>
               {diagResult && (() => {
                 const ok      = Boolean(diagResult.sieg_ok);
@@ -741,11 +742,11 @@ function ModalConfigurar({
                 </div>
               ))}
             </div>
-            <button data-arato-button="secondary" onClick={testarBalanca} disabled={testing}
+            <OperationalButton data-arato-button="secondary" onClick={testarBalanca} disabled={testing}
               style={{ marginTop: 16, padding: "9px 20px", background: "var(--bg-page)", border: "0.5px solid var(--border)",
                        borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#111111" }}>
               {testing ? "Aguardando leitura..." : "Testar Balança (Web Serial)"}
-            </button>
+            </OperationalButton>
             {testResult && (
               <div style={{ marginTop: 10, padding: "10px 14px",
                             background: testResult.startsWith("Peso") ? "#F0FFF4" : "#FFF5F5",
@@ -779,12 +780,12 @@ function ModalConfigurar({
               <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", marginBottom: 10 }}>
                 Conexão WhatsApp
               </div>
-              <button data-arato-button="toggle" onClick={reconectarWhatsApp} disabled={qrLoading}
+              <OperationalButton data-arato-button="toggle" onClick={reconectarWhatsApp} disabled={qrLoading}
                 style={{ padding: "9px 20px", background: qrLoading ? "var(--border)" : "#25D366",
                          color: "#fff", border: "none", borderRadius: 8,
                          fontSize: 13, fontWeight: 600, cursor: qrLoading ? "default" : "pointer" }}>
                 {qrLoading ? "Gerando QR Code…" : "Gerar QR Code para Conectar"}
-              </button>
+              </OperationalButton>
 
               {qrStatus && (
                 <div style={{ marginTop: 10, fontSize: 12, padding: "8px 12px", borderRadius: 8,
@@ -802,12 +803,12 @@ function ModalConfigurar({
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
                     Se expirar, clique em "Gerar QR Code" novamente
                   </div>
-                  <button data-arato-button="secondary" onClick={reconectarWhatsApp} disabled={qrLoading}
+                  <OperationalButton data-arato-button="secondary" onClick={reconectarWhatsApp} disabled={qrLoading}
                     style={{ marginTop: 8, padding: "6px 14px", background: "var(--bg-page)",
                              border: "0.5px solid var(--border)", borderRadius: 6,
                              fontSize: 12, cursor: "pointer", color: "#111111" }}>
                     Renovar QR Code
-                  </button>
+                  </OperationalButton>
                 </div>
               )}
             </div>
@@ -839,17 +840,17 @@ function ModalConfigurar({
         )}
 
         <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 12, marginTop: 28, justifyContent: "flex-end" }}>
-          <button data-arato-button="secondary" onClick={onClose}
+          <OperationalButton data-arato-button="secondary" onClick={onClose}
             style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid var(--border)",
                      borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
             Cancelar
-          </button>
-          <button data-arato-button="primary" onClick={async () => { setSaving(true); await onSave(config, ativo); setSaving(false); onClose(); }}
+          </OperationalButton>
+          <OperationalButton data-arato-button="primary" onClick={async () => { setSaving(true); await onSave(config, ativo); setSaving(false); onClose(); }}
             disabled={saving}
             style={{ padding: "9px 24px", background: "#111111", color: "#fff",
                      border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {saving ? "Salvando..." : "Salvar"}
-          </button>
+          </OperationalButton>
         </div>
       </div>
     </div>
@@ -930,14 +931,14 @@ export default function IntegracoesPage() {
       <div style={{ padding: "24px 32px", maxWidth: 1100, margin: "0 auto" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Integrações</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-3)" }}>
               {totalAtivos > 0 ? `${totalAtivos} integração${totalAtivos > 1 ? "ões" : ""} ativa${totalAtivos > 1 ? "s" : ""}` : "Nenhuma integração ativa"}
             </p>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Tabs */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 8, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
@@ -946,7 +947,7 @@ export default function IntegracoesPage() {
               ? (siegAtivo ? 1 : 0)
               : configs.filter(c => catalogo.find(i => i.id === c.integracao_id)?.categoria === cat.id && c.ativo).length;
             return (
-              <button data-arato-tab-active={abaCat === (cat.id)} data-arato-tab="true" data-arato-button="toggle" key={cat.id} onClick={() => setAbaCat(cat.id)}
+              <OperationalButton data-arato-tab-active={abaCat === (cat.id)} data-arato-tab="true" data-arato-button="toggle" key={cat.id} onClick={() => setAbaCat(cat.id)}
                 style={{ padding: "10px 20px", border: "none", borderRadius: "8px 8px 0 0",
                          background: abaCat === cat.id ? "#fff" : "transparent",
                          borderBottom: abaCat === cat.id ? "2px solid #111111" : "2px solid transparent",
@@ -961,7 +962,7 @@ export default function IntegracoesPage() {
                     {ativosNoCat}
                   </span>
                 )}
-              </button>
+              </OperationalButton>
             );
           })}
         </div>
@@ -1014,14 +1015,14 @@ export default function IntegracoesPage() {
                     )}
                   </div>
 
-                  <button data-arato-button="toggle" onClick={() => setModalSieg(true)}
+                  <OperationalButton data-arato-button="toggle" onClick={() => setModalSieg(true)}
                     style={{ marginTop: "auto", padding: "9px 0",
                              background: siegAtivo ? "#111111" : "var(--bg-page)",
                              color: siegAtivo ? "#fff" : "#111111",
                              border: `0.5px solid ${siegAtivo ? "#111111" : "var(--border)"}`,
                              borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     {siegAtivo ? "Gerenciar" : "Configurar"}
-                  </button>
+                  </OperationalButton>
                 </div>
 
                 {/* OFX */}
@@ -1037,10 +1038,10 @@ export default function IntegracoesPage() {
                   <div style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.6 }}>
                     Importe extratos OFX de qualquer banco brasileiro. O sistema concilia automaticamente com CP/CR cadastrados.
                   </div>
-                  <button data-arato-button="primary" onClick={() => router.push("/financeiro/conciliacao")}
+                  <OperationalButton data-arato-button="primary" onClick={() => router.push("/financeiro/conciliacao")}
                     style={{ padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     Acessar Conciliação
-                  </button>
+                  </OperationalButton>
                 </div>
 
                 {/* GNRE */}
@@ -1056,10 +1057,10 @@ export default function IntegracoesPage() {
                   <div style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.6 }}>
                     Emita e controle GNREs para DIFAL (EC 87/2015), substituição tributária e antecipação de ICMS nas operações interestaduais.
                   </div>
-                  <button data-arato-button="primary" onClick={() => router.push("/fiscal/gnre")}
+                  <OperationalButton data-arato-button="primary" onClick={() => router.push("/fiscal/gnre")}
                     style={{ padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     Acessar GNRE
-                  </button>
+                  </OperationalButton>
                 </div>
 
                 {/* eSocial Rural */}
@@ -1075,10 +1076,10 @@ export default function IntegracoesPage() {
                   <div style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.6 }}>
                     Gerencie CLT e avulsos rurais (TSVE), gere eventos eSocial (S-2200, S-2300, S-1200) e calcule a folha com FUNRURAL e SENAR.
                   </div>
-                  <button data-arato-button="primary" onClick={() => router.push("/fiscal/esocial")}
+                  <OperationalButton data-arato-button="primary" onClick={() => router.push("/fiscal/esocial")}
                     style={{ padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     Acessar eSocial
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             )}
@@ -1135,14 +1136,14 @@ export default function IntegracoesPage() {
                             </span>
                           )}
                         </div>
-                        <button data-arato-button="toggle" onClick={() => setModal(intg)}
+                        <OperationalButton data-arato-button="toggle" onClick={() => setModal(intg)}
                           style={{ marginTop: "auto", padding: "9px 0",
                                    background: ativo ? "#111111" : "var(--bg-page)",
                                    color: ativo ? "#fff" : "#111111",
                                    border: `0.5px solid ${ativo ? "#111111" : "var(--border)"}`,
                                    borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                           {ativo ? "Gerenciar" : "Configurar"}
-                        </button>
+                        </OperationalButton>
                       </div>
                     );
                   })}
@@ -1161,7 +1162,7 @@ export default function IntegracoesPage() {
                   </div>
                   <div style={{ display: "flex", gap: 6, background: "var(--bg-page)", borderRadius: 8, padding: 3, flexShrink: 0 }}>
                     {(["toledo", "capital"] as MarcaBalanca[]).map(m => (
-                      <button data-arato-button="toggle" key={m} type="button" onClick={() => salvarMarcaAtiva(m)}
+                      <OperationalButton data-arato-button="toggle" key={m} type="button" onClick={() => salvarMarcaAtiva(m)}
                         style={{
                           fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 6, border: "none", cursor: "pointer",
                           background: marcaAtiva === m ? "#1A4870" : "transparent",
@@ -1169,7 +1170,7 @@ export default function IntegracoesPage() {
                           boxShadow:  marcaAtiva === m ? "0 1px 3px rgba(0,0,0,0.15)" : "none",
                         }}>
                         {m === "toledo" ? "Toledo PRIX" : "Capital Balancas"}
-                      </button>
+                      </OperationalButton>
                     ))}
                   </div>
                 </div>

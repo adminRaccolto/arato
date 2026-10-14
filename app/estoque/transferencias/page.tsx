@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -681,20 +682,20 @@ export default function TransferenciasEstoquePage() {
     <div style={{ padding: "24px 28px", width: "100%", boxSizing: "border-box", fontFamily: "system-ui, sans-serif" }}>
 
       {/* Header */}
-      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+      <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Transferência entre Fazendas</h1>
           <p style={{ fontSize: 13, color: "#888", margin: "3px 0 0" }}>NF de transferência de insumos · CFOP 5409 / 6409</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button data-arato-button="secondary" onClick={() => carregar()} style={btn("#F4F6FA", "#555")} title="Atualizar lista">
+          <OperationalButton data-arato-button="secondary" onClick={() => carregar()} style={btn("#F4F6FA", "#555")} title="Atualizar lista">
             🔄 Atualizar
-          </button>
-          <button data-arato-button="secondary" onClick={() => { resetForm(); setModal(true); }} style={btn("#111111")}>
+          </OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => { resetForm(); setModal(true); }} style={btn("#111111")}>
             + Nova Transferência
-          </button>
+          </OperationalButton>
         </div>
-      </div>
+      </OperationalHeading>
 
       {/* KPI */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 22 }}>
@@ -717,7 +718,7 @@ export default function TransferenciasEstoquePage() {
           { id: "solicitacoes", label: `Solicitações App Campo${solicitacoes.length > 0 ? ` (${solicitacoes.length})` : ""}` },
           { id: "lista",        label: `Transferências (${historico.length})` },
         ] as const).map(t => (
-          <button data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
+          <OperationalButton data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
             padding: "10px 20px", border: "none", background: "transparent", cursor: "pointer",
             fontSize: 13, fontWeight: aba === t.id ? 700 : 400,
             color: aba === t.id ? "#111111" : "#666",
@@ -729,7 +730,7 @@ export default function TransferenciasEstoquePage() {
                 {solicitacoes.length}
               </span>
             )}
-          </button>
+          </OperationalButton>
         ))}
       </div>
 
@@ -737,7 +738,7 @@ export default function TransferenciasEstoquePage() {
       {aba === "solicitacoes" && (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
                   {["Data","Solicitante","Urgência","Origem","Destino","Itens","Depósito Origem","Depósito Destino","Ações"].map(h => (
@@ -771,23 +772,23 @@ export default function TransferenciasEstoquePage() {
                     <td style={{ ...td, color: "#666", fontSize: 12 }}>{t.deposito_destino_nome}</td>
                     <td style={td}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button data-arato-button="secondary" onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>Ver</button>
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary" onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>Ver</OperationalButton>
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => emitirSolicitacao(t)}
                           disabled={acaoId === t.id}
                           style={btn("#111111")}
                         >
                           {acaoId === t.id ? "…" : "Emitir NF"}
-                        </button>
-                        <button data-arato-button="secondary" onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
+                        </OperationalButton>
+                        <OperationalButton data-arato-button="secondary" onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
                           Cancelar
-                        </button>
+                        </OperationalButton>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         </div>
       )}
@@ -809,7 +810,7 @@ export default function TransferenciasEstoquePage() {
               { id: "emitidas",    label: `NFs Emitidas (${qtdEmitidas})` },
               { id: "canceladas",  label: `Canceladas (${qtdCanceladas})` },
             ] as const).map(s => (
-              <button data-arato-tab-active={subAbaLista === (s.id)} data-arato-tab="true" data-arato-button="toggle" key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
+              <OperationalButton data-arato-tab-active={subAbaLista === (s.id)} data-arato-tab="true" data-arato-button="toggle" key={s.id} onClick={() => setSubAbaLista(s.id)} style={{
                 padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
                 borderColor: subAbaLista === s.id ? "#111111" : "#DDE2EE",
                 background: subAbaLista === s.id ? "#111111" : "transparent",
@@ -817,11 +818,11 @@ export default function TransferenciasEstoquePage() {
                 fontSize: 12, fontWeight: 600, cursor: "pointer",
               }}>
                 {s.label}
-              </button>
+              </OperationalButton>
             ))}
           </div>
           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
                   {["Nº","Data","Origem","Destino","CFOP","Status","Itens","NF Número","Ações"].map(h => (
@@ -871,18 +872,18 @@ export default function TransferenciasEstoquePage() {
                       </td>
                       <td style={td}>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button data-arato-button="secondary" onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>
                             {t.status === "emitida" || t.status === "entrada_confirmada" ? "Visualizar NF" : "Visualizar"}
-                          </button>
+                          </OperationalButton>
                           {t.status === "rascunho" && (
-                            <button data-arato-button="secondary" onClick={() => abrirEditar(t)} style={btn("#1A4870")}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrirEditar(t)} style={btn("#1A4870")}>
                               Editar
-                            </button>
+                            </OperationalButton>
                           )}
                           {t.status === "rascunho" && (
-                            <button data-arato-button="secondary" onClick={() => emitirSolicitacao(t)} disabled={acaoId === t.id} style={btn("#111111")}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => emitirSolicitacao(t)} disabled={acaoId === t.id} style={btn("#111111")}>
                               {acaoId === t.id ? "…" : "Emitir NF"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {t.nf_chave && (
                             <a
@@ -895,35 +896,35 @@ export default function TransferenciasEstoquePage() {
                             </a>
                           )}
                           {semNfReal && (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={() => emitirSolicitacao(t)}
                               disabled={acaoId === t.id}
                               title="Configure Parâmetros → Fiscal na fazenda de origem antes de tentar de novo"
                               style={btn("#C9921B")}
                             >
                               {acaoId === t.id ? "…" : "Tentar Emitir NF-e"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {t.status === "emitida" && !t.entrada_automatica && (
-                            <button data-arato-button="secondary" onClick={() => confirmarEntrada(t)} disabled={acaoId === t.id} style={btn("#16A34A")}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => confirmarEntrada(t)} disabled={acaoId === t.id} style={btn("#16A34A")}>
                               {acaoId === t.id ? "…" : "Confirmar Entrada"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {(t.status === "rascunho" || t.status === "emitida") && (
-                            <button data-arato-button="secondary" onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => cancelar(t)} disabled={acaoId === t.id} style={btn("#E24B4A")}>
                               Cancelar
-                            </button>
+                            </OperationalButton>
                           )}
-                          <button data-arato-button="secondary" onClick={() => abrirReplica(t)} style={btn("#F4F6FA", "#555")} title="Abre uma cópia nova (rascunho) com os mesmos dados, pra editar e emitir de novo">
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirReplica(t)} style={btn("#F4F6FA", "#555")} title="Abre uma cópia nova (rascunho) com os mesmos dados, pra editar e emitir de novo">
                             ⧉ Replicar
-                          </button>
+                          </OperationalButton>
                         </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         </div>
         );
@@ -1135,12 +1136,12 @@ export default function TransferenciasEstoquePage() {
             <div data-arato-dialog-body="true" style={{ marginBottom: 16 }}>
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Itens da Transferência</span>
-                <button data-arato-button="secondary" onClick={addItem} style={{ ...btn("#F4F6FA", "#111111"), border: "0.5px solid #111111" }}>+ Adicionar Item</button>
+                <OperationalButton data-arato-button="secondary" onClick={addItem} style={{ ...btn("#F4F6FA", "#111111"), border: "0.5px solid #111111" }}>+ Adicionar Item</OperationalButton>
               </div>
               {/* overflowX auto (e não hidden): a tabela tem 8 colunas de largura fixa — com hidden
                   a coluna Lote e o botão remover eram cortados e sumiam do modal */}
               <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ border: "0.5px solid #DDE2EE", borderRadius: 8, overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       {["Insumo *","Qtd *","Unidade","Custo Unit. (R$)","Valor Total","Variedade","Lote",""].map(h => (
@@ -1223,14 +1224,14 @@ export default function TransferenciasEstoquePage() {
                           </td>
                           <td style={td}>
                             {itens.length > 1 && (
-                              <button data-arato-button="icon" onClick={() => removeItem(i)} style={btn("#FEF2F2", "#E24B4A")}>✕</button>
+                              <OperationalButton data-arato-button="icon" onClick={() => removeItem(i)} style={btn("#FEF2F2", "#E24B4A")}>✕</OperationalButton>
                             )}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
 
@@ -1339,12 +1340,12 @@ export default function TransferenciasEstoquePage() {
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModal(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModal(false)} style={{ ...btn("#F4F6FA", "#555"), border: "0.5px solid #DDE2EE" }}>
                 Cancelar
-              </button>
-              <button data-arato-button="secondary" onClick={() => salvar("rascunho")} disabled={salvando} style={btn(form.historica ? "#C9921B" : "#111111")}>
+              </OperationalButton>
+              <OperationalButton data-arato-button="secondary" onClick={() => salvar("rascunho")} disabled={salvando} style={btn(form.historica ? "#C9921B" : "#111111")}>
                 {salvando ? "…" : form.historica ? "📋 Registrar NF Histórica" : editandoId ? "Salvar Alterações" : "Salvar Transferência"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1415,7 +1416,7 @@ export default function TransferenciasEstoquePage() {
                       DANFE PDF
                     </a>
                   )}
-                  <button data-arato-button="icon" onClick={() => setDetalhe(null)} style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#fff", lineHeight: 1 }}>✕</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setDetalhe(null)} style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "#fff", lineHeight: 1 }}>✕</OperationalButton>
                 </div>
               </div>
 
@@ -1539,7 +1540,7 @@ export default function TransferenciasEstoquePage() {
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>DADOS DOS PRODUTOS / SERVIÇOS</span>
                   </div>
                   <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
                       <thead>
                         <tr>
                           {["CÓD.","DESCRIÇÃO DO PRODUTO / SERVIÇO","NCM/SH","O/CST","CFOP","UN","QTD","VLR UNIT.","VLR TOTAL","BC ICMS","VLR ICMS","VLR IPI","AL ICMS","AL IPI"].map((h, i) => (
@@ -1580,7 +1581,7 @@ export default function TransferenciasEstoquePage() {
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   </div>
                 </div>
 
@@ -1623,13 +1624,13 @@ export default function TransferenciasEstoquePage() {
               {/* Botões do sistema */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 10 }}>
                 {isRascunho && (
-                  <button data-arato-button="secondary" onClick={() => { setDetalhe(null); abrirEditar(detalhe); }} style={{ ...btn("#1A4870") }}>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setDetalhe(null); abrirEditar(detalhe); }} style={{ ...btn("#1A4870") }}>
                     Editar Rascunho
-                  </button>
+                  </OperationalButton>
                 )}
-                <button data-arato-button="secondary" onClick={() => setDetalhe(null)} style={{ padding: "8px 20px", background: "#fff", border: "1px solid #ccc", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "#333" }}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setDetalhe(null)} style={{ padding: "8px 20px", background: "#fff", border: "1px solid #ccc", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "#333" }}>
                   Fechar
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
@@ -484,7 +485,7 @@ export default function ColheitaPage() {
 
       <main style={{ flex: 1, padding: "24px 28px" }}>
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-1)", margin: 0 }}>Colheita Própria</h1>
             <p style={{ fontSize: 13, color: "var(--text-2)", margin: "4px 0 0" }}>
@@ -509,7 +510,7 @@ export default function ColheitaPage() {
             }}>
               ⚖ Romaneio de Entrada
             </Link>
-            <button data-arato-button="primary"
+            <OperationalButton data-arato-button="primary"
               onClick={abrirModalColheita}
               style={{
                 background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8,
@@ -517,9 +518,9 @@ export default function ColheitaPage() {
               }}
             >
               + Nova Colheita
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
@@ -549,7 +550,7 @@ export default function ColheitaPage() {
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             {erro}
-            <button data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16 }}>×</button>
+            <OperationalButton data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16 }}>×</OperationalButton>
           </div>
         )}
 
@@ -629,16 +630,16 @@ export default function ColheitaPage() {
                       </>) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #F0D888" }}>
                           <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600 }}>⚖ Aguardando pesagem</span>
-                          <button data-arato-button="secondary" onClick={() => abrirRomaneio(col.id)} style={{ fontSize: 11, color: "#2A2A2A", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirRomaneio(col.id)} style={{ fontSize: 11, color: "#2A2A2A", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
                             + 1º Romaneio
-                          </button>
+                          </OperationalButton>
                         </div>
                       )}
                     </div>
 
                     {/* Botões ação */}
                     <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "nowrap", width: "auto" }}>
-                      <button data-arato-button="secondary"
+                      <OperationalButton data-arato-button="secondary"
                         onClick={() => abrirRomaneio(col.id)}
                         style={{
                           background: "#F0FAF6", color: "#111111", border: "0.5px solid #111111",
@@ -646,8 +647,8 @@ export default function ColheitaPage() {
                         }}
                       >
                         + Romaneio
-                      </button>
-                      <button data-arato-button="primary"
+                      </OperationalButton>
+                      <OperationalButton data-arato-button="primary"
                         onClick={() => {
                           // Auto-seleciona produto vinculado ao ciclo (definido no planejamento)
                           const ciclo = todosCiclos.find(ci => ci.id === col.ciclo_id);
@@ -660,8 +661,8 @@ export default function ColheitaPage() {
                         }}
                       >
                         Finalizar
-                      </button>
-                      <button data-arato-button="secondary"
+                      </OperationalButton>
+                      <OperationalButton data-arato-button="secondary"
                         onClick={() => toggleExpandir(col.id)}
                         style={{
                           background: "none", border: "0.5px solid var(--border-table)", borderRadius: 7,
@@ -669,8 +670,8 @@ export default function ColheitaPage() {
                         }}
                       >
                         {isExp ? "▲" : "▼"}
-                      </button>
-                      <button data-arato-button="icon"
+                      </OperationalButton>
+                      <OperationalButton data-arato-button="icon"
                         onClick={async () => { if (confirm("Excluir esta colheita e todos os romaneios?")) { await excluirColheita(col.id); await carregar(); } }}
                         style={{
                           background: "none", border: "0.5px solid #FECACA", borderRadius: 7,
@@ -678,7 +679,7 @@ export default function ColheitaPage() {
                         }}
                       >
                         ×
-                      </button>
+                      </OperationalButton>
                     </div>
                   </div>
 
@@ -690,7 +691,7 @@ export default function ColheitaPage() {
                     const thR: React.CSSProperties = { ...thStyle, textAlign: "right" as const };
                     const RomTabela = ({ roms, grupo }: { roms: RomaneioEntrada[]; grupo: "em_pesagem" | "confirmado" }) => (
                       <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead>
                             <tr style={{ background: grupo === "em_pesagem" ? "#FBF3E0" : "#E8F0E8" }}>
                               <th style={thStyle}>Nº</th>
@@ -731,20 +732,20 @@ export default function ColheitaPage() {
                                 </>}
                                 <td style={{ padding: "8px 12px", whiteSpace: "nowrap", display: "flex", gap: 6 }}>
                                   {grupo === "em_pesagem" && (
-                                    <button data-arato-button="primary" onClick={() => abrirCapturarTara(rom, col.id)}
+                                    <OperationalButton data-arato-button="primary" onClick={() => abrirCapturarTara(rom, col.id)}
                                       style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                                       ⚖ Capturar Tara
-                                    </button>
+                                    </OperationalButton>
                                   )}
-                                  <button data-arato-button="icon" onClick={() => removerRomaneio(rom.id, col.id)}
+                                  <OperationalButton data-arato-button="icon" onClick={() => removerRomaneio(rom.id, col.id)}
                                     style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}>
                                     ×
-                                  </button>
+                                  </OperationalButton>
                                 </td>
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </OperationalGrid>
                       </div>
                     );
                     return (
@@ -781,10 +782,10 @@ export default function ColheitaPage() {
                           </div>
                         )}
                         <div style={{ padding: "8px 20px" }}>
-                          <button data-arato-button="secondary" onClick={() => abrirRomaneio(col.id)}
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirRomaneio(col.id)}
                             style={{ fontSize: 12, color: "#1A5CB8", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontWeight: 600 }}>
                             + Novo Romaneio
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
                     );
@@ -804,7 +805,7 @@ export default function ColheitaPage() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Nova Colheita</h2>
-              <button data-arato-button="icon" onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -879,14 +880,14 @@ export default function ColheitaPage() {
                 <div style={lbStyle}>Armazém de destino</div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   {(["todos", "proprio", "terceiro"] as const).map(tp => (
-                    <button data-arato-button="toggle" key={tp} type="button" onClick={() => setFiltroTipoDeposito(tp)} style={{
+                    <OperationalButton data-arato-button="toggle" key={tp} type="button" onClick={() => setFiltroTipoDeposito(tp)} style={{
                       padding: "4px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: "0.5px solid",
                       background: filtroTipoDeposito === tp ? "#1A5CB8" : "transparent",
                       color: filtroTipoDeposito === tp ? "#fff" : "var(--text-2)",
                       borderColor: filtroTipoDeposito === tp ? "#1A5CB8" : "var(--border-table)",
                     }}>
                       {tp === "todos" ? "Todos" : tp === "proprio" ? "Próprio" : "Terceiro"}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
                 <SelectField value={formColheita.deposito_id ?? ""} onChange={e => setFormColheita(f => ({ ...f, deposito_id: e.target.value }))} style={inpStyle}>
@@ -913,10 +914,10 @@ export default function ColheitaPage() {
               {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
-                <button data-arato-button="secondary" onClick={() => setModalColheita(false)} style={btnCancelStyle}>Cancelar</button>
-                <button data-arato-button="primary" onClick={salvarColheita} disabled={salvando} style={btnPrimStyle}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalColheita(false)} style={btnCancelStyle}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvarColheita} disabled={salvando} style={btnPrimStyle}>
                   {salvando ? "Salvando..." : "Criar Colheita"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -967,7 +968,7 @@ export default function ColheitaPage() {
                     {isCapturarTara && <span style={{ marginLeft: 8, background: "#FBF3E0", color: "#C9921B", padding: "2px 8px", borderRadius: 4, fontWeight: 600 }}>Passo 2: Peso Tara</span>}
                   </div>
                 </div>
-                <button data-arato-button="icon" onClick={() => { setModalRomaneio(null); setEditRomaneio(null); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => { setModalRomaneio(null); setEditRomaneio(null); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</OperationalButton>
               </div>
               <div data-arato-dialog-body="true" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -1041,10 +1042,10 @@ export default function ColheitaPage() {
                     {/* cabeçalho com botão Class. Padrão */}
                     <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid var(--border-table)", paddingBottom: 6, marginBottom: 14 }}>
                       <div data-arato-dialog-body="true" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Classificação do Grão</div>
-                      <button data-arato-button="secondary" type="button" onClick={applyPadrao}
+                      <OperationalButton data-arato-button="secondary" type="button" onClick={applyPadrao}
                         style={{ fontSize: 11, fontWeight: 600, color: "#111111", background: "#E8E8E8", border: "0.5px solid #A8C8E8", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
                         ✦ Class. Padrão
-                      </button>
+                      </OperationalButton>
                     </div>
 
                     {/* Umidade + Impureza + PH */}
@@ -1184,17 +1185,17 @@ export default function ColheitaPage() {
                 {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
                 <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                  <button data-arato-button="secondary" onClick={() => { setModalRomaneio(null); setEditRomaneio(null); }} style={btnCancelStyle}>Cancelar</button>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setModalRomaneio(null); setEditRomaneio(null); }} style={btnCancelStyle}>Cancelar</OperationalButton>
                   {!isCapturarTara && (
-                    <button data-arato-button="primary" onClick={salvarPesoBruto} disabled={salvando || formRomaneio.peso_bruto_kg <= 0}
+                    <OperationalButton data-arato-button="primary" onClick={salvarPesoBruto} disabled={salvando || formRomaneio.peso_bruto_kg <= 0}
                       style={{ ...btnPrimStyle, background: "#C9921B" }}>
                       {salvando ? "Salvando..." : "⚖ Registrar Peso Bruto"}
-                    </button>
+                    </OperationalButton>
                   )}
-                  <button data-arato-button="primary" onClick={confirmarEntrada} disabled={salvando || formRomaneio.tara_kg <= 0 || !formRomaneio.depositoId}
+                  <OperationalButton data-arato-button="primary" onClick={confirmarEntrada} disabled={salvando || formRomaneio.tara_kg <= 0 || !formRomaneio.depositoId}
                     style={{ ...btnPrimStyle, background: "#1A5C38" }}>
                     {salvando ? "Confirmando..." : "✓ Confirmar Entrada no Estoque"}
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             </div>
@@ -1210,7 +1211,7 @@ export default function ColheitaPage() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Finalizar Colheita</h2>
-              <button data-arato-button="icon" onClick={() => setModalFinalizar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalFinalizar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -1283,10 +1284,10 @@ export default function ColheitaPage() {
               {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button data-arato-button="secondary" onClick={() => setModalFinalizar(null)} style={btnCancelStyle}>Cancelar</button>
-                <button data-arato-button="primary" onClick={finalizarColheitaModal} disabled={salvando} style={btnPrimStyle}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalFinalizar(null)} style={btnCancelStyle}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={finalizarColheitaModal} disabled={salvando} style={btnPrimStyle}>
                   {salvando ? "Finalizando..." : "Finalizar Colheita"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -1304,8 +1305,8 @@ export default function ColheitaPage() {
                 <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text-1)" }}>Romaneio de Colheita</h2>
                   <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8 }}>
-                    <button data-arato-button="primary" onClick={() => window.print()} style={{ background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Imprimir</button>
-                    <button data-arato-button="icon" onClick={() => setRomParaImprimir(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+                    <OperationalButton data-arato-button="primary" onClick={() => window.print()} style={{ background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Imprimir</OperationalButton>
+                    <OperationalButton data-arato-button="icon" onClick={() => setRomParaImprimir(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</OperationalButton>
                   </div>
                 </div>
                 <div id="rom-print-area" style={{ padding: 24, fontFamily: "monospace", fontSize: 13, color: "#000" }}>

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback } from "react";
@@ -344,7 +345,7 @@ export default function Kardex() {
 
         {/* ── Cabeçalho ── */}
         <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)", padding: "18px 32px" }}>
-          <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1800, margin: "0 auto" }}>
+          <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1800, margin: "0 auto" }}>
             <div>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111111" }}>
                 Kardex — Ficha de Estoque
@@ -355,11 +356,11 @@ export default function Kardex() {
             </div>
             {gerado && (
               <div style={{ display: "flex", gap: 8 }}>
-                <button data-arato-button="secondary" onClick={exportarPDF} style={btnSec}>🖨 Imprimir / PDF</button>
-                <button data-arato-button="secondary" onClick={exportarXLSX} style={btnSec}>📊 Exportar XLSX</button>
+                <OperationalButton data-arato-button="secondary" onClick={exportarPDF} style={btnSec}>🖨 Imprimir / PDF</OperationalButton>
+                <OperationalButton data-arato-button="secondary" onClick={exportarXLSX} style={btnSec}>📊 Exportar XLSX</OperationalButton>
               </div>
             )}
-          </div>
+          </OperationalHeading>
         </div>
 
         <div style={{ maxWidth: 1800, margin: "0 auto", padding: "24px 32px" }}>
@@ -415,13 +416,13 @@ export default function Kardex() {
                 <InputData type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} style={inp} />
               </div>
 
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="toggle"
                 onClick={gerarKardex}
                 disabled={!insumoId || carregando}
                 style={{ background: insumoId ? "#111111" : "#C0CAD6", color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 600, cursor: insumoId ? "pointer" : "not-allowed", height: 40, whiteSpace: "nowrap" }}
               >
                 {carregando ? "Gerando…" : "Gerar Kardex"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
 
@@ -470,7 +471,7 @@ export default function Kardex() {
                 </div>
 
                 <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={{ ...th, width: 95 }}>Data</th>
@@ -600,14 +601,14 @@ export default function Kardex() {
                                   🔒
                                 </a>
                               ) : (
-                                <button data-arato-button="secondary"
+                                <OperationalButton data-arato-button="secondary"
                                   onClick={() => excluirMovimento(l.id!, insumoId)}
                                   disabled={excluindo.has(l.id)}
                                   title="Excluir lançamento"
                                   style={{ background: "none", border: "none", cursor: excluindo.has(l.id) ? "wait" : "pointer", color: "#E24B4A", fontSize: 15, padding: "2px 4px", opacity: excluindo.has(l.id) ? 0.4 : 0.6, lineHeight: 1 }}
                                 >
                                   🗑
-                                </button>
+                                </OperationalButton>
                               )
                             )}
                           </td>
@@ -633,7 +634,7 @@ export default function Kardex() {
                         </tr>
                       </tfoot>
                     )}
-                  </table>
+                  </OperationalGrid>
                 </div>
 
                 {linhas.length === 1 && (

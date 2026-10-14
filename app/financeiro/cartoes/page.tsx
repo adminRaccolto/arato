@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -292,12 +293,12 @@ export default function CartoesCredito() {
       <TopNav />
       <main style={{ flex: 1, padding: "20px 24px" }}>
 
-        <header data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Cartões de Crédito</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)" }}>Faturas geradas automaticamente · Conciliação com extrato do banco</p>
           </div>
-        </header>
+        </OperationalHeading>
 
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
@@ -320,9 +321,9 @@ export default function CartoesCredito() {
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
           <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
             {([["cartoes","💳 Meus Cartões"], ["faturas","Faturas"], ["conciliacao","Conciliação"]] as [Aba, string][]).map(([k, lbl]) => (
-              <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "10px 20px", border: "none", background: aba===k ? "#fff" : "var(--bg-card)", borderBottom: `2px solid ${aba===k ? "#1A5C38" : "transparent"}`, cursor: "pointer", fontSize: 13, fontWeight: aba===k ? 600 : 400, color: aba===k ? "#1A5C38" : "var(--text-2)" }}>
+              <OperationalButton data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "10px 20px", border: "none", background: aba===k ? "#fff" : "var(--bg-card)", borderBottom: `2px solid ${aba===k ? "#1A5C38" : "transparent"}`, cursor: "pointer", fontSize: 13, fontWeight: aba===k ? 600 : 400, color: aba===k ? "#1A5C38" : "var(--text-2)" }}>
                 {lbl}
-              </button>
+              </OperationalButton>
             ))}
           </div>
 
@@ -330,10 +331,10 @@ export default function CartoesCredito() {
           {aba === "cartoes" && (
             <div data-arato-statistic="action" style={{ padding: 20 }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-                <button data-arato-button="primary" onClick={abrirNovoCartao}
+                <OperationalButton data-arato-button="primary" onClick={abrirNovoCartao}
                   style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Novo Cartão
-                </button>
+                </OperationalButton>
               </div>
               {loading ? (
                 <div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>Carregando…</div>
@@ -369,14 +370,14 @@ export default function CartoesCredito() {
                       </div>
                       {/* Ações */}
                       <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "10px 18px", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button data-arato-button="secondary" onClick={() => abrirEditarCartao(c)}
+                        <OperationalButton data-arato-button="secondary" onClick={() => abrirEditarCartao(c)}
                           style={{ fontSize: 12, padding: "5px 14px", border: "0.5px solid var(--border-table)", borderRadius: 7, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontWeight: 500 }}>
                           ✏ Editar
-                        </button>
-                        <button data-arato-button="secondary" onClick={() => deletarCartao(c)}
+                        </OperationalButton>
+                        <OperationalButton data-arato-button="secondary" onClick={() => deletarCartao(c)}
                           style={{ fontSize: 12, padding: "5px 14px", border: "0.5px solid #E24B4A50", borderRadius: 7, background: "#FFF5F5", color: "#991B1B", cursor: "pointer", fontWeight: 500 }}>
                           Excluir
-                        </button>
+                        </OperationalButton>
                       </div>
                     </div>
                   ))}
@@ -388,7 +389,7 @@ export default function CartoesCredito() {
           {/* ═══ FATURAS ═══ */}
           {aba === "faturas" && (
             <div style={{ padding: 20 }}>
-              <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 200 }}>
                   <label data-arato-label="true" style={lblS}>Cartão</label>
                   <SelectField value={cartaoFiltro} onChange={e => setCartaoFiltro(e.target.value)} style={{ ...inpS, width: "auto", minWidth: 200 }}>
@@ -405,7 +406,7 @@ export default function CartoesCredito() {
                     <option value="paga">Paga</option>
                   </SelectField>
                 </div>
-              </div>
+              </OperationalFilters>
 
               {loading ? (
                 <div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>Carregando…</div>
@@ -448,16 +449,16 @@ export default function CartoesCredito() {
                           <div style={{ borderTop: "0.5px solid var(--border-table)", padding: 16 }}>
                             <div style={{ display: "flex", gap: 8, marginBottom: 14, justifyContent: "flex-end" }}>
                               {f.status !== "paga" && (
-                                <button data-arato-button="toggle" onClick={() => toggleFecharFatura(f)}
+                                <OperationalButton data-arato-button="toggle" onClick={() => toggleFecharFatura(f)}
                                   style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: f.status === "aberta" ? "#FBF3E0" : "var(--bg-card)", color: f.status === "aberta" ? "#7A5A12" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                                   {f.status === "aberta" ? "🔒 Fechar fatura" : "🔓 Reabrir fatura"}
-                                </button>
+                                </OperationalButton>
                               )}
                               {f.status === "fechada" && (
-                                <button data-arato-button="primary" onClick={() => abrirPagarFatura(f)}
+                                <OperationalButton data-arato-button="primary" onClick={() => abrirPagarFatura(f)}
                                   style={{ padding: "6px 14px", border: "none", borderRadius: 8, background: "#1A5C38", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                                   💰 Pagar fatura
-                                </button>
+                                </OperationalButton>
                               )}
                             </div>
                             {loadingLanc ? (
@@ -465,7 +466,7 @@ export default function CartoesCredito() {
                             ) : lançsFatura.length === 0 ? (
                               <div style={{ padding: 20, textAlign: "center", color: "var(--text-2)", fontSize: 12 }}>Nenhum lançamento vinculado a esta fatura.</div>
                             ) : (
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-page)" }}>
                                     {["Data baixa", "Descrição", "Fornecedor", "Valor"].map((h, i) => (
@@ -489,7 +490,7 @@ export default function CartoesCredito() {
                                     <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(f.valor_total)}</td>
                                   </tr>
                                 </tfoot>
-                              </table>
+                              </OperationalGrid>
                             )}
                           </div>
                         )}
@@ -567,7 +568,7 @@ export default function CartoesCredito() {
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>Extrato do banco ({linhasExtrato.length} linhas)</div>
                           <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Data</th>
@@ -587,8 +588,8 @@ export default function CartoesCredito() {
                                       <td style={{ padding: "6px 4px" }}>
                                         {l._status === "pendente" ? (
                                           <div style={{ display: "flex", gap: 2 }}>
-                                            <button data-arato-button="danger" title="Marcar divergente" onClick={() => marcarDivergente(i)}
-                                              style={{ fontSize: 10, padding: "2px 5px", borderRadius: 4, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>!</button>
+                                            <OperationalButton data-arato-button="danger" title="Marcar divergente" onClick={() => marcarDivergente(i)}
+                                              style={{ fontSize: 10, padding: "2px 5px", borderRadius: 4, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>!</OperationalButton>
                                           </div>
                                         ) : (
                                           <span style={{ fontSize: 11, color: cor }}>{l._status === "conciliado" ? "✓" : "✕"}</span>
@@ -598,7 +599,7 @@ export default function CartoesCredito() {
                                   );
                                 })}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         </div>
 
@@ -606,7 +607,7 @@ export default function CartoesCredito() {
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>Lançamentos da fatura ({lancFatura.length})</div>
                           <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Data", "Descrição", "Valor"].map((h, i) => (
@@ -625,7 +626,7 @@ export default function CartoesCredito() {
                                   </tr>
                                 ))}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                           {lancFatura.length > 0 && linhasExtrato.length > 0 && (
                             <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12 }}>
@@ -666,7 +667,7 @@ export default function CartoesCredito() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 520, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>{editandoCartao ? "Editar Cartão" : "Novo Cartão de Crédito"}</span>
-              <button data-arato-button="icon" onClick={() => setModalCartao(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalCartao(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
               {/* Titular */}
@@ -730,14 +731,14 @@ export default function CartoesCredito() {
               {erroCartao && <div style={{ padding: "10px 12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 12 }}>{erroCartao}</div>}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button data-arato-button="secondary" onClick={() => setModalCartao(false)}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalCartao(false)}
                 style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontSize: 13 }}>
                 Cancelar
-              </button>
-              <button data-arato-button="toggle" onClick={salvarCartaoModal} disabled={salvandoCartao}
+              </OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarCartaoModal} disabled={salvandoCartao}
                 style={{ padding: "8px 22px", background: salvandoCartao ? "#999" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: salvandoCartao ? "default" : "pointer", fontSize: 13, fontWeight: 600 }}>
                 {salvandoCartao ? "Salvando…" : (editandoCartao ? "Salvar alterações" : "Cadastrar cartão")}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -752,7 +753,7 @@ export default function CartoesCredito() {
             <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 700, fontSize: 15 }}>💰 Pagar Fatura</span>
-                <button data-arato-button="icon" onClick={() => setFaturaPagar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => setFaturaPagar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
               </div>
               <div data-arato-dialog-body="true" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
                 <div data-arato-dialog-body="true" style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
@@ -780,14 +781,14 @@ export default function CartoesCredito() {
                 {erroPagarFatura && <div style={{ padding: "10px 12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 12 }}>{erroPagarFatura}</div>}
               </div>
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button data-arato-button="secondary" onClick={() => setFaturaPagar(null)}
+                <OperationalButton data-arato-button="secondary" onClick={() => setFaturaPagar(null)}
                   style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-1)", cursor: "pointer", fontSize: 13 }}>
                   Cancelar
-                </button>
-                <button data-arato-button="toggle" onClick={confirmarPagarFatura} disabled={pagandoFatura}
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={confirmarPagarFatura} disabled={pagandoFatura}
                   style={{ padding: "8px 22px", background: pagandoFatura ? "#999" : "#1A5C38", color: "#fff", border: "none", borderRadius: 8, cursor: pagandoFatura ? "default" : "pointer", fontSize: 13, fontWeight: 600 }}>
                   {pagandoFatura ? "Pagando…" : "Confirmar Pagamento"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

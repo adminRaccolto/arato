@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -168,7 +169,7 @@ export default function ContabilidadePage() {
         {/* Abas PF / PJ */}
         <div style={{ display: "flex", gap: 2, marginBottom: 24 }}>
           {(["pf","pj"] as const).map(e => (
-            <button data-arato-button="toggle"
+            <OperationalButton data-arato-button="toggle"
               key={e}
               onClick={() => mudarAba(e)}
               style={{
@@ -180,7 +181,7 @@ export default function ContabilidadePage() {
             >
               {ABA_LABELS[e]}
               {configs[e] && <span style={{ marginLeft: 6, fontSize: 10, background: aba === e ? "rgba(255,255,255,0.25)" : "#2A2A2A20", padding: "1px 6px", borderRadius: 8 }}>Configurado</span>}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -325,13 +326,13 @@ export default function ContabilidadePage() {
 
         {/* Rodapé de ação */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button data-arato-button="primary"
+          <OperationalButton data-arato-button="primary"
             onClick={salvar}
             disabled={saving}
             style={{ padding: "10px 28px", background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 14 }}
           >
             {saving ? "Salvando..." : `Salvar Configuração ${aba.toUpperCase()}`}
-          </button>
+          </OperationalButton>
           {saved && <span style={{ fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Configuração salva</span>}
           {err && <span style={{ fontSize: 13, color: "#E24B4A" }}>{err}</span>}
           <div style={{ flex: 1 }} />

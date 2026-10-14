@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -2716,12 +2717,12 @@ export default function NfCompraPage() {
               {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
             </div>
           </div>
-          <button data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Nova NF Manual</button>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Nova NF Manual</OperationalButton>
         </div>
 
         {/* ── Painel SIEG ── */}
         <div data-arato-panel="true" style={{ background: "white", border: "0.5px solid var(--border)", borderRadius: 12, padding: "14px 18px", marginBottom: 18 }}>
-          <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <OperationalFilters data-arato-filters="true" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#111111", marginRight: 4 }}>⟳ Sincronizar SIEG</span>
 
             {/* Destinatário */}
@@ -2754,20 +2755,20 @@ export default function NfCompraPage() {
               Forçar re-importação
             </label>
 
-            <button data-arato-button="toggle" onClick={sincronizarSieg} disabled={siegSyncing}
+            <OperationalButton data-arato-button="toggle" onClick={sincronizarSieg} disabled={siegSyncing}
               style={{ padding: "6px 18px", background: siegSyncing ? "var(--border)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
-            </button>
+            </OperationalButton>
 
-            <button data-arato-button="toggle" onClick={limparDuplicatas} disabled={siegDeduping}
+            <OperationalButton data-arato-button="toggle" onClick={limparDuplicatas} disabled={siegDeduping}
               style={{ padding: "6px 14px", background: siegDeduping ? "var(--border)" : "#FBF3E0", color: siegDeduping ? "var(--text-3)" : "#7B4A00", border: "0.5px solid #C9921B", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: siegDeduping ? "default" : "pointer" }}>
               {siegDeduping ? "Limpando…" : "Limpar Duplicatas"}
-            </button>
+            </OperationalButton>
 
             {siegSyncMsg && (
               <span style={{ fontSize: 12, fontWeight: 600, color: siegSyncMsg.startsWith("✗") ? "#E24B4A" : "#16A34A" }}>{siegSyncMsg}</span>
             )}
-          </div>
+          </OperationalFilters>
         </div>
 
         {/* ── Cards de resumo ── */}
@@ -2786,7 +2787,7 @@ export default function NfCompraPage() {
         </div>
 
         {/* ── Filtros ── */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ ...card, marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ ...card, marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <input
             placeholder="Buscar por nº, emitente ou CPF/CNPJ do produtor…"
             value={busca} onChange={e => setBusca(e.target.value)}
@@ -2820,8 +2821,8 @@ export default function NfCompraPage() {
             <InputData type="date" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
               style={{ ...inp, width: 136, padding: "5px 8px" }} />
             {(filtroDataDe || filtroDataAte) && (
-              <button data-arato-button="icon" onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
-                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro de data">✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
+                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro de data">✕</OperationalButton>
             )}
           </div>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFiltradas.length} resultado{nfsFiltradas.length !== 1 ? "s" : ""}</span>
@@ -2833,7 +2834,7 @@ export default function NfCompraPage() {
               disabled={reparandoLote}
               onChange={e => { if (e.target.files?.length) { repararViaXmls(e.target.files); e.target.value = ""; } }} />
           </label>
-        </div>
+        </OperationalFilters>
         {/* Banner resultado do reparo em lote */}
         {resultadoLote && (
           <div style={{ background: resultadoLote.ok > 0 ? "#E8F5EB" : "#FDE8E8", border: `0.5px solid ${resultadoLote.ok > 0 ? "#16A34A" : "#E24B4A"}`, borderRadius: 8, padding: "10px 16px", marginBottom: 12, display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -2841,7 +2842,7 @@ export default function NfCompraPage() {
               {resultadoLote.ok > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>✓ {resultadoLote.ok} NF{resultadoLote.ok > 1 ? "s" : ""} reparada{resultadoLote.ok > 1 ? "s" : ""} com sucesso</div>}
               {resultadoLote.erro.map((e, i) => <div key={i} style={{ fontSize: 11, color: "#E24B4A", marginTop: 2 }}>• {e}</div>)}
             </div>
-            <button data-arato-button="icon" onClick={() => setResultadoLote(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}>✕</button>
+            <OperationalButton data-arato-button="icon" onClick={() => setResultadoLote(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}>✕</OperationalButton>
           </div>
         )}
 
@@ -2857,10 +2858,10 @@ export default function NfCompraPage() {
               if (!nfUnica) return null;
               return (
                 <>
-                  <button data-arato-button="secondary" onClick={() => abrirVisualizador(nfUnica)} disabled={nfViewerLoading}
+                  <OperationalButton data-arato-button="secondary" onClick={() => abrirVisualizador(nfUnica)} disabled={nfViewerLoading}
                     style={{ padding: "6px 14px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                     👁 Ver
-                  </button>
+                  </OperationalButton>
                   {nfUnica.chave_acesso && (
                     <a href={`/api/fiscal/danfe?chave=${nfUnica.chave_acesso}&fazenda_id=${nfUnica.fazenda_id}`}
                       target="_blank" rel="noopener noreferrer"
@@ -2871,7 +2872,7 @@ export default function NfCompraPage() {
                 </>
               );
             })()}
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={() => {
                 const nfsSel = nfsFiltradas.filter(n => selectedNfs.has(n.id) && n.status === "pendente");
                 if (!nfsSel.length) { alert("Nenhuma NF pendente selecionada para processar."); return; }
@@ -2890,8 +2891,8 @@ export default function NfCompraPage() {
               style={{ padding: "6px 16px", background: "#fff", color: "#111111", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer" }}
             >
               ⚡ Processar em lote
-            </button>
-            <button data-arato-button="secondary"
+            </OperationalButton>
+            <OperationalButton data-arato-button="secondary"
               onClick={() => {
                 const sel = nfsFiltradas.filter(n => selectedNfs.has(n.id));
                 if (!sel.length) return;
@@ -2931,13 +2932,13 @@ export default function NfCompraPage() {
               style={{ padding: "6px 16px", background: "transparent", color: "#fff", border: "0.5px solid rgba(255,255,255,0.5)", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}
             >
               🖨 Imprimir
-            </button>
-            <button data-arato-button="secondary"
+            </OperationalButton>
+            <OperationalButton data-arato-button="secondary"
               onClick={() => setSelectedNfs(new Set())}
               style={{ padding: "6px 12px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 8, fontSize: 12, cursor: "pointer" }}
             >
               Limpar seleção
-            </button>
+            </OperationalButton>
           </div>
         )}
 
@@ -2949,7 +2950,7 @@ export default function NfCompraPage() {
             </div>
           ) : (
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1100 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 1100 }}>
               <colgroup>
                 <col style={{ width: 36 }} />     {/* checkbox */}
                 <col style={{ width: 56 }} />     {/* Doc. — NFE/NFSE/CTE */}
@@ -3063,20 +3064,20 @@ export default function NfCompraPage() {
                           const aberto  = manDropdown === nf.id;
                           return (
                             <div style={{ position: "relative", display: "inline-block" }}>
-                              <button data-arato-button="secondary"
+                              <OperationalButton data-arato-button="secondary"
                                 disabled={isBusy}
                                 onClick={e => { e.stopPropagation(); setManDropdown(aberto ? null : nf.id); }}
                                 style={{ padding: "2px 6px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 10, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
                                 {isBusy ? "⏳" : stCfg.short} {!isBusy && "▾"}
-                              </button>
+                              </OperationalButton>
                               {aberto && (
                                 <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 200, minWidth: 150, overflow: "hidden" }}>
                                   {MAN_CFG.map(m => (
-                                    <button data-arato-button="toggle" key={m.tipo}
+                                    <OperationalButton data-arato-button="toggle" key={m.tipo}
                                       onClick={e => { e.stopPropagation(); setManDropdown(null); manifestar(nf, m.tipo); }}
                                       style={{ display: "block", width: "100%", padding: "7px 12px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
                                       {m.tipo === manTipo ? "✓ " : ""}{m.label}
-                                    </button>
+                                    </OperationalButton>
                                   ))}
                                 </div>
                               )}
@@ -3095,41 +3096,41 @@ export default function NfCompraPage() {
                             const aberto = acaoDropdown === nf.id;
                             return (
                               <div style={{ position: "relative" }}>
-                                <button data-arato-button="toggle"
+                                <OperationalButton data-arato-button="toggle"
                                   onClick={e => { e.stopPropagation(); setAcaoDropdown(aberto ? null : nf.id); setManDropdown(null); }}
                                   style={{ padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: aberto ? "#F4F6FA" : "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)", fontWeight: 700, lineHeight: 1 }}>
                                   ⋮
-                                </button>
+                                </OperationalButton>
                                 {aberto && (
                                   <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 300, minWidth: 160, overflow: "hidden" }}
                                     onClick={e => e.stopPropagation()}>
 
                                     {/* Pendente: processar + editar + reparar + reimport */}
                                     {nf.status === "pendente" && (
-                                      <button data-arato-button="primary" onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
+                                      <OperationalButton data-arato-button="primary" onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "#1A5C38", cursor: "pointer", fontSize: 12, color: "#fff", fontWeight: 700, textAlign: "left" }}>
                                         Processar NF
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                     {nf.status !== "processada" && nf.origem !== "sieg" && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); abrirEditar(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Editar NF
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                     {nf.status === "pendente" && !!nf.chave_acesso && !nf.nome_destinatario && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); repararNf(nf); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); repararNf(nf); }}
                                         disabled={reparando.has(nf.id)}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: reparando.has(nf.id) ? "default" : "pointer", fontSize: 12, color: "#C9921B", fontWeight: 600, textAlign: "left", opacity: reparando.has(nf.id) ? 0.6 : 1 }}>
                                         {reparando.has(nf.id) ? "Reparando…" : "Reparar via SEFAZ"}
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                     {nf.origem === "sieg" && nf.status === "pendente" && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); reimportarNf(nf); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); reimportarNf(nf); }}
                                         disabled={siegReimporting[nf.id]}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 12, color: "#555", fontWeight: 600, textAlign: "left", opacity: siegReimporting[nf.id] ? 0.5 : 1 }}>
                                         {siegReimporting[nf.id] ? "Re-importando…" : "↻ Re-importar SIEG"}
-                                      </button>
+                                      </OperationalButton>
                                     )}
 
                                     {/* Processada: devolver + remessa + reclassificar + estornar — SEM editar direto.
@@ -3137,28 +3138,28 @@ export default function NfCompraPage() {
                                         sem isso, salvar o cabeçalho voltava o status pra "pendente" por baixo, sem
                                         avisar, e o guard de processarNF() nunca disparava (o status já tinha mudado). */}
                                     {nf.status === "processada" && (nf.tipo_entrada === "insumos" || nf.tipo_entrada === "pecas") && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); abrirDevolucao(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#791F1F", fontWeight: 600, textAlign: "left" }}>
                                         Devolver
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                     {nf.status === "processada" && nf.tipo_entrada === "insumos" && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nf.id}`); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); router.push(`/fiscal?aba=venda&modo=remessa&nf_entrada_id=${nf.id}`); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600, textAlign: "left" }}>
                                         Emitir NF Remessa
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                     {nf.status === "processada" && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); abrirReclassificar(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#7B4A00", fontWeight: 600, textAlign: "left" }}>
                                         Reclassificar
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                     {nf.status === "processada" && (
-                                      <button data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); estornarNFClick(nf); }}
+                                      <OperationalButton data-arato-button="secondary" onClick={() => { setAcaoDropdown(null); estornarNFClick(nf); }}
                                         style={{ display: "block", width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#8A4A00", fontWeight: 600, textAlign: "left" }}>
                                         Estornar
-                                      </button>
+                                      </OperationalButton>
                                     )}
                                   </div>
                                 )}
@@ -3168,10 +3169,10 @@ export default function NfCompraPage() {
 
                           {/* Excluir */}
                           {nf.status !== "cancelada" && (
-                            <button data-arato-button="danger" onClick={() => iniciarExclusaoNf(nf)} title="Excluir NF"
+                            <OperationalButton data-arato-button="danger" onClick={() => iniciarExclusaoNf(nf)} title="Excluir NF"
                               style={{ padding: "3px 7px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 13, color: "#791F1F", lineHeight: 1 }}>
                               🗑
-                            </button>
+                            </OperationalButton>
                           )}
                         </div>
                       </td>
@@ -3179,7 +3180,7 @@ export default function NfCompraPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
             </div>
           )}
         </div>
@@ -3220,7 +3221,7 @@ export default function NfCompraPage() {
                       ↗ Abrir DANFE PDF
                     </a>
                   )}
-                  <button data-arato-button="icon" onClick={() => setNfViewer(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: 0 }}>×</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setNfViewer(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: 0 }}>×</OperationalButton>
                 </div>
               </div>
 
@@ -3272,7 +3273,7 @@ export default function NfCompraPage() {
                       Itens ({itens.length})
                     </div>
                     <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["#", "Produto / Descrição", "NCM", "CFOP", "Unid.", "Qtde.", "Vl. Unit.", "Vl. Total"].map((h, i) => (
@@ -3302,7 +3303,7 @@ export default function NfCompraPage() {
                             </td>
                           </tr>
                         </tfoot>
-                      </table>
+                      </OperationalGrid>
                     </div>
                   </div>
                 )}
@@ -3312,15 +3313,15 @@ export default function NfCompraPage() {
               {/* Footer */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 {nf.status === "pendente" && (
-                  <button data-arato-button="primary" onClick={() => { setNfViewer(null); abrirEditar(nf); }}
+                  <OperationalButton data-arato-button="primary" onClick={() => { setNfViewer(null); abrirEditar(nf); }}
                     style={{ padding: "8px 20px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                     Processar
-                  </button>
+                  </OperationalButton>
                 )}
-                <button data-arato-button="secondary" onClick={() => setNfViewer(null)}
+                <OperationalButton data-arato-button="secondary" onClick={() => setNfViewer(null)}
                   style={{ padding: "8px 20px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border)", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   Fechar
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -3355,7 +3356,7 @@ export default function NfCompraPage() {
                   </div>
                 ))}
               </div>
-              <button data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "16px 20px" }}>
@@ -3378,11 +3379,11 @@ export default function NfCompraPage() {
                             { v: "leitor", label: "▌▌ Chave / Leitor" },
                             { v: "sieg",   label: "🔗 Sieg / API" },
                           ] as { v: OrigEscolha; label: string }[]).map(({ v, label }) => (
-                            <button data-arato-button="toggle" key={v}
+                            <OperationalButton data-arato-button="toggle" key={v}
                               onClick={() => { setOrig(v); setLeitorChave(""); setLeitorErro(null); if (v === "leitor") setTimeout(() => leitorRef.current?.focus(), 50); }}
                               style={{ padding: "5px 12px", border: `1.5px solid ${orig === v ? "#1A5C38" : "var(--border-table)"}`, borderRadius: 6, background: orig === v ? "#E8F5E9" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: orig === v ? 700 : 400, color: orig === v ? "#1A5C38" : "var(--text-2)", whiteSpace: "nowrap" }}>
                               {label}
-                            </button>
+                            </OperationalButton>
                           ))}
                         </div>
                       </div>
@@ -3495,9 +3496,9 @@ export default function NfCompraPage() {
                             placeholder="00000000000000000000000000000000000000000000"
                             maxLength={44} style={{ ...inp, flex: 1, fontFamily: "monospace", fontSize: 12 }}
                           />
-                          <button data-arato-button="primary" onClick={buscarSieg} disabled={siegLoading} style={{ ...btnV, whiteSpace: "nowrap" }}>
+                          <OperationalButton data-arato-button="primary" onClick={buscarSieg} disabled={siegLoading} style={{ ...btnV, whiteSpace: "nowrap" }}>
                             {siegLoading ? "Buscando…" : "Consultar"}
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
                     )}
@@ -3527,9 +3528,9 @@ export default function NfCompraPage() {
                         })}
                       />
                       {cab.pedido_compra_id && (
-                        <button data-arato-button="secondary" onClick={() => onPedidoChange("")} style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #86EFAC", background: "transparent", color: "#166534", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" as const }}>
+                        <OperationalButton data-arato-button="secondary" onClick={() => onPedidoChange("")} style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #86EFAC", background: "transparent", color: "#166534", cursor: "pointer", fontSize: 11, whiteSpace: "nowrap" as const }}>
                           ✕ Desvincular
-                        </button>
+                        </OperationalButton>
                       )}
                     </div>
                     {cab.pedido_compra_id && (
@@ -3601,7 +3602,7 @@ export default function NfCompraPage() {
                       <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                         <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Emitente (Fornecedor) *</label>
                         {!cab.pessoa_id && cab.emitente_nome && (
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             disabled={savingForn}
                             onClick={async () => {
                               if (!fazendaId || !cab.emitente_nome) return;
@@ -3628,7 +3629,7 @@ export default function NfCompraPage() {
                             style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" as const }}
                           >
                             {savingForn ? "…" : "+ Cadastrar"}
-                          </button>
+                          </OperationalButton>
                         )}
                       </div>
                       {/* Dropdown customizado — nome e CNPJ em colunas separadas */}
@@ -3832,10 +3833,10 @@ export default function NfCompraPage() {
                         <label data-arato-label="true" style={{ ...lbl, marginBottom: 6 }}>Condição de Pagamento</label>
                         <div style={{ display: "flex", gap: 6, marginBottom: nfCondicao === "prazo" ? 10 : 0 }}>
                           {(["avista", "prazo"] as const).map(v => (
-                            <button data-arato-button="toggle" key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
+                            <OperationalButton data-arato-button="toggle" key={v} onClick={() => { setNfCondicao(v); setNfParcelas([]); }}
                               style={{ padding: "5px 14px", borderRadius: 8, border: `0.5px solid ${nfCondicao === v ? "#1A4870" : "var(--border-table)"}`, background: nfCondicao === v ? "#1A4870" : "var(--bg-card)", color: nfCondicao === v ? "#fff" : "var(--text-1)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
                               {v === "avista" ? "À Vista" : "Parcelado"}
-                            </button>
+                            </OperationalButton>
                           ))}
                         </div>
                         {nfCondicao === "prazo" && (
@@ -3857,10 +3858,10 @@ export default function NfCompraPage() {
                                   <option value="12">Anual</option>
                                 </SelectField>
                               </div>
-                              <button data-arato-button="primary" onClick={gerarParcelasNf}
+                              <OperationalButton data-arato-button="primary" onClick={gerarParcelasNf}
                                 style={{ padding: "7px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
                                 Gerar parcelas
-                              </button>
+                              </OperationalButton>
                             </div>
                             {nfParcelas.length > 0 && (
                               <div>
@@ -4007,7 +4008,7 @@ export default function NfCompraPage() {
                         <strong> compra de combustível para o tanque/bomba da fazenda</strong>, mude para Compra Normal —
                         aí aparece o catálogo do produto e o crédito na bomba, sem exigir veículo.
                       </div>
-                      <button data-arato-button="toggle"
+                      <OperationalButton data-arato-button="toggle"
                         onClick={() => {
                           // Preserva descrição/quantidade/valor já digitados — só troca o tipo da NF
                           // (habilita o catálogo + bomba/tanque) e a apropriação de cada item, que
@@ -4020,7 +4021,7 @@ export default function NfCompraPage() {
                         style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
                       >
                         É reposição de tanque → Mudar para Compra Normal
-                      </button>
+                      </OperationalButton>
                     </div>
                   )}
 
@@ -4060,8 +4061,8 @@ export default function NfCompraPage() {
                   </div>
 
                   <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Cancelar</button>
-                    <button data-arato-button="toggle" style={btnV} onClick={async () => {
+                    <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setWizard(false)}>Cancelar</OperationalButton>
+                    <OperationalButton data-arato-button="toggle" style={btnV} onClick={async () => {
                       // Apropriação Direta: a Operação Gerencial decide como cada item vai
                       // ser lançado (combustível → frota; manutenção → rateio por frota;
                       // outra → só CC) — sem ela escolhida ainda não dá pra montar a tela
@@ -4075,7 +4076,7 @@ export default function NfCompraPage() {
                       if (nf) setEtapa("itens");
                     }}>
                       Próximo: Itens →
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
               )}
@@ -4089,13 +4090,13 @@ export default function NfCompraPage() {
                       <span style={{ fontSize: 13, color: "#7A5500" }}>
                         ⚠ Esta NF foi importada sem itens (possível contingência ou XML incompleto no SIEG).
                       </span>
-                      <button data-arato-button="toggle"
+                      <OperationalButton data-arato-button="toggle"
                         onClick={resyncWizard}
                         disabled={wizardResyncando}
                         style={{ padding: "5px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: wizardResyncando ? "#f5e0a0" : "#FBF3E0", color: "#7A5500", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
                       >
                         {wizardResyncando ? "Re-sincronizando…" : "🔄 Re-sincronizar do SIEG"}
-                      </button>
+                      </OperationalButton>
                     </div>
                   )}
                   {/* Banner: XML carregado mas nenhum <det> encontrado */}
@@ -4118,10 +4119,10 @@ export default function NfCompraPage() {
                         Nenhum item carregado. Volte ao Cabeçalho e importe o XML ou busque via Leitor de Chave.
                       </span>
                       {nfEdit?.origem === "sieg" && (
-                        <button data-arato-button="toggle" onClick={resyncWizard} disabled={wizardResyncando}
+                        <OperationalButton data-arato-button="toggle" onClick={resyncWizard} disabled={wizardResyncando}
                           style={{ padding: "5px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: wizardResyncando ? "#f5e0a0" : "#FBF3E0", color: "#7A5500", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                           {wizardResyncando ? "Re-sincronizando…" : "🔄 Re-sincronizar do SIEG"}
-                        </button>
+                        </OperationalButton>
                       )}
                     </div>
                   )}
@@ -4144,12 +4145,12 @@ export default function NfCompraPage() {
                         </div>
                       )}
                     </div>
-                    <button data-arato-button="secondary"
+                    <OperationalButton data-arato-button="secondary"
                       onClick={() => setItens(p => [...p, { ...ITEM_VAZIO(), tipo_apropiacao: tipoAprpDefault(tipo) }])}
                       style={{ padding: "6px 14px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "#1A5C38", fontWeight: 600 }}
                     >
                       + Item
-                    </button>
+                    </OperationalButton>
                   </div>
 
                   {/* Centro de custo do lançamento (CP) — fica aqui, junto dos itens, pra dar
@@ -4185,11 +4186,11 @@ export default function NfCompraPage() {
                           mercado com 20+ itens) vai pro mesmo centro de custo. Item a item
                           continua disponível pra quando algum item precisa de um CC diferente. */}
                       {cab.centro_custo_id && itens.some(i => i.descricao_nf.trim()) && (
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => setItens(prev => prev.map(it => it.descricao_nf.trim() ? { ...it, centro_custo_id: cab.centro_custo_id, maquina_id: ccGlobalMaquinaId || it.maquina_id } : it))}
                           style={{ marginTop: 10, padding: "6px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#fff", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                           ↓ Aplicar este centro de custo a todos os itens
-                        </button>
+                        </OperationalButton>
                       )}
                     </div>
                     </div>
@@ -4300,11 +4301,11 @@ export default function NfCompraPage() {
                                       <option value="">— catálogo —</option>
                                       {insumos.filter(i => insumoAtivo(i) || i.id === it.insumo_id).map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
                                     </SelectField>
-                                    <button data-arato-button="icon"
+                                    <OperationalButton data-arato-button="icon"
                                       onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
                                       title="Cadastrar novo produto"
                                       style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, fontWeight: 700 }}
-                                    >+</button>
+                                    >+</OperationalButton>
                                   </div>
                                   {it.insumo_id && linhasPedidoDoProduto(it.insumo_id).length > 1 && (
                                     <SelectField value={it.pedido_item_id} onChange={e => setItem(it.key, { pedido_item_id: e.target.value })}
@@ -4497,7 +4498,7 @@ export default function NfCompraPage() {
                         )}
                         <div style={{ padding: "6px 8px", textAlign: "center" }}>
                           {itens.length > 1 && (
-                            <button data-arato-button="icon" onClick={() => setItens(p => p.filter(x => x.key !== it.key))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
+                            <OperationalButton data-arato-button="icon" onClick={() => setItens(p => p.filter(x => x.key !== it.key))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</OperationalButton>
                           )}
                         </div>
                         </div>
@@ -4531,11 +4532,11 @@ export default function NfCompraPage() {
                                     }} style={{ ...inp, fontSize: 12, width: 70, background: "#fff" }} />
                                     <span style={{ fontSize: 11, color: "#7A5A12" }}>%</span>
                                   </div>
-                                  <button data-arato-button="icon" onClick={() => setItem(it.key, { maquinas_rateio: it.maquinas_rateio.filter((_, i) => i !== idx) })} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1 }}>×</button>
+                                  <OperationalButton data-arato-button="icon" onClick={() => setItem(it.key, { maquinas_rateio: it.maquinas_rateio.filter((_, i) => i !== idx) })} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1 }}>×</OperationalButton>
                                 </div>
                               ))}
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <button data-arato-button="secondary" onClick={() => setItem(it.key, { maquinas_rateio: [...it.maquinas_rateio, { maquina_id: "", percentual: it.maquinas_rateio.length === 0 ? 100 : 0 }] })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #F6C87A", background: "#fff", cursor: "pointer", color: "#7A5A12" }}>+ Adicionar máquina</button>
+                                <OperationalButton data-arato-button="secondary" onClick={() => setItem(it.key, { maquinas_rateio: [...it.maquinas_rateio, { maquina_id: "", percentual: it.maquinas_rateio.length === 0 ? 100 : 0 }] })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #F6C87A", background: "#fff", cursor: "pointer", color: "#7A5A12" }}>+ Adicionar máquina</OperationalButton>
                                 {it.maquinas_rateio.length > 0 && (
                                   <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#166534" : "#B91C1C" }}>Total: {totalPct.toFixed(1)}%{!ok ? " — deve somar 100%" : ""}</span>
                                 )}
@@ -4558,10 +4559,10 @@ export default function NfCompraPage() {
                           <div style={{ borderTop: "0.5px solid var(--border-table)", padding: "8px 12px", background: "#F0F7F1" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                               <span style={{ fontSize: 11, fontWeight: 700, color: "#1A5C38" }}>🌱 Lotes de Semente</span>
-                              <button data-arato-button="secondary"
+                              <OperationalButton data-arato-button="secondary"
                                 onClick={() => setItem(it.key, { lotes_semente: [...it.lotes_semente, { numero: "", quantidade_kg: undefined }] })}
                                 style={{ fontSize: 11, padding: "2px 10px", borderRadius: 5, border: "0.5px solid #16A34A", background: "#E8F5E9", color: "#16A34A", cursor: "pointer", fontWeight: 700 }}
-                              >+ Lote</button>
+                              >+ Lote</OperationalButton>
                               {it.lotes_semente.length === 0 && (
                                 <span style={{ fontSize: 10, color: "#6B7A6E" }}>Adicione ao menos um lote para rastreabilidade</span>
                               )}
@@ -4630,10 +4631,10 @@ export default function NfCompraPage() {
                                   }}
                                   style={{ ...inp, fontSize: 11, padding: "4px 8px", width: 100, flexShrink: 0, borderColor: semPesoEste ? "#E24B4A" : undefined }}
                                 />
-                                <button data-arato-button="icon"
+                                <OperationalButton data-arato-button="icon"
                                   onClick={() => setItem(it.key, { lotes_semente: it.lotes_semente.filter((_, i) => i !== li) })}
                                   style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 15, flexShrink: 0 }}
-                                >×</button>
+                                >×</OperationalButton>
                               </div>
                               );
                             })}
@@ -4805,12 +4806,12 @@ export default function NfCompraPage() {
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Depósito padrão para itens sem depósito individual</div>
                         <div style={{ display: "flex", gap: 4, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
                           {(["proprio", "terceiro"] as const).map(t => (
-                            <button data-arato-button="toggle" key={t} onClick={() => setDepFiltro(t)}
+                            <OperationalButton data-arato-button="toggle" key={t} onClick={() => setDepFiltro(t)}
                               style={{ fontSize: 10, fontWeight: 600, padding: "2px 10px", borderRadius: 5, border: "none", cursor: "pointer",
                                 background: depFiltro === t ? "#111111" : "transparent",
                                 color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
                               {t === "proprio" ? "Próprio" : "Terceiro"}
-                            </button>
+                            </OperationalButton>
                           ))}
                         </div>
                       </div>
@@ -4836,9 +4837,9 @@ export default function NfCompraPage() {
                   )}
 
                   <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <button data-arato-button="toggle" style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</button>
+                    <OperationalButton data-arato-button="toggle" style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</OperationalButton>
                     <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                      <button data-arato-button="secondary" style={btnR} onClick={async () => {
+                      <OperationalButton data-arato-button="secondary" style={btnR} onClick={async () => {
                         // Salvar como pendente sem processar
                         if (nfEdit) {
                           await atualizarNfEntrada(nfEdit.id, { status: "pendente" });
@@ -4847,14 +4848,14 @@ export default function NfCompraPage() {
                         }
                       }}>
                         Salvar como Pendente
-                      </button>
-                      <button data-arato-button="toggle"
+                      </OperationalButton>
+                      <OperationalButton data-arato-button="toggle"
                         style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }}
                         onClick={processarNF}
                         disabled={saving}
                       >
                         {saving ? "Processando…" : "✓ Processar NF"}
-                      </button>
+                      </OperationalButton>
                     </div>
                   </div>
                 </div>
@@ -4884,7 +4885,7 @@ export default function NfCompraPage() {
                   </div>
                 )}
               </div>
-              <button data-arato-button="icon" onClick={() => setDevModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 16 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setDevModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 16 }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: 24 }}>
@@ -4981,14 +4982,14 @@ export default function NfCompraPage() {
 
               {/* Ações */}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setDevModal(false)}>Cancelar</button>
-                <button data-arato-button="toggle"
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setDevModal(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle"
                   onClick={confirmarDevolucao}
                   disabled={devSaving || devItens.filter(i => i.quantidade_devolver > 0).length === 0}
                   style={{ ...btnV, background: devSaving ? "#ccc" : "#E24B4A", cursor: devSaving ? "default" : "pointer" }}
                 >
                   {devSaving ? "Processando…" : "↩ Emitir Devolução"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -5010,7 +5011,7 @@ export default function NfCompraPage() {
                   {remessaModal.chave_acesso && <span style={{ marginLeft: 6, fontSize: 10, fontFamily: "monospace", color: "var(--text-muted)" }}>{remessaModal.chave_acesso}</span>}
                 </div>
               </div>
-              <button data-arato-button="icon" onClick={() => setRemessaModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setRemessaModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</OperationalButton>
             </div>
 
             {remessaOk ? (
@@ -5023,10 +5024,10 @@ export default function NfCompraPage() {
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20 }}>
                   O retorno pode ser gerenciado em <strong>Fiscal → Remessas Logísticas</strong>.
                 </div>
-                <button data-arato-button="primary" onClick={() => setRemessaModal(null)}
+                <OperationalButton data-arato-button="primary" onClick={() => setRemessaModal(null)}
                   style={{ ...btnV, background: "#1A4870" }}>
                   Fechar
-                </button>
+                </OperationalButton>
               </div>
             ) : (
               /* ── Formulário ── */
@@ -5064,7 +5065,7 @@ export default function NfCompraPage() {
                     </div>
                   ) : (
                     <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-stripe)" }}>
                             <th style={{ padding: "7px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Descrição</th>
@@ -5087,7 +5088,7 @@ export default function NfCompraPage() {
                             </td>
                           </tr>
                         </tbody>
-                      </table>
+                      </OperationalGrid>
                     </div>
                   )}
                 </div>
@@ -5115,11 +5116,11 @@ export default function NfCompraPage() {
                 )}
 
                 <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                  <button data-arato-button="secondary" onClick={() => setRemessaModal(null)} style={btnR}>Cancelar</button>
-                  <button data-arato-button="primary" onClick={emitirRemessaLogistica} disabled={remessaEmitindo || !remessaDestId || remessaItens.length === 0}
+                  <OperationalButton data-arato-button="secondary" onClick={() => setRemessaModal(null)} style={btnR}>Cancelar</OperationalButton>
+                  <OperationalButton data-arato-button="primary" onClick={emitirRemessaLogistica} disabled={remessaEmitindo || !remessaDestId || remessaItens.length === 0}
                     style={{ ...btnV, background: "#1A4870", opacity: (remessaEmitindo || !remessaDestId || remessaItens.length === 0) ? 0.6 : 1 }}>
                     {remessaEmitindo ? "Emitindo…" : "Emitir NF Remessa →"}
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             )}
@@ -5145,7 +5146,7 @@ export default function NfCompraPage() {
                   Altera apenas a classificação. Os lançamentos financeiros gerados não são afetados.
                 </div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalReclass(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 12 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalReclass(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1, marginLeft: 12 }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
@@ -5187,14 +5188,14 @@ export default function NfCompraPage() {
 
             {/* Rodapé */}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalReclass(null)}>Cancelar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalReclass(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={salvarReclassificacao}
                 disabled={reclassSaving}
                 style={{ ...btnV, background: reclassSaving ? "var(--text-muted)" : "#C9921B", cursor: reclassSaving ? "default" : "pointer" }}
               >
                 {reclassSaving ? "Salvando…" : "Salvar Reclassificação"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -5217,7 +5218,7 @@ export default function NfCompraPage() {
                   A NF <strong>{modalExcluir.nf.numero}</strong> possui um lançamento financeiro que foi incluído em um lote de pagamento (conciliação bancária). Não é possível excluir — desfaça a conciliação primeiro.
                 </div>
                 <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)}>Fechar</button>
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)}>Fechar</OperationalButton>
                 </div>
               </>
             ) : (
@@ -5251,14 +5252,14 @@ export default function NfCompraPage() {
                 )}
 
                 <div data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</button>
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalExcluir(null)} disabled={modalExcluir.excluindo}>Cancelar</OperationalButton>
+                  <OperationalButton data-arato-button="toggle"
                     onClick={confirmarExclusao}
                     disabled={modalExcluir.excluindo}
                     style={{ padding: "8px 18px", background: modalExcluir.excluindo ? "var(--text-muted)" : "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: modalExcluir.excluindo ? "default" : "pointer", fontSize: 13 }}
                   >
                     {modalExcluir.excluindo ? "Excluindo…" : "Confirmar Exclusão"}
-                  </button>
+                  </OperationalButton>
                 </div>
               </>
             )}
@@ -5287,12 +5288,12 @@ export default function NfCompraPage() {
                   autoFocus
                 />
                 {formNovoInsumo.nome !== modalNovoInsumo.nome && (
-                  <button data-arato-button="secondary"
+                  <OperationalButton data-arato-button="secondary"
                     onClick={() => setFormNovoInsumo(p => ({ ...p, nome: modalNovoInsumo.nome }))}
                     style={{ marginTop: 4, fontSize: 11, color: "var(--text-2)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                   >
                     ↩ Usar descrição da NF: &quot;{modalNovoInsumo.nome}&quot;
-                  </button>
+                  </OperationalButton>
                 )}
               </div>
 
@@ -5351,14 +5352,14 @@ export default function NfCompraPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovoInsumo(null)}>Cancelar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNovoInsumo(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 onClick={salvarNovoInsumo}
                 disabled={!formNovoInsumo.nome.trim() || novoInsumoSaving}
                 style={{ ...btnV, background: !formNovoInsumo.nome.trim() || novoInsumoSaving ? "var(--text-muted)" : "#C9921B", cursor: !formNovoInsumo.nome.trim() || novoInsumoSaving ? "default" : "pointer" }}
               >
                 {novoInsumoSaving ? "Salvando…" : "◈ Cadastrar e vincular"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -5386,7 +5387,7 @@ export default function NfCompraPage() {
                   { v: "estoque" as const,  label: "Estoque / Insumos",   desc: "Salva depósito; itens mapeados individualmente" },
                   { v: "direto" as const,   label: "Apropriação Direta",  desc: "Processa sem entrada em estoque" },
                 ] as const).map(opt => (
-                  <button data-arato-button="toggle" key={opt.v} onClick={() => setBatchSettings(p => ({ ...p, tipo_destino: opt.v }))}
+                  <OperationalButton data-arato-button="toggle" key={opt.v} onClick={() => setBatchSettings(p => ({ ...p, tipo_destino: opt.v }))}
                     title={opt.desc}
                     style={{
                       flex: 1, padding: "8px 6px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
@@ -5397,7 +5398,7 @@ export default function NfCompraPage() {
                       borderRight: opt.v !== "direto" ? "0.5px solid var(--border-ui)" : "none",
                     }}>
                     {opt.label}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -5408,10 +5409,10 @@ export default function NfCompraPage() {
                 <label data-arato-label="true" style={lbl}>Subcategoria do Estoque</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([ ["insumos", "Insumos Agrícolas"], ["pecas", "Peças / Manutenção"], ["combustivel", "Combustível"] ] as const).map(([v, label]) => (
-                    <button data-arato-button="toggle" key={v} onClick={() => setBatchSettings(p => ({ ...p, tipo_estoque: v }))}
+                    <OperationalButton data-arato-button="toggle" key={v} onClick={() => setBatchSettings(p => ({ ...p, tipo_estoque: v }))}
                       style={{ flex: 1, padding: "7px 8px", border: `0.5px solid ${batchSettings.tipo_estoque === v ? "#1A4870" : "var(--border-ui)"}`, borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: 600, background: batchSettings.tipo_estoque === v ? "#D5E8F5" : "var(--bg-input)", color: batchSettings.tipo_estoque === v ? "#1A4870" : "var(--text-2)" }}>
                       {label}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
               </div>
@@ -5471,12 +5472,12 @@ export default function NfCompraPage() {
                     <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Depósito de Entrada</label>
                     <div style={{ display: "flex", gap: 3, background: "var(--bg-input)", borderRadius: 6, padding: 2, border: "0.5px solid var(--border-ui)" }}>
                       {(["proprio", "terceiro"] as const).map(t => (
-                        <button data-arato-button="toggle" key={t} onClick={() => setDepFiltro(t)}
+                        <OperationalButton data-arato-button="toggle" key={t} onClick={() => setDepFiltro(t)}
                           style={{ fontSize: 9, fontWeight: 600, padding: "1px 8px", borderRadius: 4, border: "none", cursor: "pointer",
                             background: depFiltro === t ? "#111111" : "transparent",
                             color: depFiltro === t ? "#fff" : "var(--text-3)" }}>
                           {t === "proprio" ? "Próprio" : "Terceiro"}
-                        </button>
+                        </OperationalButton>
                       ))}
                     </div>
                   </div>
@@ -5528,14 +5529,14 @@ export default function NfCompraPage() {
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setBatchModal(false)} disabled={batchSaving}>Cancelar</button>
-              <button data-arato-button="primary"
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setBatchModal(false)} disabled={batchSaving}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary"
                 onClick={processarEmLote}
                 disabled={batchSaving || (batchSettings.tipo_destino === "direto" && !batchSettings.centro_custo_id)}
                 style={{ ...btnV, opacity: (batchSaving || (batchSettings.tipo_destino === "direto" && !batchSettings.centro_custo_id)) ? 0.5 : 1, cursor: batchSaving ? "default" : "pointer" }}
               >
                 {batchSaving ? "Processando…" : "Aplicar e Processar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -5556,12 +5557,12 @@ export default function NfCompraPage() {
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
               <div data-arato-dialog-body="true" style={{ fontSize: 10, color: siegJustText.length >= 15 ? "#16A34A" : "var(--text-muted)", marginBottom: 16 }}>{siegJustText.length}/15 mínimos</div>
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button data-arato-button="secondary" onClick={() => setSiegJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid var(--border)", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
-                <button data-arato-button="toggle" disabled={siegJustText.length < 15}
+                <OperationalButton data-arato-button="secondary" onClick={() => setSiegJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid var(--border)", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" disabled={siegJustText.length < 15}
                   onClick={async () => { const {nf,tipo} = siegJustModal; setSiegJustModal(null); await executarManifestacao(nf, tipo, siegJustText); }}
                   style={{ padding: "8px 20px", background: siegJustText.length < 15 ? "var(--border)" : m.cor, color: "white", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: siegJustText.length < 15 ? "default" : "pointer" }}>
                   Confirmar {m.label}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

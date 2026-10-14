@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -1243,29 +1244,29 @@ function FaturamentoInner() {
 
       <div style={{ maxWidth:1280, margin:"0 auto", padding:"24px 24px" }}>
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>Faturamento — NF-e de Saída</h1>
             <p style={{ fontSize:13, color:"#666", margin:"4px 0 0" }}>Emita notas por contrato de venda ou avulsa (remessa, devolução, retorno)</p>
           </div>
-          <button data-arato-button="primary" style={btnV} onClick={abrirModal}>+ Nova NF-e</button>
-        </div>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirModal}>+ Nova NF-e</OperationalButton>
+        </OperationalHeading>
 
         {/* Filtros */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
           {(["todas","processando","autorizadas","rejeitadas","canceladas"] as const).map(a => (
-            <button data-arato-button="toggle" key={a} onClick={() => setFiltroAba(a)}
+            <OperationalButton data-arato-button="toggle" key={a} onClick={() => setFiltroAba(a)}
               style={{ padding:"5px 14px", borderRadius:20, border:"0.5px solid", fontSize:12, cursor:"pointer", fontWeight: filtroAba===a ? 600 : 400,
                 background: filtroAba===a ? "#111111" : "var(--bg-page)", color: filtroAba===a ? "#fff" : "var(--text-2)", borderColor: filtroAba===a ? "#111111" : "var(--border-table)" }}>
               {a === "todas" ? "Todas" : a === "processando" ? "Processando" : a === "autorizadas" ? "Autorizadas" : a === "rejeitadas" ? "Rejeitadas" : "Canceladas"}
-            </button>
+            </OperationalButton>
           ))}
           <input style={{ ...inp, width:220, marginLeft:"auto" }} placeholder="Buscar por nº ou destinatário…" value={buscaNota} onChange={e => setBuscaNota(e.target.value)} />
-        </div>
+        </OperationalFilters>
 
         {/* Tabela */}
         <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:12, overflow:"hidden" }}>
-          <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+          <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ background:"var(--bg-card)" }}>
                 {["Nº / Série","Data Emissão","Destinatário","CFOP","Valor Total","Status","Ações"].map((h, i) => (
@@ -1279,7 +1280,7 @@ function FaturamentoInner() {
               ) : notasFiltradas.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding:40, textAlign:"center", color:"#999", fontSize:13 }}>
                   Nenhuma NF-e de saída encontrada.<br />
-                  <button data-arato-button="primary" style={{ ...btnV, marginTop:12, fontSize:12 }} onClick={abrirModal}>Emitir a primeira nota</button>
+                  <OperationalButton data-arato-button="primary" style={{ ...btnV, marginTop:12, fontSize:12 }} onClick={abrirModal}>Emitir a primeira nota</OperationalButton>
                 </td></tr>
               ) : notasFiltradas.map(nota => {
                 const st = corStatus(nota.status);
@@ -1299,26 +1300,26 @@ function FaturamentoInner() {
                     </td>
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary"
                           style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#111111", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           DANFE
-                        </button>
+                        </OperationalButton>
                         {["6.905","5.905","6905","5905"].includes(nota.cfop) && (
                           (nota.dados_nf_json as Record<string, unknown> | undefined)?.retornada ? (
                             <span style={{ padding:"4px 10px", fontSize:11, background:"#F1EFE8", color:"#666", borderRadius:6, whiteSpace:"nowrap" }}>
                               ✓ Retornada
                             </span>
                           ) : nota.status === "autorizada" && (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               style={{ padding:"4px 10px", fontSize:11, background:"#EBF4FB", color:"#0B2D50", border:"0.5px solid #1A487050", borderRadius:6, cursor:"pointer", whiteSpace:"nowrap" }}
                               onClick={() => abrirRetornoDoGrid(nota)}>
                               ↩ Retorno
-                            </button>
+                            </OperationalButton>
                           )
                         )}
                         {nota.status === "em_digitacao" && (
-                          <button data-arato-button="primary"
+                          <OperationalButton data-arato-button="primary"
                             style={{ padding:"4px 10px", fontSize:11, background:"#2A2A2A", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               if (!window.confirm("Transmitir para a SEFAZ?")) return;
@@ -1378,10 +1379,10 @@ function FaturamentoInner() {
                               }
                             }}>
                             Transmitir
-                          </button>
+                          </OperationalButton>
                         )}
                         {["autorizada","em_digitacao"].includes(nota.status) && (
-                          <button data-arato-button="danger"
+                          <OperationalButton data-arato-button="danger"
                             style={{ padding:"4px 10px", fontSize:11, background:"#FCEBEB", color:"#791F1F", border:"0.5px solid #E24B4A50", borderRadius:6, cursor:"pointer" }}
                             onClick={async () => {
                               const motivo = window.prompt("Motivo do cancelamento (min. 15 caracteres):");
@@ -1390,7 +1391,7 @@ function FaturamentoInner() {
                               setNotas(p => p.map(n => n.id === nota.id ? { ...n, status: "cancelada" } : n));
                             }}>
                             Cancelar
-                          </button>
+                          </OperationalButton>
                         )}
                       </div>
                     </td>
@@ -1398,7 +1399,7 @@ function FaturamentoInner() {
                 );
               })}
             </tbody>
-          </table>
+          </OperationalGrid>
 
           {notasFiltradas.length > 0 && (
             <div style={{ padding:"10px 16px", background:"var(--bg-card)", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:24 }}>
@@ -1421,7 +1422,7 @@ function FaturamentoInner() {
               <div style={{ fontSize:17, fontWeight:700, color:"var(--text-1)", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
               <div style={{ fontSize:13, color:"#666", marginBottom:24 }}>Como deseja iniciar a emissão?</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
-                <button data-arato-button="secondary"
+                <OperationalButton data-arato-button="secondary"
                   onClick={() => setPasso("contrato")}
                   style={{ padding:"20px 16px", border:"1.5px solid #2A2A2A", borderRadius:12, background:"#EBF4FB", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#E8E8E8")}
@@ -1429,8 +1430,8 @@ function FaturamentoInner() {
                   <div style={{ fontSize:22, marginBottom:8 }}>📋</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:4 }}>Por Contrato</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Selecione um contrato de venda. Destinatário, CFOP, itens e observações legais são preenchidos automaticamente.</div>
-                </button>
-                <button data-arato-button="toggle"
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle"
                   onClick={() => { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
@@ -1438,8 +1439,8 @@ function FaturamentoInner() {
                   <div style={{ fontSize:22, marginBottom:8 }}>📝</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Avulsa — Venda</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Nota de venda sem vínculo de contrato. Você preenche todos os dados.</div>
-                </button>
-                <button data-arato-button="toggle"
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle"
                   onClick={() => { setTipoAvulsa("remessa"); preencherAvulsa("remessa", "6.905"); }}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
@@ -1447,8 +1448,8 @@ function FaturamentoInner() {
                   <div style={{ fontSize:22, marginBottom:8 }}>🏭</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Remessa</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Depósito em armazém (6.905), entrega futura (6.117) ou venda à ordem (6.119).</div>
-                </button>
-                <button data-arato-button="secondary"
+                </OperationalButton>
+                <OperationalButton data-arato-button="secondary"
                   onClick={() => setPasso("retorno_origem")}
                   style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
@@ -1456,12 +1457,12 @@ function FaturamentoInner() {
                   <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Retorno de Armazém Geral</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Traz de volta mercadoria enviada por uma NF de Remessa (6.905/5.905) já autorizada.</div>
-                </button>
+                </OperationalButton>
               </div>
               <div style={{ fontSize:11, color:"var(--text-3)", marginBottom:16 }}>
                 Devolução de mercadoria comprada ou vendida não é emitida aqui — veja Documentos Fiscais → Notas de Terceiro.
               </div>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</OperationalButton>
             </div>
           )}
 
@@ -1478,19 +1479,19 @@ function FaturamentoInner() {
                 ) : notas
                     .filter(n => ["6.905","5.905","6905","5905"].includes(n.cfop) && n.status === "autorizada" && !(n.dados_nf_json as Record<string, unknown> | undefined)?.retornada)
                     .map(n => (
-                      <button data-arato-button="secondary" key={n.id} onClick={() => abrirRetornoDoGrid(n)}
+                      <OperationalButton data-arato-button="secondary" key={n.id} onClick={() => abrirRetornoDoGrid(n)}
                         style={{ display:"flex", justifyContent:"space-between", alignItems:"center", width:"100%", padding:"12px 14px", marginBottom:6, border:"0.5px solid var(--border-table)", borderRadius:10, background:"var(--bg-page)", cursor:"pointer", textAlign:"left" }}>
                         <div>
                           <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>Remessa nº {n.numero} — {n.destinatario}</div>
                           <div style={{ fontSize:11, color:"var(--text-3)" }}>{fmtData(n.data_emissao)} · CFOP {n.cfop} · {fmtR$(n.valor_total)}</div>
                         </div>
                         <span style={{ fontSize:12, color:"#0B2D50", fontWeight:600 }}>Retornar →</span>
-                      </button>
+                      </OperationalButton>
                     ))
                 }
               </div>
               <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end" }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setPasso("origem")}>Voltar</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setPasso("origem")}>Voltar</OperationalButton>
               </div>
             </div>
           )}
@@ -1499,7 +1500,7 @@ function FaturamentoInner() {
           {passo === "contrato" && (
             <div style={{ background:"var(--bg-card)", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
-                <button data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</button>
+                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</OperationalButton>
                 <div>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Contrato de Venda</div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>Clique no contrato para pré-preencher a nota</div>
@@ -1552,7 +1553,7 @@ function FaturamentoInner() {
                 })}
               </div>
               <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", gap:10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</OperationalButton>
               </div>
             </div>
           )}
@@ -1561,7 +1562,7 @@ function FaturamentoInner() {
           {passo === "romaneio" && contratoSelecionado && (
             <div data-arato-statistic="action" style={{ background:"var(--bg-card)", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
-                <button data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
+                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</OperationalButton>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)", display:"flex", alignItems:"center", gap:10 }}>
                     Selecionar Carga (Romaneio)
@@ -1660,7 +1661,7 @@ function FaturamentoInner() {
                 )}
               </div>
               <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", gap:10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</OperationalButton>
               </div>
             </div>
           )}
@@ -1671,7 +1672,7 @@ function FaturamentoInner() {
 
               {/* Barra de título */}
               <div style={{ background:"#111111", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <button data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</button>
+                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</OperationalButton>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
                     {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "retorno" ? `Retorno de Armazém Geral (Remessa nº ${fVenda.nf_ref_numero})` : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
@@ -1681,17 +1682,17 @@ function FaturamentoInner() {
                     {fVenda.contrato_numero && " · dados pré-carregados do contrato"}
                   </div>
                 </div>
-                <button data-arato-button="secondary" style={{ background:"none", border:"0.5px solid rgba(255,255,255,0.3)", color:"rgba(255,255,255,0.7)", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer" }} onClick={() => setModalAberto(false)}>✕ Fechar</button>
+                <OperationalButton data-arato-button="secondary" style={{ background:"none", border:"0.5px solid rgba(255,255,255,0.3)", color:"rgba(255,255,255,0.7)", borderRadius:6, padding:"4px 12px", fontSize:12, cursor:"pointer" }} onClick={() => setModalAberto(false)}>✕ Fechar</OperationalButton>
               </div>
 
               {/* Abas */}
               <div data-arato-tabs="true" data-arato-grid-container="true" style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
                 {ABAS_NOTA.map(a => (
-                  <button data-arato-tab-active={tabNFe === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setTabNFe(a.id)}
+                  <OperationalButton data-arato-tab-active={tabNFe === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setTabNFe(a.id)}
                     style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #2A2A2A" : "2.5px solid transparent", background:"transparent",
                       color: tabNFe === a.id ? "#2A2A2A" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
                     {a.label}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
 
@@ -1704,10 +1705,10 @@ function FaturamentoInner() {
               <div style={{ borderTop:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0 }}>
                 <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota</span>
-                  <button data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</button>
+                  <OperationalButton data-arato-button="secondary" style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #2A2A2A", borderRadius:5, background:"#E6F1FB", color:"#2A2A2A", cursor:"pointer" }} onClick={addItem}>+ Item</OperationalButton>
                 </div>
                 <div data-arato-grid-container="true" style={{ overflowX:"auto", maxHeight:160 }}>
-                  <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
                     <thead>
                       <tr style={{ background:"#F0F4F8" }}>
                         {["Tipo","Item / Produto","NCM","Qtd","Unid","Valor Unit.","Valor Total",""].map((h, i) => (
@@ -1747,13 +1748,13 @@ function FaturamentoInner() {
                             <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#111111" }} value={fmtR$(it.valor_total)} readOnly />
                           </td>
                           <td style={{ padding:"5px 8px", width:30 }}>
-                            <button data-arato-button="danger" style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
-                              onClick={() => setNfeItens(p => p.filter((_, i) => i !== idx))}>✕</button>
+                            <OperationalButton data-arato-button="danger" style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
+                              onClick={() => setNfeItens(p => p.filter((_, i) => i !== idx))}>✕</OperationalButton>
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
                 <div style={{ padding:"8px 16px", display:"flex", justifyContent:"flex-end", gap:24, borderTop:"0.5px solid var(--border-table)" }}>
                   <span style={{ fontSize:12, color:"var(--text-2)" }}>Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong></span>
@@ -1769,8 +1770,8 @@ function FaturamentoInner() {
                   </div>
                 )}
                 <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
-                  <button data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAberto(false)}>Cancelar</OperationalButton>
+                  <OperationalButton data-arato-button="toggle"
                     style={{ ...btnR, borderColor:"#2A2A2A", color:"#2A2A2A" }}
                     onClick={() => {
                       const tabs: TabNFe[] = ["produtor","destinatario","operacoes","transportador","retirada","fiscal","obs","pontualidade"];
@@ -1778,10 +1779,10 @@ function FaturamentoInner() {
                       if (idx < tabs.length - 1) setTabNFe(tabs[idx + 1]);
                     }}>
                     Próxima aba →
-                  </button>
-                  <button data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo}>
+                  </OperationalButton>
+                  <OperationalButton data-arato-button="toggle" style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#2A2A2A" }} onClick={emitirNota} disabled={emitindo}>
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             </div>
@@ -1834,7 +1835,7 @@ function FaturamentoInner() {
 
               <div style={{ padding:"14px 24px", display:"flex", gap:10, justifyContent:"flex-end" }}>
                 {nfEmitida.venda_a_ordem && (
-                  <button data-arato-button="primary"
+                  <OperationalButton data-arato-button="primary"
                     style={{ ...btnV, background:"#2A2A2A" }}
                     onClick={() => {
                       setFVenda({ ...FVENDA_INICIAL, cfop:"6.923", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
@@ -1842,10 +1843,10 @@ function FaturamentoInner() {
                       setNfEmitida(null);
                     }}>
                     Emitir NF 6.923 (remessa física) →
-                  </button>
+                  </OperationalButton>
                 )}
                 {nfEmitida.entrega_futura && (
-                  <button data-arato-button="primary"
+                  <OperationalButton data-arato-button="primary"
                     style={{ ...btnV, background:"#C9921B" }}
                     onClick={() => {
                       setFVenda({ ...FVENDA_INICIAL, cfop:"6.101", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
@@ -1853,9 +1854,9 @@ function FaturamentoInner() {
                       setNfEmitida(null);
                     }}>
                     Emitir NF 6.101 (saída física) →
-                  </button>
+                  </OperationalButton>
                 )}
-                <button data-arato-button="secondary" style={btnR} onClick={() => { setModalAberto(false); setNfEmitida(null); }}>Concluir</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModalAberto(false); setNfEmitida(null); }}>Concluir</OperationalButton>
               </div>
             </div>
           )}

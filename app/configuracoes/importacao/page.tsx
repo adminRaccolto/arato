@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useRef, useCallback, useEffect, Suspense } from "react";
@@ -1231,7 +1232,7 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
   if (!rows.length) return null;
   return (
     <div data-arato-grid-container="true" style={{ overflowX: "auto", marginTop: 16 }}>
-      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
             <th style={{ padding: "6px 10px", border: "0.5px solid var(--border)", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>#</th>
@@ -1263,7 +1264,7 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
             );
           })}
         </tbody>
-      </table>
+      </OperationalGrid>
     </div>
   );
 }
@@ -3222,7 +3223,7 @@ function ImportacaoInner() {
             {(["pessoas", "cp", "cr", "apoio", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "matriculas_imp", "talhoes_imp", "funcionarios", "propriedades_pkg"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
-                <button data-arato-button="toggle"
+                <OperationalButton data-arato-button="toggle"
                   key={a}
                   onClick={() => { setAba(a); if (a !== "insumos") { setInsumoFazSel(""); setInsumoDepSel(""); } }}
                   style={{
@@ -3237,7 +3238,7 @@ function ImportacaoInner() {
                 >
                   <span style={{ fontSize: 16 }}>{c.icon}</span>
                   {c.label}
-                </button>
+                </OperationalButton>
               );
             })}
           </div>
@@ -3266,7 +3267,7 @@ function ImportacaoInner() {
                 </div>
                 <p style={{ margin: "4px 0 0 34px", fontSize: 13, color: "#666" }}>{cfg.desc}</p>
               </div>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => downloadTemplate(aba)}
                 style={{
                   padding: "8px 16px", background: "white", border: "0.5px solid #111111",
@@ -3275,7 +3276,7 @@ function ImportacaoInner() {
                 }}
               >
                 ⬇ Baixar template
-              </button>
+              </OperationalButton>
             </div>
 
             {/* Seletores de Fazenda / Depósito — apenas na aba Insumos */}
@@ -3379,10 +3380,10 @@ function ImportacaoInner() {
 
                 {/* Botões */}
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-                  <button data-arato-button="secondary" onClick={limpar} style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
+                  <OperationalButton data-arato-button="secondary" onClick={limpar} style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
                     Limpar
-                  </button>
-                  <button data-arato-button="primary"
+                  </OperationalButton>
+                  <OperationalButton data-arato-button="primary"
                     onClick={importarPacote}
                     disabled={loadingPacote || (pkgFazendasRows.filter(r => r._status === "ok").length + pkgMatriculasRows.filter(r => r._status === "ok").length + pkgTalhoesRows.filter(r => r._status === "ok").length) === 0}
                     style={{
@@ -3392,7 +3393,7 @@ function ImportacaoInner() {
                     }}
                   >
                     {loadingPacote ? "⏳ Importando..." : "⬆ Importar Tudo"}
-                  </button>
+                  </OperationalButton>
                 </div>
 
                 {/* Resultado do pacote */}
@@ -3555,13 +3556,13 @@ function ImportacaoInner() {
                     {okRows   > 0 && <span style={{ marginLeft: 10, color: "#16A34A", fontWeight: 600 }}>{okRows} prontas para importar</span>}
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button data-arato-button="secondary"
+                    <OperationalButton data-arato-button="secondary"
                       onClick={limpar}
                       style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}
                     >
                       Limpar
-                    </button>
-                    <button data-arato-button="toggle"
+                    </OperationalButton>
+                    <OperationalButton data-arato-button="toggle"
                       onClick={cfg.onImport}
                       disabled={cfg.loading || okRows === 0}
                       style={{
@@ -3573,7 +3574,7 @@ function ImportacaoInner() {
                       }}
                     >
                       {cfg.loading ? "⏳ Importando..." : `⬆ Importar ${okRows} registro${okRows !== 1 ? "s" : ""}`}
-                    </button>
+                    </OperationalButton>
                   </div>
                 </div>
                 <PreviewTable rows={cfg.rows} colunas={cfg.cols} />
@@ -3597,7 +3598,7 @@ function ImportacaoInner() {
                 <div style={{ fontWeight: 700, color: "#7A1A1A", marginBottom: 8 }}>
                   ✗ {resultInsumosErros.length} linha{resultInsumosErros.length !== 1 ? "s" : ""} com erro na importação — verifique os nomes de fazenda e depósito
                 </div>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                   <thead>
                     <tr style={{ background: "#FECACA" }}>
                       <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "#7A1A1A" }}>Insumo</th>
@@ -3612,7 +3613,7 @@ function ImportacaoInner() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
                 {resultInsumosErros.length > 20 && (
                   <div style={{ marginTop: 6, color: "#7A1A1A", fontStyle: "italic" }}>
                     … e mais {resultInsumosErros.length - 20} erros. Corrija as fazendas/depósitos na planilha e tente novamente.

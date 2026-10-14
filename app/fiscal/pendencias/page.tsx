@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -235,14 +236,14 @@ export default function PendenciasFiscaisPage() {
     <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* Cabeçalho */}
-      <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <button data-arato-button="secondary"
+          <OperationalButton data-arato-button="secondary"
             onClick={() => router.back()}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#111111", fontWeight: 600, padding: "0 0 8px 0", display: "flex", alignItems: "center", gap: 4 }}
           >
             ← Voltar
-          </button>
+          </OperationalButton>
           <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências Fiscais</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Consumos registrados sem documento fiscal — WhatsApp IA ou lançamentos manuais
@@ -254,12 +255,12 @@ export default function PendenciasFiscaisPage() {
             <div style={{ fontSize: 11, color: "#9D4900" }}>aguardando NF</div>
           </div>
         )}
-      </div>
+      </OperationalHeading>
 
       {/* Filtros */}
-      <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+      <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         {(["", "aguardando", "recebida", "dispensada"] as const).map(s => (
-          <button data-arato-button="toggle"
+          <OperationalButton data-arato-button="toggle"
             key={s}
             onClick={() => setFiltroStatus(s)}
             style={{
@@ -271,7 +272,7 @@ export default function PendenciasFiscaisPage() {
             }}
           >
             {s === "" ? `Todos (${pendencias.length})` : `${STATUS_LABEL[s]?.label} (${contadores[s] ?? 0})`}
-          </button>
+          </OperationalButton>
         ))}
         <SelectField
           value={filtroTipo}
@@ -288,7 +289,7 @@ export default function PendenciasFiscaisPage() {
           style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", minWidth: 240 }}
         />
         {selecionados.size > 0 && (
-          <button data-arato-button="danger"
+          <OperationalButton data-arato-button="danger"
             onClick={excluirSelecionados}
             disabled={excluindo}
             style={{
@@ -298,9 +299,9 @@ export default function PendenciasFiscaisPage() {
             }}
           >
             {excluindo ? "Excluindo..." : `Excluir ${selecionados.size} selecionada${selecionados.size > 1 ? "s" : ""}`}
-          </button>
+          </OperationalButton>
         )}
-      </div>
+      </OperationalFilters>
 
       {/* Tabela */}
       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
@@ -311,7 +312,7 @@ export default function PendenciasFiscaisPage() {
             {filtroStatus === "aguardando" ? "Nenhuma pendência fiscal no momento." : "Nenhum registro encontrado."}
           </div>
         ) : (
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                 <th style={{ padding: "10px 14px", width: 36 }}>
@@ -379,7 +380,7 @@ export default function PendenciasFiscaisPage() {
                     <td style={{ padding: "10px 14px" }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         {p.status === "aguardando" && (
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => abrirModal(p)}
                             style={{
                               padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B",
@@ -387,12 +388,12 @@ export default function PendenciasFiscaisPage() {
                             }}
                           >
                             Anexar NF
-                          </button>
+                          </OperationalButton>
                         )}
                         {p.status === "recebida" && p.xml_storage_path && (
                           <span style={{ fontSize: 12, color: "#166534" }}>XML salvo</span>
                         )}
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => excluirUma(p.id)}
                           title="Excluir pendência"
                           style={{
@@ -401,14 +402,14 @@ export default function PendenciasFiscaisPage() {
                           }}
                         >
                           🗑
-                        </button>
+                        </OperationalButton>
                       </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-          </table>
+          </OperationalGrid>
         )}
       </div>
 
@@ -422,7 +423,7 @@ export default function PendenciasFiscaisPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Anexar Nota Fiscal</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{modal.descricao}</div>
               </div>
-              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "20px 24px" }}>
@@ -439,7 +440,7 @@ export default function PendenciasFiscaisPage() {
               {/* Abas de modo */}
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginBottom: 20 }}>
                 {(["chave", "foto"] as const).map(m => (
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     key={m}
                     onClick={() => { setModoAnexo(m); setMsgResultado(null); }}
                     style={{
@@ -451,7 +452,7 @@ export default function PendenciasFiscaisPage() {
                     }}
                   >
                     {m === "chave" ? "🔑 Chave de Acesso" : "📷 Foto da Nota"}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
 
@@ -470,7 +471,7 @@ export default function PendenciasFiscaisPage() {
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                     {chaveInput.length}/44 dígitos — a chave está impressa abaixo do código de barras da DANFE
                   </div>
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     onClick={consultarPorChave}
                     disabled={consultando || chaveInput.replace(/\D/g, "").length !== 44}
                     style={{
@@ -481,7 +482,7 @@ export default function PendenciasFiscaisPage() {
                     }}
                   >
                     {consultando ? "Consultando SEFAZ..." : "Consultar e Baixar XML"}
-                  </button>
+                  </OperationalButton>
                 </div>
               )}
 
@@ -495,7 +496,7 @@ export default function PendenciasFiscaisPage() {
                     {fotoBase64 ? (
                       <div>
                         <div style={{ fontSize: 13, color: "#166534", fontWeight: 600, marginBottom: 8 }}>✅ Foto carregada</div>
-                        <button data-arato-button="secondary" onClick={() => setFotoBase64(null)} style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Trocar foto</button>
+                        <OperationalButton data-arato-button="secondary" onClick={() => setFotoBase64(null)} style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Trocar foto</OperationalButton>
                       </div>
                     ) : (
                       <label data-arato-label="true" style={{ cursor: "pointer" }}>
@@ -506,7 +507,7 @@ export default function PendenciasFiscaisPage() {
                       </label>
                     )}
                   </div>
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     onClick={consultarPorFoto}
                     disabled={consultando || !fotoBase64}
                     style={{
@@ -517,7 +518,7 @@ export default function PendenciasFiscaisPage() {
                     }}
                   >
                     {consultando ? "Lendo com IA..." : "Ler Nota e Consultar SEFAZ"}
-                  </button>
+                  </OperationalButton>
                 </div>
               )}
 
@@ -535,13 +536,13 @@ export default function PendenciasFiscaisPage() {
 
               {/* Rodapé */}
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
-                <button data-arato-button="secondary"
+                <OperationalButton data-arato-button="secondary"
                   onClick={fecharModal}
                   style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
                 >
                   Fechar
-                </button>
-                <button data-arato-button="secondary"
+                </OperationalButton>
+                <OperationalButton data-arato-button="secondary"
                   onClick={async () => {
                     const obs = prompt("Motivo da dispensa (opcional):");
                     await dispensar(modal.id, obs ?? "Dispensado pelo usuário");
@@ -549,7 +550,7 @@ export default function PendenciasFiscaisPage() {
                   style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "#666" }}
                 >
                   Dispensar Pendência
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

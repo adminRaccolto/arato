@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../../components/OperationalUI";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -275,12 +276,12 @@ export default function AutomacoesPage() {
                         {aut.temConfig && cfg.cnpjs && (
                           <div style={{ marginTop: 6, fontSize: 11, color: "#111111", background: "#EEEEEE", padding: "4px 10px", borderRadius: 6, display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <span>CNPJ(s) monitorados: <strong>{cfg.cnpjs}</strong></span>
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={() => { setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" }); setModalSieg(true); }}
                               style={{ background: "none", border: "none", color: "#111111", fontSize: 11, cursor: "pointer", fontWeight: 600, padding: 0 }}
                             >
                               Editar
-                            </button>
+                            </OperationalButton>
                           </div>
                         )}
 
@@ -305,7 +306,7 @@ export default function AutomacoesPage() {
                         {/* Toggle ON/OFF */}
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 11, color: "var(--text-3)" }}>{ativa ? "Ativa" : "Inativa"}</span>
-                          <button data-arato-button="toggle"
+                          <OperationalButton data-arato-button="toggle"
                             onClick={() => {
                               if (aut.temConfig && !ativa && !cfg.api_key) {
                                 setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" });
@@ -327,12 +328,12 @@ export default function AutomacoesPage() {
                               transition: "left 0.25s", display: "block",
                               boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                             }} />
-                          </button>
+                          </OperationalButton>
                         </div>
 
                         {/* Botão config SIEG */}
                         {aut.temConfig && (
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => { setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" }); setModalSieg(true); }}
                             style={{
                               padding: "6px 12px", borderRadius: 6, border: "0.5px solid var(--border)",
@@ -340,11 +341,11 @@ export default function AutomacoesPage() {
                             }}
                           >
                             ⚙️ Configurar
-                          </button>
+                          </OperationalButton>
                         )}
 
                         {/* Botão executar */}
-                        <button data-arato-button="toggle"
+                        <OperationalButton data-arato-button="toggle"
                           onClick={() => executar(aut)}
                           disabled={st === "running"}
                           style={{
@@ -359,7 +360,7 @@ export default function AutomacoesPage() {
                           }}
                         >
                           {st === "running" ? "Executando…" : st === "ok" ? "✓ OK" : st === "error" ? "✗ Erro" : "▶ Executar"}
-                        </button>
+                        </OperationalButton>
                       </div>
                     </div>
                   );
@@ -468,19 +469,19 @@ export default function AutomacoesPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 onClick={() => setModalSieg(false)}
                 style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancelar
-              </button>
-              <button data-arato-button="primary"
+              </OperationalButton>
+              <OperationalButton data-arato-button="primary"
                 onClick={salvarSieg}
                 disabled={salvando["sieg-sync"]}
                 style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 {salvando["sieg-sync"] ? "Salvando…" : "Salvar Configuração"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

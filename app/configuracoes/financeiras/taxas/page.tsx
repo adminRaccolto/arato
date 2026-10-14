@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../../components/OperationalUI";
 import SelectField from "../../../../components/SelectField";
 import { confirmarAcao } from "../../../../components/ConfirmarAcao";
 import { useState, useEffect } from "react";
@@ -103,7 +104,7 @@ export default function TaxasVariaveisPage() {
       <TopNav />
       <main style={{ flex: 1, maxWidth: 1200, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
 
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Taxas de Referência Variável</h1>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
@@ -111,16 +112,16 @@ export default function TaxasVariaveisPage() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button data-arato-button="secondary" onClick={() => setModalManual(true)}
+            <OperationalButton data-arato-button="secondary" onClick={() => setModalManual(true)}
               style={{ padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
               + Lançar Manual
-            </button>
-            <button data-arato-button="primary" onClick={atualizarAgora} disabled={atualizando}
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={atualizarAgora} disabled={atualizando}
               style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#111111", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: atualizando ? 0.6 : 1 }}>
               {atualizando ? "Atualizando…" : "↻ Atualizar Agora (BCB)"}
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {msgAtualiz && (
           <div style={{ marginBottom: 8, padding: "10px 16px", borderRadius: 8, background: "#EAF4EC", border: "0.5px solid #16A34A", color: "#0F5132", fontSize: 12, fontWeight: 600 }}>
@@ -149,10 +150,10 @@ export default function TaxasVariaveisPage() {
             const label = op === "tudo" ? "Tudo (10 anos)" : `Últimos ${anoAtual() - (op as number) + 1} anos`;
             const ativo = op === "tudo" ? anoInicio <= anoAtual() - 9 : anoInicio === op;
             return (
-              <button data-arato-button="toggle" key={String(op)} onClick={() => { setAnoInicio(op === "tudo" ? anoAtual() - 10 : op as number); setAnoFim(anoAtual()); }}
+              <OperationalButton data-arato-button="toggle" key={String(op)} onClick={() => { setAnoInicio(op === "tudo" ? anoAtual() - 10 : op as number); setAnoFim(anoAtual()); }}
                 style={{ padding: "4px 12px", borderRadius: 6, border: `0.5px solid ${ativo ? "#111111" : "var(--border)"}`, background: ativo ? "#E8E8E8" : "transparent", color: ativo ? "#0D0D0D" : "var(--text-3)", fontSize: 12, fontWeight: ativo ? 600 : 400, cursor: "pointer" }}>
                 {label}
-              </button>
+              </OperationalButton>
             );
           })}
         </div>
@@ -160,7 +161,7 @@ export default function TaxasVariaveisPage() {
         {/* Tabela histórica */}
         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Período</th>
@@ -198,7 +199,7 @@ export default function TaxasVariaveisPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
 
           {/* Rodapé informativo */}
@@ -257,11 +258,11 @@ export default function TaxasVariaveisPage() {
               <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Informe sempre em percentual ao ano (% a.a.)</div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "transparent", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarManual} disabled={salvando || !fManual.valor_pct}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "transparent", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarManual} disabled={salvando || !fManual.valor_pct}
                 style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "#111111", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: salvando || !fManual.valor_pct ? 0.5 : 1 }}>
                 {salvando ? "Salvando…" : "Salvar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

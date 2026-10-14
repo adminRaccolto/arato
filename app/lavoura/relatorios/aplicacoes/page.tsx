@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../../components/OperationalUI";
 import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -687,7 +688,7 @@ export default function RelAplicacoesPage() {
 
       {/* ── INTERFACE PRINCIPAL (tela) ────────────────────── */}
       <main style={{ flex: 1 }}>
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Lavoura · Relatórios</div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Aplicações por Safra / Ciclo</h1>
@@ -695,14 +696,14 @@ export default function RelAplicacoesPage() {
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 8 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => { setGerado(false); setLinhas([]); }}>← Filtros</button>
-              <button data-arato-button="primary" style={{ ...btnV, background: "#166534", fontSize: 12 }} onClick={exportarXLSX}>⬇ XLSX</button>
-              <button data-arato-button="primary" style={{ ...btnV, background: "#111111", fontSize: 12 }} onClick={exportarPDF}>⬇ PDF</button>
-              <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12 }} onClick={imprimir}>🖨 Imprimir</button>
-              <button data-arato-button="primary" style={{ ...btnV, background: "#25D366", fontSize: 12 }} onClick={prepararWA}>WhatsApp</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setGerado(false); setLinhas([]); }}>← Filtros</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#166534", fontSize: 12 }} onClick={exportarXLSX}>⬇ XLSX</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#111111", fontSize: 12 }} onClick={exportarPDF}>⬇ PDF</OperationalButton>
+              <OperationalButton data-arato-button="secondary" style={{ ...btnR, fontSize: 12 }} onClick={imprimir}>🖨 Imprimir</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#25D366", fontSize: 12 }} onClick={prepararWA}>WhatsApp</OperationalButton>
             </div>
           )}
-        </header>
+        </OperationalHeading>
 
         {/* ── FASE 1: Filtros ─────────────────────────────── */}
         {!gerado && (
@@ -745,7 +746,7 @@ export default function RelAplicacoesPage() {
 
               <div style={{ marginBottom: 18 }}>
                 <label data-arato-label="true" style={{ ...lbl, marginBottom: 8 }}>Ciclos <span style={{ color: "var(--text-3)", fontWeight: 400 }}>— {fCiclos.length === 0 ? "todos" : `${fCiclos.length} selecionado(s)`}</span></label>
-                <div data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                <OperationalFilters data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {ciclosFiltradosAno.length === 0 ? <span style={{ fontSize: 12, color: "var(--text-3)" }}>{fAno ? "Nenhum ciclo para este ano" : "Selecione um ano safra para filtrar ciclos"}</span>
                     : ciclosFiltradosAno.map(c => {
                       const sel = fCiclos.includes(c.id);
@@ -756,21 +757,21 @@ export default function RelAplicacoesPage() {
                         </label>
                       );
                     })}
-                </div>
+                </OperationalFilters>
               </div>
 
               <div style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
                   <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Talhões <span style={{ color: "var(--text-3)", fontWeight: 400 }}>— {fTalhoes.length === 0 ? "todos" : `${fTalhoes.length} selecionado(s)`}</span></label>
-                  <button data-arato-button="secondary"
+                  <OperationalButton data-arato-button="secondary"
                     type="button"
                     onClick={() => setFTalhoes(fTalhoes.length === talhoes.length ? [] : talhoes.map(t => t.id))}
                     style={{ background: "none", border: "none", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
                   >
                     {fTalhoes.length === talhoes.length && talhoes.length > 0 ? "Limpar seleção" : "Selecionar todos"}
-                  </button>
+                  </OperationalButton>
                 </div>
-                <div data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                <OperationalFilters data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {talhoes.map(t => {
                     const sel = fTalhoes.includes(t.id);
                     return (
@@ -780,12 +781,12 @@ export default function RelAplicacoesPage() {
                       </label>
                     );
                   })}
-                </div>
+                </OperationalFilters>
               </div>
 
               <div style={{ marginBottom: 18 }}>
                 <label data-arato-label="true" style={{ ...lbl, marginBottom: 8 }}>Tipo de Operação</label>
-                <div data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                <OperationalFilters data-arato-filters="true" style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {(["pulverizacao","correcao","adubacao","plantio"] as const).map(k => {
                     const { label, bg, color } = OP_BADGE[k];
                     const sel = fTiposOp.includes(k);
@@ -796,7 +797,7 @@ export default function RelAplicacoesPage() {
                       </label>
                     );
                   })}
-                </div>
+                </OperationalFilters>
               </div>
 
               <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 22 }}>
@@ -814,9 +815,9 @@ export default function RelAplicacoesPage() {
 
               {erro && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>{erro}</div>}
 
-              <button data-arato-button="primary" style={{ ...btnV, opacity: carregando || fTiposOp.length === 0 ? 0.5 : 1 }} disabled={carregando || fTiposOp.length === 0} onClick={gerar}>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: carregando || fTiposOp.length === 0 ? 0.5 : 1 }} disabled={carregando || fTiposOp.length === 0} onClick={gerar}>
                 {carregando ? "Carregando…" : "Gerar Relatório"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         )}
@@ -843,9 +844,9 @@ export default function RelAplicacoesPage() {
             {/* Switcher de agrupamento */}
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
               {AGRUP_LABELS.map(a => (
-                <button data-arato-button="toggle" key={a.key} onClick={() => setAgrupamento(a.key)} style={{ padding: "6px 14px", borderRadius: 7, border: agrupamento === a.key ? "0.5px solid #2A2A2A" : "0.5px solid var(--border-table)", background: agrupamento === a.key ? "#2A2A2A" : "var(--bg-card)", color: agrupamento === a.key ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: agrupamento === a.key ? 600 : 400, cursor: "pointer" }}>
+                <OperationalButton data-arato-button="toggle" key={a.key} onClick={() => setAgrupamento(a.key)} style={{ padding: "6px 14px", borderRadius: 7, border: agrupamento === a.key ? "0.5px solid #2A2A2A" : "0.5px solid var(--border-table)", background: agrupamento === a.key ? "#2A2A2A" : "var(--bg-card)", color: agrupamento === a.key ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: agrupamento === a.key ? 600 : 400, cursor: "pointer" }}>
                   {a.label}
-                </button>
+                </OperationalButton>
               ))}
               <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)", alignSelf: "center" }}>{linhas.length} linha{linhas.length !== 1 ? "s" : ""}</span>
             </div>
@@ -866,7 +867,7 @@ export default function RelAplicacoesPage() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: 560, maxWidth: "96vw", padding: 26 }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
               <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Enviar via WhatsApp</div>
-              <button data-arato-button="icon" onClick={() => setModalWA(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalWA(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
             </div>
 
             {waStatus === "uploading" && (
@@ -899,9 +900,9 @@ export default function RelAplicacoesPage() {
                   {`*Relatório de Aplicações — ${fazenda?.nome ?? "Fazenda"}*\nGerado em ${dataGeracao} por ${nomeUsuario ?? ""}\n${filtroDescricao}\n\n📊 ${stats.ops} aplicações · ${fmtN(stats.area,1)} ha · ${fmtBRL(stats.custo)} · ${fmtBRL(stats.custo_ha)}/ha${waUrl ? `\n\n📥 Download: ${waUrl}` : ""}`}
                 </div>
 
-                <button data-arato-button="primary" style={{ ...btnV, background: "#25D366", width: "100%" }} onClick={abrirWA}>
+                <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#25D366", width: "100%" }} onClick={abrirWA}>
                   Abrir WhatsApp e enviar →
-                </button>
+                </OperationalButton>
 
                 {/* Info sobre API */}
                 <div style={{ marginTop: 18, background: "var(--bg-page)", borderRadius: 8, padding: 12, fontSize: 11, color: "var(--text-2)" }}>
@@ -1045,7 +1046,7 @@ function TabelaDetalhada({ linhas, nomeCiclo, compact = false }: { linhas: Linha
   const td: React.CSSProperties = { padding: pad, fontSize: 12, color: "var(--text-1)", borderBottom: "0.5px solid #F0F3F9" };
   return (
     <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr>
             <th style={th}>Data</th>
@@ -1092,7 +1093,7 @@ function TabelaDetalhada({ linhas, nomeCiclo, compact = false }: { linhas: Linha
             );
           })}
         </tbody>
-      </table>
+      </OperationalGrid>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Nota Própria de Outro Sistema (Seção 316) — pedido real do dono 01/10/2026:
 // "não estou encontrando local pra efetuar entrada de nota própria — como
@@ -233,13 +234,13 @@ export default function NotasPropriasExternasPage() {
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Entrada de Nota Própria</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Documentos onde você é o emitente, mas autorizados fora do Arato (ERP antigo, sistema paralelo). Só registro — nunca gera financeiro.</p>
           </div>
-          <button data-arato-button="primary" style={btnV} onClick={abrirWizard}>+ Nova Nota Própria</button>
-        </header>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirWizard}>+ Nova Nota Própria</OperationalButton>
+        </OperationalHeading>
 
         <div style={{ padding: "18px 22px", flex: 1 }}>
           {erro && (
@@ -257,7 +258,7 @@ export default function NotasPropriasExternasPage() {
             </div>
           ) : (
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nº / Série", "Emissão", "Destinatário", "Natureza", "Valor", "Estoque?", "Origem", "Status", ""].map(h => (
@@ -282,15 +283,15 @@ export default function NotasPropriasExternasPage() {
                         </td>
                         <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            {n.status === "processada" && <button data-arato-button="secondary" onClick={() => estornar(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px" }}>Estornar</button>}
-                            {n.status !== "processada" && <button data-arato-button="secondary" onClick={() => excluir(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px", color: "#791F1F" }}>Excluir</button>}
+                            {n.status === "processada" && <OperationalButton data-arato-button="secondary" onClick={() => estornar(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px" }}>Estornar</OperationalButton>}
+                            {n.status !== "processada" && <OperationalButton data-arato-button="secondary" onClick={() => excluir(n)} style={{ ...btnR, fontSize: 11, padding: "4px 10px", color: "#791F1F" }}>Excluir</OperationalButton>}
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           )}
         </div>
@@ -305,17 +306,17 @@ export default function NotasPropriasExternasPage() {
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)" }}>
                 Entrada de Nota Própria {passo === 2 ? "— Itens / Estoque" : ""}
               </h2>
-              <button data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setWizard(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
             </div>
 
             {passo === 1 && (<>
               <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
                 {([["manual", "✍ Manual"], ["xml", "📄 XML"], ["chave", "🔑 Chave de Acesso"]] as const).map(([v, label]) => (
-                  <button data-arato-button="toggle" key={v} onClick={() => setOrig(v)} style={{
+                  <OperationalButton data-arato-button="toggle" key={v} onClick={() => setOrig(v)} style={{
                     flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
                     border: orig === v ? "1.5px solid #1A4870" : "0.5px solid var(--border-table)",
                     background: orig === v ? "#E6F1FB" : "var(--bg-card)", color: orig === v ? "#0C447C" : "var(--text-2)",
-                  }}>{label}</button>
+                  }}>{label}</OperationalButton>
                 ))}
               </div>
 
@@ -338,9 +339,9 @@ export default function NotasPropriasExternasPage() {
                   <div style={{ display: "flex", gap: 8 }}>
                     <input value={chaveDigitada} onChange={e => setChaveDigitada(e.target.value.replace(/\D/g, "").slice(0, 44))}
                       placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000" style={inp} />
-                    <button data-arato-button="primary" onClick={consultarPorChave} disabled={consultandoChave} style={{ ...btnV, whiteSpace: "nowrap" }}>
+                    <OperationalButton data-arato-button="primary" onClick={consultarPorChave} disabled={consultandoChave} style={{ ...btnV, whiteSpace: "nowrap" }}>
                       {consultandoChave ? "Consultando..." : "Consultar"}
-                    </button>
+                    </OperationalButton>
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Consulta a SEFAZ (usa o certificado A1 já configurado) e traz cabeçalho + itens completos.</div>
                 </div>
@@ -383,10 +384,10 @@ export default function NotasPropriasExternasPage() {
               {avisoWiz && <div style={{ marginTop: 14, fontSize: 12, color: "#7B4A00", background: "#FBF3E0", padding: "8px 12px", borderRadius: 6 }}>{avisoWiz}</div>}
               {erroWiz && <div style={{ marginTop: 14, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 12px", borderRadius: 6 }}>{erroWiz}</div>}
               <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-                <button data-arato-button="secondary" onClick={() => setWizard(false)} style={btnR}>Cancelar</button>
-                <button data-arato-button="primary" onClick={avancar} disabled={salvando} style={btnV}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setWizard(false)} style={btnR}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={avancar} disabled={salvando} style={btnV}>
                   {cab.movimenta_estoque ? "Avançar →" : (salvando ? "Salvando..." : "Salvar Nota Própria")}
-                </button>
+                </OperationalButton>
               </div>
             </>)}
 
@@ -399,7 +400,7 @@ export default function NotasPropriasExternasPage() {
                 </SelectField>
               </div>
 
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Descrição NF", "Produto (catálogo) *", "Un.", "Qtd.", "Vlr. Unit.", "Vlr. Total", ""].map(h => (
@@ -424,19 +425,19 @@ export default function NotasPropriasExternasPage() {
                       <td style={{ padding: "4px" }}><input value={it.quantidade} onChange={e => setItem(it.key, { quantidade: e.target.value })} style={{ ...inp, fontSize: 11, width: 80, textAlign: "right" }} /></td>
                       <td style={{ padding: "4px" }}><input value={it.valor_unitario} onChange={e => setItem(it.key, { valor_unitario: e.target.value })} style={{ ...inp, fontSize: 11, width: 90, textAlign: "right" }} /></td>
                       <td style={{ padding: "4px" }}><input value={it.valor_total} onChange={e => setItem(it.key, { valor_total: e.target.value })} style={{ ...inp, fontSize: 11, width: 90, textAlign: "right" }} /></td>
-                      <td style={{ padding: "4px" }}><button data-arato-button="icon" onClick={() => removerItem(it.key)} style={{ background: "none", border: "none", color: "#E24B4A", cursor: "pointer" }}>✕</button></td>
+                      <td style={{ padding: "4px" }}><OperationalButton data-arato-button="icon" onClick={() => removerItem(it.key)} style={{ background: "none", border: "none", color: "#E24B4A", cursor: "pointer" }}>✕</OperationalButton></td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-              <button data-arato-button="secondary" onClick={addItem} style={{ ...btnR, fontSize: 12, marginBottom: 16 }}>+ Item</button>
+              </OperationalGrid>
+              <OperationalButton data-arato-button="secondary" onClick={addItem} style={{ ...btnR, fontSize: 12, marginBottom: 16 }}>+ Item</OperationalButton>
 
               {erroWiz && <div style={{ marginTop: 4, marginBottom: 14, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 12px", borderRadius: 6 }}>{erroWiz}</div>}
               <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 20, borderTop: "0.5px solid var(--border-table)", paddingTop: 16 }}>
-                <button data-arato-button="secondary" onClick={() => setPasso(1)} style={btnR}>← Voltar</button>
-                <button data-arato-button="primary" onClick={salvar} disabled={salvando} style={btnV}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setPasso(1)} style={btnR}>← Voltar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando} style={btnV}>
                   {salvando ? "Salvando e baixando estoque..." : "✓ Salvar e Baixar Estoque"}
-                </button>
+                </OperationalButton>
               </div>
             </>)}
           </div>

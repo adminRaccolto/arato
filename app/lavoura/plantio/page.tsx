@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -154,7 +155,7 @@ export default function PlantioPage() {
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Plantio</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
@@ -170,9 +171,9 @@ export default function PlantioPage() {
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
+            <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</OperationalButton>
           </div>
-        </header>
+        </OperationalHeading>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
@@ -197,7 +198,7 @@ export default function PlantioPage() {
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Safra / Talhão</th>
@@ -251,13 +252,13 @@ export default function PlantioPage() {
                             return (
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                                 <span style={{ color: "#C9921B", fontWeight: 600 }}>{fmtBRL(calc)}</span>
-                                <button data-arato-button="secondary"
+                                <OperationalButton data-arato-button="secondary"
                                   style={{ fontSize: 10, padding: "1px 6px", border: "0.5px solid #C9921B", borderRadius: 4, background: "#FBF3E0", color: "#7A5A0A", cursor: "pointer" }}
                                   onClick={() => recalcularCusto(p)}
                                   title="Salvar custo calculado no registro"
                                 >
                                   💾 salvar
-                                </button>
+                                </OperationalButton>
                               </div>
                             );
                           }
@@ -265,12 +266,12 @@ export default function PlantioPage() {
                         })()}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPlantio(p.id).then(() => setPlantios(x => x.filter(r => r.id !== p.id))); }}>✕</button>
+                        <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPlantio(p.id).then(() => setPlantios(x => x.filter(r => r.id !== p.id))); }}>✕</OperationalButton>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}
@@ -405,10 +406,10 @@ export default function PlantioPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio ? 0.5 : 1 }}
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.talhao_id || !f.area_ha || !f.data_plantio}
-                onClick={salvar}>{salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}</button>
+                onClick={salvar}>{salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}</OperationalButton>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalHeading } from "../../components/OperationalUI";
 import { use } from "react";
 import TopNav from "../../components/TopNav";
 
@@ -120,7 +121,7 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>{info.titulo}</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>{info.descricao}</p>
@@ -128,7 +129,7 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
           <span style={{ background: "#FBF0D8", color: "#7A5A12", fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "0.5px solid #C9921B50" }}>
             Em desenvolvimento
           </span>
-        </header>
+        </OperationalHeading>
 
         <div data-arato-statistic="display" style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 

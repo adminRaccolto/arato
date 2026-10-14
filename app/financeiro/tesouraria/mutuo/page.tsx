@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../../components/OperationalUI";
 import SelectField from "../../../../components/SelectField";
 import InputData from "../../../../components/InputData";
 import { confirmarAcao } from "../../../../components/ConfirmarAcao";
@@ -228,7 +229,7 @@ export default function MutuoPage() {
       <TopNav />
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Mútuo entre Empresas</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Contratos de empréstimo entre empresas do grupo ou partes relacionadas</p>
@@ -239,9 +240,9 @@ export default function MutuoPage() {
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
+            <OperationalButton data-arato-button="primary" onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
@@ -302,17 +303,17 @@ export default function MutuoPage() {
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                       <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span>
                       {m.status === "ativo" && <>
-                        <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", conta_pagamento: m.conta_minha ?? "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Pagar</button>
-                        <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); quitarMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Quitar</button>
+                        <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", conta_pagamento: m.conta_minha ?? "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Pagar</OperationalButton>
+                        <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); quitarMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Quitar</OperationalButton>
                       </>}
-                      <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
+                      <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</OperationalButton>
                     </div>
                   </div>
                   {exp && (
                     <div style={{ borderTop: "0.5px solid var(--bg-tag)", padding: "12px 18px", background: "var(--bg-card)" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Histórico de Pagamentos</div>
                       {pagsMutuo.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum pagamento registrado.</div> : (
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "var(--bg-tag)" }}>
                             {["Data", "Principal", "Juros", "Total", "Conta", "Obs."].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." || h === "Conta" ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}
                           </tr></thead>
@@ -326,7 +327,7 @@ export default function MutuoPage() {
                               <td style={{ padding: "6px 10px", color: "#666" }}>{p.observacao ?? "—"}</td>
                             </tr>
                           ))}</tbody>
-                        </table>
+                        </OperationalGrid>
                       )}
                     </div>
                   )}
@@ -343,7 +344,7 @@ export default function MutuoPage() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
-              <button data-arato-button="icon" onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
               {mErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{mErr}</div>}
@@ -356,10 +357,10 @@ export default function MutuoPage() {
                     { v: "concessao", label: "Concessão (a receber)", desc: "Sua empresa emprestou", contaLabel: "Conta Saída (dinheiro sai)" },
                     { v: "captacao",  label: "Captação (a pagar)",    desc: "Outra empresa emprestou", contaLabel: "Conta Entrada (dinheiro entra)" },
                   ] as { v: TipoMutuo; label: string; desc: string; contaLabel: string }[]).map(opt => (
-                    <button data-arato-button="toggle" key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#111111" : "var(--border-table)"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                    <OperationalButton data-arato-button="toggle" key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#111111" : "var(--border-table)"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{opt.label}</div>
                       <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{opt.desc}</div>
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
               </div>
@@ -406,8 +407,8 @@ export default function MutuoPage() {
               )}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalMutuo(false)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarMutuo} disabled={mSaving} style={{ ...btnV, background: mSaving ? "var(--text-muted)" : "#111111", cursor: mSaving ? "default" : "pointer" }}>{mSaving ? "Salvando…" : "Salvar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalMutuo(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarMutuo} disabled={mSaving} style={{ ...btnV, background: mSaving ? "var(--text-muted)" : "#111111", cursor: mSaving ? "default" : "pointer" }}>{mSaving ? "Salvando…" : "Salvar"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -422,7 +423,7 @@ export default function MutuoPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar {modalPag.tipo === "concessao" ? "Recebimento" : "Pagamento"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalPag.contraparte} · saldo {fmtBRL(modalPag.saldo_devedor)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {pagErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{pagErr}</div>}
@@ -459,8 +460,8 @@ export default function MutuoPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalPag(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={registrarPagamento} disabled={pagSaving} style={{ ...btnV, background: pagSaving ? "var(--text-muted)" : "#111111", cursor: pagSaving ? "default" : "pointer" }}>{pagSaving ? "Registrando…" : "Registrar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalPag(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={registrarPagamento} disabled={pagSaving} style={{ ...btnV, background: pagSaving ? "var(--text-muted)" : "#111111", cursor: pagSaving ? "default" : "pointer" }}>{pagSaving ? "Registrando…" : "Registrar"}</OperationalButton>
             </div>
           </div>
         </div>

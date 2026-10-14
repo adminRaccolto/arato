@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
@@ -583,7 +584,7 @@ export default function RelatorioEndividamento() {
       <div style={{ padding: "24px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Endividamento</h1>
@@ -598,19 +599,19 @@ export default function RelatorioEndividamento() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button data-arato-button="secondary" onClick={abrirPreview}
+            <OperationalButton data-arato-button="secondary" onClick={abrirPreview}
               style={{ padding: "8px 18px", background: "#F0F5FA", border: "0.5px solid #11111140", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#111111" }}>
               ⎙ Visualizar / Imprimir
-            </button>
-            <button data-arato-button="primary" onClick={exportarXLSX}
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={exportarXLSX}
               style={{ padding: "8px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               ↓ XLSX
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Filtros */}
-        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
           {/* Produtor */}
           <SelectField value={filtroProd} onChange={e => setFiltroProd(e.target.value)} style={{ ...sel, minWidth: 200 }}>
             <option value="">Todos os produtores</option>
@@ -623,11 +624,11 @@ export default function RelatorioEndividamento() {
 
           {/* Status */}
           {[{ label: "Todos", val: "" }, { label: "Ativos", val: "ativo" }, { label: "Quitados", val: "quitado" }].map(f => (
-            <button data-arato-button="toggle" key={f.val} onClick={() => setFiltroStatus(f.val)}
+            <OperationalButton data-arato-button="toggle" key={f.val} onClick={() => setFiltroStatus(f.val)}
               style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid var(--border)", fontSize: 12,
                 background: filtroStatus === f.val ? "#111111" : "var(--bg-card)", color: filtroStatus === f.val ? "#fff" : "var(--text-2)", cursor: "pointer" }}>
               {f.label}
-            </button>
+            </OperationalButton>
           ))}
 
           <div style={{ width: 1, background: "var(--border)", height: 28 }} />
@@ -642,16 +643,16 @@ export default function RelatorioEndividamento() {
           <div style={{ width: 1, background: "var(--border)", height: 28 }} />
 
           {/* Parcelas */}
-          <button data-arato-button="toggle" onClick={() => setApenasEmAberto(!apenasEmAberto)}
+          <OperationalButton data-arato-button="toggle" onClick={() => setApenasEmAberto(!apenasEmAberto)}
             style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid var(--border)", fontSize: 12,
               background: apenasEmAberto ? "#FBF3E0" : "var(--bg-card)", color: apenasEmAberto ? "#C9921B" : "var(--text-2)",
               cursor: "pointer", fontWeight: apenasEmAberto ? 700 : 400 }}>
             {apenasEmAberto ? "⚠ Apenas em aberto" : "Todas as parcelas"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalFilters>
 
         {/* Filtro de intervalo de anos */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>Período (colunas):</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>De</span>
@@ -673,10 +674,10 @@ export default function RelatorioEndividamento() {
               { l: "Próx. 5 anos",   i: anoAtual, f: String(Number(anoAtual) + 4) },
               { l: "Tudo",           i: "",        f: "" },
             ].map(s => (
-              <button data-arato-button="secondary" key={s.l} onClick={() => { setAnoInicio(s.i); setAnoFim(s.f); }}
+              <OperationalButton data-arato-button="secondary" key={s.l} onClick={() => { setAnoInicio(s.i); setAnoFim(s.f); }}
                 style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}>
                 {s.l}
-              </button>
+              </OperationalButton>
             ))}
           </div>
           {anos.length > 0 && (
@@ -684,7 +685,7 @@ export default function RelatorioEndividamento() {
               {anos.length} ano{anos.length !== 1 ? "s" : ""} visível{anos.length !== 1 ? "is" : ""}: {anos[0]} → {anos[anos.length - 1]}
             </span>
           )}
-        </div>
+        </OperationalFilters>
 
         {/* KPI cards */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
@@ -710,14 +711,14 @@ export default function RelatorioEndividamento() {
             ["evolucao",  "Evolução por Ano"],
             ["condicoes", "Condições Contratuais"],
           ] as const).map(([k, l]) => (
-            <button data-arato-tab-active={abaRel === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaRel(k)}
+            <OperationalButton data-arato-tab-active={abaRel === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaRel(k)}
               style={{
                 padding: "7px 16px", borderRadius: 8, border: `0.5px solid ${abaRel === k ? "#111111" : "var(--border)"}`,
                 background: abaRel === k ? "#111111" : "var(--bg-card)", color: abaRel === k ? "#fff" : "var(--text-2)",
                 fontSize: 13, fontWeight: abaRel === k ? 700 : 400, cursor: "pointer",
               }}>
               {l}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -728,9 +729,9 @@ export default function RelatorioEndividamento() {
           <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #FCA5A5" }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: "#B91C1C", marginBottom: 8 }}>Erro ao carregar dados</div>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>{erro}</div>
-            <button data-arato-button="primary" onClick={carregar} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>
+            <OperationalButton data-arato-button="primary" onClick={carregar} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>
               Tentar novamente
-            </button>
+            </OperationalButton>
           </div>
         ) : filtrados.length === 0 ? (
           <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
@@ -745,7 +746,7 @@ export default function RelatorioEndividamento() {
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 210 + 380 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 210 + 380 }}>
                 <thead>
                   <tr style={{ background: "#111111" }}>
                     <th style={{ ...thStyle, textAlign: "left", minWidth: 200, paddingLeft: 16, position: "sticky", left: 0, background: "#111111", zIndex: 2 }}>
@@ -918,7 +919,7 @@ export default function RelatorioEndividamento() {
                     <td />
                   </tr>
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         ))}
@@ -938,7 +939,7 @@ export default function RelatorioEndividamento() {
 
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 170 + 340 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 170 + 340 }}>
                   <thead>
                     <tr style={{ background: "#5D4E37" }}>
                       <th style={{ ...thStyle, textAlign: "left", minWidth: 220, paddingLeft: 16, position: "sticky", left: 0, background: "#5D4E37", zIndex: 2 }}>
@@ -1034,7 +1035,7 @@ export default function RelatorioEndividamento() {
                       </td>
                     </tr>
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           </div>
@@ -1043,7 +1044,7 @@ export default function RelatorioEndividamento() {
         {abaRel === "condicoes" && (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
                 <thead>
                   <tr style={{ background: "#111111" }}>
                     <th style={{ ...thStyle, textAlign: "left", minWidth: 200, paddingLeft: 16 }}>Entidade</th>
@@ -1106,7 +1107,7 @@ export default function RelatorioEndividamento() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
             <div style={{ padding: "10px 16px", fontSize: 11, color: "var(--text-3)", borderTop: "0.5px solid var(--border)" }}>
               CET calculado pela TIR (XIRR) do fluxo de caixa real de cada contrato — valor líquido recebido (já descontando IOF, TAC e outros custos) contra o cronograma efetivo de parcelas. Pode aparecer "—" quando faltam parcelas cadastradas ou o fluxo não converge.

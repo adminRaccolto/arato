@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading, OperationalSummary } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Contas a Pagar — unificado (Produtor + Empresa). Promovida de piloto pra
 // tela real em 01/10/2026, a pedido do dono: "reunificar os lançamentos de
@@ -1150,13 +1151,13 @@ export default function ContasAPagarPage() {
                           <label data-arato-label="true" style={lbl}>Condição de Pagamento</label>
                           <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
                             {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
-                              <button data-arato-button="toggle" key={v} type="button"
+                              <OperationalButton data-arato-button="toggle" key={v} type="button"
                                 onClick={() => { setNovoForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelasNovo([]); }}
                                 style={{ padding: "7px 14px", fontSize: 12, fontWeight: novoForm.condicao === v ? 600 : 400, cursor: "pointer", border: "none",
                                   borderRight: idx < 2 ? "0.5px solid #DDE2EE" : "none",
                                   background: novoForm.condicao === v ? "#111111" : "#F4F6FA", color: novoForm.condicao === v ? "#fff" : "#555", whiteSpace: "nowrap" }}>
                                 {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
-                              </button>
+                              </OperationalButton>
                             ))}
                           </div>
                         </div>
@@ -1178,12 +1179,12 @@ export default function ContasAPagarPage() {
                                 </SelectField>
                               </div>
                               {novoForm.condicao === "prazo" && (
-                                <button data-arato-button="secondary" type="button"
+                                <OperationalButton data-arato-button="secondary" type="button"
                                   onClick={() => gerarParcelasNovo(novoForm.data_vencimento, novoForm.qtd_parcelas, novoForm.frequencia, novoForm.valor)}
                                   disabled={!novoForm.data_vencimento || !novoForm.valor}
                                   style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #93C5FD", background: "#EFF6FF", color: "#1D4ED8", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !novoForm.data_vencimento || !novoForm.valor ? 0.4 : 1 }}>
                                   Gerar
-                                </button>
+                                </OperationalButton>
                               )}
                             </div>
                           </>
@@ -1197,7 +1198,7 @@ export default function ContasAPagarPage() {
                       )}
                       {novoForm.condicao === "prazo" && parcelasNovo.length > 0 && (
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "#F4F6FA" }}>
                                 {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
@@ -1226,7 +1227,7 @@ export default function ContasAPagarPage() {
                                 <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(parcelasNovo.reduce((s, p) => s + p.valor, 0))}</td>
                               </tr>
                             </tfoot>
-                          </table>
+                          </OperationalGrid>
                         </div>
                       )}
                       {novoForm.condicao === "recorrencia" && novoForm.valor > 0 && (
@@ -1243,20 +1244,27 @@ export default function ContasAPagarPage() {
       <TopNav />
       <div style={{ maxWidth: "100%", margin: "0 auto", padding: "14px 20px" }}>
 
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 18, color: "#0B2D50" }}>Contas a Pagar</h1>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#888" }}>Produtor e Empresa juntos — veja a coluna Origem</p>
           </div>
-          <button data-arato-button="primary" onClick={abrirNovo} style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 600, cursor: "pointer", border: "none", width: "auto", padding: "9px 18px" }}>
+          <OperationalButton data-arato-button="primary" onClick={abrirNovo} style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 600, cursor: "pointer", border: "none", width: "auto", padding: "9px 18px" }}>
             + Novo Lançamento
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
+
+        <OperationalSummary items={[
+          { label: "Registros no filtro", value: linhasComBordero.length, detail: "Títulos e borderôs da consulta" },
+          { label: "Valor dos títulos", value: fmtBRL(totalPagar), detail: "Total do filtro atual" },
+          { label: "Saldo a pagar", value: fmtBRL(totalAberto), tone: "warning" },
+          { label: "Borderôs", value: borderosVisiveis.length, detail: "Agrupamentos visíveis" },
+        ]} />
 
         {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ──
             Origem e Status em dropdown de múltipla escolha; campos de data com largura fixa (antes o
             campo Buscar crescia e achatava as datas). */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 220px", minWidth: 200, maxWidth: 380 }}>
             <label data-arato-label="true" style={lblMini}>Buscar</label>
             <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, fornecedor, nº NF ou borderô..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
@@ -1277,11 +1285,11 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <button data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</button>
-          <button data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
+          <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalFilters>
 
         {erro && (
           <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, color: "#791F1F" }}>
@@ -1303,8 +1311,8 @@ export default function ContasAPagarPage() {
             ao rolar verticalmente dentro do grid. Altura reaproveitando o espaço que
             sobrou com paddings mais enxutos acima e o borderô saindo do painel fixo. */}
         <div data-arato-grid-container="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto", maxHeight: "calc(100vh - 270px)" }}>
-          <div className="arato-new-only"><div className="arato-grid-toolbar"><strong>Títulos</strong><button data-arato-button="secondary" type="button" onClick={e => { const bounds = e.currentTarget.getBoundingClientRect(); setMenuColunas({ x: bounds.left, y: bounds.bottom + 4 }); }}>Colunas ▾</button></div></div>
-          <table data-arato-grid="true" style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
+
+          <OperationalGrid data-op-title="Títulos e borderôs" tools={<OperationalButton data-arato-button="secondary" type="button" onClick={e => { const bounds = e.currentTarget.getBoundingClientRect(); setMenuColunas({ x: bounds.left, y: bounds.bottom + 4 }); }}>Colunas ▾</OperationalButton>} data-arato-grid="true" style={{ width: "max-content", minWidth: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F6FA", position: "sticky", top: 0, zIndex: 1 }}
                 onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
@@ -1318,13 +1326,13 @@ export default function ContasAPagarPage() {
                 ); return (
                   <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", background: "#F4F6FA" , width: cw(c.key), position: "relative"}}>
                     {h === "Lançamento" || h === "Vencimento" ? (
-                      <button data-arato-button="secondary"
+                      <OperationalButton data-arato-button="secondary"
                         onClick={() => clicarOrdenar(h === "Lançamento" ? "lancamento" : "vencimento")}
                         title="Ordenar por esta data"
                         style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", fontWeight: 700, color: ordenarPor === (h === "Lançamento" ? "lancamento" : "vencimento") ? "#1A4870" : "#555", display: "flex", alignItems: "center", gap: 3 }}>
                         {h}
                         {ordenarPor === (h === "Lançamento" ? "lancamento" : "vencimento") && <span>{ordemAsc ? "▲" : "▼"}</span>}
-                      </button>
+                      </OperationalButton>
                     ) : h}
                     <ResizeHandle onMouseDown={startResize(c.key)} />
                   </th>
@@ -1441,7 +1449,7 @@ export default function ContasAPagarPage() {
                   ),
                   acoes: (
                     <td style={{ textAlign: "right" }}>
-                      {["em_aberto", "vencido", "parcial"].includes(l.status_normalizado ?? "") ? <button data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); abrirBaixa(l); }}>Baixar</button> : <button data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopover({ l, x: e.clientX, y: e.clientY }); }}>Ver</button>}
+                      {["em_aberto", "vencido", "parcial"].includes(l.status_normalizado ?? "") ? <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); abrirBaixa(l); }}>Baixar</OperationalButton> : <OperationalButton data-arato-button="secondary" type="button" className="arato-row-action" onClick={e => { e.stopPropagation(); setPopover({ l, x: e.clientX, y: e.clientY }); }}>Ver</OperationalButton>}
                     </td>
                   ),
                   status: (
@@ -1465,7 +1473,7 @@ export default function ContasAPagarPage() {
                 <tr><td colSpan={colunasVisiveis.length} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado para esse filtro/período.</td></tr>
               )}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
         <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span></div></div>
       </div>
@@ -1511,14 +1519,14 @@ export default function ContasAPagarPage() {
                 </div>
               </div>
               <div  style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6 }}>
-                <button data-arato-button="secondary" onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver NFs</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => { setPopBordero(null); abrirVerBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>Ver NFs</OperationalButton>
                 {(pago || parcial) && (
-                  <button data-arato-button="danger" onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↩ Estornar pagamento</button>
+                  <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); estornarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↩ Estornar pagamento</OperationalButton>
                 )}
                 {!pago && (
                   <>
-                    <button data-arato-button="primary" onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>{parcial ? "Pagar saldo restante" : "✅ Confirmar Pagamento"}</button>
-                    {!parcial && <button data-arato-button="danger" onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</button>}
+                    <OperationalButton data-arato-button="primary" onClick={() => { setPopBordero(null); abrirConfirmarBordero(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>{parcial ? "Pagar saldo restante" : "✅ Confirmar Pagamento"}</OperationalButton>
+                    {!parcial && <OperationalButton data-arato-button="danger" onClick={() => { setPopBordero(null); cancelarBorderoAction(b); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✕ Cancelar borderô</OperationalButton>}
                   </>
                 )}
               </div>
@@ -1554,7 +1562,7 @@ export default function ContasAPagarPage() {
                     </span>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: sm?.bg ?? "#eee", color: sm?.color ?? "#555" }}>{sm?.label ?? l.status_normalizado}</span>
                     <ClipDocumentos origemTabela={l.origem_tabela as "lancamentos" | "empresa_lancamentos"} lancamentoId={l.id} tipo="cp" zIndex={1500} />
-                    <button data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                    <OperationalButton data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, lineHeight: 1, padding: 2 }}>×</OperationalButton>
                   </div>
                 </div>
               </div>
@@ -1630,19 +1638,19 @@ export default function ContasAPagarPage() {
               {/* Ações — coluna vertical na margem direita */}
               <div  style={{ width: 170, flexShrink: 0, padding: "12px 10px", borderLeft: "0.5px solid #DDE2EE", background: "#FAFBFD", display: "flex", flexDirection: "column", gap: 6, maxHeight: "85vh", overflowY: "auto" }}>
                 {aberto && (
-                  <button data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</button>
+                  <OperationalButton data-arato-button="primary" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#16A34A", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11 }}>↓ Baixar</OperationalButton>
                 )}
                 {(l.status_normalizado === "baixado" || l.status_normalizado === "parcial") && (
-                  <button data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↺ Reabrir</button>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); reabrir(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #C9921B", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↺ Reabrir</OperationalButton>
                 )}
                 {l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado" && (
-                  <button data-arato-button="secondary" onClick={() => { setPopover(null); abrirReprog(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↕ Reprogramar</button>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); abrirReprog(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>↕ Reprogramar</OperationalButton>
                 )}
                 {l.status_normalizado !== "baixado" && (
-                  <button data-arato-button="secondary" onClick={() => { setPopover(null); abrirEditar(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✎ Editar</button>
+                  <OperationalButton data-arato-button="secondary" onClick={() => { setPopover(null); abrirEditar(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>✎ Editar</OperationalButton>
                 )}
                 {podeExcluir(l) && (
-                  <button data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</button>
+                  <OperationalButton data-arato-button="danger" onClick={() => { setPopover(null); excluirLanc(l); }} style={{ width: "100%", boxSizing: "border-box", padding: "5px 8px", borderRadius: 6, background: "#FEF2F2", color: "#B91C1C", border: "0.5px solid #FCA5A5", cursor: "pointer", fontWeight: 600, fontSize: 11 }}>🗑 Excluir</OperationalButton>
                 )}
               </div>
             </div>
@@ -1652,7 +1660,7 @@ export default function ContasAPagarPage() {
 
       {/* ── Barra flutuante de seleção — Baixar em Lote ── */}
       {selecionados.size > 0 && (
-        <div style={{
+        <div className="op-bulk-actions" style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           background: "#111111", color: "#fff", borderRadius: 12, padding: "10px 18px",
           display: "flex", alignItems: "center", gap: 14, boxShadow: "0 4px 20px rgba(0,0,0,.25)",
@@ -1662,15 +1670,15 @@ export default function ContasAPagarPage() {
             <strong>{itensLote.length}</strong> título{itensLote.length !== 1 ? "s" : ""} selecionado{itensLote.length !== 1 ? "s" : ""}
             {itensLote.length > 0 && <>&nbsp;·&nbsp;<strong>{fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}</strong></>}
           </span>
-          <button data-arato-button="primary" onClick={abrirModalLote} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+          <OperationalButton data-arato-button="primary" onClick={abrirModalLote} style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
             ✓ Baixar em Lote
-          </button>
-          <button data-arato-button="primary" onClick={abrirModalCriarBordero} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+          </OperationalButton>
+          <OperationalButton data-arato-button="primary" onClick={abrirModalCriarBordero} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
             📋 Criar Borderô
-          </button>
-          <button data-arato-button="secondary" onClick={() => setSelecionados(new Set())} style={{ background: "none", border: "0.5px solid #555", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+          </OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => setSelecionados(new Set())} style={{ background: "none", border: "0.5px solid #555", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
             Cancelar
-          </button>
+          </OperationalButton>
         </div>
       )}
 
@@ -1681,7 +1689,7 @@ export default function ContasAPagarPage() {
           <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(96vw, 760px)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>📋 Criar Borderô</h2>
-              <button data-arato-button="icon" onClick={() => setModalCriarBordero(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalCriarBordero(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
               Agrupa os títulos selecionados sem baixar agora — define data e conta bancária depois, ao confirmar o pagamento do borderô inteiro de uma vez.
@@ -1731,11 +1739,11 @@ export default function ContasAPagarPage() {
 
             {erroBordero && <div style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6, marginBottom: 12 }}>{erroBordero}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button data-arato-button="secondary" onClick={() => setModalCriarBordero(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={criarBorderoAction} disabled={salvandoBordero}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalCriarBordero(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={criarBorderoAction} disabled={salvandoBordero}
                 style={{ ...inp, background: "#C9921B", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
                 {salvandoBordero ? "Criando..." : `Criar Borderô (${itensLote.length})`}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1748,7 +1756,7 @@ export default function ContasAPagarPage() {
           <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 680px)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>✅ Confirmar Pagamento do Borderô</h2>
-              <button data-arato-button="icon" onClick={() => setModalConfirmarBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalConfirmarBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
               {modalConfirmarBordero.descricao}{modalConfirmarBordero.numero_titulo ? ` · Nº ${modalConfirmarBordero.numero_titulo}` : ""} · Total das NFs: <strong>{fmtBRL(modalConfirmarBordero.valor_total)}</strong> · Saldo em aberto: <strong>{fmtBRL(resumoBordero(modalConfirmarBordero).saldo)}</strong>
@@ -1824,11 +1832,11 @@ export default function ContasAPagarPage() {
             )}
             {erroBordero && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroBordero}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={() => setModalConfirmarBordero(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={confirmarBorderoAction} disabled={salvandoBordero}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalConfirmarBordero(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={confirmarBorderoAction} disabled={salvandoBordero}
                 style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
                 {salvandoBordero ? "Confirmando..." : "Confirmar Pagamento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1841,7 +1849,7 @@ export default function ContasAPagarPage() {
           <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(96vw, 760px)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>Borderô — {modalVerBordero.descricao}</h2>
-              <button data-arato-button="icon" onClick={() => setModalVerBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalVerBordero(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
               {resumoBordero(modalVerBordero).status === "baixado" ? "✅ Pago" : resumoBordero(modalVerBordero).status === "parcial" ? "◐ Parcial" : "⏳ Pendente"} · Total: <strong>{fmtBRL(modalVerBordero.valor_total)}</strong> · Saldo: <strong>{fmtBRL(resumoBordero(modalVerBordero).saldo)}</strong>
@@ -1877,7 +1885,7 @@ export default function ContasAPagarPage() {
           <div data-arato-dialog="page" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(96vw, 900px)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>✓ Baixar em Lote</h2>
-              <button data-arato-button="icon" onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
               {itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total original {fmtBRL(itensLote.reduce((s, l) => s + saldoLote(l), 0))}
@@ -1927,11 +1935,11 @@ export default function ContasAPagarPage() {
 
             {erroLote && <div style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6, marginBottom: 12 }}>{erroLote}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button data-arato-button="secondary" onClick={() => setModalLote(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={confirmarLote} disabled={salvandoLote || !loteData || !loteConta}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalLote(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={confirmarLote} disabled={salvandoLote || !loteData || !loteConta}
                 style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
                 {salvandoLote ? "Baixando..." : `✓ Confirmar Baixa (${itensLote.length})`}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1944,7 +1952,7 @@ export default function ContasAPagarPage() {
           <div data-arato-dialog="drawer" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 460px)" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>Baixar Lançamento</h2>
-              <button data-arato-button="icon" onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
               {modalBaixa.descricao} · Saldo: <span style={{ fontWeight: 700 }}>{fmtBRL(saldoBase(modalBaixa))}</span>
@@ -1989,11 +1997,11 @@ export default function ContasAPagarPage() {
             </div>
             {erroAcao && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroAcao}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={() => setModalBaixa(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={confirmarBaixa} disabled={salvandoAcao}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalBaixa(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={confirmarBaixa} disabled={salvandoAcao}
                 style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
                 {salvandoAcao ? "Baixando..." : "Confirmar Baixa"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2006,7 +2014,7 @@ export default function ContasAPagarPage() {
           <div data-arato-dialog="drawer" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 420px)" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>📅 Reprogramar Vencimento</h2>
-              <button data-arato-button="icon" onClick={() => setModalReprog(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalReprog(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
               {modalReprog.descricao} · Vencimento atual: <strong>{fmtData(modalReprog.data_vencimento)}</strong>
@@ -2027,11 +2035,11 @@ export default function ContasAPagarPage() {
             </div>
             {erroAcao && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroAcao}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={() => setModalReprog(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={confirmarReprog} disabled={salvandoAcao}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalReprog(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={confirmarReprog} disabled={salvandoAcao}
                 style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
                 {salvandoAcao ? "Salvando..." : "Reprogramar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2053,17 +2061,17 @@ export default function ContasAPagarPage() {
                   {!ehEmpresa && (
                     <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
                       {(["real", "previsao"] as const).map(n => (
-                        <button data-arato-button="toggle" key={n} onClick={() => setNovoForm(p => ({ ...p, natureza: n }))}
+                        <OperationalButton data-arato-button="toggle" key={n} onClick={() => setNovoForm(p => ({ ...p, natureza: n }))}
                           style={{ padding: "4px 12px", border: "none", cursor: "pointer", fontSize: 11, fontWeight: novoForm.natureza === n ? 700 : 400,
                             background: novoForm.natureza === n ? (n === "previsao" ? "#2A2A2A" : "#C9921B") : "#F4F6FA",
                             color: novoForm.natureza === n ? "#fff" : "#555" }}>
                           {n === "real" ? "Real" : "Previsão"}
-                        </button>
+                        </OperationalButton>
                       ))}
                     </div>
                   )}
                 </div>
-                <button data-arato-button="icon" onClick={() => setModalNovo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => setModalNovo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
               </div>
 
               <div data-arato-dialog-body="true" style={{ marginBottom: 12 }}>
@@ -2080,12 +2088,12 @@ export default function ContasAPagarPage() {
 
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 0 }}>
                 {(editandoId ? (["principal", "adicionais", "documentos"] as const) : (["principal", "adicionais"] as const)).map(t => (
-                  <button data-arato-button="secondary" key={t} onClick={() => setNovoTab(t)}
+                  <OperationalButton data-arato-button="secondary" key={t} onClick={() => setNovoTab(t)}
                     style={{ padding: "7px 18px", border: "none", cursor: "pointer", fontSize: 12, background: "transparent",
                       fontWeight: novoTab === t ? 700 : 400, color: novoTab === t ? "#1A4870" : "#888",
                       borderBottom: novoTab === t ? "2px solid #1A4870" : "2px solid transparent" }}>
                     {t === "principal" ? "Principal" : t === "adicionais" ? "Adicionais" : "📎 Documentos"}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -2435,11 +2443,11 @@ export default function ContasAPagarPage() {
                 </div>
               )}
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
-                <button data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</button>
-                <button data-arato-button="primary" onClick={salvarNovo} disabled={salvandoAcao}
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvarNovo} disabled={salvandoAcao}
                   style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
                   {salvandoAcao ? "Salvando…" : editandoId ? "✓ Salvar alterações" : !ehEmpresa && novoForm.condicao === "prazo" && parcelasNovo.length > 0 ? `◈ Criar ${parcelasNovo.length} parcelas` : !ehEmpresa && novoForm.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, novoForm.qtd_parcelas)} repetições` : "Salvar Lançamento"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

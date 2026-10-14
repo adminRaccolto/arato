@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
@@ -661,7 +662,7 @@ export default function DrePage() {
       <main id="dre-print-content" style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* ── Cabeçalho ── */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>DRE Agrícola</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
@@ -669,7 +670,7 @@ export default function DrePage() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={() => {
                 const el = document.getElementById("dre-print-content");
                 abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", "landscape", "Demonstrativo de Resultado do Exercício");
@@ -677,12 +678,12 @@ export default function DrePage() {
               style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "#444" }}
             >
               Visualizar / PDF
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* ── Filtros ── */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
 
           {/* Fazenda (só mostra se múltiplas fazendas) */}
           {todasFazendas.length > 1 && (
@@ -717,7 +718,7 @@ export default function DrePage() {
                 const sel = ciclosSel.includes(c.id);
                 const fazNome = filtroFazenda === "todas" ? todasFazendas.find(f => f.id === c.fazenda_id)?.nome : null;
                 return (
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     key={c.id}
                     onClick={() => setCiclosSel(sel ? ciclosSel.filter(x => x !== c.id) : [...ciclosSel, c.id])}
                     style={{
@@ -730,7 +731,7 @@ export default function DrePage() {
                   >
                     {CULT_LABELS[c.cultura] ?? c.cultura}
                     {fazNome && <span style={{ fontSize: 10, opacity: 0.75, marginLeft: 4 }}>{fazNome}</span>}
-                  </button>
+                  </OperationalButton>
                 );
               })}
               {ciclosArr.length === 0 && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum ciclo neste ano</span>}
@@ -739,7 +740,7 @@ export default function DrePage() {
 
           <div style={{ display: "flex", gap: 6 }}>
             {(["consolidado", "individual"] as const).map(m => (
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="toggle"
                 key={m}
                 onClick={() => setViewMode(m)}
                 style={{
@@ -750,7 +751,7 @@ export default function DrePage() {
                 }}
               >
                 {m === "consolidado" ? "Consolidado" : "Por Cultura"}
-              </button>
+              </OperationalButton>
             ))}
           </div>
 
@@ -765,7 +766,7 @@ export default function DrePage() {
             </label>
           </div>
 
-          <button data-arato-button="toggle"
+          <OperationalButton data-arato-button="toggle"
             onClick={calcularDre}
             disabled={loading || ciclosSel.length === 0 || fids.length === 0}
             style={{
@@ -774,8 +775,8 @@ export default function DrePage() {
             }}
           >
             {loading ? "Calculando..." : "Gerar DRE"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalFilters>
 
         {dres.length === 0 && !loading && (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 14 }}>
@@ -983,7 +984,7 @@ export default function DrePage() {
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginTop: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 14 }}>Comparativo entre Culturas</div>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>Indicador</th>
@@ -1026,7 +1027,7 @@ export default function DrePage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}

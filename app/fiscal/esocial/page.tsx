@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -247,7 +248,7 @@ export default function EsocialPage() {
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>eSocial Rural</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
@@ -262,13 +263,13 @@ export default function EsocialPage() {
               </a>
             )}
             {aba === "eventos" && (
-              <button data-arato-button="primary" onClick={() => setModalEvt(true)}
+              <OperationalButton data-arato-button="primary" onClick={() => setModalEvt(true)}
                 style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Evento Manual
-              </button>
+              </OperationalButton>
             )}
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
@@ -299,10 +300,10 @@ export default function EsocialPage() {
             { id: "eventos",       label: `Eventos${qtdPend > 0 ? ` (${qtdPend})` : ""}` },
             { id: "apuracao",      label: "Apuração Mensal" },
           ].map(a => (
-            <button data-arato-tab-active={aba === (a.id as typeof aba)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)}
+            <OperationalButton data-arato-tab-active={aba === (a.id as typeof aba)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id as typeof aba)}
               style={{ padding: "7px 18px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, background: aba === a.id ? "#111111" : "transparent", color: aba === a.id ? "#fff" : "var(--text-2)" }}>
               {a.label}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -327,7 +328,7 @@ export default function EsocialPage() {
                   <a href="/cadastros?tab=funcionarios" style={{ padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Ir para Cadastros → Funcionários</a>
                 </div>
               ) : (
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#F8FAFF" }}>
                       {["Nome","CPF","Vínculo","Função","Admissão","Salário Base","Status","Ações"].map(h => (
@@ -359,10 +360,10 @@ export default function EsocialPage() {
                                 Editar em Cadastros
                               </a>
                               {t.status === "ativo" && (
-                                <button data-arato-button="secondary" onClick={() => desligarTrabalhador(t)}
+                                <OperationalButton data-arato-button="secondary" onClick={() => desligarTrabalhador(t)}
                                   style={{ padding: "3px 10px", background: "#FEE2E2", border: "0.5px solid #FCA5A5", borderRadius: 6, fontSize: 11, color: "#991B1B", cursor: "pointer" }}>
                                   Desligar
-                                </button>
+                                </OperationalButton>
                               )}
                             </div>
                           </td>
@@ -370,7 +371,7 @@ export default function EsocialPage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               )}
             </div>
           </>
@@ -386,7 +387,7 @@ export default function EsocialPage() {
                 <div style={{ fontSize: 12, marginTop: 4 }}>Os eventos são gerados automaticamente ao admitir ou desligar trabalhadores.</div>
               </div>
             ) : (
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "#F8FAFF" }}>
                     {["Evento","Descrição","Trabalhador","Competência","Status","Protocolo","Ações"].map(h => (
@@ -412,23 +413,23 @@ export default function EsocialPage() {
                         <td style={{ padding: "9px 10px", color: "var(--text-3)", fontSize: 11 }}>{e.protocolo ?? "—"}</td>
                         <td style={{ padding: "9px 10px" }}>
                           {e.status === "pendente" && (
-                            <button data-arato-button="primary" onClick={() => transmitir(e)}
+                            <OperationalButton data-arato-button="primary" onClick={() => transmitir(e)}
                               style={{ padding: "3px 10px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Transmitir
-                            </button>
+                            </OperationalButton>
                           )}
                           {e.status === "erro" && (
-                            <button data-arato-button="secondary" onClick={() => transmitir(e)}
+                            <OperationalButton data-arato-button="secondary" onClick={() => transmitir(e)}
                               style={{ padding: "3px 10px", background: "#EF9F27", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Reenviar
-                            </button>
+                            </OperationalButton>
                           )}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             )}
           </div>
         )}
@@ -450,7 +451,7 @@ export default function EsocialPage() {
                     Nenhum trabalhador com salário base cadastrado.
                   </div>
                 ) : (
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "#F8FAFF" }}>
                         {["Trabalhador","Vínculo","Salário Bruto","INSS Desc.","Salário Líquido"].map(h => (
@@ -485,7 +486,7 @@ export default function EsocialPage() {
                         <td style={{ padding: "8px 10px", fontWeight: 700, color: "#166534" }}>{fmt(totalRemuneracao - inssEmpregado)}</td>
                       </tr>
                     </tfoot>
-                  </table>
+                  </OperationalGrid>
                 )}
               </div>
 
@@ -531,10 +532,10 @@ export default function EsocialPage() {
                       {folhaMsg}
                     </div>
                   )}
-                  <button data-arato-button="primary" onClick={gerarFolha} disabled={gerandoFolha || trabsAtivosApuracao.length === 0}
+                  <OperationalButton data-arato-button="primary" onClick={gerarFolha} disabled={gerandoFolha || trabsAtivosApuracao.length === 0}
                     style={{ width: "100%", padding: "8px 0", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gerandoFolha || trabsAtivosApuracao.length === 0 ? "not-allowed" : "pointer", opacity: gerandoFolha || trabsAtivosApuracao.length === 0 ? 0.6 : 1 }}>
                     {gerandoFolha ? "Gerando…" : "Gerar Folha → CP"}
-                  </button>
+                  </OperationalButton>
                 </div>
 
                 {/* Gerar S-1200/S-1210 */}
@@ -543,7 +544,7 @@ export default function EsocialPage() {
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12, lineHeight: 1.5 }}>
                     Gera os eventos de remuneração (S-1200) e pagamento (S-1210) para todos os trabalhadores ativos desta competência.
                   </div>
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     onClick={async () => {
                       if (!fazendaId) return;
                       for (const t of trabsAtivosApuracao) {
@@ -558,7 +559,7 @@ export default function EsocialPage() {
                     disabled={trabsAtivosApuracao.length === 0}
                     style={{ width: "100%", padding: "8px 0", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: trabsAtivosApuracao.length === 0 ? "not-allowed" : "pointer", opacity: trabsAtivosApuracao.length === 0 ? 0.6 : 1 }}>
                     Gerar S-1200 / S-1210
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             </div>
@@ -573,7 +574,7 @@ export default function EsocialPage() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>Evento Manual</span>
-              <button data-arato-button="icon" onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "22px 24px", display: "grid", gap: 14 }}>
               <div data-arato-dialog-body="true">
@@ -596,11 +597,11 @@ export default function EsocialPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarEvt} disabled={salvandoE || !formEvt.codigo_evento}
+              <OperationalButton data-arato-button="secondary" onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarEvt} disabled={salvandoE || !formEvt.codigo_evento}
                 style={{ padding: "9px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoE ? 0.7 : 1 }}>
                 {salvandoE ? "Salvando..." : "Criar Evento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

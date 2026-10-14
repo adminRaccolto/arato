@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -306,7 +307,7 @@ export default function AuditoriaPage() {
         </div>
 
         {/* Filtros */}
-        <div data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: "0.5px solid #DDE2EE", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", borderRadius: 12, padding: "14px 18px", border: "0.5px solid #DDE2EE", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>DE</div>
             <InputData type="date" value={fDe} onChange={e => setFDe(e.target.value)}
@@ -345,15 +346,15 @@ export default function AuditoriaPage() {
               style={{ width: 14, height: 14, accentColor: "#1A4870", cursor: "pointer" }} />
             <span style={{ fontSize: 12, color: "#555" }}>Ocultar Sistema</span>
           </label>
-          <button data-arato-button="secondary" onClick={() => { setFDe(new Date(Date.now() - 7*86400000).toISOString().slice(0,10)); setFAte(hoje); setFTabela(""); setFAcao(""); setFBusca(""); }}
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFDe(new Date(Date.now() - 7*86400000).toISOString().slice(0,10)); setFAte(hoje); setFTabela(""); setFAcao(""); setFBusca(""); }}
             style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#666", background: "#F9FAFB", cursor: "pointer" }}>
             Limpar
-          </button>
-          <button data-arato-button="toggle" onClick={() => carregar(0)} disabled={loading}
+          </OperationalButton>
+          <OperationalButton data-arato-button="toggle" onClick={() => carregar(0)} disabled={loading}
             style={{ border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 700, color: "#fff", background: loading ? "#93A8C6" : "#1A4870", cursor: loading ? "default" : "pointer", whiteSpace: "nowrap" }}>
             {loading ? "Carregando…" : "↻ Atualizar"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalFilters>
 
         {/* Tabela de logs */}
         <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
@@ -366,7 +367,7 @@ export default function AuditoriaPage() {
             </div>
           ) : (
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>QUANDO</th>
@@ -450,7 +451,7 @@ export default function AuditoriaPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           )}
 
@@ -458,10 +459,10 @@ export default function AuditoriaPage() {
           <div style={{ padding: "10px 16px", borderTop: "0.5px solid #F0F0F0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#888" }}>
             <span>Exibindo {logsFiltrados.length} eventos</span>
             {logs.length === PAGE * (pagina + 1) && (
-              <button data-arato-button="secondary" onClick={() => carregar(pagina + 1)} disabled={loading}
+              <OperationalButton data-arato-button="secondary" onClick={() => carregar(pagina + 1)} disabled={loading}
                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", fontWeight: 600 }}>
                 {loading ? "Carregando…" : "Carregar mais"}
-              </button>
+              </OperationalButton>
             )}
           </div>
         </div>

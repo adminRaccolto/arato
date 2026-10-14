@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Pedidos de Compra. A GRID/FILTRO lê rel_pedidos_compra (Seções 310/311/320
 // — trigger-sync, fornecedor/produtor/ciclo/ano-safra/operação já resolvidos
@@ -1516,21 +1517,21 @@ export default function ComprasPage() {
   // ── Render ────────────────────────────────────────────────────
 
   const tabAba = (id: typeof abaModal, label: string) => (
-    <button data-arato-button="toggle" onClick={() => setAbaModal(id)} style={{
+    <OperationalButton data-arato-button="toggle" onClick={() => setAbaModal(id)} style={{
       padding: "7px 16px", fontSize: 12, fontWeight: abaModal === id ? 600 : 400,
       color: abaModal === id ? "#2A2A2A" : "var(--text-2)", background: "none", border: "none",
       borderBottom: abaModal === id ? "2px solid #2A2A2A" : "2px solid transparent",
       cursor: "pointer", whiteSpace: "nowrap",
-    }}>{label}</button>
+    }}>{label}</OperationalButton>
   );
 
   const tabItens = (id: typeof abaItens, label: string) => (
-    <button data-arato-button="toggle" onClick={() => setAbaItens(id)} style={{
+    <OperationalButton data-arato-button="toggle" onClick={() => setAbaItens(id)} style={{
       padding: "5px 14px", fontSize: 11, fontWeight: abaItens === id ? 600 : 400,
       color: abaItens === id ? "#2A2A2A" : "#666", background: abaItens === id ? "#EEEEEE" : "none",
       border: "0.5px solid " + (abaItens === id ? "#2A2A2A80" : "var(--border-table)"),
       borderRadius: "6px 6px 0 0", cursor: "pointer",
-    }}>{label}</button>
+    }}>{label}</OperationalButton>
   );
 
   if (!podeAcessarPlano("compras")) return <PlanoGate modulo="compras" />;
@@ -1540,13 +1541,13 @@ export default function ComprasPage() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pedidos de Compra</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Controle de compras de insumos, serviços e materiais</p>
           </div>
-          <button data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Novo Pedido</button>
-        </header>
+          <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovo}>+ Novo Pedido</OperationalButton>
+        </OperationalHeading>
 
         {barterContratoNum && (
           <div style={{ margin: "12px 22px 0", padding: "12px 16px", background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
@@ -1555,7 +1556,7 @@ export default function ComprasPage() {
               Contrato barter <strong>{barterContratoNum}</strong> gerado automaticamente em Comercialização de Grãos.
             </span>
             <a href="/contratos" style={{ marginLeft: "auto", color: "#065F46", fontSize: 12, fontWeight: 700, textDecoration: "underline" }}>Ver contrato →</a>
-            <button data-arato-button="icon" onClick={() => setBarterContratoNum(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#065F46", fontSize: 16, padding: "0 4px" }}>×</button>
+            <OperationalButton data-arato-button="icon" onClick={() => setBarterContratoNum(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#065F46", fontSize: 16, padding: "0 4px" }}>×</OperationalButton>
           </div>
         )}
 
@@ -1595,12 +1596,12 @@ export default function ComprasPage() {
 
           {erro && (
             <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, color: "#791F1F", display: "flex", justifyContent: "space-between" }}>
-              {erro} <button data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#791F1F" }}>×</button>
+              {erro} <OperationalButton data-arato-button="icon" onClick={() => setErro(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#791F1F" }}>×</OperationalButton>
             </div>
           )}
 
           {/* Filtros */}
-          <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
             <input
               placeholder="Buscar fornecedor, nº pedido..."
               value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)}
@@ -1628,12 +1629,12 @@ export default function ComprasPage() {
               <option value="barter">Barter</option>
             </SelectField>
             {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda || filtroAlerta) && (
-              <button data-arato-button="secondary" onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFiltroAlerta(""); }}
+              <OperationalButton data-arato-button="secondary" onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFiltroAlerta(""); }}
                 style={{ padding: "7px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)" }}>
                 Limpar filtros
-              </button>
+              </OperationalButton>
             )}
-          </div>
+          </OperationalFilters>
 
           {/* Relatório completo (com filtro, Sintético/Analítico, PDF/XLSX) agora
               fica em Financeiro → Relatórios → Pedidos de Compra — essa tela é de
@@ -1649,7 +1650,7 @@ export default function ComprasPage() {
             </div>
           ) : (
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["", "Nº", "Nº Pedido", "Fornecedor", "Produtor", "Cidade", "IE", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
@@ -1665,10 +1666,10 @@ export default function ComprasPage() {
                       <>
                       <tr key={ped.id} style={{ borderBottom: expandido ? "none" : (i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none") }}>
                         <td style={{ padding: "6px 4px", textAlign: "center", width: 28 }}>
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => toggleExpandirPedido(ped.id)}
                             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 12, padding: 2, lineHeight: 1, transition: "transform 0.15s" }}
-                          >{expandido ? "▼" : "▶"}</button>
+                          >{expandido ? "▼" : "▶"}</OperationalButton>
                         </td>
                         <td style={{ padding: "6px 6px", textAlign: "center", fontWeight: 400, color: "var(--text-3)", fontSize: 10 }}>#{ped.numero ?? "—"}</td>
                         <td style={{ padding: "6px 10px", fontSize: 11, color: ped.nr_pedido ? "var(--text-1)" : "#bbb", fontWeight: ped.nr_pedido ? 600 : 400, whiteSpace: "nowrap" }}>
@@ -1717,12 +1718,12 @@ export default function ComprasPage() {
                         </td>
                         <td style={{ padding: "6px 10px" }}>
                           <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
-                            <button data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>
+                            <OperationalButton data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEntregas(ped)}>
                               {ped.fiscal ? "NFs Vinculadas" : "Entregas"}
-                            </button>
-                            <button data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped.id)}>Abrir</button>
-                            <button data-arato-button="secondary" title="Relatório do pedido" style={{ ...btnR, fontSize: 11, padding: "4px 8px" }} onClick={() => imprimirRelatorioPedido(ped)}>🖨</button>
-                            <button data-arato-button="danger" style={btnX} onClick={async () => {
+                            </OperationalButton>
+                            <OperationalButton data-arato-button="secondary" style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => abrirEditar(ped.id)}>Abrir</OperationalButton>
+                            <OperationalButton data-arato-button="secondary" title="Relatório do pedido" style={{ ...btnR, fontSize: 11, padding: "4px 8px" }} onClick={() => imprimirRelatorioPedido(ped)}>🖨</OperationalButton>
+                            <OperationalButton data-arato-button="danger" style={btnX} onClick={async () => {
                               try {
                                 const { nfs } = await listarNfEntradasPorPedido(ped.id);
                                 if (nfs.length > 0) {
@@ -1738,7 +1739,7 @@ export default function ComprasPage() {
                               } catch (e: unknown) {
                                 alert((e as { message?: string })?.message ?? "Erro ao excluir pedido");
                               }
-                            }}>✕</button>
+                            }}>✕</OperationalButton>
                           </div>
                         </td>
                       </tr>
@@ -1750,7 +1751,7 @@ export default function ComprasPage() {
                             ) : itensExpandidos.length === 0 ? (
                               <div style={{ padding: "10px 20px", fontSize: 12, color: "var(--text-3)" }}>Nenhum item cadastrado neste pedido.</div>
                             ) : (
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
                                   <tr style={{ background: "#EFF3FA" }}>
                                     {["Item / Insumo","Un.","Quantidade","Valor Unit.","Valor Total"].map((h, hi) => (
@@ -1771,7 +1772,7 @@ export default function ComprasPage() {
                                     </tr>
                                   ))}
                                 </tbody>
-                              </table>
+                              </OperationalGrid>
                             )}
                           </td>
                         </tr>
@@ -1780,7 +1781,7 @@ export default function ComprasPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           )}
         </div>
@@ -1796,7 +1797,7 @@ export default function ComprasPage() {
             <div data-arato-dialog-body="true" style={{ padding: "16px 22px 0", borderBottom: "0.5px solid var(--border-table)" }}>
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>{pedidoEdit ? "Editar Pedido de Compra" : "Novo Pedido de Compra"}</div>
-                <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
               </div>
               {/* Abas */}
               <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ display: "flex", gap: 0, overflowX: "auto" }}>
@@ -1976,11 +1977,11 @@ export default function ComprasPage() {
                   <div>
                     <label data-arato-label="true" style={{ ...lbl, display: "flex", alignItems: "center", gap: 8 }}>
                       Fornecedor *
-                      <button data-arato-button="primary" type="button"
+                      <OperationalButton data-arato-button="primary" type="button"
                         onClick={() => { setNovoFornForm(NOVO_FORN_VAZIO); setErrForn(""); setModalNovoForn(true); }}
                         style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, border: "0.5px solid #1A487060", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, lineHeight: 1.4, whiteSpace: "nowrap" }}>
                         + Cadastrar novo
-                      </button>
+                      </OperationalButton>
                     </label>
                     <FornecedorSelect
                       value={f.fornecedor_id}
@@ -2123,10 +2124,10 @@ export default function ComprasPage() {
                         <div style={{ ...inp, flex: 1, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 12 }}>
                           {nomeOp(f.operacao_nf)}
                         </div>
-                        <button data-arato-button="secondary" type="button" onClick={() => setF(p => ({ ...p, operacao_nf_auto: false }))}
+                        <OperationalButton data-arato-button="secondary" type="button" onClick={() => setF(p => ({ ...p, operacao_nf_auto: false }))}
                           style={{ fontSize: 11, padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                           Alterar
-                        </button>
+                        </OperationalButton>
                       </div>
                     ) : (
                       <SearchableSelect
@@ -2150,7 +2151,7 @@ export default function ComprasPage() {
                         { v: "boleto",       label: "Boleto"        },
                         { v: "barter",       label: "Barter"        },
                       ] as { v: string; label: string }[]).map(({ v, label }) => (
-                        <button data-arato-button="toggle" key={v} type="button"
+                        <OperationalButton data-arato-button="toggle" key={v} type="button"
                           onClick={() => setF(p => ({ ...p, meio_pagamento: p.meio_pagamento === v ? "" : v }))}
                           style={{
                             padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
@@ -2160,7 +2161,7 @@ export default function ComprasPage() {
                             color:       f.meio_pagamento === v ? (v === "barter" ? "#7A5200" : "#0D0D0D") : "var(--text-2)",
                           }}>
                           {label}
-                        </button>
+                        </OperationalButton>
                       ))}
                     </div>
 
@@ -2238,7 +2239,7 @@ export default function ComprasPage() {
                       const tipo = abaItens === "itens" ? "produto" : "servico";
                       const lista = itens.map((it, idx) => ({ ...it, _idx: idx })).filter(it => it.tipo_item === tipo);
                       return (<>
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "var(--bg-page)" }}>
                             {["Item","Un.","Quantidade","Valor Unitário","Desc. Unitário","Valor Item","Qtd. Cancel.",""].map((h, i) => (
                               <th key={i} style={{ padding: "6px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: i === 4 ? "#C9921B" : "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2270,14 +2271,14 @@ export default function ComprasPage() {
                                       />
                                     </div>
                                     {semVinculo && (
-                                      <button data-arato-button="primary"
+                                      <OperationalButton data-arato-button="primary"
                                         title="Criar novo insumo no cadastro"
                                         style={{ flexShrink: 0, padding: "3px 8px", border: "0.5px solid #1A487080", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", whiteSpace: "nowrap" }}
                                         onClick={() => {
                                           setNovoInsumoForm({ nome: it.nome_item, categoria: "outros", unidade: (it.unidade as Insumo["unidade"]) || "kg", grupo_id: "", principio_ativo_id: "" });
                                           setModalNovoInsumo({ itemIdx: it._idx, nomePreenchido: it.nome_item });
                                         }}
-                                      >+ Criar insumo</button>
+                                      >+ Criar insumo</OperationalButton>
                                     )}
                                   </div>
                                   {iaExtract && it.nome_item && (
@@ -2318,7 +2319,7 @@ export default function ComprasPage() {
                                   <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.qtd_cancelada} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: v } : x))} />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 36 }}>
-                                  <button data-arato-button="danger" style={btnX} onClick={() => setItens(prev => prev.filter((_, j) => j !== it._idx))}>✕</button>
+                                  <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setItens(prev => prev.filter((_, j) => j !== it._idx))}>✕</OperationalButton>
                                 </td>
                               </tr>
                               );
@@ -2331,8 +2332,8 @@ export default function ComprasPage() {
                               <td colSpan={2} />
                             </tr>
                           </tfoot>
-                        </table>
-                        <button data-arato-button="secondary" style={{ ...btnR, fontSize: 11, marginTop: 8 }} onClick={() => setItens(p => [...p, { ...ITEM_VAZIO, tipo_item: tipo }])}>+ Item</button>
+                        </OperationalGrid>
+                        <OperationalButton data-arato-button="secondary" style={{ ...btnR, fontSize: 11, marginTop: 8 }} onClick={() => setItens(p => [...p, { ...ITEM_VAZIO, tipo_item: tipo }])}>+ Item</OperationalButton>
                       </>);
                     })()}
                   </div>
@@ -2450,10 +2451,10 @@ export default function ComprasPage() {
                 </div>
                 <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {erroModal && <span style={{ fontSize: 12, color: "#E24B4A" }}>Preencha: <strong>{erroModal}</strong></span>}
-                  <button data-arato-button="secondary" style={btnR} onClick={() => { setModal(false); setErroModal(""); }}>Cancelar</button>
-                  <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvar}>
+                  <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => { setModal(false); setErroModal(""); }}>Cancelar</OperationalButton>
+                  <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvar}>
                     {salvando ? "Salvando…" : pedidoEdit ? "Salvar Alterações" : "Criar Pedido"}
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             </div>
@@ -2497,13 +2498,13 @@ export default function ComprasPage() {
                   </div>
                   <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido {modalEntrega.pedido.nr_pedido || `#${modalEntrega.pedido.numero}`} · {fmtData(modalEntrega.pedido.data_registro)}</div>
                 </div>
-                <button data-arato-button="icon" onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
               </div>
               <div data-arato-dialog-body="true" style={{ padding: 22 }}>
 
                 {/* Situação dos itens */}
                 <div data-arato-dialog-body="true" style={secTit}>Situação dos Itens</div>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
                   <thead><tr style={{ background: "var(--bg-page)" }}>
                     {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Status"].map((h, i) => (
                       <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2536,13 +2537,13 @@ export default function ComprasPage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
 
                 {modalEntrega.pedido.status === "parcialmente_entregue" && (
                   <div data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16, marginTop: -8 }}>
-                    <button data-arato-button="secondary" onClick={abrirEncerramento} style={{ ...btnR, fontSize: 11, padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                    <OperationalButton data-arato-button="secondary" onClick={abrirEncerramento} style={{ ...btnR, fontSize: 11, padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
                       🔒 Encerrar Pedido
-                    </button>
+                    </OperationalButton>
                   </div>
                 )}
 
@@ -2574,7 +2575,7 @@ export default function ComprasPage() {
                       </div>
                     </div>
                   ) : (
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 14 }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 14 }}>
                       <thead><tr style={{ background: "var(--bg-page)" }}>
                         {["Nº NF","Data Emissão","Emitente","Valor Total","Status",""].map((h, i) => (
                           <th key={i} style={{ padding: "6px 10px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2606,7 +2607,7 @@ export default function ComprasPage() {
                           <td colSpan={2} />
                         </tr>
                       </tfoot>
-                    </table>
+                    </OperationalGrid>
                   )}
 
                   <div style={{ padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 11, color: "var(--text-2)" }}>
@@ -2638,14 +2639,14 @@ export default function ComprasPage() {
                     </div>
                   </div>
                   {erroModal && <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 8 }}>Preencha: <strong>{erroModal}</strong></div>}
-                  <button data-arato-button="primary" style={{ ...btnV, marginTop: 8, opacity: salvando ? 0.5 : 1 }}
+                  <OperationalButton data-arato-button="primary" style={{ ...btnV, marginTop: 8, opacity: salvando ? 0.5 : 1 }}
                     disabled={salvando} onClick={salvarEntrega}>
                     {salvando ? "Salvando…" : "Confirmar Entrega"}
-                  </button>
+                  </OperationalButton>
 
                   {entregas.length > 0 && (<>
                     <div style={{ ...secTit, marginTop: 20 }}>Histórico de Entregas</div>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead><tr style={{ background: "var(--bg-page)" }}>
                         {["Item","Un.","Data","Qtd. Entregue","Obs.",""].map((h, i) => (
                           <th key={i} style={{ padding: "6px 10px", textAlign: i === 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2669,13 +2670,13 @@ export default function ComprasPage() {
                             <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
                               {entregaEditId === e.id ? (
                                 <>
-                                  <button data-arato-button="secondary" onClick={() => salvarEdicaoEntrega(e.id)} disabled={salvando} title="Salvar" style={{ background: "none", border: "none", cursor: "pointer", color: "#16A34A", fontSize: 13, fontWeight: 700, marginRight: 6 }}>✓</button>
-                                  <button data-arato-button="icon" onClick={() => { setEntregaEditId(null); setEntregaEditQtd(""); }} title="Cancelar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 13 }}>×</button>
+                                  <OperationalButton data-arato-button="secondary" onClick={() => salvarEdicaoEntrega(e.id)} disabled={salvando} title="Salvar" style={{ background: "none", border: "none", cursor: "pointer", color: "#16A34A", fontSize: 13, fontWeight: 700, marginRight: 6 }}>✓</OperationalButton>
+                                  <OperationalButton data-arato-button="icon" onClick={() => { setEntregaEditId(null); setEntregaEditQtd(""); }} title="Cancelar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 13 }}>×</OperationalButton>
                                 </>
                               ) : (
                                 <>
-                                  <button data-arato-button="secondary" onClick={() => { setEntregaEditId(e.id); setEntregaEditQtd(String(e.quantidade_entregue)); }} title="Editar quantidade" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", fontSize: 12, marginRight: 8 }}>✏</button>
-                                  <button data-arato-button="icon" onClick={() => removerEntrega(e.id)} title="Excluir entrega" style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}>✕</button>
+                                  <OperationalButton data-arato-button="secondary" onClick={() => { setEntregaEditId(e.id); setEntregaEditQtd(String(e.quantidade_entregue)); }} title="Editar quantidade" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", fontSize: 12, marginRight: 8 }}>✏</OperationalButton>
+                                  <OperationalButton data-arato-button="icon" onClick={() => removerEntrega(e.id)} title="Excluir entrega" style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14 }}>✕</OperationalButton>
                                 </>
                               )}
                             </td>
@@ -2683,7 +2684,7 @@ export default function ComprasPage() {
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   </>)}
                 </>)}
 
@@ -2702,7 +2703,7 @@ export default function ComprasPage() {
                 <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15 }}>🔒 Encerrar Pedido {modalEncerrar.pedido.nr_pedido || `#${modalEncerrar.pedido.numero}`}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)" }}>{nomePessoa(modalEncerrar.pedido.fornecedor_id)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalEncerrar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalEncerrar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: 22 }}>
               <div data-arato-dialog-body="true" style={{ background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 16 }}>
@@ -2710,7 +2711,7 @@ export default function ComprasPage() {
               </div>
 
               <div data-arato-dialog-body="true" style={secTit}>Itens com saldo em aberto</div>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
                 <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Cancelar saldo"].map((h, i) => (
                     <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2746,7 +2747,7 @@ export default function ComprasPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
 
               <label data-arato-label="true" style={lbl}>Motivo do encerramento *</label>
               <textarea
@@ -2760,10 +2761,10 @@ export default function ComprasPage() {
               {erroEncerrar && <div style={{ fontSize: 12, color: "#E24B4A", marginBottom: 8 }}>{erroEncerrar}</div>}
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalEncerrar(null)}>Cancelar</button>
-                <button data-arato-button="primary" style={{ ...btnV, opacity: salvandoEncerrar ? 0.5 : 1 }} disabled={salvandoEncerrar} onClick={confirmarEncerramento}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalEncerrar(null)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvandoEncerrar ? 0.5 : 1 }} disabled={salvandoEncerrar} onClick={confirmarEncerramento}>
                   {salvandoEncerrar ? "Encerrando…" : "Confirmar Encerramento"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -2780,11 +2781,11 @@ export default function ComprasPage() {
                 <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15 }}>Relatório do Pedido {modalRelatorio.pedido.nr_pedido || `#${modalRelatorio.pedido.numero}`}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "var(--text-2)" }}>{nomePessoa(modalRelatorio.pedido.fornecedor_id)} · {fmtData(modalRelatorio.pedido.data_registro)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalRelatorio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalRelatorio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: 22 }}>
               <div data-arato-dialog-body="true" style={secTit}>Itens do Pedido</div>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Item","Un.","Qtd.","Valor Unit.","Valor Total","Qtd. Entregue","Saldo"].map((h, i) => (
                     <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2810,11 +2811,11 @@ export default function ComprasPage() {
                     <td colSpan={2} />
                   </tr>
                 </tfoot>
-              </table>
+              </OperationalGrid>
 
               {modalRelatorio.entregas.length > 0 && (<>
                 <div style={{ ...secTit, marginTop: 20 }}>Entregas Registradas</div>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead><tr style={{ background: "var(--bg-page)" }}>
                     {["Item","Data Entrega","Qtd. Entregue","Obs."].map((h, i) => (
                       <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -2830,7 +2831,7 @@ export default function ComprasPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </>)}
             </div>
           </div>
@@ -2893,14 +2894,14 @@ export default function ComprasPage() {
               )}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovoInsumo(null)} disabled={salvandoInsumo}>Cancelar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNovoInsumo(null)} disabled={salvandoInsumo}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 style={{ ...btnV, background: novoInsumoForm.nome.trim() ? "#1A4870" : "#ccc", cursor: novoInsumoForm.nome.trim() ? "pointer" : "default" }}
                 onClick={criarEVincularInsumo}
                 disabled={salvandoInsumo || !novoInsumoForm.nome.trim()}
               >
                 {salvandoInsumo ? "Salvando…" : "Criar e Vincular"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2912,7 +2913,7 @@ export default function ComprasPage() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 48px rgba(0,0,0,0.22)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontWeight: 600, fontSize: 15 }}>Cadastrar Fornecedor</div>
-              <button data-arato-button="icon" onClick={() => setModalNovoForn(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNovoForn(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
               {/* Identificação */}
@@ -2983,14 +2984,14 @@ export default function ComprasPage() {
 
               {errForn && <div style={{ marginBottom: 12, color: "#E24B4A", fontSize: 12 }}>{errForn}</div>}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovoForn(false)} disabled={salvandoForn}>Cancelar</button>
-                <button data-arato-button="primary"
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNovoForn(false)} disabled={salvandoForn}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary"
                   style={{ ...btnV, opacity: salvandoForn || !novoFornForm.nome.trim() ? 0.5 : 1 }}
                   disabled={salvandoForn || !novoFornForm.nome.trim()}
                   onClick={salvarNovoForn}
                 >
                   {salvandoForn ? "Salvando…" : "Salvar e Usar no Pedido"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

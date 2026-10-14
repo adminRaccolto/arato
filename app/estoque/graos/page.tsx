@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -489,13 +490,13 @@ export default function EstoqueGraosPage() {
     <div data-arato-page="true" style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       {/* Header */}
-      <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "14px 22px" }}>
+      <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "14px 22px" }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Estoque de Grãos</div>
         <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Soja · Milho · Algodão · Sorgo — posição, qualidade e quebra técnica</div>
-      </header>
+      </OperationalHeading>
 
       {/* Filtros globais */}
-      <div data-arato-filters="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <OperationalFilters data-arato-filters="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         {fazendasConta.length > 1 && (
           <SelectField value={fazTrabalho} onChange={e => setFazTrabalho(e.target.value)} style={inp}>
             {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
@@ -526,12 +527,12 @@ export default function EstoqueGraosPage() {
         {aba !== "config" && (
           <input placeholder="Filtrar produto..." value={fProduto} onChange={e => setFProduto(e.target.value)} style={{ ...inp, minWidth: 140 }} />
         )}
-      </div>
+      </OperationalFilters>
 
       {/* Abas */}
       <div data-arato-tabs="true" data-arato-grid-container="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto" }}>
         {TABS.map(t => (
-          <button data-arato-tab-active={aba === (t.k)} data-arato-tab="true" data-arato-button="toggle" key={t.k} onClick={() => setAba(t.k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === t.k ? 700 : 400, color: aba === t.k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === t.k ? "2px solid #111111" : "2px solid transparent", whiteSpace: "nowrap" }}>{t.label}</button>
+          <OperationalButton data-arato-tab-active={aba === (t.k)} data-arato-tab="true" data-arato-button="toggle" key={t.k} onClick={() => setAba(t.k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === t.k ? 700 : 400, color: aba === t.k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === t.k ? "2px solid #111111" : "2px solid transparent", whiteSpace: "nowrap" }}>{t.label}</OperationalButton>
         ))}
       </div>
 
@@ -556,7 +557,7 @@ export default function EstoqueGraosPage() {
 
             {totalQuebra > 0 && (
               <div style={{ background: "#FEF9EC", border: "0.5px solid #F59E0B", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#92400E", marginBottom: 16 }}>
-                ⚠️ Quebra técnica de <strong>{fmt(totalQuebra, 1)} sc</strong> aplicada automaticamente conforme configuração de parâmetros de armazenagem. <button data-arato-button="toggle" onClick={() => setAba("config")} style={{ background: "none", border: "none", color: "#1A4870", textDecoration: "underline", cursor: "pointer", fontSize: 12 }}>Ver configuração</button>
+                ⚠️ Quebra técnica de <strong>{fmt(totalQuebra, 1)} sc</strong> aplicada automaticamente conforme configuração de parâmetros de armazenagem. <OperationalButton data-arato-button="toggle" onClick={() => setAba("config")} style={{ background: "none", border: "none", color: "#1A4870", textDecoration: "underline", cursor: "pointer", fontSize: 12 }}>Ver configuração</OperationalButton>
               </div>
             )}
 
@@ -569,7 +570,7 @@ export default function EstoqueGraosPage() {
               </div>
             ) : (
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       <th style={th}>Produto</th>
@@ -623,7 +624,7 @@ export default function EstoqueGraosPage() {
                       <td style={tdr} />
                     </tr>
                   </tfoot>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -636,7 +637,7 @@ export default function EstoqueGraosPage() {
             : movs.length === 0 ? <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Nenhuma movimentação encontrada.</div>
             : (
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       <th style={th}>Data</th><th style={th}>Tipo</th><th style={th}>Produto</th>
@@ -661,7 +662,7 @@ export default function EstoqueGraosPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -692,7 +693,7 @@ export default function EstoqueGraosPage() {
               </div>
             ) : (
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       <th style={th}>Data</th><th style={th}>Ticket</th><th style={th}>Produto</th>
@@ -725,7 +726,7 @@ export default function EstoqueGraosPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -747,7 +748,7 @@ export default function EstoqueGraosPage() {
             : qualidade.length === 0 ? <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Nenhum dado de qualidade encontrado.</div>
             : (
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       <th style={th}>Data</th><th style={th}>Ticket</th><th style={th}>Produto</th>
@@ -775,7 +776,7 @@ export default function EstoqueGraosPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -816,9 +817,9 @@ export default function EstoqueGraosPage() {
                 <label data-arato-label="true" style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Observação</label>
                 <input placeholder="Ex: Perda por evaporação em silos verticais" value={cfObs} onChange={e => setCfObs(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
               </div>
-              <button data-arato-button="toggle" onClick={salvarConfig} disabled={salvandoConfig} style={{ padding: "10px 20px", background: salvandoConfig ? "#888" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: salvandoConfig ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="toggle" onClick={salvarConfig} disabled={salvandoConfig} style={{ padding: "10px 20px", background: salvandoConfig ? "#888" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: salvandoConfig ? "default" : "pointer" }}>
                 {salvandoConfig ? "Salvando..." : "+ Adicionar regra"}
-              </button>
+              </OperationalButton>
             </div>
 
             {/* Lista de regras */}
@@ -829,7 +830,7 @@ export default function EstoqueGraosPage() {
                 <div style={{ fontSize: 12, marginTop: 4, color: "#aaa" }}>Adicione uma regra acima para aplicar desconto automático no estoque.</div>
               </div>
             ) : (
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", background: "var(--bg-card)", borderRadius: 10, overflow: "hidden" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={th}>Produto</th>
@@ -848,15 +849,15 @@ export default function EstoqueGraosPage() {
                       <td style={{ ...td, fontSize: 12, color: "var(--text-2)" }}>{cfg.observacao || "—"}</td>
                       <td style={td}>
                         {cfg.id && (
-                          <button data-arato-button="secondary" onClick={() => excluirConfig(cfg.id!)} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer" }}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => excluirConfig(cfg.id!)} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer" }}>
                             Remover
-                          </button>
+                          </OperationalButton>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             )}
 
             <div style={{ marginTop: 20, padding: "14px 18px", background: "#F0F9FF", borderRadius: 8, border: "0.5px solid #BAE6FD", fontSize: 12, color: "#0369A1" }}>

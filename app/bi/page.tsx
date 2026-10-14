@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import React, { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
@@ -1112,7 +1113,7 @@ export default function BI() {
       <div style={{ background: "linear-gradient(135deg, #0B1E35 0%, #111111 100%)", padding: "20px 32px 0", borderBottom: "0.5px solid var(--border)" }}>
 
         {/* Linha 1: título + preços + refresh */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 19, fontWeight: 700, color: "#fff" }}>Raccolto Intelligence</h1>
@@ -1139,15 +1140,15 @@ export default function BI() {
                 ))}
               </div>
             )}
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={() => { setCfContratos([]); setCfParcelas([]); carregar(); carregarCF(); }}
               title="Recarregar todos os dados (use após importar contratos ou lançamentos)"
-              style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</button>
+              style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Linha 2: filtros */}
-        <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
           <SelectField
             value={filtroAnoSafraId}
             onChange={e => handleAnoSafraChange(e.target.value)}
@@ -1165,16 +1166,16 @@ export default function BI() {
               {ciclosPorAnoSafra.map(c => {
                 const ativo = filtroCicloIds.has(c.id);
                 return (
-                  <button data-arato-button="toggle" key={c.id} onClick={() => toggleCiclo(c.id)} style={{
+                  <OperationalButton data-arato-button="toggle" key={c.id} onClick={() => toggleCiclo(c.id)} style={{
                     padding: "4px 10px", borderRadius: 12, border: "0.5px solid rgba(255,255,255,0.25)",
                     background: ativo ? "#C9921B" : "var(--border)",
                     color: ativo ? "#fff" : "rgba(255,255,255,0.7)",
                     fontSize: 11, cursor: "pointer", fontWeight: ativo ? 700 : 400, transition: "all 0.15s",
-                  }}>{c.descricao}</button>
+                  }}>{c.descricao}</OperationalButton>
                 );
               })}
               {filtroCicloIds.size > 0 && (
-                <button data-arato-button="secondary" onClick={() => setFiltroCicloIds(new Set())} style={{ padding: "4px 8px", borderRadius: 12, border: "none", background: "var(--border)", color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }}>✕ limpar</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setFiltroCicloIds(new Set())} style={{ padding: "4px 8px", borderRadius: 12, border: "none", background: "var(--border)", color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }}>✕ limpar</OperationalButton>
               )}
             </div>
           )}
@@ -1184,12 +1185,12 @@ export default function BI() {
               {ciclosFiltrados.length} ciclo{ciclosFiltrados.length !== 1 ? "s" : ""} · {fmtN(areaFiltrada, 0)} ha
             </span>
           )}
-        </div>
+        </OperationalFilters>
 
         {/* Abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 2 }}>
           {ABAS.map(a => (
-            <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+            <OperationalButton data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 16px", border: "none", cursor: "pointer", fontSize: 12,
               fontWeight: aba === a.key ? 700 : 400, borderRadius: "7px 7px 0 0",
               background: aba === a.key ? "var(--bg-page)" : "transparent",
@@ -1200,7 +1201,7 @@ export default function BI() {
               {!!a.badge && a.badge > 0 && (
                 <span style={{ background: "#E24B4A", color: "#fff", fontSize: 10, padding: "1px 5px", borderRadius: 7 }}>{a.badge}</span>
               )}
-            </button>
+            </OperationalButton>
           ))}
         </div>
       </div>
@@ -1254,7 +1255,7 @@ export default function BI() {
                 {ciclosFiltrados.length === 0 ? (
                   <div style={{ padding: "24px 18px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum ciclo no filtro selecionado</div>
                 ) : (
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-card)" }}>
                         {["Ciclo", "Cultura", "Área", "Prod. Esp.", "sc/ha Esp.", "sc/ha MT", "Status"].map((h, i) => (
@@ -1283,7 +1284,7 @@ export default function BI() {
                         );
                       })}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 )}
               </div>
             </div>
@@ -1752,11 +1753,11 @@ export default function BI() {
               {/* ── Sub-tab bar ── */}
               <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
                 {([["posicao", "Posição do Produto"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
-                  <button data-arato-tab-active={abaProducao === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaProducao(k)}
+                  <OperationalButton data-arato-tab-active={abaProducao === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaProducao(k)}
                     style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #111111" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#111111" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
                     {l}
                     {k === "colheita" && totalColhido > 0 && <span style={{ marginLeft: 6, background: "#16A34A", color: "#fff", borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>✓</span>}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
 
@@ -1764,20 +1765,20 @@ export default function BI() {
               {abaProducao === "posicao" && (
                 <div>
                   {/* ── Filtros: chips de produto + fazenda ── */}
-                  <div data-arato-panel="true" data-arato-filters="true" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "9px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
+                  <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "9px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginRight: 2 }}>Produto:</span>
-                    <button data-arato-button="toggle" onClick={() => setPcCultFiltro("")}
+                    <OperationalButton data-arato-button="toggle" onClick={() => setPcCultFiltro("")}
                       style={{ padding: "3px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: !pcCultFiltro ? "#111111" : "#EEF2F7", color: !pcCultFiltro ? "#fff" : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
                       Todos
-                    </button>
+                    </OperationalButton>
                     {cultOpts.map(c => (
-                      <button data-arato-button="toggle" key={c} onClick={() => setPcCultFiltro(pcCultFiltro === c ? "" : c)}
+                      <OperationalButton data-arato-button="toggle" key={c} onClick={() => setPcCultFiltro(pcCultFiltro === c ? "" : c)}
                         style={{ padding: "3px 11px", borderRadius: 20, border: `1.5px solid ${pcCultFiltro === c ? COMM_COR(c) : "transparent"}`, cursor: "pointer", background: pcCultFiltro === c ? COMM_BG(c) : "#EEF2F7", color: pcCultFiltro === c ? COMM_COR(c) : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
                         {c}
                         <span style={{ marginLeft: 5, background: pcCultFiltro === c ? COMM_COR(c) : "#DDE2EE", color: pcCultFiltro === c ? "#fff" : "var(--text-3)", borderRadius: 8, padding: "0 5px", fontSize: 10 }}>
                           {todasRows.filter(r => r.comm === c).length}
                         </span>
-                      </button>
+                      </OperationalButton>
                     ))}
                     {fazOpts.length > 1 && (
                       <>
@@ -1791,21 +1792,21 @@ export default function BI() {
                       </>
                     )}
                     {(pcFazFiltro || pcCultFiltro) && (
-                      <button data-arato-button="secondary" onClick={() => { setPcFazFiltro(""); setPcCultFiltro(""); }}
+                      <OperationalButton data-arato-button="secondary" onClick={() => { setPcFazFiltro(""); setPcCultFiltro(""); }}
                         style={{ padding: "3px 9px", border: "none", borderRadius: 6, background: "#E24B4A18", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                         Limpar ✕
-                      </button>
+                      </OperationalButton>
                     )}
                     <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontSize: 11, color: "var(--text-3)" }}>
                         {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} · {fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha
                       </span>
-                      <button data-arato-button="primary" onClick={imprimirPosicaoProduto}
+                      <OperationalButton data-arato-button="primary" onClick={imprimirPosicaoProduto}
                         style={{ padding: "4px 12px", background: "#111111", color: "#fff", border: "none", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
                         🖨 PDF
-                      </button>
+                      </OperationalButton>
                     </div>
-                  </div>
+                  </OperationalFilters>
 
                   {kpiVolPrev === 0 ? (
                     <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-3)", border: "0.5px solid var(--border)" }}>
@@ -1952,7 +1953,7 @@ export default function BI() {
                             <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Por Fazenda × Produto</span>
                           </div>
                           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-tag)" }}>
                                   <th style={{ padding: "7px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", whiteSpace: "nowrap" }}>Fazenda</th>
@@ -1995,7 +1996,7 @@ export default function BI() {
                                   );
                                 })}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         </div>
                       )}
@@ -2009,7 +2010,7 @@ export default function BI() {
                             <span style={{ fontSize: 10, color: "var(--text-3)" }}>produto agrícola e safra de origem do compromisso</span>
                           </div>
                           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-tag)" }}>
                                   {["Fazenda","Produto / Commodity","Ano Safra","Fornecedor","Sacas comprometidas","Valor"].map(h => (
@@ -2042,7 +2043,7 @@ export default function BI() {
                                   <td />
                                 </tr>
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         </div>
                       )}
@@ -2054,7 +2055,7 @@ export default function BI() {
                           <span style={{ fontSize: 10, color: "var(--text-3)" }}>clique no cabeçalho para ordenar</span>
                         </div>
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-tag)" }}>
                                 <th style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Fazenda / Ciclo</th>
@@ -2132,7 +2133,7 @@ export default function BI() {
                                 <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: kpiColhido>0?"#16A34A":"var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
                               </tr>
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                         </div>
                       </div>
 
@@ -2302,12 +2303,12 @@ export default function BI() {
                                   </div>
                                 </div>
                                 <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                  <button data-arato-button="primary" onClick={imprimirComprHa}
+                                  <OperationalButton data-arato-button="primary" onClick={imprimirComprHa}
                                     style={{ padding: "7px 16px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                                     🖨 Imprimir PDF
-                                  </button>
-                                  <button data-arato-button="icon" onClick={() => setModalComprHa(false)}
-                                    style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>✕</button>
+                                  </OperationalButton>
+                                  <OperationalButton data-arato-button="icon" onClick={() => setModalComprHa(false)}
+                                    style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>✕</OperationalButton>
                                 </div>
                               </div>
 
@@ -2339,7 +2340,7 @@ export default function BI() {
 
                               {/* Tabela por categoria */}
                               <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Categorias de comprometimento</div>
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-tag)" }}>
                                     {["Categoria", "Sacas", "sc/ha", "% do Previsto", ""].map(h => (
@@ -2371,13 +2372,13 @@ export default function BI() {
                                     );
                                   })}
                                 </tbody>
-                              </table>
+                              </OperationalGrid>
 
                               {/* Breakdown por produto */}
                               {commSummary.length > 1 && (
                                 <>
                                   <div style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Por Produto Agrícola</div>
-                                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                     <thead>
                                       <tr style={{ background: "var(--bg-tag)" }}>
                                         {["Produto", "Área (ha)", "Prev. sc/ha", "Arr. sc/ha", "Venda sc/ha", "Barter sc/ha", "Compr. sc/ha", "Disp. sc/ha"].map(h => (
@@ -2404,7 +2405,7 @@ export default function BI() {
                                         );
                                       })}
                                     </tbody>
-                                  </table>
+                                  </OperationalGrid>
                                 </>
                               )}
                             </div>
@@ -2548,7 +2549,7 @@ export default function BI() {
                       <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 18px" }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 14 }}>Por Fazenda</div>
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-tag)" }}>
                                 {["Fazenda","Previsto (sc)","Colhido (sc)","% Realizado","Delta (sc)"].map(h => (
@@ -2571,7 +2572,7 @@ export default function BI() {
                                 );
                               })}
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                         </div>
                       </div>
                     )}
@@ -2937,23 +2938,23 @@ export default function BI() {
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
                             {isGrupoOps && (
-                              <button data-arato-button="toggle"
+                              <OperationalButton data-arato-button="toggle"
                                 onClick={() => setCustoPorTalhao(v => !v)}
                                 style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: `0.5px solid ${custoPorTalhao ? cor : "var(--border)"}`, background: custoPorTalhao ? `${cor}10` : "var(--bg-page)", color: custoPorTalhao ? cor : "var(--text-2)", cursor: "pointer", fontWeight: custoPorTalhao ? 700 : 400 }}
                               >
                                 Por Talhão
-                              </button>
+                              </OperationalButton>
                             )}
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={() => window.print()}
                               style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}
                             >
                               PDF
-                            </button>
-                            <button data-arato-button="icon"
+                            </OperationalButton>
+                            <OperationalButton data-arato-button="icon"
                               onClick={() => setCustoGrupoAtivo(null)}
                               style={{ fontSize: 12, padding: "2px 6px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-page)", color: "var(--text-3)", cursor: "pointer" }}
-                            >✕</button>
+                            >✕</OperationalButton>
                           </div>
                         </div>
 
@@ -2965,7 +2966,7 @@ export default function BI() {
                             </div>
                           ) : (
                             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                 <thead>
                                   <tr style={{ background: `${cor}10` }}>
                                     <th style={{ textAlign: "left",   padding: "5px 8px", color: "var(--text-2)", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Produto</th>
@@ -3009,13 +3010,13 @@ export default function BI() {
                                     <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cor }}>100%</td>
                                   </tr>
                                 </tfoot>
-                              </table>
+                              </OperationalGrid>
                             </div>
                           )
                         ) : (
                           /* Tabela por categoria de custo (objeto de custo, não fornecedor) */
                           <div style={{ overflowY: "auto", maxHeight: 300 }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: `${cor}10` }}>
                                   <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "var(--text-2)", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Categoria</th>
@@ -3047,7 +3048,7 @@ export default function BI() {
                                   </tr>
                                 </tfoot>
                               )}
-                            </table>
+                            </OperationalGrid>
                           </div>
                         )}
                       </>
@@ -3072,7 +3073,7 @@ export default function BI() {
                       {custoGrupoAtivo} — Safra {safraLabel}
                       {custoPorTalhao ? " (Por Talhão)" : ""}
                     </div>
-                    <table data-arato-grid="true" className="bi-print-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                    <OperationalGrid data-arato-grid="true" className="bi-print-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-tag)" }}>
                           <th style={{ textAlign: "left",  padding: "5px 8px" }}>Produto</th>
@@ -3112,7 +3113,7 @@ export default function BI() {
                           <td style={{ padding: "5px 8px", textAlign: "right" }}>100%</td>
                         </tr>
                       </tfoot>
-                    </table>
+                    </OperationalGrid>
                   </>
                 )}
                 {(!custoGrupoAtivo || !isGrupoOps) && (
@@ -3237,7 +3238,7 @@ export default function BI() {
           <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
 
             {/* ── Seletores ── */}
-            <div data-arato-filters="true" style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+            <OperationalFilters data-arato-filters="true" style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
               <SelectField value={filtroAnoSafraId} onChange={e => setFiltroAnoSafraId(e.target.value)}
                 style={{ padding:"7px 10px", border:"0.5px solid var(--border-table)", borderRadius:8, fontSize:12, background:"var(--bg-card)", outline:"none", color:"var(--text-1)", minWidth:160 }}>
                 <option value="">Todos os anos safra</option>
@@ -3249,15 +3250,15 @@ export default function BI() {
                 {culturasList.map(c => <option key={c} value={c}>{c}</option>)}
               </SelectField>
               {(filtroAnoSafraId || biComCultura) && (
-                <button data-arato-button="secondary" onClick={() => { setFiltroAnoSafraId(""); setBiComCultura(""); }}
+                <OperationalButton data-arato-button="secondary" onClick={() => { setFiltroAnoSafraId(""); setBiComCultura(""); }}
                   style={{ padding:"7px 12px", border:"0.5px solid var(--border-table)", borderRadius:8, fontSize:11, color:"var(--text-2)", background:"var(--bg-card)", cursor:"pointer" }}>
                   ✕ Limpar filtros
-                </button>
+                </OperationalButton>
               )}
               <span style={{ marginLeft:"auto", fontSize:11, color:"var(--text-3)" }}>
                 {contratosVisiveis.length} contrato{contratosVisiveis.length !== 1 ? "s" : ""} · {fmtN(totalSc, 0)} sc no filtro
               </span>
-            </div>
+            </OperationalFilters>
 
             {/* ── KPI cards ── */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
@@ -3449,7 +3450,7 @@ export default function BI() {
                     <text x="50" y="47" textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--text-1)">{produtores.length}</text>
                     <text x="50" y="57" textAnchor="middle" fontSize="7" fill="var(--text-3)">produtores</text>
                   </svg>
-                  <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                     <thead>
                       <tr style={{ background:"var(--bg-card)" }}>
                         {["#","Produtor","Volume (sc)","% do total","Receita (BRL)","Contratos"].map((h, i) => (
@@ -3478,7 +3479,7 @@ export default function BI() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
               </div>
             )}
@@ -3569,7 +3570,7 @@ export default function BI() {
                         </div>
                         {exp && (
                           <div style={{ background:"var(--bg-card)", borderRadius:8, border:"0.5px solid var(--bg-tag)", margin:"4px 0 8px 34px", overflow:"hidden" }}>
-                            <table data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                               <thead>
                                 <tr style={{ background:"var(--bg-tag)" }}>
                                   {["Nº","Produto","Sacas","Entregue","% Ent.","Preço","Moeda","Status"].map((h, hi) => (
@@ -3609,7 +3610,7 @@ export default function BI() {
                                   );
                                 })}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         )}
                       </div>
@@ -3702,7 +3703,7 @@ export default function BI() {
             {/* Tabela lançamentos em aberto */}
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--border)", fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Lançamentos em Aberto</div>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-card)" }}>
                     {["Tipo", "Descrição", "Categoria", "Vencimento", "Valor"].map((h, i) => (
@@ -3730,7 +3731,7 @@ export default function BI() {
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}
@@ -3847,7 +3848,7 @@ export default function BI() {
                   <span style={{ fontSize: 11, color: "var(--text-2)" }}>Ano civil:</span>
                   <div style={{ display: "flex", gap: 4 }}>
                     {["todos", ...Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() + i - 1))].map(ano => (
-                      <button data-arato-button="toggle" key={ano} type="button" onClick={() => setFiltroCambioAno(ano)}
+                      <OperationalButton data-arato-button="toggle" key={ano} type="button" onClick={() => setFiltroCambioAno(ano)}
                         style={{
                           fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "0.5px solid",
                           cursor: "pointer",
@@ -3856,7 +3857,7 @@ export default function BI() {
                           color:        filtroCambioAno === ano ? "#fff"    : "var(--text-2)",
                         }}>
                         {ano === "todos" ? "Todos" : ano}
-                      </button>
+                      </OperationalButton>
                     ))}
                   </div>
                 </div>
@@ -3878,7 +3879,7 @@ export default function BI() {
                         : "✓ Todas as datas com USD coberto"}
                     </span>
                   </div>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-card)" }}>
                         {["Data", "CP a Pagar (USD)", "CR a Receber (USD)", "Saldo USD", "Saldo BRL", "Status"].map((h, i) => (
@@ -3963,7 +3964,7 @@ export default function BI() {
                         );
                       })}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
 
                   {/* Resumo de descasamento */}
                   {descasadas.length > 0 && (
@@ -4164,7 +4165,7 @@ export default function BI() {
               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Matriz de sensibilidade — Resultado/ha (R$)</div>
               <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12 }}>Eixo X: produtividade · Eixo Y: preço soja · Verde = lucro · Vermelho = prejuízo</div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ borderCollapse: "collapse", fontSize: 11 }}>
+                <OperationalGrid data-arato-grid="true" style={{ borderCollapse: "collapse", fontSize: 11 }}>
                   <thead>
                     <tr>
                       <th style={{ padding: "6px 12px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" }}>Preço \ Prod.</th>
@@ -4200,7 +4201,7 @@ export default function BI() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
               <div style={{ marginTop: 10, fontSize: 10, color: "var(--text-2)" }}>Variações de ±8% e ±16% em relação ao cenário base. Célula destacada = cenário atual.</div>
             </div>
@@ -4337,7 +4338,7 @@ export default function BI() {
           return (
             <div>
               {/* Toolbar: filtro + exportação */}
-              <div data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+              <OperationalFilters data-arato-filters="true" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" }}>Ano / Safra:</span>
                   <SelectField value={rtFiltroLabel} onChange={e => { setRtFiltroLabel(e.target.value); setRtDrillLabel(null); }}
@@ -4346,23 +4347,23 @@ export default function BI() {
                     {rtPorAno.map(b => <option key={b.label} value={b.label}>{b.label}{b.captado === 0 ? " (sem captação)" : ""}</option>)}
                   </SelectField>
                   {rtFiltroLabel !== "todos" && (
-                    <button data-arato-button="secondary" onClick={() => { setRtFiltroLabel("todos"); setRtDrillLabel(null); }}
+                    <OperationalButton data-arato-button="secondary" onClick={() => { setRtFiltroLabel("todos"); setRtDrillLabel(null); }}
                       style={{ padding: "4px 10px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                       ✕ limpar
-                    </button>
+                    </OperationalButton>
                   )}
                 </div>
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                  <button data-arato-button="secondary" onClick={() => window.print()}
+                  <OperationalButton data-arato-button="secondary" onClick={() => window.print()}
                     style={{ padding: "6px 14px", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer", fontWeight: 600 }}>
                     ⎙ PDF
-                  </button>
-                  <button data-arato-button="primary" onClick={exportarXLSX} disabled={exportandoRT}
+                  </OperationalButton>
+                  <OperationalButton data-arato-button="primary" onClick={exportarXLSX} disabled={exportandoRT}
                     style={{ padding: "6px 14px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: exportandoRT ? "not-allowed" : "pointer", opacity: exportandoRT ? 0.7 : 1 }}>
                     {exportandoRT ? "Exportando…" : "↓ XLSX"}
-                  </button>
+                  </OperationalButton>
                 </div>
-              </div>
+              </OperationalFilters>
 
               {/* KPIs */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
@@ -4454,7 +4455,7 @@ export default function BI() {
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Histórico por Ano Fiscal</span>
                       <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>captação × amortização × juros</span>
                     </div>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           {["Ano / Safra", "Captado", "Pago (Principal)", "Juros Pagos", "Saldo Devedor", "Progresso"].map((h, i) => (
@@ -4513,7 +4514,7 @@ export default function BI() {
                                     {drillLancs.length === 0 ? (
                                       <div style={{ padding: "10px 0", fontSize: 12, color: "var(--text-muted)" }}>Nenhum lançamento encontrado para esta safra.</div>
                                     ) : (
-                                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                         <thead>
                                           <tr>
                                             {["Descrição","Categoria","Vencimento","Moeda","Tipo","Valor","Status"].map((h, hi) => (
@@ -4553,7 +4554,7 @@ export default function BI() {
                                             );
                                           })}
                                         </tbody>
-                                      </table>
+                                      </OperationalGrid>
                                     )}
                                   </td>
                                 </tr>
@@ -4577,7 +4578,7 @@ export default function BI() {
                           <td />
                         </tr>
                       </tfoot>
-                    </table>
+                    </OperationalGrid>
                   </div>
 
                   {/* Por tipo de operação */}
@@ -4879,7 +4880,7 @@ export default function BI() {
                   <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                     {sectionHeader("Evolução do Endividamento", "anos anteriores (3) → último vencimento  ·  coluna atual destacada  ·  futuro em cinza")}
                     <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 130 + 200 }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 130 + 200 }}>
                         <thead>
                           <tr>
                             <th style={thFirst}>Indicador</th>
@@ -4937,7 +4938,7 @@ export default function BI() {
                             () => "#633806",
                           )}
                         </tbody>
-                      </table>
+                      </OperationalGrid>
                     </div>
                   </div>
 
@@ -5044,7 +5045,7 @@ export default function BI() {
                 const cor = semParcelas.length > 0 ? "#E24B4A" : "#16A34A";
                 return (
                   <div style={{ marginTop: 24, border: `0.5px solid ${semParcelas.length > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                    <button data-arato-button="secondary" onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("contratos_cp") ? n.delete("contratos_cp") : n.add("contratos_cp"); return n; })}
+                    <OperationalButton data-arato-button="secondary" onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("contratos_cp") ? n.delete("contratos_cp") : n.add("contratos_cp"); return n; })}
                       style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
                       <span style={{ fontSize: 18, flexShrink: 0 }}>📑</span>
@@ -5065,7 +5066,7 @@ export default function BI() {
                         </div>
                       )}
                       <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
-                    </button>
+                    </OperationalButton>
                     {expanded && (
                       <div style={{ borderTop: "0.5px solid var(--border)" }}>
                         {cfLoading || auditLoading ? (
@@ -5074,7 +5075,7 @@ export default function BI() {
                           <div style={{ padding: 20, color: "var(--text-3)", fontSize: 13, textAlign: "center" }}>Nenhum contrato financeiro cadastrado</div>
                         ) : (
                           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   {["Contrato","Credor","Status","Parcelas CP","Total CP","1º Venc.","Últ. Venc."].map(h => (
@@ -5108,7 +5109,7 @@ export default function BI() {
                                   );
                                 })}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         )}
                       </div>
@@ -5158,7 +5159,7 @@ export default function BI() {
 
                 return (
                 <div style={{ marginTop: 8, border: "0.5px solid rgba(226,75,74,0.3)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                  <button data-arato-button="secondary" onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("parcelas_dup") ? n.delete("parcelas_dup") : n.add("parcelas_dup"); return n; })}
+                  <OperationalButton data-arato-button="secondary" onClick={() => setAuditExpand(prev => { const n = new Set(prev); n.has("parcelas_dup") ? n.delete("parcelas_dup") : n.add("parcelas_dup"); return n; })}
                     style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0, display: "inline-block" }} />
                     <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
@@ -5168,7 +5169,7 @@ export default function BI() {
                     </span>
                     <span style={{ background: "#FEE2E2", color: "#991B1B", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>{auditDups.length} duplicatas</span>
                     <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expDup ? "▲" : "▼"}</span>
-                  </button>
+                  </OperationalButton>
                   {expDup && <div style={{ borderTop: "0.5px solid var(--border)" }}>
                     {/* Toolbar de seleção */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: algumaSel ? "#FEF2F2" : "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
@@ -5180,15 +5181,15 @@ export default function BI() {
                         {algumaSel ? `${dupSelecionadas.size} selecionada(s)` : "Selecionar todas"}
                       </label>
                       {algumaSel && (
-                        <button data-arato-button="toggle" onClick={excluirSelecionadas} disabled={deletandoDup}
+                        <OperationalButton data-arato-button="toggle" onClick={excluirSelecionadas} disabled={deletandoDup}
                           style={{ background: deletandoDup ? "#ccc" : "#E24B4A", color: "#fff", border: "none", borderRadius: 6, padding: "5px 14px", fontSize: 12, fontWeight: 600, cursor: deletandoDup ? "not-allowed" : "pointer" }}>
                           {deletandoDup ? "Excluindo…" : `🗑 Excluir ${dupSelecionadas.size} selecionada(s)`}
-                        </button>
+                        </OperationalButton>
                       )}
                       {!algumaSel && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Selecione linhas e clique em excluir</span>}
                     </div>
                     <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             <th style={{ width: 36, padding: "8px 12px", borderBottom: "0.5px solid var(--border)" }} />
@@ -5217,7 +5218,7 @@ export default function BI() {
                             );
                           })}
                         </tbody>
-                      </table>
+                      </OperationalGrid>
                     </div>
                   </div>}
                 </div>
@@ -5234,7 +5235,7 @@ export default function BI() {
                   const cor = ld ? "#ccc" : count > 0 ? "#E24B4A" : "#16A34A";
                   return (
                     <div data-arato-statistic="action" style={{ border: `0.5px solid ${count > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                      <button data-arato-button="secondary" onClick={() => toggleAudit(id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                      <OperationalButton data-arato-button="secondary" onClick={() => toggleAudit(id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
                         <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>
@@ -5247,7 +5248,7 @@ export default function BI() {
                           </span>
                         )}
                         <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
-                      </button>
+                      </OperationalButton>
                       {expanded && <div style={{ borderTop: "0.5px solid var(--border)" }}>{children}</div>}
                     </div>
                   );
@@ -5259,10 +5260,10 @@ export default function BI() {
                         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Verificações de Dados</div>
                         <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Clique em cada item para ver os detalhes</div>
                       </div>
-                      <button data-arato-button="secondary" onClick={() => { carregarAuditExtra(); if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos); }} disabled={auditExtraLoading}
+                      <OperationalButton data-arato-button="secondary" onClick={() => { carregarAuditExtra(); if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos); }} disabled={auditExtraLoading}
                         style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: auditExtraLoading ? "not-allowed" : "pointer", opacity: auditExtraLoading ? 0.6 : 1 }}>
                         ⟳ Reprocessar
-                      </button>
+                      </OperationalButton>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 
@@ -5271,7 +5272,7 @@ export default function BI() {
                           <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Nenhum romaneio pendente</div>
                         ) : (
                           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr style={{ background: "var(--bg-page)" }}>
                                 {["Número","Data","Produto","Status"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
                               </tr></thead>
@@ -5283,7 +5284,7 @@ export default function BI() {
                                   <td style={{ padding: "8px 12px" }}><span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600 }}>{r.status ?? "aberto"}</span></td>
                                 </tr>
                               ))}</tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         )}
                       </AuditCard>
@@ -5293,7 +5294,7 @@ export default function BI() {
                           <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Todas as unidades consistentes</div>
                         ) : (
                           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr style={{ background: "var(--bg-page)" }}>
                                 {["Produto","Unidade na NF","Unidade no sistema","NF Entrada"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
                               </tr></thead>
@@ -5305,7 +5306,7 @@ export default function BI() {
                                   <td style={{ padding: "8px 12px", color: "var(--text-3)", fontSize: 11 }}>{r.nf_entrada_id.slice(0, 8)}…</td>
                                 </tr>
                               ))}</tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         )}
                       </AuditCard>
@@ -5325,7 +5326,7 @@ export default function BI() {
                               ⚠️ Esses consumos não têm CC apontado — o custo não foi apropriado corretamente.
                             </div>
                             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead><tr style={{ background: "var(--bg-page)" }}>
                                   {["Descrição","Quantidade","Unidade","Data"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
                                 </tr></thead>
@@ -5337,7 +5338,7 @@ export default function BI() {
                                     <td style={{ padding: "8px 12px", color: "var(--text-3)", fontSize: 11 }}>{fmtDt(r.created_at?.slice(0, 10))}</td>
                                   </tr>
                                 ))}</tbody>
-                              </table>
+                              </OperationalGrid>
                             </div>
                           </>
                         )}
@@ -5378,7 +5379,7 @@ export default function BI() {
                   <div data-arato-dialog-body="true" style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento RT — contrato não localizado</div>
                   <div data-arato-dialog-body="true" style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{l.descricao}</div>
                 </div>
-                <button data-arato-button="icon" onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12 }}>✕</button>
+                <OperationalButton data-arato-button="icon" onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12 }}>✕</OperationalButton>
               </div>
               <div data-arato-dialog-body="true" style={{ padding: "18px 22px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 {[["Tipo", <span style={{ background: tipoBg, color: tipoCor, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{tipo}</span>],
@@ -5395,7 +5396,7 @@ export default function BI() {
                 ))}
               </div>
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 22px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10, background: "var(--bg-card)" }}>
-                <button data-arato-button="secondary" onClick={() => setRtLancModal(null)} style={{ padding: "7px 16px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setRtLancModal(null)} style={{ padding: "7px 16px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</OperationalButton>
                 <a href="/financeiro/contratos" style={{ padding: "7px 16px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Contratos Financeiros →</a>
               </div>
             </div>
@@ -5577,7 +5578,7 @@ export default function BI() {
                       </div>
                     </div>
                   </div>
-                  <button data-arato-button="icon" onClick={() => setRtContratoModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 22, cursor: "pointer", lineHeight: 1, flexShrink: 0, marginLeft: 16 }}>✕</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setRtContratoModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 22, cursor: "pointer", lineHeight: 1, flexShrink: 0, marginLeft: 16 }}>✕</OperationalButton>
                 </div>
               </div>
 
@@ -5624,7 +5625,7 @@ export default function BI() {
                 {c.parcelas.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 13 }}>Nenhuma parcela cadastrada</div>
                 ) : (
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={{ ...thSt, textAlign: "center", width: 40 }}>#</th>
@@ -5661,7 +5662,7 @@ export default function BI() {
                         );
                       })}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 )}
               </div>
 
@@ -5691,8 +5692,8 @@ export default function BI() {
                     </div>
                   </div>
                   <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                    <button data-arato-button="secondary" onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</button>
-                    <button data-arato-button="secondary" onClick={abrirPreview} style={{ padding: "8px 18px", background: "var(--bg-page)", border: "0.5px solid #111111", borderRadius: 8, fontSize: 12, color: "#111111", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</button>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>Fechar</OperationalButton>
+                    <OperationalButton data-arato-button="secondary" onClick={abrirPreview} style={{ padding: "8px 18px", background: "var(--bg-page)", border: "0.5px solid #111111", borderRadius: 8, fontSize: 12, color: "#111111", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</OperationalButton>
                     <a href="/financeiro/contratos" style={{ padding: "8px 18px", background: "#111111", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Abrir em Contratos →</a>
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -253,7 +254,7 @@ export default function TesourariaPage() {
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Lançamento de Tesouraria</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
@@ -266,9 +267,9 @@ export default function TesourariaPage() {
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</button>
+            <OperationalButton data-arato-button="primary" onClick={() => setModalLanc(true)} style={btnV}>+ Novo Lançamento</OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 22 }}>
@@ -292,7 +293,7 @@ export default function TesourariaPage() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)" }}>
                   {["Data", "Operação", "Descrição", "Conta", "Entrada", "Saída", "Status", ""].map(h => (
@@ -321,13 +322,13 @@ export default function TesourariaPage() {
                       </span>
                     </td>
                     <td style={{ padding: "9px 8px", textAlign: "center" }}>
-                      <button data-arato-button="icon" onClick={() => abrirEditarTesoura(l)} title="Editar" style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>✎</button>
-                      <button data-arato-button="icon" onClick={async () => { if (confirm("Excluir este lançamento?")) { await supabase.from("lancamentos").delete().eq("id", l.id); await carregar(); } }} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>✕</button>
+                      <OperationalButton data-arato-button="icon" onClick={() => abrirEditarTesoura(l)} title="Editar" style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>✎</OperationalButton>
+                      <OperationalButton data-arato-button="icon" onClick={async () => { if (confirm("Excluir este lançamento?")) { await supabase.from("lancamentos").delete().eq("id", l.id); await carregar(); } }} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>✕</OperationalButton>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         )}
       </main>
@@ -340,7 +341,7 @@ export default function TesourariaPage() {
           <div data-arato-dialog="form" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.18)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px 12px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Editar lançamento</div>
-              <button data-arato-button="icon" onClick={() => setEditLanc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setEditLanc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "16px 20px", display: "grid", gap: 12 }}>
               {CATS_PAR_TESOURA.includes(editLanc.categoria) && (
@@ -376,8 +377,8 @@ export default function TesourariaPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "12px 20px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setEditLanc(null)} disabled={editSaving}>Cancelar</button>
-              <button data-arato-button="primary" style={btnV} onClick={salvarEditarTesoura} disabled={editSaving}>{editSaving ? "Salvando…" : "Salvar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setEditLanc(null)} disabled={editSaving}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={salvarEditarTesoura} disabled={editSaving}>{editSaving ? "Salvando…" : "Salvar"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -410,7 +411,7 @@ export default function TesourariaPage() {
             <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Lançamento de Tesouraria</div>
-                <button data-arato-button="icon" onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+                <OperationalButton data-arato-button="icon" onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
               </div>
               <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
                 {lErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{lErr}</div>}
@@ -602,10 +603,10 @@ export default function TesourariaPage() {
                         <label data-arato-label="true" style={lbl}>Tipo</label>
                         <div style={{ display: "flex", gap: 8 }}>
                           {(["pagar", "receber"] as const).map(t => (
-                            <button data-arato-button="toggle" key={t} onClick={() => setLForm(f => ({ ...f, tipo: t }))}
+                            <OperationalButton data-arato-button="toggle" key={t} onClick={() => setLForm(f => ({ ...f, tipo: t }))}
                               style={{ flex: 1, padding: "9px 14px", border: `2px solid ${lForm.tipo === t ? "#111111" : "var(--border-table)"}`, borderRadius: 8, background: lForm.tipo === t ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: lForm.tipo === t ? "#0D0D0D" : "var(--text-2)" }}>
                               {t === "pagar" ? "Saída (Pagar)" : "Entrada (Receber)"}
-                            </button>
+                            </OperationalButton>
                           ))}
                         </div>
                       </div>
@@ -664,10 +665,10 @@ export default function TesourariaPage() {
                 </div>
               </div>
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalLanc(false)}>Cancelar</button>
-                <button data-arato-button="toggle" onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#111111", cursor: lSaving ? "default" : "pointer" }}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalLanc(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#111111", cursor: lSaving ? "default" : "pointer" }}>
                   {lSaving ? "Salvando…" : "Salvar"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>

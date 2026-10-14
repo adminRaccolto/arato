@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -1062,8 +1063,8 @@ function MdfePageInner() {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ display: "flex", gap: 8 }}>
-            <button data-arato-button="secondary" onClick={() => { setChaveMsg(null); setModalChave(true); }} style={btnR} title="Encerra na SEFAZ um MDF-e que ficou aberto e bloqueia a placa (mesmo emitido fora do sistema)">Encerrar por chave</button>
-            <button data-arato-button="primary" onClick={abrirNovo} style={btnV}>+ Emitir MDF-e</button>
+            <OperationalButton data-arato-button="secondary" onClick={() => { setChaveMsg(null); setModalChave(true); }} style={btnR} title="Encerra na SEFAZ um MDF-e que ficou aberto e bloqueia a placa (mesmo emitido fora do sistema)">Encerrar por chave</OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={abrirNovo} style={btnV}>+ Emitir MDF-e</OperationalButton>
           </div>
         </div>
 
@@ -1074,7 +1075,7 @@ function MdfePageInner() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Nº/Série","Data","Percurso","Veículo","Motorista","Documentos","Peso","Status",""].map(h => (
@@ -1120,23 +1121,23 @@ function MdfePageInner() {
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                           {m.status === "rascunho" && (
-                            <button data-arato-button="primary" onClick={() => autorizar(m)} disabled={autorizando === m.id} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: autorizando === m.id ? "default" : "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="primary" onClick={() => autorizar(m)} disabled={autorizando === m.id} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: autorizando === m.id ? "default" : "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               {autorizando === m.id ? "Transmitindo…" : "Autorizar SEFAZ"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {m.status === "rascunho" && (
-                            <button data-arato-button="danger" onClick={() => excluirRascunho(m)} disabled={autorizando === m.id} title="Excluir este rascunho (nunca autorizado)"
+                            <OperationalButton data-arato-button="danger" onClick={() => excluirRascunho(m)} disabled={autorizando === m.id} title="Excluir este rascunho (nunca autorizado)"
                               style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
                               Excluir
-                            </button>
+                            </OperationalButton>
                           )}
                           {m.status === "autorizado" && (
-                            <button data-arato-button="primary" onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="primary" onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Encerrar
-                            </button>
+                            </OperationalButton>
                           )}
                           {(m.status === "autorizado" || m.status === "encerrado") && (
-                            <button data-arato-button="secondary" onClick={() => {
+                            <OperationalButton data-arato-button="secondary" onClick={() => {
                               // Emitente real do MDF-e: o escolhido nele; senão a transportadora do CT-e vinculado; senão a 1ª empresa.
                               const cteChave = (m.documentos.find(d => d.tipo === "cte")?.chave ?? "").replace(/\D/g, "");
                               const cnpjCte = ctes.find(c => (c.chave_acesso ?? "").replace(/\D/g, "") === cteChave)?.emitente_cnpj ?? null;
@@ -1145,17 +1146,17 @@ function MdfePageInner() {
                               imprimirDamdfe(m, doc, m.emitente_razao_social || emp?.razao_social || emp?.nome || empresaNome);
                             }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                               DAMDFE
-                            </button>
+                            </OperationalButton>
                           )}
                           {(m.status === "rascunho" || m.status === "autorizado") && (
-                            <button data-arato-button="secondary" onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               {m.status === "autorizado" ? "CIOT" : "Editar"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {m.status === "autorizado" && (
-                            <button data-arato-button="danger" onClick={() => cancelar(m)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
+                            <OperationalButton data-arato-button="danger" onClick={() => cancelar(m)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
                               Cancelar
-                            </button>
+                            </OperationalButton>
                           )}
                         </div>
                       </td>
@@ -1163,7 +1164,7 @@ function MdfePageInner() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         )}
 
@@ -1186,12 +1187,12 @@ function MdfePageInner() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mdfeEdit ? `MDF-e ${mdfeEdit.numero_mdfe}/${mdfeEdit.serie}` : "Emitir MDF-e"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Manifesto de Documentos Fiscais Eletrônico</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 4, padding: "0 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               {([["dados", "Dados do MDF-e"], ["seguro", "Seguro e Averbação"]] as const).map(([k, t]) => (
-                <button data-arato-tab-active={abaModal === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</button>
+                <OperationalButton data-arato-tab-active={abaModal === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAbaModal(k)} style={{ padding: "10px 14px", background: "none", border: "none", borderBottom: abaModal === k ? "2px solid #111111" : "2px solid transparent", fontSize: 13, fontWeight: abaModal === k ? 600 : 400, color: abaModal === k ? "var(--text-1)" : "var(--text-3)", cursor: "pointer" }}>{t}</OperationalButton>
               ))}
             </div>
 
@@ -1310,11 +1311,11 @@ function MdfePageInner() {
                 <label data-arato-label="true" style={lbl}>Cód. IBGE Início {form.ibge_inicio ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
                 <div style={{ display: "flex", gap: 4 }}>
                   <input value={form.ibge_inicio} onChange={e => setForm(f => ({ ...f, ibge_inicio: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5106224" maxLength={7} />
-                  <button data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Início"
+                  <OperationalButton data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Início"
                     onClick={async () => { const ibge = await buscarIbgeMdfe(form.municipio_inicio, form.uf_inicio); if (ibge) setForm(f => ({ ...f, ibge_inicio: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                     🔄
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
               <div data-arato-dialog-body="true">
@@ -1329,11 +1330,11 @@ function MdfePageInner() {
                   {UFS.filter(u => u !== form.uf_inicio && u !== form.uf_fim).map(u => {
                     const sel = form.percurso_ufs.includes(u);
                     return (
-                      <button data-arato-button="toggle" key={u} type="button"
+                      <OperationalButton data-arato-button="toggle" key={u} type="button"
                         onClick={() => setForm(f => ({ ...f, percurso_ufs: sel ? f.percurso_ufs.filter(x => x !== u) : [...f.percurso_ufs, u] }))}
                         style={{ padding: "3px 8px", borderRadius: 6, fontSize: 11, border: `1px solid ${sel ? "#111111" : "var(--border-table)"}`, background: sel ? "#E8E8E8" : "var(--bg-card)", cursor: "pointer", color: sel ? "#0D0D0D" : "var(--text-2)", fontWeight: sel ? 600 : 400 }}>
                         {u}
-                      </button>
+                      </OperationalButton>
                     );
                   })}
                 </div>
@@ -1390,9 +1391,9 @@ function MdfePageInner() {
                         <div style={{ fontSize:10, color:"var(--text-2)" }}>Protocolo</div>
                         <div style={{ fontSize:12, fontFamily:"monospace", color:"var(--text-2)" }}>{ciotGerado.protocolo}</div>
                       </div>}
-                      <button data-arato-button="secondary" type="button" onClick={resetCiot} style={{ marginLeft:"auto", padding:"6px 14px", border:"0.5px solid #C9921B50", borderRadius:8, background:"#FBF3E0", color:"#7A5400", fontSize:12, cursor:"pointer" }}>
+                      <OperationalButton data-arato-button="secondary" type="button" onClick={resetCiot} style={{ marginLeft:"auto", padding:"6px 14px", border:"0.5px solid #C9921B50", borderRadius:8, background:"#FBF3E0", color:"#7A5400", fontSize:12, cursor:"pointer" }}>
                         Gerar novo
-                      </button>
+                      </OperationalButton>
                     </div>
                   ) : (
                     <>
@@ -1456,16 +1457,16 @@ function MdfePageInner() {
                       <div data-arato-panel="true" style={{ gridColumn: "1/-1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
                         <div style={{ flex: "1 1 200px" }}><label data-arato-label="true" style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>
                         <div style={{ flex: "0 1 140px" }}><label data-arato-label="true" style={lbl}>Cód. verificador</label><input style={inp} value={ciotManual.cv} onChange={e => setCiotManual(m => ({ ...m, cv: e.target.value }))} /></div>
-                        <button data-arato-button="secondary" type="button" onClick={() => {
+                        <OperationalButton data-arato-button="secondary" type="button" onClick={() => {
                           const cod = ciotManual.codigo.replace(/\D/g, "");
                           if (cod.length !== 12) { setCiotErro("O CIOT tem 12 dígitos."); return; }
                           setCiotGerado({ id: cod, cv: ciotManual.cv.trim(), protocolo: "" }); setCiotErro("");
-                        }} style={{ padding: "8px 16px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5400", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Usar este CIOT</button>
+                        }} style={{ padding: "8px 16px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5400", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Usar este CIOT</OperationalButton>
                       </div>
                       <div data-arato-dialog-actions="true" style={{ gridColumn:"1/-1", display:"flex", justifyContent:"flex-end" }}>
-                        <button data-arato-button="toggle" type="button" onClick={gerarCiot} disabled={gerandoCiot} style={{ padding:"8px 24px", background: gerandoCiot ? "var(--text-muted)" : "#C9921B", color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:13, cursor: gerandoCiot ? "default":"pointer" }}>
+                        <OperationalButton data-arato-button="toggle" type="button" onClick={gerarCiot} disabled={gerandoCiot} style={{ padding:"8px 24px", background: gerandoCiot ? "var(--text-muted)" : "#C9921B", color:"#fff", border:"none", borderRadius:8, fontWeight:700, fontSize:13, cursor: gerandoCiot ? "default":"pointer" }}>
                           {gerandoCiot ? "Gerando CIOT…" : "🔗 Gerar CIOT via ANTT"}
-                        </button>
+                        </OperationalButton>
                       </div>
                     </>
                   )}
@@ -1483,11 +1484,11 @@ function MdfePageInner() {
                       setForm(f => ({ ...f, nfe_chaves: arr }));
                     }} placeholder={`Chave de acesso ${idx + 1} (44 dígitos)`} maxLength={44} style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
                     {form.nfe_chaves.length > 1 && (
-                      <button data-arato-button="danger" type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: f.nfe_chaves.filter((_, i) => i !== idx) }))} style={{ padding: "0 10px", border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", cursor: "pointer", color: "#791F1F", fontSize: 14 }}>×</button>
+                      <OperationalButton data-arato-button="danger" type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: f.nfe_chaves.filter((_, i) => i !== idx) }))} style={{ padding: "0 10px", border: "0.5px solid #E24B4A50", borderRadius: 8, background: "#FCEBEB", cursor: "pointer", color: "#791F1F", fontSize: 14 }}>×</OperationalButton>
                     )}
                   </div>
                 ))}
-                <button data-arato-button="secondary" type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: [...f.nfe_chaves, ""] }))} style={{ ...btnR, fontSize: 12, padding: "6px 14px", alignSelf: "flex-start" }}>+ Adicionar NF-e</button>
+                <OperationalButton data-arato-button="secondary" type="button" onClick={() => setForm(f => ({ ...f, nfe_chaves: [...f.nfe_chaves, ""] }))} style={{ ...btnR, fontSize: 12, padding: "6px 14px", alignSelf: "flex-start" }}>+ Adicionar NF-e</OperationalButton>
               </div>
 
               {/* ── Carga ── */}
@@ -1537,10 +1538,10 @@ function MdfePageInner() {
                 TAC: CIOT gerado via API ANTT · CLT: isento · Transmissão MDF-e via SEFAZ
               </div>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button data-arato-button="toggle" onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                   {saving ? "Salvando…" : (mdfeEdit ? "Salvar alterações" : "Salvar MDF-e")}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -1567,8 +1568,8 @@ function MdfePageInner() {
             </div>
             {chaveMsg && <div style={{ marginTop: 12, fontSize: 12, padding: "8px 12px", borderRadius: 8, background: chaveMsg.ok ? "#EAF7EE" : "#FCEBEB", color: chaveMsg.ok ? "#166534" : "#791F1F" }}>{chaveMsg.txt}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalChave(false)}>Fechar</button>
-              <button data-arato-button="primary" onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.uf || !chaveForm.data || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalChave(false)}>Fechar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={encerrarPorChave} disabled={chaveSaving || chaveForm.chave.replace(/\D/g, "").length !== 44 || !chaveForm.uf || !chaveForm.data || !chaveForm.municipio.trim()} style={{ ...btnV, opacity: chaveSaving ? .6 : 1 }}>{chaveSaving ? "Encerrando…" : "Encerrar na SEFAZ"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -1582,7 +1583,7 @@ function MdfePageInner() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>MDF-e {modalEnc.numero_mdfe}/{modalEnc.serie} — {modalEnc.veiculo_placa}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalEnc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalEnc(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div data-arato-dialog-body="true">
@@ -1601,10 +1602,10 @@ function MdfePageInner() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalEnc(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={encerrar} disabled={encSaving} style={{ ...btnV, background: encSaving ? "var(--text-muted)" : "#1A6B3C", cursor: encSaving ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalEnc(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={encerrar} disabled={encSaving} style={{ ...btnV, background: encSaving ? "var(--text-muted)" : "#1A6B3C", cursor: encSaving ? "default" : "pointer" }}>
                 {encSaving ? "Encerrando…" : "Confirmar Encerramento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

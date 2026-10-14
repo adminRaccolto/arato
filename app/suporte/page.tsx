@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../components/OperationalUI";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "@/components/TopNav";
 import { useAuth } from "@/components/AuthProvider";
@@ -185,7 +186,7 @@ export default function SuportePage() {
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span>⚠️ {erroGeral}</span>
-            <button data-arato-button="icon" onClick={() => setErroGeral(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#c0392b", fontSize: 16, padding: "0 4px" }}>×</button>
+            <OperationalButton data-arato-button="icon" onClick={() => setErroGeral(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#c0392b", fontSize: 16, padding: "0 4px" }}>×</OperationalButton>
           </div>
         )}
 
@@ -199,7 +200,7 @@ export default function SuportePage() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#111111" }}>Suporte Chat</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Olívia · Assistente Virtual</div>
               </div>
-              <button data-arato-button="primary"
+              <OperationalButton data-arato-button="primary"
                 onClick={novaConversa}
                 style={{
                   background: "#111111", color: "#fff", border: "none", borderRadius: 7,
@@ -207,7 +208,7 @@ export default function SuportePage() {
                 }}
               >
                 + Nova
-              </button>
+              </OperationalButton>
             </div>
 
             {/* Lista de conversas */}
@@ -245,7 +246,7 @@ export default function SuportePage() {
                           {conv.updated_at ? new Date(conv.updated_at).toLocaleDateString("pt-BR") : ""}
                         </div>
                       </div>
-                      <button data-arato-button="icon"
+                      <OperationalButton data-arato-button="icon"
                         onClick={(e) => deletarConversa(conv.id, e)}
                         style={{
                           background: "none", border: "none", color: "#ccc", cursor: "pointer",
@@ -255,7 +256,7 @@ export default function SuportePage() {
                         title="Excluir"
                       >
                         ×
-                      </button>
+                      </OperationalButton>
                     </div>
                   );
                 })
@@ -298,7 +299,7 @@ export default function SuportePage() {
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                         {SUGESTOES.map(s => (
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             key={s}
                             onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 50); }}
                             style={{
@@ -307,7 +308,7 @@ export default function SuportePage() {
                             }}
                           >
                             {s}
-                          </button>
+                          </OperationalButton>
                         ))}
                       </div>
                     </div>
@@ -394,7 +395,7 @@ export default function SuportePage() {
                       t.style.height = Math.min(t.scrollHeight, 120) + "px";
                     }}
                   />
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     onClick={enviarMensagem}
                     disabled={!input.trim() || enviando}
                     style={{
@@ -405,7 +406,7 @@ export default function SuportePage() {
                     }}
                   >
                     ↑
-                  </button>
+                  </OperationalButton>
                 </div>
               </>
             ) : (
@@ -418,7 +419,7 @@ export default function SuportePage() {
                   Tire dúvidas sobre o Arato, regras fiscais do agronegócio e melhores práticas do campo.
                   Selecione uma conversa ou crie uma nova.
                 </div>
-                <button data-arato-button="primary"
+                <OperationalButton data-arato-button="primary"
                   onClick={novaConversa}
                   style={{
                     background: "#111111", color: "#fff", border: "none", borderRadius: 10,
@@ -426,7 +427,7 @@ export default function SuportePage() {
                   }}
                 >
                   Iniciar nova conversa
-                </button>
+                </OperationalButton>
               </div>
             )}
           </div>

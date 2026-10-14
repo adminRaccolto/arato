@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -902,24 +903,24 @@ function ParametrosSistemaContent() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button data-arato-button="primary" onClick={carregarOperacoesPresets} disabled={carregandoOps}
+          <OperationalButton data-arato-button="primary" onClick={carregarOperacoesPresets} disabled={carregandoOps}
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {carregandoOps ? "Carregando..." : "Carregar Operações Padrão (MT)"}
-          </button>
+          </OperationalButton>
           <div style={{ display: "flex", gap: 8 }}>
-            <button data-arato-button="secondary" onClick={() => window.print()} className="no-print"
+            <OperationalButton data-arato-button="secondary" onClick={() => window.print()} className="no-print"
               style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               🖨 Imprimir
-            </button>
-            <button data-arato-button="primary" onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
               style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               + Nova Operação
-            </button>
+            </OperationalButton>
           </div>
         </div>
 
         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["Operação","CFOP int.","CFOP ext.","ICMS interno","ICMS externo","Alíq%","B.Red%","PIS","COFINS","IBS/CBS","Status",""].map(h => (
@@ -962,8 +963,8 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button data-arato-button="secondary" onClick={() => setModalOp(op)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
-                        <button data-arato-button="icon" onClick={() => excluirOp(op.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
+                        <OperationalButton data-arato-button="secondary" onClick={() => setModalOp(op)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</OperationalButton>
+                        <OperationalButton data-arato-button="icon" onClick={() => excluirOp(op.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</OperationalButton>
                       </div>
                     </td>
                   </tr>
@@ -975,7 +976,7 @@ function ParametrosSistemaContent() {
                 </td></tr>
               )}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
       </div>
     );
@@ -1015,13 +1016,13 @@ function ParametrosSistemaContent() {
     <div>
       {renderFieldsGrid(modulo, fields)}
       <div style={{ marginTop: 20 }}>
-        <button data-arato-button="toggle"
+        <OperationalButton data-arato-button="toggle"
           onClick={() => salvar(modulo, fazendaIdAlvo)}
           disabled={salvando === modulo}
           style={{ padding: "9px 22px", background: ok === modulo ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
           {salvando === modulo ? "Salvando..." : ok === modulo ? "Salvo!" : "Salvar Parâmetros"}
-        </button>
+        </OperationalButton>
       </div>
     </div>
   );
@@ -1120,7 +1121,7 @@ function ParametrosSistemaContent() {
               {(["homologacao", "producao"] as const).map(v => {
                 const ativo = ambienteGlobal === v;
                 return (
-                  <button data-arato-button="toggle"
+                  <OperationalButton data-arato-button="toggle"
                     key={v}
                     onClick={async () => {
                       const newCfg = { ...(cfgs["fiscal_global"] ?? {}), ambiente: v };
@@ -1135,7 +1136,7 @@ function ParametrosSistemaContent() {
                     }}
                   >
                     {v === "producao" ? "🟢 Produção" : "🟡 Homologação"}
-                  </button>
+                  </OperationalButton>
                 );
               })}
             </div>
@@ -1212,7 +1213,7 @@ function ParametrosSistemaContent() {
                         const atual = (c.ambiente as string) || "homologacao";
                         const ativo = atual === v;
                         return (
-                          <button data-arato-button="toggle"
+                          <OperationalButton data-arato-button="toggle"
                             key={v}
                             onClick={async () => {
                               const newCfg = { ...(cfgs[emitter.moduloKey] ?? {}), ambiente: v };
@@ -1226,7 +1227,7 @@ function ParametrosSistemaContent() {
                             }}
                           >
                             {v === "producao" ? "Produção" : "Homologação"}
-                          </button>
+                          </OperationalButton>
                         );
                       })}
                     </div>
@@ -1243,12 +1244,12 @@ function ParametrosSistemaContent() {
                       <span style={{ fontSize: 12, color: "var(--text-1)" }}>
                         Os dados de identificação e endereço podem ser preenchidos automaticamente a partir do cadastro do {emitter.type === "produtor" ? "produtor" : "empresa"}.
                       </span>
-                      <button data-arato-button="toggle"
+                      <OperationalButton data-arato-button="toggle"
                         onClick={() => autoPreencherDoCadastro(emitter, true)}
                         disabled={salvando === emitter.moduloKey}
                         style={{ padding: "5px 14px", background: ok === emitter.moduloKey ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                         {salvando === emitter.moduloKey ? "Preenchendo..." : ok === emitter.moduloKey ? "✓ Preenchido e salvo!" : "↺ Preencher do Cadastro"}
-                      </button>
+                      </OperationalButton>
                     </div>
 
                     {/* Identificação */}
@@ -1325,16 +1326,16 @@ function ParametrosSistemaContent() {
                                   <input key={`ie-${i}`} value={row.ie}
                                     onChange={e => { const n = [...iesPorUf]; n[i] = { ...n[i], ie: e.target.value }; setIes(n); }}
                                     placeholder="Número da IE" style={{ padding: "6px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box" as const }} />
-                                  <button data-arato-button="icon" key={`rm-${i}`} onClick={() => setIes(iesPorUf.filter((_, j) => j !== i))}
-                                    style={{ background: "none", border: "0.5px solid #E24B4A", borderRadius: 5, color: "#E24B4A", fontSize: 14, cursor: "pointer", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                                  <OperationalButton data-arato-button="icon" key={`rm-${i}`} onClick={() => setIes(iesPorUf.filter((_, j) => j !== i))}
+                                    style={{ background: "none", border: "0.5px solid #E24B4A", borderRadius: 5, color: "#E24B4A", fontSize: 14, cursor: "pointer", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>×</OperationalButton>
                                 </>
                               ))}
                             </div>
                           )}
-                          <button data-arato-button="secondary" onClick={() => setIes([...iesPorUf, { uf: "", ie: "" }])}
+                          <OperationalButton data-arato-button="secondary" onClick={() => setIes([...iesPorUf, { uf: "", ie: "" }])}
                             style={{ fontSize: 12, padding: "5px 12px", border: "0.5px solid var(--border)", borderRadius: 6, background: "var(--bg-page)", cursor: "pointer", color: "var(--text-1)" }}>
                             + Adicionar IE por UF
-                          </button>
+                          </OperationalButton>
                           {iesPorUf.length > 0 && (
                             <p style={{ fontSize: 11, color: "var(--text-3)", margin: "8px 0 0" }}>
                               Ao emitir NF-e, o sistema usa a IE da UF do destinatário. Se não encontrar, usa a IE principal acima.
@@ -1402,11 +1403,11 @@ function ParametrosSistemaContent() {
                       {certCorrectPath && certPathInvalid && (
                         <div style={{ marginBottom: 14, padding: "10px 14px", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
                           <span style={{ color: "#166534", flex: 1 }}>Certificado cadastrado: <code>{certCorrectPath}</code></span>
-                          <button data-arato-button="primary"
+                          <OperationalButton data-arato-button="primary"
                             onClick={() => salvarComValor(emitter.moduloKey, { ...(cfgs[emitter.moduloKey] ?? {} as CfgModulo), cert_a1_path: certCorrectPath })}
                             style={{ padding: "4px 14px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                             ✓ Usar caminho correto
-                          </button>
+                          </OperationalButton>
                         </div>
                       )}
 
@@ -1437,7 +1438,7 @@ function ParametrosSistemaContent() {
                               </div>
                             )}
                             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>{hasCert ? "Atualizar certificado" : "Enviar certificado A1 (.pfx)"}</div>
-                            <div data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                            <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                               <div>
                                 <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>Arquivo .pfx / .p12</div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1455,13 +1456,13 @@ function ParametrosSistemaContent() {
                                   placeholder="Senha do .pfx"
                                   style={{ padding: "7px 10px", border: "0.5px solid #CBD5E1", borderRadius: 6, fontSize: 13, width: 180 }} />
                               </div>
-                              <button data-arato-button="toggle"
+                              <OperationalButton data-arato-button="toggle"
                                 disabled={!cs.file || !cs.senha.trim() || cs.loading}
                                 onClick={() => fazerUploadCert({ id: emitter.id, moduloKey: emitter.moduloKey, cpf_cnpj: emitter.cpf_cnpj, nome: emitter.nome })}
                                 style={{ padding: "7px 20px", background: cs.loading ? "#94A3B8" : (!cs.file || !cs.senha.trim() ? "#CBD5E1" : "#111111"), color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: cs.loading || !cs.file || !cs.senha.trim() ? "not-allowed" : "pointer" }}>
                                 {cs.loading ? "Enviando..." : "Enviar"}
-                              </button>
-                            </div>
+                              </OperationalButton>
+                            </OperationalFilters>
                             {cs.ok && <div style={{ marginTop: 8, color: "#16A34A", fontSize: 12, fontWeight: 600 }}>✓ Certificado atualizado com sucesso!</div>}
                             {cs.erro && <div style={{ marginTop: 8, color: "#DC2626", fontSize: 12 }}>{cs.erro}</div>}
                           </div>
@@ -1477,7 +1478,7 @@ function ParametrosSistemaContent() {
 
                       {/* Botão pré-preencher MT */}
                       <div style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                        <button data-arato-button="secondary"
+                        <OperationalButton data-arato-button="secondary"
                           onClick={() => {
                             setCfg(emitter.moduloKey, "inf_cpl_icms_diferido", "ICMS diferido conforme art. 572 do RICMS/MT, Decreto nº 2.212/2014.");
                             setCfg(emitter.moduloKey, "inf_cpl_funrural", "Funrural retido na fonte pelo adquirente conforme art. 25 da Lei 8.212/1991.");
@@ -1485,7 +1486,7 @@ function ParametrosSistemaContent() {
                           }}
                           style={{ padding: "6px 14px", fontSize: 12, background: "#E8E8E8", color: "#0D0D0D", border: "0.5px solid #111111", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
                           Pré-preencher padrões MT (Mato Grosso)
-                        </button>
+                        </OperationalButton>
                         <span style={{ fontSize: 11, color: "#888" }}>Preenche os textos com as leis corretas do RICMS/MT e Lei 8.212/1991</span>
                       </div>
 
@@ -1656,13 +1657,13 @@ function ParametrosSistemaContent() {
 
                     {/* Salvar */}
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                      <button data-arato-button="toggle"
+                      <OperationalButton data-arato-button="toggle"
                         onClick={() => salvar(emitter.moduloKey)}
                         disabled={salvando === emitter.moduloKey}
                         style={{ padding: "9px 28px", background: ok === emitter.moduloKey ? "#16A34A" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                       >
                         {salvando === emitter.moduloKey ? "Salvando..." : ok === emitter.moduloKey ? "Salvo!" : "Salvar Configuração"}
-                      </button>
+                      </OperationalButton>
                     </div>
                   </div>
                 )}
@@ -1706,23 +1707,23 @@ function ParametrosSistemaContent() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button data-arato-button="primary"
+          <OperationalButton data-arato-button="primary"
             onClick={carregarPresetsMT}
             disabled={carregandoPresets}
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             {carregandoPresets ? "Carregando..." : "Carregar Padrões MT (soja, milho, algodão, sorgo, trigo)"}
-          </button>
-          <button data-arato-button="primary"
+          </OperationalButton>
+          <OperationalButton data-arato-button="primary"
             onClick={() => setModalNcm({ ...NCM_MODAL_VAZIO })}
             style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             + Adicionar NCM
-          </button>
+          </OperationalButton>
         </div>
 
         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["NCM","Descrição","ICMS Interno","ICMS Externo","Alíq%","B.Red%","Efetiva","PIS","COFINS","IBS+CBS (c/red.)","infCpl",""].map(h => (
@@ -1771,8 +1772,8 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button data-arato-button="secondary" onClick={() => setModalNcm(n)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
-                        <button data-arato-button="icon" onClick={() => excluirNcm(n.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
+                        <OperationalButton data-arato-button="secondary" onClick={() => setModalNcm(n)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</OperationalButton>
+                        <OperationalButton data-arato-button="icon" onClick={() => excluirNcm(n.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</OperationalButton>
                       </div>
                     </td>
                   </tr>
@@ -1784,7 +1785,7 @@ function ParametrosSistemaContent() {
                 </td></tr>
               )}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
       </div>
     );
@@ -1795,22 +1796,22 @@ function ParametrosSistemaContent() {
     <div>
       <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {(["transportadoras", "veiculos", "motoristas"] as const).map(s => (
-          <button data-arato-tab-active={subAba === (s)} data-arato-tab="true" data-arato-button="toggle" key={s} onClick={() => setSubAba(s)} style={{
+          <OperationalButton data-arato-tab-active={subAba === (s)} data-arato-tab="true" data-arato-button="toggle" key={s} onClick={() => setSubAba(s)} style={{
             padding: "6px 16px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13,
             fontWeight: subAba === s ? 700 : 400, background: subAba === s ? "#111111" : "var(--bg-card)",
             color: subAba === s ? "#fff" : "#333", cursor: "pointer",
           }}>
             {s === "transportadoras" ? "Transportadoras" : s === "veiculos" ? "Veículos" : "Motoristas"}
-          </button>
+          </OperationalButton>
         ))}
       </div>
 
       {subAba === "transportadoras" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button data-arato-button="primary" onClick={() => setModalT({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Nova Transportadora</button>
+            <OperationalButton data-arato-button="primary" onClick={() => setModalT({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Nova Transportadora</OperationalButton>
           </div>
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["CNPJ","Razão Social","RNTRC","UF","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
@@ -1828,21 +1829,21 @@ function ParametrosSistemaContent() {
                       {t.ativa ? "Ativa" : "Inativa"}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 12px" }}><button data-arato-button="secondary" onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                  <td style={{ padding: "8px 12px" }}><OperationalButton data-arato-button="secondary" onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</OperationalButton></td>
                 </tr>
               ))}
               {transportadoras.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhuma transportadora cadastrada</td></tr>}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
       )}
 
       {subAba === "veiculos" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button data-arato-button="primary" onClick={() => setModalV({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Veículo</button>
+            <OperationalButton data-arato-button="primary" onClick={() => setModalV({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Veículo</OperationalButton>
           </div>
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Placa","Tipo Veículo","Propriedade","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
@@ -1869,22 +1870,22 @@ function ParametrosSistemaContent() {
                         {v.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 12px" }}><button data-arato-button="secondary" onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                    <td style={{ padding: "8px 12px" }}><OperationalButton data-arato-button="secondary" onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</OperationalButton></td>
                   </tr>
                 );
               })}
               {veiculos.length === 0 && <tr><td colSpan={8} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum veículo cadastrado</td></tr>}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
       )}
 
       {subAba === "motoristas" && (
         <div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <button data-arato-button="primary" onClick={() => setModalM({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Motorista</button>
+            <OperationalButton data-arato-button="primary" onClick={() => setModalM({})} style={{ padding: "7px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Motorista</OperationalButton>
           </div>
-          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Nome","CPF","Tipo","CNH","Validade CNH","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
@@ -1912,13 +1913,13 @@ function ParametrosSistemaContent() {
                         {m.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 12px" }}><button data-arato-button="secondary" onClick={() => setModalM(m)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                    <td style={{ padding: "8px 12px" }}><OperationalButton data-arato-button="secondary" onClick={() => setModalM(m)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</OperationalButton></td>
                   </tr>
                 );
               })}
               {motoristas.length === 0 && <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum motorista cadastrado</td></tr>}
             </tbody>
-          </table>
+          </OperationalGrid>
         </div>
       )}
     </div>
@@ -1980,14 +1981,14 @@ function ParametrosSistemaContent() {
 
         <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
           {TABS.map(t => (
-            <button data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
+            <OperationalButton data-arato-tab-active={aba === (t.id)} data-arato-tab="true" data-arato-button="toggle" key={t.id} onClick={() => setAba(t.id)} style={{
               padding: "8px 18px", border: "none", borderRadius: "8px 8px 0 0",
               fontWeight: aba === t.id ? 700 : 400, fontSize: 13,
               background: aba === t.id ? "var(--bg-card)" : "transparent",
               color: aba === t.id ? "var(--text-1)" : "var(--text-2)",
               borderBottom: aba === t.id ? "2px solid var(--c-primary)" : "2px solid transparent",
               cursor: "pointer", marginBottom: -1.5,
-            }}>{t.label}</button>
+            }}>{t.label}</OperationalButton>
           ))}
         </div>
 
@@ -2015,9 +2016,9 @@ function ParametrosSistemaContent() {
                     }
                   </div>
                   {logoUrl && (
-                    <button data-arato-button="secondary" onClick={removerLogo} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    <OperationalButton data-arato-button="secondary" onClick={removerLogo} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                       Remover
-                    </button>
+                    </OperationalButton>
                   )}
                 </div>
 
@@ -2077,10 +2078,10 @@ function ParametrosSistemaContent() {
                   </p>
                 </div>
                 <div style={{ flexShrink: 0 }}>
-                  <button data-arato-button="secondary" onClick={testarConexaoSefaz} disabled={cteTestando || !fazendaId}
+                  <OperationalButton data-arato-button="secondary" onClick={testarConexaoSefaz} disabled={cteTestando || !fazendaId}
                     style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #1A4870", background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                     {cteTestando ? "⏳ Testando..." : "🔌 Testar Conexão SEFAZ"}
-                  </button>
+                  </OperationalButton>
                   {cteTesteResult && (
                     <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: `0.5px solid ${cteTesteResult.ok ? "#16A34A" : "#E24B4A"}`, background: cteTesteResult.ok ? "#DCFCE7" : "#FEF2F2", fontSize: 11, maxWidth: 340 }}>
                       <div style={{ fontWeight: 700, color: cteTesteResult.ok ? "#14532D" : "#B91C1C", marginBottom: 3 }}>
@@ -2211,10 +2212,10 @@ function ParametrosSistemaContent() {
                           ))}
                         </div>
 
-                        <button data-arato-button="primary" onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
+                        <OperationalButton data-arato-button="primary" onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                           {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
-                        </button>
+                        </OperationalButton>
                       </div>
                     )}
                   </div>
@@ -2363,10 +2364,10 @@ function ParametrosSistemaContent() {
                           </>
                         )}
 
-                        <button data-arato-button="primary" onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
+                        <OperationalButton data-arato-button="primary" onClick={() => salvarComValor(mk, cfgs[mk] ?? {})} disabled={salvando === mk}
                           style={{ padding: "8px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                           {salvando === mk ? "Salvando…" : ok === mk ? "✓ Salvo" : "Salvar Parâmetros"}
-                        </button>
+                        </OperationalButton>
                       </div>
                     )}
                   </div>
@@ -2416,7 +2417,7 @@ function ParametrosSistemaContent() {
           <div data-arato-dialog="page" style={{ ...boxStyle, width: 780 }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalOp.id ? "Editar Operação Fiscal" : "Nova Operação Fiscal"}</h3>
-              <button data-arato-button="icon" onClick={() => setModalOp(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalOp(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             {/* Identificação */}
@@ -2466,8 +2467,8 @@ function ParametrosSistemaContent() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarOp} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarOp} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</OperationalButton>
             </div>
           </div>
         </div>
@@ -2479,7 +2480,7 @@ function ParametrosSistemaContent() {
           <div data-arato-dialog="page" style={{ ...boxStyle, width: 820 }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalNcm.id ? "Editar Tributação NCM" : "Nova Tributação NCM"}</h3>
-              <button data-arato-button="icon" onClick={() => setModalNcm(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNcm(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
@@ -2540,8 +2541,8 @@ function ParametrosSistemaContent() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarNcm} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarNcm} style={{ padding: "8px 24px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</OperationalButton>
             </div>
           </div>
         </div>
@@ -2553,7 +2554,7 @@ function ParametrosSistemaContent() {
           <div data-arato-dialog="confirmation" style={boxStyle}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalT.id ? "Editar Transportadora" : "Nova Transportadora"}</h3>
-              <button data-arato-button="icon" onClick={() => setModalT(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalT(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CNPJ *", inp({ value: modalT.cnpj ?? "", onChange: e => setModalT(p => ({ ...p!, cnpj: e.target.value })), placeholder: "00.000.000/0001-00" }))}
@@ -2564,8 +2565,8 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalT.ativa === false ? "inativo" : "ativo", onChange: e => setModalT(p => ({ ...p!, ativa: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativa</option>, <option key="inativo" value="inativo">Inativa</option>] as React.ReactNode }))}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarTransportadora} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarTransportadora} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</OperationalButton>
             </div>
           </div>
         </div>
@@ -2577,7 +2578,7 @@ function ParametrosSistemaContent() {
           <div data-arato-dialog="confirmation" style={boxStyle}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalV.id ? "Editar Veículo" : "Novo Veículo"}</h3>
-              <button data-arato-button="icon" onClick={() => setModalV(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalV(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Placa *", inp({ value: modalV.placa ?? "", onChange: e => setModalV(p => ({ ...p!, placa: e.target.value.toUpperCase() })), placeholder: "AAA-0000" }))}
@@ -2593,8 +2594,8 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalV.ativo === false ? "inativo" : "ativo", onChange: e => setModalV(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarVeiculo} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarVeiculo} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</OperationalButton>
             </div>
           </div>
         </div>
@@ -2606,7 +2607,7 @@ function ParametrosSistemaContent() {
           <div data-arato-dialog="form" style={boxStyle}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 data-arato-h3="true" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalM.id ? "Editar Motorista" : "Novo Motorista"}</h3>
-              <button data-arato-button="icon" onClick={() => setModalM(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalM(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Nome *", inp({ value: modalM.nome ?? "", onChange: e => setModalM(p => ({ ...p!, nome: e.target.value })) }))}
@@ -2618,8 +2619,8 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalM.ativo === false ? "inativo" : "ativo", onChange: e => setModalM(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarMotorista} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarMotorista} style={{ padding: "8px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</OperationalButton>
             </div>
           </div>
         </div>

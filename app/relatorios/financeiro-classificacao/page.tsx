@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import InputData from "../../../components/InputData";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
@@ -651,18 +652,18 @@ function RelFinClassInner() {
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Analítico: gastos por OG com os lançamentos · Sintético: total de cada OG no período</p>
           </div>
           {gerado && (
             <div style={{ display: "flex", gap: 10 }}>
-              <button data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF / Imprimir</button>
-              <button data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Exportar Excel</button>
+              <OperationalButton data-arato-button="primary" onClick={gerarPDF} style={{ padding: "9px 18px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF / Imprimir</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={exportarExcel} style={{ padding: "9px 18px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Exportar Excel</OperationalButton>
             </div>
           )}
-        </div>
+        </OperationalHeading>
 
         {/* Filtros */}
         <div data-arato-panel="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
@@ -686,9 +687,9 @@ function RelFinClassInner() {
             <div>
               <label data-arato-label="true" style={lbl}>Tipo</label>
               <div ref={tipoRef} style={{ position: "relative" }}>
-                <button data-arato-button="toggle" onClick={() => setTipoOpen(v => !v)} style={dropTrigger}>
+                <OperationalButton data-arato-button="toggle" onClick={() => setTipoOpen(v => !v)} style={dropTrigger}>
                   <Trigger open={tipoOpen} label={tipoLabel} count={tipoSel.size} total={2} />
-                </button>
+                </OperationalButton>
                 {tipoOpen && (
                   <div style={dropPanel}>
                     <div style={{ padding: "4px 0" }}>
@@ -710,14 +711,14 @@ function RelFinClassInner() {
             <div>
               <label data-arato-label="true" style={lbl}>Status</label>
               <div ref={statusRef} style={{ position: "relative" }}>
-                <button data-arato-button="secondary" onClick={() => setStatusOpen(v => !v)} style={dropTrigger}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setStatusOpen(v => !v)} style={dropTrigger}>
                   <Trigger open={statusOpen} label={statusLabel} count={statusCount} total={Object.keys(STATUS_LABELS).length} />
-                </button>
+                </OperationalButton>
                 {statusOpen && (
                   <div style={dropPanel}>
                     <div style={{ padding: "6px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 12 }}>
-                      <button data-arato-button="secondary" onClick={() => setStatusSel(new Set(Object.keys(STATUS_LABELS)))} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todos</button>
-                      <button data-arato-button="secondary" onClick={() => setStatusSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhum</button>
+                      <OperationalButton data-arato-button="secondary" onClick={() => setStatusSel(new Set(Object.keys(STATUS_LABELS)))} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todos</OperationalButton>
+                      <OperationalButton data-arato-button="secondary" onClick={() => setStatusSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhum</OperationalButton>
                     </div>
                     <div style={{ padding: "4px 0" }}>
                       {Object.entries(STATUS_LABELS).map(([s, l]) => (
@@ -736,17 +737,17 @@ function RelFinClassInner() {
             <div>
               <label data-arato-label="true" style={lbl}>Operações Gerenciais</label>
               <div ref={classifRef} style={{ position: "relative" }}>
-                <button data-arato-button="secondary" onClick={() => setClassifOpen(v => !v)} style={dropTrigger}>
+                <OperationalButton data-arato-button="secondary" onClick={() => setClassifOpen(v => !v)} style={dropTrigger}>
                   <Trigger open={classifOpen} label={ogLabel} count={ogSelCount} total={totalOpts} />
-                </button>
+                </OperationalButton>
                 {classifOpen && (
                   <div style={{ ...dropPanel, minWidth: 340 }}>
                     <div style={{ padding: "10px 12px", borderBottom: "0.5px solid var(--border)" }}>
                       <input type="text" placeholder="Buscar OG..." value={classifBusca} onChange={e => setClassifBusca(e.target.value)} style={{ ...inp, padding: "6px 10px" }} autoFocus />
                     </div>
                     <div style={{ padding: "6px 12px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 12 }}>
-                      <button data-arato-button="secondary" onClick={() => { setClassifSel(null); setClassifBusca(""); }} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todas</button>
-                      <button data-arato-button="secondary" onClick={() => setClassifSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhuma</button>
+                      <OperationalButton data-arato-button="secondary" onClick={() => { setClassifSel(null); setClassifBusca(""); }} style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>Todas</OperationalButton>
+                      <OperationalButton data-arato-button="secondary" onClick={() => setClassifSel(new Set())} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Nenhuma</OperationalButton>
                     </div>
                     <div style={{ maxHeight: 260, overflowY: "auto" }}>
                       {optsVisiveis.length === 0
@@ -762,7 +763,7 @@ function RelFinClassInner() {
                         ))}
                     </div>
                     <div style={{ padding: "8px 12px", borderTop: "0.5px solid var(--border)", textAlign: "right" }}>
-                      <button data-arato-button="primary" onClick={() => setClassifOpen(false)} style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Confirmar</button>
+                      <OperationalButton data-arato-button="primary" onClick={() => setClassifOpen(false)} style={{ padding: "5px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Confirmar</OperationalButton>
                     </div>
                   </div>
                 )}
@@ -775,10 +776,10 @@ function RelFinClassInner() {
             <label data-arato-label="true" style={lbl}>Tipo de relatório</label>
             <div data-arato-tabs="true" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {([["analitico", "Analítico — gastos por OG com os lançamentos"], ["sintetico", "Sintético — só o total de cada OG no período"]] as const).map(([k, l]) => (
-                <button data-arato-tab-active={visao === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setVisao(k)}
+                <OperationalButton data-arato-tab-active={visao === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setVisao(k)}
                   style={{ padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: visao === k ? "1.5px solid #111" : "0.5px solid var(--border-table)", background: visao === k ? "#111" : "var(--bg-input)", color: visao === k ? "#fff" : "var(--text-1)" }}>
                   {l}
-                </button>
+                </OperationalButton>
               ))}
             </div>
           </div>
@@ -794,29 +795,29 @@ function RelFinClassInner() {
                   <div key={agr} style={{ display: "flex", alignItems: "center", gap: 3, background: "#1A4870", borderRadius: 8, padding: "5px 8px" }}>
                     <span style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginRight: 2, fontWeight: 700 }}>{idx + 1}</span>
                     <span style={{ fontSize: 12, color: "#fff", fontWeight: 600, marginRight: 2 }}>{info?.label}</span>
-                    <button data-arato-button="secondary" onClick={() => moveAgr(idx, -1)} disabled={idx === 0}
-                      style={{ background: "none", border: "none", color: idx === 0 ? "rgba(255,255,255,.25)" : "#fff", cursor: idx === 0 ? "default" : "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>↑</button>
-                    <button data-arato-button="secondary" onClick={() => moveAgr(idx, 1)} disabled={idx === agrupadores.length - 1}
-                      style={{ background: "none", border: "none", color: idx === agrupadores.length - 1 ? "rgba(255,255,255,.25)" : "#fff", cursor: idx === agrupadores.length - 1 ? "default" : "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>↓</button>
-                    <button data-arato-button="icon" onClick={() => removeAgr(agr)}
-                      style={{ background: "none", border: "none", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 14, padding: "0 2px", lineHeight: 1, marginLeft: 2 }}>×</button>
+                    <OperationalButton data-arato-button="secondary" onClick={() => moveAgr(idx, -1)} disabled={idx === 0}
+                      style={{ background: "none", border: "none", color: idx === 0 ? "rgba(255,255,255,.25)" : "#fff", cursor: idx === 0 ? "default" : "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>↑</OperationalButton>
+                    <OperationalButton data-arato-button="secondary" onClick={() => moveAgr(idx, 1)} disabled={idx === agrupadores.length - 1}
+                      style={{ background: "none", border: "none", color: idx === agrupadores.length - 1 ? "rgba(255,255,255,.25)" : "#fff", cursor: idx === agrupadores.length - 1 ? "default" : "pointer", fontSize: 11, padding: "0 2px", lineHeight: 1 }}>↓</OperationalButton>
+                    <OperationalButton data-arato-button="icon" onClick={() => removeAgr(agr)}
+                      style={{ background: "none", border: "none", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 14, padding: "0 2px", lineHeight: 1, marginLeft: 2 }}>×</OperationalButton>
                   </div>
                 );
               })}
 
               {agrDisponiveis.length > 0 && (
                 <div ref={agrRef} style={{ position: "relative" }}>
-                  <button data-arato-button="secondary" onClick={() => setAgrDropOpen(v => !v)}
+                  <OperationalButton data-arato-button="secondary" onClick={() => setAgrDropOpen(v => !v)}
                     style={{ padding: "5px 12px", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                     + Adicionar {agrDropOpen ? "▲" : "▼"}
-                  </button>
+                  </OperationalButton>
                   {agrDropOpen && (
                     <div style={{ ...dropPanel, minWidth: 180, right: "auto" }}>
                       {agrDisponiveis.map(a => (
-                        <button data-arato-button="secondary" key={a.key} onClick={() => { addAgr(a.key); setAgrDropOpen(false); }}
+                        <OperationalButton data-arato-button="secondary" key={a.key} onClick={() => { addAgr(a.key); setAgrDropOpen(false); }}
                           style={{ display: "block", width: "100%", padding: "8px 14px", background: "none", border: "none", borderBottom: "0.5px solid var(--border-table)", textAlign: "left", fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>
                           {a.label}
-                        </button>
+                        </OperationalButton>
                       ))}
                     </div>
                   )}
@@ -824,10 +825,10 @@ function RelFinClassInner() {
               )}
 
               {agrupadores.length > 0 && (
-                <button data-arato-button="secondary" onClick={() => setAgrupadores([])}
+                <OperationalButton data-arato-button="secondary" onClick={() => setAgrupadores([])}
                   style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "4px 6px" }}>
                   Limpar tudo
-                </button>
+                </OperationalButton>
               )}
 
               {agrupadores.length === 0 && (
@@ -840,10 +841,10 @@ function RelFinClassInner() {
 
           {/* Gerar */}
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button data-arato-button="primary" onClick={gerar} disabled={loading}
+            <OperationalButton data-arato-button="primary" onClick={gerar} disabled={loading}
               style={{ padding: "10px 28px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
               {loading ? "Gerando..." : "Gerar Relatório"}
-            </button>
+            </OperationalButton>
           </div>
         </div>
 
@@ -875,7 +876,7 @@ function RelFinClassInner() {
             ) : visao === "sintetico" ? (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                 <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Operação Gerencial", "Lançamentos", "Entradas", "Saídas", "Saldo"].map(h => (
@@ -901,13 +902,13 @@ function RelFinClassInner() {
                         <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 15, fontWeight: 800, color: saldo >= 0 ? "#86EFAC" : "#FCA5A5" }}>{fmtBRL(saldo)}</td>
                       </tr>
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                 <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Vcto", "Descrição", "Fornecedor / Cliente", "Parcela", "Valor", "Status", "Baixa"].map(h => (
@@ -948,7 +949,7 @@ function RelFinClassInner() {
                         </td>
                       </tr>
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
               </div>
             )}

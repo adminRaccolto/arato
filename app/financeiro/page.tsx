@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -659,19 +660,19 @@ export default function Financeiro() {
         </div>
 
         {/* Header */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px 0 22px" }}>
-          <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px 0 22px" }}>
+          <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10 }}>
             <div>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Fluxo de Caixa</h1>
               <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Projeção dia a dia, DFC mensal e análise Previsto × Realizado</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>Cotação: <strong style={{ color: "#7A4300" }}>US$ 1 = R$ {COTACAO_USD.toFixed(2)}</strong></span>
-              <button data-arato-button="primary" onClick={() => setModalNovo(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <OperationalButton data-arato-button="primary" onClick={() => setModalNovo(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 ◈ Novo lançamento
-              </button>
+              </OperationalButton>
             </div>
-          </div>
+          </OperationalHeading>
           {/* Barra de período */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10, borderTop: "0.5px solid #F0F3F8", paddingTop: 8 }}>
             <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Período:</span>
@@ -682,10 +683,10 @@ export default function Financeiro() {
             <InputData type="date" value={periodoTemp.fim || periodoFim}
               onChange={e => setPeriodoTemp(p => ({ ...p, fim: e.target.value }))}
               style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, outline: "none", background: "var(--bg-input)" }} />
-            <button data-arato-button="secondary" onClick={aplicarPeriodo}
+            <OperationalButton data-arato-button="secondary" onClick={aplicarPeriodo}
               style={{ fontSize: 12, padding: "4px 14px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600 }}>
               Carregar
-            </button>
+            </OperationalButton>
             <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)", cursor: "pointer", userSelect: "none" }}>
               <input type="checkbox" checked={saldoZero} onChange={e => setSaldoZero(e.target.checked)} style={{ cursor: "pointer", accentColor: "#111111" }} />
               Iniciar com saldo 0
@@ -700,14 +701,14 @@ export default function Financeiro() {
               {loading && " · carregando…"}
             </span>
           </div>
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 
           {erro && (
             <div style={{ background: "#FDECEA", border: "0.5px solid #E24B4A60", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#8B1A1A", display: "flex", gap: 8 }}>
               <span>✕</span><span>{erro}</span>
-              <button data-arato-button="secondary" onClick={carregarDados} style={{ marginLeft: "auto", fontSize: 11, color: "#8B1A1A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
+              <OperationalButton data-arato-button="secondary" onClick={carregarDados} style={{ marginLeft: "auto", fontSize: 11, color: "#8B1A1A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</OperationalButton>
             </div>
           )}
 
@@ -767,7 +768,7 @@ export default function Financeiro() {
                       { key: "fluxo",       label: "Fluxo de Caixa"    },
                       { key: "conciliacao", label: "Conciliação OFX"   },
                     ] as { key: Aba; label: string }[]).map(a => (
-                      <button data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
+                      <OperationalButton data-arato-tab-active={aba === (a.key)} data-arato-tab="true" data-arato-button="toggle" key={a.key} onClick={() => setAba(a.key)} style={{
                         padding: "11px 20px", border: "none", background: "transparent", cursor: "pointer",
                         fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
                         color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
@@ -784,7 +785,7 @@ export default function Financeiro() {
                             {previsoes.length} prev
                           </span>
                         )}
-                      </button>
+                      </OperationalButton>
                     ))}
                   </div>
 
@@ -800,7 +801,7 @@ export default function Financeiro() {
                           { key: "baixados", label: "Baixados",      count: lancamentos.filter(l => l.status === "baixado").length },
                           { key: "barter",   label: "Barter",        count: lancamentos.filter(l => l.moeda === "barter").length },
                         ] as { key: FiltroCP; label: string; count: number }[]).map(f => (
-                          <button data-arato-button="toggle" key={f.key} onClick={() => setFiltro(f.key)} style={{
+                          <OperationalButton data-arato-button="toggle" key={f.key} onClick={() => setFiltro(f.key)} style={{
                             padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
                             borderColor: filtro === f.key ? (f.key === "barter" ? "#8B5E14" : "#111111") : "var(--border-table)",
                             background:  filtro === f.key ? (f.key === "barter" ? "#FBF3E0" : "#E8E8E8") : "transparent",
@@ -811,11 +812,11 @@ export default function Financeiro() {
                             <span style={{ marginLeft: 5, fontSize: 10, background: filtro === f.key ? "#111111" : "var(--border-row)", color: filtro === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 8 }}>
                               {f.count}
                             </span>
-                          </button>
+                          </OperationalButton>
                         ))}
                       </div>
 
-                      <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["Tipo / Moeda", "Descrição", "Categoria", "Vencimento", "Valor", "Status", "Origem", ""].map((h, i) => (
@@ -878,21 +879,21 @@ export default function Financeiro() {
                                 </td>
                                 <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                   {l.status !== "baixado" && (
-                                    <button data-arato-button="toggle" onClick={() => abrirBaixa(l)} style={{
+                                    <OperationalButton data-arato-button="toggle" onClick={() => abrirBaixa(l)} style={{
                                       fontSize: 11, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
                                       background: l.moeda === "barter" ? "#FBF3E0" : "#FBF0D8",
                                       color:      l.moeda === "barter" ? "#8B5E14" : "#7A5A12",
                                       border: `0.5px solid ${l.moeda === "barter" ? "#8B5E14" : "#C9921B"}`,
                                     }}>
                                       {l.moeda === "barter" ? "⇄ Confirmar" : "◈ Baixar"}
-                                    </button>
+                                    </OperationalButton>
                                   )}
                                 </td>
                               </tr>
                             );
                           })}
                         </tbody>
-                      </table>
+                      </OperationalGrid>
 
                       <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#444" }}>
                         <span>CR lançadas automaticamente por NF-e: <strong style={{ color: "#111111" }}>{lancamentos.filter(l => l.auto && l.tipo === "receber").length}</strong></span>
@@ -913,13 +914,13 @@ export default function Financeiro() {
                             { key: "vertical",   label: "↕ Dia a dia"        },
                             { key: "prevreal",   label: "⇆ Previsto × Real"  },
                           ] as { key: SubAbaFluxo; label: string }[]).map(s => (
-                            <button data-arato-tab-active={subAbaFluxo === (s.key)} data-arato-tab="true" data-arato-button="toggle" key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
+                            <OperationalButton data-arato-tab-active={subAbaFluxo === (s.key)} data-arato-tab="true" data-arato-button="toggle" key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
                               padding: "6px 14px", borderRadius: 8, border: "0.5px solid",
                               borderColor: subAbaFluxo === s.key ? "#111111" : "var(--border-table)",
                               background: subAbaFluxo === s.key ? "#E8E8E8" : "transparent",
                               color: subAbaFluxo === s.key ? "#0D0D0D" : "var(--text-2)",
                               fontWeight: subAbaFluxo === s.key ? 600 : 400, fontSize: 12, cursor: "pointer",
-                            }}>{s.label}</button>
+                            }}>{s.label}</OperationalButton>
                           ))}
                         </div>
                         {subAbaFluxo === "vertical" && (
@@ -934,15 +935,15 @@ export default function Financeiro() {
                                 Simulação
                               </span>
                             </div>
-                            <button data-arato-button="toggle" onClick={() => { setAbaPrevisao("lista"); setModalPrevisao(true); }} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="toggle" onClick={() => { setAbaPrevisao("lista"); setModalPrevisao(true); }} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600 }}>
                               + Previsão
-                            </button>
-                            <button data-arato-button="secondary" onClick={() => setModalGerenciarSim(true)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
+                            </OperationalButton>
+                            <OperationalButton data-arato-button="secondary" onClick={() => setModalGerenciarSim(true)} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
                               ◈ Simulações{simulacoes.length > 0 && ` (${simulacoes.filter(s => s.ativa).length}/${simulacoes.length})`}
-                            </button>
-                            <button data-arato-button="secondary" onClick={diasExpandidos.size > 0 ? recolherTodos : expandirTodos} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "#666", cursor: "pointer" }}>
+                            </OperationalButton>
+                            <OperationalButton data-arato-button="secondary" onClick={diasExpandidos.size > 0 ? recolherTodos : expandirTodos} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "transparent", color: "#666", cursor: "pointer" }}>
                               {diasExpandidos.size > 0 ? "− Recolher tudo" : "+ Expandir tudo"}
-                            </button>
+                            </OperationalButton>
                           </div>
                         )}
                       </div>
@@ -1040,14 +1041,14 @@ export default function Financeiro() {
                             <div className="fc-dfc-toolbar" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#F9FAFB" }}>
                               <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Modo:</span>
                               {(["realizado","previsto"] as const).map(m => (
-                                <button data-arato-button="toggle" key={m} onClick={() => setModoDFC(m)} style={{
+                                <OperationalButton data-arato-button="toggle" key={m} onClick={() => setModoDFC(m)} style={{
                                   fontSize: 11, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontWeight: modoDFC === m ? 600 : 400,
                                   border: `0.5px solid ${modoDFC === m ? "#111111" : "var(--border-table)"}`,
                                   background: modoDFC === m ? "#E8E8E8" : "transparent",
                                   color: modoDFC === m ? "#0D0D0D" : "var(--text-2)",
                                 }}>
                                   {m === "realizado" ? "Realizado" : "Previsto"}
-                                </button>
+                                </OperationalButton>
                               ))}
                               <span style={{ width: 1, height: 16, background: "var(--border-table)" }} />
                               <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
@@ -1061,7 +1062,7 @@ export default function Financeiro() {
 
                             {/* Table */}
                             <div data-arato-grid-container="true" className="fc-dfc-wrap" style={{ overflowX: "auto" }}>
-                              <table data-arato-grid="true" className="fc-dfc-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                              <OperationalGrid data-arato-grid="true" className="fc-dfc-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                                 <thead>
                                   <tr style={{ background: "var(--bg-page)" }}>
                                     <th className="fc-dfc-th-desc" style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", minWidth: 240, position: "sticky", left: 0, background: "var(--bg-page)", zIndex: 2 }}>
@@ -1172,7 +1173,7 @@ export default function Financeiro() {
                                     </td>
                                   </tr>
                                 </tbody>
-                              </table>
+                              </OperationalGrid>
                             </div>
                             <div style={{ padding: "6px 14px", fontSize: 10, color: "#666", background: "#F9FAFB", borderTop: "0.5px solid #E8ECF2" }}>
                               Barter excluído · USD convertido à cotação vigente · clique nos grupos para expandir/recolher
@@ -1184,7 +1185,7 @@ export default function Financeiro() {
                       {/* DFC MENSAL (legado desativado) */}
                       {false && (
                         <div>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-page)" }}>
                                 <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", width: 200 }}>
@@ -1303,7 +1304,7 @@ export default function Financeiro() {
                                 ))}
                               </tr>
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                           <div style={{ padding: "8px 16px", fontSize: 10, color: "#444" }}>
                             Barter excluído do fluxo · valores USD convertidos à cotação vigente · mês anterior inclui todos os lançamentos (baixados e em aberto)
                           </div>
@@ -1358,7 +1359,7 @@ export default function Financeiro() {
 
                         return (
                           <div data-arato-grid-container="true" style={{ overflowX: "auto", padding: "0 0 8px 0" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-page)" }}>
                                   <th style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", width: 190, position: "sticky", left: 0, background: "var(--bg-page)" }}>Linha</th>
@@ -1440,7 +1441,7 @@ export default function Financeiro() {
                                   </tr>
                                 ))}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                             <div style={{ padding: "8px 16px", fontSize: 10, color: "#666" }}>
                               Previsto = todos os lançamentos por data de vencimento · Realizado = baixados por data de baixa · % = desvio realizado vs previsto · meses futuros não têm realizado
                             </div>
@@ -1472,10 +1473,10 @@ export default function Financeiro() {
                               </div>
                               {/* Botão único de nova simulação */}
                               <div style={{ display: "flex", alignItems: "center", padding: "0 16px", borderLeft: "0.5px solid var(--border-row)", gap: 8 }}>
-                                <button data-arato-button="secondary" onClick={() => { setModalSimDia(TODAY); setNovaSim({ tipo: "pagar", descricao: "", valorMask: "", data: TODAY }); }}
+                                <OperationalButton data-arato-button="secondary" onClick={() => { setModalSimDia(TODAY); setNovaSim({ tipo: "pagar", descricao: "", valorMask: "", data: TODAY }); }}
                                   style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
                                   + Simulação
-                                </button>
+                                </OperationalButton>
                               </div>
                             </div>
 
@@ -1531,9 +1532,9 @@ export default function Financeiro() {
                                 const linhas: ItemLinha[] = [
                                   ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: resolverForn(l), sub: l.categoria, crVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CR", bgBadge: "#E8E8E8", colorBadge: "#0D0D0D", extra: <span style={{ fontSize: 9, background: "#E8E8E8", color: "#0D0D0D", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
                                   ...lDia.filter(l => l.tipo === "pagar").map(l => ({ key: l.id, label: resolverForn(l), sub: l.categoria, cpVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CP", bgBadge: "#FCEBEB", colorBadge: "#791F1F", extra: <span style={{ fontSize: 9, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
-                                  ...pDia.filter(p => p.tipo === "receber").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, crVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><button data-arato-button="secondary" onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button data-arato-button="icon" onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
-                                  ...pDia.filter(p => p.tipo === "pagar").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, cpVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><button data-arato-button="secondary" onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button data-arato-button="icon" onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
-                                  ...sDia.map(s => ({ key: s.id, label: s.descricao, sub: "", simVal: s.tipo === "receber" ? s.valor : -s.valor, badge: "sim", bgBadge: "#C9921B", colorBadge: "#fff", extra: <><button data-arato-button="secondary" onClick={() => handleToggleSim(s.id, false)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 5, cursor: "pointer" }}>pausar</button><button data-arato-button="icon" onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</button></> })),
+                                  ...pDia.filter(p => p.tipo === "receber").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, crVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><OperationalButton data-arato-button="secondary" onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</OperationalButton><OperationalButton data-arato-button="icon" onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</OperationalButton></> })),
+                                  ...pDia.filter(p => p.tipo === "pagar").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, cpVal: p.valor, badge: "prev", bgBadge: "#111111", colorBadge: "#fff", extra: <><OperationalButton data-arato-button="secondary" onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 5, cursor: "pointer" }}>→ CP</OperationalButton><OperationalButton data-arato-button="icon" onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</OperationalButton></> })),
+                                  ...sDia.map(s => ({ key: s.id, label: s.descricao, sub: "", simVal: s.tipo === "receber" ? s.valor : -s.valor, badge: "sim", bgBadge: "#C9921B", colorBadge: "#fff", extra: <><OperationalButton data-arato-button="secondary" onClick={() => handleToggleSim(s.id, false)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 5, cursor: "pointer" }}>pausar</OperationalButton><OperationalButton data-arato-button="icon" onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "var(--text-3)", cursor: "pointer" }}>✕</OperationalButton></> })),
                                 ];
 
                                 return (
@@ -1681,7 +1682,7 @@ export default function Financeiro() {
                             </div>
                           </div>
                         </div>
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <thead>
                             <tr style={{ background: "var(--bg-page)" }}>
                               {["Data", "Descrição", "Valor", "Conciliação", "Conta", ""].map((h, i) => (
@@ -1713,15 +1714,15 @@ export default function Financeiro() {
                                 <td style={{ padding: "10px 14px", fontSize: 11, color: "var(--text-2)" }}>{c.conta || <span style={{ color: "#999" }}>—</span>}</td>
                                 <td style={{ padding: "10px 14px" }}>
                                   {!c.conciliado && (
-                                    <button data-arato-button="secondary" style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
+                                    <OperationalButton data-arato-button="secondary" style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontWeight: 600 }}>
                                       ◈ Vincular
-                                    </button>
+                                    </OperationalButton>
                                   )}
                                 </td>
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </OperationalGrid>
                         <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", fontSize: 11, color: "#444" }}>
                           A conciliação automática ocorre às 8h de cada dia útil. Lançamentos não conciliados exigem vinculação manual.
                         </div>
@@ -1760,7 +1761,7 @@ export default function Financeiro() {
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
                   <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 700, background: cs.bg, color: cs.color }}>{cs.label}</span>
-                  <button data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 16, lineHeight: 1, padding: 2 }}>×</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 16, lineHeight: 1, padding: 2 }}>×</OperationalButton>
                 </div>
               </div>
               {/* Body */}
@@ -1807,9 +1808,9 @@ export default function Financeiro() {
               {/* Ação */}
               {l.status !== "baixado" && (
                 <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border-table)" }}>
-                  <button data-arato-button="toggle" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", padding: "8px", borderRadius: 7, background: l.moeda === "barter" ? "#FBF3E0" : "#C9921B", color: l.moeda === "barter" ? "#8B5E14" : "#fff", border: l.moeda === "barter" ? "0.5px solid #8B5E14" : "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
+                  <OperationalButton data-arato-button="toggle" onClick={() => { setPopover(null); abrirBaixa(l); }} style={{ width: "100%", padding: "8px", borderRadius: 7, background: l.moeda === "barter" ? "#FBF3E0" : "#C9921B", color: l.moeda === "barter" ? "#8B5E14" : "#fff", border: l.moeda === "barter" ? "0.5px solid #8B5E14" : "none", cursor: "pointer", fontWeight: 700, fontSize: 12 }}>
                     {l.moeda === "barter" ? "⇄ Confirmar barter" : "◈ Baixar"}
-                  </button>
+                  </OperationalButton>
                 </div>
               )}
             </div>
@@ -1886,11 +1887,11 @@ export default function Financeiro() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={confirmarBaixa} disabled={salvando || (modalBaixa.moeda !== "barter" && !baixa.valorMask)}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={confirmarBaixa} disabled={salvando || (modalBaixa.moeda !== "barter" && !baixa.valorMask)}
                 style={{ padding: "8px 18px", background: !salvando && (modalBaixa.moeda === "barter" || baixa.valorMask) ? "#C9921B" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Salvando…" : `◈ ${modalBaixa.moeda === "barter" ? "Confirmar entrega" : "Confirmar baixa"}`}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2064,11 +2065,11 @@ export default function Financeiro() {
               </div>
 
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-                <button data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                <button data-arato-button="toggle" onClick={adicionarLancamento} disabled={disabled}
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={adicionarLancamento} disabled={disabled}
                   style={{ padding: "8px 18px", background: disabled ? "#666" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                   {salvando ? "Salvando…" : novoLanc.parcelar && totalP > 1 ? `◈ Criar ${totalP} parcelas` : "◈ Salvar lançamento"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -2087,9 +2088,9 @@ export default function Financeiro() {
               </div>
               <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 4 }}>
                 {(["lista", "nova"] as const).map(t => (
-                  <button data-arato-tab-active={abaPrevisao === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAbaPrevisao(t)} style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid", borderColor: abaPrevisao === t ? "#111111" : "var(--border-table)", background: abaPrevisao === t ? "#E8E8E8" : "transparent", color: abaPrevisao === t ? "#0D0D0D" : "var(--text-2)", fontSize: 12, cursor: "pointer", fontWeight: abaPrevisao === t ? 600 : 400 }}>
+                  <OperationalButton data-arato-tab-active={abaPrevisao === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setAbaPrevisao(t)} style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid", borderColor: abaPrevisao === t ? "#111111" : "var(--border-table)", background: abaPrevisao === t ? "#E8E8E8" : "transparent", color: abaPrevisao === t ? "#0D0D0D" : "var(--text-2)", fontSize: 12, cursor: "pointer", fontWeight: abaPrevisao === t ? 600 : 400 }}>
                     {t === "lista" ? `Lista (${previsoes.length})` : "+ Nova"}
-                  </button>
+                  </OperationalButton>
                 ))}
               </div>
             </div>
@@ -2099,7 +2100,7 @@ export default function Financeiro() {
                 {previsoes.length === 0 ? (
                   <div style={{ padding: "24px 0", textAlign: "center", color: "#444", fontSize: 12 }}>
                     Nenhuma previsão cadastrada.<br />
-                    <button data-arato-button="toggle" onClick={() => setAbaPrevisao("nova")} style={{ marginTop: 10, padding: "6px 16px", borderRadius: 8, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 12 }}>+ Criar previsão</button>
+                    <OperationalButton data-arato-button="toggle" onClick={() => setAbaPrevisao("nova")} style={{ marginTop: 10, padding: "6px 16px", borderRadius: 8, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontSize: 12 }}>+ Criar previsão</OperationalButton>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2112,8 +2113,8 @@ export default function Financeiro() {
                         <span style={{ fontWeight: 600, color: p.tipo === "receber" ? "#111111" : "#E24B4A", fontSize: 13 }}>
                           {p.tipo === "receber" ? "+" : "−"} {fmtBRL(p.valor)}
                         </span>
-                        <button data-arato-button="secondary" onClick={() => setModalConverterPrev(p)} style={{ fontSize: 11, padding: "4px 10px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>→ CP</button>
-                        <button data-arato-button="icon" onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 6, cursor: "pointer" }}>✕</button>
+                        <OperationalButton data-arato-button="secondary" onClick={() => setModalConverterPrev(p)} style={{ fontSize: 11, padding: "4px 10px", border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>→ CP</OperationalButton>
+                        <OperationalButton data-arato-button="icon" onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 6, cursor: "pointer" }}>✕</OperationalButton>
                       </div>
                     ))}
                     <div style={{ fontSize: 11, color: "#444", marginTop: 4 }}>
@@ -2156,17 +2157,17 @@ export default function Financeiro() {
                   ○ Previsões aparecem em verde no fluxo de caixa e não são lançamentos reais. Você pode convertê-las em CP quando confirmar o gasto.
                 </div>
                 <div data-arato-dialog-actions="true" style={{ gridColumn: "1 / -1", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button data-arato-button="toggle" onClick={() => setAbaPrevisao("lista")} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-                  <button data-arato-button="toggle" onClick={salvarPrevisao} disabled={!novaPrevisao.descricao || !novaPrevisao.data || !novaPrevisao.valorMask}
+                  <OperationalButton data-arato-button="toggle" onClick={() => setAbaPrevisao("lista")} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+                  <OperationalButton data-arato-button="toggle" onClick={salvarPrevisao} disabled={!novaPrevisao.descricao || !novaPrevisao.data || !novaPrevisao.valorMask}
                     style={{ padding: "8px 18px", background: novaPrevisao.descricao && novaPrevisao.data && novaPrevisao.valorMask ? "#111111" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                     ○ Salvar previsão
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
             )}
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalPrevisao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalPrevisao(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Fechar</OperationalButton>
             </div>
           </div>
         </div>
@@ -2186,11 +2187,11 @@ export default function Financeiro() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalConverterPrev(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={() => converterPrevisaoEmCP(modalConverterPrev)} disabled={salvando}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalConverterPrev(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={() => converterPrevisaoEmCP(modalConverterPrev)} disabled={salvando}
                 style={{ padding: "8px 18px", background: salvando ? "#666" : "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Convertendo…" : "◈ Converter em CP"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2212,7 +2213,7 @@ export default function Financeiro() {
                 <div data-arato-dialog-body="true" style={{ display: "flex", gap: 6, fontSize: 11, alignItems: "center" }}>
                   <span style={{ background: "#EDE9FE", color: "#4C1D95", padding: "3px 10px", borderRadius: 8, fontWeight: 600 }}>{simulacoes.filter(s => s.ativa).length} ativas</span>
                   <span style={{ background: "#F1EFE8", color: "var(--text-2)", padding: "3px 10px", borderRadius: 8 }}>{simulacoes.filter(s => !s.ativa).length} pausadas</span>
-                  <button data-arato-button="icon" onClick={() => setModalGerenciarSim(false)} style={{ marginLeft: 6, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>×</button>
+                  <OperationalButton data-arato-button="icon" onClick={() => setModalGerenciarSim(false)} style={{ marginLeft: 6, background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>×</OperationalButton>
                 </div>
               </div>
             </div>
@@ -2242,7 +2243,7 @@ export default function Financeiro() {
                   >
                     <span style={{ position: "absolute", top: 1, width: 16, height: 16, background: "var(--bg-card)", borderRadius: "50%", left: s.ativa ? 16 : 1, transition: "left 0.15s", display: "block" }} />
                   </div>
-                  <button data-arato-button="danger" onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A60", background: "#FCEBEB", color: "#791F1F", borderRadius: 6, cursor: "pointer", flexShrink: 0 }}>✕</button>
+                  <OperationalButton data-arato-button="danger" onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A60", background: "#FCEBEB", color: "#791F1F", borderRadius: 6, cursor: "pointer", flexShrink: 0 }}>✕</OperationalButton>
                 </div>
               ))}
             </div>
@@ -2262,13 +2263,13 @@ export default function Financeiro() {
                 );
               })()}
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <button data-arato-button="toggle"
+                <OperationalButton data-arato-button="toggle"
                   onClick={imprimirSimulacoes}
                   disabled={simulacoes.filter(s => s.ativa).length === 0}
                   style={{ padding: "8px 18px", border: "0.5px solid #1A4870", borderRadius: 8, background: simulacoes.filter(s => s.ativa).length > 0 ? "#1A4870" : "#E8E8E8", color: simulacoes.filter(s => s.ativa).length > 0 ? "#fff" : "#aaa", cursor: simulacoes.filter(s => s.ativa).length > 0 ? "pointer" : "default", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
                   🖨 Imprimir relatório
-                </button>
-                <button data-arato-button="secondary" onClick={() => setModalGerenciarSim(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Fechar</button>
+                </OperationalButton>
+                <OperationalButton data-arato-button="secondary" onClick={() => setModalGerenciarSim(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Fechar</OperationalButton>
               </div>
             </div>
           </div>
@@ -2304,11 +2305,11 @@ export default function Financeiro() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button data-arato-button="secondary" onClick={() => setModalSimDia(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarSimulacao} disabled={!novaSim.descricao || !novaSim.valorMask}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalSimDia(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarSimulacao} disabled={!novaSim.descricao || !novaSim.valorMask}
                 style={{ padding: "8px 18px", background: novaSim.descricao && novaSim.valorMask ? "#C9921B" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 ◈ Adicionar simulação
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

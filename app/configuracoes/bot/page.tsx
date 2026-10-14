@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 
@@ -214,15 +215,15 @@ export default function BotDiagPage() {
       <TopNav />
       <main style={{ flex: 1, maxWidth: 860, margin: "0 auto", padding: "24px 24px 40px", width: "100%" }}>
 
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Bot IA — WhatsApp</h1>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-3)" }}>Diagnóstico e controle do assistente via WhatsApp</p>
           </div>
-          <button data-arato-button="secondary" onClick={carregar} disabled={carregando} style={{ ...btn("#111111"), opacity: carregando ? 0.6 : 1 }}>
+          <OperationalButton data-arato-button="secondary" onClick={carregar} disabled={carregando} style={{ ...btn("#111111"), opacity: carregando ? 0.6 : 1 }}>
             {carregando ? "Verificando…" : "↻ Atualizar status"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* ── 1. Resumo visual ── */}
         {diag && (
@@ -259,12 +260,12 @@ export default function BotDiagPage() {
           )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button data-arato-button="secondary" onClick={gerarQr} disabled={qrLoading} style={{ ...btn("#25D366"), opacity: qrLoading ? 0.6 : 1 }}>
+            <OperationalButton data-arato-button="secondary" onClick={gerarQr} disabled={qrLoading} style={{ ...btn("#25D366"), opacity: qrLoading ? 0.6 : 1 }}>
               {qrLoading ? "Gerando…" : "Gerar QR Code"}
-            </button>
-            <button data-arato-button="secondary" onClick={testarBot} disabled={testLoading} style={{ ...btn("#111111"), opacity: testLoading ? 0.6 : 1 }}>
+            </OperationalButton>
+            <OperationalButton data-arato-button="secondary" onClick={testarBot} disabled={testLoading} style={{ ...btn("#111111"), opacity: testLoading ? 0.6 : 1 }}>
               {testLoading ? "Testando…" : "Verificar endpoint webhook"}
-            </button>
+            </OperationalButton>
           </div>
 
           {qrMsg && (
@@ -290,9 +291,9 @@ export default function BotDiagPage() {
                 3. Toque em <em>Conectar um aparelho</em><br />
                 4. Escaneie o QR code ao lado<br /><br />
                 <span style={{ color: "#D97706" }}>⚠️ O QR expira em ~60 segundos.</span><br />
-                <button data-arato-button="secondary" onClick={gerarQr} disabled={qrLoading} style={{ marginTop: 8, padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 11, cursor: "pointer", color: "#111111" }}>
+                <OperationalButton data-arato-button="secondary" onClick={gerarQr} disabled={qrLoading} style={{ marginTop: 8, padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 11, cursor: "pointer", color: "#111111" }}>
                   Renovar QR
-                </button>
+                </OperationalButton>
               </div>
             </div>
           )}
@@ -324,9 +325,9 @@ export default function BotDiagPage() {
           )}
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button data-arato-button="secondary" onClick={fixarWebhook} disabled={fixLoading} style={{ ...btn(wh?.status === "ok" ? "#16A34A" : "#DC2626"), opacity: fixLoading ? 0.6 : 1 }}>
+            <OperationalButton data-arato-button="secondary" onClick={fixarWebhook} disabled={fixLoading} style={{ ...btn(wh?.status === "ok" ? "#16A34A" : "#DC2626"), opacity: fixLoading ? 0.6 : 1 }}>
               {fixLoading ? "Corrigindo…" : wh?.status === "ok" ? "✅ Webhook OK — Reconfigurar" : "⚠️ Corrigir Webhook agora"}
-            </button>
+            </OperationalButton>
           </div>
 
           {fixResult && (
@@ -382,7 +383,7 @@ export default function BotDiagPage() {
         <div style={cardStyle}>
           <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", marginBottom: 14 }}>🔑 Variáveis de Ambiente</div>
           {diag ? (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F4F6FA" }}>
                   <th style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>Variável</th>
@@ -402,7 +403,7 @@ export default function BotDiagPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           ) : (
             <span style={{ color: "var(--text-3)" }}>{carregando ? "Verificando…" : "—"}</span>
           )}
@@ -432,7 +433,7 @@ export default function BotDiagPage() {
               Nenhum usuário tem WhatsApp cadastrado. Adicione o número em Cadastros → Usuários → campo WhatsApp.
             </div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F4F6FA" }}>
                   {["Nome", "WhatsApp", "Status"].map(h => (
@@ -453,7 +454,7 @@ export default function BotDiagPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           )}
         </div>
 
@@ -481,13 +482,13 @@ export default function BotDiagPage() {
                 onChange={e => setTesteMens(e.target.value)}
               />
             </div>
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={testarFluxo}
               disabled={testeLoading || !testeNum.trim()}
               style={{ ...btn("#111111"), opacity: testeLoading || !testeNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
             >
               {testeLoading ? "Testando…" : "▶ Executar teste"}
-            </button>
+            </OperationalButton>
           </div>
 
           {testeResult && (
@@ -538,13 +539,13 @@ export default function BotDiagPage() {
                 onChange={e => setSimMens(e.target.value)}
               />
             </div>
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               onClick={simularEvento}
               disabled={simLoading || !simNum.trim()}
               style={{ ...btn("#C9921B"), opacity: simLoading || !simNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
             >
               {simLoading ? "Simulando…" : "⚡ Simular"}
-            </button>
+            </OperationalButton>
           </div>
 
           {simResult && (

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -589,15 +590,15 @@ export default function CompraTerrPage() {
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compra de Terra</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Contratos de aquisição de imóveis rurais</p>
           </div>
-          <button data-arato-button="primary" onClick={() => abrir()} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <OperationalButton data-arato-button="primary" onClick={() => abrir()} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             + Novo Contrato
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* KPI Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
@@ -618,9 +619,9 @@ export default function CompraTerrPage() {
         {/* Abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 16, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", overflow: "hidden", width: "fit-content" }}>
           {(["lista", "pagamentos"] as const).map(a => (
-            <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{ padding: "9px 22px", border: "none", background: aba === a ? "#1A4870" : "transparent", color: aba === a ? "#fff" : "#555", fontSize: 13, fontWeight: aba === a ? 600 : 400, cursor: "pointer" }}>
+            <OperationalButton data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAba(a)} style={{ padding: "9px 22px", border: "none", background: aba === a ? "#1A4870" : "transparent", color: aba === a ? "#fff" : "#555", fontSize: 13, fontWeight: aba === a ? 600 : 400, cursor: "pointer" }}>
               {a === "lista" ? "Contratos" : `Parcelas (${pagamentos.length})`}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -628,9 +629,9 @@ export default function CompraTerrPage() {
         {aba === "lista" && (
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             {(["todos", ...Object.keys(STATUS_META)] as ("todos" | StatusCCT)[]).map(s => (
-              <button data-arato-button="toggle" key={s} onClick={() => setFiltroStatus(s)} style={{ padding: "4px 12px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "#DDE2EE"}`, background: filtroStatus === s ? "#1A4870" : "#fff", color: filtroStatus === s ? "#fff" : "#555", fontSize: 12, cursor: "pointer", fontWeight: filtroStatus === s ? 600 : 400 }}>
+              <OperationalButton data-arato-button="toggle" key={s} onClick={() => setFiltroStatus(s)} style={{ padding: "4px 12px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "#DDE2EE"}`, background: filtroStatus === s ? "#1A4870" : "#fff", color: filtroStatus === s ? "#fff" : "#555", fontSize: 12, cursor: "pointer", fontWeight: filtroStatus === s ? 600 : 400 }}>
                 {s === "todos" ? "Todos" : STATUS_META[s as StatusCCT].label}
-              </button>
+              </OperationalButton>
             ))}
           </div>
         )}
@@ -644,7 +645,7 @@ export default function CompraTerrPage() {
               <div data-arato-statistic="action" style={{ padding: 40, textAlign: "center", color: "#aaa" }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🏡</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#555", marginBottom: 6 }}>Nenhum contrato cadastrado</div>
-                <button data-arato-button="primary" onClick={() => abrir()} style={{ marginTop: 16, background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Contrato</button>
+                <OperationalButton data-arato-button="primary" onClick={() => abrir()} style={{ marginTop: 16, background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Contrato</OperationalButton>
               </div>
             ) : (
               <div>
@@ -731,15 +732,15 @@ export default function CompraTerrPage() {
                           {ct.observacoes && <div style={{ fontSize: 12, color: "#666", marginBottom: 14, padding: "8px 12px", background: "#fff", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>{ct.observacoes}</div>}
 
                           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <button data-arato-button="secondary" onClick={() => abrir(ct, true)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, cursor: "pointer", color: "#555" }}>Abrir</button>
-                            <button data-arato-button="secondary" onClick={() => abrir(ct, false)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", fontSize: 12, cursor: "pointer", color: "#1A4870" }}>✏ Editar</button>
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrir(ct, true)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, cursor: "pointer", color: "#555" }}>Abrir</OperationalButton>
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrir(ct, false)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#fff", fontSize: 12, cursor: "pointer", color: "#1A4870" }}>✏ Editar</OperationalButton>
                             {podAvancar && ct.status !== "cancelado" && (
-                              <button data-arato-button="primary" onClick={() => avancarStatus(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                              <OperationalButton data-arato-button="primary" onClick={() => avancarStatus(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
                                 Avançar para {STATUS_META[PIPELINE[pipeIdx + 1]].label} →
-                              </button>
+                              </OperationalButton>
                             )}
                             <div style={{ flex: 1 }} />
-                            <button data-arato-button="danger" onClick={() => excluirContrato(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #E24B4A", background: "#FCEBEB", fontSize: 12, cursor: "pointer", color: "#E24B4A", fontWeight: 600 }}>🗑 Excluir</button>
+                            <OperationalButton data-arato-button="danger" onClick={() => excluirContrato(ct)} style={{ padding: "7px 14px", borderRadius: 6, border: "0.5px solid #E24B4A", background: "#FCEBEB", fontSize: 12, cursor: "pointer", color: "#E24B4A", fontWeight: 600 }}>🗑 Excluir</OperationalButton>
                           </div>
                         </div>
                       )}
@@ -759,9 +760,9 @@ export default function CompraTerrPage() {
               {Object.keys(parcelasEditadas).length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 12, color: "#7A4300" }}>✏ Ajustes não salvos</span>
-                  <button data-arato-button="primary" onClick={salvarAjustesPagamentos} disabled={salvandoParcelas} style={{ padding: "5px 14px", borderRadius: 6, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <OperationalButton data-arato-button="primary" onClick={salvarAjustesPagamentos} disabled={salvandoParcelas} style={{ padding: "5px 14px", borderRadius: 6, border: "none", background: "#C9921B", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {salvandoParcelas ? "Salvando…" : "Salvar ajustes"}
-                  </button>
+                  </OperationalButton>
                 </div>
               )}
             </div>
@@ -769,7 +770,7 @@ export default function CompraTerrPage() {
               <div style={{ padding: 40, textAlign: "center", color: "#aaa" }}>Nenhuma parcela registrada</div>
             ) : (
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#F4F6FA" }}>
                       {["Imóvel", "Vencimento ✏", "Valor ✏", "Moeda", "Sacas", "Status", "Pago em", ""].map((h, i) => (
@@ -813,16 +814,16 @@ export default function CompraTerrPage() {
                           <td style={{ padding: "7px 12px", color: "#888", fontSize: 12 }}>{pg.data_pagamento ? new Date(pg.data_pagamento + "T00:00").toLocaleDateString("pt-BR") : "—"}</td>
                           <td style={{ padding: "7px 12px" }}>
                             {pg.status !== "pago" && (
-                              <button data-arato-button="secondary" onClick={() => baixarPagamento(pg)} disabled={baixando === pg.id} style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#fff", color: "#16A34A", fontSize: 12, cursor: "pointer" }}>
+                              <OperationalButton data-arato-button="secondary" onClick={() => baixarPagamento(pg)} disabled={baixando === pg.id} style={{ padding: "4px 12px", borderRadius: 6, border: "0.5px solid #16A34A", background: "#fff", color: "#16A34A", fontSize: 12, cursor: "pointer" }}>
                                 {baixando === pg.id ? "…" : "Baixar"}
-                              </button>
+                              </OperationalButton>
                             )}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -840,15 +841,15 @@ export default function CompraTerrPage() {
                 <div data-arato-dialog-body="true" style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>{viewOnly ? "Contrato de Compra" : editId ? "Editar Contrato" : "Novo Contrato de Compra de Terra"}</div>
                 {viewOnly && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Somente leitura</div>}
               </div>
-              <button data-arato-button="icon" onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#aaa", lineHeight: 1 }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#aaa", lineHeight: 1 }}>✕</OperationalButton>
             </div>
 
             {/* Abas do modal */}
             <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", borderBottom: "0.5px solid #DDE2EE", background: "#FAFBFC" }}>
               {(["imovel", "partes", "valor", "cartorio"] as const).map(a => (
-                <button data-arato-tab-active={abaModal === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaModal(a)} style={{ padding: "10px 20px", border: "none", borderBottom: abaModal === a ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: abaModal === a ? 600 : 400, color: abaModal === a ? "#1A4870" : "#666", cursor: "pointer" }}>
+                <OperationalButton data-arato-tab-active={abaModal === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => setAbaModal(a)} style={{ padding: "10px 20px", border: "none", borderBottom: abaModal === a ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: abaModal === a ? 600 : 400, color: abaModal === a ? "#1A4870" : "#666", cursor: "pointer" }}>
                   {{ imovel: "Imóvel", partes: "Partes", valor: "Valor & Pagamento", cartorio: "Cartório & Obs." }[a]}
-                </button>
+                </OperationalButton>
               ))}
             </div>
 
@@ -1007,10 +1008,10 @@ export default function CompraTerrPage() {
                             <label data-arato-label="true" style={lbl}>Periodicidade</label>
                             <div style={{ display: "flex", gap: 0, borderRadius: 6, overflow: "hidden", border: "0.5px solid #DDE2EE" }}>
                               {(["anual", "semestral"] as const).map(p => (
-                                <button data-arato-button="toggle" key={p} type="button" disabled={viewOnly} onClick={() => { setForm(f => ({ ...f, periodicidade: p })); setParcelasCustom(null); }}
+                                <OperationalButton data-arato-button="toggle" key={p} type="button" disabled={viewOnly} onClick={() => { setForm(f => ({ ...f, periodicidade: p })); setParcelasCustom(null); }}
                                   style={{ padding: "7px 18px", border: "none", background: form.periodicidade === p ? "#1A4870" : "#fff", color: form.periodicidade === p ? "#fff" : "#555", fontSize: 13, fontWeight: form.periodicidade === p ? 600 : 400, cursor: viewOnly ? "default" : "pointer" }}>
                                   {p.charAt(0).toUpperCase() + p.slice(1)}
-                                </button>
+                                </OperationalButton>
                               ))}
                             </div>
                           </div>
@@ -1098,9 +1099,9 @@ export default function CompraTerrPage() {
                                 {!viewOnly && (
                                   <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
                                     {isCustom ? (
-                                      <button data-arato-button="secondary" type="button" onClick={() => setParcelasCustom(null)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "#fff", color: "#555", cursor: "pointer" }}>↺ Restaurar automático</button>
+                                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => setParcelasCustom(null)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, background: "#fff", color: "#555", cursor: "pointer" }}>↺ Restaurar automático</OperationalButton>
                                     ) : (
-                                      <button data-arato-button="secondary" type="button" onClick={() => setParcelasCustom(autoParc)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer" }}>✏ Personalizar</button>
+                                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => setParcelasCustom(autoParc)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #C9921B", borderRadius: 6, background: "#FBF3E0", color: "#7A5A12", cursor: "pointer" }}>✏ Personalizar</OperationalButton>
                                     )}
                                   </div>
                                 )}
@@ -1108,7 +1109,7 @@ export default function CompraTerrPage() {
 
                               {/* Tabela de parcelas */}
                               <div data-arato-grid-container="true" style={{ maxHeight: 320, overflowY: "auto", overflowX: "auto", border: "0.5px solid #DDE2EE", borderRadius: 8 }}>
-                                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 720 }}>
+                                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 720 }}>
                                   <thead>
                                     <tr style={{ background: "#F4F6FA", position: "sticky", top: 0 }}>
                                       {["#", "Vencimento", "Moeda", "Sacas", "Preço R$/sc", "Valor R$", "Ano Safra", "Ciclo"].map((h, i) => (
@@ -1212,7 +1213,7 @@ export default function CompraTerrPage() {
                                       <td colSpan={2} />
                                     </tr>
                                   </tfoot>
-                                </table>
+                                </OperationalGrid>
                               </div>
 
                               {/* Info sobre OG */}
@@ -1280,11 +1281,11 @@ export default function CompraTerrPage() {
                 ))}
               </div>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                <button data-arato-button="secondary" onClick={() => setShowModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}>Fechar</button>
+                <OperationalButton data-arato-button="secondary" onClick={() => setShowModal(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}>Fechar</OperationalButton>
                 {!viewOnly && (
-                  <button data-arato-button="primary" onClick={salvar} disabled={salvando || !form.imovel_nome || !form.valor_total} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando ? "default" : "pointer", opacity: salvando ? 0.7 : 1 }}>
+                  <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando || !form.imovel_nome || !form.valor_total} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: salvando ? "default" : "pointer", opacity: salvando ? 0.7 : 1 }}>
                     {salvando ? "Salvando…" : editId ? "Salvar Alterações" : "Criar Contrato"}
-                  </button>
+                  </OperationalButton>
                 )}
               </div>
             </div>

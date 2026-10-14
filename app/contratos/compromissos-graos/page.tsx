@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -226,21 +227,21 @@ export default function CompromissosGraosPage() {
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "#1A4870", margin: 0 }}>Compromissos em Grãos</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Sacas comprometidas por comercialização, arrendamento, compra de terra e barter — relatório consolidado
             </p>
           </div>
-          <button data-arato-button="secondary"
+          <OperationalButton data-arato-button="secondary"
             onClick={() => window.print()}
             style={{ background: "#fff", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             className="no-print"
           >
             🖨 Imprimir
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* Filtros */}
         <div data-arato-panel="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 2fr", gap: 12, marginBottom: 20, background: "#fff", padding: 16, borderRadius: 10, border: "0.5px solid #DDE2EE" }} className="no-print">
@@ -347,7 +348,7 @@ export default function CompromissosGraosPage() {
             </div>
           ) : (
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: "#F4F6FA" }}>
                     {["Nº", "Commodity", "Origem", "Contraparte", "Safra", "Entrega", "Comprometido", "Entregue", "Saldo", "Preço Ref.", "Status"].map(h => (
@@ -415,7 +416,7 @@ export default function CompromissosGraosPage() {
                     <td colSpan={2} />
                   </tr>
                 </tfoot>
-              </table>
+              </OperationalGrid>
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import { useState } from "react";
 import TopNav from "../../components/TopNav";
 import InputNumerico from "../../components/InputNumerico";
@@ -60,7 +61,7 @@ export default function IBSCBS() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>IBS / CBS — Reforma Tributária 2027</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Lei Complementar nº 214/2024 · Emenda Constitucional nº 132/2023</p>
@@ -69,7 +70,7 @@ export default function IBSCBS() {
             <div style={{ fontSize: 22, fontWeight: 800, color: diasAte2027 <= 180 ? "#E24B4A" : "#C9921B" }}>{diasAte2027.toLocaleString("pt-BR")}</div>
             <div style={{ fontSize: 10, color: "var(--text-2)" }}>dias até 01/01/2027</div>
           </div>
-        </header>
+        </OperationalHeading>
 
         <div style={{ padding: "16px 22px", flex: 1 }}>
 
@@ -82,7 +83,7 @@ export default function IBSCBS() {
                 ["impacto",    "Agro — Reduções"],
                 ["cronograma", "Cronograma"],
               ] as [Aba, string][]).map(([key, label]) => (
-                <button data-arato-tab-active={aba === (key)} data-arato-tab="true" data-arato-button="toggle" key={key} onClick={() => setAba(key)} style={{
+                <OperationalButton data-arato-tab-active={aba === (key)} data-arato-tab="true" data-arato-button="toggle" key={key} onClick={() => setAba(key)} style={{
                   padding: "10px 20px", border: "none",
                   background: aba === key ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",
@@ -91,7 +92,7 @@ export default function IBSCBS() {
                   color: aba === key ? "#1A5C38" : "var(--text-2)",
                 }}>
                   {label}
-                </button>
+                </OperationalButton>
               ))}
             </div>
 
@@ -251,7 +252,7 @@ export default function IBSCBS() {
                 <div style={{ marginBottom: 14, fontSize: 12, color: "var(--text-2)", background: "#EAF3DE", border: "0.5px solid #1A5C3840", borderRadius: 8, padding: "10px 14px" }}>
                   <strong style={{ color: "#1A5C38" }}>Agronegócio beneficiado:</strong> A Reforma Tributária manteve tratamento favorecido para insumos agropecuários (alíquota zero) e grãos (redução de 60%). Isso representa grande vantagem competitiva para o produtor rural.
                 </div>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["NCM", "Produto / Insumo", "Redução", "Alíquota efetiva", "Observação"].map((h, i) => (
@@ -279,7 +280,7 @@ export default function IBSCBS() {
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
 

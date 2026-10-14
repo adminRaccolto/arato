@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../components/OperationalUI";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -64,7 +65,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             </div>
           </div>
         </div>
-        <button data-arato-button="icon"
+        <OperationalButton data-arato-button="icon"
           onClick={() => router.back()}
           style={{
             background: "none", border: "none", color: "#fff",
@@ -73,7 +74,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           }}
         >
           ‹
-        </button>
+        </OperationalButton>
       </div>
 
       {/* ── Page content ───────────────────────────────── */}
@@ -104,7 +105,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             Nova operação
           </div>
           {ACOES.map(a => (
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               key={a.path}
               onClick={() => navTo(a.path)}
               style={{
@@ -118,7 +119,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             >
               <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{a.icon}</span>
               {a.label}
-            </button>
+            </OperationalButton>
           ))}
         </div>
       )}
@@ -134,7 +135,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             Mais opções
           </div>
           {MAIS.map(m => (
-            <button data-arato-button="secondary"
+            <OperationalButton data-arato-button="secondary"
               key={m.path}
               onClick={() => navTo(m.path)}
               style={{
@@ -148,7 +149,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
             >
               <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{m.icon}</span>
               {m.label}
-            </button>
+            </OperationalButton>
           ))}
         </div>
       )}
@@ -160,7 +161,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           const isAction = tab.id === "novo";
           if (isAction) {
             return (
-              <button data-arato-button="secondary"
+              <OperationalButton data-arato-button="secondary"
                 key={tab.id}
                 onClick={() => setSheet(sheet === "novo" ? null : "novo")}
                 style={{
@@ -181,7 +182,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                   ➕
                 </div>
                 <span style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{tab.label}</span>
-              </button>
+              </OperationalButton>
             );
           }
           const isMais = tab.id === "mais";
@@ -193,7 +194,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           );
           if (isMais) {
             return (
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="toggle"
                 key={tab.id}
                 onClick={() => setSheet(sheet === "mais" ? null : "mais")}
                 style={{
@@ -204,7 +205,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                 }}
               >
                 {content}
-              </button>
+              </OperationalButton>
             );
           }
           return (

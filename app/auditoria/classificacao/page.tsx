@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
@@ -257,18 +258,18 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
       {!embedded && <TopNav />}
       <main style={{ padding: embedded ? "0" : "24px 28px", background: "var(--bg-page)", minHeight: embedded ? undefined : "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Auditoria de Classificação</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Cruza o NCM de cada item com as regras cadastradas e aponta classificações inconsistentes nos últimos 12 meses.
             </p>
           </div>
-          <button data-arato-button="primary" onClick={rodarAuditoria} disabled={loading}
+          <OperationalButton data-arato-button="primary" onClick={rodarAuditoria} disabled={loading}
             style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#111111", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {loading ? "Verificando…" : "Rodar Auditoria"}
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* Cobertura — sempre aparece depois de rodar: "0 inconsistências" só vale se houve itens avaliados */}
         {cobertura && (() => {
@@ -307,11 +308,11 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
         {inconsistencias.length > 0 && (
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             {["todos", "og_diferente", "categoria_errada", "sem_og_direto"].map(t => (
-              <button data-arato-button="toggle" key={t} onClick={() => setFiltroTipo(t)}
+              <OperationalButton data-arato-button="toggle" key={t} onClick={() => setFiltroTipo(t)}
                 style={{ padding: "5px 14px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, fontWeight: 600, cursor: "pointer",
                   background: filtroTipo === t ? "#111111" : "var(--bg-card)", color: filtroTipo === t ? "#fff" : "var(--text-2)" }}>
                 {t === "todos" ? "Todos" : TIPO_META[t]?.label}
-              </button>
+              </OperationalButton>
             ))}
           </div>
         )}
@@ -329,7 +330,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
 
         {filtradas.length > 0 && (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
                   {["NF / Data", "Emitente", "Item / NCM", "Tipo", "Regra", "Classificado como", "Esperado", ""].map(h => (
@@ -402,20 +403,20 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
                                 <option value="">— selecionar —</option>
                                 {ogsDisponiveis.map(og => <option key={og.id} value={og.id}>{og.classificacao} — {og.descricao}</option>)}
                               </SelectField>
-                              <button data-arato-button="primary" onClick={() => corrigirOG(inc.item_id, ogCorrecao[inc.item_id] ?? "")}
+                              <OperationalButton data-arato-button="primary" onClick={() => corrigirOG(inc.item_id, ogCorrecao[inc.item_id] ?? "")}
                                 style={{ padding: "4px 8px", borderRadius: 5, border: "none", background: "#16A34A", color: "#fff", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                                 ✓
-                              </button>
-                              <button data-arato-button="icon" onClick={() => setCorrigindo(null)}
+                              </OperationalButton>
+                              <OperationalButton data-arato-button="icon" onClick={() => setCorrigindo(null)}
                                 style={{ padding: "4px 8px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>
                                 ✕
-                              </button>
+                              </OperationalButton>
                             </div>
                           ) : (
-                            <button data-arato-button="secondary" onClick={() => { setCorrigindo(inc.item_id); setOgCorrecao(p => ({ ...p, [inc.item_id]: inc.og_esperada_id ?? "" })); }}
+                            <OperationalButton data-arato-button="secondary" onClick={() => { setCorrigindo(inc.item_id); setOgCorrecao(p => ({ ...p, [inc.item_id]: inc.og_esperada_id ?? "" })); }}
                               style={{ padding: "4px 12px", borderRadius: 5, border: "0.5px solid #C9921B", background: "#FBF3E0", color: "#7A4300", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Corrigir OG
-                            </button>
+                            </OperationalButton>
                           )
                         )}
                         {inc.tipo_apropiacao === "estoque" && (
@@ -426,7 +427,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         )}
       </main>

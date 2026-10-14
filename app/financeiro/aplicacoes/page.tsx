@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -374,7 +375,7 @@ export default function AplicacoesFinanceirasPage() {
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Aplicações Financeiras</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
@@ -387,9 +388,9 @@ export default function AplicacoesFinanceirasPage() {
                 {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" onClick={() => abrirNova()} style={btnV}>+ Nova Aplicação</button>
+            <OperationalButton data-arato-button="primary" onClick={() => abrirNova()} style={btnV}>+ Nova Aplicação</OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 22 }}>
@@ -437,7 +438,7 @@ export default function AplicacoesFinanceirasPage() {
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Aplicação" : "Nova Aplicação Financeira"}</div>
-              <button data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNova(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
               {nErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{nErr}</div>}
@@ -511,8 +512,8 @@ export default function AplicacoesFinanceirasPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarNova} disabled={nSaving} style={{ ...btnV, cursor: nSaving ? "default" : "pointer", background: nSaving ? "var(--text-muted)" : "#111111" }}>{nSaving ? "Salvando…" : "Salvar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNova(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarNova} disabled={nSaving} style={{ ...btnV, cursor: nSaving ? "default" : "pointer", background: nSaving ? "var(--text-muted)" : "#111111" }}>{nSaving ? "Salvando…" : "Salvar"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -527,7 +528,7 @@ export default function AplicacoesFinanceirasPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Aporte</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalAporte.nome}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalAporte(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalAporte(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{aErr}</div>}
@@ -554,8 +555,8 @@ export default function AplicacoesFinanceirasPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalAporte(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarAporte} disabled={aSaving} style={{ ...btnV, cursor: aSaving ? "default" : "pointer", background: aSaving ? "var(--text-muted)" : "#111111" }}>{aSaving ? "Salvando…" : "Salvar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalAporte(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarAporte} disabled={aSaving} style={{ ...btnV, cursor: aSaving ? "default" : "pointer", background: aSaving ? "var(--text-muted)" : "#111111" }}>{aSaving ? "Salvando…" : "Salvar"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -570,7 +571,7 @@ export default function AplicacoesFinanceirasPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Rendimento</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalRend.nome} · Saldo atual: {fmtBRL(modalRend.valor_atual)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalRend(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalRend(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {rErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{rErr}</div>}
@@ -581,11 +582,11 @@ export default function AplicacoesFinanceirasPage() {
                     { v: "acruado",  label: "Acruado na Aplicação",   desc: "Aumenta saldo, sem entrada em conta" },
                     { v: "recebido", label: "Recebido em Conta",       desc: "Entra na conta corrente" },
                   ] as { v: "acruado" | "recebido"; label: string; desc: string }[]).map(opt => (
-                    <button data-arato-button="toggle" key={opt.v} onClick={() => setRForm(f => ({ ...f, tipo_registro: opt.v }))}
+                    <OperationalButton data-arato-button="toggle" key={opt.v} onClick={() => setRForm(f => ({ ...f, tipo_registro: opt.v }))}
                       style={{ flex: 1, padding: "10px 12px", border: `2px solid ${rForm.tipo_registro === opt.v ? "#16A34A" : "var(--border-table)"}`, borderRadius: 8, background: rForm.tipo_registro === opt.v ? "#DCFCE7" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: rForm.tipo_registro === opt.v ? "#166534" : "var(--text-1)" }}>{opt.label}</div>
                       <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>{opt.desc}</div>
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
               </div>
@@ -619,8 +620,8 @@ export default function AplicacoesFinanceirasPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalRend(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarRendimento} disabled={rSaving} style={{ ...btnV, cursor: rSaving ? "default" : "pointer", background: rSaving ? "var(--text-muted)" : "#16A34A" }}>{rSaving ? "Salvando…" : "Registrar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalRend(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarRendimento} disabled={rSaving} style={{ ...btnV, cursor: rSaving ? "default" : "pointer", background: rSaving ? "var(--text-muted)" : "#16A34A" }}>{rSaving ? "Salvando…" : "Registrar"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -635,7 +636,7 @@ export default function AplicacoesFinanceirasPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Resgate</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalResgate.nome} · Saldo: {fmtBRL(modalResgate.valor_atual)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalResgate(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalResgate(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {rgErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{rgErr}</div>}
@@ -647,7 +648,7 @@ export default function AplicacoesFinanceirasPage() {
                     { v: "resgate_parcial", label: "Parcial",        cor: "#C9921B" },
                     { v: "resgate_total",   label: "Total (Encerrar)", cor: "#E24B4A" },
                   ] as { v: "resgate_parcial" | "resgate_total"; label: string; cor: string }[]).map(opt => (
-                    <button data-arato-button="toggle" key={opt.v} onClick={() => {
+                    <OperationalButton data-arato-button="toggle" key={opt.v} onClick={() => {
                       setRgForm(f => ({
                         ...f, tipo: opt.v,
                         valor_bruto: opt.v === "resgate_total" ? modalResgate.valor_atual : f.valor_bruto,
@@ -655,7 +656,7 @@ export default function AplicacoesFinanceirasPage() {
                     }}
                       style={{ flex: 1, padding: "9px 14px", border: `2px solid ${rgForm.tipo === opt.v ? opt.cor : "var(--border-table)"}`, borderRadius: 8, background: rgForm.tipo === opt.v ? "#FFF8F0" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: rgForm.tipo === opt.v ? opt.cor : "var(--text-2)" }}>
                       {opt.label}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
               </div>
@@ -703,8 +704,8 @@ export default function AplicacoesFinanceirasPage() {
               )}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalResgate(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarResgate} disabled={rgSaving} style={{ ...btnV, cursor: rgSaving ? "default" : "pointer", background: rgSaving ? "var(--text-muted)" : "#E24B4A" }}>{rgSaving ? "Resgatando…" : "Confirmar Resgate"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalResgate(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarResgate} disabled={rgSaving} style={{ ...btnV, cursor: rgSaving ? "default" : "pointer", background: rgSaving ? "var(--text-muted)" : "#E24B4A" }}>{rgSaving ? "Resgatando…" : "Confirmar Resgate"}</OperationalButton>
             </div>
           </div>
         </div>
@@ -770,11 +771,11 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
             {isResgatada ? "Encerrada" : "Ativa"}
           </span>
           {!isResgatada && <>
-            <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirAporte(a); }} style={{ padding: "4px 9px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Aporte</button>
-            <button data-arato-button="primary" onClick={e => { e.stopPropagation(); abrirRendimento(a); }} style={{ padding: "4px 9px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#DCFCE7", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>Rendimento</button>
-            <button data-arato-button="danger" onClick={e => { e.stopPropagation(); abrirResgate(a); }} style={{ padding: "4px 9px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Resgatar</button>
+            <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirAporte(a); }} style={{ padding: "4px 9px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, color: "#0D0D0D", fontWeight: 600 }}>Aporte</OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={e => { e.stopPropagation(); abrirRendimento(a); }} style={{ padding: "4px 9px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#DCFCE7", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>Rendimento</OperationalButton>
+            <OperationalButton data-arato-button="danger" onClick={e => { e.stopPropagation(); abrirResgate(a); }} style={{ padding: "4px 9px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Resgatar</OperationalButton>
           </>}
-          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirNova(a); }} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</button>
+          <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirNova(a); }} style={{ padding: "4px 9px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Abrir</OperationalButton>
         </div>
       </div>
 
@@ -784,7 +785,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
           {movimentos.length === 0 ? (
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem movimentações registradas.</div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead><tr style={{ background: "var(--bg-tag)" }}>
                 {["Data", "Tipo", "Valor Bruto", "IOF", "IR", "Líquido", "Conta", "Obs."].map(h => (
                   <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." || h === "Conta" || h === "Tipo" ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>
@@ -806,7 +807,7 @@ function CardAplicacao({ a, movimentos, expand, setExpand, abrirNova, abrirAport
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </OperationalGrid>
           )}
         </div>
       )}

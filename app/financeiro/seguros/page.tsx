@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -523,7 +524,7 @@ export default function SegurosPage() {
             { id: "vencimentos", label: "Prêmios Pendentes" },
             { id: "sinistros",   label: "Sinistros" },
           ] as { id: typeof aba; label: string }[]).map(a => (
-            <button data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, color: aba === a.id ? "#111" : "#666", borderBottom: aba === a.id ? "2.5px solid #111" : "2.5px solid transparent", marginBottom: -1 }}>{a.label}</button>
+            <OperationalButton data-arato-tab-active={aba === (a.id)} data-arato-tab="true" data-arato-button="toggle" key={a.id} onClick={() => setAba(a.id)} style={{ padding: "9px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: aba === a.id ? 700 : 400, color: aba === a.id ? "#111" : "#666", borderBottom: aba === a.id ? "2.5px solid #111" : "2.5px solid transparent", marginBottom: -1 }}>{a.label}</OperationalButton>
           ))}
         </div>
 
@@ -531,7 +532,7 @@ export default function SegurosPage() {
         {aba === "apolices" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-              <button data-arato-button="primary" onClick={() => abrirApolice()} style={btnV}>+ Nova Apólice</button>
+              <OperationalButton data-arato-button="primary" onClick={() => abrirApolice()} style={btnV}>+ Nova Apólice</OperationalButton>
             </div>
             {apolices.length === 0 ? (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma apólice cadastrada.</div>
@@ -575,8 +576,8 @@ export default function SegurosPage() {
                           {a.arquivo_url && (
                             <a href={a.arquivo_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ padding: "4px 10px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>PDF</a>
                           )}
-                          <button data-arato-button="danger" onClick={e => { e.stopPropagation(); abrirSinistro(a); }} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Sinistro</button>
-                          <button data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+                          <OperationalButton data-arato-button="danger" onClick={e => { e.stopPropagation(); abrirSinistro(a); }} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>Sinistro</OperationalButton>
+                          <OperationalButton data-arato-button="secondary" onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</OperationalButton>
                         </div>
                       </div>
                       {exp && (
@@ -585,7 +586,7 @@ export default function SegurosPage() {
                           {apolSinistros.length === 0 ? (
                             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum sinistro registrado.</div>
                           ) : (
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead><tr style={{ background: "var(--bg-tag)" }}>{["Ocorrência","Protocolo","Descrição","Reclamado","Indenizado","Status",""].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}</tr></thead>
                               <tbody>
                                 {apolSinistros.map(s => { const sm2 = STATUS_SINISTRO_META[s.status]; return (
@@ -596,11 +597,11 @@ export default function SegurosPage() {
                                     <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmtBRL(s.valor_reclamado)}</td>
                                     <td style={{ padding: "6px 10px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                                     <td style={{ padding: "6px 10px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
-                                    <td style={{ padding: "6px 10px" }}><button data-arato-button="secondary" onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</button></td>
+                                    <td style={{ padding: "6px 10px" }}><OperationalButton data-arato-button="secondary" onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</OperationalButton></td>
                                   </tr>
                                 ); })}
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           )}
                         </div>
                       )}
@@ -619,7 +620,7 @@ export default function SegurosPage() {
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum prêmio pendente.</div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead><tr style={{ background: "var(--bg-card)" }}>{["Vencimento","Apólice","Seguradora","Bem Segurado","Valor","Status",""].map(h => <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {premiosVisiveis.map(p => {
@@ -634,13 +635,13 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor)}</td>
                           <td style={{ padding: "10px 14px" }}>{p.pago ? badge("Pago","#E8F5E9","#1A6B3C") : vencido ? badge("Atrasado","#FCEBEB","#791F1F") : badge("Pendente","#FBF3E0","#7B4A00")}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            {!p.pago && <button data-arato-button="secondary" onClick={() => { setModalPremio(p); setPremioData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Pagar</button>}
+                            {!p.pago && <OperationalButton data-arato-button="secondary" onClick={() => { setModalPremio(p); setPremioData(hoje()); }} style={{ padding: "4px 10px", border: "0.5px solid #11111150", borderRadius: 6, background: "#E8E8E8", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Pagar</OperationalButton>}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -653,7 +654,7 @@ export default function SegurosPage() {
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum sinistro registrado.</div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead><tr style={{ background: "var(--bg-card)" }}>{["Ocorrência","Apólice","Seguradora","Descrição","Reclamado","Indenizado","Status",""].map(h => <th key={h} style={{ padding: "10px 14px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {sinistrosVisiveis.map(s => {
@@ -668,12 +669,12 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>{fmtBRL(s.valor_reclamado)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                           <td style={{ padding: "10px 14px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
-                          <td style={{ padding: "10px 14px" }}>{ap && <button data-arato-button="secondary" onClick={() => abrirSinistro(ap, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</button>}</td>
+                          <td style={{ padding: "10px 14px" }}>{ap && <OperationalButton data-arato-button="secondary" onClick={() => abrirSinistro(ap, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11 }}>Abrir</OperationalButton>}</td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </div>
@@ -689,15 +690,15 @@ export default function SegurosPage() {
             {/* Header */}
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{apoliceEdit ? "Editar Apólice" : "Nova Apólice"}</div>
-              <button data-arato-button="icon" onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             {/* Abas internas */}
             <div data-arato-tabs="true" data-arato-dialog-body="true" style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--bg-tag)", padding: "0 22px" }}>
               {(["dados","cobertura","financeiro","anexo"] as const).map(t => (
-                <button data-arato-tab-active={tabModal === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setTabModal(t)} style={{ padding: "9px 18px", border: "none", borderBottom: tabModal === t ? "2.5px solid #111" : "2.5px solid transparent", background: "none", cursor: "pointer", fontSize: 12, fontWeight: tabModal === t ? 700 : 400, color: tabModal === t ? "#111" : "#666", marginBottom: -1 }}>
+                <OperationalButton data-arato-tab-active={tabModal === (t)} data-arato-tab="true" data-arato-button="toggle" key={t} onClick={() => setTabModal(t)} style={{ padding: "9px 18px", border: "none", borderBottom: tabModal === t ? "2.5px solid #111" : "2.5px solid transparent", background: "none", cursor: "pointer", fontSize: 12, fontWeight: tabModal === t ? 700 : 400, color: tabModal === t ? "#111" : "#666", marginBottom: -1 }}>
                   {t === "dados" ? "Dados" : t === "cobertura" ? "Cobertura / Bem" : t === "financeiro" ? "Financeiro" : "Anexo"}
-                </button>
+                </OperationalButton>
               ))}
             </div>
 
@@ -806,7 +807,7 @@ export default function SegurosPage() {
                       <div key={i} style={{ gridColumn: "1/-1", display: "flex", gap: 10, alignItems: "center", padding: "8px 12px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
                         <span style={{ flex: 1, fontSize: 13 }}>{c.tipo}</span>
                         <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtBRL(c.capital)}</span>
-                        <button data-arato-button="icon" onClick={() => setAForm(f => ({ ...f, coberturas_vida: (f.coberturas_vida ?? []).filter((_, j) => j !== i) }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
+                        <OperationalButton data-arato-button="icon" onClick={() => setAForm(f => ({ ...f, coberturas_vida: (f.coberturas_vida ?? []).filter((_, j) => j !== i) }))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</OperationalButton>
                       </div>
                     ))}
                     {/* Adicionar cobertura */}
@@ -821,7 +822,7 @@ export default function SegurosPage() {
                         <label data-arato-label="true" style={lbl}>Capital Segurado (R$)</label>
                         <InputMonetario style={inp} value={novaCobertura.capital} onChange={v => setNovaCobertura(c => ({ ...c, capital: v }))} />
                       </div>
-                      <button data-arato-button="primary" onClick={() => { if (novaCobertura.capital > 0) { setAForm(f => ({ ...f, coberturas_vida: [...(f.coberturas_vida ?? []), { tipo: novaCobertura.tipo, capital: novaCobertura.capital }] })); setNovaCobertura({ tipo: "Morte", capital: 0 }); } }} style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }}>+ Add</button>
+                      <OperationalButton data-arato-button="primary" onClick={() => { if (novaCobertura.capital > 0) { setAForm(f => ({ ...f, coberturas_vida: [...(f.coberturas_vida ?? []), { tipo: novaCobertura.tipo, capital: novaCobertura.capital }] })); setNovaCobertura({ tipo: "Morte", capital: 0 }); } }} style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }}>+ Add</OperationalButton>
                     </div>
                   </>)}
 
@@ -858,10 +859,10 @@ export default function SegurosPage() {
                   {/* Toggle À vista / Parcelado */}
                   <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
                     {(["avista", "parcelado"] as const).map(opt => (
-                      <button data-arato-button="toggle" key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); setParcelasAlteradas(true); }}
+                      <OperationalButton data-arato-button="toggle" key={opt} onClick={() => { setPremioCondicao(opt); setParcelasSeguro([]); setParcelasAlteradas(true); }}
                         style={{ padding: "7px 20px", fontSize: 13, fontWeight: premioCondicao === opt ? 600 : 400, background: premioCondicao === opt ? "#1A4870" : "var(--bg-card)", color: premioCondicao === opt ? "#fff" : "var(--text-2)", border: "none", cursor: "pointer" }}>
                         {opt === "avista" ? "À vista" : "Parcelado"}
-                      </button>
+                      </OperationalButton>
                     ))}
                   </div>
 
@@ -891,12 +892,12 @@ export default function SegurosPage() {
                             <option value="12">Anual (12 meses)</option>
                           </SelectField>
                         </div>
-                        <button data-arato-button="primary" onClick={() => {
+                        <OperationalButton data-arato-button="primary" onClick={() => {
                           const qtd = parseInt(premioQtd) || 2;
                           const freq = parseInt(premioFreq) || 1;
                           setParcelasSeguro(gerarParcelasSeguro(aForm.data_inicio_vigencia, qtd, freq, aForm.premio_anual));
                           setParcelasAlteradas(true);
-                        }} style={{ ...btnV, whiteSpace: "nowrap" }}>Gerar</button>
+                        }} style={{ ...btnV, whiteSpace: "nowrap" }}>Gerar</OperationalButton>
                       </div>
 
                       {parcelasSeguro.length > 0 && (
@@ -966,10 +967,10 @@ export default function SegurosPage() {
             <div data-arato-dialog-body="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)" }}>
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{aErr}</div>}
               <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
-                <button data-arato-button="primary" onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, opacity: aSaving ? 0.6 : 1, cursor: aSaving ? "default" : "pointer" }}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalApolice(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, opacity: aSaving ? 0.6 : 1, cursor: aSaving ? "default" : "pointer" }}>
                   {aSaving ? "Salvando…" : "Salvar Apólice"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -987,7 +988,7 @@ export default function SegurosPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{sinistroEdit ? "Editar Sinistro" : "Registrar Sinistro"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Apólice {modalSinistro.numero_apolice} — {modalSinistro.seguradora}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalSinistro(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalSinistro(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
               {sErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{sErr}</div>}
@@ -1008,10 +1009,10 @@ export default function SegurosPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalSinistro(null)}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "var(--text-muted)" : "#E24B4A", opacity: sSaving ? 0.6 : 1 }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalSinistro(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "var(--text-muted)" : "#E24B4A", opacity: sSaving ? 0.6 : 1 }}>
                 {sSaving ? "Registrando…" : "Salvar Sinistro"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -1028,7 +1029,7 @@ export default function SegurosPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>Confirmar Pagamento</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Venc. {fmtData(modalPremio.data_vencimento)} — {fmtBRL(modalPremio.valor)}</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalPremio(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalPremio(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ padding: "20px 22px" }}>
               <label data-arato-label="true" style={lbl}>Data do Pagamento</label>
@@ -1038,10 +1039,10 @@ export default function SegurosPage() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalPremio(null)}>Cancelar</button>
-              <button data-arato-button="primary" onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, opacity: premioSaving ? 0.6 : 1 }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalPremio(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, opacity: premioSaving ? 0.6 : 1 }}>
                 {premioSaving ? "Salvando…" : "Confirmar Pagamento"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

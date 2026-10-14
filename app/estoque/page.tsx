@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -1005,13 +1006,13 @@ export default function Estoque() {
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px" }}>
-          <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 0 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px" }}>
+          <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 0 }}>
             <div>
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Estoque</h1>
               <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Insumos, produtos, NF de entrada e movimentações</p>
             </div>
-            <div data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {fazendasConta.length > 1 && (
                 <SelectField
                   value={fazTrabalho}
@@ -1025,19 +1026,19 @@ export default function Estoque() {
               {negativos.length > 0 && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#791F1F", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⛔ {negativos.length} saldo negativo</span>}
               {alertas.length > 0 && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⚠ {alertas.length} no mínimo</span>}
               <span style={{ fontSize: 12, color: "var(--text-2)" }}>Valor: <strong style={{ color: "var(--text-1)" }}>{fmtBRL(totalValorEstoque)}</strong></span>
-            </div>
-          </div>
-        </header>
+            </OperationalFilters>
+          </OperationalHeading>
+        </OperationalHeading>
 
         {/* Abas — scroll horizontal no mobile */}
         <div data-arato-tabs="true" data-arato-grid-container="true" style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
           {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"], ["duplicados","Possíveis Duplicados"] ] as const).map(([k,l]) => (
-            <button data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+            <OperationalButton data-arato-tab-active={aba === (k)} data-arato-tab="true" data-arato-button="toggle" key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #111111" : "2px solid transparent", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
               {l}
               {k === "duplicados" && gruposDuplicados.length > 0 && (
                 <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", borderRadius: 10, padding: "1px 7px" }}>{gruposDuplicados.length}</span>
               )}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -1062,18 +1063,18 @@ export default function Estoque() {
                       <div style={{ padding: "10px 16px", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "#92400E" }}>⚠ {itens.length} cadastros com o mesmo nome normalizado</span>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             disabled={duplicadosProcessando === chave}
                             onClick={() => revisarDuplicado(chave, itens.map(i => i.nome), "descartado")}
                             style={{ ...btnE, background: "var(--bg-card)" }}>
                             {duplicadosProcessando === chave ? "..." : "Descartar — não é duplicado"}
-                          </button>
-                          <button data-arato-button="primary"
+                          </OperationalButton>
+                          <OperationalButton data-arato-button="primary"
                             disabled={duplicadosProcessando === chave}
                             onClick={() => revisarDuplicado(chave, itens.map(i => i.nome), "corrigido")}
                             style={btnV}>
                             {duplicadosProcessando === chave ? "..." : "✓ Corrigido"}
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.8fr 1fr 1fr 1.2fr", gap: 0, fontSize: 12 }}>
@@ -1104,7 +1105,7 @@ export default function Estoque() {
           {/* ══ POSIÇÃO DE ESTOQUE ══ */}
           {aba === "posicao" && (
             <div>
-              <div data-arato-filters="true" style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexDirection: "row", flexWrap: "wrap" }}>
+              <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexDirection: "row", flexWrap: "wrap" }}>
                 <input style={{ ...inp, width: 220 }} placeholder="Buscar…" value={busca} onChange={e => setBusca(e.target.value)} />
                 <SelectField
                   value={filtroDeposito}
@@ -1123,12 +1124,12 @@ export default function Estoque() {
                   ] as [string,string][]).map(([k,l]) => {
                     const isAlert = k === "alertas" || k === "negativos";
                     const ativo = filtroCat === k;
-                    return <button data-arato-button="toggle" key={k} onClick={() => setFiltroCat(k as typeof filtroCat)} style={{ padding: "6px 12px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: ativo ? 600 : 400, background: ativo ? (isAlert ? "#FCEBEB" : "#E8E8E8") : "#fff", color: ativo ? (isAlert ? "#791F1F" : "#0D0D0D") : "#666", borderColor: ativo ? (isAlert ? "#E24B4A50" : "#11111140") : "var(--border-table)" }}>{l}</button>;
+                    return <OperationalButton data-arato-button="toggle" key={k} onClick={() => setFiltroCat(k as typeof filtroCat)} style={{ padding: "6px 12px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: ativo ? 600 : 400, background: ativo ? (isAlert ? "#FCEBEB" : "#E8E8E8") : "#fff", color: ativo ? (isAlert ? "#791F1F" : "#0D0D0D") : "#666", borderColor: ativo ? (isAlert ? "#E24B4A50" : "#11111140") : "var(--border-table)" }}>{l}</OperationalButton>;
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
                   {selecionados.size > 0 && (
-                    <button data-arato-button="danger"
+                    <OperationalButton data-arato-button="danger"
                       style={{ padding: "8px 16px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
                       onClick={async () => {
                         const ids = Array.from(selecionados);
@@ -1141,13 +1142,13 @@ export default function Estoque() {
                       }}
                     >
                       Excluir {selecionados.size} selecionado{selecionados.size > 1 ? "s" : ""}
-                    </button>
+                    </OperationalButton>
                   )}
-                  <button data-arato-button="secondary" style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Movimentar</button>
-                  <button data-arato-button="secondary" style={{ ...btnE }} onClick={verificarReconciliacao} disabled={reconcBuscando} title="Compara insumos.estoque com a soma das movimentações e corrige divergências">{reconcBuscando ? "Verificando…" : "🔧 Reconciliar"}</button>
-                  <button data-arato-button="primary" style={{ ...btnV }} onClick={() => { if (exigeFazenda()) return; setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
+                  <OperationalButton data-arato-button="secondary" style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Movimentar</OperationalButton>
+                  <OperationalButton data-arato-button="secondary" style={{ ...btnE }} onClick={verificarReconciliacao} disabled={reconcBuscando} title="Compara insumos.estoque com a soma das movimentações e corrige divergências">{reconcBuscando ? "Verificando…" : "🔧 Reconciliar"}</OperationalButton>
+                  <OperationalButton data-arato-button="primary" style={{ ...btnV }} onClick={() => { if (exigeFazenda()) return; setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</OperationalButton>
                 </div>
-              </div>
+              </OperationalFilters>
 
               {(() => {
                 const todosSel = insumosFiltrados.length > 0 && insumosFiltrados.every(i => selecionados.has(i.id));
@@ -1155,7 +1156,7 @@ export default function Estoque() {
                 const thStyle: React.CSSProperties = { padding: "8px 14px", textAlign: "center" as const, fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" as const };
                 return (
                   <div data-arato-grid-container="true" style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)" }}>
                           <th style={{ ...thStyle, width: 40, padding: "8px 12px" }}>
@@ -1206,13 +1207,13 @@ export default function Estoque() {
                               <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtBRL(ins.valor_unitario)}/{ins.unidade}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center", color: negativo ? "#E24B4A" : "var(--text-1)", fontWeight: 600 }}>{fmtBRL(valorTotal)}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                                <button data-arato-button="secondary" style={btnE} onClick={() => { if (exigeFazenda()) return; setFMov(p => ({ ...p, insumo_id: ins.id, deposito_id: ins.deposito_id ?? "" })); setModalMov(true); }}>± Mov.</button>
+                                <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { if (exigeFazenda()) return; setFMov(p => ({ ...p, insumo_id: ins.id, deposito_id: ins.deposito_id ?? "" })); setModalMov(true); }}>± Mov.</OperationalButton>
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   </div>
                 );
               })()}
@@ -1230,7 +1231,7 @@ export default function Estoque() {
                 <input style={{ ...inp, width: 200, fontSize: 12 }} placeholder="Buscar PA…" value={buscaPA} onChange={e => setBuscaPA(e.target.value)} />
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Princípio Ativo", "Categoria", "Saldo atual", "Custo médio", "Valor em estoque", "Última movimentação"]} />
                   <tbody>
                     {paSaldos
@@ -1277,7 +1278,7 @@ export default function Estoque() {
                       <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#666", fontSize: 12 }}>Nenhum resultado</td></tr>
                     )}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
               <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)", textAlign: "right" }}>
                 Total em estoque PA: R$ {paSaldos.reduce((s, p) => s + p.saldo_atual * p.custo_medio, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1289,10 +1290,10 @@ export default function Estoque() {
           {aba === "nf_entrada" && (
             <div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-                <button data-arato-button="primary" style={btnV} onClick={abrirNovaFf}>+ Lançar NF de Entrada</button>
+                <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNovaFf}>+ Lançar NF de Entrada</OperationalButton>
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["NF / Série", "Emitente", "Data Emissão", "Valor Total", "Status", "Natureza", ""]} />
                   <tbody>
                     {nfEntradas.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma NF de entrada lançada</td></tr>}
@@ -1319,13 +1320,13 @@ export default function Estoque() {
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(nf.status.charAt(0).toUpperCase()+nf.status.slice(1), bg, cl)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{nf.natureza || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            <button data-arato-button="secondary" style={btnE} onClick={() => verDetalheNf(nf)}>Ver itens</button>
+                            <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => verDetalheNf(nf)}>Ver itens</OperationalButton>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           )}
@@ -1338,7 +1339,7 @@ export default function Estoque() {
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Insumos entregues por terceiros para uso futuro — controle de saldo e consumo</div>
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Descrição", "Terceiro", "Qtd. Original", "Saldo atual", "Status", "Safra", ""]} />
                   <tbody>
                     {terceiros.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum estoque de terceiros registrado</td></tr>}
@@ -1371,13 +1372,13 @@ export default function Estoque() {
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(t.status.charAt(0).toUpperCase()+t.status.slice(1), bg, cl)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{t.safra || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            <button data-arato-button="secondary" style={btnE}>Detalhes</button>
+                            <OperationalButton data-arato-button="secondary" style={btnE}>Detalhes</OperationalButton>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           )}
@@ -1388,14 +1389,14 @@ export default function Estoque() {
               <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {([["todos","Todas"],["entrada","Entradas"],["saida","Saídas"]] as const).map(([k,l]) => (
-                    <button data-arato-button="toggle" key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#E8E8E8" : "var(--bg-card)", color: filtroMov === k ? "#0D0D0D" : "#666", borderColor: filtroMov === k ? "#11111140" : "var(--border-table)" }}>{l}</button>
+                    <OperationalButton data-arato-button="toggle" key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#E8E8E8" : "var(--bg-card)", color: filtroMov === k ? "#0D0D0D" : "#666", borderColor: filtroMov === k ? "#11111140" : "var(--border-table)" }}>{l}</OperationalButton>
                   ))}
                 </div>
                 <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-2)" }}>{movsRel.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
-                <button data-arato-button="secondary" style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Nova Movimentação</button>
+                <OperationalButton data-arato-button="secondary" style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { if (exigeFazenda()) return; setModalMov(true); }}>± Nova Movimentação</OperationalButton>
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Safra / Ciclo", "Origem"]} />
                   <tbody>
                     {movsRel.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length === 0 && (
@@ -1446,7 +1447,7 @@ export default function Estoque() {
                       );
                     })}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           )}
@@ -1458,7 +1459,7 @@ export default function Estoque() {
                 Movimentações — Defensivos / Fertilizantes / Inoculantes (PA)
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Princípio Ativo", "Tipo", "Qtd.", "Custo unit.", "Produto na NF", "Origem", "NF"]} />
                   <tbody>
                     {movsPA.filter(m => filtroMov === "todos" || m.tipo === filtroMov).map((m, i, arr) => (
@@ -1493,7 +1494,7 @@ export default function Estoque() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             </div>
           )}
@@ -1504,7 +1505,7 @@ export default function Estoque() {
               {/* Sub-abas — scroll horizontal no mobile */}
               <div data-arato-grid-container="true" style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
                 {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["lotes","Saldo por Lote"],["depositos","Saldo por Depósito"],["posicao","Posição Financeira"],["auditoria","🔍 Auditoria de Saldo"]] as [typeof relTipo, string][]).map(([k,l]) => (
-                  <button data-arato-button="toggle" key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#111111" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
+                  <OperationalButton data-arato-button="toggle" key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#111111" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</OperationalButton>
                 ))}
               </div>
 
@@ -1591,9 +1592,9 @@ export default function Estoque() {
                           </SelectField>
                         </div>
                         <div>
-                          <button data-arato-button="primary" onClick={buscarKardex} disabled={kardexBuscando} style={{ ...btnV, whiteSpace: "nowrap", opacity: kardexBuscando ? 0.6 : 1 }}>
+                          <OperationalButton data-arato-button="primary" onClick={buscarKardex} disabled={kardexBuscando} style={{ ...btnV, whiteSpace: "nowrap", opacity: kardexBuscando ? 0.6 : 1 }}>
                             {kardexBuscando ? "Buscando…" : "Buscar"}
-                          </button>
+                          </OperationalButton>
                         </div>
                       </div>
                     </div>
@@ -1631,9 +1632,9 @@ export default function Estoque() {
 
                         {/* Botão imprimir */}
                         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }} className="no-print">
-                          <button data-arato-button="secondary" onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             🖨 Imprimir
-                          </button>
+                          </OperationalButton>
                         </div>
 
                         {/* Tabela resumo */}
@@ -1643,7 +1644,7 @@ export default function Estoque() {
                             <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 400 }}>{kardexInicio.split("-").reverse().join("/")} → {kardexFim.split("-").reverse().join("/")}</span>
                           </div>
                           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                               <TH cols={["Produto", "Categoria", "Unid.", "Saldo Inicial", "Entradas", "Saídas", "Saldo Final"]} />
                               <tbody>
                                 {grupos.map((g, i) => {
@@ -1668,7 +1669,7 @@ export default function Estoque() {
                                   <td style={{ padding: "9px 14px" }} />
                                 </tr>
                               </tbody>
-                            </table>
+                            </OperationalGrid>
                           </div>
                         </div>
 
@@ -1689,7 +1690,7 @@ export default function Estoque() {
                                 </span>
                               </div>
                               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                                   <TH cols={["Data", "Tipo", "Origem", "Quantidade", "Saldo Acum.", "Depósito", "Usuário"]} />
                                   <tbody>
                                     {g.movs.map((m, mi) => {
@@ -1739,7 +1740,7 @@ export default function Estoque() {
                                       );
                                     })}
                                   </tbody>
-                                </table>
+                                </OperationalGrid>
                               </div>
                             </div>
                           );
@@ -1772,7 +1773,7 @@ export default function Estoque() {
                       <InputData style={inp} type="date" value={relDataInicio} onChange={e => setRelDataInicio(e.target.value)} />
                     </div>
                     <div style={{ display: "flex", alignItems: "flex-end" }}>
-                      <button data-arato-button="primary" style={{ ...btnV, width: "100%" }} onClick={buscarHistorico}>Buscar</button>
+                      <OperationalButton data-arato-button="primary" style={{ ...btnV, width: "100%" }} onClick={buscarHistorico}>Buscar</OperationalButton>
                     </div>
                   </div>
                   {relInsumoId && (() => {
@@ -1794,7 +1795,7 @@ export default function Estoque() {
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>{rows.length} movimentações</span>
                         </div>
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                             <TH cols={["Data","Tipo","Motivo","Quantidade","Saldo acum.","Depósito","Origem"]} />
                             <tbody>
                               {rows.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: "center", color: "#444" }}>Nenhuma movimentação no período</td></tr>}
@@ -1813,7 +1814,7 @@ export default function Estoque() {
                                 );
                               })}
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                         </div>
                       </div>
                     );
@@ -1829,7 +1830,7 @@ export default function Estoque() {
                     <div style={{ fontSize: 12, color: "var(--text-2)" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
                   </div>
                   <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                    <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                       <TH cols={["Item","Tipo","Categoria","Depósito","Saldo","Mínimo","Status"]} />
                       <tbody>
                         {insumos.sort((a,b) => a.nome.localeCompare(b.nome)).map((ins, i) => {
@@ -1852,7 +1853,7 @@ export default function Estoque() {
                           );
                         })}
                       </tbody>
-                    </table>
+                    </OperationalGrid>
                   </div>
                 </div>
               )}
@@ -1880,9 +1881,9 @@ export default function Estoque() {
                       </SelectField>
                     </div>
                     <div style={{ display: "flex", alignItems: "flex-end" }}>
-                      <button data-arato-button="primary" style={{ ...btnV, width: "100%" }} onClick={buscarSaldoLote} disabled={!relLoteInsumoId || buscandoLote}>
+                      <OperationalButton data-arato-button="primary" style={{ ...btnV, width: "100%" }} onClick={buscarSaldoLote} disabled={!relLoteInsumoId || buscandoLote}>
                         {buscandoLote ? "Buscando…" : "Buscar"}
-                      </button>
+                      </OperationalButton>
                     </div>
                   </div>
                   {relLoteInsumoId && (() => {
@@ -1897,7 +1898,7 @@ export default function Estoque() {
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>Soma dos lotes: <strong style={{ color: saldoTotal < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(saldoTotal)} {ins.unidade}</strong></span>
                         </div>
                         <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                             <TH cols={["Lote","Entradas","Saídas","Saldo Atual","Última Movimentação"]} />
                             <tbody>
                               {saldosLote.length === 0 && (
@@ -1913,7 +1914,7 @@ export default function Estoque() {
                                 </tr>
                               ))}
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                         </div>
                       </div>
                     );
@@ -1987,7 +1988,7 @@ export default function Estoque() {
                     {/* Multi-seletor de produtos */}
                     <div style={{ marginBottom: 14 }}>
                       {/* Campo de busca + chips selecionados */}
-                      <div data-arato-filters="true"
+                      <OperationalFilters data-arato-filters="true"
                         style={{
                           display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
                           minHeight: 38, padding: "5px 10px",
@@ -2010,10 +2011,10 @@ export default function Estoque() {
                               borderRadius: 20, flexShrink: 0,
                             }}>
                               {ins.nome}
-                              <button data-arato-button="icon"
+                              <OperationalButton data-arato-button="icon"
                                 onClick={e => { e.stopPropagation(); setFiltroDepProdutos(prev => { const n = new Set(prev); n.delete(id); return n; }); }}
                                 style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 0 0 2px", opacity: 0.8 }}
-                              >×</button>
+                              >×</OperationalButton>
                             </span>
                           );
                         })}
@@ -2028,14 +2029,14 @@ export default function Estoque() {
                           style={{ flex: "1 1 140px", minWidth: 120, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "var(--text-1)" }}
                         />
                         {filtroDepProdutos.size > 0 && (
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={e => { e.stopPropagation(); setFiltroDepProdutos(new Set()); setFiltroDepBusca(""); }}
                             style={{ marginLeft: "auto", fontSize: 11, padding: "2px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "transparent", color: "#1A4870", cursor: "pointer", flexShrink: 0 }}
                           >
                             Limpar tudo
-                          </button>
+                          </OperationalButton>
                         )}
-                      </div>
+                      </OperationalFilters>
 
                       {/* Dropdown de opções */}
                       {filtroDepDropOpen && (
@@ -2051,7 +2052,7 @@ export default function Estoque() {
                               {termoDep ? "Nenhum produto encontrado" : "Todos os produtos já foram selecionados"}
                             </div>
                           ) : opcoesDrop.map(i => (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               key={i.id}
                               onMouseDown={e => {
                                 e.preventDefault();
@@ -2068,7 +2069,7 @@ export default function Estoque() {
                             >
                               <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 70 }}>{i.categoria}</span>
                               <span>{i.nome}</span>
-                            </button>
+                            </OperationalButton>
                           ))}
                         </div>
                       )}
@@ -2104,7 +2105,7 @@ export default function Estoque() {
                         return (
                           <div key={depId} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                             {/* Cabeçalho do depósito */}
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               onClick={() => setDepAberto(prev => {
                                 const n = new Set(prev);
                                 n.has(depId) ? n.delete(depId) : n.add(depId);
@@ -2136,12 +2137,12 @@ export default function Estoque() {
                                   <div style={{ height: "100%", width: `${pct}%`, background: g.dep ? "#1A4870" : "#888", borderRadius: 3 }} />
                                 </div>
                               </div>
-                            </button>
+                            </OperationalButton>
 
                             {/* Tabela de itens — visível ao expandir */}
                             {aberto && (
                               <div data-arato-grid-container="true" style={{ borderTop: "0.5px solid var(--border-row)", overflowX: "auto" }}>
-                                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                                   <TH cols={["Item","Categoria","Saldo","Unidade","Valor Unit.","Valor Total","Status"]} />
                                   <tbody>
                                     {g.itens.slice().sort((a, b) => a.ins.nome.localeCompare(b.ins.nome)).map(({ ins, saldo }, idx) => {
@@ -2165,7 +2166,7 @@ export default function Estoque() {
                                       );
                                     })}
                                   </tbody>
-                                </table>
+                                </OperationalGrid>
                                 {/* Rodapé do depósito */}
                                 <div style={{ padding: "8px 14px", borderTop: "0.5px solid var(--border-row)", background: "var(--bg-page)", display: "flex", justifyContent: "flex-end", gap: 24 }}>
                                   <span style={{ fontSize: 12, color: "var(--text-2)" }}>{g.itens.length} item{g.itens.length !== 1 ? "s" : ""}</span>
@@ -2205,16 +2206,16 @@ export default function Estoque() {
                               onChange={e => setDataAbertura(e.target.value)}
                               style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, color: "var(--text-1)", background: "var(--bg-card)" }}
                             />
-                            <button data-arato-button="toggle"
+                            <OperationalButton data-arato-button="toggle"
                               onClick={corrigirSaldoAbertura}
                               disabled={corrigindoAbertura}
                               style={{ fontSize: 12, padding: "5px 12px", background: corrigindoAbertura ? "#9CA3AF" : "#1A4870", color: "#fff", border: "none", borderRadius: 6, cursor: corrigindoAbertura ? "not-allowed" : "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                             >
                               {corrigindoAbertura ? "Corrigindo…" : "🔧 Criar Saldo de Abertura"}
-                            </button>
+                            </OperationalButton>
                           </>
                         )}
-                        <button data-arato-button="secondary" style={btnE} onClick={() => { setAuditoriaDados([]); carregarAuditoria(); }}>↻ Reanalisar</button>
+                        <OperationalButton data-arato-button="secondary" style={btnE} onClick={() => { setAuditoriaDados([]); carregarAuditoria(); }}>↻ Reanalisar</OperationalButton>
                       </div>
                     </div>
 
@@ -2232,7 +2233,7 @@ export default function Estoque() {
 
                         {/* Tabela resumo */}
                         <div data-arato-grid-container="true" style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
-                          <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead>
                               <tr style={{ background: "var(--bg-page)" }}>
                                 {["Item","Unid.","Σ Entradas","Σ Saídas","Saldo (mov.)","Estoque (campo)","Divergência","Diagnóstico"].map((c, i) => (
@@ -2301,7 +2302,7 @@ export default function Estoque() {
                                             const divergenciaFinal = a.saldoCampo - saldoFinalMov;
                                             return (
                                               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                                                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                                   <thead>
                                                     <tr style={{ background: "var(--bg-page)" }}>
                                                       {["Data","Tipo","Motivo","Δ Quantidade","Saldo Acum. (mov.)","Obs."].map((c, i) => (
@@ -2341,7 +2342,7 @@ export default function Estoque() {
                                                       <td />
                                                     </tr>
                                                   </tbody>
-                                                </table>
+                                                </OperationalGrid>
                                               </div>
                                             );
                                           })()}
@@ -2352,7 +2353,7 @@ export default function Estoque() {
                                 );
                               })}
                             </tbody>
-                          </table>
+                          </OperationalGrid>
                         </div>
 
                         <div style={{ fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px", lineHeight: 1.6 }}>
@@ -2390,7 +2391,7 @@ export default function Estoque() {
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14 }}>Valor por Categoria</div>
                       <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                        <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                           <TH cols={["Categoria","Qtd. itens","Valor total","% do estoque"]} />
                           <tbody>
                             {porCategoria.map(([cat, valor], i) => {
@@ -2413,7 +2414,7 @@ export default function Estoque() {
                               );
                             })}
                           </tbody>
-                        </table>
+                        </OperationalGrid>
                       </div>
                     </div>
                   </div>
@@ -2561,12 +2562,12 @@ export default function Estoque() {
               <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>({emailUsuario ?? ""})</span>
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalMov(false)}>Cancelar</button>
-              <button data-arato-button="toggle"
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalMov(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle"
                 style={{ ...btnV, background: isAjuste ? "#C9921B" : btnV.background, opacity: canSave ? 1 : 0.5 }}
                 disabled={!canSave}
                 onClick={salvarMovimentacaoManual}
-              >{salvando ? "Salvando…" : isAjuste ? "Registrar Ajuste" : "Registrar Movimentação"}</button>
+              >{salvando ? "Salvando…" : isAjuste ? "Registrar Ajuste" : "Registrar Movimentação"}</OperationalButton>
             </div>
           </Modal>
         );
@@ -2633,8 +2634,8 @@ export default function Estoque() {
               <div><label data-arato-label="true" style={lbl}>Validade</label><InputData style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} /></div>
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalInsumo(false)}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarInsumo}>{salvando ? "Salvando…" : "Salvar"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalInsumo(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarInsumo}>{salvando ? "Salvando…" : "Salvar"}</OperationalButton>
             </div>
           </Modal>
         );
@@ -2646,7 +2647,7 @@ export default function Estoque() {
           {/* Toggle Manual / XML / Chave */}
           <div style={{ display: "flex", gap: 0, marginBottom: 18, background: "var(--bg-page)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
             {([["manual","Manual"] as const, ["xml","Importar XML"] as const, ["chave","Leitor de Chave"] as const]).map(([k,l]) => (
-              <button data-arato-button="toggle" key={k} onClick={() => { setNfMode(k); setChaveInput(""); setChaveErro(null); if (k === "chave") setTimeout(() => chaveInputRef.current?.focus(), 50); }} style={{ padding: "8px 18px", border: "none", background: nfMode === k ? "#111111" : "transparent", color: nfMode === k ? "#fff" : "#666", fontWeight: nfMode === k ? 600 : 400, cursor: "pointer", fontSize: 13 }}>{l}</button>
+              <OperationalButton data-arato-button="toggle" key={k} onClick={() => { setNfMode(k); setChaveInput(""); setChaveErro(null); if (k === "chave") setTimeout(() => chaveInputRef.current?.focus(), 50); }} style={{ padding: "8px 18px", border: "none", background: nfMode === k ? "#111111" : "transparent", color: nfMode === k ? "#fff" : "#666", fontWeight: nfMode === k ? 600 : 400, cursor: "pointer", fontSize: 13 }}>{l}</OperationalButton>
             ))}
           </div>
 
@@ -2655,9 +2656,9 @@ export default function Estoque() {
               <div data-arato-panel="true" style={{ background: "var(--bg-page)", border: "0.5px dashed #ccc", borderRadius: 8, padding: "20px", textAlign: "center" }}>
                 <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>Selecione o arquivo XML da NF-e para preencher automaticamente</div>
                 <input ref={xmlRef} type="file" accept=".xml" style={{ display: "none" }} onChange={lerXml} />
-                <button data-arato-button="primary" style={btnV} onClick={() => { if (xmlRef.current) { xmlRef.current.value = ""; xmlRef.current.click(); } }}>
+                <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { if (xmlRef.current) { xmlRef.current.value = ""; xmlRef.current.click(); } }}>
                   {fNf.numero ? "↺ Trocar XML" : "Selecionar XML"}
-                </button>
+                </OperationalButton>
               </div>
 
               {/* Feedback de auto-match */}
@@ -2796,8 +2797,8 @@ export default function Estoque() {
             <div style={{ gridColumn: "1/-1" }}><label data-arato-label="true" style={lbl}>Observação</label><input style={inp} value={fNf.observacao} onChange={e => setFNf(p => ({ ...p, observacao: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => setModalNf("off")}>Cancelar</button>
-            <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fNf.numero.trim() || !fNf.emitente_nome.trim() || !fNf.data_emissao ? 0.5 : 1 }} disabled={salvando || !fNf.numero.trim() || !fNf.emitente_nome.trim() || !fNf.data_emissao} onClick={avancarPasso2}>{salvando ? "Aguarde…" : "Avançar → Distribuir Itens"}</button>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNf("off")}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !fNf.numero.trim() || !fNf.emitente_nome.trim() || !fNf.data_emissao ? 0.5 : 1 }} disabled={salvando || !fNf.numero.trim() || !fNf.emitente_nome.trim() || !fNf.data_emissao} onClick={avancarPasso2}>{salvando ? "Aguarde…" : "Avançar → Distribuir Itens"}</OperationalButton>
           </div>
         </Modal>
       )}
@@ -2806,7 +2807,7 @@ export default function Estoque() {
       {modalNf === "passo2" && (
         <Modal titulo={`NF ${fNf.numero} — Distribuição de Itens`} subtitulo={`Passo 2 de 2 — ${fNf.emitente_nome} · ${fmtBRL(fNf.valor_total || 0)}`} width={780} onClose={() => setModalNf("off")}>
           <div style={{ marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
-            <button data-arato-button="secondary" style={{ ...btnE, borderColor: "#11111140", color: "#0D0D0D", background: "#E8E8E8" }} onClick={adicionarItemNf}>+ Adicionar item</button>
+            <OperationalButton data-arato-button="secondary" style={{ ...btnE, borderColor: "#11111140", color: "#0D0D0D", background: "#E8E8E8" }} onClick={adicionarItemNf}>+ Adicionar item</OperationalButton>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2822,7 +2823,7 @@ export default function Estoque() {
                     {autoVinculado && <span style={{ fontSize: 11, background: "#D4EDDA", color: "#155724", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>✓ Auto-vinculado</span>}
                     {semVinculo    && <span style={{ fontSize: 11, background: "#F8D7DA", color: "#721C24", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>⚠ Sem vínculo — selecione o insumo</span>}
                     {item.alerta_preco && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>⚠ Preço +10% vs. custo médio</span>}
-                    <button data-arato-button="danger" style={btnX} onClick={() => setItensNf(p => p.filter(i => i.key !== item.key))}>✕</button>
+                    <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setItensNf(p => p.filter(i => i.key !== item.key))}>✕</OperationalButton>
                   </div>
                 </div>
 
@@ -3059,8 +3060,8 @@ export default function Estoque() {
               {itensNf.length} iten(s) · Total: <strong>{fmtBRL(itensNf.reduce((s,i) => s + i.valor_total, 0))}</strong>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNf("off")}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, background: "#C9921B", opacity: salvando || itensNf.every(i => !i.descricao_produto.trim()) ? 0.5 : 1 }} disabled={salvando || itensNf.every(i => !i.descricao_produto.trim())} onClick={processarNf}>{salvando ? "Processando…" : "Processar NF — Atualizar Estoque"}</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNf("off")}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#C9921B", opacity: salvando || itensNf.every(i => !i.descricao_produto.trim()) ? 0.5 : 1 }} disabled={salvando || itensNf.every(i => !i.descricao_produto.trim())} onClick={processarNf}>{salvando ? "Processando…" : "Processar NF — Atualizar Estoque"}</OperationalButton>
             </div>
           </div>
         </Modal>
@@ -3070,7 +3071,7 @@ export default function Estoque() {
       {modalDetalheNf && (
         <Modal titulo={`NF ${modalDetalheNf.numero} — Itens`} subtitulo={`${modalDetalheNf.emitente_nome} · ${modalDetalheNf.data_emissao.split("-").reverse().join("/")} · ${fmtBRL(modalDetalheNf.valor_total)}`} width={700} onClose={() => setModalDetalheNf(null)}>
           <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <TH cols={["Descrição", "Qtd.", "Vl. Unit.", "Vl. Total", "Apropriação", "Destino"]} />
               <tbody>
                 {itensDetalhe.length === 0 && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#444" }}>Nenhum item registrado</td></tr>}
@@ -3111,10 +3112,10 @@ export default function Estoque() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
-            <button data-arato-button="secondary" style={btnR} onClick={() => setModalDetalheNf(null)}>Fechar</button>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalDetalheNf(null)}>Fechar</OperationalButton>
           </div>
         </Modal>
       )}
@@ -3128,7 +3129,7 @@ export default function Estoque() {
               <div style={{ fontWeight: 700, color: "#166534" }}>Todos os saldos estão corretos!</div>
               <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 6 }}>O campo estoque de cada insumo bate com a soma das movimentações.</div>
               <div style={{ marginTop: 20 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalReconciliar(false)}>Fechar</button>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalReconciliar(false)}>Fechar</OperationalButton>
               </div>
             </div>
           ) : (
@@ -3137,7 +3138,7 @@ export default function Estoque() {
                 ⚠ {reconcItens.length} item{reconcItens.length > 1 ? "s" : ""} com saldo divergente. O campo <strong>estoque</strong> não bate com a soma das movimentações. Clique em <strong>Corrigir</strong> para ajustar o campo para o valor calculado pelas movimentações.
               </div>
               <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Item", "Unid.", "Estoque atual (campo)", "Σ Movimentações", "Diferença"].map((c, i) => (
@@ -3158,16 +3159,16 @@ export default function Estoque() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
               <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 12, background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
                 <strong>Causa comum:</strong> insumo cadastrado com estoque inicial preenchido manualmente sem gerar movimentação de entrada. A correção ajusta o campo para corresponder ao histórico real de movimentações.
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModalReconciliar(false)}>Cancelar</button>
-                <button data-arato-button="danger" style={{ ...btnV, background: "#E24B4A" }} onClick={aplicarReconciliacao} disabled={reconcAplicando}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalReconciliar(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="danger" style={{ ...btnV, background: "#E24B4A" }} onClick={aplicarReconciliacao} disabled={reconcAplicando}>
                   {reconcAplicando ? "Corrigindo…" : `Corrigir ${reconcItens.length} item${reconcItens.length > 1 ? "s" : ""}`}
-                </button>
+                </OperationalButton>
               </div>
             </>
           )}

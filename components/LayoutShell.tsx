@@ -6,6 +6,7 @@ import TopNav from "./TopNav";
 import FormDrawerHost from "./FormDrawerHost";
 import { hasClientWorkspace } from "../lib/layout-preferences";
 import { useAuth } from "./AuthProvider";
+import { OperationalContext } from "./OperationalUI";
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const { modern } = useLayout();
   const pathname = usePathname();
@@ -15,6 +16,8 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   return <div className="arato-layout-shell" data-arato-workspace={workspace ? "true" : undefined} data-route={pathname}>
     {modern && workspace && <FormDrawerHost />}
     {modern && workspace && <TopNav global />}
-    <div id="arato-content" tabIndex={-1}>{children}</div>
+    <OperationalContext.Provider value={modern && workspace}>
+      <div id="arato-content" tabIndex={-1}>{children}</div>
+    </OperationalContext.Provider>
   </div>;
 }

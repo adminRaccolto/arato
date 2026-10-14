@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton } from "../../../components/OperationalUI";
 // Página de execução de campo — mobile-first, offline-capable via localStorage
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback } from "react";
@@ -176,14 +177,14 @@ function CardRecomendacao({
           </div>
         )}
 
-        <button data-arato-button="secondary" onClick={() => onExecutar(rec)}
+        <OperationalButton data-arato-button="secondary" onClick={() => onExecutar(rec)}
           style={{
             width: "100%", padding: "14px 0", background: cor, color: "#fff",
             border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700,
             cursor: "pointer", letterSpacing: "-0.2px",
           }}>
           {rec.status === "em_execucao" ? "Continuar Execução" : "Iniciar Execução"}
-        </button>
+        </OperationalButton>
       </div>
     </div>
   );
@@ -283,10 +284,10 @@ function TelaExecucao({
       {/* Header mobile */}
       <div style={{ background: cor, color: "#fff", padding: "16px 18px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-          <button data-arato-button="secondary" onClick={onVoltar}
+          <OperationalButton data-arato-button="secondary" onClick={onVoltar}
             style={{ background: "var(--border)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 16, cursor: "pointer" }}>
             ←
-          </button>
+          </OperationalButton>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>{TIPOS_LABEL[rec.tipo]}</div>
             {rec.agronomo_nome && <div style={{ fontSize: 12, opacity: 0.8 }}>Rec.: {rec.agronomo_nome}</div>}
@@ -389,12 +390,12 @@ function TelaExecucao({
       {/* Footer fixo com botões */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bg-card)", padding: "14px 16px", boxShadow: "0 -2px 12px rgba(0,0,0,0.1)", display: "flex", gap: 10 }}>
         {!todosFeitos && algumFeito && (
-          <button data-arato-button="secondary" onClick={() => salvar(false)} disabled={saving}
+          <OperationalButton data-arato-button="secondary" onClick={() => salvar(false)} disabled={saving}
             style={{ flex: 1, padding: "14px 0", background: "var(--bg-page)", color: "#111111", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Salvar Parcial
-          </button>
+          </OperationalButton>
         )}
-        <button data-arato-button="toggle" onClick={() => salvar(true)} disabled={saving || !algumFeito}
+        <OperationalButton data-arato-button="toggle" onClick={() => salvar(true)} disabled={saving || !algumFeito}
           style={{
             flex: 2, padding: "14px 0",
             background: algumFeito ? cor : "var(--border)",
@@ -402,7 +403,7 @@ function TelaExecucao({
             border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: algumFeito ? "pointer" : "not-allowed",
           }}>
           {saving ? "Salvando..." : todosFeitos ? "✓ Concluir Tudo" : `Confirmar (${ajustes.filter(a=>a.concluido).length}/${ajustes.length})`}
-        </button>
+        </OperationalButton>
       </div>
     </div>
   );
@@ -519,10 +520,10 @@ export default function ExecucaoPage() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {offline > 0 && (
-              <button data-arato-button="primary" onClick={sincronizarOffline}
+              <OperationalButton data-arato-button="primary" onClick={sincronizarOffline}
                 style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                 ↑ {offline} offline
-              </button>
+              </OperationalButton>
             )}
             <span style={{ background: online ? "#16A34A" : "#E24B4A", borderRadius: 20, padding: "4px 10px", fontSize: 12, fontWeight: 700 }}>
               {online ? "● Online" : "○ Offline"}

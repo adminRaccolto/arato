@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -210,20 +211,20 @@ export default function GnrePage() {
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>GNRE</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Guias Nacionais de Recolhimento de Tributos Estaduais
             </p>
           </div>
-          <button data-arato-button="primary"
+          <OperationalButton data-arato-button="primary"
             onClick={() => abrirModal()}
             style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             + Nova GNRE
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* KPI cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
@@ -242,7 +243,7 @@ export default function GnrePage() {
         </div>
 
         {/* Filtros */}
-        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <input
             placeholder="Buscar por tipo, UF, documento..."
             value={busca} onChange={e => setBusca(e.target.value)}
@@ -256,7 +257,7 @@ export default function GnrePage() {
             <option value="">Todas as UFs</option>
             {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
           </SelectField>
-        </div>
+        </OperationalFilters>
 
         {/* Tabela */}
         <div style={card}>
@@ -269,7 +270,7 @@ export default function GnrePage() {
               <div style={{ fontSize: 12 }}>Clique em "+ Nova GNRE" para emitir sua primeira guia.</div>
             </div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#F8FAFF" }}>
                   {["Tipo/Receita","UF","Doc. Origem","Competência","Vencimento","Valor Total","Status","Ações"].map(h => (
@@ -303,26 +304,26 @@ export default function GnrePage() {
                       <td style={{ padding: "9px 10px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
                           {g.status === "rascunho" && (
-                            <button data-arato-button="primary" onClick={() => emitir(g)}
+                            <OperationalButton data-arato-button="primary" onClick={() => emitir(g)}
                               style={{ padding: "4px 10px", background: "#111111", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Emitir
-                            </button>
+                            </OperationalButton>
                           )}
                           {(g.status === "emitida" || g.status === "vencida") && (
-                            <button data-arato-button="primary" onClick={() => { setPagarModal(g); setDataPgto(hoje); }}
+                            <OperationalButton data-arato-button="primary" onClick={() => { setPagarModal(g); setDataPgto(hoje); }}
                               style={{ padding: "4px 10px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                               Pagar
-                            </button>
+                            </OperationalButton>
                           )}
-                          <button data-arato-button="secondary" onClick={() => abrirModal(g)}
+                          <OperationalButton data-arato-button="secondary" onClick={() => abrirModal(g)}
                             style={{ padding: "4px 10px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                             Editar
-                          </button>
+                          </OperationalButton>
                           {g.status !== "paga" && g.status !== "cancelada" && (
-                            <button data-arato-button="icon" onClick={() => cancelar(g.id)}
+                            <OperationalButton data-arato-button="icon" onClick={() => cancelar(g.id)}
                               style={{ padding: "4px 8px", background: "none", border: "none", fontSize: 14, cursor: "pointer", color: "#E24B4A" }}>
                               ✕
-                            </button>
+                            </OperationalButton>
                           )}
                         </div>
                       </td>
@@ -330,7 +331,7 @@ export default function GnrePage() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           )}
         </div>
       </div>
@@ -343,7 +344,7 @@ export default function GnrePage() {
 
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>{editando ? "Editar GNRE" : "Nova GNRE"}</span>
-              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "22px 24px", display: "grid", gap: 16 }}>
@@ -439,11 +440,11 @@ export default function GnrePage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvar} disabled={salvando || !form.tipo_receita || !form.uf_favorecida}
+              <OperationalButton data-arato-button="secondary" onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvar} disabled={salvando || !form.tipo_receita || !form.uf_favorecida}
                 style={{ padding: "9px 22px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando..." : editando ? "Salvar" : "Criar GNRE"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -461,8 +462,8 @@ export default function GnrePage() {
             <label data-arato-label="true" style={lbl}>Data do Pagamento</label>
             <InputData type="date" value={dataPgto} onChange={e => setDataPgto(e.target.value)} style={{ ...inp, marginBottom: 20 }} />
             <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-              <button data-arato-button="secondary" onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button data-arato-button="primary" onClick={registrarPagamento} style={{ flex: 1, padding: "9px 0", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Confirmar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={registrarPagamento} style={{ flex: 1, padding: "9px 0", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Confirmar</OperationalButton>
             </div>
           </div>
         </div>

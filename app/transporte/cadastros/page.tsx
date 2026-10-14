@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -77,7 +78,7 @@ function Modal({ titulo, onClose, children, width = 720 }: { titulo: string; onC
       <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
         <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>{titulo}</span>
-          <button data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+          <OperationalButton data-arato-button="icon" onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
         </div>
         <div data-arato-dialog-body="true" style={{ padding: 20, overflowY: "auto" }}>{children}</div>
       </div>
@@ -273,7 +274,7 @@ export default function TransporteCadastrosPage() {
       <div style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Header */}
-        <div data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Cadastros de Transporte</h1>
             <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Transportadoras, veículos e motoristas — usados em NF-e, CT-e e MDF-e</p>
@@ -286,7 +287,7 @@ export default function TransporteCadastrosPage() {
               Só ativos
             </label>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* Tabs */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
@@ -295,11 +296,11 @@ export default function TransporteCadastrosPage() {
             ["veiculos",        `Veículos / Caminhões (${veicFilt.length})`],
             ["motoristas",      `Motoristas (${motorFilt.length})`],
           ] as [Aba, string][]).map(([a, l]) => (
-            <button data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => { setAba(a); setBusca(""); }}
+            <OperationalButton data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => { setAba(a); setBusca(""); }}
               style={{ padding: "10px 20px", border: "none", borderBottom: aba === a ? "2px solid #2A2A2A" : "2px solid transparent",
                 background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#2A2A2A" : "var(--text-2)", cursor: "pointer" }}>
               {l}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -307,14 +308,14 @@ export default function TransporteCadastrosPage() {
         {aba === "transportadoras" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
-              <button data-arato-button="secondary" style={{ ...btnR, display: "flex", alignItems: "center", gap: 5 }}
+              <OperationalButton data-arato-button="secondary" style={{ ...btnR, display: "flex", alignItems: "center", gap: 5 }}
                 onClick={sincronizarDeEmpresas} disabled={sincronizando}>
                 {sincronizando ? "Importando…" : "⟳ Importar de Empresas"}
-              </button>
-              <button data-arato-button="primary" style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</button>
+              </OperationalButton>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</OperationalButton>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Razão Social / Nome Fantasia", "CNPJ / CPF", "IE", "RNTRC", "Município / UF", "Status", ""].map(h => (
@@ -347,12 +348,12 @@ export default function TransporteCadastrosPage() {
                         </span>
                       </td>
                       <td style={{ padding: "10px 12px" }}>
-                        <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalT(t)}>Editar</button>
+                        <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalT(t)}>Editar</OperationalButton>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}
@@ -361,10 +362,10 @@ export default function TransporteCadastrosPage() {
         {aba === "veiculos" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-              <button data-arato-button="primary" style={btnV} onClick={() => setModalV({ ativo: true })}>+ Novo Veículo</button>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={() => setModalV({ ativo: true })}>+ Novo Veículo</OperationalButton>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Placa", "Tipo", "Carroceria", "Tara / Cap.", "RENAVAM", "Transportadora", "Status", ""].map(h => (
@@ -398,12 +399,12 @@ export default function TransporteCadastrosPage() {
                         </span>
                       </td>
                       <td style={{ padding: "10px 12px" }}>
-                        <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalV(v)}>Editar</button>
+                        <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalV(v)}>Editar</OperationalButton>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}
@@ -412,10 +413,10 @@ export default function TransporteCadastrosPage() {
         {aba === "motoristas" && (
           <div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-              <button data-arato-button="primary" style={btnV} onClick={() => setModalM({ ativo: true })}>+ Novo Motorista</button>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={() => setModalM({ ativo: true })}>+ Novo Motorista</OperationalButton>
             </div>
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Nome", "CPF", "CNH / Categoria / UF", "Validade CNH", "Transportadora", "Telefone", "Status", ""].map(h => (
@@ -463,13 +464,13 @@ export default function TransporteCadastrosPage() {
                           </span>
                         </td>
                         <td style={{ padding: "10px 12px" }}>
-                          <button data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalM(m)}>Editar</button>
+                          <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalM(m)}>Editar</OperationalButton>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}
@@ -560,10 +561,10 @@ export default function TransporteCadastrosPage() {
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalT(null)}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarT}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalT(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarT}>
                 {salvando ? "Salvando…" : "Salvar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </Modal>
@@ -651,10 +652,10 @@ export default function TransporteCadastrosPage() {
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalV(null)}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarV}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalV(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarV}>
                 {salvando ? "Salvando…" : "Salvar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </Modal>
@@ -727,10 +728,10 @@ export default function TransporteCadastrosPage() {
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalM(null)}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarM}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalM(null)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarM}>
                 {salvando ? "Salvando…" : "Salvar"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </Modal>

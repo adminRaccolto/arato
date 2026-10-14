@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
@@ -185,10 +186,10 @@ function PesoInput({ label, corFundo, corBorda, corLabel, value, onChange }: Pes
         <span style={{ fontSize: 12, fontWeight: 700, color: corLabel }}>⚖ {label}</span>
         <div style={{ display: "flex", border: `0.5px solid ${corBorda}`, borderRadius: 7, overflow: "hidden" }}>
           {(["manual","balanca"] as ModoEntrada[]).map((m, i) => (
-            <button data-arato-button="toggle" key={m} onClick={() => { setModo(m); if (m === "manual") desconectar(); }}
+            <OperationalButton data-arato-button="toggle" key={m} onClick={() => { setModo(m); if (m === "manual") desconectar(); }}
               style={{ padding: "5px 14px", fontSize: 11, fontWeight: modo === m ? 700 : 400, cursor: "pointer", border: "none", borderRight: i === 0 ? `0.5px solid ${corBorda}` : "none", background: modo === m ? corLabel : "transparent", color: modo === m ? "#fff" : corLabel, transition: "all .15s" }}>
               {m === "manual" ? "✏ Manual" : "🔌 Balança"}
-            </button>
+            </OperationalButton>
           ))}
         </div>
       </div>
@@ -225,15 +226,15 @@ function PesoInput({ label, corFundo, corBorda, corLabel, value, onChange }: Pes
                 </span>
                 {serialMsg && <span style={{ fontSize: 11, color: "var(--text-3)", flex: 1 }}>{serialMsg}</span>}
                 {serialStatus === "desconectado" || serialStatus === "erro" ? (
-                  <button data-arato-button="secondary" onClick={conectar}
+                  <OperationalButton data-arato-button="secondary" onClick={conectar}
                     style={{ padding: "6px 14px", borderRadius: 7, background: corLabel, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                     Conectar Balança
-                  </button>
+                  </OperationalButton>
                 ) : (
-                  <button data-arato-button="secondary" onClick={desconectar}
+                  <OperationalButton data-arato-button="secondary" onClick={desconectar}
                     style={{ padding: "6px 14px", borderRadius: 7, background: "var(--bg-page)", color: "#E24B4A", border: "0.5px solid #E24B4A", fontSize: 12, cursor: "pointer" }}>
                     Desconectar
-                  </button>
+                  </OperationalButton>
                 )}
               </div>
 
@@ -245,10 +246,10 @@ function PesoInput({ label, corFundo, corBorda, corLabel, value, onChange }: Pes
                     {pesoLive !== null ? `${pesoLive.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} kg` : "— —"}
                   </div>
                 </div>
-                <button data-arato-button="toggle" onClick={capturar} disabled={pesoLive === null}
+                <OperationalButton data-arato-button="toggle" onClick={capturar} disabled={pesoLive === null}
                   style={{ padding: "10px 20px", borderRadius: 8, background: pesoLive !== null ? corLabel : "#ccc", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: pesoLive !== null ? "pointer" : "default" }}>
                   ✓ Usar este peso
-                </button>
+                </OperationalButton>
               </div>
 
               {/* Peso capturado (campo editável após capturar) */}
@@ -599,10 +600,10 @@ export default function PesagemAvulsa() {
   const SegTipo = ({ value, onChange }: { value: Tipo; onChange: (v: Tipo) => void }) => (
     <div style={{ display: "flex", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
       {(["neutra","entrada","saida"] as Tipo[]).map((t, i) => (
-        <button data-arato-button="toggle" key={t} onClick={() => onChange(t)}
+        <OperationalButton data-arato-button="toggle" key={t} onClick={() => onChange(t)}
           style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: value === t ? 700 : 400, cursor: "pointer", border: "none", borderRight: i < 2 ? "0.5px solid var(--border-table)" : "none", background: value === t ? TIPO_COR[t].bg : "var(--bg-input)", color: value === t ? TIPO_COR[t].color : "var(--text-2)", transition: "all .15s" }}>
           {TIPO_LABEL[t]}
-        </button>
+        </OperationalButton>
       ))}
     </div>
   );
@@ -613,7 +614,7 @@ export default function PesagemAvulsa() {
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: "24px 20px" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pesagem Avulsa</h1>
             <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>{nomeFazendaSelecionada}</div>
@@ -621,21 +622,21 @@ export default function PesagemAvulsa() {
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
               {(["todos","neutra","entrada","saida"] as const).map((t, i) => (
-                <button data-arato-button="toggle" key={t} onClick={() => setFiltrTipo(t)}
+                <OperationalButton data-arato-button="toggle" key={t} onClick={() => setFiltrTipo(t)}
                   style={{ padding: "7px 14px", fontSize: 12, fontWeight: filtrTipo === t ? 700 : 400, cursor: "pointer", border: "none", borderRight: i < 3 ? "0.5px solid var(--border-table)" : "none", background: filtrTipo === t ? (t === "todos" ? "#1A5CB8" : TIPO_COR[t].bg) : "var(--bg-card)", color: filtrTipo === t ? (t === "todos" ? "#fff" : TIPO_COR[t].color) : "var(--text-2)" }}>
                   {t === "todos" ? "Todos" : TIPO_LABEL[t]}
-                </button>
+                </OperationalButton>
               ))}
             </div>
-            <button data-arato-button="secondary" onClick={() => carregar()} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
+            <OperationalButton data-arato-button="secondary" onClick={() => carregar()} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
               ↻ Atualizar
-            </button>
-            <button data-arato-button="primary" onClick={() => setModalTara(true)}
+            </OperationalButton>
+            <OperationalButton data-arato-button="primary" onClick={() => setModalTara(true)}
               style={{ padding: "9px 18px", borderRadius: 8, background: "#1A5CB8", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
               + Nova Pesagem (Tara)
-            </button>
+            </OperationalButton>
           </div>
-        </div>
+        </OperationalHeading>
 
         {/* KPIs */}
         {!carregando && (
@@ -657,10 +658,10 @@ export default function PesagemAvulsa() {
         {/* Tabs */}
         <div data-arato-tabs="true" style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)", marginBottom: 16, gap: 2 }}>
           {([["andamento","Em Andamento",emAndamento.length],["finalizadas","Finalizadas",finalizadas.length]] as const).map(([id, label, count]) => (
-            <button data-arato-tab-active={abaPrincipal === (id)} data-arato-tab="true" data-arato-button="toggle" key={id} onClick={() => setAbaPrincipal(id)}
+            <OperationalButton data-arato-tab-active={abaPrincipal === (id)} data-arato-tab="true" data-arato-button="toggle" key={id} onClick={() => setAbaPrincipal(id)}
               style={{ padding: "10px 20px", fontSize: 13, fontWeight: abaPrincipal === id ? 700 : 400, color: abaPrincipal === id ? "#1A5CB8" : "var(--text-2)", background: "none", border: "none", borderBottom: abaPrincipal === id ? "2px solid #1A5CB8" : "2px solid transparent", cursor: "pointer" }}>
               {label} <span style={{ fontSize: 11, marginLeft: 4, color: abaPrincipal === id ? "#1A5CB8" : "var(--text-3)" }}>({count})</span>
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
@@ -716,14 +717,14 @@ export default function PesagemAvulsa() {
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button data-arato-button="primary" onClick={() => { setPesagemSel(p); setPesoBrutoStr(""); setModalBruto(true); }}
+                      <OperationalButton data-arato-button="primary" onClick={() => { setPesagemSel(p); setPesoBrutoStr(""); setModalBruto(true); }}
                         style={{ padding: "9px 18px", borderRadius: 8, background: "#1A5CB8", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                         {p.status === "aguardando_tara" ? "⚖ Pesar Tara" : "⚖ Pesar Bruto"}
-                      </button>
-                      <button data-arato-button="secondary" onClick={() => { setCancelId(p.id); setModalCancel(true); }}
+                      </OperationalButton>
+                      <OperationalButton data-arato-button="secondary" onClick={() => { setCancelId(p.id); setModalCancel(true); }}
                         style={{ padding: "9px 14px", borderRadius: 8, background: "var(--bg-page)", color: "#E24B4A", border: "0.5px solid #E24B4A", fontSize: 12, cursor: "pointer" }}>
                         Cancelar
-                      </button>
+                      </OperationalButton>
                     </div>
                   </div>
                 ))}
@@ -739,7 +740,7 @@ export default function PesagemAvulsa() {
             : (
               <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                  <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
                         {["Tipo","Placa","Motorista","Produto","Fornec./Cliente","Tara (kg)","Bruto (kg)","Líquido (kg)","Data Tara","Data Bruto","Status","Operadores",""].map(h => (
@@ -772,27 +773,27 @@ export default function PesagemAvulsa() {
                           <td style={{ padding: "9px 12px" }}>
                             {p.status === "finalizado" && (
                               <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-                                <button data-arato-button="secondary"
+                                <OperationalButton data-arato-button="secondary"
                                   onClick={() => imprimirTicket(p)}
                                   title="Imprimir ticket em 2 vias"
                                   style={{ padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
                                 >
                                   🖨️ Ticket
-                                </button>
-                                <button data-arato-button="secondary"
+                                </OperationalButton>
+                                <OperationalButton data-arato-button="secondary"
                                   onClick={() => imprimirRomaneio(p)}
                                   title="Imprimir romaneio A4"
                                   style={{ padding: "5px 10px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#EEF4FF", color: "#1A4870", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
                                 >
                                   📋 Romaneio
-                                </button>
+                                </OperationalButton>
                               </div>
                             )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </OperationalGrid>
                 </div>
               </div>
             )
@@ -814,7 +815,7 @@ export default function PesagemAvulsa() {
                     : "O ticket ficará aberto para a 2ª pesagem (peso bruto)."}
                 </div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalTara(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalTara(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16, overflowY: "auto" }}>
@@ -860,11 +861,11 @@ export default function PesagemAvulsa() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
-              <button data-arato-button="secondary" onClick={() => setModalTara(false)} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
-              <button data-arato-button="toggle" onClick={salvarTara} disabled={salvandoTara}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalTara(false)} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontSize: 13, cursor: "pointer" }}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarTara} disabled={salvandoTara}
                 style={{ padding: "9px 24px", borderRadius: 8, background: salvandoTara ? "#aaa" : "#1A5CB8", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: salvandoTara ? "default" : "pointer" }}>
                 {salvandoTara ? "Salvando…" : formTara.tipo === "entrada" ? "Salvar Peso Bruto →" : "Salvar Tara →"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -885,7 +886,7 @@ export default function PesagemAvulsa() {
                     : "Informe o peso bruto para calcular o líquido e finalizar o ticket."}
                 </div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModalBruto(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalBruto(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
@@ -930,11 +931,11 @@ export default function PesagemAvulsa() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
-              <button data-arato-button="secondary" onClick={() => setModalBruto(false)} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontSize: 13, cursor: "pointer" }}>Voltar</button>
-              <button data-arato-button="toggle" onClick={salvarBruto} disabled={salvandoBruto || (liquidoPrev !== null && liquidoPrev < 0)}
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalBruto(false)} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontSize: 13, cursor: "pointer" }}>Voltar</OperationalButton>
+              <OperationalButton data-arato-button="toggle" onClick={salvarBruto} disabled={salvandoBruto || (liquidoPrev !== null && liquidoPrev < 0)}
                 style={{ padding: "9px 24px", borderRadius: 8, background: salvandoBruto ? "#aaa" : "#1A5CB8", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 {salvandoBruto ? "Finalizando…" : "✓ Finalizar Pesagem"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -947,8 +948,8 @@ export default function PesagemAvulsa() {
             <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Cancelar ticket?</div>
             <div data-arato-dialog-body="true" style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20 }}>O ticket será marcado como cancelado e não poderá ser finalizado.</div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button data-arato-button="secondary" onClick={() => setModalCancel(false)} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontSize: 13, cursor: "pointer" }}>Não</button>
-              <button data-arato-button="danger" onClick={cancelar} style={{ padding: "9px 18px", borderRadius: 8, background: "#E24B4A", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Sim, cancelar</button>
+              <OperationalButton data-arato-button="secondary" onClick={() => setModalCancel(false)} style={{ padding: "9px 18px", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", fontSize: 13, cursor: "pointer" }}>Não</OperationalButton>
+              <OperationalButton data-arato-button="danger" onClick={cancelar} style={{ padding: "9px 18px", borderRadius: 8, background: "#E24B4A", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Sim, cancelar</OperationalButton>
             </div>
           </div>
         </div>

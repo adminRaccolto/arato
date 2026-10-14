@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -164,7 +165,7 @@ export default function PulverizacaoPage() {
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
-        <header data-arato-page-heading="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
+        <OperationalHeading as="header" data-arato-page-heading="true" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
             <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pulverização</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
@@ -180,9 +181,9 @@ export default function PulverizacaoPage() {
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </SelectField>
             )}
-            <button data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+            <OperationalButton data-arato-button="primary" style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</OperationalButton>
           </div>
-        </header>
+        </OperationalHeading>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
@@ -205,7 +206,7 @@ export default function PulverizacaoPage() {
         ) : (
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
             <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Safra / Talhão</th>
@@ -244,7 +245,7 @@ export default function PulverizacaoPage() {
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button data-arato-button="secondary" style={btnE} onClick={async () => {
+                            <OperationalButton data-arato-button="secondary" style={btnE} onClick={async () => {
                               const itensList = await listarPulverizacaoItens(p.id);
                               // Recalcula com preço atual quando custo armazenado é zero
                               const itensRecalc = itensList.map(it => {
@@ -257,15 +258,15 @@ export default function PulverizacaoPage() {
                                 return { ...it, valor_unitario: vu, custo_ha: vu * dose, custo_total: vu * total };
                               });
                               setDetalhe({ pulv: p, itens: itensRecalc });
-                            }}>Produtos</button>
-                            <button data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPulverizacao(p.id).then(() => setPulverizacoes(x => x.filter(r => r.id !== p.id))); }}>✕</button>
+                            }}>Produtos</OperationalButton>
+                            <OperationalButton data-arato-button="danger" style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPulverizacao(p.id).then(() => setPulverizacoes(x => x.filter(r => r.id !== p.id))); }}>✕</OperationalButton>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
           </div>
         )}
@@ -285,7 +286,7 @@ export default function PulverizacaoPage() {
               </div>
             )}
             <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Produto", "Dose/ha", "Total Consumido", "Valor Unit.", "Custo/ha", "Custo Total"].map((h, i) => (
                     <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -310,10 +311,10 @@ export default function PulverizacaoPage() {
                     <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_total, 0))}</td>
                   </tr>
                 </tfoot>
-              </table>
+              </OperationalGrid>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setDetalhe(null)}>Fechar</OperationalButton>
             </div>
           </div>
         </div>
@@ -419,7 +420,7 @@ export default function PulverizacaoPage() {
             {/* Produtos */}
             <div data-arato-dialog-body="true" style={secTit}>Produtos Aplicados</div>
             <div data-arato-dialog-body="true" data-arato-grid-container="true" style={{ overflowX: "auto", marginBottom: 10 }}>
-              <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Produto (estoque)", "Un.", "Dose/ha", "Total", "Custo/ha", "Custo Total", ""].map((h, i) => (
                     <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
@@ -474,16 +475,16 @@ export default function PulverizacaoPage() {
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{custoTot > 0 ? fmtBRL(custoTot) : "—"}</td>
                         <td style={{ padding: "6px 8px", width: 40 }}>
-                          {itens.length > 1 && <button data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_, j) => j !== idx))}>✕</button>}
+                          {itens.length > 1 && <OperationalButton data-arato-button="danger" style={btnX} onClick={() => setItens(p => p.filter((_, j) => j !== idx))}>✕</OperationalButton>}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-              </table>
+              </OperationalGrid>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <button data-arato-button="secondary" style={{ ...btnR, fontSize: 12 }} onClick={() => setItens(p => [...p, { insumo_id: "", dose_ha: "", unidade: "L" }])}>+ Produto</button>
+              <OperationalButton data-arato-button="secondary" style={{ ...btnR, fontSize: 12 }} onClick={() => setItens(p => [...p, { insumo_id: "", dose_ha: "", unidade: "L" }])}>+ Produto</OperationalButton>
               {custoTotal > 0 && (
                 <div style={{ fontSize: 12, color: "var(--text-2)" }}>
                   Custo total: <strong style={{ color: "#E24B4A" }}>{fmtBRL(custoTotal)}</strong>
@@ -504,10 +505,10 @@ export default function PulverizacaoPage() {
             </div>
 
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-              <button data-arato-button="primary" style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_inicio ? 0.5 : 1 }}
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando || !f.ciclo_id || !f.area_ha || !f.data_inicio ? 0.5 : 1 }}
                 disabled={salvando || !f.ciclo_id || !f.area_ha || !f.data_inicio}
-                onClick={salvar}>{salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}</button>
+                onClick={salvar}>{salvando ? "Salvando…" : "⟳ Registrar e baixar estoque"}</OperationalButton>
             </div>
           </div>
         </div>

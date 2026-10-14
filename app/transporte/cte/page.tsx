@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -1618,25 +1619,25 @@ function CtePageInner() {
         {/* Tab bar */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: "0.5px solid var(--bg-tag)" }}>
           {([["emitidos", "CT-e Emitidos"], ["recebidos", "CT-e Recebidos da SEFAZ"]] as const).map(([id, lbl]) => (
-            <button data-arato-tab-active={aba === (id)} data-arato-tab="true" data-arato-button="toggle" key={id} onClick={() => setAba(id)} style={{ padding: "8px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === id ? 700 : 400, color: aba === id ? "#1A4870" : "var(--text-2)", borderBottom: aba === id ? "2px solid #1A4870" : "2px solid transparent", marginBottom: -1, borderRadius: 0 }}>
+            <OperationalButton data-arato-tab-active={aba === (id)} data-arato-tab="true" data-arato-button="toggle" key={id} onClick={() => setAba(id)} style={{ padding: "8px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === id ? 700 : 400, color: aba === id ? "#1A4870" : "var(--text-2)", borderBottom: aba === id ? "2px solid #1A4870" : "2px solid transparent", marginBottom: -1, borderRadius: 0 }}>
               {lbl}
               {id === "recebidos" && recebidos.length > 0 && <span style={{ marginLeft: 6, background: "#1A4870", color: "#fff", borderRadius: 10, fontSize: 10, padding: "1px 6px" }}>{recebidos.length}</span>}
-            </button>
+            </OperationalButton>
           ))}
         </div>
 
         {/* ── ABA: CT-e Recebidos ─────────────────────────────── */}
         {aba === "recebidos" && (
           <>
-            <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+            <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
               <input value={buscaRec} onChange={e => setBuscaRec(e.target.value)} placeholder="Buscar por emitente, remetente, destinatário, chave…" style={{ ...inp, flex: 1, minWidth: 200 }} />
-              <button data-arato-button="toggle" onClick={() => sincronizarRecebidos(false)} disabled={syncando} style={{ ...btnV, background: syncando ? "#888" : "#1A4870" }}>
+              <OperationalButton data-arato-button="toggle" onClick={() => sincronizarRecebidos(false)} disabled={syncando} style={{ ...btnV, background: syncando ? "#888" : "#1A4870" }}>
                 {syncando ? "Consultando SEFAZ…" : "↻ Sincronizar"}
-              </button>
-              <button data-arato-button="secondary" onClick={() => sincronizarRecebidos(true)} disabled={syncando} title="Reconsultar do NSU zero" style={{ ...btnR, fontSize: 12 }}>
+              </OperationalButton>
+              <OperationalButton data-arato-button="secondary" onClick={() => sincronizarRecebidos(true)} disabled={syncando} title="Reconsultar do NSU zero" style={{ ...btnR, fontSize: 12 }}>
                 ↺ Desde o início
-              </button>
-            </div>
+              </OperationalButton>
+            </OperationalFilters>
             {syncMsg && (
               <div style={{ background: syncMsg.startsWith("Erro") || syncMsg.startsWith("Falha") ? "#FCEBEB" : "#E8F5E9", border: `0.5px solid ${syncMsg.startsWith("Erro") || syncMsg.startsWith("Falha") ? "#F5C6C6" : "#B2DFDB"}`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: syncMsg.startsWith("Erro") || syncMsg.startsWith("Falha") ? "#791F1F" : "#1A6B3C", marginBottom: 12 }}>
                 {syncMsg}
@@ -1648,7 +1649,7 @@ function CtePageInner() {
               </div>
             ) : (
               <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "var(--bg-card)" }}>
                       {["NSU","Data","Emitente","Remetente → Destinatário","Percurso","Valor Frete","Tipo"].map(h => (
@@ -1702,7 +1703,7 @@ function CtePageInner() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </OperationalGrid>
               </div>
             )}
           </>
@@ -1724,7 +1725,7 @@ function CtePageInner() {
             <label data-arato-label="true" style={lbl}>Buscar</label>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Nº CT-e, remetente, destinatário, placa…" style={inp} />
           </div>
-          <button data-arato-button="primary" onClick={abrirNovo} style={btnV}>+ Emitir CT-e</button>
+          <OperationalButton data-arato-button="primary" onClick={abrirNovo} style={btnV}>+ Emitir CT-e</OperationalButton>
         </div>
 
         {/* Tabela */}
@@ -1734,7 +1735,7 @@ function CtePageInner() {
           </div>
         ) : (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)" }}>
                   {["Nº/Série","Data","Remetente → Destinatário","Percurso","Veículo","Motorista","Valor Frete","Status",""].map(h => (
@@ -1774,40 +1775,40 @@ function CtePageInner() {
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", whiteSpace: "nowrap" }}>
                           {c.status === "rascunho" && (
-                            <button data-arato-button="primary" onClick={() => autorizar(c)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="primary" onClick={() => autorizar(c)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Autorizar SEFAZ
-                            </button>
+                            </OperationalButton>
                           )}
                           {c.status === "rascunho" && (
-                            <button data-arato-button="danger" onClick={() => excluirRascunho(c)} title="Excluir este rascunho (nunca autorizado)"
+                            <OperationalButton data-arato-button="danger" onClick={() => excluirRascunho(c)} title="Excluir este rascunho (nunca autorizado)"
                               style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>
                               Excluir
-                            </button>
+                            </OperationalButton>
                           )}
-                          <button data-arato-button="secondary" onClick={() => imprimirDacte(c, logoCliente, empresasTransp.find(e => e.id === c.emitente_id)?.rntrc)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
+                          <OperationalButton data-arato-button="secondary" onClick={() => imprimirDacte(c, logoCliente, empresasTransp.find(e => e.id === c.emitente_id)?.rntrc)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                             DACTE
-                          </button>
+                          </OperationalButton>
                           {c.status === "autorizado" && (
-                            <button data-arato-button="primary"
+                            <OperationalButton data-arato-button="primary"
                               title="Emitir MDF-e com esse CT-e já vinculado, sem mudar de tela"
                               onClick={() => { sessionStorage.setItem("mdfe_prefill_cte", c.id); router.push("/transporte/mdfe?from_cte=1"); }}
                               style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}
                             >
                               🚚 Emitir MDF-e
-                            </button>
+                            </OperationalButton>
                           )}
                           {c.status !== "cancelado" && c.status !== "substituido" && (
-                            <button data-arato-button="secondary" onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Editar
-                            </button>
+                            </OperationalButton>
                           )}
                           {c.status === "autorizado" && (
-                            <button data-arato-button="secondary"
+                            <OperationalButton data-arato-button="secondary"
                               title="Emitir um CT-e substituto (tpCTe 3) para corrigir este. O original passa a Substituído e o financeiro dele é cancelado."
                               onClick={() => abrirSubstituto(c)}
                               style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                               Substituir
-                            </button>
+                            </OperationalButton>
                           )}
                           {c.status === "autorizado" && (
                             <button
@@ -1818,14 +1819,14 @@ function CtePageInner() {
                             </button>
                           )}
                           {c.status === "autorizado" && (
-                            <button data-arato-button="danger" disabled={cancelando} onClick={() => cancelar(c)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#791F1F", opacity: cancelando ? .65 : 1 }}>
+                            <OperationalButton data-arato-button="danger" disabled={cancelando} onClick={() => cancelar(c)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#791F1F", opacity: cancelando ? .65 : 1 }}>
                               {cancelando ? "Cancelando…" : "Cancelar"}
-                            </button>
+                            </OperationalButton>
                           )}
                           {c.status === "cancelado" && !c.protocolo_cancelamento && !c.data_cancelamento && (
-                            <button data-arato-button="secondary" disabled={cancelando} onClick={() => cancelar(c)} title="Este CT-e foi cancelado apenas no sistema. Envie agora o evento oficial à SEFAZ." style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FFF4E5", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#9A3412", opacity: cancelando ? .65 : 1 }}>
+                            <OperationalButton data-arato-button="secondary" disabled={cancelando} onClick={() => cancelar(c)} title="Este CT-e foi cancelado apenas no sistema. Envie agora o evento oficial à SEFAZ." style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FFF4E5", cursor: cancelando ? "wait" : "pointer", fontSize: 11, color: "#9A3412", opacity: cancelando ? .65 : 1 }}>
                               Regularizar SEFAZ
-                            </button>
+                            </OperationalButton>
                           )}
                         </div>
                       </td>
@@ -1833,7 +1834,7 @@ function CtePageInner() {
                   );
                 })}
               </tbody>
-            </table>
+            </OperationalGrid>
           </div>
         )}
         </>}
@@ -1926,7 +1927,7 @@ function CtePageInner() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{cteEdit ? `CT-e ${cteEdit.numero_cte}/${cteEdit.serie}` : "Emitir CT-e"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Conhecimento de Transporte Eletrônico — Modal Rodoviário</div>
               </div>
-              <button data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
@@ -2150,16 +2151,16 @@ function CtePageInner() {
                 return (
                   <div key={k} style={{ gridColumn: "1 / -1" }}>
                     {!aberto ? (
-                      <button data-arato-button="secondary" type="button" onClick={() => k === "exp" ? setMostrarExp(true) : setMostrarRec(true)}
+                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => k === "exp" ? setMostrarExp(true) : setMostrarRec(true)}
                         style={{ padding: "6px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
                         + Informar {titulo} (opcional)
-                      </button>
+                      </OperationalButton>
                     ) : (
                       <div data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
                         <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                           <strong style={{ fontSize: 12, color: "var(--text-1)" }}>{titulo}</strong>
-                          <button data-arato-button="secondary" type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === (k === "exp" ? "expedidor" : "recebedor") ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : setMostrarRec(false); }}
-                            style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>remover</button>
+                          <OperationalButton data-arato-button="secondary" type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === (k === "exp" ? "expedidor" : "recebedor") ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : setMostrarRec(false); }}
+                            style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>remover</OperationalButton>
                         </div>
                         <SelectBusca value="" onChange={escolher} placeholder={`— Selecionar ${titulo} (Produtores ou Pessoas) —`} style={inp}
                           options={[
@@ -2257,11 +2258,11 @@ function CtePageInner() {
                       pelo nome do município quando o código já preenchido estiver errado (a busca
                       automática só roda sozinha se o campo estiver vazio, pra não sobrescrever o que
                       você já digitou). */}
-                  <button data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Origem"
+                  <OperationalButton data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Origem"
                     onClick={async () => { const ibge = await buscarIbge(form.municipio_origem, form.uf_origem); if (ibge) setForm(f => ({ ...f, ibge_origem: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                     🔄
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
               <div data-arato-dialog-body="true" style={{ gridColumn: "4 / 5" }} />
@@ -2281,11 +2282,11 @@ function CtePageInner() {
                 <label data-arato-label="true" style={lbl}>Cód. IBGE Destino {form.ibge_destino ? <span style={{ color: "#16A34A", fontWeight: 600 }}>✓</span> : <span style={{ color: "#E24B4A" }}>*</span>}</label>
                 <div style={{ display: "flex", gap: 4 }}>
                   <input value={form.ibge_destino} onChange={e => setForm(f => ({ ...f, ibge_destino: e.target.value.replace(/\D/g, "") }))} style={{ ...inp, fontFamily: "monospace" }} placeholder="5107602" maxLength={7} />
-                  <button data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Destino"
+                  <OperationalButton data-arato-button="secondary" type="button" title="Buscar de novo pelo Município de Destino"
                     onClick={async () => { const ibge = await buscarIbge(form.municipio_destino, form.uf_destino); if (ibge) setForm(f => ({ ...f, ibge_destino: ibge })); else alert("Município não encontrado — confira o nome digitado."); }}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13 }}>
                     🔄
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
               <div data-arato-dialog-body="true" style={{ gridColumn: "4 / 5" }} />
@@ -2332,10 +2333,10 @@ function CtePageInner() {
                     <option value="">— Selecionar —</option>
                     {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
                   </SelectField>
-                  <button data-arato-button="secondary" type="button" title="Cadastrar novo veículo sem sair daqui" onClick={() => setModalNovoVeiculo(true)}
+                  <OperationalButton data-arato-button="secondary" type="button" title="Cadastrar novo veículo sem sair daqui" onClick={() => setModalNovoVeiculo(true)}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
                     + Novo
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
               <div data-arato-dialog-body="true" style={{ gridColumn: "3 / 5" }}>
@@ -2354,10 +2355,10 @@ function CtePageInner() {
                   <datalist id="cte-motoristas">
                     {motoristas.map(m => <option key={m.id} value={m.nome} />)}
                   </datalist>
-                  <button data-arato-button="secondary" type="button" title="Cadastrar novo motorista sem sair daqui" onClick={() => setModalNovoMotorista(true)}
+                  <OperationalButton data-arato-button="secondary" type="button" title="Cadastrar novo motorista sem sair daqui" onClick={() => setModalNovoMotorista(true)}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
                     + Novo
-                  </button>
+                  </OperationalButton>
                 </div>
               </div>
 
@@ -2444,10 +2445,10 @@ function CtePageInner() {
                       <div data-arato-panel="true" style={{ gridColumn: "1 / -1", display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", padding: "10px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8 }}>
                         <div style={{ flex: "1 1 200px" }}><label data-arato-label="true" style={lbl}>Já emitiu o CIOT no site? Informe o número (12 dígitos)</label><input style={{ ...inp, fontFamily: "monospace" }} maxLength={14} value={ciotManual.codigo} onChange={e => setCiotManual(m => ({ ...m, codigo: e.target.value }))} placeholder="000000000000" /></div>
                         <div style={{ flex: "0 1 140px" }}><label data-arato-label="true" style={lbl}>Cód. verificador</label><input style={inp} value={ciotManual.cv} onChange={e => setCiotManual(m => ({ ...m, cv: e.target.value }))} /></div>
-                        <button data-arato-button="secondary" type="button" onClick={usarCiotManual} style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Usar este CIOT</button>
+                        <OperationalButton data-arato-button="secondary" type="button" onClick={usarCiotManual} style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#EBF4FF", color: "#1A4870", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Usar este CIOT</OperationalButton>
                       </div>
                       <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 12 }}>
-                        <button data-arato-button="toggle" type="button" onClick={gerarCiotCte} disabled={gerandoCiot} style={{ padding: "8px 18px", background: gerandoCiot ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gerandoCiot ? "default" : "pointer" }}>{gerandoCiot ? "Gerando…" : "Gerar CIOT via ANTT"}</button>
+                        <OperationalButton data-arato-button="toggle" type="button" onClick={gerarCiotCte} disabled={gerandoCiot} style={{ padding: "8px 18px", background: gerandoCiot ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gerandoCiot ? "default" : "pointer" }}>{gerandoCiot ? "Gerando…" : "Gerar CIOT via ANTT"}</OperationalButton>
                         <span style={{ fontSize: 11, color: "var(--text-3)" }}>Usa valor do frete, datas, IBGE, peso e motorista deste CT-e; CEPs vêm do cadastro do remetente/destinatário. Ambiente conforme Parâmetros → CT-e.</span>
                       </div>
                     </>
@@ -2471,10 +2472,10 @@ function CtePageInner() {
                 <label data-arato-label="true" style={lbl}>Chave de Acesso da NF-e Referenciada (opcional)</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input value={form.nfe_chave} onChange={e => setForm(f => ({ ...f, nfe_chave: e.target.value }))} style={{ ...inp, flex: 1 }} placeholder="44 dígitos da chave da NF-e (espaços são ignorados)" maxLength={60} />
-                  <button data-arato-button="toggle" type="button" onClick={buscarNfePelaChave} disabled={buscandoNfe || form.nfe_chave.replace(/\D/g, "").length !== 44}
+                  <OperationalButton data-arato-button="toggle" type="button" onClick={buscarNfePelaChave} disabled={buscandoNfe || form.nfe_chave.replace(/\D/g, "").length !== 44}
                     style={{ padding: "0 16px", background: buscandoNfe ? "#94A3B8" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: buscandoNfe ? "default" : "pointer", whiteSpace: "nowrap", opacity: form.nfe_chave.replace(/\D/g, "").length !== 44 ? 0.5 : 1 }}>
                     {buscandoNfe ? "Buscando…" : "🔍 Buscar dados da NF-e"}
-                  </button>
+                  </OperationalButton>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Preenche remetente, destinatário, município, produto e valor a partir do XML — confira antes de emitir.</div>
                 {nfeBuscaErro && <div style={{ fontSize: 11, color: "#A93226", marginTop: 4 }}>{nfeBuscaErro}</div>}
@@ -2491,10 +2492,10 @@ function CtePageInner() {
                 Transmissão à SEFAZ via integração com biblioteca NF-e · Fluxo simulado por enquanto
               </div>
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
-                <button data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button data-arato-button="toggle" onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModal(false)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="toggle" onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#111111", cursor: saving ? "default" : "pointer" }}>
                   {saving ? "Salvando…" : (cteEdit ? "Salvar alterações" : "Salvar CT-e")}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
@@ -2507,7 +2508,7 @@ function CtePageInner() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: 420, boxShadow: "0 4px 20px rgba(11,45,80,0.15)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 14, fontWeight: 700 }}>+ Novo Veículo</div>
-              <button data-arato-button="icon" onClick={() => setModalNovoVeiculo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNovoVeiculo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
@@ -2527,10 +2528,10 @@ function CtePageInner() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 20px 18px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovoVeiculo(false)}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarNovoVeiculo} disabled={salvandoVeic} style={{ ...btnV, cursor: salvandoVeic ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNovoVeiculo(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarNovoVeiculo} disabled={salvandoVeic} style={{ ...btnV, cursor: salvandoVeic ? "default" : "pointer" }}>
                 {salvandoVeic ? "Salvando…" : "Salvar e usar neste CT-e"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>
@@ -2542,7 +2543,7 @@ function CtePageInner() {
           <div data-arato-dialog="form" style={{ background: "var(--bg-card)", borderRadius: 14, width: 420, boxShadow: "0 4px 20px rgba(11,45,80,0.15)" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 14, fontWeight: 700 }}>+ Novo Motorista</div>
-              <button data-arato-button="icon" onClick={() => setModalNovoMotorista(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={() => setModalNovoMotorista(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-3)" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
@@ -2565,10 +2566,10 @@ function CtePageInner() {
               </div>
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 20px 18px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button data-arato-button="secondary" style={btnR} onClick={() => setModalNovoMotorista(false)}>Cancelar</button>
-              <button data-arato-button="primary" onClick={salvarNovoMotorista} disabled={salvandoMot} style={{ ...btnV, cursor: salvandoMot ? "default" : "pointer" }}>
+              <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalNovoMotorista(false)}>Cancelar</OperationalButton>
+              <OperationalButton data-arato-button="primary" onClick={salvarNovoMotorista} disabled={salvandoMot} style={{ ...btnV, cursor: salvandoMot ? "default" : "pointer" }}>
                 {salvandoMot ? "Salvando…" : "Salvar e usar neste CT-e"}
-              </button>
+              </OperationalButton>
             </div>
           </div>
         </div>

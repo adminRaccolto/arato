@@ -1,4 +1,5 @@
 "use client";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
@@ -366,18 +367,18 @@ export default function AbastecimentoPage() {
       <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
-        <div data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Abastecimento de Máquinas</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Consumo de combustível das bombas da fazenda — dedução de estoque e custo</p>
           </div>
-          <button data-arato-button="primary"
+          <OperationalButton data-arato-button="primary"
             onClick={abrirModal}
             style={{ padding: "9px 20px", background: "#111111", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
           >
             + Registrar Abastecimento
-          </button>
-        </div>
+          </OperationalButton>
+        </OperationalHeading>
 
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
@@ -433,7 +434,7 @@ export default function AbastecimentoPage() {
         </div>
 
         {/* Filtros do histórico */}
-        <div data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+        <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
           <InputData
             type="month"
             value={filtroMes}
@@ -451,7 +452,7 @@ export default function AbastecimentoPage() {
           <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>
             {historico.length} registro{historico.length !== 1 ? "s" : ""}
           </div>
-        </div>
+        </OperationalFilters>
 
         {/* Tabela de histórico */}
         <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
@@ -462,7 +463,7 @@ export default function AbastecimentoPage() {
               Nenhum abastecimento no período selecionado.
             </div>
           ) : (
-            <table data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["Data", "Bomba / Combustível", "Veículo / Máquina", "Safra / Ciclo", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
@@ -511,7 +512,7 @@ export default function AbastecimentoPage() {
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button data-arato-button="secondary"
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => abrirEditar(h)}
                             title="Editar abastecimento"
                             style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
@@ -519,8 +520,8 @@ export default function AbastecimentoPage() {
                             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
                           >
                             ✏
-                          </button>
-                          <button data-arato-button="secondary"
+                          </OperationalButton>
+                          <OperationalButton data-arato-button="secondary"
                             onClick={() => excluir(h)}
                             title="Excluir abastecimento (e CP/pendência vinculados)"
                             style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
@@ -528,7 +529,7 @@ export default function AbastecimentoPage() {
                             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
                           >
                             🗑
-                          </button>
+                          </OperationalButton>
                         </div>
                       </td>
                     </tr>
@@ -544,7 +545,7 @@ export default function AbastecimentoPage() {
                   <td /><td />
                 </tr>
               </tfoot>
-            </table>
+            </OperationalGrid>
           )}
         </div>
 
@@ -559,7 +560,7 @@ export default function AbastecimentoPage() {
                 <div data-arato-dialog-body="true" style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Abastecimento" : "Registrar Abastecimento"}</div>
                 <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{editando ? "Atualize os dados do abastecimento" : "Consumo da bomba da fazenda"}</div>
               </div>
-              <button data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
+              <OperationalButton data-arato-button="icon" onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</OperationalButton>
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -612,7 +613,7 @@ export default function AbastecimentoPage() {
                 <label data-arato-label="true" style={lbl}>Destino do Combustível *</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                   {(["maquina", "funcionario", "livre"] as const).map(t => (
-                    <button data-arato-button="toggle"
+                    <OperationalButton data-arato-button="toggle"
                       key={t}
                       type="button"
                       onClick={() => setFDestTipo(t)}
@@ -625,7 +626,7 @@ export default function AbastecimentoPage() {
                       }}
                     >
                       {t === "maquina" ? "Máquina" : t === "funcionario" ? "Funcionário" : "Outro"}
-                    </button>
+                    </OperationalButton>
                   ))}
                 </div>
                 {fDestTipo === "maquina" && (
@@ -759,16 +760,16 @@ export default function AbastecimentoPage() {
               )}
 
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button data-arato-button="secondary" onClick={fecharModal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
+                <OperationalButton data-arato-button="secondary" onClick={fecharModal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
                   Cancelar
-                </button>
-                <button data-arato-button="toggle"
+                </OperationalButton>
+                <OperationalButton data-arato-button="toggle"
                   onClick={salvar}
                   disabled={salvando}
                   style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#111111", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}
                 >
                   {salvando ? "Salvando..." : editando ? "✓ Salvar Alterações" : "✓ Confirmar Abastecimento"}
-                </button>
+                </OperationalButton>
               </div>
             </div>
           </div>
