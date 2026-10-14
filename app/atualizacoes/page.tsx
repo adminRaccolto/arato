@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-j",
+    data: "14/10/2026",
+    titulo: "Conciliação de títulos de Empresa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Conciliar (inclusive Aceitar todas) títulos do financeiro de uma Empresa, como a Muriana Transportes, falhava com violação de chave estrangeira em extrato_transacoes, porque o vínculo principal só aceitava títulos do produtor. Agora o vínculo de títulos de Empresa fica na lista de títulos da linha do extrato e a gravação funciona." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.14-i",
     data: "14/10/2026",
     titulo: "Aceitar todas as sugestões na Conciliação",
