@@ -1,3 +1,4 @@
+import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
@@ -137,14 +138,14 @@ export async function POST(req: NextRequest) {
       }
     }
     if (movs?.length) {
-      await sb.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nf_id);
+      await falharSeErro(sb.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nf_id), "excluir movimentacoes_estoque");
     }
 
     // historico_manutencao (peças/manutenção) ainda só linka por item_id
     const { data: itens } = await sb.from("nf_entrada_itens").select("id").eq("nf_entrada_id", nf_id);
     const itemIds = (itens ?? []).map(i => i.id as string);
     if (itemIds.length > 0) {
-      await sb.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
+      await falharSeErro(sb.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds), "excluir historico_manutencao");
     }
 
     // 3. Reverter movimentações PA (Princípios Ativos)
@@ -172,15 +173,14 @@ export async function POST(req: NextRequest) {
           { onConflict: "fazenda_id,principio_ativo_id" },
         );
       }
-      await sb.from("movimentacoes_pa").delete().eq("nf_entrada_id", nf_id);
+      await falharSeErro(sb.from("movimentacoes_pa").delete().eq("nf_entrada_id", nf_id), "excluir movimentacoes_pa");
     }
 
     // 4. Estoque de terceiros
-    await sb.from("estoque_terceiros").delete().eq("nf_entrada_id", nf_id);
-
+    await falharSeErro(sb.from("estoque_terceiros").delete().eq("nf_entrada_id", nf_id), "excluir estoque_terceiros");
     // 5. Lançamento(s) financeiro(s) (CP) — inclui parcelas (por nf_entrada_id) e o
     //    fallback do id único legado, igual a lib/db.ts.
-    await sb.from("lancamentos").delete().eq("nf_entrada_id", nf_id);
+    await falharSeErro(sb.from("lancamentos").delete().eq("nf_entrada_id", nf_id), "excluir lancamentos");
     const { data: nfRow } = await sb
       .from("nf_entradas")
       .select("lancamento_id, pedido_compra_id, tipo_entrada")
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (nfRow?.lancamento_id) {
-      await sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+      await falharSeErro(sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id), "excluir lancamentos");
     }
     // Limpa pedidos_compra.lancamento_id se apontava justamente pro lançamento que
     // acabamos de apagar — senão o reprocessamento tenta "atualizar" um id
@@ -202,8 +202,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Itens → depois status para pendente e desvincular do pedido de compra
-    await sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id);
-
+    await falharSeErro(sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id), "excluir nf_entrada_itens");
     // Devolução de compra não tem fluxo de "reprocessar" — ela só existe pronta (criada pelo botão
     // Devolver). Voltar para "pendente" a deixava na lista principal como se fosse uma NF de entrada
     // esperando processamento, o que nunca vai acontecer. Estornar uma devolução remove o registro.

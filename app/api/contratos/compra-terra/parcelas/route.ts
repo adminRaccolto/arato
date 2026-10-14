@@ -7,6 +7,7 @@
  * DELETE /api/contratos/compra-terra/parcelas
  * Remove parcelas, lançamentos e contratos de grãos vinculados.
  */
+import { falharSeErro } from "../../../../../lib/db-util";
 import { hojeLocal } from "../../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
 
       if (pgErr) {
         // Rollback: remove lançamentos criados até agora
-        await sb.from("lancamentos").delete().in("id", lancIds);
+        await falharSeErro(sb.from("lancamentos").delete().in("id", lancIds), "excluir lancamentos");
         return NextResponse.json({ ok: false, error: pgErr.message }, { status: 400 });
       }
       cctPagIds.push(pg.id);
@@ -220,12 +221,11 @@ export async function DELETE(req: NextRequest) {
 
     // Remove contratos de grãos vinculados às parcelas (antes de deletar cct_pagamentos)
     if (cctIds.length) {
-      await sb.from("contratos").delete().in("cct_pagamento_id", cctIds);
+      await falharSeErro(sb.from("contratos").delete().in("cct_pagamento_id", cctIds), "excluir contratos");
     }
 
     if (lancIds.length) await sb.from("lancamentos").delete().in("id", lancIds);
-    await sb.from("cct_pagamentos").delete().eq("contrato_id", body.contrato_id);
-
+    await falharSeErro(sb.from("cct_pagamentos").delete().eq("contrato_id", body.contrato_id), "excluir cct_pagamentos");
     return NextResponse.json({ ok: true, removidas: parcelas?.length ?? 0 });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });

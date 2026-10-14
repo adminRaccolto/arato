@@ -4,6 +4,7 @@
  * Os componentes importam essas funções e não chamam supabase diretamente.
  */
 
+import { falharSeErro } from "./db-util";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
@@ -233,7 +234,7 @@ export async function atualizarTalhao(id: string, t: Partial<Talhao>): Promise<v
 }
 
 export async function excluirTalhao(id: string): Promise<void> {
-  await supabase.from("talhao_arrendamentos").delete().eq("talhao_id", id);
+  await falharSeErro(supabase.from("talhao_arrendamentos").delete().eq("talhao_id", id), "excluir talhao_arrendamentos");
   const { error } = await supabase.from("talhoes").delete().eq("id", id);
   if (error) throw error;
 }
@@ -1306,7 +1307,7 @@ export async function atualizarContrato(id: string, c: Partial<Contrato>): Promi
 }
 
 export async function excluirContrato(id: string): Promise<void> {
-  await supabase.from("contrato_itens").delete().eq("contrato_id", id);
+  await falharSeErro(supabase.from("contrato_itens").delete().eq("contrato_id", id), "excluir contrato_itens");
   const { error } = await supabase.from("contratos").delete().eq("id", id);
   if (error) throw error;
 }
@@ -1355,7 +1356,7 @@ export async function listarItensContrato(contrato_id: string): Promise<Contrato
 }
 
 export async function salvarItensContrato(contrato_id: string, fazenda_id: string, itens: Omit<ContratoItem, "id" | "created_at">[]): Promise<ContratoItem[]> {
-  await supabase.from("contrato_itens").delete().eq("contrato_id", contrato_id);
+  await falharSeErro(supabase.from("contrato_itens").delete().eq("contrato_id", contrato_id), "excluir contrato_itens");
   if (itens.length === 0) return [];
   const { data, error } = await supabase.from("contrato_itens").insert(itens.map(i => ({ ...i, contrato_id, fazenda_id }))).select();
   if (error) throw error;
@@ -1377,7 +1378,7 @@ export async function listarCessaoDebitos(contrato_id: string): Promise<(Contrat
 }
 
 export async function salvarCessaoDebitos(contrato_id: string, fazenda_id: string, debitos: { lancamento_id: string; valor_cessao: number; fornecedor_id?: string; pedido_compra_id?: string; obs?: string }[]): Promise<void> {
-  await supabase.from("contrato_cessao_debitos").delete().eq("contrato_id", contrato_id);
+  await falharSeErro(supabase.from("contrato_cessao_debitos").delete().eq("contrato_id", contrato_id), "excluir contrato_cessao_debitos");
   if (debitos.length === 0) return;
   const { error } = await supabase.from("contrato_cessao_debitos").insert(debitos.map(d => ({ ...d, contrato_id, fazenda_id })));
   if (error) throw error;
@@ -2473,7 +2474,7 @@ export async function excluirBem(id: string): Promise<void> {
 }
 
 export async function vincularConsorciosBem(bem_id: string, consorcio_ids: string[]): Promise<void> {
-  await supabase.from("bem_consorcios").delete().eq("bem_id", bem_id);
+  await falharSeErro(supabase.from("bem_consorcios").delete().eq("bem_id", bem_id), "excluir bem_consorcios");
   if (consorcio_ids.length > 0) {
     const { error } = await supabase.from("bem_consorcios").insert(
       consorcio_ids.map(consorcio_id => ({ bem_id, consorcio_id }))
@@ -3204,7 +3205,7 @@ export async function processarNfEntrada(
         // pedido, sem nf_entrada_id), apaga pra não sobrar um CP fantasma duplicado.
         const { data: lancPlaceholder } = await supabase.from("lancamentos").select("id, nf_entrada_id").eq("id", idCandidato).maybeSingle();
         if (lancPlaceholder && !lancPlaceholder.nf_entrada_id) {
-          await supabase.from("lancamentos").delete().eq("id", idCandidato);
+          await falharSeErro(supabase.from("lancamentos").delete().eq("id", idCandidato), "excluir lancamentos");
           await supabase.from("pedidos_compra").update({ lancamento_id: null }).eq("id", opts.pedidoCompraId);
         }
       } else if (idCandidato && !parcelado) {
@@ -3424,28 +3425,26 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
           .eq("id", mov.insumo_id);
       }
     }
-    await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds);
-
+    await falharSeErro(supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds), "excluir movimentacoes_estoque");
     // 2b. Reverter movimentações de estoque PA
     await estornarMovimentacoesPA(nfId);
 
-    await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
-    await supabase.from("abastecimentos").delete().in("nf_entrada_item_id", itemIds);
+    await falharSeErro(supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds), "excluir historico_manutencao");
+    await falharSeErro(supabase.from("abastecimentos").delete().in("nf_entrada_item_id", itemIds), "excluir abastecimentos");
   }
 
   // 3. Estoque de terceiros vinculados a esta NF
-  await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
-
+  await falharSeErro(supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId), "excluir estoque_terceiros");
   // 4. Lançamento(s) financeiro(s) — inclui parcelas múltiplas
-  await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
+  await falharSeErro(supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId), "excluir lancamentos");
   const { data: nf } = await supabase.from("nf_entradas")
     .select("lancamento_id, pedido_compra_id").eq("id", nfId).single();
   if (nf?.lancamento_id) {
-    await supabase.from("lancamentos").delete().eq("id", nf.lancamento_id);
+    await falharSeErro(supabase.from("lancamentos").delete().eq("id", nf.lancamento_id), "excluir lancamentos");
   }
 
   // 5. Itens + NF
-  await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
+  await falharSeErro(supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId), "excluir nf_entrada_itens");
   const { error } = await supabase.from("nf_entradas").delete().eq("id", nfId).eq("fazenda_id", fazendaId);
   if (error) throw new Error(error.message);
 
@@ -3473,20 +3472,19 @@ export async function estornarNfProcessamento(nfId: string): Promise<void> {
   const { data: itens } = await supabase.from("nf_entrada_itens").select("id").eq("nf_entrada_id", nfId);
   const itemIds = (itens ?? []).map(i => i.id as string);
   if (itemIds.length > 0) {
-    await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
-    await supabase.from("abastecimentos").delete().in("nf_entrada_item_id", itemIds);
+    await falharSeErro(supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds), "excluir historico_manutencao");
+    await falharSeErro(supabase.from("abastecimentos").delete().in("nf_entrada_item_id", itemIds), "excluir abastecimentos");
   }
 
   // 2. Reverter movimentações PA
   await estornarMovimentacoesPA(nfId);
 
   // 3. Estoque de terceiros
-  await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
-
+  await falharSeErro(supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId), "excluir estoque_terceiros");
   await supabase.from("nf_entradas").update({ lancamento_id: null }).eq("id", nfId);
 
   // 5. Itens + volta status para pendente (pronta para reprocessar)
-  await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
+  await falharSeErro(supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId), "excluir nf_entrada_itens");
   await supabase.from("nf_entradas").update({ status: "pendente" }).eq("id", nfId);
 
   // Estorno reverte a entrega — pedido fiscal pode voltar de "entregue"/
@@ -3945,7 +3943,7 @@ export async function excluirParcelaLiberacao(id: string): Promise<void> {
 
   // Remove o CR criado automaticamente junto com a liberação
   if (parcela?.lancamento_id) {
-    await supabase.from("lancamentos").delete().eq("id", parcela.lancamento_id);
+    await falharSeErro(supabase.from("lancamentos").delete().eq("id", parcela.lancamento_id), "excluir lancamentos");
   }
 }
 
@@ -3958,7 +3956,7 @@ export async function listarParcelasPagamento(contrato_id: string): Promise<Parc
 
 export async function salvarParcelasPagamento(contrato_id: string, fazenda_id: string, parcelas: Omit<ParcelaPagamento, "id" | "created_at" | "lancamento_id" | "contrato_id" | "fazenda_id">[]): Promise<ParcelaPagamento[]> {
   // Remove as existentes e recria (recalculo)
-  await supabase.from("parcelas_pagamento").delete().eq("contrato_id", contrato_id);
+  await falharSeErro(supabase.from("parcelas_pagamento").delete().eq("contrato_id", contrato_id), "excluir parcelas_pagamento");
   const { data, error } = await supabase.from("parcelas_pagamento").insert(
     parcelas.map(p => ({ ...p, contrato_id, fazenda_id }))
   ).select();
@@ -4148,7 +4146,7 @@ export async function listarCentrosCusto(contrato_id: string): Promise<CentroCus
 }
 
 export async function salvarCentrosCusto(contrato_id: string, itens: Omit<CentroCustoContrato, "id" | "created_at">[]): Promise<void> {
-  await supabase.from("centros_custo_contrato").delete().eq("contrato_id", contrato_id);
+  await falharSeErro(supabase.from("centros_custo_contrato").delete().eq("contrato_id", contrato_id), "excluir centros_custo_contrato");
   if (itens.length > 0) {
     // Insere apenas colunas que o banco garante ter; `valor` é opcional
     const rows = itens.map(i => ({
@@ -4286,7 +4284,7 @@ export async function excluirCorrecao(id: string): Promise<void> {
       }
     }
   }
-  await supabase.from("correcoes_solo_itens").delete().eq("correcao_id", id);
+  await falharSeErro(supabase.from("correcoes_solo_itens").delete().eq("correcao_id", id), "excluir correcoes_solo_itens");
   const { error } = await supabase.from("correcoes_solo").delete().eq("id", id);
   if (error) throw error;
 }
@@ -4376,7 +4374,7 @@ export async function excluirAdubacao(id: string): Promise<void> {
       }
     }
   }
-  await supabase.from("adubacoes_base_itens").delete().eq("adubacao_id", id);
+  await falharSeErro(supabase.from("adubacoes_base_itens").delete().eq("adubacao_id", id), "excluir adubacoes_base_itens");
   const { error } = await supabase.from("adubacoes_base").delete().eq("id", id);
   if (error) throw error;
 }
@@ -4448,7 +4446,7 @@ export async function excluirPlantio(id: string): Promise<void> {
       }
     }
     if (p.lancamento_id) {
-      await supabase.from("lancamentos").delete().eq("id", p.lancamento_id);
+      await falharSeErro(supabase.from("lancamentos").delete().eq("id", p.lancamento_id), "excluir lancamentos");
     }
   }
   const { error } = await supabase.from("plantios").delete().eq("id", id);
@@ -4535,7 +4533,7 @@ export async function excluirPulverizacao(id: string): Promise<void> {
       }
     }
   }
-  await supabase.from("pulverizacao_itens").delete().eq("pulverizacao_id", id);
+  await falharSeErro(supabase.from("pulverizacao_itens").delete().eq("pulverizacao_id", id), "excluir pulverizacao_itens");
   const { error } = await supabase.from("pulverizacoes").delete().eq("id", id);
   if (error) throw error;
 }
@@ -4608,7 +4606,7 @@ export async function atualizarColheita(id: string, c: Partial<ColheitaRegistro>
 }
 
 export async function excluirColheita(id: string): Promise<void> {
-  await supabase.from("colheita_romaneios").delete().eq("colheita_id", id);
+  await falharSeErro(supabase.from("colheita_romaneios").delete().eq("colheita_id", id), "excluir colheita_romaneios");
   const { error } = await supabase.from("colheitas").delete().eq("id", id);
   if (error) throw error;
 }
@@ -5068,8 +5066,8 @@ export async function atualizarPedidoCompra(id: string, p: Partial<PedidoCompra>
 }
 
 export async function excluirPedidoCompra(id: string): Promise<void> {
-  await supabase.from("pedidos_compra_itens").delete().eq("pedido_id", id);
-  await supabase.from("pedidos_compra_entregas").delete().eq("pedido_id", id);
+  await falharSeErro(supabase.from("pedidos_compra_itens").delete().eq("pedido_id", id), "excluir pedidos_compra_itens");
+  await falharSeErro(supabase.from("pedidos_compra_entregas").delete().eq("pedido_id", id), "excluir pedidos_compra_entregas");
   const { error } = await supabase.from("pedidos_compra").delete().eq("id", id);
   if (error) throw error;
 }
@@ -5099,7 +5097,7 @@ export async function salvarPedidoCompraItens(
   const idsRemover = [...idsExistentes].filter(id => !idsMantidos.has(id));
 
   if (idsRemover.length > 0) {
-    await supabase.from("pedidos_compra_itens").delete().in("id", idsRemover);
+    await falharSeErro(supabase.from("pedidos_compra_itens").delete().in("id", idsRemover), "excluir pedidos_compra_itens");
   }
 
   const novos = itens.filter(i => !i.id).map(({ id: _id, ...i }) => ({ ...i, pedido_id, fazenda_id }));
@@ -5421,7 +5419,7 @@ export async function atualizarRateioRegra(
   const { error } = await supabase.from("regras_rateio").update(r).eq("id", id);
   if (error) throw error;
   if (linhas !== undefined) {
-    await supabase.from("regras_rateio_linhas").delete().eq("regra_id", id);
+    await falharSeErro(supabase.from("regras_rateio_linhas").delete().eq("regra_id", id), "excluir regras_rateio_linhas");
     if (linhas.length > 0) {
       const rows = linhas.map((l, i) => ({ ...l, regra_id: id, ordem: i }));
       const { error: le } = await supabase.from("regras_rateio_linhas").insert(rows);
@@ -5512,7 +5510,7 @@ export async function atualizarRateioGlobal(
   const { error } = await supabase.from("regras_rateio_global").update(header).eq("id", id);
   if (error) throw error;
   if (fazendas) {
-    await supabase.from("rateio_global_fazendas").delete().eq("regra_global_id", id);
+    await falharSeErro(supabase.from("rateio_global_fazendas").delete().eq("regra_global_id", id), "excluir rateio_global_fazendas");
     await _inserirFazendasGlobal(id, fazendas);
   }
 }
@@ -6080,7 +6078,7 @@ export async function atualizarTituloConversa(id: string, titulo: string): Promi
 }
 
 export async function excluirConversa(id: string): Promise<void> {
-  await supabase.from("suporte_mensagens").delete().eq("conversa_id", id);
+  await falharSeErro(supabase.from("suporte_mensagens").delete().eq("conversa_id", id), "excluir suporte_mensagens");
   const { error } = await supabase.from("suporte_conversas").delete().eq("id", id);
   if (error) sbErr(error, "excluirConversa");
 }
@@ -6490,7 +6488,7 @@ export async function estornarMovimentacoesPA(nfEntradaId: string): Promise<void
       updated_at: new Date().toISOString(),
     }, { onConflict: "fazenda_id,principio_ativo_id" });
   }
-  await supabase.from("movimentacoes_pa").delete().eq("nf_entrada_id", nfEntradaId);
+  await falharSeErro(supabase.from("movimentacoes_pa").delete().eq("nf_entrada_id", nfEntradaId), "excluir movimentacoes_pa");
 }
 
 // ————————————————————————————————————————
@@ -6556,7 +6554,7 @@ export async function atualizarRegraClassificacaoNf(id: string, r: Partial<Regra
 }
 
 export async function excluirRegraClassificacaoNf(id: string): Promise<void> {
-  await supabase.from("regras_classificacao_nf").delete().eq("id", id);
+  await falharSeErro(supabase.from("regras_classificacao_nf").delete().eq("id", id), "excluir regras_classificacao_nf");
 }
 
 // ————————————————————————————————————————
@@ -6900,7 +6898,7 @@ export async function salvarParticipantes(
   const idsRemover = (existentes ?? []).map((e: { id: string }) => e.id).filter((id: string) => !idsEnviados.includes(id));
 
   if (idsRemover.length > 0) {
-    await supabase.from("parceria_participantes").delete().in("id", idsRemover);
+    await falharSeErro(supabase.from("parceria_participantes").delete().in("id", idsRemover), "excluir parceria_participantes");
   }
   for (const pt of participantes) {
     const { id, ...campos } = { ...pt, parceria_id };
@@ -6927,7 +6925,7 @@ export async function salvarAreasParcerias(
   parceria_id: string,
   areas: Array<Omit<ParceriaArea, "id" | "created_at" | "talhao" | "ciclo"> & { id?: string }>
 ): Promise<void> {
-  await supabase.from("parceria_areas").delete().eq("parceria_id", parceria_id);
+  await falharSeErro(supabase.from("parceria_areas").delete().eq("parceria_id", parceria_id), "excluir parceria_areas");
   if (areas.length > 0) {
     await supabase.from("parceria_areas").insert(areas.map(a => ({ ...a, parceria_id })));
   }
@@ -6948,7 +6946,7 @@ export async function salvarDistribuicao(
   parceria_id: string,
   regras: Array<Omit<ParceriaDistribuicao, "id"> & { id?: string }>
 ): Promise<void> {
-  await supabase.from("parceria_distribuicao").delete().eq("parceria_id", parceria_id);
+  await falharSeErro(supabase.from("parceria_distribuicao").delete().eq("parceria_id", parceria_id), "excluir parceria_distribuicao");
   if (regras.length > 0) {
     await supabase.from("parceria_distribuicao").insert(
       regras.map(({ id: _id, ...r }) => ({ ...r, parceria_id }))
@@ -6976,7 +6974,7 @@ export async function salvarApuracao(
   let apuracaoId = id;
   if (apuracaoId) {
     await supabase.from("parceria_apuracoes").update(campos).eq("id", apuracaoId);
-    await supabase.from("parceria_apuracao_cotas").delete().eq("apuracao_id", apuracaoId);
+    await falharSeErro(supabase.from("parceria_apuracao_cotas").delete().eq("apuracao_id", apuracaoId), "excluir parceria_apuracao_cotas");
   } else {
     const { data, error } = await supabase.from("parceria_apuracoes").insert(campos).select("id").single();
     if (error) throw error;
@@ -7038,7 +7036,7 @@ export async function salvarMembrosGrupo(
   grupo_id: string,
   membros: Array<Omit<GrupoEconomicoMembro, "id" | "created_at" | "fazenda" | "produtor"> & { id?: string }>
 ): Promise<void> {
-  await supabase.from("grupo_economico_membros").delete().eq("grupo_id", grupo_id);
+  await falharSeErro(supabase.from("grupo_economico_membros").delete().eq("grupo_id", grupo_id), "excluir grupo_economico_membros");
   if (membros.length > 0) {
     await supabase.from("grupo_economico_membros").insert(
       membros.map(({ id: _id, ...m }) => ({ ...m, grupo_id }))
@@ -7344,7 +7342,7 @@ export async function listarAplicacaoAereaTalhoes(aplicacao_id: string): Promise
 }
 
 export async function salvarAplicacaoAereaTalhoes(aplicacao_id: string, talhoes: { talhao_id: string; area_ha: number }[]): Promise<void> {
-  await supabase.from("aplicacoes_aereas_talhoes").delete().eq("aplicacao_id", aplicacao_id);
+  await falharSeErro(supabase.from("aplicacoes_aereas_talhoes").delete().eq("aplicacao_id", aplicacao_id), "excluir aplicacoes_aereas_talhoes");
   if (!talhoes.length) return;
   const rows = talhoes.map(t => ({ aplicacao_id, talhao_id: t.talhao_id, area_ha: t.area_ha }));
   const { error } = await supabase.from("aplicacoes_aereas_talhoes").insert(rows);
@@ -7358,7 +7356,7 @@ export async function listarAplicacaoAereaItens(aplicacao_id: string): Promise<A
 }
 
 export async function salvarAplicacaoAereaItens(aplicacao_id: string, fazenda_id: string, itens: Omit<AplicacaoAereaItem, "id" | "aplicacao_id" | "fazenda_id">[]): Promise<void> {
-  await supabase.from("aplicacoes_aereas_itens").delete().eq("aplicacao_id", aplicacao_id);
+  await falharSeErro(supabase.from("aplicacoes_aereas_itens").delete().eq("aplicacao_id", aplicacao_id), "excluir aplicacoes_aereas_itens");
   if (!itens.length) return;
   const rows = itens.map(i => ({ ...i, aplicacao_id, fazenda_id }));
   const { error } = await supabase.from("aplicacoes_aereas_itens").insert(rows);
@@ -7417,7 +7415,7 @@ export async function salvarItensTratamento(
   tratamento_id: string,
   itens: Omit<TratamentoSementeItem, "id" | "tratamento_id" | "created_at">[],
 ): Promise<void> {
-  await supabase.from("tratamento_sementes_itens").delete().eq("tratamento_id", tratamento_id);
+  await falharSeErro(supabase.from("tratamento_sementes_itens").delete().eq("tratamento_id", tratamento_id), "excluir tratamento_sementes_itens");
   if (!itens.length) return;
   const rows = itens.map((it, i) => ({ ...it, tratamento_id, ordem: i }));
   const { error } = await supabase.from("tratamento_sementes_itens").insert(rows);
@@ -7460,7 +7458,7 @@ export async function atualizarReceita(
 ): Promise<void> {
   const { error } = await supabase.from("tratamento_receitas").update(dados).eq("id", id);
   if (error) throw error;
-  await supabase.from("tratamento_receitas_itens").delete().eq("receita_id", id);
+  await falharSeErro(supabase.from("tratamento_receitas_itens").delete().eq("receita_id", id), "excluir tratamento_receitas_itens");
   if (itens.length > 0) {
     const rows = itens.map((it, i) => ({ ...it, receita_id: id, ordem: i }));
     await supabase.from("tratamento_receitas_itens").insert(rows);
@@ -7804,7 +7802,7 @@ export async function salvarItensNotaPropriaExterna(
   nota_id: string,
   itens: Omit<NotaPropriaExternaItem, "id" | "nota_id" | "created_at">[]
 ): Promise<void> {
-  await supabase.from("notas_proprias_externas_itens").delete().eq("nota_id", nota_id);
+  await falharSeErro(supabase.from("notas_proprias_externas_itens").delete().eq("nota_id", nota_id), "excluir notas_proprias_externas_itens");
   if (!itens.length) return;
   const { error } = await supabase.from("notas_proprias_externas_itens")
     .insert(itens.map(it => ({ ...it, nota_id })));

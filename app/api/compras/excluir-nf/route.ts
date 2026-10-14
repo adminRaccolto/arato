@@ -1,3 +1,4 @@
+import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
@@ -137,8 +138,8 @@ export async function POST(req: NextRequest) {
             .eq("id", mov.insumo_id);
         }
       }
-      await sb.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds);
-      await sb.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
+      await falharSeErro(sb.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds), "excluir movimentacoes_estoque");
+      await falharSeErro(sb.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds), "excluir historico_manutencao");
     }
 
     // 3. Reverter movimentações PA (Princípios Ativos)
@@ -166,12 +167,11 @@ export async function POST(req: NextRequest) {
           { onConflict: "fazenda_id,principio_ativo_id" },
         );
       }
-      await sb.from("movimentacoes_pa").delete().eq("nf_entrada_id", nf_id);
+      await falharSeErro(sb.from("movimentacoes_pa").delete().eq("nf_entrada_id", nf_id), "excluir movimentacoes_pa");
     }
 
     // 4. Estoque de terceiros
-    await sb.from("estoque_terceiros").delete().eq("nf_entrada_id", nf_id);
-
+    await falharSeErro(sb.from("estoque_terceiros").delete().eq("nf_entrada_id", nf_id), "excluir estoque_terceiros");
     // 5. Lançamento financeiro (CP)
     const { data: nfRow } = await sb
       .from("nf_entradas")
@@ -180,16 +180,14 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (nfRow?.lancamento_id) {
-      await sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+      await falharSeErro(sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id), "excluir lancamentos");
     }
 
     // 6. Pendências fiscais (criadas pelo fluxo WhatsApp)
-    await sb.from("pendencias_fiscais").delete().eq("lancamento_id", nfRow?.lancamento_id ?? "").neq("lancamento_id", "");
-    await sb.from("pendencias_fiscais").delete().eq("nf_entrada_id", nf_id);
-
+    await falharSeErro(sb.from("pendencias_fiscais").delete().eq("lancamento_id", nfRow?.lancamento_id ?? "").neq("lancamento_id", ""), "excluir pendencias_fiscais");
+    await falharSeErro(sb.from("pendencias_fiscais").delete().eq("nf_entrada_id", nf_id), "excluir pendencias_fiscais");
     // 7. Itens da NF
-    await sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id);
-
+    await falharSeErro(sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id), "excluir nf_entrada_itens");
     // 8. Registro da NF
     const { error: errDel } = await sb
       .from("nf_entradas")

@@ -1,3 +1,4 @@
+import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -90,7 +91,7 @@ async function salvarGridConsorcio(body: {
   }
 
   // Parcelas: regrava o plano inteiro (pago vem do grid)
-  await sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id);
+  await falharSeErro(sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id), "excluir parcelas_consorcio");
   const { error: pErr } = await sb.from("parcelas_consorcio").insert(
     body.parcelas.map(p => ({
       consorcio_id: body.consorcio_id, numero_parcela: p.numero, data_vencimento: p.data_vencimento,
@@ -173,7 +174,7 @@ export async function PATCH(req: NextRequest) {
     const sb = admin();
 
     // Remove parcelas e CPs existentes (não pagas)
-    await sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id);
+    await falharSeErro(sb.from("parcelas_consorcio").delete().eq("consorcio_id", body.consorcio_id), "excluir parcelas_consorcio");
     await sb.from("lancamentos").delete()
       .eq("consorcio_id", body.consorcio_id)
       .neq("status", "pago");
@@ -353,7 +354,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "consorcio_id obrigatório" }, { status: 400 });
     }
     const sb = admin();
-    await sb.from("consorcio_rateios").delete().eq("consorcio_id", body.consorcio_id);
+    await falharSeErro(sb.from("consorcio_rateios").delete().eq("consorcio_id", body.consorcio_id), "excluir consorcio_rateios");
     if (body.rateios?.length > 0) {
       const rows = body.rateios.map(r => ({
         consorcio_id: body.consorcio_id,

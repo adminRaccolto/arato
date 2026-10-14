@@ -3,6 +3,7 @@
  * Salva (INSERT ou UPDATE) uma apólice de seguro, lançamentos de prêmio e parcelas.
  * Usa service_role_key — imune a JWT expirado e RLS.
  */
+import { falharSeErro } from "../../../../lib/db-util";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -149,10 +150,10 @@ export async function POST(req: NextRequest) {
         const naoPagas = (antigas ?? []).filter(p => !p.pago);
         const lancIdsNaoPagos = naoPagas.map(p => p.lancamento_id).filter((id): id is string => !!id);
         if (lancIdsNaoPagos.length) {
-          await sb.from("lancamentos").delete().in("id", lancIdsNaoPagos).neq("status", "baixado");
+          await falharSeErro(sb.from("lancamentos").delete().in("id", lancIdsNaoPagos).neq("status", "baixado"), "excluir lancamentos");
         }
         if (naoPagas.length) {
-          await sb.from("pagamentos_premio_seguro").delete().in("id", naoPagas.map(p => p.id));
+          await falharSeErro(sb.from("pagamentos_premio_seguro").delete().in("id", naoPagas.map(p => p.id)), "excluir pagamentos_premio_seguro");
         }
 
         const res = await gerarParcelasEDespesas(sb, apoliceId, body.payload, body.parcelas_explicitas, body.ramo_label, today);

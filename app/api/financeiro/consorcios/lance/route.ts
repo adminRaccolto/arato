@@ -8,6 +8,7 @@
  *    prazo (remove as últimas parcelas; a sobra reduz a próxima). CPs de cada parcela (inclusive
  *    as divididas por rateio de ciclo) acompanham.
  */
+import { falharSeErro } from "../../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
           for (const p of [...abertas].reverse()) {
             if (resto <= 0.005) break;
             if (Number(p.valor) <= resto + 0.005) {
-              await sb.from("parcelas_consorcio").delete().eq("id", p.id);
+              await falharSeErro(sb.from("parcelas_consorcio").delete().eq("id", p.id), "excluir parcelas_consorcio");
               await sb.from("lancamentos").delete().eq("consorcio_id", b.consorcio_id).eq("tipo", "pagar")
                 .eq("numero_documento", String(p.numero_parcela)).neq("status", "pago");
               resto = r2(resto - Number(p.valor)); removidas++;

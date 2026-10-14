@@ -1,3 +1,4 @@
+import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -32,10 +33,10 @@ export async function POST(req: NextRequest) {
 
       if (lancRow?.agrupador) {
         // Parcelado: remove todas as parcelas do mesmo agrupador
-        await sb.from("lancamentos").delete().eq("agrupador", lancRow.agrupador);
+        await falharSeErro(sb.from("lancamentos").delete().eq("agrupador", lancRow.agrupador), "excluir lancamentos");
       } else if (lancRow?.id) {
         // Parcela única
-        await sb.from("lancamentos").delete().eq("id", lancRow.id);
+        await falharSeErro(sb.from("lancamentos").delete().eq("id", lancRow.id), "excluir lancamentos");
       }
     }
 

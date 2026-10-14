@@ -5,6 +5,7 @@
  * Uso: raccotlo admin, via chamada direta.
  */
 
+import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -68,9 +69,9 @@ export async function POST(req: NextRequest) {
 
     if (!dry_run && idsParaRemover.length > 0) {
       // Remove itens das NFs duplicadas
-      await db.from("nf_entrada_itens").delete().in("nf_entrada_id", idsParaRemover);
+      await falharSeErro(db.from("nf_entrada_itens").delete().in("nf_entrada_id", idsParaRemover), "excluir nf_entrada_itens");
       // Remove as NFs duplicadas
-      await db.from("nf_entradas").delete().in("id", idsParaRemover);
+      await falharSeErro(db.from("nf_entradas").delete().in("id", idsParaRemover), "excluir nf_entradas");
     }
 
     return NextResponse.json({

@@ -1,3 +1,4 @@
+import { falharSeErro } from "../../../../lib/db-util";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
@@ -373,7 +374,7 @@ export async function POST(req: Request) {
         }
 
         // Exclui CPs em aberto / vencidos gerados pela folha
-        await sb.from("lancamentos").delete().in("id", cpIds);
+        await falharSeErro(sb.from("lancamentos").delete().in("id", cpIds), "excluir lancamentos");
       }
 
       // Limpa cp_lancamento_id nas linhas da folha
@@ -431,7 +432,7 @@ export async function POST(req: Request) {
           const nomes = (baixados ?? []).map((l: any) => l.descricao).join("; ");
           throw new Error(`Não é possível excluir: os seguintes CPs já foram baixados em borderô — ${nomes}. Estorne o borderô primeiro.`);
         }
-        await sb.from("lancamentos").delete().in("id", cpIds);
+        await falharSeErro(sb.from("lancamentos").delete().in("id", cpIds), "excluir lancamentos");
       }
 
       const funcIds = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
@@ -442,7 +443,7 @@ export async function POST(req: Request) {
           .in("funcionario_id", funcIds);
       }
 
-      await sb.from("folha_funcionarios").delete().eq("folha_id", id);
+      await falharSeErro(sb.from("folha_funcionarios").delete().eq("folha_id", id), "excluir folha_funcionarios");
       const { error } = await sb.from("folha_pagamento").delete().eq("id", id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
@@ -575,7 +576,7 @@ export async function POST(req: Request) {
         if (lanc?.status === "baixado") {
           throw new Error("Não é possível cancelar: o CP do adiantamento já foi baixado em borderô. Estorne o borderô primeiro.");
         }
-        await sb.from("lancamentos").delete().eq("id", adi.lancamento_id);
+        await falharSeErro(sb.from("lancamentos").delete().eq("id", adi.lancamento_id), "excluir lancamentos");
       }
       const { error } = await sb.from("adiantamentos_salario").update({ status: "cancelado" }).eq("id", id);
       if (error) throw error;

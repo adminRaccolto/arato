@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-p",
+    data: "14/10/2026",
+    titulo: "Exclusões que falham agora avisam",
+    modulos: ["Todos"],
+    itens: [
+      { tipo: "correcao", texto: "75 pontos do sistema (estorno e exclusão de NF, contratos, pedidos, consórcios, seguros, folha, parcelas e outros) apagavam registros antigos antes de gravar os novos e ignoravam o erro quando o banco recusava a exclusão: o antigo ficava e o novo era criado ao lado, gerando duplicidades. Agora, se a exclusão falhar, a operação para com uma mensagem dizendo o que não foi possível apagar. Você pode ver avisos que antes não apareciam: eles indicam um problema que antes passava despercebido." },
+    ],
+    onde: "Todo o sistema",
+  },
+  {
     versao: "2026.10.14-o",
     data: "14/10/2026",
     titulo: "NF processada duas vezes: causa corrigida",
