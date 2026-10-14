@@ -349,6 +349,18 @@ const numBR = (v: unknown): number => {
   return t.includes(",") ? (parseFloat(t.replace(/\./g, "").replace(",", ".")) || 0) : (parseFloat(t) || 0);
 };
 
+// CFOPs de devolução de compra oferecidos (cada item da NF de devolução escolhe o seu)
+const CFOPS_DEVOLUCAO: { v: string; l: string }[] = [
+  { v: "5201", l: "5201 — Dev. compra intraestadual" },
+  { v: "6201", l: "6201 — Dev. compra interestadual" },
+  { v: "5202", l: "5202 — Dev. compra c/ substituição" },
+  { v: "6202", l: "6202 — Dev. compra c/ substituição interestadual" },
+  { v: "5556", l: "5556 — Dev. compra de material de uso ou consumo" },
+  { v: "6556", l: "6556 — Dev. compra de material de uso ou consumo (interestadual)" },
+  { v: "5413", l: "5413 — Dev. material de uso ou consumo c/ substituição tributária" },
+  { v: "6413", l: "6413 — Dev. material de uso ou consumo c/ substituição tributária (interestadual)" },
+];
+
 export default function ModalNf({
   id, onClose, onSaved, acaoInicial,
 }: {
@@ -489,6 +501,7 @@ export default function ModalNf({
     qtdOriginalNF?: number;
     unidadeOriginalNF?: string;
     ncm?: string;
+    cfop: string;   // CFOP próprio do item na NF de devolução (a natureza da operação é única)
   }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
@@ -1697,7 +1710,8 @@ export default function ModalNf({
       "1102": "5202", "2102": "6202", "1101": "5201", "2101": "6201", "1201": "5201", "2201": "6201",
       "1556": "5556", "2556": "6556", "1407": "5413", "2407": "6413", "1403": "5202", "2403": "6202",
     };
-    setDevCfop(CFOP_DEV[(nf.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? "5201");
+    const cfopPadrao = CFOP_DEV[(nf.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? "5201";
+    setDevCfop(cfopPadrao);
     // Configuração fiscal da fazenda de origem — a devolução emite uma NF-e de verdade (saída, de
     // volta ao fornecedor), não só um registro interno. Sem ela, a devolução fica bloqueada.
     supabase.from("configuracoes_modulo").select("modulo, config")
@@ -1728,6 +1742,7 @@ export default function ModalNf({
         .map(i => ({
           key:                 i.id,
           insumo_id:           i.tipo_apropiacao === "estoque" ? i.insumo_id! : undefined,
+          cfop:                cfopPadrao,
           origem_item_id:      i.id,
           tipo_apropiacao:     (i.tipo_apropiacao === "direto" ? "direto" : "estoque") as "estoque" | "direto",
           descricao_produto:   i.descricao_produto,
@@ -1769,6 +1784,11 @@ export default function ModalNf({
         return;
       }
     }
+    // Uma NF tem um só destino: todos os CFOPs dela precisam ser do mesmo grupo (5xxx dentro do estado ou 6xxx fora)
+    if (new Set(itensParaDevolver.map(i => i.cfop.charAt(0))).size > 1) {
+      setDevErr("Os itens misturam CFOP 5xxx (dentro do estado) e 6xxx (interestadual). Uma NF de devolução tem um só destino: use o mesmo grupo em todos.");
+      return;
+    }
     if (!fiscalModulos[0]) {
       setDevErr("Nenhuma configuração fiscal encontrada para esta fazenda em Parâmetros → Fiscal. Configure o emitente antes de devolver.");
       return;
@@ -1779,7 +1799,7 @@ export default function ModalNf({
       const itensNfe = itensParaDevolver.map(i => ({
         descricao:      i.descricao_produto,
         ncm:             i.ncm!,
-        cfop:            devCfop,
+        cfop:            i.cfop,
         unidade:         i.unidade.toUpperCase(),
         quantidade:      i.quantidade_devolver,
         valor_unitario:  i.valor_unitario,
@@ -1851,7 +1871,8 @@ export default function ModalNf({
         devNfOrig.id,
         res.numero ?? "",
         serieReal,
-        devCfop,
+        // cabeçalho da NF no sistema: CFOP do item de maior valor (cada item da NF-e leva o seu)
+        [...itensParaDevolver].sort((a, b) => b.valor_total - a.valor_total)[0].cfop,
         devNfOrig.emitente_nome,
         devNfOrig.emitente_cnpj,
         devNfOrig.pessoa_id,
@@ -4032,16 +4053,9 @@ export default function ModalNf({
                   <InputData type="date" value={devVenc} onChange={e => setDevVenc(e.target.value)} placeholder="Opcional" style={inp} />
                 </div>
                 <div>
-                  <label data-arato-label="true" style={lbl}>CFOP</label>
-                  <SelectField value={devCfop} onChange={e => setDevCfop(e.target.value)} style={inp}>
-                    <option value="5201">5201 — Dev. compra intraestadual</option>
-                    <option value="6201">6201 — Dev. compra interestadual</option>
-                    <option value="5202">5202 — Dev. compra c/ substituição</option>
-                    <option value="6202">6202 — Dev. compra c/ substituição interestadual</option>
-                    <option value="5556">5556 — Dev. compra de material de uso ou consumo</option>
-                    <option value="6556">6556 — Dev. compra de material de uso ou consumo (interestadual)</option>
-                    <option value="5413">5413 — Dev. material de uso ou consumo c/ substituição tributária</option>
-                    <option value="6413">6413 — Dev. material de uso ou consumo c/ substituição tributária (interestadual)</option>
+                  <label data-arato-label="true" style={lbl}>CFOP padrão (vale para todos os itens; ajuste por item abaixo)</label>
+                  <SelectField value={devCfop} onChange={e => { setDevCfop(e.target.value); setDevItens(prev => prev.map(x => ({ ...x, cfop: e.target.value }))); }} style={inp}>
+                    {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.l}</option>)}
                   </SelectField>
                 </div>
                 <div>
@@ -4057,13 +4071,13 @@ export default function ModalNf({
                 </div>
               ) : (
                 <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                    {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução"].map((h, i) => (
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px 150px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
+                    {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução", "CFOP"].map((h, i) => (
                       <div key={i} style={{ padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</div>
                     ))}
                   </div>
                   {devItens.map(it => (
-                    <div data-arato-item-grid="true" key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
+                    <div data-arato-item-grid="true" key={it.key} style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px 150px", borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
                       <div style={{ padding: "8px 12px", fontSize: 13, color: "var(--text-1)" }}>
                         {it.descricao_produto}
                         {it.tipo_apropiacao === "direto" && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: "#7B4A00", background: "#FBF3E0", borderRadius: 4, padding: "1px 6px" }}>Aprop. Direta: reverte o custo</span>}
@@ -4096,6 +4110,11 @@ export default function ModalNf({
                       </div>
                       <div style={{ padding: "8px 12px", fontSize: 13, fontWeight: 600, color: it.quantidade_devolver > 0 ? "#E24B4A" : "var(--text-muted)", textAlign: "right" }}>
                         {it.quantidade_devolver > 0 ? fmtBRL(it.valor_total) : "—"}
+                      </div>
+                      <div style={{ padding: "6px 8px" }}>
+                        <select value={it.cfop} onChange={e => setDevItens(prev => prev.map(x => x.key === it.key ? { ...x, cfop: e.target.value } : x))} style={{ ...inp, padding: "5px 6px", fontSize: 12 }}>
+                          {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.v}</option>)}
+                        </select>
                       </div>
                     </div>
                   ))}

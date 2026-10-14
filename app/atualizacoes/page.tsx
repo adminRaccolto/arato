@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-k",
+    data: "14/10/2026",
+    titulo: "CFOP por item na NF de devolução",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A NF de Devolução de Compra agora permite um CFOP por item (coluna CFOP na lista de itens), já que produtos diferentes podem exigir CFOPs diferentes. O CFOP do topo vira o padrão aplicado a todos os itens, e a natureza da operação continua única. O sistema bloqueia misturar 5xxx com 6xxx na mesma NF, que tem um só destino." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada → Devolver",
+  },
+  {
     versao: "2026.10.14-j",
     data: "14/10/2026",
     titulo: "Conciliação de títulos de Empresa",
