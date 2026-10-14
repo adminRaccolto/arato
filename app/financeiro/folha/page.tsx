@@ -61,6 +61,9 @@ interface FolhaFunc {
   // Percentuais de encargo do cadastro do funcionário (não gravados na folha) — zero no cadastro vale zero aqui
   fgts_pct?: number;
   inss_pat_pct?: number;
+  // Cadastro com FGTS, INSS Empregador, SAT/RAT e Sistema S todos zerados = funcionário sem imposto automático
+  // (lançamentos manuais): a folha não calcula INSS/IRRF do trabalhador nem FGTS/INSS patronal.
+  sem_impostos?: boolean;
 }
 interface Folha {
   id: string;
@@ -122,7 +125,9 @@ function liquido(f: FolhaFunc) {
 // Percentuais de encargo do cadastro do funcionário. Cadastro sem nenhum percentual salvo usa o padrão antigo (8% / 28%).
 function pctsEncargos(cad: { fgts_pct?: number | null; inss_empregador_pct?: number | null; sat_rat_pct?: number | null; sistema_s_pct?: number | null }) {
   const tem = cad.inss_empregador_pct != null || cad.sat_rat_pct != null || cad.sistema_s_pct != null;
+  const zerado = (v: number | null | undefined) => v != null && Number(v) === 0;
   return {
+    sem_impostos: zerado(cad.fgts_pct) && zerado(cad.inss_empregador_pct) && zerado(cad.sat_rat_pct) && zerado(cad.sistema_s_pct),
     fgts_pct: cad.fgts_pct ?? undefined,
     inss_pat_pct: tem ? (cad.inss_empregador_pct ?? 0) + (cad.sat_rat_pct ?? 0) + (cad.sistema_s_pct ?? 0) : undefined,
   };
@@ -134,6 +139,7 @@ function pctsEncargos(cad: { fgts_pct?: number | null; inss_empregador_pct?: num
 // aqui (Funrural é calculado sobre a comercialização, fora da folha).
 function recalc(f: FolhaFunc): FolhaFunc {
   const bruto = (f.salario_base || 0) + (f.gratificacao || 0);
+  if (f.sem_impostos) return { ...f, salario_bruto: bruto, inss_trabalhador: 0, irrf: 0, fgts: 0, inss_patronal: 0 };
   const inss  = calcINSS(bruto);
   const r2 = (n: number) => Math.round(n * 100) / 100;
   const fgts = f.fgts_pct == null ? calcFGTS(bruto) : r2(bruto * f.fgts_pct / 100);

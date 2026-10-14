@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-q",
+    data: "14/10/2026",
+    titulo: "Funcionário sem imposto automático na folha",
+    modulos: ["Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "correcao", texto: "Mesmo com os encargos zerados no cadastro, a folha ainda descontava INSS e IRRF do funcionário e o CP de salário saía menor. Agora, se FGTS, INSS Empregador, SAT/RAT e Sistema S estiverem todos zerados no cadastro, o funcionário fica sem imposto automático: a folha não desconta INSS nem IRRF e o CP sai pelo valor cheio. Folhas em rascunho recalculam ao reabrir; folhas fechadas não mudam." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.14-p",
     data: "14/10/2026",
     titulo: "Exclusões que falham agora avisam",
