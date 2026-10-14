@@ -3156,7 +3156,7 @@ export async function processarNfEntrada(
   const { data: nfCfopRow } = await supabase.from("nf_entradas").select("cfop").eq("id", nfId).maybeSingle();
   const nfSemPagamento = CFOPS_BEM_SEM_PAGAMENTO.has(((nfCfopRow?.cfop as string | null) ?? "").trim());
 
-  // Trava de duplicidade: se a NF JÁ tem título ativo (produtor ou empresa), processar de novo nunca cria outro.
+  // Trava de duplicidade: se a NF JÁ tem título ativo do produtor, processar de novo nunca cria outro.
   // Achado 14/10/2026: reprocessamentos da mesma NF geraram um segundo CP em aberto ao lado do já baixado
   // (5 NFs, R$ 1.768,64 a pagar em dobro). Estornar a NF cancela os títulos, então o reprocesso legítimo segue livre.
   const { data: cpsAtivosProd } = await supabase.from("lancamentos").select("id").eq("nf_entrada_id", nfId).neq("status", "cancelado").limit(1);
