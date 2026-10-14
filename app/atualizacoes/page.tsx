@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-l",
+    data: "14/10/2026",
+    titulo: "Relatórios financeiros sem linhas repetidas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O relatório de CP/CR e os demais de Financeiro, Relatórios podiam mostrar o mesmo título duas vezes (a mesma fazenda aparecia repetida na lista de carregamento). Agora cada título entra uma só vez." },
+    ],
+    onde: "Financeiro → Relatórios",
+  },
+  {
     versao: "2026.10.14-k",
     data: "14/10/2026",
     titulo: "CFOP por item na NF de devolução",

@@ -258,7 +258,7 @@ function FinanceiroRelatoriosInner() {
     // passar de 13 mil linhas numa conta grande).
     if (aba === "comercializacao") { setCarregando(false); return; }
     // Carrega de TODAS as fazendas da conta para incluir previsões de todas as fazendas
-    const fidsParaCarregar = fazendaIds?.length ? fazendaIds : [fazendaId];
+    const fidsParaCarregar = Array.from(new Set(fazendaIds?.length ? fazendaIds : [fazendaId]));
     Promise.all([
       // Produtor (lancamentos) + Empresa (empresa_lancamentos): sem a segunda, o relatório mostrava só os
       // CP/CR de empresa antigos e nenhum dos lançados depois.
@@ -274,7 +274,8 @@ function FinanceiroRelatoriosInner() {
         ? supabase.from("apoio_lancamentos").select("id,tipo,descricao,valor,data_vencimento,categoria,pessoa_nome").in("fazenda_id", fazendaIds).eq("baixado", false)
         : Promise.resolve({ data: [] }),
     ]).then(([lans, ops, apoioRes, apoioLancsRes]) => {
-      setLancamentos(lans);
+      // Um título nunca entra duas vezes no relatório (mesma fazenda repetida na lista, ou id presente nas duas fontes)
+      setLancamentos(Array.from(new Map(lans.map(l => [l.id, l])).values()));
       setOperacoesGer(ops);
       const ids = ((apoioRes as { data: { lancamento_id: string }[] | null }).data ?? []).map(b => b.lancamento_id);
       setApoioBaixasIds(new Set(ids));
