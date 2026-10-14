@@ -1691,8 +1691,13 @@ export default function ModalNf({
     setDevObs("");
     setDevData(new Date().toISOString().split("T")[0]);
     setDevVenc("");
-    // CFOP padrão: 5201 (intraestadual) — ajustável pelo usuário
-    setDevCfop("5201");
+    // CFOP padrão sugerido pelo CFOP da compra (1xxx = dentro do estado, 2xxx = interestadual); sem correspondência,
+    // 5201 — sempre ajustável pelo usuário
+    const CFOP_DEV: Record<string, string> = {
+      "1102": "5202", "2102": "6202", "1101": "5201", "2101": "6201", "1201": "5201", "2201": "6201",
+      "1556": "5556", "2556": "6556", "1407": "5413", "2407": "6413", "1403": "5202", "2403": "6202",
+    };
+    setDevCfop(CFOP_DEV[(nf.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? "5201");
     // Configuração fiscal da fazenda de origem — a devolução emite uma NF-e de verdade (saída, de
     // volta ao fornecedor), não só um registro interno. Sem ela, a devolução fica bloqueada.
     supabase.from("configuracoes_modulo").select("modulo, config")

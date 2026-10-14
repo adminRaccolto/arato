@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-h",
+    data: "14/10/2026",
+    titulo: "CFOP de devolução sugerido pela compra",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Na NF de Devolução de Compra, o CFOP já vem sugerido pelo CFOP da compra: 1556 sugere 5556, 2556 sugere 6556, 1407 sugere 5413, 2407 sugere 6413, 1403 e 1102 sugerem 5202, 2403 e 2102 sugerem 6202, 2201 e 2101 sugerem 6201. Sem correspondência, continua 5201. Você pode trocar na lista." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada → Devolver",
+  },
+  {
     versao: "2026.10.14-g",
     data: "14/10/2026",
     titulo: "CFOPs de devolução de uso e consumo",
