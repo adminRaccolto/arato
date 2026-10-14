@@ -1897,7 +1897,7 @@ function FiscalInner() {
           {!carregando && !erro && (
             <>
               {/* KPI cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
                   { label: "NF-e autorizadas",   valor: String(totalAutorizadas),  cor: "#111111", sub: `${notas.filter(n => n.auto).length} emitidas automaticamente` },
                   { label: "Faturamento (mês)",   valor: fmtMoeda(faturamentoMes), cor: "#111111", sub: "notas autorizadas" },

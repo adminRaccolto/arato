@@ -279,7 +279,7 @@ export default function ClassificacaoPage() {
         )}
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Regras Ativas",    valor: `${ativas} / ${regras.length}`,                                                cor: "#16A34A" },
             { label: "Total Aplicações", valor: aplicacoes.toLocaleString("pt-BR"),                                           cor: "#111111" },

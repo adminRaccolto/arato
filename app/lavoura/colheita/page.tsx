@@ -524,7 +524,7 @@ export default function ColheitaPage() {
         </OperationalHeading>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
           {[
             { label: "Registros de colheita", valor: colheitas.length.toString(), cor: "#111111" },
             { label: "Total sacas colhidas",  valor: fmt(totalSacas) + " sc", cor: "#444444" },

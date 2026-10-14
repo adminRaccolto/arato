@@ -288,7 +288,7 @@ export default function AuditoriaPage() {
         </div>
 
         {/* Stat cards */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <div data-arato-kpis="true" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <div data-arato-statistic="display" style={card}>
             <div style={{ fontSize: 10, color: "#888", marginBottom: 4, fontWeight: 600 }}>EVENTOS HOJE</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#0B2D50" }}>{logsHoje.length}</div>

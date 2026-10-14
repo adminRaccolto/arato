@@ -1609,7 +1609,7 @@ export default function Estoque() {
                     {grupos.length > 0 && (
                       <div>
                         {/* KPIs */}
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
+                        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
                           {[
                             ["Produtos com movimento", String(grupos.length), "#111111", "#E8E8E8"],
                             ["Total de movimentações", String(movsFiltr.length), "#1A6B3C", "#E8F5E9"],
@@ -2084,7 +2084,7 @@ export default function Estoque() {
                     </div>
 
                     {/* KPIs */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+                    <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
                       {[
                         ["Depósitos com itens", String(grupos.filter(g => g.dep !== null).length), "#1A4870", "#D5E8F5"],
                         ["Total de itens", String(totalItens), "#111111", "#E8E8E8"],

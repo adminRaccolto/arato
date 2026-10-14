@@ -201,7 +201,7 @@ export default function CorrecaoSoloPage() {
 
         <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>
           {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
               { label: "Total de aplicações",   valor: String(registros.length),                                                                  cor: "#111111" },
               { label: "Área total corrigida",  valor: `${registros.reduce((s, r) => s + r.area_ha, 0).toLocaleString("pt-BR")} ha`,              cor: "#C9921B" },

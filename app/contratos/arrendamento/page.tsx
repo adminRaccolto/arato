@@ -944,7 +944,7 @@ export default function Arrendamentos() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Área Arrendada",       valor: `${fmtN(totalArea)} ha`, bg: "#EBF3FC", color: "#0C447C" },
             { label: "Contratos Ativos",     valor: arrendamentos.length,    bg: "#E8E8E8", color: "#0D0D0D" },

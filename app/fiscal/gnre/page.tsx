@@ -228,7 +228,7 @@ export default function GnrePage() {
         </OperationalHeading>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Pendente",     value: fmt(pendente),        sub: `${qtdEmitidas} guia${qtdEmitidas !== 1 ? "s" : ""}`, cor: "#111111", bg: "#EAF3FB" },
             { label: "Vencida",      value: fmt(vencida),         sub: "Recolhimento atrasado",    cor: "#991B1B", bg: "#FEE2E2" },

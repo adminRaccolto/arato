@@ -602,7 +602,7 @@ export default function CompraTerrPage() {
         </OperationalHeading>
 
         {/* KPI Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
             { label: "Contratos Ativos", val: contratos.filter(c => !["cancelado","encerrado"].includes(c.status)).length.toString(), sub: `${contratos.length} total` },
             { label: "Área Adquirida", val: fmtHa(contratos.filter(c => c.status !== "cancelado").reduce((s, c) => s + (c.imovel_area_total_ha ?? 0), 0)), sub: "em imóveis ativos" },

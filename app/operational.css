@@ -1,3 +1,8 @@
+/* KPI panels are removed from every screen in both layouts. Document totals stay in their own tables. */
+@media screen {
+  html:root[data-theme][data-layout] [data-arato-kpis="true"] { display:none !important; }
+}
+
 /* Structural operational UI. Public pages, administration and printable documents keep their own presentation. */
 @media screen {
   html:root[data-layout="new"][data-layout-workspace="true"][data-theme] {
@@ -80,14 +85,6 @@
     [data-arato-tabs] > :is(button,a,[role="tab"])::before { content:none !important; }
     [data-arato-tabs] > :is(button,a,[role="tab"]):is([data-arato-tab-active="true"],[aria-selected="true"]) { background:var(--op-accent-soft) !important; box-shadow:none !important; color:var(--c-primary) !important; }
 
-    .op-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:0; margin-bottom:24px; padding:18px 0; border:1px solid var(--modern-border); border-radius:var(--op-radius); background:var(--bg-card); }
-    .op-summary-item { display:flex; flex-direction:column; gap:8px; padding:0 24px; border-right:1px solid var(--modern-divider); }
-    .op-summary-item:last-child { border-right:0; }
-    .op-summary-item > span { color:var(--text-3); font-size:11px; }
-    .op-summary-item > strong { color:var(--text-1); font-size:22px; line-height:1.2; font-weight:650; letter-spacing:-.6px; font-variant-numeric:tabular-nums; }
-    .op-summary-item > small { color:var(--text-3); font-size:10px; }
-    .op-summary-item[data-tone="warning"] > strong { color:var(--status-warning-text,#a65f00); }
-    .op-summary-item[data-tone="positive"] > strong { color:var(--c-primary); }
     [data-arato-statistic] { border-radius:14px !important; padding:18px 20px !important; box-shadow:none !important; }
     [data-arato-statistic] > :is(div,strong)[style*="font-size: 2"] { font-size:26px !important; font-weight:650; letter-spacing:-.7px; }
     [data-arato-panel]:not(.op-filters) { border-radius:14px !important; padding:18px !important; margin-bottom:20px !important; }
@@ -149,9 +146,8 @@
     .arato-filter-total { margin:0 0 18px; padding:14px 18px; border:1px solid var(--modern-border); border-radius:12px; background:var(--bg-card); font-size:11px; }
     .op-bulk-actions { left:calc(50% + var(--sidebar-w) / 2) !important; bottom:42px !important; width:max-content; background:var(--bg-card) !important; color:var(--text-1) !important; border:1px solid var(--c-primary); border-radius:14px !important; padding:12px 18px !important; box-shadow:0 8px 32px rgb(0 0 0 / .16) !important; flex-wrap:wrap; max-width:calc(100vw - var(--sidebar-w) - 32px) !important; white-space:normal !important; }
     .op-home { display:grid; grid-template-columns:minmax(0,2fr) minmax(300px,1fr); align-content:start; gap:20px; max-width:none !important; padding-top:24px !important; }
-    .op-home-heading,.op-home > .op-summary,.op-home-context { grid-column:1 / -1; }
+    .op-home-heading,.op-home-context { grid-column:1 / -1; }
     .op-home-heading .op-heading { margin-bottom:0 !important; }
-    .op-home > .op-summary { margin:0; }
     .op-home-context { border-radius:var(--op-radius); border:1px solid var(--modern-border) !important; padding:18px 20px !important; background:var(--bg-card) !important; animation:none !important; }
     .op-home-search-results { background:var(--bg-card) !important; box-shadow:var(--shadow-modal) !important; }
     .op-home-context > div:has(.op-home-market-item) { display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)); padding:16px 0 0 !important; gap:10px !important; border-top:1px solid var(--modern-divider) !important; }
@@ -184,10 +180,6 @@
     .op-grid-tools { padding:12px; }
     .op-grid-find input { width:130px; }
     .op-grid-note { display:none; }
-    .op-summary { grid-template-columns:1fr 1fr; gap:18px 0; }
-    .op-summary-item { padding:0 16px; }
-    .op-summary-item:nth-child(2n) { border-right:0; }
-    .op-summary-item > strong { font-size:19px; }
     .op-home { display:flex; flex-direction:column; }
     .op-home-context > div:has(.op-home-market-item) { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }

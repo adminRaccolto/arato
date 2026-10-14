@@ -541,7 +541,7 @@ export default function EstoqueGraosPage() {
         {/* ── POSIÇÃO ──────────────────────────────────────────────────────────── */}
         {aba === "posicao" && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 12, marginBottom: 22 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 12, marginBottom: 22 }}>
               {[
                 { label: "Total Entradas",    value: fmt(totalEntradas, 1) + " sc",  color: "#166534", bg: "#ECFDF5" },
                 { label: "Quebra Técnica",    value: "− " + fmt(totalQuebra, 1) + " sc", color: "#92400E", bg: "#FEF3C7" },
@@ -671,7 +671,7 @@ export default function EstoqueGraosPage() {
         {/* ── QUEBRA TÉCNICA ─────────────────────────────────────────────────── */}
         {aba === "quebra" && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 12, marginBottom: 22 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 12, marginBottom: 22 }}>
               {[
                 { label: "Quebra Classif. Média", value: fmt(quebraMedia, 2) + "%",  color: quebraMedia > 2 ? "#991B1B" : "#555" },
                 { label: "Quebra Classif. Total",  value: fmt(quebraTotal / 1000, 2) + " t", color: "#555" },

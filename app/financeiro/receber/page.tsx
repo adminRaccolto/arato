@@ -1,6 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
-import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading, OperationalSummary } from "../../../components/OperationalUI";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Contas a Receber — unificado (Produtor + Empresa). Promovida de piloto pra
 // tela real em 01/10/2026, a pedido do dono: "reunificar os lançamentos de
@@ -1210,12 +1210,6 @@ export default function ContasAReceberPage() {
         </OperationalHeading>
 
         {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ── */}
-        <OperationalSummary items={[
-          { label: "Registros no filtro", value: linhasComBordero.length, detail: "Títulos e borderôs da consulta" },
-          { label: "Valor dos títulos", value: fmtBRL(totalPagar), detail: "Total do filtro atual" },
-          { label: "Saldo a receber", value: fmtBRL(totalAberto), tone: "positive" },
-          { label: "Borderôs", value: linhasComBordero.filter(entry => entry.kind === "bordero").length, detail: "Agrupamentos visíveis" },
-        ]} />
 
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>

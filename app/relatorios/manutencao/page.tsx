@@ -450,7 +450,7 @@ function RelManutInner() {
         {gerado && (
           <>
             {/* KPI */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
               {[
                 { label: "Equipamentos", val: totalMaquinas, cor: "#111111", fmt: false },
                 { label: "Manutenções",  val: totalManut,    cor: "var(--text-2)",    fmt: false },

@@ -689,7 +689,7 @@ export default function RelatorioEndividamento() {
         </OperationalFilters>
 
         {/* KPI cards */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <div data-arato-kpis="true" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           {[
             { l: "Saldo Devedor Total",    v: fmtBRL(totalSaldo),          cor: "#E24B4A", sub: totalCaptado > 0 ? `${fmtPct((totalSaldo / totalCaptado) * 100)} do captado` : undefined },
             { l: "Total Captado",          v: fmtBRL(totalCaptado),         cor: "#111111", sub: `${filtrados.length} contrato${filtrados.length !== 1 ? "s" : ""}` },

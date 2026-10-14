@@ -140,7 +140,7 @@ export default function BackupPage() {
         )}
 
         {/* Cards de status */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 22 }}>
           {[
             {
               label: "Último Backup",

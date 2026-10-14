@@ -272,7 +272,7 @@ export default function PendenciasOperacionais() {
         </div>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Pendentes",  value: cntPendente,  bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" },
             { label: "Resolvidas", value: cntResolvida, bg: "#D1FAE5", color: "#065F46", border: "#6EE7B7" },

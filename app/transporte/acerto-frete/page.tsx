@@ -324,7 +324,7 @@ export default function AcertoFretePage() {
           </div>
 
           {/* KPIs do acerto */}
-          <div data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+          <div data-arato-kpis="true" data-arato-dialog-body="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
             {[
               { l: "Valor Bruto (Fretes)", v: brl(acerto.valor_bruto ?? 0), c: "#1A4870" },
               { l: "Combustível", v: brl(acerto.valor_combustivel ?? 0), c: "#E24B4A" },
@@ -518,7 +518,7 @@ export default function AcertoFretePage() {
         </OperationalFilters>
 
         {/* KPI cards */}
-        <div style={{ display: "flex", gap: 14, marginBottom: 28, flexWrap: "wrap" }}>
+        <div data-arato-kpis="true" style={{ display: "flex", gap: 14, marginBottom: 28, flexWrap: "wrap" }}>
           {card("Acertos no Período", String(acertos.length), `${totalAbertos} aberto${totalAbertos !== 1 ? "s" : ""}`)}
           {card("Total Bruto (Fretes)", brl(totalBruto), undefined, "#1A4870")}
           {card("Total Descontos", brl(totalDesc), "Combustível + Adiant.", "#E24B4A")}

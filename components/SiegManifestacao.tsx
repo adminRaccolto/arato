@@ -211,7 +211,7 @@ export default function SiegManifestacao() {
       )}
 
       {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
         {[
           { label: "Total NFs",      v: nfs.length,   cor: "#111111", fmtR: false },
           { label: "Pendentes",      v: pendentes,    cor: "#C9921B", fmtR: false },

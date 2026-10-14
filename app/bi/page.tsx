@@ -1218,7 +1218,7 @@ export default function BI() {
         {!loading && aba === "painel" && (
           <div>
             {/* KPIs globais */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
               {[
                 { label: "Área Filtrada",      v: `${fmtN(areaFiltrada, 0)} ha`,      color: "#0C447C", bg: "#EBF3FC" },
                 { label: "Produção Projetada", v: `${fmtN(prodTotalEsperada, 0)} sc`,  color: "#14532D", bg: "#ECFDF5" },
@@ -1872,13 +1872,14 @@ export default function BI() {
                           </div>
                         </div>
 
+                        <OperationalButton data-arato-button="secondary" onClick={() => setModalComprHa(true)} style={{ padding: "6px 10px", marginBottom: 8, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-1)", cursor: "pointer", fontSize: 12 }}>Detalhar compromissos por hectare</OperationalButton>
                         {/* KPI 2×3 grid */}
                         {(() => {
                           const totalArea = pcRows.reduce((s, r) => s + r.area, 0);
                           const scHaCompr = totalArea > 0 ? kpiCompr / totalArea : 0;
                           const scHaPrec  = kpiVolPrev > 0 ? kpiFatPrev / kpiVolPrev : 0;
                           return (
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
+                            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
                               {[
                                 { label: "Volume Previsto",     val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#111111", bg: "#EBF3FC", click: undefined as (() => void) | undefined },
                                 { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),    sub: kpiVolPrev>0?`${fmtR2(scHaPrec)}/${unitLabel}`:"", cor: "#14532D", bg: "#ECFDF5", click: undefined },
@@ -2481,7 +2482,7 @@ export default function BI() {
                   {(prodTotalEsperada > 0 || sacasTotaisReais > 0) && (
                     <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
                       <div style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)", marginBottom: 12 }}>Consolidado de Produção</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+                      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
                         {[
                           { label: "Área Total",          v: `${fmtN(areaFiltrada,0)} ha`,         color: "#0C447C" },
                           { label: "Produção Projetada",  v: `${fmtN(prodTotalEsperada,0)} sc`,     color: "var(--text-1)" },
@@ -2508,7 +2509,7 @@ export default function BI() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {/* KPI resumo */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                    <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
                       {[
                         { label: "Previsto total",  val: `${fmtN(totalPrev,0)} sc`,  color: "#111111", bg: "#EBF3FC" },
                         { label: "Colhido total",   val: totalColh>0?`${fmtN(totalColh,0)} sc`:"Ainda não iniciado", color: totalColh>0?"#16A34A":"var(--text-3)", bg: totalColh>0?"#ECFDF5":"var(--bg-card)" },
@@ -2835,7 +2836,7 @@ export default function BI() {
               `}</style>
 
               {/* KPIs de custo */}
-              <div className="bi-no-print" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
+              <div data-arato-kpis="true" className="bi-no-print" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
                 {[
                   { label: "Custo Total (consumo + CP)", v: fmtR(totalCusto), color: "#E24B4A", bg: "#FCEBEB" },
                   { label: "Custo por Hectare",          v: custoHaLocal > 0 ? fmtR(custoHaLocal) + "/ha" : "—", color: "#111111", bg: "#EBF3FC" },
@@ -3262,7 +3263,7 @@ export default function BI() {
             </OperationalFilters>
 
             {/* ── KPI cards ── */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+            <div data-arato-kpis="true" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
               {[
                 { label:"Total Comercializado", val:fmtN(totalSc, 0)+" sc",      sub:contratosVisiveis.length+" contrato(s)",             cor:"#111111", bg:"#EBF3FC" },
                 { label:"Valor Total (BRL)",    val:fmtR2(totalValBRL),           sub:"conversão USD→BRL à PTAX",                          cor:"#16A34A", bg:"#ECFDF5" },
@@ -3635,7 +3636,7 @@ export default function BI() {
         {!loading && aba === "financeiro" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {/* KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
               {[
                 { label: "CP Vencidas",       v: cpVencidas, color: cpVencidas > 0 ? "#791F1F" : "var(--text-3)",   bg: cpVencidas > 0 ? "#FCEBEB" : "var(--bg-page)" },
                 { label: "CP a Vencer 30d",   v: cpA30,      color: cpA30 > 0      ? "#7A5A12" : "var(--text-3)",   bg: cpA30 > 0      ? "#FBF3E0" : "var(--bg-page)" },
@@ -3825,7 +3826,7 @@ export default function BI() {
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* KPIs USD */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
                 {[
                   { label: "Total CP em USD",       v: `USD ${fmtN(totalCpUsd, 2)}`,  sub: fmtR(totalCpUsd * cotacao),  color: "#E24B4A", bg: "#FCEBEB" },
                   { label: "Total CR em USD",        v: `USD ${fmtN(totalCrUsd, 2)}`, sub: fmtR(totalCrUsd * cotacao),   color: "#16A34A", bg: "#ECFDF5" },
@@ -4128,7 +4129,7 @@ export default function BI() {
             </div>
 
             {/* KPIs resultado */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
               {[
                 { label: "Receita/ha",      valor: fmtR2(recHa),                         cor: "#111111"                               },
                 { label: "Custo/ha",        valor: fmtR2(custoHa),                        cor: "#E24B4A"                               },
@@ -4367,7 +4368,7 @@ export default function BI() {
               </OperationalFilters>
 
               {/* KPIs */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
                 {[
                   { label: "Total Captado",    v: fmtR(rtFiltCaptado),    color: "#14532D", bg: "#ECFDF5",  hint: "Entradas de CPR, custeio, empréstimos, EGF" },
                   { label: "Pago (Principal)", v: fmtR(rtFiltPago),       color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido (baixados)" },
@@ -4614,7 +4615,7 @@ export default function BI() {
 
                     {/* KPI juros/ha destaque */}
                     {areaTotal > 0 && (
-                      <div data-arato-statistic="display" style={{ margin: "0 18px 16px", padding: "12px 14px", background: "#F3E8FF", borderRadius: 10, border: "0.5px solid #C4B5FD" }}>
+                      <div data-arato-kpis="true" data-arato-statistic="display" style={{ margin: "0 18px 16px", padding: "12px 14px", background: "#F3E8FF", borderRadius: 10, border: "0.5px solid #C4B5FD" }}>
                         <div style={{ fontSize: 10, color: "#5B21B6", marginBottom: 3, fontWeight: 600 }}>ENCARGO FINANCEIRO / ha</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: "#5B21B6" }}>{fmtR2(rtJurosHa)}</div>
                         <div style={{ fontSize: 10, color: "#7C3AED", marginTop: 2 }}>
@@ -4816,7 +4817,7 @@ export default function BI() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* ── KPIs ── */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
                 {[
                   { label: "Saldo Devedor Atual", v: fmtR(saldoAtual), color: saldoAtual > 0 ? "#791F1F" : "#14532D", hint: `Endividamento líquido em ${anoAtual}`, sub: tendencia === "crescendo" ? "▲ crescendo" : tendencia === "reduzindo" ? "▼ reduzindo" : "= estável", subCor: tendencia === "crescendo" ? "#E24B4A" : tendencia === "reduzindo" ? "#16A34A" : "var(--text-3)" },
                   { label: "Total Captado",        v: fmtR(totalCaptado), color: "#14532D", hint: "Soma de todos os contratos firmados", sub: `${cfContratos.length} contrato${cfContratos.length !== 1 ? "s" : ""}`, subCor: "var(--text-3)" },

@@ -176,7 +176,7 @@ export default function PlantioPage() {
         </OperationalHeading>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
           {[
             { label: "Talhões plantados", valor: String(plantios.length), cor: "#111111" },
             { label: "Área total plantada", valor: totalArea.toLocaleString("pt-BR"), unidade: "ha", cor: "#C9921B" },

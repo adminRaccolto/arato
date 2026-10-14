@@ -273,7 +273,7 @@ export default function EsocialPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Trabalhadores Ativos", value: String(ativos.length), sub: `${clt.length} CLT · ${avulsos.length} avulsos`, cor: "#111111", bg: "#EAF3FB" },
             { label: "Eventos Pendentes",    value: String(qtdPend),        sub: "Aguardando transmissão", cor: qtdPend > 0 ? "#7A5A12" : "var(--text-2)", bg: qtdPend > 0 ? "#FBF3E0" : "var(--bg-page)" },

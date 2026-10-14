@@ -246,7 +246,7 @@ export default function AdiantamentosPage() {
         {erro && <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A40", borderRadius: 8, padding: "10px 14px", color: "#791F1F", marginBottom: 16, fontSize: 13 }}>{erro}</div>}
 
         {/* KPI Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Total Adiantado (ativos)", valor: fmtBRL(totalAdiantado), cor: "#111111", bg: "#E8E8E8" },
             { label: "Total Aplicado",           valor: fmtBRL(totalAplicado),  cor: "#1A5C38", bg: "#D5F0DD" },

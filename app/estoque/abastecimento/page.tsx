@@ -382,7 +382,7 @@ export default function AbastecimentoPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Litros Hoje",        valor: fmtNum(litrosHoje, 0) + " L",   sub: "consumo no dia",         cor: "#111111", bg: "#EAF3FB" },
             { label: "Litros no Mês",      valor: fmtNum(totalLitrosMes, 0) + " L", sub: filtroMes,              cor: "#166534", bg: "#DCFCE7" },

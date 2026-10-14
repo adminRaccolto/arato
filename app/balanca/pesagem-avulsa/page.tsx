@@ -641,7 +641,7 @@ export default function PesagemAvulsa() {
 
         {/* KPIs */}
         {!carregando && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
             {[
               { label: "Em Andamento",     v: pesagens.filter(p => p.status === "aguardando_bruto" || p.status === "aguardando_tara").length, color: "#C9921B" },
               { label: "Finalizadas hoje", v: pesagens.filter(p => p.status === "finalizado" && p.data_bruto?.startsWith(hojeLocal())).length, color: "#16A34A" },

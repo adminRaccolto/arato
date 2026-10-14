@@ -332,7 +332,7 @@ export default function Pluviometria() {
       ) : aba === "api" && dias.length > 0 && (
         <>
           {/* KPI Cards */}
-          <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+          <div data-arato-kpis="true" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
             {[
               { label: "Últ. 7 dias (histórico)",   val: `${fmtN(totUlt7)} mm`,  cor: "#111111", sub: `${ult7.filter(d => d.precip_mm > 1).length} dias com chuva` },
               { label: "Últ. 30 dias",              val: `${fmtN(totUlt30)} mm`, cor: "#111111", sub: `${ult30.filter(d => d.precip_mm > 1).length} dias com chuva` },
@@ -529,7 +529,7 @@ export default function Pluviometria() {
       {aba === "manual" && (
         <>
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
               { label: "Total de Leituras", valor: leituras.length, sub: "todas as leituras", cor: "#111111" },
               { label: "Acumulado 7 dias", valor: `${fmtN(totLeit7)} mm`, sub: `${leit7.length} leituras`, cor: "#444444" },

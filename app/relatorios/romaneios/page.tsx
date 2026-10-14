@@ -257,7 +257,7 @@ function RelatorioRomaneios() {
         {/* ── ABA ENTRADA ──────────────────────────────────────────────────────── */}
         {aba === "entrada" && (<>
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
             {[
               { label: "Total de Cargas", valor: totEntrada.cargas.toString(), cor: "#1A4870" },
               { label: "Peso Bruto Total", valor: `${fmt(totEntrada.pb / 1000, 1)} t`, cor: "#0B2D50" },
@@ -342,7 +342,7 @@ function RelatorioRomaneios() {
         {/* ── ABA SAÍDA ────────────────────────────────────────────────────────── */}
         {aba === "saida" && (<>
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
             {[
               { label: "Total de Cargas", valor: totSaida.cargas.toString(), cor: "#1A4870" },
               { label: "Peso Bruto Total", valor: `${fmt(totSaida.pb / 1000, 1)} t`, cor: "#0B2D50" },

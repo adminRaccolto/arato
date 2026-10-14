@@ -741,7 +741,7 @@ export default function ConsorciosPage() {
         </div>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "A Contemplar",      value: aContemplar.length.toString(),    sub: "cotas ativas",       color: "#C9921B" },
             { label: "Contemplados",       value: contemplados.length.toString(),   sub: "em uso",             color: "#1A6B3C" },
@@ -980,7 +980,7 @@ export default function ConsorciosPage() {
         {aba === "parcelas" && (
           <div>
             {/* Resumo mensal */}
-            <div data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
+            <div data-arato-kpis="true" data-arato-statistic="display" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 11, color: "#666" }}>Compromisso mensal total</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#111111" }}>{fmtBRL(totalMensal)}</div>

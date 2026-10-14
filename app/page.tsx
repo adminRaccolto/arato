@@ -1,5 +1,5 @@
 "use client";
-import { OperationalButton, OperationalFilters, OperationalHeading, OperationalSummary } from "../components/OperationalUI";
+import { OperationalButton, OperationalFilters, OperationalHeading } from "../components/OperationalUI";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../components/TopNav";
 import OnboardingPanel from "../components/OnboardingPanel";
@@ -637,12 +637,6 @@ export default function Dashboard() {
             <div><h1 data-arato-h1="true">Visão operacional</h1><p>Acompanhe as prioridades e o contexto da operação.</p></div>
           </OperationalHeading>
         </div>
-        <OperationalSummary items={[
-          { label: "Pendências identificadas", value: loadAl ? "…" : alertas.length, detail: "Alertas da operação" },
-          { label: "Prioridade crítica", value: loadAl ? "…" : alertas.filter(a => a.urgencia === "critico").length, tone: "warning" },
-          { label: "Conciliação", value: conciliPend.length, detail: "Inconsistências a conferir" },
-          { label: "Ciclos ativos", value: ciclosAtivos, detail: anoSafraVigenteDesc ?? undefined },
-        ]} />
 
         {/* ═══ HERO COMPACTO ═══ */}
         <div className="op-home-context" style={{

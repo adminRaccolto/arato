@@ -519,7 +519,7 @@ export default function Expedicao() {
             </div>
 
             {/* KPIs do contrato */}
-            <div data-arato-statistic="display" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, padding: "16px 24px" }}>
+            <div data-arato-kpis="true" data-arato-statistic="display" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, padding: "16px 24px" }}>
               {[
                 { label: "Contratado",   value: `${(contratoSel.quantidade_sc??0).toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "var(--bg-page)", txt: "var(--text-1)" },
                 { label: "Embarcado",    value: `${scEmbarcado.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#E8E8E8", txt: "#111111" },

@@ -3234,7 +3234,7 @@ function CadastrosInner() {
             return (
             <div>
               {/* KPI row */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
                   { label: "Total cadastrado", value: benfeitorias.length, unit: "itens" },
                   { label: "Área total",        value: benfeitorias.reduce((s,b) => s + (b.area_m2 ?? 0), 0).toLocaleString("pt-BR", { maximumFractionDigits: 0 }), unit: "m²" },
@@ -3492,7 +3492,7 @@ function CadastrosInner() {
             return (
             <div>
               {/* KPI */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
                   { label: "Total de bens",        value: totalBens,                                                               unit: "bens" },
                   { label: "Valor de aquisição",   value: fmtBRL(totalValor),                                                     unit: "" },
@@ -4892,7 +4892,7 @@ function CadastrosInner() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
                 {/* Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                   {[
                     { label: "Total de insumos",    valor: insBase.length.toString(),        cor: "var(--text-1)" },
                     { label: "Abaixo do mínimo",    valor: abaixoMin.toString(),             cor: abaixoMin > 0 ? "#E24B4A" : "#444" },
@@ -5319,7 +5319,7 @@ function CadastrosInner() {
 
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                   {[
                     { label: "Culturas cadastradas", valor: prodBase.length.toString(),       cor: "var(--text-1)" },
                     { label: "Valor em estoque",     valor: totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#111111" },
@@ -5596,7 +5596,7 @@ function CadastrosInner() {
 
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                   {[
                     { label: "Total de itens",   valor: itBase.length.toString(),       cor: "var(--text-1)" },
                     { label: "Abaixo do mínimo", valor: abaixoMinIt.toString(),          cor: abaixoMinIt > 0 ? "#E24B4A" : "#444" },

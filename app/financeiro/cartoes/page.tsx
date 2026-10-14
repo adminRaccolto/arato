@@ -302,7 +302,7 @@ export default function CartoesCredito() {
         </OperationalHeading>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
           {([
             { label: "Cartões ativos",    val: cartoes.length,                  fmt: false },
             { label: "Total de faturas",  val: totalFatura,                     fmt: false },

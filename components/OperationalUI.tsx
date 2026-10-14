@@ -152,9 +152,3 @@ function ActiveOperationalGrid({ children, tools, className, ref: suppliedRef, .
     <div className="op-grid-footer"><span className="op-grid-note"><span className="op-live-dot" />{cards ? "Informações organizadas por registro" : "Ações e seleção disponíveis nas linhas"}</span><form className="op-grid-find" onSubmit={e => { e.preventDefault(); locate(); }}><Icon name="search" size={14} /><input aria-label="Localizar texto nesta tabela" placeholder="Localizar na tabela…" value={query} onChange={e => { setQuery(e.target.value); setFindResult(""); if (!e.target.value) for (const row of table.current?.querySelectorAll("[data-op-found]") ?? []) row.removeAttribute("data-op-found"); }} /><button type="submit" className="op-tool">Localizar</button></form><span className="op-find-result" role="status">{findResult}</span></div>
   </section>;
 }
-
-export function OperationalSummary({ items }: { items: { label: string; value: ReactNode; detail?: string; tone?: "warning" | "positive" }[] }) {
-  const active = useContext(OperationalContext);
-  if (!active) return null;
-  return <div className="op-summary">{items.map(item => <div className="op-summary-item" key={item.label} data-tone={item.tone}><span>{item.label}</span><strong>{item.value}</strong>{item.detail && <small>{item.detail}</small>}</div>)}</div>;
-}

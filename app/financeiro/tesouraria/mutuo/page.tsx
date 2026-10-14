@@ -246,7 +246,7 @@ export default function MutuoPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Saldo Concedido",  value: fmtBRL(concedido), sub: "a receber", color: "#111111" },
             { label: "Saldo Captado",    value: fmtBRL(captado),   sub: "a pagar",   color: "#E24B4A" },

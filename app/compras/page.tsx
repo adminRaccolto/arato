@@ -1564,7 +1564,7 @@ export default function ComprasPage() {
         <div style={{ padding: "18px 22px", flex: 1 }}>
 
           {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
             {[
               { label: "Total de pedidos",   valor: String(totalPedidos),    cor: "#111111",  alerta: "" as const },
               { label: "Pedidos em aberto",  valor: String(totalAberto),     cor: "#C9921B",  alerta: "" as const },

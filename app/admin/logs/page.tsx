@@ -180,14 +180,14 @@ export default function LogSistema() {
         <div style={{ padding: "16px 22px", flex: 1 }}>
 
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
               { label: "Total de eventos",  valor: kpis.total,  cor: "#111111", bg: "#E8E8E8" },
               { label: "Inserções",         valor: kpis.insert, cor: "#16A34A", bg: "#DCFCE7" },
               { label: "Edições",           valor: kpis.update, cor: "#C9921B", bg: "#FBF3E0" },
               { label: "Exclusões",         valor: kpis.delete, cor: "#E24B4A", bg: "#FCEBEB" },
             ].map((k, i) => (
-              <div data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div data-arato-kpis="true" data-arato-statistic="display" key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div data-arato-statistic="display" style={{ width: 40, height: 40, borderRadius: 10, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: k.cor }}>
                   {k.valor.toLocaleString("pt-BR")}
                 </div>

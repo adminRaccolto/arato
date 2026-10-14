@@ -394,7 +394,7 @@ export default function AplicacoesFinanceirasPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 22 }}>
           {[
             { label: "Saldo Atual",        value: fmtBRL(totalAtual),       sub: `${ativas.length} aplicações ativas`, color: "#111111" },
             { label: "Total Aportado",     value: fmtBRL(totalAportado),    sub: "capital investido",                  color: "#0D0D0D" },

@@ -400,7 +400,7 @@ export default function TransferenciaMaquinasPage() {
           <OperationalButton data-arato-button="primary" style={btnV} onClick={abrirNova}>+ Nova Movimentação</OperationalButton>
         </OperationalHeading>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Aguard. Retorno", value: String(totalEmitidas), bg: "#FBF3E0", cl: "#7A5C00" },
             { label: "Retornadas",      value: String(totalRetornadas), bg: "#E8F5E9", cl: "#1A6B3C" },

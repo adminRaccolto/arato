@@ -129,7 +129,7 @@ export default function ControllerPage() {
         </OperationalHeading>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
           {(["critico", "alto", "medio", "baixo"] as Severidade[]).map(sev => (
             <OperationalButton data-arato-button="toggle"
               key={sev}
@@ -150,6 +150,12 @@ export default function ControllerPage() {
         {/* Filtros */}
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600 }}>FILTRAR:</span>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>Severidade
+            <select aria-label="Filtrar por severidade" value={filtroSev} onChange={event => setFiltroSev(event.target.value as Severidade | "todos")} style={{ padding: "6px 10px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-1)" }}>
+              <option value="todos">Todas as severidades</option>
+              {(["critico", "alto", "medio", "baixo"] as Severidade[]).map(sev => <option key={sev} value={sev}>{SEV_LABEL[sev]}</option>)}
+            </select>
+          </label>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {(["todos", "Fiscal", "Financeiro", "Contratos", "Lavoura", "Cadastros", "Estoque", "Arrendamentos"] as (Categoria | "todos")[]).map(cat => (

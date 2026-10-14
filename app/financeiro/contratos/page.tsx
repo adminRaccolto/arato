@@ -1123,7 +1123,7 @@ export default function ContratosFinanceiros() {
 
           {/* KPI */}
           {contratosFiltrados.length > 0 && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 16, overflow: "hidden" }}>
+            <div data-arato-kpis="true" style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 16, overflow: "hidden" }}>
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr", borderBottom: kpiDetalhado ? "0.5px solid var(--border-table)" : "none" }}>
                 <div data-arato-statistic="display" style={{ padding: "14px 18px", borderRight: "0.5px solid var(--border-table)" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Contratos ativos</div>

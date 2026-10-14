@@ -391,7 +391,7 @@ function OperacoesGerenciaisContent() {
         </div>
 
         {/* ── KPI strip ── */}
-        <div data-arato-statistic="action" style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
+        <div data-arato-kpis="true" data-arato-statistic="action" style={{ display: "flex", gap: 0, marginBottom: 14, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
           {[
             { label: "Total Ativas",       value: totalAtivos,   color: "#111111", bg: "#E8E8E8", onClick: () => setFiltroTipo("todos")    },
             { label: "Receitas",           value: totalReceita,  color: "#1A5C38", bg: "#EAF3DE", onClick: () => setFiltroTipo("receita")  },

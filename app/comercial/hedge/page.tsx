@@ -519,7 +519,7 @@ export function HedgePainel({ embedded = false }: { embedded?: boolean }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 4 blocos de componente */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
             {[
               { comp: "BOARD"  as const, label: "BOARD (CBOT)", valor: mediaFixada("BOARD"), uni: "¢/bu",  pct: pctB, cor: "#111111", info: precoAoVivo ? `Spot: ${(precoAoVivo.cbot_soja).toFixed(0)} ¢/bu` : "—" },
               { comp: "PREMIO" as const, label: "PRÊMIO",       valor: mediaFixada("PREMIO"), uni: "¢/bu", pct: pctP, cor: "#0C447C", info: "Entrada manual" },

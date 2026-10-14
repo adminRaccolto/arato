@@ -273,7 +273,7 @@ export default function TesourariaPage() {
         </OperationalHeading>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Total Entradas",    value: fmtBRL(totalEntradas), color: "#16A34A" },
             { label: "Total Saídas",      value: fmtBRL(totalSaidas),   color: "#E24B4A" },

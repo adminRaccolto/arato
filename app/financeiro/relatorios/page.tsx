@@ -1158,7 +1158,7 @@ function FinanceiroRelatoriosInner() {
                       )}
 
                       {/* KPIs */}
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginTop: mostrarAntPeriodo ? 12 : 0 }}>
+                      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginTop: mostrarAntPeriodo ? 12 : 0 }}>
                         {[
                           ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "var(--text-2)" : "#E24B4A" }] : []),
                           { label: "Total Entradas",           valor: fmtBRL(totalEntradas), cor: "#16A34A" },
@@ -1428,7 +1428,7 @@ function FinanceiroRelatoriosInner() {
                             </OperationalFilters>
                           </OperationalFilters>
                           {/* KPIs */}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
+                          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                             {[
                               { label: "Total Entradas",    v: totEntAnual },
                               { label: "Total Saídas",      v: totSaiAnual },
@@ -2098,7 +2098,7 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     {/* ── KPIs ── */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
+                    <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                       {[
                         { label: "Total a Receber (CR)", valor: fmtBRL(totalCR), cor: "#16A34A" },
                         { label: "Total a Pagar (CP)",   valor: fmtBRL(totalCP), cor: "#E24B4A" },
@@ -2465,7 +2465,7 @@ function FinanceiroRelatoriosInner() {
                     </OperationalFilters>
 
                     {/* KPI cards */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
+                    <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                       {[
                         { label: "Total Entradas",  v: totEnt, cor: "#0D0D0D", bg: "#E8E8E8" },
                         { label: "Total Saídas",    v: totSai, cor: "#791F1F", bg: "#FCEBEB" },
@@ -2576,7 +2576,7 @@ function FinanceiroRelatoriosInner() {
                 return (
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 20 }}>
                     {/* KPIs */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+                    <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
                       {[
                         { label: "Saldo Atual (realizados)", valor: fmtBRL(totalAtual), cor: totalAtual >= 0 ? "#111111" : "#E24B4A" },
                         { label: "Entradas Projetadas",      valor: fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0)), cor: "#16A34A" },

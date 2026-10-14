@@ -1038,7 +1038,7 @@ function MdfePageInner() {
         </div>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Em Trânsito",          value: emTransito.length.toString(),  sub: "manifestos autorizados",  color: "#111111" },
             { label: "Encerrados",            value: encerrados.length.toString(),  sub: "viagens concluídas",      color: "#1A6B3C" },

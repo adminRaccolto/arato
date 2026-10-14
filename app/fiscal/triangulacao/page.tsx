@@ -379,7 +379,7 @@ export default function TriangulacaoPage() {
       </OperationalHeading>
 
       {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
+      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
         {(Object.keys(TIPO_META) as TipoTriang[]).map(tipo => {
           const m = TIPO_META[tipo];
           const n = contarTipo(tipo);

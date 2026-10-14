@@ -186,7 +186,7 @@ export default function PulverizacaoPage() {
         </OperationalHeading>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
           {[
             { label: "Total de aplicações", valor: String(pulverizacoes.length), cor: "#111111" },
             { label: "Custo total defensivos", valor: fmtBRL(pulverizacoes.reduce((s, p) => s + (p.custo_total ?? 0), 0)), cor: "#E24B4A" },

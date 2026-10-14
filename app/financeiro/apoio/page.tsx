@@ -640,7 +640,7 @@ export default function ApoioFinanceiroPage() {
         )}
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 24 }}>
           {[
             { label: "CP Oficial (total)", valor: fmtBRL(totalCP), sub: `${fmtBRL(abertoCP)} em aberto`, cor: "#E24B4A" },
             { label: "CR Oficial (total)", valor: fmtBRL(totalCR), sub: `${fmtBRL(abertoCR)} em aberto`, cor: "#16A34A" },

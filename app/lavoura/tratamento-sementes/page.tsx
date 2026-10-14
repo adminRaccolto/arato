@@ -725,7 +725,7 @@ export default function TratamentoSementesPage() {
         {aba === "ordens" && (
           <>
             {/* KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20 }}>
               {[
                 { label: "Planejadas",    valor: kpiPlanejadas,   cor: "#555",    bg: "#EFF0F5" },
                 { label: "Em Tratamento", valor: kpiEmTratamento, cor: "#C9921B", bg: "#FBF3E0" },

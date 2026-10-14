@@ -491,7 +491,7 @@ export default function SegurosPage() {
         </div>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Apólices Vigentes",    v: vigentes.length.toString(),     sub: "ativas",           cor: "#1A6B3C" },
             { label: "Importância Segurada", v: fmtBRL(totalIS),                sub: "total segurado",   cor: "#111" },

@@ -378,7 +378,7 @@ export default function AdminOverview() {
       {aba === "overview" && (
         <div>
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 24 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 24 }}>
             {kpis.map(k => (
               <div data-arato-statistic="display" key={k.label} style={{
                 background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)",

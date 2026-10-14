@@ -1,6 +1,6 @@
 "use client";
 import { hojeLocal } from "../../../lib/data-local";
-import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading, OperationalSummary } from "../../../components/OperationalUI";
+import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Contas a Pagar — unificado (Produtor + Empresa). Promovida de piloto pra
 // tela real em 01/10/2026, a pedido do dono: "reunificar os lançamentos de
@@ -1260,12 +1260,6 @@ export default function ContasAPagarPage() {
           </OperationalButton>
         </OperationalHeading>
 
-        <OperationalSummary items={[
-          { label: "Registros no filtro", value: linhasComBordero.length, detail: "Títulos e borderôs da consulta" },
-          { label: "Valor dos títulos", value: fmtBRL(totalPagar), detail: "Total do filtro atual" },
-          { label: "Saldo a pagar", value: fmtBRL(totalAberto), tone: "warning" },
-          { label: "Borderôs", value: borderosVisiveis.length, detail: "Agrupamentos visíveis" },
-        ]} />
 
         {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ──
             Origem e Status em dropdown de múltipla escolha; campos de data com largura fixa (antes o

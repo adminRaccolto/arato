@@ -627,7 +627,7 @@ export default function DrePage() {
   // ── KPIs ──
   function KpiCard({ label, valor, sub, cor }: { label: string; valor: string; sub?: string; cor?: string }) {
     return (
-      <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px", minWidth: 160, flex: 1 }}>
+      <div data-arato-kpis="true" data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px", minWidth: 160, flex: 1 }}>
         <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: cor ?? "var(--text-1)", lineHeight: 1.2 }}>{valor}</div>
         {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{sub}</div>}
@@ -800,7 +800,7 @@ export default function DrePage() {
                   {viewMode === "individual" ? `${cultLabel} — Safra ${anoLabel}` : `Safra ${anoLabel} — Consolidado`}
                   {" "}<span style={{ fontWeight: 400, color: "var(--text-3)", fontSize: 12 }}>{fmt(d.area_ha)} ha</span>
                 </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div data-arato-kpis="true" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <KpiCard label="Receita Total" valor={fmtReal(d.receita_total)} sub={`${fmtReal(d.receita_ha)}/ha`} cor="#111111" />
                   <KpiCard label="Custo Total" valor={fmtReal(custoTotal)} sub={`${fmtReal(d.custo_total_ha)}/ha`} cor="#E24B4A" />
                   <KpiCard label="Resultado Líquido" valor={fmtReal(d.resultado_liquido)} sub={`${fmtReal(d.resultado_ha)}/ha`} cor={d.resultado_liquido >= 0 ? "#16A34A" : "#E24B4A"} />
@@ -950,7 +950,7 @@ export default function DrePage() {
 
                   {/* Prazo de retorno simples */}
                   {d.resultado_liquido > 0 && custoTotal > 0 && (
-                    <div data-arato-statistic="display" style={{ background: "#EBF9F1", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "14px 16px" }}>
+                    <div data-arato-kpis="true" data-arato-statistic="display" style={{ background: "#EBF9F1", border: "0.5px solid #86EFAC", borderRadius: 10, padding: "14px 16px" }}>
                       <div style={{ fontSize: 12, color: "#166534", marginBottom: 2 }}>ROI da Safra</div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: "#16A34A" }}>
                         {fmt(pct(d.resultado_liquido, custoTotal), 1)}%
@@ -962,7 +962,7 @@ export default function DrePage() {
                   )}
 
                   {d.resultado_liquido < 0 && (
-                    <div data-arato-statistic="display" style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 10, padding: "14px 16px" }}>
+                    <div data-arato-kpis="true" data-arato-statistic="display" style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 10, padding: "14px 16px" }}>
                       <div style={{ fontSize: 12, color: "#991B1B", marginBottom: 2 }}>Atenção — Prejuízo</div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: "#E24B4A" }}>
                         {fmtReal(Math.abs(d.resultado_liquido))}

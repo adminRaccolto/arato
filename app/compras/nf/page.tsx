@@ -2773,7 +2773,7 @@ export default function NfCompraPage() {
         </div>
 
         {/* ── Cards de resumo ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
             { label: "Total no mês",   value: fmtBRL(nfs.filter(n => n.data_emissao?.startsWith(new Date().toISOString().substring(0,7)) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_total,0)), bg: "var(--bg-card)" },
             { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente").length),   bg: "#FBF3E0" },

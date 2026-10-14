@@ -190,7 +190,7 @@ export default function RemessasLogisticasPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Total Emitidas",   value: String(totalEmitidas),               bg: "#D5E8F5", cl: "#0B2D50" },
             { label: "Aguard. Retorno",  value: String(totalEmitidas - totalRetornadas < 0 ? 0 : totalEmitidas), bg: "#FBF3E0", cl: "#7A5C00" },

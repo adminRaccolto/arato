@@ -226,7 +226,7 @@ export default function EmpresaPagarPage() {
         {msg && <div style={{ background: "#FFF0F0", border: "0.5px solid #E24B4A", borderRadius: 6, padding: "10px 16px", fontSize: 13, marginBottom: 14, color: "#E24B4A" }}>{msg} <OperationalButton data-arato-button="icon" onClick={() => setMsg("")} style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>×</OperationalButton></div>}
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 16 }}>
           {[
             { label: "Em Aberto",  val: totAberto,  color: "#C9921B", onClick: () => setFStatus("aberto") },
             { label: "Vencido",    val: totVencido, color: "#E24B4A", onClick: () => setFStatus("vencido") },

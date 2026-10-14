@@ -514,7 +514,7 @@ export default function AlgodaoPage() {
           {aba === "safra" && (
             <div>
               {/* Stat cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
                 {[
                   { label: "Área Plantada", valor: areaHa ? `${fmtN(areaHa, 1)} ha` : "—", sub: "do ciclo" },
                   { label: "Módulos Colhidos", valor: fmtN(totalModulos), sub: `${modulosEntregues} entregues` },
@@ -675,7 +675,7 @@ export default function AlgodaoPage() {
               </div>
 
               {/* Status cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
                 {Object.entries(STATUS_MODULO_LABEL).map(([k, v]) => {
                   const cnt = modulos.filter(m => m.status === k).length;
                   return (
@@ -938,7 +938,7 @@ export default function AlgodaoPage() {
                     </div>
                   </div>
 
-                  <div data-arato-statistic="display" style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+                  <div data-arato-kpis="true" data-arato-statistic="display" style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: "#166534", fontWeight: 700, marginBottom: 6 }}>Valor do Estoque de Pluma</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: "#15803D" }}>{fmtR(valorEstoqueR)}</div>
                     <div style={{ fontSize: 11, color: "#16A34A" }}>

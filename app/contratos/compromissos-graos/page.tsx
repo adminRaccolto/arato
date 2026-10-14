@@ -291,7 +291,7 @@ export default function CompromissosGraosPage() {
         </div>
 
         {/* KPI cards — totais */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Sacas Comprometidas", val: fmtSc(totalSacas),    sub: `${filtrados.length} contrato${filtrados.length !== 1 ? "s" : ""}` },
             { label: "Sacas Entregues",     val: fmtSc(totalEntregue), sub: totalSacas > 0 ? `${((totalEntregue/totalSacas)*100).toFixed(1)}% do total` : "—" },
@@ -307,7 +307,7 @@ export default function CompromissosGraosPage() {
 
         {/* KPI por commodity */}
         {kpiPorCommodity.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(kpiPorCommodity.length, 4)}, 1fr)`, gap: 12, marginBottom: 20 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(kpiPorCommodity.length, 4)}, 1fr)`, gap: 12, marginBottom: 20 }}>
             {kpiPorCommodity.map(k => (
               <div key={k.prod} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE", borderLeft: `3px solid ${PROD_COLOR[k.prod] ?? "#1A4870"}` }}>
                 <div style={{ fontSize: 11, color: PROD_COLOR[k.prod] ?? "#888", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>

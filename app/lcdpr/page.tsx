@@ -1035,7 +1035,7 @@ export default function LCDPR() {
         <div style={{ padding: "16px 22px", flex: 1 }}>
 
           {/* ── KPI cards ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 12 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 12 }}>
             {([
               { label: "Saldo Inicial",  val: saldoInicial,  cor: "var(--text-1)",                                            bg: "var(--bg-card)" },
               { label: "Total Receitas", val: totalReceitas, cor: "#1A5C38",                                                  bg: "#EAF3DE" },
@@ -1323,7 +1323,7 @@ export default function LCDPR() {
                     (Entidade Contábil, Vínculo de Atividade, categoria, ou o titular do lançamento).
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+                  <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
                     <div data-arato-statistic="display" style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
                       <div style={{ fontSize: 11, color: "var(--text-3)" }}>Total pago no período ({auditoriaLcdpr.length} lançamentos)</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(totalPago)}</div>

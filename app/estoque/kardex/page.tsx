@@ -430,7 +430,7 @@ export default function Kardex() {
           {/* ── KPIs ── */}
           {gerado && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
                 {[
                   { label: "Saldo Inicial",    valor: `${fmtQty(saldoInicial)} ${insumoSel?.unidade ?? ""}`, cor: "#111111" },
                   { label: "Total Entradas",   valor: `${fmtQty(qtdEntradas)} ${insumoSel?.unidade ?? ""}`,  cor: "#16A34A" },
@@ -445,7 +445,7 @@ export default function Kardex() {
                 ))}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
                 {[
                   { label: "Valor Total Entradas", valor: `R$ ${fmt(totalEntradas)}`,        cor: "#16A34A" },
                   { label: "Valor Total Saídas",   valor: `R$ ${fmt(totalSaidas)}`,          cor: "#E24B4A" },

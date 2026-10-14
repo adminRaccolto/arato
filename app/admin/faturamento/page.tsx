@@ -277,7 +277,7 @@ function AbaAssinaturas() {
   return (
     <div>
       {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map(k => (
           <div data-arato-statistic="display" key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
@@ -552,7 +552,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
   return (
     <div>
       {/* Sumário */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
         <div data-arato-statistic="display" style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
           <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Total pendente</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{fmtBRL(totalPendente)}</div>

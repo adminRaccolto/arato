@@ -289,7 +289,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
 
         {/* KPIs */}
         {inconsistencias.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+          <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
             {[
               { label: "Total inconsistências", valor: inconsistencias.length, cor: "#E24B4A" },
               { label: "OG diferente",          valor: inconsistencias.filter(i => i.tipo_inconsistencia === "og_diferente").length,    cor: "#92400E" },

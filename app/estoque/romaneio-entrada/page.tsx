@@ -398,7 +398,7 @@ const salvar = async (confirmar = false) => {
       </OperationalHeading>
 
       {/* KPI cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
         {[
           { label: "Romaneios",      value: String(filtrados.length),           color: "#2A2A2A", bg: "#EBF3FF" },
           { label: "Sacas (filtro)", value: fmt(sacasTotal, 0) + " sc",          color: "#16A34A", bg: "#ECFDF5" },

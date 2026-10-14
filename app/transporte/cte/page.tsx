@@ -1602,7 +1602,7 @@ function CtePageInner() {
         </div>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
             { label: "Emitidos (total)",    value: ctes.length.toString(),        sub: "todos os status",       color: "#111111" },
             { label: "Autorizados",         value: autorizados.length.toString(), sub: "transmitidos SEFAZ",    color: "#1A6B3C" },

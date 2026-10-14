@@ -1280,7 +1280,7 @@ function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados 
     { label: "Com erro",      valor: erros,        cor: "#E24B4A", bg: "#FFF0F0" },
   ];
   return (
-    <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+    <div data-arato-kpis="true" style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
       {itens.map(({ label, valor, cor, bg }) => (
         <div data-arato-statistic="display" key={label} style={{ padding: "10px 20px", borderRadius: 8, background: bg, border: `0.5px solid ${cor}40` }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: cor }}>{valor}</div>

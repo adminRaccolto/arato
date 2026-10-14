@@ -314,7 +314,7 @@ export default function PlanoAgricola() {
               {aba === "ciclos" && (
                 <>
                   {/* Stats */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+                  <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
                     {[
                       { label: "Ciclos em andamento", valor: String(ativos.length),                           unidade: "",      cor: "#111111" },
                       { label: "Área ativa",           valor: areaAtiva.toLocaleString("pt-BR"),              unidade: "ha",    cor: "#C9921B" },
@@ -540,7 +540,7 @@ export default function PlanoAgricola() {
               {/* ══ ABA ANÁLISE ══ */}
               {aba === "analise" && (
                 <div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+                  <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
                     {[
                       { label: "Total de ciclos",      valor: String(ciclos.length),                                                                                                                                              cor: "var(--text-1)" },
                       { label: "Área total histórica", valor: ciclos.reduce((a, s) => a + (s.area_ha ?? 0), 0).toLocaleString("pt-BR"), unidade: "ha",                                                                            cor: "#C9921B" },

@@ -245,7 +245,7 @@ export default function BpoAdmin() {
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
 
         {/* KPIs */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "flex", gap: 12, marginBottom: 24 }}>
           {[
             { label: "Clientes ativos", valor: clientes.length },
             { label: "Fazendas geridas", valor: clientes.reduce((s, c) => s + (c.fazendas_count ?? 0), 0) },

@@ -912,7 +912,7 @@ export default function NfServicoPage() {
         </div>
 
         {/* ── KPI Cards — mesma ordem da NF-e ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
             { label: "Total no mês",   value: fmtBRL(nfs.filter(n => (n.competencia ?? n.data_prestacao.substring(0,7)) === new Date().toISOString().substring(0,7) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_servico,0)), bg: "var(--bg-card)" },
             { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente"||n.status==="digitando").length),   bg: "#FBF3E0" },

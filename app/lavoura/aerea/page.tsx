@@ -384,7 +384,7 @@ export default function AplicacaoAereaPage() {
         </OperationalHeading>
 
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
           {[
             { label: "Aplicações no período", valor: aplicacoesFiltradas.length.toString(), unit: "", cor: "#111111" },
             { label: "Área total aplicada",   valor: fmtN(haTotal, 1),  unit: "ha",     cor: "#111111" },

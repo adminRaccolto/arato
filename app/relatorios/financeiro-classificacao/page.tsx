@@ -853,7 +853,7 @@ function RelFinClassInner() {
         {gerado && (
           <>
             {/* KPI */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
               {[
                 { label: "Entradas", val: totalEntradas, cor: "#16A34A" },
                 { label: "Saídas",   val: totalSaidas,   cor: "#DC2626" },

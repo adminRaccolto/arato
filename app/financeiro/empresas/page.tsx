@@ -209,7 +209,7 @@ export default function DREEmpresasPage() {
                   {emp.cnpj && <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>CNPJ: {emp.cnpj}</div>}
                   <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Período: {nomeMes(fDe)} a {nomeMes(fAte)}</div>
                 </div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div data-arato-kpis="true" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   {[
                     { label: "Receita Bruta", val: receita,  color: "#1A4870" },
                     { label: "EBITDA",        val: ebitda,   color: ebitda  >= 0 ? "#1A4870" : "#E24B4A" },

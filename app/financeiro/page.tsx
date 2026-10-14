@@ -718,7 +718,7 @@ export default function Financeiro() {
           {!loading && !erro && (
             <>
               {/* Stats */}
-              <div className="fc-stats-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+              <div data-arato-kpis="true" className="fc-stats-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
                 {[
                   { label: "A receber",          valor: fmtBRL(aReceber), cor: "#111111", sub: `${lancOper.filter(l => l.tipo === "receber" && l.status !== "baixado").length} lançamentos em aberto` },
                   { label: "A pagar",            valor: fmtBRL(aPagar),   cor: "#E24B4A", sub: `${lancOper.filter(l => l.tipo === "pagar" && l.status !== "baixado").length} lançamentos em aberto` },
@@ -1460,7 +1460,7 @@ export default function Financeiro() {
                           <div style={{ background: "var(--bg-page)" }}>
                             {/* Sumário 30 dias + botão simulação */}
                             <div className="fc-dia-sum" style={{ display: "flex", alignItems: "stretch", background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)" }}>
-                              <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+                              <div data-arato-kpis="true" style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
                                 {[
                                   { label: "Entradas previstas (30 dias)", valor: lancamentos.filter(l => l.tipo === "receber" && l.moeda !== "barter" && l.status !== "baixado" && (l.data_vencimento ?? "") <= d30Key).reduce((a, l) => a + paraBRL(l), 0) + previsoes.filter(p => p.tipo === "receber" && p.data <= d30Key).reduce((a, p) => a + p.valor, 0), cor: "#111111" },
                                   { label: "Saídas previstas (30 dias)", valor: lancamentos.filter(l => l.tipo === "pagar" && l.moeda !== "barter" && l.status !== "baixado" && (l.data_vencimento ?? "") <= d30Key).reduce((a, l) => a + paraBRL(l), 0) + previsoes.filter(p => p.tipo === "pagar" && p.data <= d30Key).reduce((a, p) => a + p.valor, 0), cor: "#E24B4A" },

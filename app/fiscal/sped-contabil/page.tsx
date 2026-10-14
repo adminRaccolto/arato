@@ -485,7 +485,7 @@ export default function SpedContabilPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "#111111", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" }}>
               Resultado da Análise
             </div>
-            <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
+            <div data-arato-kpis="true" style={{ display: "flex", gap: 20, marginBottom: 16 }}>
               <div data-arato-statistic="display" style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#16A34A" }}>{preview.total}</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>lançamentos contábeis</div>

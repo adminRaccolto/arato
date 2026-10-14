@@ -827,7 +827,7 @@ export default function RelAplicacoesPage() {
         {gerado && (
           <div data-arato-statistic="action" style={{ padding: "18px 22px" }}>
             {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
               {[
                 { label: "Operações",     value: String(stats.ops),           sub: "registros"        },
                 { label: "Área coberta",  value: `${fmtN(stats.area, 1)} ha`, sub: "hectares únicos"  },

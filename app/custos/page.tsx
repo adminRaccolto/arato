@@ -485,7 +485,7 @@ function CustosInner() {
             <>
               {/* ── KPI Cards ────────────────────────────────── */}
               {aba !== "produtividade" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 14 }}>
+                <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 14 }}>
                   {[
                     { label: "Receita bruta",           valor: fmtBRL(receitaBRL),  cor: "#111111" },
                     { label: "Custo de insumos (CPV)",  valor: fmtBRL(cpvTotal),    cor: "#E24B4A" },
@@ -670,7 +670,7 @@ function CustosInner() {
               {/* ══════════ ABA: Custo/ha ══════════ */}
               {aba === "custoha" && !dreLoading && (
                 <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
+                  <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                     {[
                       { label: "Custo insumos/ha",   v: areaHa > 0 ? fmtBRL(cpvTotal / areaHa) : "—",       cor: "#E24B4A" },
                       { label: "Desp. diretas/ha",   v: areaHa > 0 ? fmtBRL(despDirTotal / areaHa) : "—",   cor: "#C9921B" },
@@ -734,7 +734,7 @@ function CustosInner() {
                     {totalSacas > 0 && (
                       <div style={{ marginTop: 20, borderTop: "0.5px solid var(--border-row)", paddingTop: 14 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Equivalência em sacas</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
                           {[
                             { label: "Insumos/sc",        v: cpvTotal / totalSacas,    cor: "#E24B4A" },
                             { label: "Desp. diretas/sc",  v: despDirTotal / totalSacas, cor: "#C9921B" },
@@ -822,7 +822,7 @@ function CustosInner() {
               {aba === "custostotais" && !dreLoading && (
                 <div data-arato-statistic="display" style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {/* KPIs custos totais */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
+                  <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                     {[
                       { label: "Custo de Insumos",     v: fmtBRL(cpvTotal),    cor: "#E24B4A" },
                       { label: "Desp. Diretas",        v: fmtBRL(despDirTotal), cor: "#C9921B" },

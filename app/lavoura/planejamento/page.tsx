@@ -592,7 +592,7 @@ export default function Planejamento() {
               return (
                 <div>
                   {/* cards de resumo — linha 1: custos */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 10 }}>
+                  <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 10 }}>
                     {[
                       { label: "Custo Total",          valor: fmtR(totalOrc),                           bg: "#FCEBEB", color: "#791F1F" },
                       { label: "Custo / ha",            valor: areaHa > 0 ? fmtR(custHa) : "—",         bg: "#EBF3FC", color: "#0C447C" },
@@ -753,7 +753,7 @@ export default function Planejamento() {
             ) : (
               <div>
                 {/* KPIs */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+                <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
                   {[
                     { label: "Total Planejado",  valor: fmtR(totalPlanejado), bg: "#EBF3FC", color: "#0C447C" },
                     { label: "Total Realizado",  valor: fmtR(totalRealizado), bg: "#FBF3E0", color: "#7A5A12" },
@@ -839,7 +839,7 @@ export default function Planejamento() {
         {/* ═══════════════ ABA AGENDA ═══════════════ */}
         {aba === "agenda" && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+            <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
               {[
                 { label: "Pendentes",  valor: pendentes,  bg: "#FBF3E0", color: "#7A5A12" },
                 { label: "Atrasadas",  valor: atrasadas,  bg: "#FCEBEB", color: "#791F1F" },

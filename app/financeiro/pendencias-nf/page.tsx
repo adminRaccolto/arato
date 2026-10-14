@@ -319,7 +319,7 @@ export default function PendenciasNfPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Pendentes", valor: totPendentes, sub: fmt(valorPendente), cor: "#C9921B", bg: "#FBF3E0" },
             { label: "Classificadas", valor: totClassific, sub: "automaticamente + manual", cor: "#16A34A", bg: "#F0FDF4" },

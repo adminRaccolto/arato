@@ -1670,7 +1670,7 @@ export default function Contratos() {
           {!loading && !erro && (
             <>
               {/* ── KPI único: contratos ativos filtrados ── */}
-              <div data-arato-statistic="display" style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:12, padding:"12px 18px", marginBottom:14, display:"inline-flex", alignItems:"center", gap:14 }}>
+              <div data-arato-kpis="true" data-arato-statistic="display" style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:12, padding:"12px 18px", marginBottom:14, display:"inline-flex", alignItems:"center", gap:14 }}>
                 <div>
                   <div style={{ fontSize:11, color:"var(--text-2)" }}>Contratos ativos{hasAnyFilter ? " (filtrado)" : ""}</div>
                   <div style={{ fontSize:22, fontWeight:700, color:"#C9921B", lineHeight:1.2 }}>{contratosAtivos}</div>

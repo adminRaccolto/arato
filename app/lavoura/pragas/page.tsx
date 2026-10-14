@@ -342,7 +342,7 @@ export default function PragasPage() {
         </OperationalHeading>
 
         {/* KPIs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+        <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
             { label: "Total de Registros", valor: registros.length, sub: "todos os ciclos", cor: "#111111", destaque: false },
             { label: "Nível Crítico",      valor: criticos, sub: criticos > 0 ? "⚠ ação imediata" : "nenhum", cor: criticos > 0 ? "#DC2626" : "var(--text-3)", destaque: criticos > 0 },

@@ -562,7 +562,7 @@ export default function DocumentosFiscaisPage() {
           </div>
         )}
 
-        <div data-arato-statistic="display" style={{ display: "flex", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+        <div data-arato-kpis="true" data-arato-statistic="display" style={{ display: "flex", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
           {porTipo.map(t => (
             <div key={t.v} style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "8px 14px", flex: "1 1 160px" }}>
               <span style={{ fontSize: 10, fontWeight: 700, background: t.bg, color: t.color, padding: "2px 8px", borderRadius: 6 }}>{t.label}</span>

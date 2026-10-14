@@ -78,7 +78,7 @@ export default function Propriedades() {
 
           {!loading && !erro && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+              <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
                 {[
                   { label: "Fazendas",         valor: String(fazendas.length),           cor: "#111111" },
                   { label: "Área total (ha)",   valor: totalArea.toLocaleString("pt-BR"), cor: "#111111" },

@@ -699,7 +699,7 @@ export default function TransferenciasEstoquePage() {
       </OperationalHeading>
 
       {/* KPI */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 22 }}>
+      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 22 }}>
         {[
           { label: "Aguardando Emissão",      val: historico.filter(t => t.status === "rascunho").length,            cor: historico.filter(t => t.status === "rascunho").length > 0 ? "#C9921B" : "#888" },
           { label: "Solicitações App Campo",  val: solicitacoes.length,                                              cor: solicitacoes.length > 0 ? "#C9921B" : "#888" },
