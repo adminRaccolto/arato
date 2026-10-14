@@ -2700,16 +2700,28 @@ export async function limparMovimentacoesEFinanceiroDaNf(nfId: string): Promise<
     await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + delta }).eq("id", mov.insumo_id);
   }
   if (movs?.length) {
-    await supabase.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nfId);
+    const { error: eMov } = await supabase.from("movimentacoes_estoque").delete().eq("nf_entrada_id", nfId);
+    if (eMov) throw new Error(`Não foi possível remover as movimentações de estoque anteriores desta NF (${eMov.message}).`);
   }
 
   // 2. Lançamento(s) financeiro(s) — cobre parcelas múltiplas (via nf_entrada_id)
   //    e o registro único legado (via nf_entradas.lancamento_id, para NFs
   //    processadas antes desta coluna existir em movimentacoes_estoque)
-  await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
+  // Antes os erros destes DELETEs eram ignorados: título já baixado ou conciliado (FK) ou bloqueado por RLS
+  // continuava lá, e o processamento criava OUTRO título ao lado — causa real dos CPs duplicados de 08/09/2026.
+  // Agora a falha interrompe o processamento com uma mensagem clara, e confere que nada sobrou.
+  const { error: eCp } = await supabase.from("lancamentos").delete().eq("nf_entrada_id", nfId);
   const { data: nfRow } = await supabase.from("nf_entradas").select("lancamento_id, pedido_compra_id").eq("id", nfId).single();
+  let eCp2: { message: string } | null = null;
   if (nfRow?.lancamento_id) {
-    await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
+    ({ error: eCp2 } = await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id));
+  }
+  const { data: sobrou } = await supabase.from("lancamentos").select("id, status").eq("nf_entrada_id", nfId).neq("status", "cancelado");
+  if (eCp || eCp2 || sobrou?.length) {
+    throw new Error(
+      `Não foi possível remover o título a pagar anterior desta NF${eCp || eCp2 ? ` (${(eCp ?? eCp2)!.message})` : ""}` +
+      `${sobrou?.length ? ` — ${sobrou.length} título(s) permanecem (${[...new Set(sobrou.map(x => x.status))].join(", ")})` : ""}. ` +
+      `Se já foi baixado ou conciliado, estorne a baixa/conciliação antes de processar de novo.`);
   }
   // Limpa a referência em pedidos_compra se ela apontava justamente pro
   // lançamento que acabamos de apagar — senão a próxima tentativa de processar
@@ -2802,6 +2814,14 @@ export async function processarNfEntrada(
   // Defesa aqui, na função que de fato cria os dados: apaga qualquer resíduo já
   // ligado a esta NF (por nf_entrada_id, que nunca fica nulo) antes de inserir
   // qualquer coisa nova — não depende de o chamador lembrar de limpar direito.
+  // NF já processada nunca é processada de novo por aqui: processar duas vezes (lote repetido, clique duplo,
+  // tela desatualizada) empilhava estoque e título. Para refazer, a NF precisa ser estornada antes (volta a pendente).
+  {
+    const { data: nfSt } = await supabase.from("nf_entradas").select("status, numero").eq("id", nfId).maybeSingle();
+    if (nfSt?.status === "processada") {
+      throw new Error(`NF ${nfSt.numero ?? ""} já está processada. Para processar de novo, estorne antes (reverte estoque e financeiro).`);
+    }
+  }
   await limparMovimentacoesEFinanceiroDaNf(nfId);
 
   // Fator que ajusta o custo de cada item pro que será REALMENTE pago: valorTotal (o parâmetro,

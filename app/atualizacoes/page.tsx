@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-o",
+    data: "14/10/2026",
+    titulo: "NF processada duas vezes: causa corrigida",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Causa raiz dos títulos a pagar duplicados: processar uma NF que já estava processada apagava o título anterior sem conferir o resultado; se o título já estava baixado ou conciliado, o banco recusava a exclusão em silêncio e o sistema criava outro título ao lado. Agora (1) uma NF já processada não é processada de novo (é preciso estornar antes), (2) a exclusão do título anterior é conferida e, se não for possível, o processamento para com a mensagem de estornar a baixa ou a conciliação primeiro, e (3) nunca é criado um segundo título para a mesma NF." },
+    ],
+    onde: "Documentos Fiscais → processar NF (individual e em lote)",
+  },
+  {
     versao: "2026.10.14-n",
     data: "14/10/2026",
     titulo: "Selo Vencido sempre de acordo com a data",
