@@ -1104,6 +1104,20 @@ export default function ModalNf({
         return null;
       }
     }
+    // Guard: NF nova (manual/XML) com chave que já existe no sistema — normalmente a mesma nota já chegou
+    // pelo Sieg e está pendente (ou já foi processada). Lançar de novo criava uma segunda NF, com estoque e
+    // financeiro em dobro. Confere a conta inteira (a mesma nota pode estar em outra fazenda do cliente).
+    if (!nfEdit) {
+      const chaveNova = (cab.chave_acesso || "").replace(/\D/g, "");
+      if (chaveNova.length === 44) {
+        const { data: jaExiste } = await supabase.from("nf_entradas").select("id, numero, status, origem, fazenda_id").eq("chave_acesso", chaveNova).limit(3);
+        if (jaExiste?.length) {
+          const x = jaExiste[0];
+          setErr(`Esta NF já está no sistema (nº ${x.numero}, ${x.status === "processada" ? "já processada" : "pendente"}, entrada via ${x.origem ?? "—"}). Abra a existente em Documentos Fiscais em vez de lançar de novo.`);
+          return null;
+        }
+      }
+    }
     const payload: Omit<NfEntrada, "id" | "created_at"> = {
       fazenda_id:            fazendaId,
       numero:                cab.numero,

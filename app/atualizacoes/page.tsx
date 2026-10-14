@@ -6,6 +6,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.14-f",
+    data: "14/10/2026",
+    titulo: "NF não é mais lançada em duplicidade",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Lançar uma NF manual ou por XML com chave de acesso que já existe no sistema (por exemplo, nota que já chegou pelo Sieg e está pendente) agora é bloqueado, com aviso do número, status e origem da NF existente. Antes isso criava uma segunda NF e podia dobrar estoque e financeiro." },
+    ],
+    onde: "Documentos Fiscais → Nova NF de Produtos",
+  },
+  {
     versao: "2026.10.14-e",
     data: "14/10/2026",
     titulo: "Nota Própria por chave traz os dados da NF",
