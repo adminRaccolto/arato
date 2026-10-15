@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-i",
+    data: "15/10/2026",
+    titulo: "NF: fornecedor cadastrado vincula sozinho; popup de cadastro visível",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Ao abrir uma NF cujo emitente já está cadastrado, o seletor de fornecedor ficava em Selecionar do cadastro e o botão Cadastro Fornecedor aparecia mesmo assim: o vínculo pelo CNPJ rodava antes de a lista de fornecedores terminar de carregar. Agora, quando a lista chega, a NF é vinculada ao cadastro pelo CNPJ. Além disso, o popup do Cadastro Fornecedor abria por trás da janela da NF (parecia sem ação); agora abre na frente." },
+    ],
+    onde: "Documentos Fiscais → NF de Produtos",
+  },
+  {
     versao: "2026.10.15-h",
     data: "15/10/2026",
     titulo: "Cadastro de fornecedor na NF, CFOP 5934 e 5556, popup na conciliação",

@@ -2084,6 +2084,16 @@ export default function ModalNf({
     if (!cab.pedido_compra_id) { setPedidoItensVinculado([]); return; }
     listarPedidoCompraItens(cab.pedido_compra_id).then(setPedidoItensVinculado).catch(() => setPedidoItensVinculado([]));
   }, [cab.pedido_compra_id]);
+  // Fornecedor já cadastrado: a NF abre antes de a lista de pessoas terminar de carregar, então o vínculo pelo CNPJ feito
+  // na abertura falhava e o seletor ficava em "Selecionar do cadastro…" (com o botão Cadastro Fornecedor aparecendo para quem
+  // já existe). Quando a lista chega, vincula pelo CNPJ da NF.
+  useEffect(() => {
+    if (cab.pessoa_id || !cab.emitente_cnpj || pessoas.length === 0) return;
+    const id = pessoaPorCnpj(cab.emitente_cnpj);
+    if (id) setCab(p => (p.pessoa_id ? p : { ...p, pessoa_id: id }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pessoas, cab.emitente_cnpj, cab.pessoa_id]);
+
   function pessoaPorCnpj(cnpj: string): string {
     if (!cnpj) return "";
     const norm = cnpj.replace(/\D/g, "");
