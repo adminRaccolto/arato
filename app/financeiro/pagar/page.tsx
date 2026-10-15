@@ -1,4 +1,5 @@
 "use client";
+import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
@@ -259,6 +260,7 @@ export default function ContasAPagarPage() {
 
   // ── Cadastros de apoio pro formulário de Novo Lançamento ──────
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
+  const [cadPessoaAberto, setCadPessoaAberto] = useState(false);
   const [empresas,      setEmpresas]      = useState<Empresa[]>([]);
   const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
   useEffect(() => {
@@ -2064,6 +2066,17 @@ export default function ContasAPagarPage() {
       )}
 
       {/* ══ MODAL — Baixar ══ */}
+      {cadPessoaAberto && fazendaId && (
+        <ModalCadastroFornecedor
+          fazendaId={fazendaId} documento="" nome="" papel="fornecedor"
+          onClose={() => setCadPessoaAberto(false)}
+          onSaved={nova => {
+            setPessoas(prev => prev.some(x => x.id === nova.id) ? prev : [...prev, nova]);
+            setNovoForm(p => ({ ...p, pessoa_id: nova.id }));
+            setCadPessoaAberto(false);
+          }}
+        />
+      )}
       {modalBaixa && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1001, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => setModalBaixa(null)}>
@@ -2279,7 +2292,7 @@ export default function ContasAPagarPage() {
                       </div>
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <div>
-                          <label data-arato-label="true" style={lbl}>Fornecedor</label>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Fornecedor</label><button type="button" onClick={() => setCadPessoaAberto(true)} title="Abre o cadastro com consulta de CNPJ" style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>Cadastro Fornecedor</button></div>
                           <SelectField value={novoForm.pessoa_id} onChange={e => setNovoForm(p => ({ ...p, pessoa_id: e.target.value }))} style={{ ...inp, width: "100%", boxSizing: "border-box" }}>
                             <option value="">— Nenhum —</option>
                             {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
@@ -2372,7 +2385,7 @@ export default function ContasAPagarPage() {
 
                       <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 140px 90px 160px", gap: 12 }}>
                         <div>
-                          <label data-arato-label="true" style={lbl}>Fornecedor / Credor</label>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Fornecedor / Credor</label><button type="button" onClick={() => setCadPessoaAberto(true)} title="Abre o cadastro com consulta de CNPJ" style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>Cadastro Fornecedor</button></div>
                           <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.pessoa_id} onChange={e => setNovoForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                             <option value="">— Selecionar do cadastro —</option>
                             {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}

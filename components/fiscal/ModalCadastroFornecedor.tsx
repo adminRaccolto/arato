@@ -36,8 +36,8 @@ async function ibgePorMunicipio(municipio: string, uf: string): Promise<string> 
 const inp = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const, background: "var(--bg-input, #fff)", color: "var(--text-1, #111)" };
 const lbl = { display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-2, #555)", marginBottom: 4 };
 
-export default function ModalCadastroFornecedor({ fazendaId, documento, nome, onClose, onSaved }: {
-  fazendaId: string; documento: string; nome: string; onClose: () => void; onSaved: (p: Pessoa) => void;
+export default function ModalCadastroFornecedor({ fazendaId, documento, nome, papel = "fornecedor", onClose, onSaved }: {
+  fazendaId: string; documento: string; nome: string; papel?: "fornecedor" | "cliente"; onClose: () => void; onSaved: (p: Pessoa) => void;
 }) {
   const [f, setF] = useState({
     nome, cpf_cnpj: maskCpfCnpj(documento), inscricao_est: "", email: "", telefone: "",
@@ -87,14 +87,14 @@ export default function ModalCadastroFornecedor({ fazendaId, documento, nome, on
     setSaving(true);
     try {
       const nova = await criarPessoa({
-        fazenda_id: fazendaId, nome: f.nome.trim(), tipo, cliente: false, fornecedor: true, cpf_cnpj: d,
+        fazenda_id: fazendaId, nome: f.nome.trim(), tipo, cliente: papel === "cliente", fornecedor: papel === "fornecedor", cpf_cnpj: d,
         inscricao_est: f.inscricao_est || undefined, email: f.email || undefined, telefone: f.telefone || undefined,
         cep: f.cep || undefined, logradouro: f.logradouro || undefined, numero: f.numero || undefined, complemento: f.complemento || undefined,
         bairro: f.bairro || undefined, municipio: f.municipio || undefined, municipio_ibge: f.municipio_ibge || undefined, estado: f.estado || undefined,
       } as never);
       onSaved(nova);
     } catch (e) {
-      setErro("Erro ao cadastrar fornecedor: " + (e instanceof Error ? e.message : String(e)));
+      setErro("Erro ao cadastrar: " + (e instanceof Error ? e.message : String(e)));
     } finally { setSaving(false); }
   }
 
@@ -109,11 +109,11 @@ export default function ModalCadastroFornecedor({ fazendaId, documento, nome, on
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
       <div style={{ background: "var(--bg-card, #fff)", borderRadius: 12, padding: 22, width: "min(96vw, 720px)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>Cadastro de Fornecedor</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{papel === "cliente" ? "Cadastro de Cliente" : "Cadastro de Fornecedor"}</div>
           <button onClick={onClose} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer" }}>×</button>
         </div>
         <div style={{ fontSize: 12, color: "var(--text-3, #666)", marginBottom: 12 }}>
-          {tipo === "pj" ? "Os dados vêm da Receita Federal pelo CNPJ da NF; edite só o que precisar." : "CPF não tem consulta pública: o documento e o nome vêm da NF; complete o que precisar."}
+          {tipo === "pj" ? "Informe o CNPJ e clique em Consultar: os dados vêm da Receita Federal; edite só o que precisar." : "CPF não tem consulta pública: informe o documento e o nome e complete o que precisar."}
         </div>
         {consultando && <div style={{ fontSize: 12, color: "#0B2D50", marginBottom: 10 }}>Consultando CNPJ na Receita Federal…</div>}
         {msg && <div style={{ fontSize: 12, color: "#14532D", background: "#E8F5E9", borderRadius: 8, padding: "6px 10px", marginBottom: 10 }}>{msg}</div>}
@@ -141,7 +141,7 @@ export default function ModalCadastroFornecedor({ fazendaId, documento, nome, on
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
           <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid var(--border-table, #DDE2EE)", background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-          <button onClick={salvar} disabled={saving} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#111", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{saving ? "Salvando…" : "Cadastrar fornecedor"}</button>
+          <button onClick={salvar} disabled={saving} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#111", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{saving ? "Salvando…" : papel === "cliente" ? "Cadastrar cliente" : "Cadastrar fornecedor"}</button>
         </div>
       </div>
     </div>

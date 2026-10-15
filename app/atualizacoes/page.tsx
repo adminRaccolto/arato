@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-j",
+    data: "15/10/2026",
+    titulo: "Cadastro rápido de fornecedor/cliente nos lançamentos de CP e CR",
+    modulos: ["Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "novo", texto: "Em Contas a Pagar (Cadastro Fornecedor) e Contas a Receber (Cadastro Cliente), o rótulo pequeno acima e à direita do seletor de pessoa abre o mesmo popup da NF: informe o CNPJ, clique em Consultar e a Receita Federal preenche razão social, endereço, telefone, e-mail, IE e IBGE. Ao salvar, a pessoa já fica selecionada no lançamento." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Novo lançamento",
+  },
+  {
     versao: "2026.10.15-i",
     data: "15/10/2026",
     titulo: "NF: fornecedor cadastrado vincula sozinho; popup de cadastro visível",
