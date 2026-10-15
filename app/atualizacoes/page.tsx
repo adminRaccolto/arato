@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-e",
+    data: "15/10/2026",
+    titulo: "Edição de título abre com todos os campos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao editar um título em Contas a Pagar e a Receber, Fazenda e Talhão abriam em branco mesmo gravados no título, e a Série do documento nunca era salva nem carregada. Agora a edição carrega Fazenda, Talhão, Série e Cartão, a Série passa a ser gravada, e título de parcelamento mostra o selo Parcela N/total no cabeçalho." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber → Editar",
+  },
+  {
     versao: "2026.10.15-d",
     data: "15/10/2026",
     titulo: "Salários no Contas a Pagar completos",

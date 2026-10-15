@@ -542,6 +542,7 @@ export default function ContasAPagarPage() {
   type ParcelaGrid = { data: string; valor: number };
   const [modalNovo, setModalNovo] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [parcelaInfo, setParcelaInfo] = useState("");   // "Parcela 2/5" quando o título faz parte de um parcelamento
   const [novoTab,   setNovoTab]   = useState<"principal" | "adicionais" | "documentos">("principal");
   const [novoForm,  setNovoForm]  = useState(NOVO_VAZIO);
   const [erroNovo,  setErroNovo]  = useState("");
@@ -673,6 +674,8 @@ export default function ContasAPagarPage() {
         observacao: lanc.observacao ?? "",
         tipo_documento_lcdpr: lanc.tipo_documento_lcdpr ?? "RECIBO",
         numero_documento: lanc.numero_documento ?? "",
+        serie: (lanc as unknown as { serie?: string | null }).serie ?? "",
+        cartao_id: (lanc as unknown as { cartao_id?: string | null }).cartao_id ?? "",
         entidade_contabil: lanc.entidade_contabil ?? "",
         operacao_gerencial_id: lanc.operacao_gerencial_id ?? "",
         forma_pagamento: lanc.forma_pagamento ?? "PIX",
@@ -695,7 +698,8 @@ export default function ContasAPagarPage() {
         const { data: fn } = await supabase.from("funcionarios").select("produtor_id").eq("id", funcId).maybeSingle();
         produtorEdit = (fn as { produtor_id?: string | null } | null)?.produtor_id || undefined;
       }
-      setCascadeNovo({ produtorId: produtorEdit, anoSafraId: anoSafraEdit, cicloId: lanc.ciclo_id || undefined });
+      setParcelaInfo(lanc.total_parcelas && lanc.total_parcelas > 1 ? `Parcela ${lanc.num_parcela ?? "?"}/${lanc.total_parcelas}` : "");
+      setCascadeNovo({ produtorId: produtorEdit, fazendaId: lanc.fazenda_id || undefined, anoSafraId: anoSafraEdit, cicloId: lanc.ciclo_id || undefined, talhaoId: (lanc as unknown as { talhao_id?: string | null }).talhao_id || undefined });
     } else {
       const { data } = await supabase.from("empresa_lancamentos").select("*").eq("id", l.id).single();
       const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string; centro_custo_id?: string | null; operacao_gerencial_id?: string | null; ano_safra_id?: string | null; ciclo_id?: string | null } | null;
@@ -721,6 +725,7 @@ export default function ContasAPagarPage() {
         competencia: emp.competencia ?? "",
       });
       setCascadeNovo({});
+      setParcelaInfo("");
     }
     setModalNovo(true);
   }
@@ -777,6 +782,7 @@ export default function ContasAPagarPage() {
             tipo_documento_lcdpr: novoForm.tipo_documento_lcdpr || undefined,
             conta_bancaria: novoForm.conta_pagamento || undefined,
             numero_documento: novoForm.numero_documento || undefined,
+            serie: novoForm.serie.trim() || undefined,
             centro_custo_id: novoForm.centro_custo_id || undefined,
             observacao: novoForm.observacao.trim() || undefined,
             ano_safra_id: cascadeNovo.anoSafraId || undefined,
@@ -879,6 +885,7 @@ export default function ContasAPagarPage() {
           tipo_documento_lcdpr: novoForm.tipo_documento_lcdpr || undefined,
           conta_bancaria: novoForm.conta_pagamento || undefined,
           numero_documento: novoForm.numero_documento || undefined,
+          serie: novoForm.serie.trim() || undefined,
           centro_custo_id: novoForm.centro_custo_id || undefined,
           observacao: novoForm.observacao.trim() || undefined,
           ano_safra_id: cascadeNovo.anoSafraId || undefined,
@@ -2127,7 +2134,7 @@ export default function ContasAPagarPage() {
             <div data-arato-dialog-body="true" style={{ padding: "18px 24px 0" }}>
               <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div data-arato-dialog-body="true" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>{editandoId ? "✎ Editar Lançamento — Contas a Pagar" : "+ Novo Lançamento — Contas a Pagar"}</h2>
+                  <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>{editandoId ? "✎ Editar Lançamento — Contas a Pagar" : "+ Novo Lançamento — Contas a Pagar"}{editandoId && parcelaInfo ? <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, background: "#E8EEF7", color: "#0B2D50", borderRadius: 6, padding: "2px 8px" }}>{parcelaInfo}</span> : null}</h2>
                   {!ehEmpresa && (
                     <div style={{ display: "flex", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
                       {(["real", "previsao"] as const).map(n => (

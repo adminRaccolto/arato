@@ -292,6 +292,7 @@ export type LogSistema = {
 };
 
 export type Lancamento = {
+  serie?: string;   // série do documento (NF/boleto)
   id: string;
   fazenda_id: string;
   tipo: "receber" | "pagar";

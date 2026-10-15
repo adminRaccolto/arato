@@ -656,13 +656,14 @@ export default function ContasAReceberPage() {
         observacao: lanc.observacao ?? "",
         tipo_documento_lcdpr: lanc.tipo_documento_lcdpr ?? "RECIBO",
         numero_documento: lanc.numero_documento ?? "",
+        serie: (lanc as unknown as { serie?: string | null }).serie ?? "",
         entidade_contabil: lanc.entidade_contabil ?? "",
         operacao_gerencial_id: lanc.operacao_gerencial_id ?? "",
         forma_pagamento: lanc.forma_pagamento ?? "PIX",
         conta_pagamento: lanc.conta_bancaria ?? "",
         empresa_id: lanc.empresa_id ?? "",
       });
-      setCascadeNovo({ produtorId: lanc.produtor_id || undefined, anoSafraId: lanc.ano_safra_id || undefined, cicloId: lanc.ciclo_id || undefined });
+      setCascadeNovo({ produtorId: lanc.produtor_id || undefined, fazendaId: lanc.fazenda_id || undefined, anoSafraId: lanc.ano_safra_id || undefined, cicloId: lanc.ciclo_id || undefined, talhaoId: (lanc as unknown as { talhao_id?: string | null }).talhao_id || undefined });
     } else {
       const { data } = await supabase.from("empresa_lancamentos").select("*").eq("id", l.id).single();
       const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; centro_custo_id?: string | null; operacao_gerencial_id?: string | null; ano_safra_id?: string | null; ciclo_id?: string | null; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string } | null;
@@ -740,6 +741,7 @@ export default function ContasAReceberPage() {
             tipo_documento_lcdpr: novoForm.tipo_documento_lcdpr || undefined,
             conta_bancaria: novoForm.conta_pagamento || undefined,
             numero_documento: novoForm.numero_documento || undefined,
+            serie: novoForm.serie.trim() || undefined,
             centro_custo_id: novoForm.centro_custo_id || undefined,
             observacao: novoForm.observacao.trim() || undefined,
             ano_safra_id: cascadeNovo.anoSafraId || undefined,
@@ -801,6 +803,7 @@ export default function ContasAReceberPage() {
           tipo_documento_lcdpr: novoForm.tipo_documento_lcdpr || undefined,
           conta_bancaria: novoForm.conta_pagamento || undefined,
           numero_documento: novoForm.numero_documento || undefined,
+          serie: novoForm.serie.trim() || undefined,
           centro_custo_id: novoForm.centro_custo_id || undefined,
           observacao: novoForm.observacao.trim() || undefined,
           ano_safra_id: cascadeNovo.anoSafraId || undefined,
