@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-k",
+    data: "15/10/2026",
+    titulo: "CFOPs 5934/6934 e 5556/6556 disponíveis na emissão de remessa e devolução",
+    modulos: ["Fiscal", "Comercial"],
+    itens: [
+      { tipo: "correcao", texto: "Os CFOPs de remessa simbólica para armazenagem (5.934/6.934) e de devolução de compra de uso ou consumo (5.556/6.556) só tinham sido cadastrados em Operações Fiscais, que as telas de emissão não usam; por isso não apareciam. Agora estão na lista de Remessas e de Devoluções de Documentos Fiscais (Nota de Venda/Remessa) e do Faturamento. Para 5.556/6.556 aparecem os campos Redução da base (%) e Alíquota ICMS (%), obrigatórios (ICMS CST 20)." },
+    ],
+    onde: "Documentos Fiscais → Notas de Venda/Remessa; Comercial → Faturamento → Operações",
+  },
+  {
     versao: "2026.10.15-j",
     data: "15/10/2026",
     titulo: "Cadastro rápido de fornecedor/cliente nos lançamentos de CP e CR",

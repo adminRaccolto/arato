@@ -52,6 +52,12 @@ const NATUREZAS_VENDA = [
   { codigo: "5.905",    cfop_tipo: null,
     descricao: "Remessa para Armazém Geral — Interna (mesma UF) (CFOP 5.905)",
     obs: "Remessa para depósito em armazém geral no mesmo estado. Operação não configura venda. Não incide ICMS, PIS, COFINS nem Funrural." },
+  { codigo: "6.934",    cfop_tipo: null,
+    descricao: "Remessa Simbólica para Armazenagem — Interestadual (CFOP 6.934)",
+    obs: "Remessa simbólica de mercadoria depositada em armazém geral. Não constitui fato gerador de receita. ICMS não tributado (CST 41)." },
+  { codigo: "5.934",    cfop_tipo: null,
+    descricao: "Remessa Simbólica para Armazenagem — Interna (mesma UF) (CFOP 5.934)",
+    obs: "Remessa simbólica de mercadoria depositada em armazém geral. Não constitui fato gerador de receita. ICMS não tributado (CST 41)." },
   { codigo: "6.906",    cfop_tipo: null,
     descricao: "Retorno de Armazém Geral — Interestadual (CFOP 6.906)",
     obs: "Retorno de mercadoria depositada em armazém geral. Natureza espelho da remessa. Não incide tributo." },
@@ -73,6 +79,8 @@ const NATUREZAS_DEVOLUCAO = [
   { codigo: "1.201", descricao: "Devolução de venda de produção — intraestadual (CFOP 1.201)", obs: "Devolução de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissão original." },
   { codigo: "2.202", descricao: "Devolução de mercadoria adquirida — interestadual (CFOP 2.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação interestadual." },
   { codigo: "1.202", descricao: "Devolução de mercadoria adquirida — intraestadual (CFOP 1.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação intraestadual." },
+  { codigo: "5.556", descricao: "Devolução de compra de material de uso ou consumo — interna (CFOP 5.556)", obs: "Devolução de compra de material de uso ou consumo. ICMS com base de cálculo reduzida (CST 20)." },
+  { codigo: "6.556", descricao: "Devolução de compra de material de uso ou consumo — interestadual (CFOP 6.556)", obs: "Devolução de compra de material de uso ou consumo. ICMS com base de cálculo reduzida (CST 20)." },
 ];
 // Mapa legado — usado como fallback quando o produto não tem produto_agricola_id vinculado
 const NCM_PRODUTO_LEGADO: Record<string, string> = {
@@ -106,7 +114,7 @@ const FVENDA_INICIAL = {
   dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cep: "", dest_fone: "",
   dest_cidade: "", dest_uf: "", dest_municipio_ibge: "",
   dest_tipo_pessoa: "juridica" as "fisica" | "juridica", dest_ie: "", dest_deposito: false,
-  cfop: "6.501", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
+  cfop: "6.501", red_bc: "", aliq_icms: "", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
   data_emissao: "", data_saida: "", hora_saida: "", dep_op: "",
   nota_livre: false, impressa: false, fiscal: true, enviar_dt_saida: true,
   transp_cadastrada: false, transportadora: "", frete_conta: "1",
@@ -687,6 +695,10 @@ function FaturamentoInner() {
                 unidade:        i.unidade.toUpperCase(),
                 quantidade:     parseFloat(i.quantidade) || 0,
                 valor_unitario: desmascarar(i.valor_unitario),
+                ...(["5.556","6.556"].includes(fVenda.cfop) ? {
+                  pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
+                  pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
+                } : {}),
               })),
               natureza:  fVenda.natureza_texto,
               inf_cpl:   [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
@@ -993,12 +1005,12 @@ function FaturamentoInner() {
                 fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat ? textoNat(nat) : "" });
               }}>
               <optgroup label="Vendas">
-                {NATUREZAS_VENDA.filter(n => n.codigo.startsWith("6") || n.codigo.startsWith("5.1") || n.codigo.startsWith("5.5") || n.codigo.startsWith("7")).map(n => (
+                {NATUREZAS_VENDA.filter(n => !["6.934","5.934"].includes(n.codigo) && (n.codigo.startsWith("6") || n.codigo.startsWith("5.1") || n.codigo.startsWith("5.5") || n.codigo.startsWith("7"))).map(n => (
                   <option key={n.codigo} value={n.codigo}>{n.descricao}</option>
                 ))}
               </optgroup>
               <optgroup label="Remessas">
-                {NATUREZAS_VENDA.filter(n => ["6.905","5.905","6.906","5.906","6.117","6.119"].includes(n.codigo)).map(n => (
+                {NATUREZAS_VENDA.filter(n => ["6.905","5.905","6.934","5.934","6.906","5.906","6.117","6.119"].includes(n.codigo)).map(n => (
                   <option key={n.codigo} value={n.codigo}>{n.descricao}</option>
                 ))}
               </optgroup>
@@ -1011,6 +1023,16 @@ function FaturamentoInner() {
             <label data-arato-label="true" style={lbl}>CFOP</label>
             <input style={{ ...inp, fontWeight:600, color:"#111111", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
+          {["5.556","6.556"].includes(fVenda.cfop) && (<>
+            <div>
+              <label data-arato-label="true" style={lbl}>Redução da base (%) *</label>
+              <input style={inp} value={fVenda.red_bc} onChange={e => fv({ red_bc: e.target.value })} placeholder="Ex.: 41,18" />
+            </div>
+            <div>
+              <label data-arato-label="true" style={lbl}>Alíquota ICMS (%)</label>
+              <input style={inp} value={fVenda.aliq_icms} onChange={e => fv({ aliq_icms: e.target.value })} placeholder={fVenda.cfop === "5.556" ? "17" : "12"} />
+            </div>
+          </>)}
           <div>
             <label data-arato-label="true" style={lbl}>Modelo</label>
             <SelectField style={inp} value={fVenda.modelo_nf} onChange={e => fv({ modelo_nf: e.target.value })}>

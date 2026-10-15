@@ -26,6 +26,8 @@ const NATUREZAS_VENDA = [
   { codigo: "7.101",    descricao: "Exportacao Direta pelo Produtor (CFOP 7.101)",                     obs: "Exportacao direta. Operacao imune de ICMS, PIS, COFINS e Funrural conforme art. 149-A da CF/88 e art. 14 da Lei 11.945/2009." },
   { codigo: "6.905",    descricao: "Remessa para Armazem Geral / Deposito - Interestadual (CFOP 6.905)", obs: "Remessa para deposito em armazem geral de terceiros, fora do Estado. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
   { codigo: "5.905",    descricao: "Remessa para Armazem Geral / Deposito - Interna (CFOP 5.905)",      obs: "Remessa para deposito em armazem geral de terceiros, dentro do mesmo Estado. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
+  { codigo: "6.934",    descricao: "Remessa Simbolica para Armazenagem - Interestadual (CFOP 6.934)",  obs: "Remessa simbolica de mercadoria depositada em armazem geral. Nao constitui fato gerador de receita. ICMS nao tributado (CST 41)." },
+  { codigo: "5.934",    descricao: "Remessa Simbolica para Armazenagem - Interna (CFOP 5.934)",         obs: "Remessa simbolica de mercadoria depositada em armazem geral. Nao constitui fato gerador de receita. ICMS nao tributado (CST 41)." },
   { codigo: "6.117",    descricao: "Remessa Simbolica - Entrega Futura (CFOP 6.117)",                  obs: "Faturamento antecipado. NF simbolica sem movimentacao fisica de mercadoria. ICMS diferido nos termos do Decreto MT n. 4.540/2004." },
   { codigo: "6.119",    descricao: "Remessa para Venda a Ordem (CFOP 6.119)",                          obs: "Venda a ordem - operacao triangular. ICMS diferido conforme Decreto MT n. 4.540/2004." },
 ];
@@ -35,6 +37,8 @@ const NATUREZAS_DEVOLUCAO = [
   { codigo: "1.201", descricao: "Devolucao de venda de producao - intraestadual (CFOP 1.201)",  obs: "Devolucao de mercadoria originada em venda intraestadual. ICMS diferido estornado conforme emissao original." },
   { codigo: "2.202", descricao: "Devolucao de venda de mercadoria adquirida - interestadual",   obs: "Devolucao de mercadoria adquirida para comercializacao. Operacao interestadual." },
   { codigo: "1.202", descricao: "Devolucao de venda de mercadoria adquirida - intraestadual",   obs: "Devolucao de mercadoria adquirida para comercializacao. Operacao intraestadual." },
+  { codigo: "5.556", descricao: "Devolucao de compra de material de uso ou consumo - interna (CFOP 5.556)",        obs: "Devolucao de compra de material de uso ou consumo. ICMS com base de calculo reduzida (CST 20)." },
+  { codigo: "6.556", descricao: "Devolucao de compra de material de uso ou consumo - interestadual (CFOP 6.556)",  obs: "Devolucao de compra de material de uso ou consumo. ICMS com base de calculo reduzida (CST 20)." },
 ];
 
 const NCM_OPTIONS = [
@@ -109,7 +113,7 @@ type TabNFe = "produtor"|"destinatario"|"operacoes"|"transportador"|"retirada"|"
 
 const FVENDA_INICIAL = {
   // Produtor
-  tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "", ie_selecionada: "",
+  tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "", ie_selecionada: "", red_bc: "", aliq_icms: "",
   // Destinatário
   destinatario: "", cnpj: "",
   dest_endereco: "", dest_numero: "", dest_bairro: "", dest_cidade: "", dest_uf: "", dest_cep: "", dest_municipio_ibge: "",
@@ -1291,6 +1295,10 @@ function FiscalInner() {
       descricao: i.item, ncm: i.ncm, cfop: fVenda.cfop,
       unidade: i.unidade.toUpperCase(), quantidade: Number(i.quantidade),
       valor_unitario: desmascarar(i.valor_unitario),
+      ...(["5.556","6.556"].includes(fVenda.cfop) ? {
+        pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
+        pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
+      } : {}),
     }));
     if (itensPayload.length === 0 && fVenda.quantidade && fVenda.valorUnitario) {
       const ncmDesc = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
@@ -1394,6 +1402,10 @@ function FiscalInner() {
       unidade:        i.unidade.toUpperCase(),
       quantidade:     Number(i.quantidade),
       valor_unitario: desmascarar(i.valor_unitario),
+      ...(["5.556","6.556"].includes(fVenda.cfop) ? {
+        pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
+        pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
+      } : {}),
     }));
     if (itensPayload.length === 0) {
       if (!fVenda.quantidade || !fVenda.valorUnitario) { alert("Adicione ao menos um item na grade de Itens."); return; }
@@ -2909,7 +2921,7 @@ function FiscalInner() {
                           // aqui — venda/exportação/devolução são de outro fluxo (Nota de Venda
                           // normal), só confundiam a escolha nesse modo.
                           <SelectField style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
-                            {NATUREZAS_VENDA.filter(o => ["6.905", "5.905", "6.117", "6.119"].includes(o.codigo))
+                            {NATUREZAS_VENDA.filter(o => ["6.905", "5.905", "6.934", "5.934", "6.117", "6.119"].includes(o.codigo))
                               .map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
                           </SelectField>
                         ) : (
@@ -2925,6 +2937,10 @@ function FiscalInner() {
                       field("Natureza de Operação",
                         <input style={inSt} value={fVenda.natureza_texto} onChange={e => fv({natureza_texto:e.target.value})} placeholder="Auto-preenchido pelo CFOP" />),
                       field("", <div style={{paddingBottom:2}}>{chk(fVenda.uso_imediato, () => fv({uso_imediato:!fVenda.uso_imediato}), "Uso Imediato")}</div>, "0 0 110px"),
+                    )}
+                    {["5.556","6.556"].includes(fVenda.cfop) && row(
+                      field("Redução da base (%) *", <input style={inSt} value={fVenda.red_bc} onChange={e => fv({red_bc:e.target.value})} placeholder="Ex.: 41,18" />, "0 0 160px"),
+                      field("Alíquota ICMS (%)", <input style={inSt} value={fVenda.aliq_icms} onChange={e => fv({aliq_icms:e.target.value})} placeholder={fVenda.cfop === "5.556" ? "17" : "12"} />, "0 0 140px"),
                     )}
                     {row(
                       field("Modelo NF",
