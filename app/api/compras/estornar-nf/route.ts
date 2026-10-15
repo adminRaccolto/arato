@@ -1,3 +1,4 @@
+import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
@@ -123,6 +124,11 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
+    // 0. Antes de mexer em qualquer coisa: título já pago/conciliado/em borderô (produtor OU Empresa) impede o estorno —
+    //    desfazer só o estoque e deixar o título é exatamente o que dobrava o CP ao processar de novo.
+    const bloqueio = await titulosBloqueiamEstorno(sb, nf_id);
+    if (bloqueio) return NextResponse.json({ error: bloqueio }, { status: 409 });
+
     // 1. Reverter movimentações de estoque — por nf_entrada_id (link direto, nunca
     //    fica nulo), não mais só por nf_entrada_item_id.
     const { data: movs } = await sb
@@ -181,16 +187,13 @@ export async function POST(req: NextRequest) {
     await falharSeErro(sb.from("estoque_terceiros").delete().eq("nf_entrada_id", nf_id), "excluir estoque_terceiros");
     // 5. Lançamento(s) financeiro(s) (CP) — inclui parcelas (por nf_entrada_id) e o
     //    fallback do id único legado, igual a lib/db.ts.
-    await falharSeErro(sb.from("lancamentos").delete().eq("nf_entrada_id", nf_id), "excluir lancamentos");
     const { data: nfRow } = await sb
       .from("nf_entradas")
       .select("lancamento_id, pedido_compra_id, tipo_entrada")
       .eq("id", nf_id)
       .single();
-
-    if (nfRow?.lancamento_id) {
-      await falharSeErro(sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id), "excluir lancamentos");
-    }
+    // Todos os títulos da NF: produtor (inclui parcelas) E Empresa
+    await excluirTitulosDaNf(sb, nf_id);
     // Limpa pedidos_compra.lancamento_id se apontava justamente pro lançamento que
     // acabamos de apagar — senão o reprocessamento tenta "atualizar" um id
     // inexistente e viola a FK nf_entradas_lancamento_id_fkey (causa raiz real do
@@ -215,7 +218,7 @@ export async function POST(req: NextRequest) {
 
     const { error: errStatus } = await sb
       .from("nf_entradas")
-      .update({ status: "pendente", lancamento_id: null, pedido_compra_id: null })
+      .update({ status: "pendente", lancamento_id: null, emp_lancamento_id: null, pedido_compra_id: null })
       .eq("id", nf_id);
 
     if (errStatus) throw new Error(`Erro ao atualizar status: ${errStatus.message}`);

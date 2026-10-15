@@ -67,6 +67,13 @@ export async function GET(req: Request) {
     }
     const titDuplicados = [...porTit.values()].filter(a => a.length > 1);
 
+    // 2b) título ainda ligado a NF PENDENTE (estornada): reprocessar a NF criaria outro título ao lado
+    const statusNf = new Map(nfs.map(n => [n.id, n.status]));
+    const titulosEmpresaNf = await todas<{ id: string; nf_entrada_id: string; status: string }>(
+      sb, "empresa_lancamentos", "id,nf_entrada_id,status", q => q.not("nf_entrada_id", "is", null));
+    const titulosOrfaos = tits.filter(t => statusNf.get(t.nf_entrada_id) === "pendente").length
+      + titulosEmpresaNf.filter(t => statusNf.get(t.nf_entrada_id) === "pendente" && t.status !== "cancelado").length;
+
     // 3a) baixa acima do valor do título (pago > valor + multa + juros − desconto)
     const pagos = await todas<{ id: string; valor: number; moeda: string | null; cotacao_usd: number | null; valor_pago: number; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null }>(
       sb, "lancamentos", "id,valor,moeda,cotacao_usd,valor_pago,valor_multa,valor_juros,valor_desconto", q => q.gt("valor_pago", 0).neq("moeda", "barter"));
@@ -85,6 +92,7 @@ export async function GET(req: Request) {
       nf_chave_repetida_processada_2x: nfDuplicadaProcessada.length,
       titulos_pagar_duplicados: titDuplicados.length,
       baixas_acima_do_valor: baixasAcima.length,
+      titulos_ligados_a_nf_pendente: titulosOrfaos,
       espelho_lancamentos_diferenca: Math.abs(nLanc - nRelLanc),
       espelho_empresa_diferenca: Math.abs(nEmp - nRelEmp),
     };

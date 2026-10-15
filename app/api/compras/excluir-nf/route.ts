@@ -1,3 +1,4 @@
+import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
@@ -110,6 +111,10 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
+    // 0. Título pago/conciliado/em borderô (produtor ou Empresa) impede a exclusão — checado ANTES de reverter qualquer coisa
+    const bloqueioExcl = await titulosBloqueiamEstorno(sb, nf_id);
+    if (bloqueioExcl) return NextResponse.json({ error: bloqueioExcl }, { status: 409 });
+
     // 1. Buscar itens da NF
     const { data: itens } = await sb
       .from("nf_entrada_itens")
@@ -180,9 +185,8 @@ export async function POST(req: NextRequest) {
       .eq("id", nf_id)
       .single();
 
-    if (nfRow?.lancamento_id) {
-      await falharSeErro(sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id), "excluir lancamentos");
-    }
+    // Todos os títulos da NF (parcelas e Empresa), não só o primeiro — a checagem de bloqueio já foi feita no início
+    await excluirTitulosDaNf(sb, nf_id);
 
     // 6. Pendências fiscais (criadas pelo fluxo WhatsApp)
     await falharSeErro(sb.from("pendencias_fiscais").delete().eq("lancamento_id", nfRow?.lancamento_id ?? "").neq("lancamento_id", ""), "excluir pendencias_fiscais");

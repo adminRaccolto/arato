@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-a",
+    data: "15/10/2026",
+    titulo: "Estorno de NF desfaz todos os títulos",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Estornar uma NF processada não removia o título da Empresa (NF destinada a transportadora) e excluir NF removia só o primeiro título: ao processar de novo, o valor ficava duplicado no Contas a Pagar. Agora estorno e exclusão removem todos os títulos da NF (produtor, parcelas e Empresa) e são recusados antes de mexer em qualquer coisa se algum título já foi baixado, conciliado ou está em borderô. A auditoria diária passou a contar títulos ainda ligados a NF pendente." },
+    ],
+    onde: "Documentos Fiscais → NF de entrada → Estornar / Excluir",
+  },
+  {
     versao: "2026.10.14-y",
     data: "14/10/2026",
     titulo: "Cancelar NF-e em Comercial → Faturamento agora cancela na SEFAZ",

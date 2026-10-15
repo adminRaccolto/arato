@@ -6,6 +6,7 @@
 
 import { falharSeErro } from "./db-util";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
+import { excluirTitulosDaNf } from "./financeiro/titulos-nf";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
 import { validarItensBordero, vincularItensBordero } from "./financeiro/vincular-bordero";
@@ -2719,6 +2720,8 @@ export async function limparMovimentacoesEFinanceiroDaNf(nfId: string): Promise<
     ({ error: eCp2 } = await supabase.from("lancamentos").delete().eq("id", nfRow.lancamento_id));
   }
   const { data: sobrou } = await supabase.from("lancamentos").select("id, status").eq("nf_entrada_id", nfId).neq("status", "cancelado");
+  // Títulos da Empresa (NF destinada a transportadora) também — antes ficavam e o reprocesso criava outro
+  await excluirTitulosDaNf(supabase, nfId);
   if (eCp || eCp2 || sobrou?.length) {
     throw new Error(
       `Não foi possível remover o título a pagar anterior desta NF${eCp || eCp2 ? ` (${(eCp ?? eCp2)!.message})` : ""}` +
