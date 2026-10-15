@@ -226,6 +226,19 @@ export async function POST(req: Request) {
 
       // Gera CP por funcionário via service_role_key (evita RLS 42501)
       const ogSalario = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.001");
+      // Ano Safra do vencimento (regra do sistema: todo título tem ano safra) e vínculo do funcionário (produtor/empresa),
+      // para o título nascer completo e a tela de edição abrir preenchida.
+      let anoSafraFolha: string | null = null;
+      try {
+        const { data: as1 } = await sb.rpc("fn_ano_safra_da_data", { p_fazenda: fazenda_id, p_data: vencimento });
+        if (typeof as1 === "string") anoSafraFolha = as1;
+      } catch { /* sem ano safra para a data */ }
+      const idsFuncs = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
+      const vinculoFunc: Record<string, { produtor_id: string | null; empresa_id: string | null }> = {};
+      if (idsFuncs.length) {
+        const { data: fs } = await sb.from("funcionarios").select("id, produtor_id, empresa_id").in("id", idsFuncs);
+        for (const f of fs ?? []) vinculoFunc[f.id as string] = { produtor_id: (f as any).produtor_id ?? null, empresa_id: (f as any).empresa_id ?? null };
+      }
       for (const it of (itens ?? [])) {
         const liq = Math.max(0, Math.round((
           it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento
@@ -235,8 +248,10 @@ export async function POST(req: Request) {
 
         const { data: lancamento, error: lancErr } = await inserirLancamentoFolha(sb, {
           fazenda_id,
-          empresa_id: empresa_id ?? null,
-          produtor_id: it.produtor_id ?? null,
+          empresa_id: empresa_id ?? vinculoFunc[it.funcionario_id]?.empresa_id ?? null,
+          produtor_id: it.produtor_id ?? vinculoFunc[it.funcionario_id]?.produtor_id ?? null,
+          funcionario_id: it.funcionario_id ?? null,
+          ano_safra_id: anoSafraFolha,
           natureza: "real",
           tipo: "pagar",
           descricao: `Salário ${nomeMesLabel} — ${it.nome_funcionario}`,

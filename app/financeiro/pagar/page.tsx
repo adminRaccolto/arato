@@ -124,6 +124,13 @@ const diasVencimento = (venc: string | null, status: string | null): number | nu
   const ms = new Date(venc + "T00:00:00").getTime() - new Date(hojeISO() + "T00:00:00").getTime();
   return Math.round(ms / 86400000);
 };
+// Título de folha/pessoal não tem fornecedor cadastrado: o "fornecedor" é o funcionário, que está na descrição
+// ("Salário Set/2026 — NOME"). Sem isso a coluna Fornecedor ficava vazia.
+const nomeDoFuncionario = (l: { categoria?: string | null; descricao?: string | null; origem_lancamento?: string | null }): string | null => {
+  if (!(l.origem_lancamento === "folha" || /pessoal/i.test(l.categoria ?? ""))) return null;
+  const partes = (l.descricao ?? "").split("—").map(x => x.trim());
+  return partes.length >= 2 && partes[1] ? partes[1] : null;
+};
 const ORIGEM_LANC_LABEL: Record<string, string> = {
   nf_entrada: "NF de Entrada", nf_saida: "NF de Saída", pedido_compra: "Pedido de Compra",
   arrendamento: "Arrendamento", tesouraria: "Tesouraria", plantio: "Plantio",
@@ -672,7 +679,23 @@ export default function ContasAPagarPage() {
         conta_pagamento: lanc.conta_bancaria ?? "",
         empresa_id: lanc.empresa_id ?? "",
       });
-      setCascadeNovo({ produtorId: lanc.produtor_id || undefined, anoSafraId: lanc.ano_safra_id || undefined, cicloId: lanc.ciclo_id || undefined });
+      // Campos obrigatórios nunca abrem em branco: sem ano safra gravado, usa o da data de vencimento (ou o vigente); sem
+      // produtor, usa o do funcionário do título. Quem salvar grava o valor que está na tela.
+      let anoSafraEdit = lanc.ano_safra_id || undefined;
+      if (!anoSafraEdit) {
+        try {
+          const { data: asd } = await supabase.rpc("fn_ano_safra_da_data", { p_fazenda: lanc.fazenda_id, p_data: lanc.data_vencimento });
+          if (typeof asd === "string") anoSafraEdit = asd;
+        } catch { /* mantém abaixo */ }
+        anoSafraEdit = anoSafraEdit ?? anoSafraVigenteId ?? undefined;
+      }
+      let produtorEdit = lanc.produtor_id || undefined;
+      const funcId = (lanc as unknown as { funcionario_id?: string | null }).funcionario_id;
+      if (!produtorEdit && funcId) {
+        const { data: fn } = await supabase.from("funcionarios").select("produtor_id").eq("id", funcId).maybeSingle();
+        produtorEdit = (fn as { produtor_id?: string | null } | null)?.produtor_id || undefined;
+      }
+      setCascadeNovo({ produtorId: produtorEdit, anoSafraId: anoSafraEdit, cicloId: lanc.ciclo_id || undefined });
     } else {
       const { data } = await supabase.from("empresa_lancamentos").select("*").eq("id", l.id).single();
       const emp = data as { empresa_id: string; pessoa_id?: string; descricao?: string; categoria?: string; data_vencimento: string; valor: number; centro_custo?: string; observacao?: string; forma_pagamento?: string; conta_bancaria?: string; numero_documento?: string; competencia?: string; centro_custo_id?: string | null; operacao_gerencial_id?: string | null; ano_safra_id?: string | null; ciclo_id?: string | null } | null;
@@ -1437,7 +1460,7 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
                   ),
                   pessoa: (
-                    <td style={{ padding: "7px 10px" }}>{l.empresa_nome ?? l.pessoa_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}</td>
                   ),
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>{l.descricao ?? "—"}</td>
@@ -1585,7 +1608,7 @@ export default function ContasAPagarPage() {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
         const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
-        const nome = l.empresa_nome ?? l.pessoa_nome ?? l.descricao ?? "—";
+        const nome = l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? l.descricao ?? "—";
         const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
         const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
         const W = 560, H = 420;

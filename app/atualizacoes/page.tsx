@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-d",
+    data: "15/10/2026",
+    titulo: "Salários no Contas a Pagar completos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Os títulos de salário vindos da Folha apareciam sem o nome do funcionário, com Lançado via Manual e, ao abrir, com Produtor, Fazenda e Ano Safra em branco (parecendo que nada tinha sido salvo). Agora a folha gera o título com funcionário, produtor ou empresa e Ano Safra; a coluna Fornecedor mostra o funcionário; Lançado via mostra Folha de Pagamento; e a edição abre com Ano Safra e Produtor preenchidos. 192 títulos de folha já existentes foram completados." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.15-c",
     data: "15/10/2026",
     titulo: "Parcelar título já lançado: parcelas 2 em diante",
