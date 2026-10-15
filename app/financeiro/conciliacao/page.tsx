@@ -379,7 +379,9 @@ function ConciliacaoInner() {
   const [abaSistema, setAbaSistema]         = useState<"sugeridos" | "inconsistencias" | "conciliados" | "abertos" | "conferencia">("abertos");
   const [pessoasNomes, setPessoasNomes]     = useState<Map<string, string>>(new Map());
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
-  const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());   // borderôs expandidos na lista
+  const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());
+  // Popup com a relação de CPs/CRs de uma conciliação (um lançamento do extrato ligado a vários títulos)
+  const [popupRelacao, setPopupRelacao]     = useState<{ descricao: string; valor: number; data: string; ids: string[] } | null>(null);   // borderôs expandidos na lista
   const [filtroBaixados, setFiltroBaixados] = useState<"todos" | "pendentes" | "conciliados">("todos");
   const [parHover, setParHover] = useState<string | null>(null);
   const [inconsEscolha, setInconsEscolha] = useState<Map<string, string>>(new Map());
@@ -2265,6 +2267,57 @@ function ConciliacaoInner() {
         );
       })()}
 
+      {popupRelacao && (() => {
+        const tits = popupRelacao.ids.map(id => ({ id, l: lancamentos.find(x => x.id === id) }));
+        const totalPag = tits.reduce((s, t) => s + (t.l ? Number(t.l.valor_pago ?? t.l.valor) * (t.l.tipo === "pagar" ? -1 : 1) : 0), 0);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setPopupRelacao(null)}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 20, width: "min(96vw, 860px)", maxHeight: "88vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Títulos desta conciliação</div>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>Extrato: {fmtDt(popupRelacao.data)} · {popupRelacao.descricao} · <b>{fmtBRL(popupRelacao.valor)}</b></div>
+                </div>
+                <button onClick={() => setPopupRelacao(null)} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+              </div>
+              {tits.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>Nenhum título ligado a esta linha.</div> : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-page)", textAlign: "left" }}>
+                        {["Tipo", "Fornecedor / Cliente", "Descrição", "Vencimento", "Baixa", "Status", "Valor"].map((h, i) => (
+                          <th key={h} style={{ padding: "6px 8px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", textAlign: i === 6 ? "right" : "left" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tits.map(({ id, l }) => l ? (
+                        <tr key={id} style={{ borderTop: "0.5px solid var(--border)" }}>
+                          <td style={{ padding: "6px 8px" }}><span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: l.tipo === "pagar" ? "#FCEBEB" : "#E8F5E9", color: l.tipo === "pagar" ? "#791F1F" : "#14532D" }}>{l.tipo === "pagar" ? "CP" : "CR"}</span></td>
+                          <td style={{ padding: "6px 8px" }}>{fornecedorDe(l)}</td>
+                          <td style={{ padding: "6px 8px", color: "var(--text-2)" }}>{l.descricao}</td>
+                          <td style={{ padding: "6px 8px" }}>{fmtDt(l.data_vencimento)}</td>
+                          <td style={{ padding: "6px 8px" }}>{fmtDt(l.data_baixa)}</td>
+                          <td style={{ padding: "6px 8px" }}>{l.status}</td>
+                          <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600, color: l.tipo === "pagar" ? "#791F1F" : "#14532D" }}>{fmtBRL(Number(l.valor_pago ?? l.valor))}</td>
+                        </tr>
+                      ) : (
+                        <tr key={id} style={{ borderTop: "0.5px solid var(--border)" }}><td colSpan={7} style={{ padding: "6px 8px", color: "var(--text-3)" }}>Título {id.slice(0, 8)} não está na lista carregada (pode estar fora do período).</td></tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: "1px solid var(--border)" }}>
+                        <td colSpan={6} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>Saldo dos {tits.length} título(s) (CR − CP)</td>
+                        <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700 }}>{fmtBRL(totalPag)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {modalTes && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
@@ -3477,8 +3530,11 @@ function ConciliacaoInner() {
                             <div style={{ minWidth: 0 }} title={`${l.descricao} · FITID ${l.id}`}>
                               <div style={{ fontWeight: 500, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
                               {l.conciliado && l.lancamento_desc && (
-                                <div style={{ fontSize: 10, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  → {l.lancamento_desc}{(l.lancamento_ids?.length ?? 0) > 1 ? ` (bordero ${l.lancamento_ids!.length})` : ""}
+                                <div
+                                  onClick={e => { e.stopPropagation(); setPopupRelacao({ descricao: l.descricao, valor: l.valor, data: l.data, ids: (l.lancamento_ids?.length ? l.lancamento_ids : l.lancamento_id ? [l.lancamento_id] : []) }); }}
+                                  title="Clique para ver os CPs/CRs desta conciliação"
+                                  style={{ fontSize: 10, color: "#1A4870", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline dotted" }}>
+                                  → {l.lancamento_desc}{(l.lancamento_ids?.length ?? 0) > 1 ? ` (${l.lancamento_ids!.length} títulos)` : ""}
                                 </div>
                               )}
                               {sug && (

@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
         quantidade: number;
         valor_unitario: number;
         valor_desconto?: number;
+        pRedBC?: number;
+        pICMS?: number;
       }>;
       natureza: string;
       inf_cpl?: string;
@@ -72,6 +74,8 @@ export async function POST(req: NextRequest) {
         quantidade:    item.quantidade,
         valor_unitario: item.valor_unitario,
         valor_desconto: item.valor_desconto,
+        pRedBC:        item.pRedBC,
+        pICMS:         item.pICMS,
       })),
       natureza: body.natureza,
       infCpl:   body.inf_cpl,

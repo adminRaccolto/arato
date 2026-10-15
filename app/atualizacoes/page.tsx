@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-h",
+    data: "15/10/2026",
+    titulo: "Cadastro de fornecedor na NF, CFOP 5934 e 5556, popup na conciliação",
+    modulos: ["Fiscal", "Financeiro", "Cadastros"],
+    itens: [
+      { tipo: "novo", texto: "Na entrada da NF, o rótulo pequeno Cadastro Fornecedor (acima e à direita do seletor de fornecedor) abre o cadastro com o CNPJ e o nome da NF e consulta a Receita Federal para preencher razão social, endereço, telefone, e-mail, IE e IBGE; você edita só o que precisar. CPF abre com o documento e o nome da NF." },
+      { tipo: "novo", texto: "CFOP 5934/6934 (remessa simbólica para armazenagem) com ICMS CST 041 e CFOP 5556/6556 (devolução de compra de uso/consumo) com ICMS CST 020, que pede a redução da base e a alíquota por item na janela Devolver. Os dois modelos entram em Configurações, Operações Fiscais." },
+      { tipo: "novo", texto: "Conciliação Bancária: clicar na linha conciliada (→ título) abre um popup com todos os CPs e CRs daquela conciliação, com fornecedor, vencimento, baixa, status, valor e saldo." },
+      { tipo: "melhoria", texto: "Adiantamento a fornecedor na baixa: o aviso agora explica que o valor é editável para uso parcial e que o saldo restante segue disponível." },
+    ],
+    onde: "Documentos Fiscais; Configurações → Operações Fiscais; Financeiro → Conciliação / Contas a Pagar",
+  },
+  {
     versao: "2026.10.15-g",
     data: "15/10/2026",
     titulo: "Adiantamento a fornecedor volta na baixa do CP",

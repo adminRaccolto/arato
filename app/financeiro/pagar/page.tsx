@@ -2081,6 +2081,7 @@ export default function ContasAPagarPage() {
             {adiantamentosDisp.length > 0 && (
               <div style={{ background: "#F6F9FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>💰 Adiantamento disponível deste fornecedor</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 8 }}>O valor é editável: dá para usar só uma parte do adiantamento. O saldo que sobrar continua disponível para outros títulos do fornecedor.</div>
                 {adiantamentosDisp.map(a => {
                   const saldoAdiant = a.valor - (a.valor_aplicado ?? 0);
                   const valorSugerido = Math.min(saldoAdiant, Math.max(0, saldoBase(modalBaixa)));

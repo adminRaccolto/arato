@@ -16,7 +16,8 @@ export function cstExibicaoPorCfop(cfop?: string | null): string {
   const cod = String(cfop ?? "").replace(/\D/g, "");
   const p4 = cod.slice(0, 4);
   if (cod.startsWith("7")) return "041";
-  if (p4 === "5905" || p4 === "6905") return "041";
+  if (p4 === "5905" || p4 === "6905" || p4 === "5934" || p4 === "6934") return "041";
+  if (p4 === "5556" || p4 === "6556") return "020";
   if (p4 === "5501" || p4 === "6501") return "040";
   if (CFOPS_TRANSFERENCIA.has(p4)) return "041";
   if (cod.startsWith("5") || cod.startsWith("1")) return "051";

@@ -18,6 +18,7 @@ import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
+import ModalCadastroFornecedor from "./ModalCadastroFornecedor";
 import { CFOPS_COMPRA_BEM, CFOPS_BEM_SEM_PAGAMENTO, CFOPS_RETORNO_DE_REMESSA } from "../../lib/cfop-imobilizado";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -462,7 +463,7 @@ export default function ModalNf({
   });
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
   const [ciclosNF,    setCiclosNF]    = useState<Ciclo[]>([]);
-  const [savingForn, setSavingForn] = useState(false);
+  const [cadFornAberto, setCadFornAberto] = useState(false);
   const [ccGlobalMaquinaId, setCcGlobalMaquinaId] = useState("");
 
   // Itens
@@ -507,6 +508,8 @@ export default function ModalNf({
     unidadeOriginalNF?: string;
     ncm?: string;
     cfop: string;   // CFOP próprio do item na NF de devolução (a natureza da operação é única)
+    pRedBC: string;  // CST 20 (CFOP 5556/6556): % de redução da base de cálculo do ICMS
+    pICMS: string;   // CST 20: alíquota do ICMS (vazio = padrão: 17% interno, 12% interestadual)
   }
   const [devModal,   setDevModal]   = useState(false);
   const [devNfOrig,  setDevNfOrig]  = useState<NfEntrada | null>(null);
@@ -1752,6 +1755,8 @@ export default function ModalNf({
           insumo_id:           i.tipo_apropiacao === "estoque" ? i.insumo_id! : undefined,
           // CFOP de cada produto: sugerido pelo CFOP que o PRÓPRIO item tinha na NF de compra; sem ele, o do cabeçalho
           cfop:                CFOP_DEV[(i.cfop ?? "").replace(/\D/g, "").slice(0, 4)] ?? cfopPadrao,
+          pRedBC:              "",
+          pICMS:               "",
           origem_item_id:      i.id,
           tipo_apropiacao:     (i.tipo_apropiacao === "direto" ? "direto" : "estoque") as "estoque" | "direto",
           descricao_produto:   i.descricao_produto,
@@ -1793,6 +1798,13 @@ export default function ModalNf({
         return;
       }
     }
+    // CFOP 5556/6556 usa CST 20 (base reduzida): a redução é obrigatória em cada item desse CFOP
+    for (const i of itensParaDevolver) {
+      if (["5556", "6556"].includes(i.cfop) && !(parseFloat(i.pRedBC.replace(",", ".")) > 0)) {
+        setDevErr(`"${i.descricao_produto}": o CFOP ${i.cfop} usa CST 20 — informe o percentual de redução da base de cálculo.`);
+        return;
+      }
+    }
     // Uma NF tem um só destino: todos os CFOPs dela precisam ser do mesmo grupo (5xxx dentro do estado ou 6xxx fora)
     if (new Set(itensParaDevolver.map(i => i.cfop.charAt(0))).size > 1) {
       setDevErr("Os itens misturam CFOP 5xxx (dentro do estado) e 6xxx (interestadual). Uma NF de devolução tem um só destino: use o mesmo grupo em todos.");
@@ -1809,6 +1821,7 @@ export default function ModalNf({
         descricao:      i.descricao_produto,
         ncm:             i.ncm!,
         cfop:            i.cfop,
+        ...((["5556", "6556"].includes(i.cfop)) ? { pRedBC: parseFloat(i.pRedBC.replace(",", ".")), ...(parseFloat(i.pICMS.replace(",", ".")) > 0 ? { pICMS: parseFloat(i.pICMS.replace(",", ".")) } : {}) } : {}),
         unidade:         i.unidade.toUpperCase(),
         quantidade:      i.quantidade_devolver,
         valor_unitario:  i.valor_unitario,
@@ -2575,34 +2588,13 @@ export default function ModalNf({
                     <div>
                       <div data-arato-dialog-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
                         <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Emitente (Fornecedor) *</label>
-                        {!cab.pessoa_id && cab.emitente_nome && (
-                          <button data-arato-button="secondary"
-                            disabled={savingForn}
-                            onClick={async () => {
-                              if (!fazendaId || !cab.emitente_nome) return;
-                              setSavingForn(true);
-                              try {
-                                const nova = await criarPessoa({
-                                  fazenda_id: fazendaId,
-                                  nome:       cab.emitente_nome,
-                                  tipo:       "pj",
-                                  cliente:    false,
-                                  fornecedor: true,
-                                  cpf_cnpj:   cab.emitente_cnpj || undefined,
-                                  municipio:  cab.emitente_municipio || undefined,
-                                  estado:     cab.emitente_estado   || undefined,
-                                });
-                                setPessoas(prev => [...prev, nova]);
-                                setCab(p => ({ ...p, pessoa_id: nova.id }));
-                              } catch (e) {
-                                alert("Erro ao cadastrar fornecedor: " + (e instanceof Error ? e.message : e));
-                              } finally {
-                                setSavingForn(false);
-                              }
-                            }}
-                            style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" as const }}
+                        {!cab.pessoa_id && (cab.emitente_cnpj || cab.emitente_nome) && (
+                          <button data-arato-button="secondary" type="button"
+                            title="Abre o cadastro de fornecedor com os dados da NF e da consulta de CNPJ"
+                            onClick={() => setCadFornAberto(true)}
+                            style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                           >
-                            {savingForn ? "…" : "+ Cadastrar"}
+                            Cadastro Fornecedor
                           </button>
                         )}
                       </div>
@@ -4050,6 +4042,19 @@ export default function ModalNf({
         </div>
       )}
 
+      {cadFornAberto && (fazendaId ?? nfEdit?.fazenda_id) && (
+        <ModalCadastroFornecedor
+          fazendaId={(nfEdit?.fazenda_id ?? fazendaId)!}
+          documento={cab.emitente_cnpj ?? ""}
+          nome={cab.emitente_nome ?? ""}
+          onClose={() => setCadFornAberto(false)}
+          onSaved={nova => {
+            setPessoas(prev => prev.some(x => x.id === nova.id) ? prev : [...prev, nova]);
+            setCab(p => ({ ...p, pessoa_id: nova.id, emitente_nome: nova.nome ?? p.emitente_nome }));
+            setCadFornAberto(false);
+          }}
+        />
+      )}
       {devModal && devNfOrig && (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
           <div data-arato-dialog="page" style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 980, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
@@ -4149,6 +4154,17 @@ export default function ModalNf({
                           {CFOPS_DEVOLUCAO.map(c => <option key={c.v} value={c.v}>{c.l}</option>)}
                         </select>
                       </div>
+                      {["5556", "6556"].includes(it.cfop) && (
+                        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "4px 12px 8px", fontSize: 11, color: "var(--text-2)", background: "#FBF3E0" }}>
+                          <span><b>CST 20</b> (base reduzida) —</span>
+                          <label>Redução da base %
+                            <input value={it.pRedBC} onChange={e => setDevItens(prev => prev.map(x => x.key === it.key ? { ...x, pRedBC: e.target.value } : x))} style={{ ...inp, width: 70, marginLeft: 6, padding: "3px 6px", fontSize: 12 }} placeholder="obrig." />
+                          </label>
+                          <label>Alíquota ICMS %
+                            <input value={it.pICMS} onChange={e => setDevItens(prev => prev.map(x => x.key === it.key ? { ...x, pICMS: e.target.value } : x))} style={{ ...inp, width: 70, marginLeft: 6, padding: "3px 6px", fontSize: 12 }} placeholder={it.cfop === "5556" ? "17" : "12"} />
+                          </label>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {/* Rodapé total */}

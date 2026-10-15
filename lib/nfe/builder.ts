@@ -63,6 +63,9 @@ export interface ItemNFe {
   quantidade: number;
   valor_unitario: number;
   valor_desconto?: number;
+  /** CST 20 (CFOP 5556/6556): % de redução da base de cálculo (obrigatório) e alíquota do ICMS (padrão 17% interno / 12% interestadual). */
+  pRedBC?: number;
+  pICMS?: number;
   ibsCbs?: IBSCBSItem;
 }
 
@@ -257,11 +260,14 @@ function idDest(cfop: string, ufEmit: string, ufDest?: string): "1" | "2" | "3" 
 interface ICMSRule {
   cst: string;
   xml: (vBC: number, vProd: number) => string;
+  /** CST 20: base reduzida e imposto próprios (a base não é o valor líquido do produto). */
+  baseCalc?: (vProdLiq: number) => number;
+  valorIcms?: (vBC: number) => number;
 }
 
 // isNaoContribuinte: true quando destinatário é PF sem IE (indIEDest=9)
 // Nesse caso diferimento não se aplica — operação interna vira isenta (CST 40)
-function icmsRule(cfop: string, isNaoContribuinte = false): ICMSRule {
+function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICMS?: number): ICMSRule {
   const cod = cfop.replace(/\D/g, "");
   const prefix = cod.substring(0, 4);
 
@@ -270,8 +276,22 @@ function icmsRule(cfop: string, isNaoContribuinte = false): ICMSRule {
     return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 
-  if (prefix === "5905" || prefix === "6905") {
-    // Remessa p/ armazém — não incide
+  // Devolução de compra de material de uso/consumo (5556/6556): CST 20 — base de cálculo reduzida. A redução e a
+  // alíquota dependem da operação original e são informadas no item (a redução é obrigatória).
+  if (prefix === "5556" || prefix === "6556") {
+    const red = Number(pRedBC);
+    if (!(red > 0 && red <= 100)) throw new Error("CFOP " + prefix + " usa CST 20: informe o percentual de redução da base de cálculo do item.");
+    const aliq = Number(pICMS) > 0 ? Number(pICMS) : (prefix === "5556" ? 17 : 12);
+    const baseCalc = (vProdLiq: number) => Math.round(vProdLiq * (1 - red / 100) * 100) / 100;
+    const valorIcms = (vBC: number) => Math.round(vBC * aliq) / 100;
+    return {
+      cst: "20", baseCalc, valorIcms,
+      xml: (vBC) => `<ICMS20><orig>0</orig><CST>20</CST><modBC>3</modBC><pRedBC>${red.toFixed(4)}</pRedBC><vBC>${fmtVal(vBC)}</vBC><pICMS>${aliq.toFixed(2)}</pICMS><vICMS>${fmtVal(valorIcms(vBC))}</vICMS></ICMS20>`,
+    };
+  }
+
+  if (prefix === "5905" || prefix === "6905" || prefix === "5934" || prefix === "6934") {
+    // Remessa p/ armazém (5905/6905) e remessa simbólica p/ armazenagem (5934/6934) — não incide, CST 41
     return { cst: "41", xml: () => `<ICMS40><orig>0</orig><CST>41</CST></ICMS40>` };
   }
 
@@ -418,9 +438,9 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     vProdBrutoTotal += vProdBruto;
     vDescTotal      += vDescItem;
 
-    const rule = icmsRule(item.cfop, indIEDest === "9");
-    // BC = vProd líquido (após desconto) para CST 00/51
-    const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : 0;
+    const rule = icmsRule(item.cfop, indIEDest === "9", item.pRedBC, item.pICMS);
+    // BC = vProd líquido (após desconto) para CST 00/51; CST 20 usa a base reduzida
+    const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : (rule.baseCalc ? rule.baseCalc(vProdLiq) : 0);
     // <ICMSTot><vBC> tem que bater com a soma do <vBC> de TODOS os itens que
     // declaram essa tag — inclui CST 51 (diferido), que grava <vBC> real
     // dentro de <ICMS51> mesmo com <vICMS>0.00</vICMS>. Só somar quando
@@ -429,11 +449,14 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     // ICMS difere do somatório dos itens". vICMSTotal continua só CST 00:
     // o <vICMS> do item CST 51 é 0.00 (o valor diferido vai em vICMSOp/
     // vICMSDif, que não têm campo agregado em ICMSTot).
-    if (rule.cst === "00" || rule.cst === "51") {
+    if (rule.cst === "00" || rule.cst === "51" || rule.cst === "20") {
       vBCTotal += vBC;
     }
     if (rule.cst === "00") {
       vICMSTotal += vBC * 12 / 100;
+    }
+    if (rule.cst === "20" && rule.valorIcms) {
+      vICMSTotal += rule.valorIcms(vBC);
     }
 
     const ncm  = soDigitos(item.ncm);
