@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-b",
+    data: "15/10/2026",
+    titulo: "Importar OFX de conta de Empresa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Importar um OFX de conta bancária de Empresa (como a Muriana Transportes) falhava com Não foi possível gravar as transações do extrato: a sugestão de conciliação apontava para um título da Empresa e a coluna só aceita títulos do produtor. Agora esse caso é tratado e o aviso de erro mostra o motivo técnico." },
+    ],
+    onde: "Financeiro → Conciliação Bancária → Importar OFX",
+  },
+  {
     versao: "2026.10.15-a",
     data: "15/10/2026",
     titulo: "Estorno de NF desfaz todos os títulos",

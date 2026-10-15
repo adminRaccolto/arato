@@ -849,7 +849,7 @@ function ConciliacaoInner() {
         // desfaz o registro do import (e o arquivo) para não deixar um import "fantasma" no histórico
         await supabase.from("extratos_bancarios").delete().eq("id", novoExtrato.id);
         if (!up.error) await supabase.storage.from("arquivos").remove([ofxPath]);
-        alert("Não foi possível gravar as transações do extrato. Nada foi baixado nem conciliado — tente importar novamente.");
+        alert(`Não foi possível gravar as transações do extrato. Nada foi baixado nem conciliado — tente importar novamente.${ultimoErroSync ? `\n\nMotivo: ${ultimoErroSync}` : ""}`);
         return;
       }
 

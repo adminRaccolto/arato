@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     // lancamento_id tem FK para lancamentos: título de EMPRESA (empresa_lancamentos) não existe lá e a gravação
     // inteira era recusada ("violates foreign key constraint extrato_transacoes_lancamento_id_fkey"). Para esses,
     // o vínculo fica só em lancamento_ids (sem FK), que é o que a tela e os gatilhos já leem primeiro.
-    const candidatos = Array.from(new Set(rows.map(r => r.lancamento_id).filter((x): x is string => !!x)));
+    const candidatos = Array.from(new Set(rows.flatMap(r => [r.lancamento_id, (r as { sugestao_lancamento_id?: string | null }).sugestao_lancamento_id]).filter((x): x is string => !!x)));
     const existentesLanc = new Set<string>();
     for (let i = 0; i < candidatos.length; i += 150) {
       const { data } = await sb.from("lancamentos").select("id").in("id", candidatos.slice(i, i + 150));

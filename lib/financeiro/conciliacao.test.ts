@@ -45,3 +45,13 @@ test("origem/confiança só contam quando as colunas novas existem", () => {
   assert.equal(linhaMudou({ ...ex, origem_vinculo: "manual" }, { ...nova, origem_vinculo: "sugestao" }, false), false);
   assert.equal(linhaMudou({ ...ex, origem_vinculo: "manual" }, { ...nova, origem_vinculo: "sugestao" }, true), true);
 });
+
+test("sugestão de título de Empresa (fora de lancamentos) é anulada para não violar a FK na importação", () => {
+  const rows = [
+    { lancamento_id: null, lancamento_ids: null, sugestao_lancamento_id: "emp-9" as string | null },
+    { lancamento_id: null, lancamento_ids: null, sugestao_lancamento_id: "prod-1" as string | null },
+  ];
+  ajustarVinculosParaFk(rows, new Set(["prod-1"]));
+  assert.equal(rows[0].sugestao_lancamento_id, null);
+  assert.equal(rows[1].sugestao_lancamento_id, "prod-1");
+});

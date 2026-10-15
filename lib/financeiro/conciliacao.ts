@@ -6,6 +6,7 @@
 export type LinhaVinculo = {
   lancamento_id?: string | null;
   lancamento_ids?: string[] | null;
+  sugestao_lancamento_id?: string | null;
 };
 
 /**
@@ -18,6 +19,11 @@ export function ajustarVinculosParaFk<T extends LinhaVinculo>(rows: T[], existen
     if (r.lancamento_id && !existentesEmLancamentos.has(r.lancamento_id)) {
       r.lancamento_ids = r.lancamento_ids?.length ? r.lancamento_ids : [r.lancamento_id];
       r.lancamento_id = null;
+    }
+    // sugestao_lancamento_id também tem FK para lancamentos: sugestão de título de Empresa derrubava a importação inteira
+    // do OFX ("Não foi possível gravar as transações do extrato"). A sugestão é recalculada na tela, então pode ficar nula.
+    if (r.sugestao_lancamento_id && !existentesEmLancamentos.has(r.sugestao_lancamento_id)) {
+      r.sugestao_lancamento_id = null;
     }
   }
   return rows;
