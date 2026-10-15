@@ -777,7 +777,8 @@ export default function ContasAPagarPage() {
             const agrupador = crypto.randomUUID();
             const n = parcelasNovo.length;
             await atualizarLancamento(editandoId, { ...camposEdit, valor: parcelasNovo[0].valor, data_vencimento: parcelasNovo[0].data, num_parcela: 1, total_parcelas: n, agrupador });
-            const { id: _i, created_at: _c, ...molde } = orig as Record<string, unknown>;
+            // numero é coluna gerada pelo banco (identity): copiar o valor do original impedia a gravação das demais parcelas
+            const { id: _i, created_at: _c, numero: _n, ...molde } = orig as Record<string, unknown>;
             const linhas = parcelasNovo.slice(1).map((pc, k) => ({
               ...molde, ...camposEdit, valor: pc.valor, data_vencimento: pc.data, num_parcela: k + 2, total_parcelas: n, agrupador,
               status: "em_aberto", conciliado: false, lote_id: null, data_baixa: null, valor_pago: null,

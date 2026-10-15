@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-c",
+    data: "15/10/2026",
+    titulo: "Parcelar título já lançado: parcelas 2 em diante",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao editar um título do Contas a Pagar e usar Salvar e dividir em N parcelas, a 1ª parcela era salva mas as demais falhavam com cannot insert a non-DEFAULT value into column numero (o número do lançamento é gerado pelo banco e estava sendo copiado do original). Agora o número é gerado normalmente e todas as parcelas são criadas." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Editar",
+  },
+  {
     versao: "2026.10.15-b",
     data: "15/10/2026",
     titulo: "Importar OFX de conta de Empresa",
