@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-f",
+    data: "15/10/2026",
+    titulo: "Documentos Fiscais: lista sempre completa",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Ao abrir Documentos Fiscais a lista de fazendas do usuário começa provisória (só a fazenda ativa) e é completada logo depois; a carga provisória podia terminar depois da completa e a tela ficava só com as NFs de uma fazenda, enquanto outro usuário via todas. Agora só a carga mais recente vale." },
+    ],
+    onde: "Documentos Fiscais",
+  },
+  {
     versao: "2026.10.15-e",
     data: "15/10/2026",
     titulo: "Edição de título abre com todos os campos",

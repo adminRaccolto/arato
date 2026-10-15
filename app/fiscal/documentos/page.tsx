@@ -35,7 +35,7 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -210,6 +210,10 @@ export default function DocumentosFiscaisPage() {
   const [resultado, setResultado] = useState<RelDocFiscal[] | null>(null);
   // Só as primeiras linhas são desenhadas (milhares de linhas no DOM travavam a tela); os totais usam todas
   const [qtdVisivel, setQtdVisivel] = useState(100);
+  // Cada carga recebe um número; só a mais recente grava o resultado. Ao entrar, a lista de fazendas começa provisória
+  // (só a fazenda ativa) e é completada logo depois — a carga provisória, mais curta, podia terminar DEPOIS da completa
+  // e a tela ficava só com as NFs de uma fazenda, enquanto outro usuário via todas.
+  const cargaRef = useRef(0);
   // Ordenação da lista: pela data da nota (padrão) ou pela data de cadastro no sistema
   const [ordenarPor, setOrdenarPor] = useState<"data_doc" | "created_at">("data_doc");
 
@@ -231,6 +235,7 @@ export default function DocumentosFiscaisPage() {
   async function carregar() {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length && !contaId) return;
+    const minhaCarga = ++cargaRef.current;
     setCarregando(true);
     setErro("");
     try {
@@ -257,12 +262,13 @@ export default function DocumentosFiscaisPage() {
         todas.push(...((data ?? []) as RelDocFiscal[]));
         if (!data || data.length < PAGE) break;
       }
+      if (minhaCarga !== cargaRef.current) return;   // chegou uma carga mais nova: esta é descartada
       setResultado(todas);
       setQtdVisivel(100);
     } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao consultar documentos fiscais.");
+      if (minhaCarga === cargaRef.current) setErro(e instanceof Error ? e.message : "Erro ao consultar documentos fiscais.");
     } finally {
-      setCarregando(false);
+      if (minhaCarga === cargaRef.current) setCarregando(false);
     }
   }
 
