@@ -112,7 +112,7 @@ export interface CartaCorrecaoCTeInput {
 }
 
 export const COND_USO_CCE_CTE =
-  "A Carta de Correção é disciplinada pelo Convênio SINIEF 01/2006 e pode ser utilizada para regularização de erro ocorrido na emissão de documento fiscal, desde que o erro não esteja relacionado com: I - as variáveis que determinam o valor do imposto tais como: base de cálculo, alíquota, diferença de preço, quantidade, valor da prestação;II - a correção de dados cadastrais que implique mudança do emitente, tomador, remetente ou do destinatário;III - a data de emissão ou de saída.";
+  "A Carta de Correção é disciplinada pelo Convênio SINIEF 01/2006 e pode ser utilizada para regularização de erro ocorrido na prestação de serviço de transporte, desde que o erro não esteja relacionado com: I - as variáveis que determinam o valor do imposto tais como: base de cálculo, alíquota, diferença de preço, quantidade, valor da prestação;II - a correção de dados cadastrais que implique mudança do emitente, tomador, remetente ou do destinatário;III - a data de emissão ou de saída.";
 
 export function montarEventoCCeCTe(input: CartaCorrecaoCTeInput): { xml: string; id: string } {
   const chave = digits(input.chave);
