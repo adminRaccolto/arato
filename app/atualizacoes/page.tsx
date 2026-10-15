@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.15-g",
+    data: "15/10/2026",
+    titulo: "Adiantamento a fornecedor volta na baixa do CP",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Usar o adiantamento do fornecedor na baixa do título tinha sumido quando as telas de Contas a Pagar foram unificadas. Agora, ao baixar um título (inclusive o gerado por NF de entrada), se o fornecedor tem adiantamento com saldo, a janela de baixa mostra o quadro Adiantamento disponível, com o botão Aplicar, que abate o título e o saldo do adiantamento." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Baixar",
+  },
+  {
     versao: "2026.10.15-f",
     data: "15/10/2026",
     titulo: "Documentos Fiscais: lista sempre completa",
