@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
-import { listarLancamentos, listarEmpresaLancamentosComoLancamento, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao } from "../../../lib/db";
+import { listarLancamentos, listarEmpresaLancamentosComoLancamento, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao, listarEmpresasDaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
@@ -280,7 +280,7 @@ function FinanceiroRelatoriosInner() {
       setApoioLancsAbertos((apoioLancsRes as { data: { id: string; tipo: string; descricao: string; valor: number; data_vencimento: string; categoria: string | null; pessoa_nome: string | null }[] | null }).data ?? []);
     }).catch(() => {})
       .finally(() => setCarregando(false));
-    listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
+    listarEmpresasDaConta(fazendaIds?.length ? fazendaIds : [fazendaId]).then(setEmpresas).catch(() => setEmpresas([]));
     listarContas(fazendaId).then(setContas).catch(() => setContas([]));
     // Combina as duas fontes: produtores da conta (por conta_id) + da fazenda (fallback/sem conta_id)
     Promise.all([
@@ -2316,8 +2316,11 @@ function FinanceiroRelatoriosInner() {
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.forma_pagamento || "—"}</td>;
                           case "op_gerencial":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : ""}>{l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—"}</td>;
-                          case "produtor":
-                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={(l.produtor_id ? prodMap[l.produtor_id] : null) ?? ""}>{(l.produtor_id ? prodMap[l.produtor_id] : null) ?? "—"}</td>;
+                          case "produtor": {
+                            // Produtor do título; título de Empresa (PJ) não tem produtor — mostra a empresa dona
+                            const nomeProd = (l.produtor_id ? prodMap[l.produtor_id] : null) ?? empresas.find(e => e.id === (l as unknown as { empresa_id?: string | null }).empresa_id)?.nome ?? "";
+                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={nomeProd}>{nomeProd || "—"}</td>;
+                          }
                           case "observacao":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={l.observacao ?? ""}>{l.observacao || "—"}</td>;
                           default: return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>—</td>;

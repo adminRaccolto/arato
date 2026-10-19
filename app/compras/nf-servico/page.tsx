@@ -608,6 +608,8 @@ export default function NfServicoPage() {
           operacao_gerencial_id: cab.operacao_gerencial_id || undefined,
           centro_custo_id:       cab.centro_custo_id       || undefined,
           ano_safra_id:          cab.ano_safra_id           || undefined,
+          // produtor = tomador do serviço quando ele é um produtor (antes o CP da NFS-e saía sem produtor)
+          produtor_id:           cab.tomador_tipo === "produtor" && cab.tomador_id ? cab.tomador_id : undefined,
           // empresa_id NÃO vai: CP de NFS-e no financeiro do produtor não pode ficar "de empresa"
           // (o grid do produtor esconde lançamentos com empresa_id).
           forma_pagamento:       cab.forma_pagamento        || undefined,

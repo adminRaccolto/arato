@@ -2778,6 +2778,30 @@ export function registrarAutorizacaoMovimentoEmpresa(fazendaId: string, nfId: st
     { entidade: "nf_entradas", entidadeId: nfId, dadosDepois: { empresa, cps_produtor_cancelados: cpsIds } });
 }
 
+/**
+ * Produtor dono da NF de entrada: o informado na própria NF ou, sem ele, o produtor da conta cujo CPF/CNPJ é o do
+ * destinatário da nota. Se mais de um produtor da conta tem o mesmo documento, usa o produtor da fazenda da NF;
+ * sem desempate seguro, devolve null (melhor em branco do que no produtor errado).
+ */
+export async function resolverProdutorDaNf(nfId: string, fazenda_id: string): Promise<string | null> {
+  const { data: nf } = await supabase.from("nf_entradas").select("produtor_id, cnpj_destino").eq("id", nfId).maybeSingle();
+  if (nf?.produtor_id) return nf.produtor_id as string;
+  const doc = String(nf?.cnpj_destino ?? "").replace(/\D/g, "");
+  if (doc.length < 11) return null;
+  const [contaId, fazIds] = await Promise.all([resolverContaIdDaFazenda(fazenda_id), resolverFazendaIdsDaConta(fazenda_id)]);
+  const filtros = [contaId ? `conta_id.eq.${contaId}` : "", fazIds.length ? `fazenda_id.in.(${fazIds.join(",")})` : ""].filter(Boolean).join(",");
+  if (!filtros) return null;
+  const { data: prods } = await supabase.from("produtores").select("id, cpf_cnpj").or(filtros);
+  const iguais = (prods ?? []).filter(p => String(p.cpf_cnpj ?? "").replace(/\D/g, "") === doc);
+  if (iguais.length === 1) return iguais[0].id as string;
+  if (iguais.length > 1) {
+    const { data: faz } = await supabase.from("fazendas").select("produtor_id").eq("id", fazenda_id).maybeSingle();
+    const dono = iguais.find(p => p.id === faz?.produtor_id);
+    return dono ? (dono.id as string) : null;
+  }
+  return null;
+}
+
 export async function processarNfEntrada(
   nfId: string,
   fazenda_id: string,
@@ -2828,6 +2852,10 @@ export async function processarNfEntrada(
     }
   }
   await limparMovimentacoesEFinanceiroDaNf(nfId);
+
+  // Produtor do CP: o informado na tela ou, sem ele, o do CPF/CNPJ do destinatário da NF (antes ficava em branco
+  // em todo CP de NF processada sem escolher o produtor, e o relatório/filtro por produtor perdia o título).
+  const produtorEfetivo = opts?.produtorId || (await resolverProdutorDaNf(nfId, fazenda_id).catch(() => null)) || undefined;
 
   // Fator que ajusta o custo de cada item pro que será REALMENTE pago: valorTotal (o parâmetro,
   // já líquido de IPI/ST/FCP-ST/DIFAL/Desconto/ICMS Desonerado do cabeçalho — é o que vira Conta a
@@ -3254,7 +3282,7 @@ export async function processarNfEntrada(
         nf_entrada_id:         nfId,
         origem_lancamento:     "nf_entrada",
         pessoa_id:             pessoaId ?? undefined,
-        produtor_id:           opts?.produtorId ?? undefined,
+        produtor_id:           produtorEfetivo,
         maquina_id:            opts?.maquinaId ?? undefined,
         ano_safra_id:          opts?.anoSafraId ?? undefined,
         ciclo_id:              opts?.cicloId ?? undefined,
@@ -3348,7 +3376,7 @@ export async function processarNfEntrada(
         nf_entrada_id:           nfId,
         pedido_compra_id:        opts?.pedidoCompraId ?? undefined,
         origem_lancamento:       "nf_entrada",
-        produtor_id:             opts?.produtorId ?? undefined,
+        produtor_id:             produtorEfetivo,
         maquina_id:              opts?.maquinaId ?? undefined,
         ano_safra_id:            opts?.anoSafraId ?? undefined,
         ciclo_id:                opts?.cicloId ?? undefined,

@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-n",
+    data: "19/10/2026",
+    titulo: "Produtor preenchido nos CP de NF e de NFS-e, e nas linhas de empresa",
+    modulos: ["Financeiro", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Relatório CP/CR: a coluna Produtor ficava em branco nos títulos de Empresa (PJ) porque a lista de empresas era só da fazenda ativa. Agora usa as empresas de toda a conta e mostra o nome da empresa dona do título." },
+      { tipo: "correcao", texto: "Ao processar uma NF de entrada sem escolher o produtor, o CP saía sem produtor. Agora o sistema usa o produtor da conta cujo CPF/CNPJ é o do destinatário da nota (se houver mais de um produtor com o mesmo documento, usa o da fazenda da NF; sem desempate seguro, deixa em branco). O CP de NFS-e passa a levar o produtor quando o tomador do serviço é um produtor." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR; Documentos Fiscais → NF de Produtos / NFS-e",
+  },
+  {
     versao: "2026.10.19-m",
     data: "19/10/2026",
     titulo: "Contratos financeiros: juros e amortização corretos nas parcelas",

@@ -31,7 +31,7 @@ const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
   ],
   "app/financeiro/relatorios/page.tsx": [
     ["resolverExtras", "Nº da NF e operação gerencial resolvidos do banco na exportação/impressão CP/CR"], ["enriquecer-titulos", "exportação CP/CR usa a rota de servidor que resolve NF e operação gerencial"],
-    ["printCpcrRef", "impressão limpa do relatório CP/CR (sem filtros da tela)"], ["printOutrosRef", "impressão própria de DFC e Posição por Conta"], ["escopoImpressao", "cabeçalho do relatório mostra o escopo real (conta/produtor), não a fazenda ativa"],
+    ["printCpcrRef", "impressão limpa do relatório CP/CR (sem filtros da tela)"], ["printOutrosRef", "impressão própria de DFC e Posição por Conta"], ["listarEmpresasDaConta", "empresas de toda a conta no relatório (produtor de título de PJ)"], ["escopoImpressao", "cabeçalho do relatório mostra o escopo real (conta/produtor), não a fazenda ativa"],
   ],
   "app/financeiro/receber/page.tsx": [
     ["fProdutor", "filtro e coluna de Produtor"], ["Efetivar", "botão Efetivar previsão"], ["bClass", "classificação na baixa"], ["bNovaData", "nova data do saldo em recebimento parcial"],
