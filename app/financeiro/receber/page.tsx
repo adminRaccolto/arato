@@ -258,6 +258,9 @@ export default function ContasAReceberPage() {
   }, []);
   const cotDe = (l: { id: string }) => cotacaoEfetiva(cotacoes.get(l.id), ptax);
   const emReais = (l: { id: string; moeda: string | null }, v: number | null | undefined) => valorEmReais(v, l.moeda, cotDe(l));
+  // valor_pago é sempre em reais (também nos títulos em dólar, como na tela anterior); o saldo é calculado em reais.
+  const saldoBRL = (l: { id: string; moeda: string | null; valor: number | null; valor_pago: number | null }) =>
+    Math.max(0, (ehUSD(l.moeda) ? (emReais(l, l.valor) ?? l.valor ?? 0) : (l.valor ?? 0)) - (l.valor_pago ?? 0));
   // Filtros por coluna (linha sob o cabeçalho do grid)
   const [filtrosCol, setFiltrosCol] = useState<Record<string, string>>({});
 
@@ -343,8 +346,8 @@ export default function ContasAReceberPage() {
   const passaColunas = (l: RelLancamento) => Object.entries(filtrosCol).every(([k, f]) => {
     if (!f.trim()) return true;
     if (k === "valor" || k === "pago" || k === "saldo") {
-      const bruto = k === "valor" ? l.valor : k === "pago" ? l.valor_pago : Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
-      return casaFiltroNumero(bruto, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, bruto), f));
+      if (k === "valor") return casaFiltroNumero(l.valor, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, l.valor), f));
+      return casaFiltroNumero(k === "pago" ? l.valor_pago : saldoBRL(l), f);
     }
     if (k === "dias") return casaFiltroNumero(diasVencimento(l.data_vencimento, l.status_normalizado), f);
     return casaFiltroTexto(textoColuna(l, k), f);
@@ -402,7 +405,7 @@ export default function ContasAReceberPage() {
   const [salvandoAcao, setSalvandoAcao] = useState(false);
   const [erroAcao,     setErroAcao]     = useState("");
 
-  const saldoBase = (l: RelLancamento) => Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+  const saldoBase = (l: RelLancamento) => saldoBRL(l);
   const recalcValor = (multa: string, juros: string, desc: string) => {
     if (!modalBaixa) return;
     setBValor(Math.max(0, saldoBase(modalBaixa) + numBR(multa) + numBR(juros) - numBR(desc)).toFixed(2).replace(".", ","));
@@ -911,7 +914,7 @@ export default function ContasAReceberPage() {
   }
 
   const totalPagar = linhas.reduce((s, l) => s + (emReais(l, l.valor) ?? 0), 0);
-  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + (emReais(l, Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0))) ?? 0), 0);
+  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -948,7 +951,7 @@ export default function ContasAReceberPage() {
   const encargoLoteDe = (id: string) => loteEncargos[id] ?? { multa: "0,00", juros: "0,00", desconto: "0,00" };
   const setEncargoLote = (id: string, campo: "multa" | "juros" | "desconto", v: string) =>
     setLoteEncargos(prev => ({ ...prev, [id]: { ...encargoLoteDe(id), [campo]: v } }));
-  const saldoLote = (l: RelLancamento) => Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+  const saldoLote = (l: RelLancamento) => saldoBRL(l);
   const valorFinalLote = (l: RelLancamento) => {
     const e = encargoLoteDe(l.id);
     return Math.max(0, saldoLote(l) + numBR(e.multa) + numBR(e.juros) - numBR(e.desconto));
@@ -1390,7 +1393,7 @@ export default function ContasAReceberPage() {
                 const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
                 const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
                 const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
-                const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+                const saldo = saldoBRL(l);
                 const celulasGrid: Record<string, ReactNode> = {
                   checkbox: (
                     <td style={{ padding: "7px 10px" }}>
@@ -1451,10 +1454,10 @@ export default function ContasAReceberPage() {
                     </td>
                   ),
                   pago: (
-                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtNaMoeda(l.valor_pago, l.moeda)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(l.valor_pago)}</td>
                   ),
                   saldo: (
-                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtNaMoeda(saldo, l.moeda)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(saldo)}</td>
                   ),
                   moeda: (
                     <td style={{ padding: "7px 10px", textAlign: "center" }}>{l.moeda ?? "—"}</td>
@@ -1510,7 +1513,7 @@ export default function ContasAReceberPage() {
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
         const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
         const nome = l.empresa_nome ?? l.pessoa_nome ?? l.descricao ?? "—";
-        const saldo = Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+        const saldo = saldoBRL(l);
         const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
         const W = 560, H = 420;
         const top  = Math.min(popover.y + 10, (typeof window !== "undefined" ? window.innerHeight : 800) - H);

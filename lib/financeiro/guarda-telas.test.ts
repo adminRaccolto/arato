@@ -12,6 +12,7 @@ const MARCADORES: [string, string][] = [
   ["fmtUSDn", "valor em US$ exibido no grid de lançamentos em dólar"],
   ["valorEmReais", "conversão do dólar em reais (cotação do lançamento ou PTAX)"],
   ["carregarCotacoesUSD", "cotação gravada em cada título USD"],
+  ["saldoBRL", "saldo/baixa de título em dólar calculado em reais (valor_pago é sempre em R$)"],
 ];
 
 for (const tela of TELAS) {

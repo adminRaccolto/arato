@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-d",
+    data: "19/10/2026",
+    titulo: "CP e CR: baixa e saldo de título em dólar calculados em reais",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na tela unificada, a baixa de um título em dólar tratava o valor em US$ como se fosse reais (R$ 1.000 em vez de US$ 1.000 x cotação). Agora o saldo, a baixa, o lote e os totais usam o valor convertido em reais (cotação do lançamento ou PTAX do dia), e Pago/Saldo aparecem em R$, como na tela anterior." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.19-c",
     data: "19/10/2026",
     titulo: "CP e CR: valores em dólar e filtros por coluna de volta",
