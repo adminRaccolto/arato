@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-a",
+    data: "19/10/2026",
+    titulo: "CT-e: tomador do serviço \"Outros\" (terceiro)",
+    modulos: ["Transporte", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "No CT-e, o campo Tomador do Serviço ganhou a opção Outros (terceiro), para frete cobrado de quem não é remetente, expedidor, recebedor nem destinatário. Ao escolhê-la, informe nome, CNPJ/CPF, IE e endereço do tomador (pode selecionar de Produtores ou Pessoas). O XML sai com o grupo toma4, o DACTE e o contas a receber do frete usam esse tomador. Requer a Seção 348 do banco." },
+    ],
+    onde: "Transporte → CT-e → Novo CT-e",
+  },
+  {
     versao: "2026.10.15-k",
     data: "15/10/2026",
     titulo: "CFOPs 5934/6934 e 5556/6556 disponíveis na emissão de remessa e devolução",

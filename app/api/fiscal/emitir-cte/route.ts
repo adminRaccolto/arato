@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       tomador_tipo:       CTeInput["tomador_tipo"];
       expedidor?:         CTeInput["expedidor"];
       recebedor?:         CTeInput["recebedor"];
+      tomador?:           CTeInput["tomador"];
       observacao?:        string;
       cte_id?:            string | null;
       tp_cte?:            "0" | "3";
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
       destinatario:       body.destinatario,
       expedidor:          body.expedidor?.nome ? body.expedidor : undefined,
       recebedor:          body.recebedor?.nome ? body.recebedor : undefined,
+      tomador:            body.tomador?.nome ? body.tomador : undefined,
       municipio_ini_ibge: body.municipio_ini_ibge,
       municipio_ini_nome: body.municipio_ini_nome,
       uf_ini:             body.uf_ini,

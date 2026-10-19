@@ -35,8 +35,8 @@ export async function lancarFinanceiroCte(cteId: string): Promise<string[]> {
 
   const docEmit = dig(c.emitente_cnpj);
   const numDoc = `${String(c.numero_cte).replace(/^0+/, "")}/${String(c.serie).replace(/^0+/, "")}`;
-  const docTom = dig({ remetente: c.remetente_cnpj, destinatario: c.destinatario_cnpj, expedidor: c.expedidor_cnpj, recebedor: c.recebedor_cnpj }[String(c.tomador_tipo)] ?? c.destinatario_cnpj);
-  const nomeTom = String({ remetente: c.remetente_nome, destinatario: c.destinatario_nome, expedidor: c.expedidor_nome, recebedor: c.recebedor_nome }[String(c.tomador_tipo)] ?? c.destinatario_nome ?? "");
+  const docTom = dig({ remetente: c.remetente_cnpj, destinatario: c.destinatario_cnpj, expedidor: c.expedidor_cnpj, recebedor: c.recebedor_cnpj, outros: c.tomador_cnpj }[String(c.tomador_tipo)] ?? c.destinatario_cnpj);
+  const nomeTom = String({ remetente: c.remetente_nome, destinatario: c.destinatario_nome, expedidor: c.expedidor_nome, recebedor: c.recebedor_nome, outros: c.tomador_nome }[String(c.tomador_tipo)] ?? c.destinatario_nome ?? "");
 
   // Prazo de vencimento (Parâmetros → CT-e do emitente: frete_prazo_dias; padrão 30)
   const { data: cfgRows } = await db.from("configuracoes_modulo").select("config").in("fazenda_id", fazIds).eq("modulo", `cte_emp_${docEmit}`);

@@ -16765,3 +16765,25 @@ CREATE TRIGGER trg_nfe_cancelada_so_pela_sefaz BEFORE UPDATE OF status ON notas_
   FOR EACH ROW EXECUTE FUNCTION fn_nfe_cancelada_so_pela_sefaz();
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 348 — CT-e: Tomador "Outros" (grupo toma4 do schema)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- O tomador só podia ser remetente, expedidor, recebedor ou destinatário (toma3). Para frete cobrado de um
+-- terceiro (toma4) guardamos os dados do tomador em colunas próprias e liberamos 'outros' no CHECK.
+ALTER TABLE ctes
+  ADD COLUMN IF NOT EXISTS tomador_nome TEXT, ADD COLUMN IF NOT EXISTS tomador_cnpj TEXT, ADD COLUMN IF NOT EXISTS tomador_ie TEXT,
+  ADD COLUMN IF NOT EXISTS tomador_logradouro TEXT, ADD COLUMN IF NOT EXISTS tomador_numero TEXT, ADD COLUMN IF NOT EXISTS tomador_bairro TEXT,
+  ADD COLUMN IF NOT EXISTS tomador_cep TEXT, ADD COLUMN IF NOT EXISTS tomador_municipio TEXT, ADD COLUMN IF NOT EXISTS tomador_uf TEXT, ADD COLUMN IF NOT EXISTS tomador_ibge TEXT;
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT conname FROM pg_constraint
+           WHERE conrelid = 'public.ctes'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) ILIKE '%tomador_tipo%'
+  LOOP
+    EXECUTE format('ALTER TABLE ctes DROP CONSTRAINT %I', r.conname);
+  END LOOP;
+END $$;
+ALTER TABLE ctes ADD CONSTRAINT ctes_tomador_tipo_check
+  CHECK (tomador_tipo IN ('remetente','destinatario','expedidor','recebedor','outros'));
+NOTIFY pgrst, 'reload schema';

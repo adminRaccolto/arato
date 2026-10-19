@@ -37,7 +37,7 @@ function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
 // Tipos
 // ─────────────────────────────────────────────────────────────
 type StatusCte = "rascunho" | "autorizado" | "cancelado" | "substituido";
-type TomadorTipo = "remetente" | "destinatario" | "expedidor" | "recebedor";
+type TomadorTipo = "remetente" | "destinatario" | "expedidor" | "recebedor" | "outros";
 
 interface Cte {
   id: string;
@@ -119,14 +119,14 @@ interface IeCompleta {
 type ParticCte = { nome: string; cnpj: string; ie: string; logradouro: string; numero: string; bairro: string; cep: string; municipio: string; uf: string; ibge: string };
 const PARTIC_VAZIO = (): ParticCte => ({ nome: "", cnpj: "", ie: "", logradouro: "", numero: "", bairro: "", cep: "", municipio: "", uf: "MT", ibge: "" });
 const COLS_PARTIC: (keyof ParticCte)[] = ["nome", "cnpj", "ie", "logradouro", "numero", "bairro", "cep", "municipio", "uf", "ibge"];
-const particDeCte = (c: unknown, pref: "expedidor" | "recebedor"): ParticCte => {
+const particDeCte = (c: unknown, pref: "expedidor" | "recebedor" | "tomador"): ParticCte => {
   const r = c as Record<string, unknown>; const o = PARTIC_VAZIO();
   for (const k of COLS_PARTIC) { const v = r[`${pref}_${k}`]; if (v != null) o[k] = String(v); }
   return o;
 };
-const particParaColunas = (pref: "expedidor" | "recebedor", p: ParticCte) =>
+const particParaColunas = (pref: "expedidor" | "recebedor" | "tomador", p: ParticCte) =>
   Object.fromEntries(COLS_PARTIC.map(k => [`${pref}_${k}`, p[k] || null]));
-const TOMADOR_CODIGO: Record<string, "0" | "1" | "2" | "3"> = { remetente: "0", expedidor: "1", recebedor: "2", destinatario: "3" };
+const TOMADOR_CODIGO: Record<string, "0" | "1" | "2" | "3" | "4"> = { remetente: "0", expedidor: "1", recebedor: "2", destinatario: "3", outros: "4" };
 
 const CCE_PRESETS: { id: string; label: string; grupo: string; campo: string; item?: boolean }[] = [
   { id: "xObs",   label: "Observações do CT-e (compl / xObs)",       grupo: "compl",    campo: "xObs" },
@@ -185,7 +185,7 @@ function imprimirDacte(c: Cte, logoUrl?: string | null, rntrcEmpresa?: string | 
   const chaveFmt = chave44 ? chave44.replace(/(\d{4})(?=\d)/g, "$1.").trim() : "";
 
   const TOMADOR_LABEL: Record<TomadorTipo, string> = {
-    remetente: "Remetente", expedidor: "Expedidor", recebedor: "Recebedor", destinatario: "Destinatário",
+    remetente: "Remetente", expedidor: "Expedidor", recebedor: "Recebedor", destinatario: "Destinatário", outros: "Outros",
   };
 
   // Situação tributária do ICMS — mesma regra do builder do CT-e (lib/cte/builder.ts):
@@ -199,9 +199,12 @@ function imprimirDacte(c: Cte, logoUrl?: string | null, rntrcEmpresa?: string | 
 
   const exp = particDeCte(c, "expedidor");
   const rec = particDeCte(c, "recebedor");
+  const tom = particDeCte(c, "tomador");
   const tomadorPessoa =
     c.tomador_tipo === "destinatario"
       ? { nome: c.destinatario_nome, cnpj: c.destinatario_cnpj, municipio: c.municipio_destino, uf: c.uf_destino }
+      : c.tomador_tipo === "outros"
+        ? { nome: tom.nome, cnpj: tom.cnpj, municipio: tom.municipio, uf: tom.uf }
       : c.tomador_tipo === "expedidor"
         ? { nome: exp.nome, cnpj: exp.cnpj, municipio: exp.municipio, uf: exp.uf }
         : c.tomador_tipo === "recebedor"
@@ -550,6 +553,7 @@ function CtePageInner() {
   const [remetenteSelUI,  setRemetenteSelUI]  = useState("");
   const [mostrarExp, setMostrarExp] = useState(false);
   const [mostrarRec, setMostrarRec] = useState(false);
+  const [mostrarTom, setMostrarTom] = useState(false);
   const [destinatarioSelUI, setDestinatarioSelUI] = useState("");
   const [iesRemetente,    setIesRemetente]    = useState<IeCompleta[]>([]);
   const [iesDestinatario, setIesDestinatario] = useState<IeCompleta[]>([]);
@@ -564,7 +568,7 @@ function CtePageInner() {
     natureza_operacao: "Prestação de serviço de transporte a estabelecimento comercial",
     tomador_tipo: "remetente" as TomadorTipo,
     remetente_id: "", remetente_nome: "", remetente_cnpj: "", remetente_ie: "",
-    exp: PARTIC_VAZIO(), rec: PARTIC_VAZIO(),
+    exp: PARTIC_VAZIO(), rec: PARTIC_VAZIO(), tom: PARTIC_VAZIO(),
     destinatario_id: "", destinatario_nome: "", destinatario_cnpj: "", destinatario_ie: "",
     municipio_origem: "", uf_origem: "MT", ibge_origem: "",
     municipio_destino: "", uf_destino: "MT", ibge_destino: "",
@@ -783,7 +787,7 @@ function CtePageInner() {
       numero_cte: c.numero_cte, serie: c.serie, data_emissao: c.data_emissao,
       cfop: c.cfop, natureza_operacao: c.natureza_operacao,
       tomador_tipo: c.tomador_tipo,
-      exp: particDeCte(c, "expedidor"), rec: particDeCte(c, "recebedor"),
+      exp: particDeCte(c, "expedidor"), rec: particDeCte(c, "recebedor"), tom: particDeCte(c, "tomador"),
       remetente_id: c.remetente_id ?? "", remetente_nome: c.remetente_nome, remetente_cnpj: c.remetente_cnpj ?? "",
       remetente_ie: (c as Cte & { remetente_ie?: string }).remetente_ie ?? "",
       destinatario_id: c.destinatario_id ?? "", destinatario_nome: c.destinatario_nome, destinatario_cnpj: c.destinatario_cnpj ?? "",
@@ -1013,6 +1017,8 @@ function CtePageInner() {
     if (!form.remetente_nome.trim())   { setErr("Informe o remetente."); return; }
     if (form.tomador_tipo === "expedidor" && !form.exp.nome.trim()) { setErr("Tomador = Expedidor: informe os dados do Expedidor."); return; }
     if (form.tomador_tipo === "recebedor" && !form.rec.nome.trim()) { setErr("Tomador = Recebedor: informe os dados do Recebedor."); return; }
+    if (form.tomador_tipo === "outros" && !form.tom.nome.trim()) { setErr("Tomador = Outros: informe os dados do tomador."); return; }
+    if (form.tomador_tipo === "outros" && !form.tom.cnpj.replace(/\D/g, "")) { setErr("Tomador = Outros: informe o CNPJ/CPF do tomador."); return; }
     if (!form.destinatario_nome.trim()){ setErr("Informe o destinatário."); return; }
     if (modoSubst && !substituindo && chaveExterna.replace(/\D/g, "").length !== 44) { setErr("CT-e substituto: escolha o CT-e a substituir ou informe a chave de 44 dígitos do CT-e original."); return; }
     setSaving(true); setErr("");
@@ -1034,6 +1040,8 @@ function CtePageInner() {
         tomador_tipo: form.tomador_tipo,
         ...particParaColunas("expedidor", form.exp),
         ...particParaColunas("recebedor", form.rec),
+        // só grava as colunas do tomador "Outros" quando usadas — não quebra o salvar antes da Seção 348 rodar
+        ...((form.tomador_tipo === "outros" || form.tom.nome.trim()) ? particParaColunas("tomador", form.tom) : {}),
         remetente_id: form.remetente_id || null,
         remetente_nome: form.remetente_nome,
         remetente_cnpj: form.remetente_cnpj || null,
@@ -1141,7 +1149,7 @@ function CtePageInner() {
             // ETC sem subcontratação de TAC: contratado = a própria transportadora (o servidor
             // ajusta CNPJ/RNTRC do emitente); contratante = o TOMADOR do frete; destinatário da carga.
             CpfCnpjContratado: contratante, RNTRCContratado: motorista?.rntrc ?? veiculo.rntrc ?? "",
-            CpfCnpjContratante: (({ remetente: form.remetente_cnpj, destinatario: form.destinatario_cnpj, expedidor: form.exp.cnpj, recebedor: form.rec.cnpj } as Record<string, string>)[form.tomador_tipo] || form.destinatario_cnpj || contratante).replace(/\D/g, ""),
+            CpfCnpjContratante: (({ remetente: form.remetente_cnpj, destinatario: form.destinatario_cnpj, expedidor: form.exp.cnpj, recebedor: form.rec.cnpj, outros: form.tom.cnpj } as Record<string, string>)[form.tomador_tipo] || form.destinatario_cnpj || contratante).replace(/\D/g, ""),
             CpfCnpjDestinatario: (form.destinatario_cnpj || "").replace(/\D/g, "") || undefined,
             ValorFrete: Number(form.valor_frete).toFixed(2),
             DataInicioViagem: form.data_emissao, DataFimViagem: dataFim,
@@ -1332,6 +1340,7 @@ function CtePageInner() {
     };
     const expPayload = await montarPartic(particDeCte(c, "expedidor"));
     const recPayload = await montarPartic(particDeCte(c, "recebedor"));
+    const tomPayload = await montarPartic(particDeCte(c, "tomador"));
 
     const payload = {
       fazenda_id:         fazendaId,
@@ -1401,6 +1410,7 @@ function CtePageInner() {
       tomador_tipo:       TOMADOR_CODIGO[c.tomador_tipo] ?? ("3" as const),
       expedidor:          expPayload,
       recebedor:          recPayload,
+      tomador:            tomPayload,
       observacao:         c.observacao  ?? undefined,
       ...(c.tipo_cte === "substituto" && (c.cte_substituido_id || c.cte_substituido_chave) ? {
         tp_cte: "3" as const,
@@ -2066,6 +2076,7 @@ function CtePageInner() {
                   <option value="destinatario">Destinatário (quem recebe)</option>
                   <option value="expedidor">Expedidor</option>
                   <option value="recebedor">Recebedor</option>
+                  <option value="outros">Outros (terceiro)</option>
                 </SelectField>
               </div>
               {/* Linha 2: CFOP (3 cols) + Natureza (1 col) */}
@@ -2134,10 +2145,11 @@ function CtePageInner() {
               </div>
 
               {/* ── Expedidor / Recebedor (opcionais) ── */}
-              {(["exp", "rec"] as const).map(k => {
-                const titulo = k === "exp" ? "Expedidor" : "Recebedor";
+              {(["exp", "rec", "tom"] as const).map(k => {
+                const titulo = k === "exp" ? "Expedidor" : k === "rec" ? "Recebedor" : "Tomador do serviço (Outros)";
+                const tipoK: TomadorTipo = k === "exp" ? "expedidor" : k === "rec" ? "recebedor" : "outros";
                 const pt = form[k];
-                const aberto = pt.nome !== "" || (k === "exp" ? mostrarExp : mostrarRec) || form.tomador_tipo === (k === "exp" ? "expedidor" : "recebedor");
+                const aberto = pt.nome !== "" || (k === "exp" ? mostrarExp : k === "rec" ? mostrarRec : mostrarTom) || form.tomador_tipo === tipoK;
                 const setP = (patch: Partial<ParticCte>) => setForm(f => ({ ...f, [k]: { ...f[k], ...patch } }));
                 const escolher = (v: string) => {
                   if (!v) return;
@@ -2149,15 +2161,15 @@ function CtePageInner() {
                 return (
                   <div key={k} style={{ gridColumn: "1 / -1" }}>
                     {!aberto ? (
-                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => k === "exp" ? setMostrarExp(true) : setMostrarRec(true)}
+                      <OperationalButton data-arato-button="secondary" type="button" onClick={() => k === "exp" ? setMostrarExp(true) : k === "rec" ? setMostrarRec(true) : setMostrarTom(true)}
                         style={{ padding: "6px 12px", border: "0.5px dashed var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
-                        + Informar {titulo} (opcional)
+                        + Informar {k === "tom" ? "Tomador (Outros)" : titulo} (opcional)
                       </OperationalButton>
                     ) : (
                       <div data-arato-panel="true" style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 12 }}>
                         <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                           <strong style={{ fontSize: 12, color: "var(--text-1)" }}>{titulo}</strong>
-                          <OperationalButton data-arato-button="secondary" type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === (k === "exp" ? "expedidor" : "recebedor") ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : setMostrarRec(false); }}
+                          <OperationalButton data-arato-button="secondary" type="button" onClick={() => { setForm(f => ({ ...f, [k]: PARTIC_VAZIO(), tomador_tipo: f.tomador_tipo === tipoK ? "remetente" : f.tomador_tipo })); k === "exp" ? setMostrarExp(false) : k === "rec" ? setMostrarRec(false) : setMostrarTom(false); }}
                             style={{ border: "none", background: "none", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>remover</OperationalButton>
                         </div>
                         <SelectBusca value="" onChange={escolher} placeholder={`— Selecionar ${titulo} (Produtores ou Pessoas) —`} style={inp}

@@ -45,6 +45,7 @@ export interface CTeInput {
   destinatario:     ParticipanteCTe;
   expedidor?:       ParticipanteCTe;   // opcional — grupo <exped>; obrigatório se tomador_tipo="1"
   recebedor?:       ParticipanteCTe;   // opcional — grupo <receb>; obrigatório se tomador_tipo="2"
+  tomador?:         ParticipanteCTe;   // terceiro — grupo <toma4>; obrigatório se tomador_tipo="4" (Outros)
   municipio_ini_ibge: string;
   municipio_ini_nome: string;
   uf_ini:           string;
@@ -80,7 +81,7 @@ export interface CTeInput {
   cte_substituido_chave?: string;
   /** indAlteraToma: o substituto muda o tomador do serviço. */
   ind_altera_toma?: boolean;
-  tomador_tipo:     "0" | "1" | "2" | "3";  // 0=rem, 1=exped, 2=receb, 3=dest
+  tomador_tipo:     "0" | "1" | "2" | "3" | "4";  // 0=rem, 1=exped, 2=receb, 3=dest, 4=outros (toma4)
   observacao?:      string;
 }
 
@@ -244,6 +245,21 @@ function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string, homolo
   </${tag}>`;
 }
 
+// Tomador "Outros" (grupo toma4): terceiro que não é remetente, expedidor, recebedor nem destinatário.
+function xmlToma4(p: ParticipanteCTe, homologacao = false): string {
+  const cpfcnpj = (p.cpf_cnpj ?? "").replace(/\D/g, "");
+  const docTag  = cpfcnpj.length === 14 ? "CNPJ" : "CPF";
+  const xNome   = homologacao ? NOME_HOMOLOGACAO : p.nome;
+  return `<toma4>
+        <toma>4</toma>
+        ${cpfcnpj ? `<${docTag}>${cpfcnpj}</${docTag}>` : "<CNPJ/>"}
+        ${p.ie ? `<IE>${esc(p.ie)}</IE>` : ""}
+        <xNome>${escLimite(xNome, 60)}</xNome>
+        ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
+        ${xmlEndereco("enderToma", p)}
+      </toma4>`;
+}
+
 // ── Builder principal ─────────────────────────────────────────────────────────
 export function buildCTe(input: CTeInput): CTeBuiltResult {
   const { emitente: e } = input;
@@ -299,13 +315,17 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
         ? input.destinatario
         : input.tomador_tipo === "1"
           ? input.expedidor
-          : input.recebedor;
+          : input.tomador_tipo === "4"
+            ? input.tomador
+            : input.recebedor;
 
   if (!tomador) {
     throw new Error(
       input.tomador_tipo === "1"
         ? "Tomador = Expedidor, mas os dados do Expedidor não foram informados"
-        : "Tomador = Recebedor, mas os dados do Recebedor não foram informados"
+        : input.tomador_tipo === "4"
+          ? "Tomador = Outros, mas os dados do tomador não foram informados"
+          : "Tomador = Recebedor, mas os dados do Recebedor não foram informados"
     );
   }
 
@@ -397,9 +417,9 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <UFFim>${input.uf_fim}</UFFim>
       <retira>0</retira>
       <indIEToma>${indIEToma}</indIEToma>
-      <toma3>
+      ${input.tomador_tipo === "4" ? xmlToma4(tomador, tpAmb === "2") : `<toma3>
         <toma>${input.tomador_tipo}</toma>
-      </toma3>
+      </toma3>`}
     </ide>
     ${input.observacao && input.observacao.trim().length >= 15 ? `<compl><xObs>${esc(input.observacao.trim().slice(0, 2000))}</xObs></compl>` : ""}
     <emit>
