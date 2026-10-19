@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-b",
+    data: "19/10/2026",
+    titulo: "Contas a Pagar e a Receber deixam de recarregar sozinhas",
+    modulos: ["Financeiro", "Sistema"],
+    itens: [
+      { tipo: "correcao", texto: "Ao voltar para a aba do sistema, o login era reiniciado e a lista de fazendas da sessão era recalculada, o que fazia Contas a Pagar e a Receber (e outras telas) consultarem o banco de novo sem você ter feito nada. Agora o login só é refeito quando o usuário muda, e as duas telas só recarregam ao abrir, ao salvar/editar/baixar, ou no botão Atualizar. Filtros continuam trabalhando sobre os dados já carregados." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.19-a",
     data: "19/10/2026",
     titulo: "CT-e: tomador do serviço \"Outros\" (terceiro)",

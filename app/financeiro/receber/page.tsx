@@ -285,7 +285,7 @@ export default function ContasAReceberPage() {
   // o usuário escolher filtro primeiro. Refiltrar é sempre sobre o que já
   // está carregado; só período/busca disparam nova consulta (botão Atualizar).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]);
+  useEffect(() => { carregar(); }, [contaId ? null : fazendaId, contaId ? null : fazendaIds?.join(","), contaId]);
 
   // ── Borderôs — pendentes (ainda não confirmados) e pagos (título já
   // quitado) ───────────────────────────────────────────────────────

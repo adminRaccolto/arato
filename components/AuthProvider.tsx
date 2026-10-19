@@ -127,6 +127,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const inactivityTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // Usuário já inicializado: o supabase-js reemite SIGNED_IN a cada volta à aba, e refazer o init
+  // zerava fazendaIds (provisório) e recarregava todas as telas sem o usuário ter feito nada.
+  const initUserIdRef = useRef<string | null>(null);
   const realtimeModulosRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const selectFazenda = useCallback((id: string, fazendaNome: string, produtorNome?: string | null) => {
@@ -213,6 +216,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
 
       const { data: { user } } = await supabase.auth.getUser();
+      if (user) initUserIdRef.current = user.id;
       if (!user) {
         const path = typeof window !== "undefined" ? window.location.pathname : "";
         const isPublic = ["/login", "/planos", "/auth/", "/api/"].some(p => path.startsWith(p));
@@ -454,8 +458,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
+        initUserIdRef.current = null;
         setFazendaId(null);
         setFazendaIds([]);
         setContaId(null);
@@ -467,7 +472,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const isPublic = ["/login", "/planos", "/auth/", "/api/"].some(p => path.startsWith(p));
         router.push(isPublic || !path ? "/login" : "/login?next=" + encodeURIComponent(path));
       }
-      if (event === "SIGNED_IN") init();
+      if (event === "SIGNED_IN") {
+        if (session?.user?.id && session.user.id === initUserIdRef.current) return;
+        init();
+      }
     });
 
     return () => {

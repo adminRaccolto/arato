@@ -295,7 +295,7 @@ export default function ContasAPagarPage() {
       setCarregando(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds?.join(","), contaId]);
+  }, [contaId ? null : fazendaId, contaId ? null : fazendaIds?.join(","), contaId]);
   useEffect(() => { carregar(); }, [carregar]);
 
   // ── Borderôs — pendentes (ainda não confirmados) e pagos (título já
