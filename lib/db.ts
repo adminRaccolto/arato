@@ -3731,9 +3731,17 @@ function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
   const vc = (row.valor_cotacao ?? row.cotacao_usd) as number | undefined;
   const vfbrl = (row.valor_financiado_brl as number | undefined)
     ?? (row.moeda === "USD" && vc ? vf * vc : vf);
-  const tc = ((row.tipo_calculo ?? (row.tipo_amortizacao ? (row.tipo_amortizacao as string).toLowerCase() : "sac")) as string);
+  // O sistema de amortização é gravado em tipo_amortizacao (PRICE, SAC, SAC_CRESCENTE…). A coluna tipo_calculo
+  // tem default 'sac' no banco e nunca era atualizada — lê-la primeiro fazia todo contrato PRICE/SACRE abrir como
+  // SAC (e a tabela de parcelas ser calculada como SAC). tipo_amortizacao manda; tipo_calculo só entra se faltar.
+  const taRaw = String(row.tipo_amortizacao ?? "").toLowerCase();
+  const tcRaw = String(row.tipo_calculo ?? "").toLowerCase();
+  const tc = taRaw || tcRaw || "sac";
   const tipoCalculo: ContratoFinanceiro["tipo_calculo"] =
-    tc === "price" ? "price" : tc === "outros" ? "outros" : "sac";
+    tc === "price" ? "price"
+    : tc === "outros" ? "outros"
+    : (tc === "sac_crescente" || tc === "sacre") ? "sac_crescente"
+    : "sac";
   const tipoRaw = (row.tipo as string | undefined ?? "outros").toLowerCase();
   const tipo: ContratoFinanceiro["tipo"] = TIPO_CF_MAP[tipoRaw] ?? "outros";
   const status = (row.status as string | undefined) ?? "ativo";
@@ -3850,6 +3858,7 @@ function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">)
     conta_liberacao_id:     c.conta_liberacao_id,
     conta_pagamento_id:     c.conta_pagamento_id,
     tipo_amortizacao:       (c.tipo_calculo ?? "sac").toUpperCase(),
+    tipo_calculo:           c.tipo_calculo ?? "sac",  // mantém a coluna legada em sincronia
     status:                 c.status,
     observacao:             c.observacao,
     produtor_id:            c.produtor_id,

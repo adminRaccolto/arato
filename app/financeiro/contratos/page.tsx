@@ -1,4 +1,5 @@
 "use client";
+import { repartirCronograma } from "../../../lib/financeiro/cronograma";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -787,14 +788,18 @@ export default function ContratosFinanceiros() {
       // confirmar em "Salvar Parcelas e Lançar no CP" (mesmo botão usado pelo
       // cálculo manual SAC/PRICE/SACRE — um único ponto de persistência de CP
       // pros dois caminhos, em vez de duas cópias divergentes da mesma lógica).
+      // O cronograma da cédula traz só a PRESTAÇÃO de cada vencimento. Separa juros e amortização pela taxa implícita
+      // que zera o saldo no último pagamento (antes, a prestação inteira virava amortização e os juros ficavam zerados).
+      const principalCed = parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado;
+      const { linhas: repart } = repartirCronograma(principalCed, parcelasIAPdf.map(p => p.valor ?? 0));
       const parcelasParaSalvar = parcelasIAPdf.map((p, idx) => ({
         num_parcela: idx + 1,
         data_vencimento: p.data_vencimento,
-        amortizacao: p.valor ?? 0,
-        juros: 0,
+        amortizacao: repart[idx].amortizacao,
+        juros: repart[idx].juros,
         despesas_acessorios: 0,
         valor_parcela: p.valor ?? 0,
-        saldo_devedor: 0,
+        saldo_devedor: repart[idx].saldo,
         status: "em_aberto" as const,
       }));
       const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
@@ -808,6 +813,29 @@ export default function ContratosFinanceiros() {
     } finally {
       setSalvando(false);
     }
+  };
+
+  // ── Repartir juros × amortização do cronograma atual (corrige contratos cujo cronograma foi salvo com juros zerados) ──
+  const repartirJurosAmortizacao = async () => {
+    if (!contratoModal || parcelasPagamento.length === 0) return;
+    if (!(await confirmarAcao({ titulo: "Repartir juros e amortização", mensagem: "O valor de cada parcela é mantido. O sistema calcula a taxa que zera o saldo no último vencimento e separa, em cada parcela ainda não paga, quanto é juros e quanto é amortização. Depois clique em Salvar Parcelas e Lançar no CP para refazer os lançamentos em aberto.", perigo: false }))) return;
+    setErroModal(null); setSalvando(true);
+    try {
+      const principal = parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado;
+      const ordenadas = [...parcelasPagamento].sort((a, b) => a.num_parcela - b.num_parcela);
+      const { linhas } = repartirCronograma(principal, ordenadas.map(p => Math.max(0, (p.valor_parcela ?? 0) - (p.despesas_acessorios ?? 0))));
+      for (let i = 0; i < ordenadas.length; i++) {
+        const p = ordenadas[i];
+        if (p.status === "pago") continue;   // parcela já paga não é mexida
+        const { error } = await supabase.from("parcelas_pagamento")
+          .update({ amortizacao: linhas[i].amortizacao, juros: linhas[i].juros, saldo_devedor: linhas[i].saldo }).eq("id", p.id);
+        if (error) throw error;
+      }
+      setParcelasPagamento(await listarParcelasPagamento(contratoModal.id));
+      setParcelasEditadas({});
+    } catch (e) {
+      setErroModal((e as { message?: string })?.message ?? "Erro ao repartir juros e amortização.");
+    } finally { setSalvando(false); }
   };
 
   // ── Ajustes manuais de parcelas ──
@@ -931,13 +959,30 @@ export default function ContratosFinanceiros() {
       if (ed.valor_parcela) {
         const novoValor = parseFloat(ed.valor_parcela.replace(/\./g, "").replace(",", "."));
         if (isNaN(novoValor)) return { ...p, data_vencimento: novaData };
-        return { ...p, data_vencimento: novaData, valor_parcela: novoValor, amortizacao: novoValor, juros: 0, despesas_acessorios: 0 };
+        // Valor editado: os juros do período continuam, a amortização é o resto da prestação (antes, o valor inteiro virava
+        // amortização e os juros zeravam). Se o valor não cobre nem os juros, tudo vira juros.
+        const juros0 = p.juros ?? 0, acess = p.despesas_acessorios ?? 0;
+        const sobra = novoValor - acess - juros0;
+        return sobra >= 0
+          ? { ...p, data_vencimento: novaData, valor_parcela: novoValor, amortizacao: Math.round(sobra * 100) / 100 }
+          : { ...p, data_vencimento: novaData, valor_parcela: novoValor, amortizacao: 0, juros: Math.max(0, Math.round((novoValor - acess) * 100) / 100) };
       }
       if (ed.juros === undefined && ed.amortizacao === undefined) return { ...p, data_vencimento: novaData };
       const novaAmort = ed.amortizacao !== undefined ? (parseFloat(ed.amortizacao.replace(/\./g, "").replace(",", ".")) || 0) : p.amortizacao;
       const novoJuros = ed.juros !== undefined ? (parseFloat(ed.juros.replace(/\./g, "").replace(",", ".")) || 0) : p.juros;
       return { ...p, data_vencimento: novaData, amortizacao: novaAmort, juros: novoJuros, valor_parcela: novaAmort + novoJuros + p.despesas_acessorios };
     });
+    // Saldo devedor refeito a partir da primeira parcela alterada (a amortização mudou)
+    const idxEdit = parcelasPagamento.findIndex(p => !!parcelasEditadas[p.id]);
+    if (idxEdit >= 0) {
+      let saldoAc = idxEdit === 0
+        ? (parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado)
+        : atualizadas[idxEdit - 1].saldo_devedor;
+      for (let i = idxEdit; i < atualizadas.length; i++) {
+        saldoAc = Math.max(0, Math.round((saldoAc - atualizadas[i].amortizacao) * 100) / 100);
+        atualizadas[i] = { ...atualizadas[i], saldo_devedor: saldoAc };
+      }
+    }
     const salvas = await salvarParcelasPagamento(
       contratoModal.id, fazendaId,
       atualizadas.map(p => ({ ...p, status: p.status ?? "em_aberto" as const }))
@@ -2016,6 +2061,8 @@ export default function ContratosFinanceiros() {
                                 Editar parcelas (libera Amortização e Juros pra edição manual)
                                 {temEdits && <span> — ✏ há ajustes não salvos, clique em <strong>Salvar</strong> para confirmar.</span>}
                               </label>
+                              <OperationalButton data-arato-button="secondary" style={{ ...btnV, padding: "6px 12px", fontSize: 12, marginLeft: "auto", marginRight: 8 }} disabled={salvando} onClick={repartirJurosAmortizacao}
+                                title="Mantém o valor de cada parcela e separa juros × amortização pela taxa implícita do cronograma">↻ Repartir juros × amortização</OperationalButton>
                               <OperationalButton data-arato-button="primary" style={{ ...btnV, background: "#C9921B", padding: "6px 16px", fontSize: 12 }} disabled={salvando} onClick={salvarParcelasELancarCP}>
                                 {salvando ? "Salvando…" : "💾 Salvar Parcelas e Lançar no CP"}
                               </OperationalButton>

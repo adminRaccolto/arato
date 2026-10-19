@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-m",
+    data: "19/10/2026",
+    titulo: "Contratos financeiros: juros e amortização corretos nas parcelas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao usar o cronograma lido do PDF da cédula, cada prestação inteira era salva como amortização e os juros ficavam zerados. Agora o sistema descobre a taxa implícita do cronograma (a que zera o saldo no último vencimento) e separa, em cada parcela, juros e amortização, com o saldo devedor correto. Na cédula 826134 (5 x 51.514,46 sobre 206.972,70) o resultado bate com a tabela do banco: juros de 16.067,60, 13.315,81, 10.350,39, 7.154,76 e 3.711,05." },
+      { tipo: "correcao", texto: "Contratos Price (e SACRE) abriam como SAC na tela, e a tabela de parcelas era calculada como SAC, porque o sistema lia uma coluna antiga com valor padrão SAC em vez do sistema de amortização gravado. Agora lê o sistema de amortização correto." },
+      { tipo: "correcao", texto: "Editar o Valor da Parcela deixou de zerar os juros: os juros do período são mantidos, a amortização é o restante da prestação e o saldo devedor das parcelas seguintes é recalculado." },
+      { tipo: "novo", texto: "Novo botão Repartir juros × amortização na aba Pagamento, para corrigir contratos já salvos com juros zerados: mantém o valor de cada parcela, separa juros e amortização nas parcelas ainda não pagas e deixa as pagas como estão. Depois, clique em Salvar Parcelas e Lançar no CP para refazer os lançamentos em aberto." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → Pagamento",
+  },
+  {
     versao: "2026.10.19-l",
     data: "19/10/2026",
     titulo: "Contratos financeiros: IOF e tarifas financiados, e liberação preenchida pela IA",
