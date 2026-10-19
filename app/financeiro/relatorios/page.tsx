@@ -100,11 +100,14 @@ function FinanceiroRelatoriosInner() {
   const [operacoesGer, setOperacoesGer] = useState<OperacaoGerencial[]>([]);
   // Nome das operações gerenciais que os títulos usam mas a lista acima não traz (ela é deduplicada por classificação)
   const [ogExtra, setOgExtra] = useState<Record<string, string>>({});
+  // Título sem operação gerencial própria herda a da NF de origem (resolvido no servidor)
+  const [ogPorTitulo, setOgPorTitulo] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!fazendaId || lancamentos.length === 0) return;
     const conhecidas = new Set(operacoesGer.map(o => o.id));
     const faltam = [...new Set(lancamentos.map(l => l.operacao_gerencial_id).filter((x): x is string => !!x && !conhecidas.has(x) && !ogExtra[x]))];
-    if (faltam.length === 0) return;
+    const semOg = lancamentos.filter(l => !l.operacao_gerencial_id && (l as unknown as { nf_entrada_id?: string | null }).nf_entrada_id && !ogPorTitulo[l.id]);
+    if (faltam.length === 0 && semOg.length === 0) return;
     let vivo = true;
     (async () => {
       try {
@@ -116,6 +119,15 @@ function FinanceiroRelatoriosInner() {
         });
         const j = await r.json() as { ok: boolean; og_por_id?: Record<string, string> };
         if (vivo && j.ok && j.og_por_id) setOgExtra(prev => ({ ...prev, ...j.og_por_id }));
+        if (semOg.length > 0) {
+          const r2 = await fetch("/api/financeiro/enriquecer-titulos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(sess.session?.access_token ? { Authorization: `Bearer ${sess.session.access_token}` } : {}) },
+            body: JSON.stringify({ fazenda_id: fazendaId, titulos: semOg.map(l => ({ id: l.id, empresa: !!(l as unknown as { empresa_id?: string | null }).empresa_id })) }),
+          });
+          const j2 = await r2.json() as { ok: boolean; og?: Record<string, string> };
+          if (vivo && j2.ok && j2.og) setOgPorTitulo(prev => ({ ...prev, ...j2.og }));
+        }
       } catch { /* a coluna fica como estava */ }
     })();
     return () => { vivo = false; };
@@ -2000,7 +2012,7 @@ function FinanceiroRelatoriosInner() {
                     case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
                     case "moeda":          return (l.moeda ?? "brl").toUpperCase();
                     case "forma_pgto":     return l.forma_pagamento ?? "";
-                    case "op_gerencial":   return l.operacao_gerencial_id ? (extras.og.get(l.id) ?? ogMap[l.operacao_gerencial_id] ?? "") : "";
+                    case "op_gerencial":   return extras.og.get(l.id) ?? (l.operacao_gerencial_id ? ogMap[l.operacao_gerencial_id] : undefined) ?? ogPorTitulo[l.id] ?? "";
                     case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? empresas.find(e => e.id === (l as unknown as { empresa_id?: string | null }).empresa_id)?.nome ?? "";
                     case "observacao":     return l.observacao ?? "";
                     case "categoria":      return l.categoria ?? "";
@@ -2409,7 +2421,10 @@ function FinanceiroRelatoriosInner() {
                           case "forma_pgto":
                             return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }}>{l.forma_pagamento || "—"}</td>;
                           case "op_gerencial":
-                            return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : ""}>{l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "—") : "—"}</td>;
+                            {
+                              const nomeOg = (l.operacao_gerencial_id ? ogMap[l.operacao_gerencial_id] : undefined) ?? ogPorTitulo[l.id] ?? "";
+                              return <td key={col.key} style={{ ...tdBase, width: cpcrW[col.key] }} title={nomeOg}>{nomeOg || "—"}</td>;
+                            }
                           case "produtor": {
                             // Produtor do título; título de Empresa (PJ) não tem produtor — mostra a empresa dona
                             const nomeProd = (l.produtor_id ? prodMap[l.produtor_id] : null) ?? empresas.find(e => e.id === (l as unknown as { empresa_id?: string | null }).empresa_id)?.nome ?? "";

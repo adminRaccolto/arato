@@ -30,7 +30,7 @@ const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
     ["popupDetalhe", "produtor e documento de origem no popup do extrato vinculado"], ["produtorDoTitulo", "coluna Produtor na lista de títulos da conciliação"],
   ],
   "app/financeiro/relatorios/page.tsx": [
-    ["ogExtra", "operação gerencial dos títulos resolvida por id também no grid do relatório CP/CR"], ["resolverExtras", "Nº da NF e operação gerencial resolvidos do banco na exportação/impressão CP/CR"], ["enriquecer-titulos", "exportação CP/CR usa a rota de servidor que resolve NF e operação gerencial"],
+    ["ogExtra", "operação gerencial dos títulos resolvida por id também no grid do relatório CP/CR"], ["ogPorTitulo", "título sem operação gerencial herda a da NF de origem no relatório CP/CR"], ["resolverExtras", "Nº da NF e operação gerencial resolvidos do banco na exportação/impressão CP/CR"], ["enriquecer-titulos", "exportação CP/CR usa a rota de servidor que resolve NF e operação gerencial"],
     ["printCpcrRef", "impressão limpa do relatório CP/CR (sem filtros da tela)"], ["cpcrEmitir", "relatório CP/CR emitido por janela de filtro (PDF/XLSX direto, sem abrir a tela)"], ["salvarRelCols", "colunas personalizadas do relatório CP/CR escolhidas na janela de filtro"], ["printOutrosRef", "impressão própria de DFC e Posição por Conta"], ["listarEmpresasDaConta", "empresas de toda a conta no relatório (produtor de título de PJ)"], ["escopoImpressao", "cabeçalho do relatório mostra o escopo real (conta/produtor), não a fazenda ativa"],
   ],
   "app/financeiro/receber/page.tsx": [

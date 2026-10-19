@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-s",
+    data: "19/10/2026",
+    titulo: "CP de Empresa (PJ) com a operação gerencial da NF",
+    modulos: ["Financeiro", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "Muitos CP de Empresa (PJ) criados a partir de NF de entrada ficavam sem operação gerencial (no Grupo Ogliari, 59 de 70 vencidos), mesmo a NF tendo a operação gerencial. Ao processar a NF, o CP agora herda da própria NF a operação gerencial, o centro de custo, o ano safra e o ciclo quando a tela não os informou. O relatório CP/CR (grid, Excel e PDF) também mostra a operação gerencial da NF quando o título não tem a própria." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR; Documentos Fiscais → processar NF",
+  },
+  {
     versao: "2026.10.19-r",
     data: "19/10/2026",
     titulo: "Relatório CP/CR com colunas personalizadas",

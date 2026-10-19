@@ -61,11 +61,13 @@ export async function POST(req: NextRequest) {
 
     const idsNF = [...new Set(linhas.map(l => l.nf_entrada_id).filter((x): x is string => !!x))];
     const numNF = new Map<string, string>();
+    const ogDaNF = new Map<string, string>();   // OG que a própria NF guarda (título sem OG própria herda a da NF)
     for (let i = 0; i < idsNF.length; i += 200) {
-      const { data } = await sb.from("nf_entradas").select("id, numero").in("id", idsNF.slice(i, i + 200));
-      for (const n of data ?? []) if (n.numero) numNF.set(n.id as string, String(n.numero));
+      const { data } = await sb.from("nf_entradas").select("id, numero, operacao_gerencial_id").in("id", idsNF.slice(i, i + 200));
+      for (const n of data ?? []) { if (n.numero) numNF.set(n.id as string, String(n.numero)); if (n.operacao_gerencial_id) ogDaNF.set(n.id as string, n.operacao_gerencial_id as string); }
     }
-    const idsOG = [...new Set(linhas.map(l => l.operacao_gerencial_id).filter((x): x is string => !!x))];
+    const ogDoTitulo = (l: Linha) => l.operacao_gerencial_id ?? (l.nf_entrada_id ? ogDaNF.get(l.nf_entrada_id) : undefined) ?? null;
+    const idsOG = [...new Set(linhas.map(ogDoTitulo).filter((x): x is string => !!x))];
     const nomeOG = new Map<string, string>();
     for (let i = 0; i < idsOG.length; i += 200) {
       const { data } = await sb.from("operacoes_gerenciais").select("id, descricao").in("id", idsOG.slice(i, i + 200));
@@ -77,7 +79,8 @@ export async function POST(req: NextRequest) {
     for (const l of linhas) {
       const n = (l.nf_entrada_id ? numNF.get(l.nf_entrada_id) : undefined) ?? l.nfe_numero ?? l.numero_documento;
       if (n) nf[l.id] = String(n);
-      if (l.operacao_gerencial_id && nomeOG.get(l.operacao_gerencial_id)) og[l.id] = nomeOG.get(l.operacao_gerencial_id)!;
+      const idOg = ogDoTitulo(l);
+      if (idOg && nomeOG.get(idOg)) og[l.id] = nomeOG.get(idOg)!;
     }
     return NextResponse.json({ ok: true, nf, og, total: linhas.length });
   } catch (e) {

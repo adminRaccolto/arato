@@ -2845,13 +2845,21 @@ export async function processarNfEntrada(
   // qualquer coisa nova — não depende de o chamador lembrar de limpar direito.
   // NF já processada nunca é processada de novo por aqui: processar duas vezes (lote repetido, clique duplo,
   // tela desatualizada) empilhava estoque e título. Para refazer, a NF precisa ser estornada antes (volta a pendente).
+  let nfVinc: Record<string, string | null> = {};
   {
-    const { data: nfSt } = await supabase.from("nf_entradas").select("status, numero").eq("id", nfId).maybeSingle();
+    const { data: nfSt } = await supabase.from("nf_entradas").select("status, numero, operacao_gerencial_id, centro_custo_id, ano_safra_id, ciclo_id").eq("id", nfId).maybeSingle();
+    nfVinc = (nfSt ?? {}) as Record<string, string | null>;
     if (nfSt?.status === "processada") {
       throw new Error(`NF ${nfSt.numero ?? ""} já está processada. Para processar de novo, estorne antes (reverte estoque e financeiro).`);
     }
   }
   await limparMovimentacoesEFinanceiroDaNf(nfId);
+  // Classificação do CP: a informada na tela ou, sem ela, a que a própria NF já guarda (antes o CP — principalmente o de
+  // Empresa/PJ — saía sem operação gerencial, safra, ciclo e centro de custo quando o chamador não repassava esses campos).
+  const ogEfetiva     = opts?.operacaoGerencialId || nfVinc.operacao_gerencial_id || undefined;
+  const ccEfetivo     = opts?.centroCustoId       || nfVinc.centro_custo_id       || undefined;
+  const safraEfetiva  = opts?.anoSafraId          || nfVinc.ano_safra_id          || undefined;
+  const cicloEfetivo  = opts?.cicloId             || nfVinc.ciclo_id              || undefined;
 
   // Produtor do CP: o informado na tela ou, sem ele, o do CPF/CNPJ do destinatário da NF (antes ficava em branco
   // em todo CP de NF processada sem escolher o produtor, e o relatório/filtro por produtor perdia o título).
@@ -3284,10 +3292,10 @@ export async function processarNfEntrada(
         pessoa_id:             pessoaId ?? undefined,
         produtor_id:           produtorEfetivo,
         maquina_id:            opts?.maquinaId ?? undefined,
-        ano_safra_id:          opts?.anoSafraId ?? undefined,
-        ciclo_id:              opts?.cicloId ?? undefined,
-        operacao_gerencial_id: opts?.operacaoGerencialId ?? undefined,
-        centro_custo_id:       opts?.centroCustoId ?? undefined,
+        ano_safra_id:          safraEfetiva,
+        ciclo_id:              cicloEfetivo,
+        operacao_gerencial_id: ogEfetiva,
+        centro_custo_id:       ccEfetivo,
       }).eq("id", lancamentoIdPedido);
       nfUpdates.lancamento_id = lancamentoIdPedido;
 
@@ -3321,10 +3329,10 @@ export async function processarNfEntrada(
         origem:        "nf_entrada" as const,
         nf_entrada_id: nfId,
         // Mesmos vínculos do CP de produtor (safra, ciclo, OG, centro de custo) — antes ficavam vazios
-        ano_safra_id:          opts?.anoSafraId ?? undefined,
-        ciclo_id:              opts?.cicloId ?? undefined,
-        operacao_gerencial_id: opts?.operacaoGerencialId ?? undefined,
-        centro_custo_id:       opts?.centroCustoId ?? undefined,
+        ano_safra_id:          safraEfetiva,
+        ciclo_id:              cicloEfetivo,
+        operacao_gerencial_id: ogEfetiva,
+        centro_custo_id:       ccEfetivo,
       };
 
       // Usa API route com service_role_key — evita 42501 por JWT expirado
@@ -3378,10 +3386,10 @@ export async function processarNfEntrada(
         origem_lancamento:       "nf_entrada",
         produtor_id:             produtorEfetivo,
         maquina_id:              opts?.maquinaId ?? undefined,
-        ano_safra_id:            opts?.anoSafraId ?? undefined,
-        ciclo_id:                opts?.cicloId ?? undefined,
-        operacao_gerencial_id:   opts?.operacaoGerencialId ?? undefined,
-        centro_custo_id:         opts?.centroCustoId ?? undefined,
+        ano_safra_id:            safraEfetiva,
+        ciclo_id:                cicloEfetivo,
+        operacao_gerencial_id:   ogEfetiva,
+        centro_custo_id:         ccEfetivo,
       };
 
       // Usa API route com service_role_key — evita 42501 por JWT expirado
