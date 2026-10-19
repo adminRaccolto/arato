@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-k",
+    data: "19/10/2026",
+    titulo: "Exportação Excel do CP/CR: NF e operação gerencial pelo servidor",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A exportação para Excel (e a impressão) do relatório CP/CR agora busca o Nº da NF e a Operação Gerencial de cada título por uma rota de servidor, que não depende da sessão do navegador nem das permissões de leitura, e traz também as notas e operações de títulos de Empresa. Nas linhas de Empresa, a coluna Produtor passa a mostrar o nome da empresa." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → Exportar XLSX",
+  },
+  {
     versao: "2026.10.19-j",
     data: "19/10/2026",
     titulo: "SIEG: sincronização automática e fim das notas perdidas",

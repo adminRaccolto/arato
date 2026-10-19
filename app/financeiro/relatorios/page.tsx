@@ -1881,13 +1881,31 @@ function FinanceiroRelatoriosInner() {
                 // NF mora na própria NF — por isso são resolvidos aqui, direto do banco, na hora de exportar/imprimir.
                 const extras = { nf: new Map<string, string>(), og: new Map<string, string>() };
                 const resolverExtras = async () => {
+                  // 1) servidor (service_role): não depende de RLS nem de sessão expirada
+                  try {
+                    const { data: sess } = await supabase.auth.getSession();
+                    const r = await fetch("/api/financeiro/enriquecer-titulos", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", ...(sess.session?.access_token ? { Authorization: `Bearer ${sess.session.access_token}` } : {}) },
+                      body: JSON.stringify({ fazenda_id: fazendaId, titulos: lancsCPCR.map(l => ({ id: l.id, empresa: !!(l as unknown as { empresa_id?: string | null }).empresa_id })) }),
+                    });
+                    const j = await r.json() as { ok: boolean; nf?: Record<string, string>; og?: Record<string, string>; error?: string };
+                    if (j.ok) {
+                      for (const [id, n] of Object.entries(j.nf ?? {})) extras.nf.set(id, n);
+                      for (const [id, n] of Object.entries(j.og ?? {})) extras.og.set(id, n);
+                      return;
+                    }
+                  } catch { /* cai no plano B abaixo */ }
+                  // 2) plano B: consulta direta pelo navegador
                   const nfRows = await carregarNumerosNF(supabase, lancsCPCR.map(l => ({ id: l.id, origem_tabela: (l as unknown as { empresa_id?: string | null }).empresa_id ? "empresa_lancamentos" : "lancamentos", nfe_numero: l.nfe_numero ?? null })));
                   for (const r of nfRows) if (r.nfe_numero) extras.nf.set(r.id, String(r.nfe_numero));
                   const faltam = [...new Set(lancsCPCR.map(l => l.operacao_gerencial_id).filter((x): x is string => !!x && !ogMap[x]))];
+                  const porId = new Map<string, string>();
                   for (let i = 0; i < faltam.length; i += 200) {
                     const { data } = await supabase.from("operacoes_gerenciais").select("id, descricao").in("id", faltam.slice(i, i + 200));
-                    for (const o of data ?? []) extras.og.set(o.id as string, o.descricao as string);
+                    for (const o of data ?? []) porId.set(o.id as string, o.descricao as string);
                   }
+                  for (const l of lancsCPCR) if (l.operacao_gerencial_id && porId.has(l.operacao_gerencial_id)) extras.og.set(l.id, porId.get(l.operacao_gerencial_id)!);
                 };
                 const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
                 // Colunas respeitam a ordem e visibilidade do grid
@@ -1910,8 +1928,8 @@ function FinanceiroRelatoriosInner() {
                     case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
                     case "moeda":          return (l.moeda ?? "brl").toUpperCase();
                     case "forma_pgto":     return l.forma_pagamento ?? "";
-                    case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? extras.og.get(l.operacao_gerencial_id) ?? "") : "";
-                    case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
+                    case "op_gerencial":   return l.operacao_gerencial_id ? (extras.og.get(l.id) ?? ogMap[l.operacao_gerencial_id] ?? "") : "";
+                    case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? empresas.find(e => e.id === (l as unknown as { empresa_id?: string | null }).empresa_id)?.nome ?? "";
                     case "observacao":     return l.observacao ?? "";
                     default:               return "";
                   }
