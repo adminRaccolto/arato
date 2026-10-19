@@ -1,4 +1,6 @@
 "use client";
+import type { VeiculoUnificado } from "../../../lib/db";
+import ModalVincularNf from "../../../components/financeiro/ModalVincularNf";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
 import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
@@ -56,8 +58,7 @@ import {
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
   excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
-  listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP,
-} from "../../../lib/db";
+  listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados } from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { statusExibido } from "../../../lib/financeiro/titulos";
@@ -76,6 +77,9 @@ type RelLancamento = {
   fazenda_id: string | null;
   empresa_id: string | null;
   pessoa_id?: string | null;
+  operacao_gerencial_id?: string | null;
+  ano_safra_id?: string | null;
+  ciclo_id?: string | null;
   numero: number | null;
   nfe_numero: string | null;
   descricao: string | null;
@@ -240,6 +244,7 @@ export default function ContasAPagarPage() {
   // porque "vencido" não some do status mesmo com data < hoje).
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
+  const [fAtalho, setFAtalho] = useState("");
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
@@ -263,6 +268,14 @@ export default function ContasAPagarPage() {
   // ── Cadastros de apoio pro formulário de Novo Lançamento ──────
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [cadPessoaAberto, setCadPessoaAberto] = useState(false);
+  const [funcionarios, setFuncionarios] = useState<{ id: string; nome: string }[]>([]);
+  const [veiculos, setVeiculos] = useState<VeiculoUnificado[]>([]);
+  useEffect(() => {
+    const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
+    if (!fids.length) return;
+    listarFuncionarios(fids).then(setFuncionarios).catch(() => {});
+    listarVeiculosUnificados(fids, "todos").then(setVeiculos).catch(() => {});
+  }, [fazendaId, fazendaIds?.join(",")]);
   const [empresas,      setEmpresas]      = useState<Empresa[]>([]);
   const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
   useEffect(() => {
@@ -360,7 +373,15 @@ export default function ContasAPagarPage() {
     if (k === "dias") return casaFiltroNumero(diasVencimento(l.data_vencimento, l.status_normalizado), f);
     return casaFiltroTexto(textoColuna(l, k), f);
   });
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l));
+  const passaAtalho = (l: RelLancamento) => {
+    if (!fAtalho) return true;
+    const aberto = l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado";
+    const h = hojeISO(); const lim = new Date(`${h}T12:00:00`); lim.setDate(lim.getDate() + 7);
+    if (fAtalho === "vencendo") return aberto && !!l.data_vencimento && l.data_vencimento >= h && l.data_vencimento <= lim.toISOString().slice(0, 10);
+    if (fAtalho === "barter") return l.moeda === "barter";
+    return l.origem_lancamento === fAtalho;
+  };
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l) && passaAtalho(l));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
@@ -385,6 +406,22 @@ export default function ContasAPagarPage() {
   const [bMulta,  setBMulta]  = useState("0,00");
   const [bJuros,  setBJuros]  = useState("0,00");
   const [bDesc,   setBDesc]   = useState("0,00");
+  // Classificação na baixa (fornecedor, safra, ciclo e operação gerencial) + nova data do saldo em baixa parcial
+  const [bNovaData, setBNovaData] = useState("");
+  const [bClass, setBClass] = useState({ pessoa_id: "", ano_safra_id: "", ciclo_id: "", og_id: "", salvar: false });
+  const [bClassAberta, setBClassAberta] = useState(false);
+  const [bSafras, setBSafras] = useState<{ id: string; descricao: string }[]>([]);
+  const [bCiclos, setBCiclos] = useState<{ id: string; descricao?: string | null; cultura?: string | null }[]>([]);
+  useEffect(() => {
+    if (!modalBaixa || modalBaixa.origem_tabela !== "lancamentos") { setBSafras([]); return; }
+    const f = modalBaixa.fazenda_id ?? fazendaId; if (!f) return;
+    listarAnosSafra(f).then(a => setBSafras(a as { id: string; descricao: string }[])).catch(() => setBSafras([]));
+  }, [modalBaixa?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const f = modalBaixa?.fazenda_id ?? fazendaId;
+    if (!bClass.ano_safra_id || !f) { setBCiclos([]); return; }
+    listarCiclos(bClass.ano_safra_id, f).then(c => setBCiclos(c as { id: string; descricao?: string | null; cultura?: string | null }[])).catch(() => setBCiclos([]));
+  }, [bClass.ano_safra_id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvandoAcao, setSalvandoAcao] = useState(false);
   const [erroAcao,     setErroAcao]     = useState("");
 
@@ -394,7 +431,16 @@ export default function ContasAPagarPage() {
     setBValor(Math.max(0, saldoBase(modalBaixa) + numBR(multa) + numBR(juros) - numBR(desc)).toFixed(2).replace(".", ","));
   };
 
-  async function abrirBaixa(l: RelLancamento) {
+  // Título lançado à mão e sem NF: antes de baixar, oferece vincular uma NF (restaurado da tela anterior).
+  const [alertaNF, setAlertaNF] = useState<RelLancamento | null>(null);
+  const CATEGORIAS_SEM_NF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto"];
+  const precisaVincularNF = (l: RelLancamento) =>
+    l.origem_tabela === "lancamentos" && l.moeda !== "barter" && !l.nfe_numero
+    && (l.origem_lancamento == null || l.origem_lancamento === "manual")
+    && !CATEGORIAS_SEM_NF.includes(l.categoria ?? "");
+
+  async function abrirBaixa(l: RelLancamento, pularNF = false) {
+    if (!pularNF && precisaVincularNF(l)) { setAlertaNF(l); return; }
     setErroAcao("");
     setModalBaixa(l);
     // Adiantamento ao fornecedor disponível para usar nesta baixa (a tela unificada de 01/10 perdeu esta função)
@@ -407,6 +453,9 @@ export default function ContasAPagarPage() {
     setBValor(saldoBase(l).toFixed(2).replace(".", ","));
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
+    setBNovaData("");
+    setBClass({ pessoa_id: l.pessoa_id ?? "", ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "", og_id: l.operacao_gerencial_id ?? "", salvar: false });
+    setBClassAberta(!l.operacao_gerencial_id);
     try {
       // Empresa: contas da própria empresa + contas do produtor da conta (empresas pagam/recebem
       // também por contas da fazenda, que não têm empresa_id). Produtor: contas de todas as fazendas da conta.
@@ -450,13 +499,17 @@ export default function ContasAPagarPage() {
 
   async function confirmarBaixa() {
     if (!(await confirmarAcao({ titulo: "Confirmar baixa", mensagem: "Confira valor, data e conta antes de confirmar. A baixa movimenta o saldo bancário.", perigo: false }))) return;
-    if (!modalBaixa || !bConta || !bValor) { setErroAcao("Preencha valor e conta bancária."); return; }
+    if (!modalBaixa || (!bConta && modalBaixa.moeda !== "barter") || !bValor) { setErroAcao(modalBaixa?.moeda === "barter" ? "Informe o valor." : "Preencha valor e conta bancária."); return; }
     setSalvandoAcao(true);
     setErroAcao("");
     try {
       if (modalBaixa.origem_tabela === "lancamentos") {
         await baixarLancamento(modalBaixa.id, numBR(bValor), bData, bConta, {
           multa_valor: numBR(bMulta) || undefined, juros_valor: numBR(bJuros) || undefined, desconto_valor: numBR(bDesc) || undefined,
+          pessoa_id: bClass.pessoa_id || undefined, operacao_gerencial_id: bClass.og_id || undefined,
+          ano_safra_id: bClass.ano_safra_id || undefined, ciclo_id: bClass.ciclo_id || undefined,
+          salvar_classificacao: bClass.salvar && !!bClass.pessoa_id && !!bClass.og_id ? true : undefined,
+          nova_data_vencimento: bNovaData || undefined,
         });
       } else {
         const res = await fetch("/api/empresa-lancamentos/baixar", {
@@ -610,13 +663,15 @@ export default function ContasAPagarPage() {
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
     numero_documento: "", serie: "",
     entidade_contabil: "" as "" | "pf" | "pj",
+    juros_pct: "", multa_pct: "", desconto_pct: "",
+    funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "", veiculo_sel: "",
     operacao_gerencial_id: "",
     forma_pagamento: "PIX",
     conta_pagamento: "",
     competencia: "",
     cartao_id: "",
   };
-  type ParcelaGrid = { data: string; valor: number };
+  type ParcelaGrid = { data: string; valor: number; ano_safra_id?: string; ciclo_id?: string };
   const [modalNovo, setModalNovo] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   // Adiantamentos do fornecedor com saldo, oferecidos na baixa do título (usar o adiantamento como pagamento)
@@ -629,6 +684,13 @@ export default function ContasAPagarPage() {
   const [erroNovo,  setErroNovo]  = useState("");
   const [cascadeNovo, setCascadeNovo] = useState<Partial<CascadeValues>>({});
   const [parcelasNovo, setParcelasNovo] = useState<ParcelaGrid[]>([]);
+  // Rateio por vencimento: ciclos de cada safra escolhida nas parcelas (carregados sob demanda)
+  const [ciclosPorSafra, setCiclosPorSafra] = useState<Record<string, { id: string; descricao?: string | null; cultura?: string | null }[]>>({});
+  useEffect(() => {
+    const f = fazendaId; if (!f) return;
+    const faltam = [...new Set(parcelasNovo.map(p => p.ano_safra_id).filter((x): x is string => !!x))].filter(id => !ciclosPorSafra[id]);
+    faltam.forEach(id => listarCiclos(id, f).then(c => setCiclosPorSafra(prev => ({ ...prev, [id]: c as never }))).catch(() => {}));
+  }, [parcelasNovo, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvarComoRegra, setSalvarComoRegra] = useState(false);
   const [opGerenciais, setOpGerenciais] = useState<OperacaoGerencial[]>([]);
   const [contasNovo, setContasNovo] = useState<ContaBancaria[]>([]);
@@ -758,6 +820,14 @@ export default function ContasAPagarPage() {
         serie: (lanc as unknown as { serie?: string | null }).serie ?? "",
         cartao_id: (lanc as unknown as { cartao_id?: string | null }).cartao_id ?? "",
         entidade_contabil: lanc.entidade_contabil ?? "",
+        funcionario_id: (lanc as unknown as { funcionario_id?: string | null }).funcionario_id ?? "",
+        tipo_mao_obra: (lanc as unknown as { tipo_mao_obra?: string | null }).tipo_mao_obra ?? "",
+        unidade_mao_obra: (lanc as unknown as { unidade_mao_obra?: string | null }).unidade_mao_obra ?? "Dia",
+        quantidade_mao_obra: String((lanc as unknown as { quantidade_mao_obra?: number | null }).quantidade_mao_obra ?? "").replace(".", ","),
+        veiculo_sel: (lanc as unknown as { maquina_id?: string | null }).maquina_id ? `m:${(lanc as unknown as { maquina_id?: string }).maquina_id}` : (lanc as unknown as { veiculo_id?: string | null }).veiculo_id ? `v:${(lanc as unknown as { veiculo_id?: string }).veiculo_id}` : "",
+        juros_pct: lanc.juros_pct ? String(lanc.juros_pct).replace(".", ",") : "",
+        multa_pct: lanc.multa_pct ? String(lanc.multa_pct).replace(".", ",") : "",
+        desconto_pct: (lanc as unknown as { desconto_pontualidade_pct?: number | null }).desconto_pontualidade_pct ? String((lanc as unknown as { desconto_pontualidade_pct?: number | null }).desconto_pontualidade_pct).replace(".", ",") : "",
         operacao_gerencial_id: lanc.operacao_gerencial_id ?? "",
         forma_pagamento: lanc.forma_pagamento ?? "PIX",
         conta_pagamento: lanc.conta_bancaria ?? "",
@@ -873,6 +943,15 @@ export default function ContasAPagarPage() {
             natureza: novoForm.natureza,
             forma_pagamento: novoForm.forma_pagamento || undefined,
             entidade_contabil: novoForm.entidade_contabil || undefined,
+            ...({ juros_pct: numBR(novoForm.juros_pct) || null, multa_pct: numBR(novoForm.multa_pct) || null, desconto_pontualidade_pct: numBR(novoForm.desconto_pct) || null } as unknown as Record<string, never>),
+            ...({
+              funcionario_id: novoForm.funcionario_id || null,
+              tipo_mao_obra: novoForm.funcionario_id ? (novoForm.tipo_mao_obra || null) : null,
+              unidade_mao_obra: novoForm.funcionario_id ? (novoForm.unidade_mao_obra || null) : null,
+              quantidade_mao_obra: novoForm.funcionario_id && novoForm.quantidade_mao_obra ? numBR(novoForm.quantidade_mao_obra) : null,
+              maquina_id: novoForm.veiculo_sel.startsWith("m:") ? novoForm.veiculo_sel.slice(2) : null,
+              veiculo_id: novoForm.veiculo_sel.startsWith("v:") ? novoForm.veiculo_sel.slice(2) : null,
+            } as unknown as Record<string, never>),
           };
           // Título já lançado com vencimento único e negociado em parcelas: a 1ª parcela É o título original
           // (editado), as demais são criadas com o mesmo agrupador — nada é apagado nem fica em dobro.
@@ -976,6 +1055,15 @@ export default function ContasAPagarPage() {
           natureza: novoForm.natureza,
           forma_pagamento: novoForm.forma_pagamento || undefined,
           entidade_contabil: novoForm.entidade_contabil || undefined,
+          ...({ juros_pct: numBR(novoForm.juros_pct) || null, multa_pct: numBR(novoForm.multa_pct) || null, desconto_pontualidade_pct: numBR(novoForm.desconto_pct) || null } as unknown as Record<string, never>),
+          ...({
+            funcionario_id: novoForm.funcionario_id || null,
+            tipo_mao_obra: novoForm.funcionario_id ? (novoForm.tipo_mao_obra || null) : null,
+            unidade_mao_obra: novoForm.funcionario_id ? (novoForm.unidade_mao_obra || null) : null,
+            quantidade_mao_obra: novoForm.funcionario_id && novoForm.quantidade_mao_obra ? numBR(novoForm.quantidade_mao_obra) : null,
+            maquina_id: novoForm.veiculo_sel.startsWith("m:") ? novoForm.veiculo_sel.slice(2) : null,
+            veiculo_id: novoForm.veiculo_sel.startsWith("v:") ? novoForm.veiculo_sel.slice(2) : null,
+          } as unknown as Record<string, never>),
           origem_lancamento: "manual",
         };
         // Cartão de Crédito: cada parcela/compra vira um lançamento status
@@ -992,7 +1080,7 @@ export default function ContasAPagarPage() {
           const agrupador = Date.now().toString(36);
           const total = parcelasNovo.length;
           for (let i = 0; i < total; i++) {
-            await criar({ ...base, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
+            await criar({ ...base, ano_safra_id: parcelasNovo[i].ano_safra_id ?? base.ano_safra_id, ciclo_id: parcelasNovo[i].ciclo_id ?? base.ciclo_id, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
           }
         } else if (novoForm.condicao === "prazo") {
           await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
@@ -1365,7 +1453,7 @@ export default function ContasAPagarPage() {
                           <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "#F4F6FA" }}>
-                                {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                                {(novoForm.origem === "empresa_lancamentos" ? ["#", "Vencimento", "Valor (R$)"] : ["#", "Vencimento", "Valor (R$)", "Safra", "Ciclo"]).map((h, i) => (
                                   <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                                 ))}
                               </tr>
@@ -1382,6 +1470,20 @@ export default function ContasAPagarPage() {
                                     <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right", width: "100%", boxSizing: "border-box" }} value={p.valor}
                                       onChange={v => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, valor: v } : x))} />
                                   </td>
+                                  {novoForm.origem !== "empresa_lancamentos" && (<>
+                                    <td style={{ padding: "4px 8px" }}>
+                                      <SelectField style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} value={p.ano_safra_id ?? ""} onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, ano_safra_id: e.target.value || undefined, ciclo_id: undefined } : x))}>
+                                        <option value="">Do lançamento</option>
+                                        {empSafras.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                                      </SelectField>
+                                    </td>
+                                    <td style={{ padding: "4px 8px" }}>
+                                      <SelectField style={{ ...inp, fontSize: 12, width: "100%", boxSizing: "border-box" }} value={p.ciclo_id ?? ""} disabled={!p.ano_safra_id} onChange={e => setParcelasNovo(prev => prev.map((x, j) => j === i ? { ...x, ciclo_id: e.target.value || undefined } : x))}>
+                                        <option value="">Do lançamento</option>
+                                        {(p.ano_safra_id ? ciclosPorSafra[p.ano_safra_id] ?? [] : []).map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                                      </SelectField>
+                                    </td>
+                                  </>)}
                                 </tr>
                               ))}
                             </tbody>
@@ -1421,6 +1523,26 @@ export default function ContasAPagarPage() {
         {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ──
             Origem e Status em dropdown de múltipla escolha; campos de data com largura fixa (antes o
             campo Buscar crescia e achatava as datas). */}
+        {/* Atalhos de status (restaurados da tela anterior): um clique aplica o filtro mais usado */}
+        <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {([
+            ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
+            ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
+          ] as const).map(([k, rot]) => {
+            const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
+              : k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
+              : fAtalho === k;
+            return (
+              <button key={k} type="button" aria-pressed={ativo}
+                onClick={() => {
+                  if (k === "todos") { setFOrigem(new Set()); setFStatus(new Set()); setFAtalho(""); }
+                  else if (k === "vencido" || k === "parcial" || k === "baixado") { setFStatus(new Set([k])); setFAtalho(""); }
+                  else { setFStatus(new Set()); setFAtalho(k); }
+                }}
+                style={{ padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", border: ativo ? "0.5px solid #1A4870" : "0.5px solid #DDE2EE", background: ativo ? "#D5E8F5" : "#fff", color: ativo ? "#0B2D50" : "#555", fontWeight: ativo ? 700 : 400 }}>{rot}</button>
+            );
+          })}
+        </div>
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 220px", minWidth: 200, maxWidth: 380 }}>
             <label data-arato-label="true" style={lblMini}>Buscar</label>
@@ -1442,7 +1564,7 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); setFAtalho(""); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
@@ -2128,6 +2250,15 @@ export default function ContasAPagarPage() {
       )}
 
       {/* ══ MODAL — Baixar ══ */}
+      {alertaNF && (
+        <ModalVincularNf
+          titulo={{ id: alertaNF.id, descricao: alertaNF.descricao, valor: alertaNF.valor }}
+          fazendaId={(alertaNF.fazenda_id ?? fazendaId)!}
+          onCancelar={() => setAlertaNF(null)}
+          onSemNf={() => { const l = alertaNF; setAlertaNF(null); abrirBaixa(l, true); }}
+          onVinculado={numero => { const l = { ...alertaNF, nfe_numero: numero }; setAlertaNF(null); setResultado(prev => prev?.map(x => x.id === l.id ? { ...x, nfe_numero: numero } : x) ?? prev); abrirBaixa(l, true); }}
+        />
+      )}
       {cadPessoaAberto && fazendaId && (
         <ModalCadastroFornecedor
           fazendaId={fazendaId} documento="" nome="" papel="fornecedor"
@@ -2144,7 +2275,7 @@ export default function ContasAPagarPage() {
           onClick={() => setModalBaixa(null)}>
           <div data-arato-dialog="drawer" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 460px)" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>Baixar Lançamento</h2>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>{modalBaixa?.moeda === "barter" ? "Confirmar entrega (barter)" : modalBaixa?.status_normalizado === "parcial" ? "Registrar pagamento parcial" : "Baixar Lançamento"}</h2>
               <OperationalButton data-arato-button="icon" onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
@@ -2211,6 +2342,58 @@ export default function ContasAPagarPage() {
                 <AnexoDocumentos entidade_tipo="lancamento_cp_comprovante" entidade_id={modalBaixa.id} fazenda_id={modalBaixa.fazenda_id ?? fazendaId ?? ""} maxBytes={1024 * 1024} label="Comprovante" />
               </div>
             </div>
+            {modalBaixa.origem_tabela === "lancamentos" && (
+              <div data-arato-dialog-body="true" style={{ marginTop: 14, border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Classificação</span>
+                  <button type="button" onClick={() => setBClassAberta(v => !v)} style={{ fontSize: 11, color: "#C9921B", background: "none", border: "none", cursor: "pointer" }}>
+                    {bClassAberta ? "Recolher" : modalBaixa.operacao_gerencial_id ? "Alterar" : "Classificar"}
+                  </button>
+                </div>
+                {!bClassAberta && <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{modalBaixa.operacao_gerencial_nome ?? "Sem operação gerencial"}</div>}
+                {bClassAberta && (
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Fornecedor / Credor</label>
+                      <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.pessoa_id} onChange={e => setBClass(p => ({ ...p, pessoa_id: e.target.value }))}>
+                        <option value="">— Não informado —</option>
+                        {pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
+                      </SelectField>
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Ano Safra</label>
+                      <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.ano_safra_id} onChange={e => setBClass(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                        <option value="">— Sem safra —</option>
+                        {bSafras.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                      </SelectField>
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
+                      <SelectBusca value={bClass.og_id} onChange={id => setBClass(p => ({ ...p, og_id: id }))}
+                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        placeholder="— Sem operação gerencial —" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Ciclo / Empreendimento</label>
+                      <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.ciclo_id} onChange={e => setBClass(p => ({ ...p, ciclo_id: e.target.value }))}>
+                        <option value="">— Sem ciclo —</option>
+                        {bCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                      </SelectField>
+                    </div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 20, fontSize: 12, color: "#555", cursor: bClass.pessoa_id && bClass.og_id ? "pointer" : "not-allowed" }}>
+                      <input type="checkbox" checked={bClass.salvar} disabled={!bClass.pessoa_id || !bClass.og_id} onChange={e => setBClass(p => ({ ...p, salvar: e.target.checked }))} />
+                      Salvar como classificação padrão deste fornecedor
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+            {modalBaixa.origem_tabela === "lancamentos" && numBR(bValor) > 0 && numBR(bValor) + 0.01 < saldoBase(modalBaixa) + numBR(bMulta) + numBR(bJuros) - numBR(bDesc) && (
+              <div data-arato-dialog-body="true" style={{ marginTop: 12, background: "#FBF3E0", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 14px" }}>
+                <label data-arato-label="true" style={lbl}>Pagamento parcial — nova data de vencimento do saldo restante (opcional)</label>
+                <InputData type="date" value={bNovaData} onChange={e => setBNovaData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+            )}
             {erroAcao && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroAcao}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
               <OperationalButton data-arato-button="secondary" onClick={() => setModalBaixa(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
@@ -2437,6 +2620,73 @@ export default function ContasAPagarPage() {
                           </SelectField>
                         </div>
                       </div>
+                      {!ehEmpresa && (
+                        <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                          <div>
+                            <label data-arato-label="true" style={lbl}>% Juros a.m.</label>
+                            <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} inputMode="decimal" placeholder="0,00" value={novoForm.juros_pct} onChange={e => setNovoForm(p => ({ ...p, juros_pct: e.target.value.replace(/[^\d,]/g, "") }))} />
+                          </div>
+                          <div>
+                            <label data-arato-label="true" style={lbl}>% Multa por atraso</label>
+                            <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} inputMode="decimal" placeholder="0,00" value={novoForm.multa_pct} onChange={e => setNovoForm(p => ({ ...p, multa_pct: e.target.value.replace(/[^\d,]/g, "") }))} />
+                          </div>
+                          <div>
+                            <label data-arato-label="true" style={lbl}>% Desc. pontualidade</label>
+                            <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} inputMode="decimal" placeholder="0,00" value={novoForm.desconto_pct} onChange={e => setNovoForm(p => ({ ...p, desconto_pct: e.target.value.replace(/[^\d,]/g, "") }))} />
+                          </div>
+                        </div>
+                      )}
+                      {!ehEmpresa && veiculos.length > 0 && (() => {
+                        const og = opGerenciais.find(o => o.id === novoForm.operacao_gerencial_id);
+                        const isManu = !!og && (og.classificacao ?? "").startsWith("2.01.01.03");
+                        const lista = isManu ? veiculos : veiculos.filter(v => v.emplacado);
+                        if (!lista.length) return null;
+                        return (
+                          <div>
+                            <label data-arato-label="true" style={lbl}>Veículo / Máquina (opcional)</label>
+                            <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.veiculo_sel} onChange={e => setNovoForm(p => ({ ...p, veiculo_sel: e.target.value }))}>
+                              <option value="">— Sem vínculo —</option>
+                              <optgroup label="Fazenda">{lista.filter(v => v.origem === "fazenda").map(v => <option key={v.ref} value={v.ref}>{v.label}</option>)}</optgroup>
+                              <optgroup label="Transportadora">{lista.filter(v => v.origem === "transportadora").map(v => <option key={v.ref} value={v.ref}>{v.label}</option>)}</optgroup>
+                            </SelectField>
+                          </div>
+                        );
+                      })()}
+                      {!ehEmpresa && (() => {
+                        const og = opGerenciais.find(o => o.id === novoForm.operacao_gerencial_id);
+                        if (!og || !(og.classificacao ?? "").startsWith("2.01.01.10")) return null;
+                        return (
+                          <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: 14 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#111111", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Mão de Obra</div>
+                            <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 160px 140px 120px", gap: 12 }}>
+                              <div>
+                                <label data-arato-label="true" style={lbl}>Funcionário / Prestador</label>
+                                <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.funcionario_id} onChange={e => setNovoForm(p => ({ ...p, funcionario_id: e.target.value }))}>
+                                  <option value="">— Sem vínculo —</option>
+                                  {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                                </SelectField>
+                              </div>
+                              <div>
+                                <label data-arato-label="true" style={lbl}>Tipo</label>
+                                <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.tipo_mao_obra} onChange={e => setNovoForm(p => ({ ...p, tipo_mao_obra: e.target.value }))}>
+                                  <option value="">— Selecionar —</option>
+                                  {["CLT", "Temporário", "Empreitada", "Terceirizado"].map(t => <option key={t} value={t}>{t}</option>)}
+                                </SelectField>
+                              </div>
+                              <div>
+                                <label data-arato-label="true" style={lbl}>Unidade</label>
+                                <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.unidade_mao_obra} onChange={e => setNovoForm(p => ({ ...p, unidade_mao_obra: e.target.value }))}>
+                                  {["Hora", "Dia", "Ha", "Sc", "Tarefa", "Empreitada"].map(u => <option key={u} value={u}>{u}</option>)}
+                                </SelectField>
+                              </div>
+                              <div>
+                                <label data-arato-label="true" style={lbl}>Quantidade</label>
+                                <input style={{ ...inp, width: "100%", boxSizing: "border-box" }} inputMode="decimal" placeholder="0" value={novoForm.quantidade_mao_obra} onChange={e => setNovoForm(p => ({ ...p, quantidade_mao_obra: e.target.value.replace(/[^\d,]/g, "") }))} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {ogSelecionada && (ogSelecionada.conta_debito || ogSelecionada.conta_credito) && (
                         <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0D0D0D", display: "flex", gap: 20 }}>
@@ -2659,6 +2909,11 @@ export default function ContasAPagarPage() {
                 </div>
               )}
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                {editandoId && novoForm.natureza === "previsao" && (
+                  <OperationalButton data-arato-button="secondary" type="button" onClick={() => setNovoForm(p => ({ ...p, natureza: "real" }))}
+                    title="Muda para Real e abre para ajuste antes de salvar"
+                    style={{ ...inp, background: "#E8F5EC", color: "#166534", fontWeight: 700, cursor: "pointer", border: "0.5px solid #16A34A" }}>⚡ Efetivar</OperationalButton>
+                )}
                 <OperationalButton data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
                 <OperationalButton data-arato-button="primary" onClick={salvarNovo} disabled={salvandoAcao}
                   style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>

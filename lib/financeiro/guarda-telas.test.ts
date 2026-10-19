@@ -15,6 +15,26 @@ const MARCADORES: [string, string][] = [
   ["saldoBRL", "saldo/baixa de título em dólar calculado em reais (valor_pago é sempre em R$)"],
 ];
 
+// Recursos restaurados em 19/10/2026 após a comparação com a tela anterior (page.legado.tsx)
+const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
+  "app/financeiro/pagar/page.tsx": [
+    ["Efetivar", "botão Efetivar previsão"], ["ModalVincularNf", "vincular NF à baixa"], ["bClass", "classificação e salvar padrão do fornecedor na baixa"],
+    ["bNovaData", "nova data do saldo em baixa parcial"], ["juros_pct", "% juros, multa e desconto de pontualidade do título"],
+    ["funcionario_id", "mão de obra (funcionário/prestador)"], ["veiculo_sel", "veículo/máquina vinculado"],
+    ["ciclosPorSafra", "rateio por vencimento (safra e ciclo por parcela)"], ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
+  ],
+  "app/financeiro/receber/page.tsx": [
+    ["Efetivar", "botão Efetivar previsão"], ["bClass", "classificação na baixa"], ["bNovaData", "nova data do saldo em recebimento parcial"],
+    ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
+  ],
+};
+for (const [tela, lista] of Object.entries(MARCADORES_POR_TELA)) {
+  const src = readFileSync(new URL(`../../${tela}`, import.meta.url), "utf8");
+  for (const [marcador, o_que] of lista) {
+    test(`${tela} mantém: ${o_que}`, () => assert.ok(src.includes(marcador), `${tela} perdeu "${marcador}" (${o_que})`));
+  }
+}
+
 for (const tela of TELAS) {
   const src = readFileSync(new URL(`../../${tela}`, import.meta.url), "utf8");
   for (const [marcador, o_que] of MARCADORES) {

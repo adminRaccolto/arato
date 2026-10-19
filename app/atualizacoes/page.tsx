@@ -7,6 +7,21 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-e",
+    data: "19/10/2026",
+    titulo: "CP e CR: recursos da tela anterior restaurados",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Efetivar previsão: ao editar um lançamento previsto, o botão ⚡ Efetivar passa para Real antes de salvar (CP e CR)." },
+      { tipo: "correcao", texto: "Baixa do CP sem NF: ao baixar um título lançado à mão e sem nota, abre a janela Vincular Nota Fiscal à Baixa, com busca de NF-e/NFS-e pendentes, ou Baixar sem NF." },
+      { tipo: "correcao", texto: "Classificação na baixa (CP e CR): fornecedor/cliente, ano safra, ciclo e operação gerencial podem ser ajustados ao baixar; no CP, Salvar como classificação padrão deste fornecedor. Em baixa parcial, informe a nova data de vencimento do saldo restante." },
+      { tipo: "correcao", texto: "CP: % Juros a.m., % Multa e % Desconto de pontualidade voltaram na aba Adicionais; Veículo/Máquina e, na operação Mão de Obra, Funcionário/Prestador, tipo, unidade e quantidade." },
+      { tipo: "correcao", texto: "CP: rateio por vencimento — cada parcela pode ter safra e ciclo próprios no lançamento parcelado." },
+      { tipo: "correcao", texto: "Atalhos de status acima do filtro (Todos, Vencidos, Vencendo 7 dias, Parciais, Baixados, Barter, Contratos financeiros, Compra de terra) e título Confirmar entrega (barter) na baixa de títulos em sacas." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.19-d",
     data: "19/10/2026",
     titulo: "CP e CR: baixa e saldo de título em dólar calculados em reais",

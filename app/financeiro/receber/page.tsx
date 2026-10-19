@@ -71,6 +71,10 @@ import InputNumerico from "../../../components/InputNumerico";
 type RelLancamento = {
   id: string;
   origem_tabela: string;
+  pessoa_id?: string | null;
+  operacao_gerencial_id?: string | null;
+  ano_safra_id?: string | null;
+  ciclo_id?: string | null;
   fazenda_id: string | null;
   empresa_id: string | null;
   numero: number | null;
@@ -217,6 +221,7 @@ export default function ContasAReceberPage() {
   // porque "vencido" não some do status mesmo com data < hoje).
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
+  const [fAtalho, setFAtalho] = useState("");
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
@@ -357,6 +362,13 @@ export default function ContasAReceberPage() {
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
     if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
     if (!passaColunas(l)) return false;
+    if (fAtalho) {
+      const aberto = l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado";
+      const h = hojeISO(); const lim = new Date(`${h}T12:00:00`); lim.setDate(lim.getDate() + 7);
+      if (fAtalho === "vencendo" && !(aberto && !!l.data_vencimento && l.data_vencimento >= h && l.data_vencimento <= lim.toISOString().slice(0, 10))) return false;
+      if (fAtalho === "barter" && l.moeda !== "barter") return false;
+      if (fAtalho !== "vencendo" && fAtalho !== "barter" && l.origem_lancamento !== fAtalho) return false;
+    }
     return true;
   }).sort((a, b) => {
     const campo = ordenarPor === "lancamento" ? "data_lancamento" : "data_vencimento";
@@ -402,6 +414,22 @@ export default function ContasAReceberPage() {
   const [bMulta,  setBMulta]  = useState("0,00");
   const [bJuros,  setBJuros]  = useState("0,00");
   const [bDesc,   setBDesc]   = useState("0,00");
+  // Classificação na baixa (cliente, safra, ciclo e operação gerencial) + nova data do saldo em recebimento parcial
+  const [bNovaData, setBNovaData] = useState("");
+  const [bClass, setBClass] = useState({ pessoa_id: "", ano_safra_id: "", ciclo_id: "", og_id: "" });
+  const [bClassAberta, setBClassAberta] = useState(false);
+  const [bSafras, setBSafras] = useState<{ id: string; descricao: string }[]>([]);
+  const [bCiclos, setBCiclos] = useState<{ id: string; descricao?: string | null; cultura?: string | null }[]>([]);
+  useEffect(() => {
+    if (!modalBaixa || modalBaixa.origem_tabela !== "lancamentos") { setBSafras([]); return; }
+    const f = modalBaixa.fazenda_id ?? fazendaId; if (!f) return;
+    listarAnosSafra(f).then(a => setBSafras(a as { id: string; descricao: string }[])).catch(() => setBSafras([]));
+  }, [modalBaixa?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const f = modalBaixa?.fazenda_id ?? fazendaId;
+    if (!bClass.ano_safra_id || !f) { setBCiclos([]); return; }
+    listarCiclos(bClass.ano_safra_id, f).then(c => setBCiclos(c as { id: string; descricao?: string | null; cultura?: string | null }[])).catch(() => setBCiclos([]));
+  }, [bClass.ano_safra_id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [salvandoAcao, setSalvandoAcao] = useState(false);
   const [erroAcao,     setErroAcao]     = useState("");
 
@@ -417,6 +445,9 @@ export default function ContasAReceberPage() {
     setBValor(saldoBase(l).toFixed(2).replace(".", ","));
     setBData(hojeISO());
     setBConta(""); setBMulta("0,00"); setBJuros("0,00"); setBDesc("0,00");
+    setBNovaData("");
+    setBClass({ pessoa_id: l.pessoa_id ?? "", ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "", og_id: l.operacao_gerencial_id ?? "" });
+    setBClassAberta(!l.operacao_gerencial_id);
     try {
       // Empresa: contas da própria empresa + contas do produtor da conta (empresas pagam/recebem
       // também por contas da fazenda, que não têm empresa_id). Produtor: contas de todas as fazendas da conta.
@@ -432,13 +463,16 @@ export default function ContasAReceberPage() {
 
   async function confirmarBaixa() {
     if (!(await confirmarAcao({ titulo: "Confirmar baixa", mensagem: "Confira valor, data e conta antes de confirmar. A baixa movimenta o saldo bancário.", perigo: false }))) return;
-    if (!modalBaixa || !bConta || !bValor) { setErroAcao("Preencha valor e conta bancária."); return; }
+    if (!modalBaixa || (!bConta && modalBaixa.moeda !== "barter") || !bValor) { setErroAcao(modalBaixa?.moeda === "barter" ? "Informe o valor." : "Preencha valor e conta bancária."); return; }
     setSalvandoAcao(true);
     setErroAcao("");
     try {
       if (modalBaixa.origem_tabela === "lancamentos") {
         await baixarLancamento(modalBaixa.id, numBR(bValor), bData, bConta, {
           multa_valor: numBR(bMulta) || undefined, juros_valor: numBR(bJuros) || undefined, desconto_valor: numBR(bDesc) || undefined,
+          pessoa_id: bClass.pessoa_id || undefined, operacao_gerencial_id: bClass.og_id || undefined,
+          ano_safra_id: bClass.ano_safra_id || undefined, ciclo_id: bClass.ciclo_id || undefined,
+          nova_data_vencimento: bNovaData || undefined,
         });
       } else {
         const res = await fetch("/api/empresa-lancamentos/baixar", {
@@ -1254,6 +1288,26 @@ export default function ContasAReceberPage() {
 
         {/* ── Barra de filtros SEMPRE VISÍVEL (não popup) ── */}
 
+        {/* Atalhos de status (restaurados da tela anterior): um clique aplica o filtro mais usado */}
+        <div data-arato-filters="true" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {([
+            ["todos", "Todos"], ["vencido", "Vencidos"], ["vencendo", "Vencendo (7 dias)"], ["parcial", "Parciais"], ["baixado", "Baixados"],
+            ["barter", "Barter"], ["contrato_financeiro", "Contratos financeiros"], ["compra_terra", "Compra de terra"],
+          ] as const).map(([k, rot]) => {
+            const ativo = k === "todos" ? (fOrigem.size === 0 && fStatus.size === 0 && !fAtalho)
+              : k === "vencido" || k === "parcial" || k === "baixado" ? (fStatus.size === 1 && fStatus.has(k) && !fAtalho)
+              : fAtalho === k;
+            return (
+              <button key={k} type="button" aria-pressed={ativo}
+                onClick={() => {
+                  if (k === "todos") { setFOrigem(new Set()); setFStatus(new Set()); setFAtalho(""); }
+                  else if (k === "vencido" || k === "parcial" || k === "baixado") { setFStatus(new Set([k])); setFAtalho(""); }
+                  else { setFStatus(new Set()); setFAtalho(k); }
+                }}
+                style={{ padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", border: ativo ? "0.5px solid #1A4870" : "0.5px solid #DDE2EE", background: ativo ? "#D5E8F5" : "#fff", color: ativo ? "#0B2D50" : "#555", fontWeight: ativo ? 700 : 400 }}>{rot}</button>
+            );
+          })}
+        </div>
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
             <label data-arato-label="true" style={lblMini}>Buscar</label>
@@ -1924,7 +1978,7 @@ export default function ContasAReceberPage() {
           onClick={() => setModalBaixa(null)}>
           <div data-arato-dialog="drawer" style={{ background: "#fff", borderRadius: 12, padding: 24, width: "min(94vw, 460px)" }} onClick={e => e.stopPropagation()}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>Baixar Lançamento</h2>
+              <h2 data-arato-h2="true" style={{ margin: 0, fontSize: 15, color: "#0B2D50" }}>{modalBaixa?.moeda === "barter" ? "Confirmar entrega (barter)" : modalBaixa?.status_normalizado === "parcial" ? "Registrar recebimento parcial" : "Baixar Lançamento"}</h2>
               <OperationalButton data-arato-button="icon" onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</OperationalButton>
             </div>
             <div data-arato-dialog-body="true" style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
@@ -1968,6 +2022,54 @@ export default function ContasAReceberPage() {
                 <AnexoDocumentos entidade_tipo="lancamento_cr_comprovante" entidade_id={modalBaixa.id} fazenda_id={modalBaixa.fazenda_id ?? fazendaId ?? ""} maxBytes={1024 * 1024} label="Comprovante" />
               </div>
             </div>
+            {modalBaixa.origem_tabela === "lancamentos" && (
+              <div data-arato-dialog-body="true" style={{ marginTop: 14, border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1 }}>Classificação</span>
+                  <button type="button" onClick={() => setBClassAberta(v => !v)} style={{ fontSize: 11, color: "#C9921B", background: "none", border: "none", cursor: "pointer" }}>
+                    {bClassAberta ? "Recolher" : modalBaixa.operacao_gerencial_id ? "Alterar" : "Classificar"}
+                  </button>
+                </div>
+                {!bClassAberta && <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{modalBaixa.operacao_gerencial_nome ?? "Sem operação gerencial"}</div>}
+                {bClassAberta && (
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Cliente / Devedor</label>
+                      <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.pessoa_id} onChange={e => setBClass(p => ({ ...p, pessoa_id: e.target.value }))}>
+                        <option value="">— Não informado —</option>
+                        {pessoas.map(x => <option key={x.id} value={x.id}>{x.nome}</option>)}
+                      </SelectField>
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Ano Safra</label>
+                      <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.ano_safra_id} onChange={e => setBClass(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                        <option value="">— Sem safra —</option>
+                        {bSafras.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                      </SelectField>
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label data-arato-label="true" style={lbl}>Operação Gerencial</label>
+                      <SelectBusca value={bClass.og_id} onChange={id => setBClass(p => ({ ...p, og_id: id }))}
+                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        placeholder="— Sem operação gerencial —" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Ciclo / Empreendimento</label>
+                      <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={bClass.ciclo_id} onChange={e => setBClass(p => ({ ...p, ciclo_id: e.target.value }))}>
+                        <option value="">— Sem ciclo —</option>
+                        {bCiclos.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                      </SelectField>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {modalBaixa.origem_tabela === "lancamentos" && numBR(bValor) > 0 && numBR(bValor) + 0.01 < saldoBase(modalBaixa) + numBR(bMulta) + numBR(bJuros) - numBR(bDesc) && (
+              <div data-arato-dialog-body="true" style={{ marginTop: 12, background: "#FBF3E0", border: "0.5px solid #F0C060", borderRadius: 8, padding: "10px 14px" }}>
+                <label data-arato-label="true" style={lbl}>Recebimento parcial — nova data de vencimento do saldo restante (opcional)</label>
+                <InputData type="date" value={bNovaData} onChange={e => setBNovaData(e.target.value)} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+              </div>
+            )}
             {erroAcao && <div style={{ marginTop: 12, fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 6 }}>{erroAcao}</div>}
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
               <OperationalButton data-arato-button="secondary" onClick={() => setModalBaixa(null)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
@@ -2401,6 +2503,11 @@ export default function ContasAReceberPage() {
                 </div>
               )}
               <div data-arato-dialog-body="true" style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                {editandoId && novoForm.natureza === "previsao" && (
+                  <OperationalButton data-arato-button="secondary" type="button" onClick={() => setNovoForm(p => ({ ...p, natureza: "real" }))}
+                    title="Muda para Real e abre para ajuste antes de salvar"
+                    style={{ ...inp, background: "#E8F5EC", color: "#166534", fontWeight: 700, cursor: "pointer", border: "0.5px solid #16A34A" }}>⚡ Efetivar</OperationalButton>
+                )}
                 <OperationalButton data-arato-button="secondary" onClick={() => setModalNovo(false)} style={{ ...inp, background: "#fff", cursor: "pointer" }}>Cancelar</OperationalButton>
                 <OperationalButton data-arato-button="primary" onClick={salvarNovo} disabled={salvandoAcao}
                   style={{ ...inp, background: "#16A34A", color: "#fff", fontWeight: 700, cursor: "pointer", border: "none" }}>
