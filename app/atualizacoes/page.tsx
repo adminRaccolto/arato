@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-p",
+    data: "19/10/2026",
+    titulo: "Relatório CP/CR: janela de filtro antes de emitir",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Em Relatórios → CP / CR, o botão Abrir filtro e gerar abre uma janela com Vencimento (de/até, vazio = tudo), Tipo, Status e Categoria e Produtor em caixas de seleção, Fornecedor e a forma de Emissão: PDF (abre para imprimir) ou XLSX (baixa o arquivo). Ao confirmar, o relatório sai direto, sem abrir a tela com todos os registros. A consulta ao vivo continua disponível pelo link Consultar em tela." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR",
+  },
+  {
     versao: "2026.10.19-o",
     data: "19/10/2026",
     titulo: "Relatório CP/CR: operação gerencial aparece no grid",

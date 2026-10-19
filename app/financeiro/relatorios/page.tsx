@@ -212,6 +212,29 @@ function FinanceiroRelatoriosInner() {
   // Agrupamentos — lista ordenada de dimensões ativas
   type GrupoKey = "produtor" | "og" | "data" | "categoria" | "status" | "tipo";
   const [agrupAtivos, setAgrupAtivos] = useState<GrupoKey[]>([]);
+  // Relatório CP/CR emitido por janela de filtro (padrão dos relatórios): confirma → PDF/XLSX direto, sem abrir a tela
+  const [cpcrPopup, setCpcrPopup] = useState(false);
+  const [cpcrVerTela, setCpcrVerTela] = useState(false);
+  const [cpcrFormato, setCpcrFormato] = useState<"pdf" | "xlsx">("pdf");
+  const [cpcrEmitir, setCpcrEmitir] = useState<"pdf" | "xlsx" | null>(null);
+  const exportCpcrRef = useRef<{ exportar: () => Promise<void>; qtd: number } | null>(null);
+  // Emite o relatório assim que a janela de filtro é confirmada (os estados já foram aplicados no render anterior)
+  useEffect(() => {
+    if (!cpcrEmitir) return;
+    const formato = cpcrEmitir;
+    setCpcrEmitir(null);
+    (async () => {
+      const info = exportCpcrRef.current;
+      if (!info || info.qtd === 0) { alert("Nenhum lançamento encontrado para esse filtro."); return; }
+      if (formato === "xlsx") { await info.exportar(); return; }
+      if (!printCpcrRef.current) return;
+      const r = await printCpcrRef.current();
+      const escopo = prodCPCR.size > 0
+        ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
+        : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
+      abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo });
+    })();
+  }, [cpcrEmitir]); // eslint-disable-line react-hooks/exhaustive-deps
   const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
 
   // ── Grid configurável CP/CR ──────────────────────────────────
@@ -439,7 +462,7 @@ function FinanceiroRelatoriosInner() {
               {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", comercializacao: "Posição de Comercialização" }[aba]}
             </h1>
           </div>
-          {aba !== "comercializacao" && <OperationalButton data-arato-button="primary" onClick={async () => {
+          {aba !== "comercializacao" && !(aba === "cpcr" && !cpcrVerTela) && <OperationalButton data-arato-button="primary" onClick={async () => {
             // Os relatórios desta tela somam TODAS as fazendas da conta (não só a fazenda ativa do topo):
             // o cabeçalho diz o escopo real. Na aba CP/CR, o filtro de Produtor define o escopo.
             const escopoImpressao = aba === "cpcr" && prodCPCR.size > 0
@@ -2048,7 +2071,7 @@ function FinanceiroRelatoriosInner() {
                   </label>
                 );
 
-                return (
+                const telaAoVivo = (
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
 
                     {/* ── Filtros ── */}
@@ -2427,6 +2450,76 @@ function FinanceiroRelatoriosInner() {
                     })()}
                   </div>
                 );
+
+                const STATUS_OPC = [{ v: "em_aberto", l: "Em aberto" }, { v: "vencido", l: "Vencido" }, { v: "vencendo", l: "Vencendo" }, { v: "baixado", l: "Baixado / pago" }, { v: "parcial", l: "Parcial" }];
+                const alterna = (set: Set<string>, setSet: (s: Set<string>) => void, v: string) => { const n = new Set(set); if (n.has(v)) n.delete(v); else n.add(v); setSet(n); };
+                const caixas = (opcoes: { v: string; l: string }[], sel: Set<string>, setSel: (s: Set<string>) => void, altura?: number) => (
+                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: altura, overflowY: altura ? "auto" : undefined, display: altura ? "block" : "flex", flexWrap: "wrap", gap: altura ? 0 : "4px 16px", background: "var(--bg-input)" }}>
+                    {opcoes.length === 0 && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Nenhuma opção</span>}
+                    {opcoes.map(o => (
+                      <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer", padding: altura ? "2px 0" : 0 }}>
+                        <input type="checkbox" checked={sel.has(o.v)} onChange={() => alterna(sel, setSel, o.v)} style={{ accentColor: "#1A4870" }} />{o.l}
+                      </label>
+                    ))}
+                  </div>
+                );
+                exportCpcrRef.current = { exportar: exportarXLSX, qtd: lancsCPCR.length };
+                const landing = (
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "28px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Relatório de Contas a Pagar e a Receber</div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", maxWidth: 560, margin: "0 auto 16px" }}>
+                      Escolha o período, tipo, status, categoria, produtor e fornecedor. Ao confirmar, o relatório sai direto em PDF (abre para imprimir) ou em Excel (baixa o arquivo), sem abrir a tela com todos os registros.
+                    </div>
+                    <OperationalButton data-arato-button="primary" onClick={() => setCpcrPopup(true)} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🔍 Abrir filtro e gerar</OperationalButton>
+                    <div style={{ marginTop: 14 }}>
+                      <button type="button" onClick={() => setCpcrVerTela(true)} style={{ background: "none", border: "none", color: "var(--text-3)", fontSize: 11, textDecoration: "underline", cursor: "pointer" }}>Consultar em tela (todos os registros, filtro ao vivo)</button>
+                    </div>
+                    {cpcrPopup && (
+                      <div data-arato-overlay="true" onClick={() => setCpcrPopup(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                        <div role="dialog" aria-label="Filtro do relatório CP/CR" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(96vw, 720px)", maxHeight: "92vh", overflowY: "auto", padding: 22, textAlign: "left" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Relatório CP / CR — filtro</div>
+                            <button type="button" aria-label="Fechar" onClick={() => setCpcrPopup(false)} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                            <div><label data-arato-label="true" style={labelStyle}>Vencimento de (vazio = tudo)</label><InputData type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                            <div><label data-arato-label="true" style={labelStyle}>até (vazio = tudo)</label><InputData type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                            <div><label data-arato-label="true" style={labelStyle}>Tipo</label>
+                              <SelectField value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }}>
+                                <option value="todos">Todos (CR + CP)</option><option value="receber">Contas a Receber (CR)</option><option value="pagar">Contas a Pagar (CP)</option>
+                              </SelectField></div>
+                          </div>
+                          <div style={{ marginBottom: 12 }}><label data-arato-label="true" style={labelStyle}>Status (nenhum marcado = todos)</label>{caixas(STATUS_OPC, statusCPCR, setStatusCPCR)}</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                            <div><label data-arato-label="true" style={labelStyle}>Categoria (nenhuma marcada = todas)</label>{caixas(categorias.map(c => ({ v: c, l: c })), catCPCR, setCatCPCR, 140)}</div>
+                            <div><label data-arato-label="true" style={labelStyle}>Produtor (nenhum marcado = todos)</label>{caixas(produtoresPresentes.map(p => ({ v: p.id, l: p.nome })), prodCPCR, setProdCPCR, 140)}</div>
+                          </div>
+                          <div style={{ marginBottom: 14 }}><label data-arato-label="true" style={labelStyle}>Fornecedor (parte do nome; vazio = todos)</label>
+                            <input value={fornCPCR} onChange={e => setFornCPCR(e.target.value)} placeholder="Buscar por nome…" style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                          <div style={{ marginBottom: 16 }}><label data-arato-label="true" style={labelStyle}>Emissão</label>
+                            <div style={{ display: "flex", gap: 18 }}>
+                              {([["pdf", "PDF (abre para imprimir)"], ["xlsx", "XLSX (baixa o arquivo)"]] as const).map(([v, rot]) => (
+                                <label key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}><input type="radio" name="cpcrFormato" checked={cpcrFormato === v} onChange={() => setCpcrFormato(v)} style={{ accentColor: "#1A4870" }} />{rot}</label>
+                              ))}
+                            </div></div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                            <button type="button" onClick={() => { setInicioCPCR(""); setFimCPCR(""); setTipoCPCR("todos"); setStatusCPCR(new Set()); setCatCPCR(new Set()); setProdCPCR(new Set()); setFornCPCR(""); }} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}>Limpar tudo</button>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <OperationalButton data-arato-button="secondary" onClick={() => setCpcrPopup(false)} style={{ ...inputStyle, background: "var(--bg-card)", cursor: "pointer" }}>Cancelar</OperationalButton>
+                              <OperationalButton data-arato-button="primary" onClick={() => { setCpcrPopup(false); setCpcrEmitir(cpcrFormato); }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Gerar relatório</OperationalButton>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+                return cpcrVerTela ? (
+                  <div>
+                    <button type="button" onClick={() => setCpcrVerTela(false)} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer", marginBottom: 8 }}>← Voltar ao filtro do relatório</button>
+                    {telaAoVivo}
+                  </div>
+                ) : landing;
               })()}
 
               {/* ABA DFC removida — conteúdo incorporado em Fluxo de Caixa > aba Mensal */}
