@@ -167,6 +167,8 @@ function FinanceiroRelatoriosInner() {
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
   // Relatório CP/CR: função que monta o HTML limpo (sem filtros/botões da tela) a partir do que está filtrado na aba
   const printCpcrRef = useRef<(() => { html: string; escopo: string }) | null>(null);
+  // DFC e Posição por Conta: HTML próprio de impressão (a tela tem filtros e botões que não vão para o papel)
+  const printOutrosRef = useRef<{ dfc?: () => string; posicao?: () => string }>({});
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
@@ -591,6 +593,8 @@ function FinanceiroRelatoriosInner() {
                 </div>`;
 
               abrirPreviewImpressao("Fluxo de Caixa — Diário", html, { ...opts, subtitulo: fazenda });
+            } else if ((aba === "dfc" || aba === "posicao") && printOutrosRef.current[aba]) {
+              abrirPreviewImpressao(aba === "dfc" ? `DFC — Demonstrativo ${dfcAno}` : "Posição por Conta", printOutrosRef.current[aba]!(), { ...opts, subtitulo: fazenda });
             } else if (aba === "cpcr" && printCpcrRef.current) {
               const r = printCpcrRef.current();
               abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { ...opts, subtitulo: fazenda });
@@ -831,7 +835,7 @@ function FinanceiroRelatoriosInner() {
                   const totalEnt = ativas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0);
                   const totalSai = ativas.filter(s => s.tipo !== "entrada").reduce((a, s) => a + s.valor, 0);
                   const liquido  = totalEnt - totalSai;
-                  const fazenda  = nomeFazendaSelecionada ?? "";
+                  const fazenda  = (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
                   const fmtV = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
                   const fmtD = (d: string) => d ? new Date(d + "T12:00").toLocaleDateString("pt-BR") : "—";
                   const linhas = ativas.map(s => `
@@ -2421,6 +2425,28 @@ function FinanceiroRelatoriosInner() {
                   return fmtBRL(v);
                 };
 
+                // ── impressão (relatório próprio) ──
+                printOutrosRef.current.dfc = () => {
+                  const f0 = (v: number) => v === 0 ? "—" : v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+                  const th = (t: string, al = "right") => `<th style="padding:6px 5px;text-align:${al};font-size:9px;font-weight:700;color:#fff;white-space:nowrap">${t}</th>`;
+                  const celula = (v: number, cor: string, b = false) => `<td style="padding:4px 5px;text-align:right;font-size:9px;color:${v < 0 ? "#B91C1C" : cor};${b ? "font-weight:700;" : ""}white-space:nowrap">${f0(v)}</td>`;
+                  const secao = (t: string, bg: string, cor: string) => `<tr style="background:${bg}"><td colspan="14" style="padding:6px 8px;font-weight:800;font-size:10px;color:${cor}">${t}</td></tr>`;
+                  const linhasCat = (rows: CatRow[], cor: string) => rows.filter(r => r.meses.some(c => c.real + c.prev !== 0)).map(r =>
+                    `<tr style="border-bottom:0.5px solid #E8ECF4"><td style="padding:4px 8px 4px 16px;font-size:9px;color:#222">${r.cat.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</td>${r.meses.map(c => celula(c.real + c.prev, cor)).join("")}${celula(r.meses.reduce((t, c) => t + c.real + c.prev, 0), cor, true)}</tr>`).join("");
+                  const tot = (rot: string, arr: number[], total: number, bg: string, cor: string) =>
+                    `<tr style="background:${bg};border-top:1px solid #1A4870"><td style="padding:5px 8px;font-weight:700;font-size:9px">${rot}</td>${arr.map(v => celula(v, cor, true)).join("")}${celula(total, cor, true)}</tr>`;
+                  return `
+                    <div style="margin-bottom:10px;font-size:11px;color:#555"><strong>Exercício:</strong> ${dfcAno} &nbsp; <strong>Base:</strong> ${incluirPrevisoes ? "realizados + previstos" : "somente realizados (baixados)"} &nbsp; <strong>Valores em R$</strong> (dólar convertido pela cotação)</div>
+                    <div class="auto-fit-table"><table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
+                      <thead><tr style="background:#1A4870">${th("Categoria", "left")}${MESES.map(m => th(m)).join("")}${th("Total")}</tr></thead>
+                      <tbody>
+                        ${secao("ENTRADAS", "#F0FDF4", "#166534")}${linhasCat(entradas, "#16A34A")}${tot("Total entradas", totEntMes, totEnt, "#F0FDF4", "#16A34A")}
+                        ${secao("SAÍDAS", "#FEF2F2", "#991B1B")}${linhasCat(saidas, "#E24B4A")}${tot("Total saídas", totSaiMes, totSai, "#FEF2F2", "#E24B4A")}
+                        ${tot("Resultado do mês", saldoMes, totLiq, "#EFF6FF", "#1A4870")}
+                        <tr style="background:#EFF6FF"><td style="padding:5px 8px;font-weight:700;font-size:9px">Saldo acumulado</td>${saldoAcMensal.map(v => celula(v, "#1A4870", true)).join("")}<td></td></tr>
+                      </tbody></table></div>`;
+                };
+
                 // Linha de categoria
                 const CatRowEl = ({ row }: { row: CatRow }) => {
                   const totRow = row.meses.reduce((s, c) => s + c.real + c.prev, 0);
@@ -2623,6 +2649,25 @@ function FinanceiroRelatoriosInner() {
 
                 const totalAtual = posicoes.reduce((s, p) => s + p.saldoAtual, 0);
                 const totalProj  = posicoes.reduce((s, p) => s + p.saldoProj, 0);
+
+                printOutrosRef.current.posicao = () => {
+                  const v = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  const cel = (t: string, al = "right", cor = "#222", b = false) => `<td style="padding:6px 8px;text-align:${al};font-size:10px;color:${cor};${b ? "font-weight:700;" : ""}white-space:nowrap">${t}</td>`;
+                  const corpo = posicoes.map(p => `<tr style="border-bottom:0.5px solid #E8ECF4">${cel(p.conta.nome.replace(/&/g, "&amp;").replace(/</g, "&lt;"), "left", "#222", true)}${cel((tipoCor[p.conta.tipo_conta ?? "corrente"] ?? tipoCor.corrente).label, "left")}${cel(p.conta.banco || "—", "left")}${cel((p.conta.saldo_inicial ?? 0) !== 0 ? v(p.conta.saldo_inicial!) : "—")}${cel(p.entradasReal > 0 ? v(p.entradasReal) : "—", "right", "#16A34A")}${cel(p.saidasReal > 0 ? v(p.saidasReal) : "—", "right", "#E24B4A")}${cel(v(p.saldoAtual), "right", p.saldoAtual >= 0 ? "#111" : "#E24B4A", true)}${cel(p.entradasProj > 0 ? v(p.entradasProj) : "—", "right", "#16A34A")}${cel(p.saidasProj > 0 ? v(p.saidasProj) : "—", "right", "#E24B4A")}${cel(v(p.saldoProj), "right", p.saldoProj >= 0 ? "#111" : "#E24B4A", true)}</tr>`).join("");
+                  const hd = ["Conta", "Tipo", "Banco", "Saldo inicial", "Entradas realizadas", "Saídas realizadas", "Saldo atual", "Entradas proj.", "Saídas proj.", "Saldo projetado"];
+                  return `
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+                      <div style="background:#EFF6FF;border:0.5px solid #BFDBFE;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#1E3A5F">Saldo atual (realizados)</div><div style="font-size:15px;font-weight:700;color:${totalAtual >= 0 ? "#1A4870" : "#E24B4A"}">${v(totalAtual)}</div></div>
+                      <div style="background:#F0FDF4;border:0.5px solid #BBF7D0;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#166534">Entradas projetadas</div><div style="font-size:15px;font-weight:700;color:#16A34A">${v(posicoes.reduce((t, p) => t + p.entradasProj, 0))}</div></div>
+                      <div style="background:#EFF6FF;border:0.5px solid #BFDBFE;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#1E3A5F">Saldo projetado</div><div style="font-size:15px;font-weight:700;color:${totalProj >= 0 ? "#1A4870" : "#E24B4A"}">${v(totalProj)}</div></div>
+                    </div>
+                    <div class="auto-fit-table"><table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
+                      <thead><tr style="background:#1A4870">${hd.map((h, i) => `<th style="padding:7px 8px;text-align:${i < 3 ? "left" : "right"};font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${h}</th>`).join("")}</tr></thead>
+                      <tbody>${corpo}
+                        <tr style="background:#EEF3FA;border-top:1.5px solid #1A4870">${cel(`TOTAL (${posicoes.length} contas)`, "left", "#222", true)}${cel("", "left")}${cel("", "left")}${cel(v(posicoes.reduce((t, p) => t + (p.conta.saldo_inicial ?? 0), 0)), "right", "#222", true)}${cel(v(posicoes.reduce((t, p) => t + p.entradasReal, 0)), "right", "#16A34A", true)}${cel(v(posicoes.reduce((t, p) => t + p.saidasReal, 0)), "right", "#E24B4A", true)}${cel(v(totalAtual), "right", "#222", true)}${cel(v(posicoes.reduce((t, p) => t + p.entradasProj, 0)), "right", "#16A34A", true)}${cel(v(posicoes.reduce((t, p) => t + p.saidasProj, 0)), "right", "#E24B4A", true)}${cel(v(totalProj), "right", "#222", true)}</tr>
+                      </tbody></table></div>
+                    <div style="margin-top:8px;font-size:10px;color:#888">Saldo atual = saldo inicial + entradas realizadas − saídas realizadas (lançamentos baixados). Saldo projetado inclui também lançamentos em aberto/vencidos.</div>`;
+                };
 
                 return (
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 20 }}>

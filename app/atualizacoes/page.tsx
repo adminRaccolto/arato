@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-h",
+    data: "19/10/2026",
+    titulo: "DFC e Posição por Conta imprimem relatório próprio",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Imprimir / PDF nas abas DFC e Posição por Conta passa a gerar um relatório próprio (cabeçalho Arato, tabela e totais), sem os filtros e botões da tela. O relatório de simulações também indica Todas as fazendas da conta em vez da fazenda ativa." },
+    ],
+    onde: "Financeiro → Relatórios → DFC / Posição por Conta → Imprimir / PDF",
+  },
+  {
     versao: "2026.10.19-g",
     data: "19/10/2026",
     titulo: "Relatório CP/CR imprime limpo e com o escopo correto",
