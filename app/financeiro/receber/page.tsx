@@ -1411,7 +1411,7 @@ export default function ContasAReceberPage() {
                 ); })}
               </tr>
               {/* Filtro da coluna Valor: exato, >n, <n ou faixa n-m */}
-              <tr style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
+              <tr className="arato-grid-column-filters" style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
                 {colunasVisiveis.map(c => {
                   const filtravel = c.key === "valor"; // só Valor: as demais colunas já têm filtro na barra acima
                   const numerico = true;

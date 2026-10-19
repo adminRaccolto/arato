@@ -21,7 +21,7 @@ type Pagination = ReturnType<typeof useGridPagination>;
 export default function GridPagination({ pagination }: { pagination: Pagination }) {
   if (pagination.total <= 100) return null;
   const button = { padding: "6px 10px", border: "1px solid var(--border-control)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-1)", cursor: "pointer" };
-  return <nav aria-label="Paginação dos títulos" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 72px 48px 4px", fontSize: 12, color: "var(--text-2)" }}>
+  return <nav className="arato-grid-pagination" aria-label="Paginação dos títulos" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 72px 48px 4px", fontSize: 12, color: "var(--text-2)" }}>
     <span role="status">{pagination.offset + 1}–{pagination.end} de {pagination.total.toLocaleString("pt-BR")} registros</span>
     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
       <label>Por página <select aria-label="Registros por página" value={pagination.size} onChange={event => pagination.setSize(Number(event.target.value))} style={button}>
