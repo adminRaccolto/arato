@@ -85,7 +85,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", 
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId, fazendaIds, contaId, emailUsuario, podeAcessarPlano, nomeFazendaSelecionada, contaModulosOverrides } = useAuth();
+  const { fazendaId, fazendaIds, contaId, emailUsuario, podeAcessarPlano, nomeFazendaSelecionada, contaNome, contaModulosOverrides } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -165,6 +165,8 @@ function FinanceiroRelatoriosInner() {
     tipoVis: string;
   };
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
+  // Relatório CP/CR: função que monta o HTML limpo (sem filtros/botões da tela) a partir do que está filtrado na aba
+  const printCpcrRef = useRef<(() => { html: string; escopo: string }) | null>(null);
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
@@ -413,7 +415,12 @@ function FinanceiroRelatoriosInner() {
             </h1>
           </div>
           {aba !== "comercializacao" && <OperationalButton data-arato-button="primary" onClick={() => {
-            const fazenda = nomeFazendaSelecionada ?? "";
+            // Os relatórios desta tela somam TODAS as fazendas da conta (não só a fazenda ativa do topo):
+            // o cabeçalho diz o escopo real. Na aba CP/CR, o filtro de Produtor define o escopo.
+            const escopoImpressao = aba === "cpcr" && prodCPCR.size > 0
+              ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
+              : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
+            const fazenda = escopoImpressao;
             const opts = { orientation: "landscape" as const, fazenda };
 
             if (aba === "fluxo" && subAbaFluxo === "anual" && printAnualRef.current) {
@@ -584,11 +591,14 @@ function FinanceiroRelatoriosInner() {
                 </div>`;
 
               abrirPreviewImpressao("Fluxo de Caixa — Diário", html, { ...opts, subtitulo: fazenda });
+            } else if (aba === "cpcr" && printCpcrRef.current) {
+              const r = printCpcrRef.current();
+              abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { ...opts, subtitulo: fazenda });
             } else {
-              // Modo mensal: DOM com elementos interativos ocultos
+              // Demais abas: DOM com elementos interativos ocultos
               const el = document.getElementById("fluxo-print-content");
               abrirPreviewImpressao(
-                `Fluxo de Caixa${{ diario: " — Diário", mensal: " — Mensal", anual: " — Anual" }[subAbaFluxo]}`,
+                aba === "fluxo" ? `Fluxo de Caixa${{ diario: " — Diário", mensal: " — Mensal", anual: " — Anual" }[subAbaFluxo]}` : ({ cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta" } as Record<string, string>)[aba] ?? "Relatório",
                 el?.innerHTML ?? "",
                 opts,
               );
@@ -1861,10 +1871,78 @@ function FinanceiroRelatoriosInner() {
                   [arr[i], arr[j]] = [arr[j], arr[i]]; return arr;
                 });
 
+                const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
+                // Colunas respeitam a ordem e visibilidade do grid
+                const colsVisiveis = cpcrColOrder
+                  .filter(k => cpcrColVis[k] !== false)
+                  .map(k => COLUNAS_CPCR_DEF.find(c => c.key === k)!).filter(Boolean);
+                const cab = colsVisiveis.map(c => c.label);
+                const getCellVal = (col: typeof COLUNAS_CPCR_DEF[0], l: Lancamento): string | number => {
+                  const brl = paraBRLRel(l, cotacaoUSD);
+                  const sinal = l.tipo === "pagar" ? -1 : 1;
+                  switch (col.key) {
+                    case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
+                    case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "";
+                    case "numero_nf":      return l.numero_documento ?? "";
+                    case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
+                    case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
+                    case "valor":          return sinal * brl;
+                    case "status":         return statusLabel[statusEfetivo(l)] ?? l.status;
+                    case "data_pagamento": return l.data_baixa ? new Date(l.data_baixa+"T12:00").toLocaleDateString("pt-BR") : "";
+                    case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
+                    case "moeda":          return (l.moeda ?? "brl").toUpperCase();
+                    case "forma_pgto":     return l.forma_pagamento ?? "";
+                    case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
+                    case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
+                    case "observacao":     return l.observacao ?? "";
+                    default:               return "";
+                  }
+                };
+
+
+                // ── impressão (relatório limpo: sem filtros nem botões da tela) ──
+                printCpcrRef.current = () => {
+                  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                  const fmtV = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  const dt = (iso: string) => iso ? new Date(iso + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+                  const escopo = prodCPCR.size > 0 ? [...prodCPCR].map(id => prodMap[id] ?? id).join(", ") : "Todos os produtores";
+                  const resumo = [
+                    ["Período", `${dt(inicioCPCR)} a ${dt(fimCPCR)}`],
+                    ["Tipo", tipoCPCR === "todos" ? "Todos (CR + CP)" : tipoCPCR === "receber" ? "Contas a Receber" : "Contas a Pagar"],
+                    ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].map(k => statusLabel[k] ?? k).join(", ")],
+                    ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
+                    ["Produtor", escopo],
+                    ["Fornecedor", fornCPCR.trim() || "Todos"],
+                  ];
+                  const numCols = new Set(["valor", "valor_pago"]);
+                  const cab = colsVisiveis.map(c => `<th style="padding:7px 8px;text-align:${numCols.has(c.key) ? "right" : "left"};font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${esc(c.label)}</th>`).join("");
+                  const corpo = lancsCPCR.map(l => `<tr style="border-bottom:0.5px solid #E8ECF4">${colsVisiveis.map(c => {
+                    const v = getCellVal(c, l);
+                    const txt = typeof v === "number" ? fmtV(v) : String(v ?? "");
+                    const cor = typeof v === "number" ? (v < 0 ? "#B91C1C" : "#166534") : "#222";
+                    return `<td style="padding:5px 8px;font-size:10px;text-align:${numCols.has(c.key) ? "right" : "left"};color:${cor};${numCols.has(c.key) ? "font-weight:600;white-space:nowrap" : ""}">${esc(txt || "—")}</td>`;
+                  }).join("")}</tr>`).join("");
+                  const html = `
+                    <div style="display:flex;gap:6px 24px;flex-wrap:wrap;margin-bottom:12px;padding:9px 14px;background:#F8FAFB;border:0.5px solid #DDE2EE;border-radius:8px;font-size:11px;color:#555">
+                      ${resumo.map(([k, v]) => `<span><strong>${k}:</strong> ${esc(v)}</span>`).join("")}
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+                      <div style="background:#F0FDF4;border:0.5px solid #BBF7D0;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#166534">Total a Receber (CR)</div><div style="font-size:15px;font-weight:700;color:#16A34A">${fmtV(totalCR)}</div></div>
+                      <div style="background:#FEF2F2;border:0.5px solid #FECACA;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#991B1B">Total a Pagar (CP)</div><div style="font-size:15px;font-weight:700;color:#E24B4A">${fmtV(totalCP)}</div></div>
+                      <div style="background:#FEF2F2;border:0.5px solid #FECACA;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#991B1B">Vencidos</div><div style="font-size:15px;font-weight:700;color:#E24B4A">${fmtV(totalVenc)}</div></div>
+                      <div style="background:#EFF6FF;border:0.5px solid #BFDBFE;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#1E3A5F">Já baixados / pagos</div><div style="font-size:15px;font-weight:700;color:#1A4870">${fmtV(totalBaixado)}</div></div>
+                    </div>
+                    <div class="auto-fit-table"><table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
+                      <thead><tr style="background:#1A4870">${cab}</tr></thead>
+                      <tbody>${corpo || `<tr><td colspan="${colsVisiveis.length}" style="padding:20px;text-align:center;color:#999">Nenhum lançamento para os filtros aplicados.</td></tr>`}</tbody>
+                    </table></div>
+                    <div style="margin-top:8px;font-size:10px;color:#888">${lancsCPCR.length} lançamento(s). Valores em R$ (dólar convertido pela cotação). Pagar em vermelho, receber em verde.</div>`;
+                  return { html, escopo };
+                };
+
                 // ── exportar XLSX ─────────────────────────────────────
                 const exportarXLSX = async () => {
                   const XLSX = await import("xlsx");
-                  const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
                   const resumo = [
                     ["Relatório CP / CR Analítico"],
                     ["Período", `${inicioCPCR} a ${fimCPCR}`],
@@ -1882,32 +1960,6 @@ function FinanceiroRelatoriosInner() {
                     ["Baixados / Pagos", totalBaixado],
                     ["Total de lançamentos", lancsCPCR.length],
                   ];
-                  // Colunas respeitam a ordem e visibilidade do grid
-                  const colsVisiveis = cpcrColOrder
-                    .filter(k => cpcrColVis[k] !== false)
-                    .map(k => COLUNAS_CPCR_DEF.find(c => c.key === k)!).filter(Boolean);
-                  const cab = colsVisiveis.map(c => c.label);
-                  const getCellVal = (col: typeof COLUNAS_CPCR_DEF[0], l: Lancamento): string | number => {
-                    const brl = paraBRLRel(l, cotacaoUSD);
-                    const sinal = l.tipo === "pagar" ? -1 : 1;
-                    switch (col.key) {
-                      case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
-                      case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "";
-                      case "numero_nf":      return l.numero_documento ?? "";
-                      case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
-                      case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
-                      case "valor":          return sinal * brl;
-                      case "status":         return statusLabel[statusEfetivo(l)] ?? l.status;
-                      case "data_pagamento": return l.data_baixa ? new Date(l.data_baixa+"T12:00").toLocaleDateString("pt-BR") : "";
-                      case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
-                      case "moeda":          return (l.moeda ?? "brl").toUpperCase();
-                      case "forma_pgto":     return l.forma_pagamento ?? "";
-                      case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
-                      case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
-                      case "observacao":     return l.observacao ?? "";
-                      default:               return "";
-                    }
-                  };
                   const linhas = lancsCPCR.map(l => colsVisiveis.map(col => getCellVal(col, l)));
                   const wb = XLSX.utils.book_new();
                   const ws1 = XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"] = [{wch:32},{wch:22}];

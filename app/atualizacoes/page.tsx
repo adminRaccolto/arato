@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-g",
+    data: "19/10/2026",
+    titulo: "Relatório CP/CR imprime limpo e com o escopo correto",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Imprimir / PDF na aba CP / CR dos Relatórios Financeiros copiava a tela inteira (filtros, botões, Agrupar por) e saía com o título Fluxo de Caixa — Diário. Agora gera um relatório próprio: resumo dos filtros aplicados, totais (CR, CP, vencidos, baixados) e a tabela com as colunas que você deixou visíveis." },
+      { tipo: "correcao", texto: "O cabeçalho do relatório mostrava a fazenda ativa do topo (ex.: Armazem Santa Rita), mas os dados somam todas as fazendas da conta. Agora indica Todas as fazendas — nome da conta, ou os produtores escolhidos no filtro Produtor. Vale para as abas de Fluxo de Caixa também." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → Imprimir / PDF",
+  },
+  {
     versao: "2026.10.19-f",
     data: "19/10/2026",
     titulo: "CP e CR: filtro de moeda",

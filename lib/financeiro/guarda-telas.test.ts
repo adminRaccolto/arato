@@ -23,6 +23,9 @@ const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
     ["funcionario_id", "mão de obra (funcionário/prestador)"], ["veiculo_sel", "veículo/máquina vinculado"],
     ["ciclosPorSafra", "rateio por vencimento (safra e ciclo por parcela)"], ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
   ],
+  "app/financeiro/relatorios/page.tsx": [
+    ["printCpcrRef", "impressão limpa do relatório CP/CR (sem filtros da tela)"], ["escopoImpressao", "cabeçalho do relatório mostra o escopo real (conta/produtor), não a fazenda ativa"],
+  ],
   "app/financeiro/receber/page.tsx": [
     ["Efetivar", "botão Efetivar previsão"], ["bClass", "classificação na baixa"], ["bNovaData", "nova data do saldo em recebimento parcial"],
     ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
