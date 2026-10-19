@@ -1,6 +1,8 @@
 "use client";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
 import { hojeLocal } from "../../../lib/data-local";
+import { carregarCotacoesUSD, cotacaoEfetiva, ehUSD, fmtNaMoeda, fmtUSDn, valorEmReais } from "../../../lib/financeiro/moeda";
+import { casaFiltroNumero, casaFiltroTexto } from "../../../lib/financeiro/filtro-colunas";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
 // Contas a Pagar — unificado (Produtor + Empresa). Promovida de piloto pra
@@ -270,6 +272,18 @@ export default function ContasAPagarPage() {
     listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
   }, [fazendaId, fazendaIds?.join(",")]);
 
+  // Moeda: título USD guarda `valor` em dólar; o grid mostra o equivalente em reais (cotação do lançamento,
+  // ou a PTAX corrente se faltar) e o valor real em dólar logo abaixo.
+  const [cotacoes, setCotacoes] = useState<Map<string, number>>(new Map());
+  const [ptax, setPtax] = useState<number | null>(null);
+  useEffect(() => {
+    fetch("/api/precos").then(r => r.json()).then(d => { const v = d.usdPtax ?? d.usdBrl; if (typeof v === "number" && v > 1) setPtax(v); }).catch(() => {});
+  }, []);
+  const cotDe = (l: { id: string }) => cotacaoEfetiva(cotacoes.get(l.id), ptax);
+  const emReais = (l: { id: string; moeda: string | null }, v: number | null | undefined) => valorEmReais(v, l.moeda, cotDe(l));
+  // Filtros por coluna (linha sob o cabeçalho do grid)
+  const [filtrosCol, setFiltrosCol] = useState<Record<string, string>>({});
+
   const carregar = useCallback(async () => {
     const fids = fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [];
     if (!fids.length && !contaId) return;
@@ -288,7 +302,9 @@ export default function ContasAPagarPage() {
         registros.push(...((data ?? []) as RelLancamento[]));
         if (!data || data.length < 1000) break;
       }
-      setResultado(await carregarNumerosNF(supabase, registros));
+      const [comNumeros, cots] = await Promise.all([carregarNumerosNF(supabase, registros), carregarCotacoesUSD(supabase, registros)]);
+      setCotacoes(cots);
+      setResultado(comNumeros);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao consultar rel_lancamentos — a migration da Seção 312 já foi rodada no Supabase?");
     } finally {
@@ -322,7 +338,26 @@ export default function ContasAPagarPage() {
   const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, de: fDataDe, ate: fDataAte, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP));
+  const textoColuna = (l: RelLancamento, k: string): string => ({
+    origem: l.origem_tabela === "lancamentos" ? "PF Produtor" : "PJ Empresa",
+    numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? "",
+    descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
+    ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
+    vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
+    baixa: fmtData(l.data_baixa), moeda: l.moeda ?? "", conta: l.conta_bancaria_nome ?? "", nf: l.nfe_numero ?? "",
+    lancado: ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento ?? "", observacao: l.observacao ?? "",
+    status: STATUS_OPCOES.find(x => x.v === statusExibido(l.status_normalizado, l.data_vencimento))?.label ?? "",
+  } as Record<string, string>)[k] ?? "";
+  const passaColunas = (l: RelLancamento) => Object.entries(filtrosCol).every(([k, f]) => {
+    if (!f.trim()) return true;
+    if (k === "valor" || k === "pago" || k === "saldo") {
+      const bruto = k === "valor" ? l.valor : k === "pago" ? l.valor_pago : Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0));
+      return casaFiltroNumero(bruto, f) || (ehUSD(l.moeda) && casaFiltroNumero(emReais(l, bruto), f));
+    }
+    if (k === "dias") return casaFiltroNumero(diasVencimento(l.data_vencimento, l.status_normalizado), f);
+    return casaFiltroTexto(textoColuna(l, k), f);
+  });
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
@@ -1007,8 +1042,8 @@ export default function ContasAPagarPage() {
     }
   }
 
-  const totalPagar = linhas.reduce((s, l) => s + (l.valor ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
-  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0)), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
+  const totalPagar = linhas.reduce((s, l) => s + (emReais(l, l.valor) ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
+  const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + (emReais(l, Math.max(0, (l.valor ?? 0) - (l.valor_pago ?? 0))) ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
   // Reintroduzido 01/10/2026 — a tela antiga do produtor tinha isso, mas só
@@ -1404,7 +1439,7 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
@@ -1456,6 +1491,22 @@ export default function ContasAPagarPage() {
                     <ResizeHandle onMouseDown={startResize(c.key)} />
                   </th>
                 ); })}
+              </tr>
+              {/* Linha de filtros por coluna — texto: contém; valores: exato, >n, <n ou faixa n-m */}
+              <tr style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
+                {colunasVisiveis.map(c => {
+                  const filtravel = c.key !== "checkbox" && c.key !== "acoes";
+                  const numerico = ["valor", "pago", "saldo", "dias"].includes(c.key);
+                  return (
+                    <th key={c.key} style={{ padding: "3px 6px", background: "#fff", borderBottom: "0.5px solid #DDE2EE", fontWeight: 400 }}>
+                      {filtravel && (
+                        <input value={filtrosCol[c.key] ?? ""} onChange={e => setFiltrosCol(p => ({ ...p, [c.key]: e.target.value }))}
+                          placeholder={numerico ? "ex.: >1000" : "filtrar"} aria-label={`Filtrar ${c.label}`}
+                          style={{ width: "100%", boxSizing: "border-box", fontSize: 10, padding: "3px 5px", border: "0.5px solid #DDE2EE", borderRadius: 5, background: filtrosCol[c.key] ? "#FBF3E0" : "#fff" }} />
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -1543,13 +1594,20 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px" }}>{fmtData(l.data_baixa)}</td>
                   ),
                   valor: (
-                    <td style={{ padding: "7px 10px", fontWeight: 600, textAlign: "right", color: "#E24B4A" }}>{fmtBRL(l.valor)}</td>
+                    <td style={{ padding: "7px 10px", fontWeight: 600, textAlign: "right", color: "#E24B4A" }}>
+                      {ehUSD(l.moeda) ? (
+                        <>
+                          {emReais(l, l.valor) != null ? fmtBRL(emReais(l, l.valor)) : <span style={{ color: "#EF9F27", fontSize: 10 }}>sem cotação</span>}
+                          <div style={{ fontSize: 10, fontWeight: 400, color: "#666", marginTop: 1 }} title={cotacoes.get(l.id) ? `Cotação do lançamento: ${cotacoes.get(l.id)}` : "Sem cotação no lançamento — usando a PTAX do dia"}>{fmtUSDn(l.valor)}{cotacoes.get(l.id) ? "" : " · PTAX"}</div>
+                        </>
+                      ) : fmtBRL(l.valor)}
+                    </td>
                   ),
                   pago: (
-                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(l.valor_pago)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtNaMoeda(l.valor_pago, l.moeda)}</td>
                   ),
                   saldo: (
-                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(saldo)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtNaMoeda(saldo, l.moeda)}</td>
                   ),
                   moeda: (
                     <td style={{ padding: "7px 10px", textAlign: "center" }}>{l.moeda ?? "—"}</td>
@@ -1691,7 +1749,8 @@ export default function ContasAPagarPage() {
               <div data-arato-statistic="display" style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Valor</div>
-                  <div style={{ fontWeight: 700, fontSize: 18, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(l.valor)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtNaMoeda(l.valor, l.moeda)}</div>
+                  {ehUSD(l.moeda) && emReais(l, l.valor) != null && <div style={{ fontSize: 11, color: "#666" }}>≈ {fmtBRL(emReais(l, l.valor))}</div>}
                 </div>
 
                 {l.status_normalizado === "parcial" && (

@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-c",
+    data: "19/10/2026",
+    titulo: "CP e CR: valores em dólar e filtros por coluna de volta",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Lançamento em dólar no grid de Contas a Pagar e a Receber volta a mostrar o valor em reais (convertido pela cotação do lançamento, ou pela PTAX do dia se faltar) e, logo abaixo em fonte menor, o valor real em US$. Pago, Saldo e o detalhe do título passam a usar o símbolo US$; os totais do filtro somam em reais." },
+      { tipo: "correcao", texto: "A linha de filtros sob o cabeçalho voltou: cada coluna tem um campo. Texto filtra por trecho (sem acento); Valor, Pago, Saldo e Dias aceitam número exato, >1000, <1000 ou faixa 1000-2000. Limpar filtros também zera os filtros das colunas." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.19-b",
     data: "19/10/2026",
     titulo: "Contas a Pagar e a Receber deixam de recarregar sozinhas",
