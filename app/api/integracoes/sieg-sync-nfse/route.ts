@@ -375,10 +375,16 @@ export async function POST(req: NextRequest) {
       importadas++;
     }
 
-    if (importadas > 0 || xmlsList.length > 0) {
+    // Marca = fim da janela consultada menos 1 dia de folga (nunca "agora" depois do processamento, que
+    // deixava NFS-e recebidas pelo SIEG nesse intervalo fora da próxima janela). Não avança em período
+    // escolhido à mão nem quando alguma nota falhou ao salvar. Duplicatas da folga são descartadas.
+    const periodoManualNfse = !!(dtIni || dtFim);
+    if (!periodoManualNfse && erros.length === 0) {
+      // relê a config antes de gravar: a sincronização de NF-e pode ter gravado a marca dela neste intervalo
+      const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazenda_id).eq("modulo", "sieg").maybeSingle();
       await db.from("configuracoes_modulo").upsert({
         fazenda_id, modulo: "sieg",
-        config: { ...cfg, ultima_sync_nfse_ts: new Date().toISOString() },
+        config: { ...((fresca?.config as Record<string, unknown> | null) ?? cfg), ultima_sync_nfse_ts: new Date(new Date(fimStr).getTime() - 86_400_000).toISOString() },
       });
     }
 

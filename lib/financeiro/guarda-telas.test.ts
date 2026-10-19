@@ -48,3 +48,13 @@ for (const tela of TELAS) {
     test(`${tela} mantém: ${o_que}`, () => assert.ok(src.includes(marcador), `${tela} perdeu "${marcador}" (${o_que})`));
   }
 }
+
+// Sincronização automática do SIEG (19/10/2026): sem este cron nenhuma conta atualiza NFs sozinha
+test("vercel.json agenda a sincronização automática do SIEG", () => {
+  const v = readFileSync(new URL("../../vercel.json", import.meta.url), "utf8");
+  assert.ok(v.includes("/api/cron/sieg-auto"), "vercel.json perdeu o cron /api/cron/sieg-auto");
+});
+test("sincronização SIEG grava a marca pelo fim da janela consultada, não por 'agora'", () => {
+  const src = readFileSync(new URL("../../app/api/integracoes/sieg-sync/route.ts", import.meta.url), "utf8");
+  assert.ok(src.includes("avancaMarca") && src.includes("marcaTs"), "a marca de última sincronização voltou a usar o horário do fim do processamento");
+});

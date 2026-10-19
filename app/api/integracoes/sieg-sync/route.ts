@@ -302,17 +302,29 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 4. Persistir última sync ─────────────────────────────────────────────
+    // A marca da última sincronização é o FIM DA JANELA CONSULTADA (menos 1 dia de folga), nunca "agora":
+    // antes ela era gravada ao terminar o processamento (minutos depois da consulta), e as NFs que o SIEG
+    // recebeu nesse intervalo ficavam fora da próxima janela para sempre. Duplicatas da folga são
+    // descartadas pela chave de acesso. Também NÃO avança quando (a) a sincronização foi de um período
+    // escolhido à mão — não cobre o presente — ou (b) alguma NF falhou ao salvar: assim a próxima rodada
+    // tenta de novo em vez de perder a nota.
+    const periodoManual = !!(dataInicioParam || dataFimParam);
+    const falhouAoSalvar = erros.some(e => !e.startsWith("XML sem Id"));
+    const avancaMarca = !periodoManual && !falhouAoSalvar;
+    const marcaTs = new Date(new Date(uploadFim).getTime() - 86_400_000).toISOString();
     const novoCfg = {
-      ...cfg,
       cnpjs_destino:    cnpjs,
-      ultima_sync_data: hojeLocal(),
-      ultima_sync_ts:   new Date().toISOString(),
+      ...(avancaMarca ? { ultima_sync_data: marcaTs.slice(0, 10), ultima_sync_ts: marcaTs } : {}),
       total_importado:  String((parseInt(String(cfg.total_importado || "0")) + importados_nfe)),
+      ultima_execucao_ts: new Date().toISOString(),
     };
 
+    // relê a config antes de gravar: a sincronização de NFS-e pode ter gravado a marca dela neste intervalo
+    const { data: fresca } = await db.from("configuracoes_modulo").select("config").eq("fazenda_id", fazenda_id).eq("modulo", "sieg").maybeSingle();
+    const cfgFresca = (fresca?.config ?? {}) as Record<string, unknown>;
     await db
       .from("configuracoes_modulo")
-      .upsert({ fazenda_id, modulo: "sieg", config: novoCfg });
+      .upsert({ fazenda_id, modulo: "sieg", config: { ...cfg, ...cfgFresca, ...novoCfg } });
 
     return NextResponse.json({
       sucesso:       true,
@@ -320,6 +332,7 @@ export async function POST(req: NextRequest) {
       duplicados_nfe,
       total_xmls:    xmlsNFe.length,
       erros:         erros.slice(0, 20),
+      marca_avancou: avancaMarca,
     });
 
   } catch (err) {

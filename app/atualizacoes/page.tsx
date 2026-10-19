@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-j",
+    data: "19/10/2026",
+    titulo: "SIEG: sincronização automática e fim das notas perdidas",
+    modulos: ["Fiscal", "Integrações"],
+    itens: [
+      { tipo: "novo", texto: "O Arato passa a buscar sozinho no SIEG, 2 vezes ao dia (7h e 13h de Brasília), as NF-e emitidas contra os CPF/CNPJ de cada conta e as NFS-e. Elas entram como NF pendente em Documentos Fiscais, igual à sincronização manual, sem mexer em estoque nem financeiro até serem processadas. Antes, a rotina automática não funcionava para nenhuma conta, e só aparecia nota nova quando alguém clicava em sincronizar." },
+      { tipo: "correcao", texto: "A data de última sincronização era gravada ao terminar o processamento, e as notas que o SIEG recebia nesses minutos nunca entravam na próxima busca. Agora a próxima busca começa 1 dia antes do fim da anterior (notas repetidas são descartadas pela chave). A data também deixa de avançar quando a sincronização foi de um período escolhido à mão ou quando alguma nota falhou ao salvar, para a nota ser buscada de novo." },
+    ],
+    onde: "Documentos Fiscais → NF de Produtos / NFS-e (importação SIEG); Configurações → Integrações → Sieg",
+  },
+  {
     versao: "2026.10.19-i",
     data: "19/10/2026",
     titulo: "Produtor na conciliação e no CP/CR; exportação CP/CR completa",
