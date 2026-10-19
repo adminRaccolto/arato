@@ -2043,11 +2043,26 @@ function FinanceiroRelatoriosInner() {
                     ["Baixados / Pagos", totalBaixado],
                     ["Total de lançamentos", lancsCPCR.length],
                   ];
-                  const linhas = lancsCPCR.map(l => colsVisiveis.map(col => getCellVal(col, l)));
+                  // Datas vão para o Excel como DATA de verdade (filtráveis, ordenáveis e com formato dd/mm/aaaa), não como texto
+                  const isoData = (col: { key: string }, l: Lancamento): string | null | undefined =>
+                    col.key === "emissao" ? l.data_lancamento : col.key === "vencimento" ? l.data_vencimento : col.key === "data_pagamento" ? l.data_baixa : undefined;
+                  const colsData = new Set(["emissao", "vencimento", "data_pagamento"]);
+                  const linhas = lancsCPCR.map(l => colsVisiveis.map(col => {
+                    if (!colsData.has(col.key)) return getCellVal(col, l);
+                    const iso = isoData(col, l);
+                    return iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : "";
+                  }));
                   const wb = XLSX.utils.book_new();
                   const ws1 = XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"] = [{wch:32},{wch:22}];
                   XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
-                  const ws2 = XLSX.utils.aoa_to_sheet([cab,...linhas]);
+                  const ws2 = XLSX.utils.aoa_to_sheet([cab,...linhas], { cellDates: true });
+                  colsVisiveis.forEach((col, c) => {
+                    if (!colsData.has(col.key)) return;
+                    for (let r = 1; r <= linhas.length; r++) {
+                      const cel = ws2[XLSX.utils.encode_cell({ r, c })];
+                      if (cel && cel.t === "d") cel.z = "dd/mm/yyyy";
+                    }
+                  });
                   ws2["!cols"] = colsVisiveis.map(c => ({ wch: Math.round(cpcrW[c.key] / 7) }));
                   XLSX.utils.book_append_sheet(wb, ws2, "Lançamentos");
                   XLSX.writeFile(wb, `CP-CR_${inicioCPCR}_${fimCPCR}_${hoje}.xlsx`);

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-q",
+    data: "19/10/2026",
+    titulo: "Excel do CP/CR com datas de verdade",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na exportação para Excel do relatório CP/CR, as colunas de data (Emissão, Vencimento e Data de Pagamento) agora são gravadas como data, no formato dd/mm/aaaa, e não mais como texto. Dá para filtrar por período, ordenar e usar em fórmulas e tabelas dinâmicas." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → XLSX",
+  },
+  {
     versao: "2026.10.19-p",
     data: "19/10/2026",
     titulo: "Relatório CP/CR: janela de filtro antes de emitir",
