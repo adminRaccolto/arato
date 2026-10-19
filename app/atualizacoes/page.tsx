@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-f",
+    data: "19/10/2026",
+    titulo: "CP e CR: filtro de moeda",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Novo filtro Moeda no bloco de filtros de Contas a Pagar e a Receber: Real, Dólar e Barter (sacas), com seleção múltipla. Em Contas a Pagar, Limpar filtros também o zera." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.19-e",
     data: "19/10/2026",
     titulo: "CP e CR: recursos da tela anterior restaurados",

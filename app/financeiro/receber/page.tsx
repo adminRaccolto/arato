@@ -113,6 +113,11 @@ const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] =
   { v: "baixado",   label: "Baixado",   bg: "#DCFCE7", color: "#166534" },
   { v: "cancelado", label: "Cancelado", bg: "#F4F6FA", color: "#555" },
 ];
+const MOEDA_OPCOES = [
+  { v: "BRL", label: "Real (R$)" },
+  { v: "USD", label: "Dólar (US$)" },
+  { v: "barter", label: "Barter (sacas)" },
+];
 const ORIGEM_OPCOES = [
   { v: "lancamentos",         label: "Produtor" },
   { v: "empresa_lancamentos", label: "Empresa" },
@@ -222,6 +227,7 @@ export default function ContasAReceberPage() {
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
   const [fAtalho, setFAtalho] = useState("");
+  const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
@@ -362,6 +368,7 @@ export default function ContasAReceberPage() {
     if (fOrigem.size > 0 && !fOrigem.has(l.origem_tabela)) return false;
     if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
     if (!passaColunas(l)) return false;
+    if (fMoeda.size > 0 && !fMoeda.has(l.moeda ?? "BRL")) return false;
     if (fAtalho) {
       const aberto = l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado";
       const h = hojeISO(); const lim = new Date(`${h}T12:00:00`); lim.setDate(lim.getDate() + 7);
@@ -1326,6 +1333,14 @@ export default function ContasAReceberPage() {
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {STATUS_OPCOES.map(s => (
                 <OperationalButton data-arato-button="secondary" key={s.v} onClick={() => toggle(fStatus, setFStatus, s.v)} style={chip(fStatus.has(s.v))}>{s.label}</OperationalButton>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label data-arato-label="true" style={lblMini}>Moeda</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {MOEDA_OPCOES.map(o => (
+                <OperationalButton data-arato-button="secondary" key={o.v} onClick={() => toggle(fMoeda, setFMoeda, o.v)} style={chip(fMoeda.has(o.v))}>{o.label}</OperationalButton>
               ))}
             </div>
           </div>

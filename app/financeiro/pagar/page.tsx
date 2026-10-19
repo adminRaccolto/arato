@@ -116,6 +116,11 @@ const STATUS_OPCOES: { v: string; label: string; bg: string; color: string }[] =
   { v: "baixado",   label: "Baixado",   bg: "#DCFCE7", color: "#166534" },
   { v: "cancelado", label: "Cancelado", bg: "#F4F6FA", color: "#555" },
 ];
+const MOEDA_OPCOES = [
+  { v: "BRL", label: "Real (R$)" },
+  { v: "USD", label: "Dólar (US$)" },
+  { v: "barter", label: "Barter (sacas)" },
+];
 const ORIGEM_OPCOES = [
   { v: "lancamentos",         label: "Produtor" },
   { v: "empresa_lancamentos", label: "Empresa" },
@@ -245,6 +250,7 @@ export default function ContasAPagarPage() {
   const [fOrigem,  setFOrigem]  = useState<Set<string>>(new Set());
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
   const [fAtalho, setFAtalho] = useState("");
+  const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
@@ -381,7 +387,7 @@ export default function ContasAPagarPage() {
     if (fAtalho === "barter") return l.moeda === "barter";
     return l.origem_lancamento === fAtalho;
   };
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l) && passaAtalho(l));
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
@@ -1556,6 +1562,10 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>Status</label>
             <MultiSelectDropdown opcoes={STATUS_OPCOES} selecionados={fStatus} onChange={setFStatus} textoTodos="Todos" largura={170} />
           </div>
+          <div>
+            <label data-arato-label="true" style={lblMini}>Moeda</label>
+            <MultiSelectDropdown opcoes={MOEDA_OPCOES} selecionados={fMoeda} onChange={setFMoeda} textoTodos="Todas" largura={130} />
+          </div>
           <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
@@ -1564,7 +1574,7 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); setFAtalho(""); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
