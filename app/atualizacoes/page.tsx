@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-r",
+    data: "19/10/2026",
+    titulo: "Relatório CP/CR com colunas personalizadas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Na janela de filtro do relatório CP/CR há agora a seção Colunas do relatório: marque as colunas que quer ver e use as setas para a ordem. A escolha vale para o PDF e para o XLSX e fica salva para o seu usuário. O relatório deixa de repetir as colunas do grid. Além das colunas do grid, estão disponíveis Categoria, Saldo em aberto, Dias para vencer (negativo = em atraso), Vencimento original e Conta bancária." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → Abrir filtro e gerar",
+  },
+  {
     versao: "2026.10.19-q",
     data: "19/10/2026",
     titulo: "Excel do CP/CR com datas de verdade",

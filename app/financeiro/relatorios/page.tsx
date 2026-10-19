@@ -189,7 +189,7 @@ function FinanceiroRelatoriosInner() {
   };
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
   // Relatório CP/CR: função que monta o HTML limpo (sem filtros/botões da tela) a partir do que está filtrado na aba
-  const printCpcrRef = useRef<(() => Promise<{ html: string; escopo: string }>) | null>(null);
+  const printCpcrRef = useRef<((chaves?: string[]) => Promise<{ html: string; escopo: string }>) | null>(null);
   // DFC e Posição por Conta: HTML próprio de impressão (a tela tem filtros e botões que não vão para o papel)
   const printOutrosRef = useRef<{ dfc?: () => string; posicao?: () => string }>({});
 
@@ -217,7 +217,7 @@ function FinanceiroRelatoriosInner() {
   const [cpcrVerTela, setCpcrVerTela] = useState(false);
   const [cpcrFormato, setCpcrFormato] = useState<"pdf" | "xlsx">("pdf");
   const [cpcrEmitir, setCpcrEmitir] = useState<"pdf" | "xlsx" | null>(null);
-  const exportCpcrRef = useRef<{ exportar: () => Promise<void>; qtd: number } | null>(null);
+  const exportCpcrRef = useRef<{ exportar: (chaves?: string[]) => Promise<void>; qtd: number } | null>(null);
   // Emite o relatório assim que a janela de filtro é confirmada (os estados já foram aplicados no render anterior)
   useEffect(() => {
     if (!cpcrEmitir) return;
@@ -226,9 +226,9 @@ function FinanceiroRelatoriosInner() {
     (async () => {
       const info = exportCpcrRef.current;
       if (!info || info.qtd === 0) { alert("Nenhum lançamento encontrado para esse filtro."); return; }
-      if (formato === "xlsx") { await info.exportar(); return; }
+      if (formato === "xlsx") { await info.exportar(relCols); return; }
       if (!printCpcrRef.current) return;
-      const r = await printCpcrRef.current();
+      const r = await printCpcrRef.current(relCols);
       const escopo = prodCPCR.size > 0
         ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
         : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
@@ -254,12 +254,35 @@ function FinanceiroRelatoriosInner() {
     { key: "produtor",       label: "Produtor",          defaultW: 140, align: "left"  as const },
     { key: "observacao",     label: "Observação",        defaultW: 180, align: "left"  as const },
   ];
+  // Colunas disponíveis no RELATÓRIO (PDF/XLSX): as do grid + algumas que o grid não mostra
+  const COLUNAS_REL = [
+    ...COLUNAS_CPCR_DEF,
+    { key: "categoria",      label: "Categoria",         defaultW: 130, align: "left"  as const },
+    { key: "saldo",          label: "Saldo em aberto",   defaultW: 110, align: "right" as const },
+    { key: "dias",           label: "Dias p/ vencer (− = atraso)", defaultW: 90, align: "right" as const },
+    { key: "venc_orig",      label: "Venc. original",    defaultW: 100, align: "left"  as const },
+    { key: "conta_bancaria", label: "Conta bancária",    defaultW: 140, align: "left"  as const },
+  ];
   const _defCPCROrder = COLUNAS_CPCR_DEF.map(c => c.key);
   const _defCPCRVis   = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, true]));
   const _defCPCRW     = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, c.defaultW]));
   const [cpcrColOrder,   setCpcrColOrder]   = useState<string[]>(_defCPCROrder);
   const [cpcrColVis,     setCpcrColVis]     = useState<Record<string,boolean>>(_defCPCRVis);
   const [cpcrColDDOpen,  setCpcrColDDOpen]  = useState(false);
+  // Colunas escolhidas para o relatório emitido pela janela de filtro (ordem = ordem no relatório), lembradas por usuário
+  const [relCols, setRelCols] = useState<string[]>(_defCPCROrder);
+  useEffect(() => {
+    if (!emailUsuario || typeof window === "undefined") return;
+    try {
+      const salvo = localStorage.getItem(`cpcr_relCols_${emailUsuario}`);
+      if (salvo) { const arr = (JSON.parse(salvo) as string[]).filter(k => COLUNAS_REL.some(c => c.key === k)); if (arr.length) setRelCols(arr); }
+    } catch { /* ok */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailUsuario]);
+  const salvarRelCols = (arr: string[]) => {
+    setRelCols(arr);
+    if (emailUsuario) localStorage.setItem(`cpcr_relCols_${emailUsuario}`, JSON.stringify(arr));
+  };
   const cpcrDragCol = useRef<string | null>(null);
   const { widths: cpcrW, startResize: cpcrResize } = useColumnResize(
     _defCPCRW,
@@ -1954,11 +1977,15 @@ function FinanceiroRelatoriosInner() {
                 };
                 const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
                 // Colunas respeitam a ordem e visibilidade do grid
-                const colsVisiveis = cpcrColOrder
+                const colsGrid = cpcrColOrder
                   .filter(k => cpcrColVis[k] !== false)
                   .map(k => COLUNAS_CPCR_DEF.find(c => c.key === k)!).filter(Boolean);
-                const cab = colsVisiveis.map(c => c.label);
-                const getCellVal = (col: typeof COLUNAS_CPCR_DEF[0], l: Lancamento): string | number => {
+                // Exportar/imprimir pela janela de filtro usa as colunas ESCOLHIDAS para o relatório; o botão da tela ao vivo, as do grid
+                let colsVisiveis = colsGrid;
+                const usarColunas = (chaves?: string[]) => {
+                  colsVisiveis = chaves && chaves.length ? chaves.map(k => COLUNAS_REL.find(c => c.key === k)!).filter(Boolean) : colsGrid;
+                };
+                const getCellVal = (col: { key: string }, l: Lancamento): string | number => {
                   const brl = paraBRLRel(l, cotacaoUSD);
                   const sinal = l.tipo === "pagar" ? -1 : 1;
                   switch (col.key) {
@@ -1976,13 +2003,19 @@ function FinanceiroRelatoriosInner() {
                     case "op_gerencial":   return l.operacao_gerencial_id ? (extras.og.get(l.id) ?? ogMap[l.operacao_gerencial_id] ?? "") : "";
                     case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? empresas.find(e => e.id === (l as unknown as { empresa_id?: string | null }).empresa_id)?.nome ?? "";
                     case "observacao":     return l.observacao ?? "";
+                    case "categoria":      return l.categoria ?? "";
+                    case "saldo":          return sinal * Math.max(0, brl - (l.valor_pago ?? 0));
+                    case "dias":           return l.data_vencimento ? Math.round((new Date(`${l.data_vencimento}T12:00:00`).getTime() - new Date(`${hoje}T12:00:00`).getTime()) / 86400000) : "";
+                    case "venc_orig":      return l.data_prorrogacao ? new Date(l.data_prorrogacao+"T12:00").toLocaleDateString("pt-BR") : "";
+                    case "conta_bancaria": return l.conta_bancaria ? (contas.find(c => c.id === l.conta_bancaria)?.nome ?? "") : "";
                     default:               return "";
                   }
                 };
 
 
                 // ── impressão (relatório limpo: sem filtros nem botões da tela) ──
-                printCpcrRef.current = async () => {
+                printCpcrRef.current = async (chaves?: string[]) => {
+                  usarColunas(chaves);
                   await resolverExtras();
                   const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
                   const fmtV = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -1996,7 +2029,7 @@ function FinanceiroRelatoriosInner() {
                     ["Produtor", escopo],
                     ["Fornecedor", fornCPCR.trim() || "Todos"],
                   ];
-                  const numCols = new Set(["valor", "valor_pago"]);
+                  const numCols = new Set(["valor", "valor_pago", "saldo", "dias"]);
                   const cab = colsVisiveis.map(c => `<th style="padding:7px 8px;text-align:${numCols.has(c.key) ? "right" : "left"};font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${esc(c.label)}</th>`).join("");
                   const corpo = lancsCPCR.map(l => `<tr style="border-bottom:0.5px solid #E8ECF4">${colsVisiveis.map(c => {
                     const v = getCellVal(c, l);
@@ -2023,7 +2056,8 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 // ── exportar XLSX ─────────────────────────────────────
-                const exportarXLSX = async () => {
+                const exportarXLSX = async (chaves?: string[]) => {
+                  usarColunas(chaves);
                   await resolverExtras();
                   const XLSX = await import("xlsx");
                   const resumo = [
@@ -2045,8 +2079,8 @@ function FinanceiroRelatoriosInner() {
                   ];
                   // Datas vão para o Excel como DATA de verdade (filtráveis, ordenáveis e com formato dd/mm/aaaa), não como texto
                   const isoData = (col: { key: string }, l: Lancamento): string | null | undefined =>
-                    col.key === "emissao" ? l.data_lancamento : col.key === "vencimento" ? l.data_vencimento : col.key === "data_pagamento" ? l.data_baixa : undefined;
-                  const colsData = new Set(["emissao", "vencimento", "data_pagamento"]);
+                    col.key === "emissao" ? l.data_lancamento : col.key === "vencimento" ? l.data_vencimento : col.key === "data_pagamento" ? l.data_baixa : col.key === "venc_orig" ? l.data_prorrogacao : undefined;
+                  const colsData = new Set(["emissao", "vencimento", "data_pagamento", "venc_orig"]);
                   const linhas = lancsCPCR.map(l => colsVisiveis.map(col => {
                     if (!colsData.has(col.key)) return getCellVal(col, l);
                     const iso = isoData(col, l);
@@ -2055,7 +2089,7 @@ function FinanceiroRelatoriosInner() {
                   const wb = XLSX.utils.book_new();
                   const ws1 = XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"] = [{wch:32},{wch:22}];
                   XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
-                  const ws2 = XLSX.utils.aoa_to_sheet([cab,...linhas], { cellDates: true });
+                  const ws2 = XLSX.utils.aoa_to_sheet([colsVisiveis.map(c => c.label), ...linhas], { cellDates: true });
                   colsVisiveis.forEach((col, c) => {
                     if (!colsData.has(col.key)) return;
                     for (let r = 1; r <= linhas.length; r++) {
@@ -2197,7 +2231,7 @@ function FinanceiroRelatoriosInner() {
                             )}
                           </div>
                         )}
-                        <OperationalButton data-arato-button="toggle" onClick={exportarXLSX} disabled={lancsCPCR.length === 0}
+                        <OperationalButton data-arato-button="toggle" onClick={() => exportarXLSX()} disabled={lancsCPCR.length === 0}
                           style={{ padding: "7px 14px", background: lancsCPCR.length === 0 ? "#ccc" : "#16763A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: lancsCPCR.length === 0 ? "default" : "pointer" }}>
                           ⬇ Exportar XLSX
                         </OperationalButton>
@@ -2511,6 +2545,28 @@ function FinanceiroRelatoriosInner() {
                           </div>
                           <div style={{ marginBottom: 14 }}><label data-arato-label="true" style={labelStyle}>Fornecedor (parte do nome; vazio = todos)</label>
                             <input value={fornCPCR} onChange={e => setFornCPCR(e.target.value)} placeholder="Buscar por nome…" style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                          <div style={{ marginBottom: 14 }}>
+                            <label data-arato-label="true" style={labelStyle}>Colunas do relatório (marque as que quer ver; use ↑ ↓ para a ordem — fica salvo para você)</label>
+                            <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: 190, overflowY: "auto", background: "var(--bg-input)" }}>
+                              {[...relCols, ...COLUNAS_REL.map(c => c.key).filter(k => !relCols.includes(k))].map(k => {
+                                const def = COLUNAS_REL.find(c => c.key === k); if (!def) return null;
+                                const marcada = relCols.includes(k); const idx = relCols.indexOf(k);
+                                return (
+                                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", fontSize: 12, color: marcada ? "var(--text-1)" : "var(--text-3)" }}>
+                                    <label style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, cursor: "pointer" }}>
+                                      <input type="checkbox" checked={marcada} style={{ accentColor: "#1A4870" }}
+                                        onChange={() => salvarRelCols(marcada ? relCols.filter(x => x !== k) : [...relCols, k])} />{def.label}
+                                    </label>
+                                    {marcada && <>
+                                      <button type="button" aria-label="Subir" disabled={idx === 0} onClick={() => { const a = [...relCols]; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; salvarRelCols(a); }} style={{ border: "0.5px solid var(--border)", background: "var(--bg-card)", borderRadius: 4, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.3 : 1, fontSize: 11, padding: "0 6px" }}>↑</button>
+                                      <button type="button" aria-label="Descer" disabled={idx === relCols.length - 1} onClick={() => { const a = [...relCols]; [a[idx + 1], a[idx]] = [a[idx], a[idx + 1]]; salvarRelCols(a); }} style={{ border: "0.5px solid var(--border)", background: "var(--bg-card)", borderRadius: 4, cursor: idx === relCols.length - 1 ? "default" : "pointer", opacity: idx === relCols.length - 1 ? 0.3 : 1, fontSize: 11, padding: "0 6px" }}>↓</button>
+                                    </>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {relCols.length === 0 && <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 4 }}>Marque ao menos uma coluna.</div>}
+                          </div>
                           <div style={{ marginBottom: 16 }}><label data-arato-label="true" style={labelStyle}>Emissão</label>
                             <div style={{ display: "flex", gap: 18 }}>
                               {([["pdf", "PDF (abre para imprimir)"], ["xlsx", "XLSX (baixa o arquivo)"]] as const).map(([v, rot]) => (
@@ -2521,7 +2577,7 @@ function FinanceiroRelatoriosInner() {
                             <button type="button" onClick={() => { setInicioCPCR(""); setFimCPCR(""); setTipoCPCR("todos"); setStatusCPCR(new Set()); setCatCPCR(new Set()); setProdCPCR(new Set()); setFornCPCR(""); }} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}>Limpar tudo</button>
                             <div style={{ display: "flex", gap: 8 }}>
                               <OperationalButton data-arato-button="secondary" onClick={() => setCpcrPopup(false)} style={{ ...inputStyle, background: "var(--bg-card)", cursor: "pointer" }}>Cancelar</OperationalButton>
-                              <OperationalButton data-arato-button="primary" onClick={() => { setCpcrPopup(false); setCpcrEmitir(cpcrFormato); }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Gerar relatório</OperationalButton>
+                              <OperationalButton data-arato-button="primary" disabled={relCols.length === 0} onClick={() => { setCpcrPopup(false); setCpcrEmitir(cpcrFormato); }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Gerar relatório</OperationalButton>
                             </div>
                           </div>
                         </div>
