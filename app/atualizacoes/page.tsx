@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-o",
+    data: "19/10/2026",
+    titulo: "Relatório CP/CR: operação gerencial aparece no grid",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "No grid do relatório CP/CR a coluna Operação Gerencial saía em branco em muitos títulos (os mesmos que estavam sem produtor), porque a lista de operações da tela é deduplicada por classificação e deixa de fora as cópias a que esses títulos apontam. Agora os nomes que faltam são buscados por id no servidor ao abrir o relatório. A exportação e a impressão já faziam isso." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR",
+  },
+  {
     versao: "2026.10.19-n",
     data: "19/10/2026",
     titulo: "Produtor preenchido nos CP de NF e de NFS-e, e nas linhas de empresa",

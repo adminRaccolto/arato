@@ -19,14 +19,26 @@ const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { fazenda_id: string; titulos: { id: string; empresa?: boolean }[] };
-    if (!body.fazenda_id || !Array.isArray(body.titulos)) return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
+    const body = await req.json() as { fazenda_id: string; titulos?: { id: string; empresa?: boolean }[]; og_ids?: string[] };
+    if (!body.fazenda_id || (!Array.isArray(body.titulos) && !Array.isArray(body.og_ids))) return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
     const user = await getRequestUser(req.headers.get("authorization"));
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const acesso = await validateFazendaAccess(body.fazenda_id, req.headers.get("authorization") ?? undefined);
     if (!acesso.ok) return NextResponse.json({ ok: false, error: acesso.error }, { status: acesso.status });
 
     const sb = admin();
+
+    // Modo leve: só resolve o nome de operações gerenciais por id (a lista da tela é deduplicada por classificação
+    // e deixa de fora as cópias a que muitos títulos apontam).
+    if (Array.isArray(body.og_ids)) {
+      const ids = [...new Set(body.og_ids.filter(Boolean))];
+      const og_por_id: Record<string, string> = {};
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await sb.from("operacoes_gerenciais").select("id, descricao").in("id", ids.slice(i, i + 200));
+        for (const o of data ?? []) og_por_id[o.id as string] = o.descricao as string;
+      }
+      return NextResponse.json({ ok: true, og_por_id });
+    }
     const { data: faz } = await sb.from("fazendas").select("conta_id").eq("id", body.fazenda_id).maybeSingle();
     let fazIds = [body.fazenda_id];
     if (faz?.conta_id) {
@@ -36,8 +48,9 @@ export async function POST(req: NextRequest) {
 
     type Linha = { id: string; nf_entrada_id: string | null; nfe_numero?: string | null; numero_documento: string | null; operacao_gerencial_id: string | null };
     const linhas: Linha[] = [];
+    const titulos = body.titulos ?? [];
     for (const [tabela, ehEmpresa] of [["lancamentos", false], ["empresa_lancamentos", true]] as const) {
-      const ids = body.titulos.filter(t => !!t.empresa === ehEmpresa).map(t => t.id);
+      const ids = titulos.filter(t => !!t.empresa === ehEmpresa).map(t => t.id);
       for (let i = 0; i < ids.length; i += 200) {
         const campos = ehEmpresa ? "id, nf_entrada_id, numero_documento, operacao_gerencial_id" : "id, nf_entrada_id, nfe_numero, numero_documento, operacao_gerencial_id";
         const { data, error } = await sb.from(tabela).select(campos).in("id", ids.slice(i, i + 200)).in("fazenda_id", fazIds);

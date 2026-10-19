@@ -30,7 +30,7 @@ const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
     ["popupDetalhe", "produtor e documento de origem no popup do extrato vinculado"], ["produtorDoTitulo", "coluna Produtor na lista de títulos da conciliação"],
   ],
   "app/financeiro/relatorios/page.tsx": [
-    ["resolverExtras", "Nº da NF e operação gerencial resolvidos do banco na exportação/impressão CP/CR"], ["enriquecer-titulos", "exportação CP/CR usa a rota de servidor que resolve NF e operação gerencial"],
+    ["ogExtra", "operação gerencial dos títulos resolvida por id também no grid do relatório CP/CR"], ["resolverExtras", "Nº da NF e operação gerencial resolvidos do banco na exportação/impressão CP/CR"], ["enriquecer-titulos", "exportação CP/CR usa a rota de servidor que resolve NF e operação gerencial"],
     ["printCpcrRef", "impressão limpa do relatório CP/CR (sem filtros da tela)"], ["printOutrosRef", "impressão própria de DFC e Posição por Conta"], ["listarEmpresasDaConta", "empresas de toda a conta no relatório (produtor de título de PJ)"], ["escopoImpressao", "cabeçalho do relatório mostra o escopo real (conta/produtor), não a fazenda ativa"],
   ],
   "app/financeiro/receber/page.tsx": [

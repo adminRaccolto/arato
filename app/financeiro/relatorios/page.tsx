@@ -98,6 +98,28 @@ function FinanceiroRelatoriosInner() {
   const [contas,       setContas]       = useState<ContaBancaria[]>([]);
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [operacoesGer, setOperacoesGer] = useState<OperacaoGerencial[]>([]);
+  // Nome das operações gerenciais que os títulos usam mas a lista acima não traz (ela é deduplicada por classificação)
+  const [ogExtra, setOgExtra] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!fazendaId || lancamentos.length === 0) return;
+    const conhecidas = new Set(operacoesGer.map(o => o.id));
+    const faltam = [...new Set(lancamentos.map(l => l.operacao_gerencial_id).filter((x): x is string => !!x && !conhecidas.has(x) && !ogExtra[x]))];
+    if (faltam.length === 0) return;
+    let vivo = true;
+    (async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const r = await fetch("/api/financeiro/enriquecer-titulos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(sess.session?.access_token ? { Authorization: `Bearer ${sess.session.access_token}` } : {}) },
+          body: JSON.stringify({ fazenda_id: fazendaId, og_ids: faltam }),
+        });
+        const j = await r.json() as { ok: boolean; og_por_id?: Record<string, string> };
+        if (vivo && j.ok && j.og_por_id) setOgExtra(prev => ({ ...prev, ...j.og_por_id }));
+      } catch { /* a coluna fica como estava */ }
+    })();
+    return () => { vivo = false; };
+  }, [lancamentos, operacoesGer, fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [apoioBaixasIds,  setApoioBaixasIds]  = useState<Set<string>>(new Set());
   const [apoioLancsAbertos, setApoioLancsAbertos] = useState<{ id: string; tipo: string; descricao: string; valor: number; data_vencimento: string; categoria: string | null; pessoa_nome: string | null }[]>([]);
   const [incluirApoio,   setIncluirApoio]   = useState(true);
@@ -1780,7 +1802,7 @@ function FinanceiroRelatoriosInner() {
                 // ── helpers locais ────────────────────────────────────
                 const prodMap  = Object.fromEntries(produtores.map(p => [p.id, p.nome]));
                 const pessoaMap = Object.fromEntries(pessoas.map(p => [p.id, p.nome]));
-                const ogMap    = Object.fromEntries(operacoesGer.map(o => [o.id, o.descricao]));
+                const ogMap    = { ...ogExtra, ...Object.fromEntries(operacoesGer.map(o => [o.id, o.descricao])) };
                 // Extrai o nome do fornecedor da descrição (remove prefixo "NF 123 — " ou "NFS-e 123 — ")
                 const extrairFornecedor = (desc: string) => {
                   const m = desc.match(/^NF[Ss]?[-]?e?\s+[\w\d]+\s+[—–-]+\s*(.+)$/i);
