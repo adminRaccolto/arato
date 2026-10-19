@@ -3842,6 +3842,9 @@ function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">)
     taxa_juros_aa:          c.taxa_juros_aa,
     taxa_juros_am:          c.taxa_juros_am,
     iof_pct:                c.iof_pct,
+    // IOF/tarifas financiados em R$ (Seção 349) — só entram no payload quando informados, para não quebrar antes da migration
+    ...(c.iof_valor != null ? { iof_valor: c.iof_valor } : {}),
+    ...(c.tarifas_financiadas != null ? { tarifas_financiadas: c.tarifas_financiadas } : {}),
     tac_valor:              c.tac_valor,
     outros_custos:          c.outros_custos,
     conta_liberacao_id:     c.conta_liberacao_id,
@@ -3875,7 +3878,13 @@ function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">)
 }
 
 export async function criarContratoFinanceiro(c: Omit<ContratoFinanceiro, "id" | "created_at">): Promise<ContratoFinanceiro> {
-  const { data, error } = await supabase.from("contratos_financeiros").insert(desnormalizarContrato(c)).select().single();
+  const row = desnormalizarContrato(c);
+  let { data, error } = await supabase.from("contratos_financeiros").insert(row).select().single();
+  if (error && /iof_valor|tarifas_financiadas/.test(error.message)) {
+    // Seção 349 ainda não rodada: grava o contrato sem os valores de IOF/tarifas financiados (rode a migration para guardá-los)
+    const { iof_valor: _a, tarifas_financiadas: _b, ...semNovos } = row; void _a; void _b;
+    ({ data, error } = await supabase.from("contratos_financeiros").insert(semNovos).select().single());
+  }
   if (error) throw error;
   return normalizarContrato(data as Record<string, unknown>);
 }
@@ -3884,7 +3893,11 @@ export async function atualizarContratoFinanceiro(id: string, c: Partial<Contrat
   const row = desnormalizarContrato(c as Omit<ContratoFinanceiro, "id" | "created_at">);
   // Remove campos undefined para não sobrescrever com null
   const clean = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined));
-  const { error } = await supabase.from("contratos_financeiros").update(clean).eq("id", id);
+  let { error } = await supabase.from("contratos_financeiros").update(clean).eq("id", id);
+  if (error && /iof_valor|tarifas_financiadas/.test(error.message)) {
+    const { iof_valor: _a, tarifas_financiadas: _b, ...semNovos } = clean; void _a; void _b;
+    ({ error } = await supabase.from("contratos_financeiros").update(semNovos).eq("id", id));
+  }
   if (error) throw error;
 }
 
@@ -3940,11 +3953,67 @@ export async function criarParcelaLiberacao(
   return data;
 }
 
+/**
+ * IOF/tarifas FINANCIADOS: o banco soma a despesa ao valor financiado e deposita só o líquido (ex.: contratado
+ * 206.972,70 = liberado 200.000,00 + IOF 6.972,70). Para separar o capital da despesa — com a operação
+ * gerencial própria (IOF / Tarifas bancárias) — cria, na data da liberação:
+ *   • uma parcela de liberação do tipo 'despesa_financiada' + CR de captação (o capital financiado que cobre a despesa);
+ *   • um CP da despesa (OG IOF ou Tarifas bancárias).
+ * Os dois já nascem baixados e conciliados com o mesmo valor, então o caixa da conta de liberação continua
+ * sendo só o líquido depositado, a dívida fica no valor contratado e a despesa aparece no DRE.
+ */
+export async function criarParcelaDespesaFinanciada(
+  contrato: ContratoFinanceiro,
+  fazenda_id: string,
+  numParcela: number,
+  dataLiberacao: string,
+  valor: number,
+  tipoDespesa: "iof" | "tarifas",
+): Promise<ParcelaLiberacao> {
+  const ogMap = await buscarOgsCf(fazenda_id);
+  const cotacao = contrato.moeda === "USD" ? (contrato.valor_cotacao ?? null) : null;
+  const rotulo = tipoDespesa === "iof" ? "IOF financiado" : "Tarifas/seguro financiados";
+  const base = {
+    fazenda_id, moeda: contrato.moeda, cotacao_usd: cotacao,
+    pessoa_id: contrato.pessoa_id ?? null, produtor_id: contrato.produtor_id ?? null,
+    data_lancamento: dataLiberacao, data_vencimento: dataLiberacao,
+    conta_bancaria: contrato.conta_liberacao_id ?? null,
+    status: "baixado" as const, valor_pago: valor, data_baixa: dataLiberacao, conciliado: true,
+    auto: true, origem_lancamento: "contrato_financeiro" as const, contrato_financeiro_id: contrato.id,
+    valor,
+  };
+  const { data: cr, error: eCr } = await supabase.from("lancamentos").insert({
+    ...base, tipo: "receber",
+    descricao: `${contrato.descricao} — ${rotulo} (capital)`,
+    categoria: CAT_CAPTACAO[contrato.tipo],
+    operacao_gerencial_id: ogMap.get(OG_CAPTACAO_CLASS) ?? null,
+  }).select().single();
+  if (eCr) throw eCr;
+  const { data: cp, error: eCp } = await supabase.from("lancamentos").insert({
+    ...base, tipo: "pagar",
+    descricao: `${contrato.descricao} — ${rotulo}`,
+    categoria: "Encargos Bancários",
+    operacao_gerencial_id: ogMap.get(tipoDespesa === "iof" ? OG_ENCARGO_CLASS : OG_TARIFA_CLASS) ?? null,
+  }).select().single();
+  if (eCp) throw eCp;
+  const { data, error } = await supabase.from("parcelas_liberacao").insert({
+    contrato_id: contrato.id, fazenda_id, num_parcela: numParcela, data_liberacao: dataLiberacao,
+    valor_liberado: valor, valor_liberado_brl: cotacao ? valor * cotacao : valor,
+    lancamento_id: cr?.id ?? null, tipo: "despesa_financiada", despesa_lancamento_id: cp?.id ?? null,
+  }).select().single();
+  if (error) {
+    // não deixa CR/CP órfãos se a parcela não pôde ser gravada (ex.: Seção 349 ainda não rodada no banco)
+    await supabase.from("lancamentos").delete().in("id", [cr?.id, cp?.id].filter(Boolean) as string[]);
+    throw new Error(`Não foi possível registrar o IOF/tarifas financiados (${error.message}). Confira se a Seção 349 do supabase_migrations.sql já foi executada.`);
+  }
+  return data as ParcelaLiberacao;
+}
+
 export async function excluirParcelaLiberacao(id: string): Promise<void> {
   // Busca lancamento_id antes de excluir para remover o CR vinculado
   const { data: parcela } = await supabase
     .from("parcelas_liberacao")
-    .select("lancamento_id")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -3954,6 +4023,10 @@ export async function excluirParcelaLiberacao(id: string): Promise<void> {
   // Remove o CR criado automaticamente junto com a liberação
   if (parcela?.lancamento_id) {
     await falharSeErro(supabase.from("lancamentos").delete().eq("id", parcela.lancamento_id), "excluir lancamentos");
+  }
+  // IOF/tarifas financiados: remove também o CP da despesa criado junto
+  if (parcela?.despesa_lancamento_id) {
+    await falharSeErro(supabase.from("lancamentos").delete().eq("id", parcela.despesa_lancamento_id), "excluir lancamentos");
   }
 }
 
@@ -4017,6 +4090,7 @@ const OG_JUROS_CLASS: Record<ContratoFinanceiro["tipo"], string> = {
   outros:        "2.02.01.03.005",
 };
 const OG_ENCARGO_CLASS = "2.02.01.01.001";  // IOF/TAC
+const OG_TARIFA_CLASS = "2.02.01.01.002";   // Tarifas bancárias
 const OG_CAPTACAO_CLASS = "1.03.01.01.003"; // Recebimento de financiamentos
 
 export async function buscarOgsCf(fazenda_id: string): Promise<Map<string, string>> {
@@ -4024,6 +4098,7 @@ export async function buscarOgsCf(fazenda_id: string): Promise<Map<string, strin
     ...Object.values(OG_AMORT_CLASS),
     ...Object.values(OG_JUROS_CLASS),
     OG_ENCARGO_CLASS,
+    OG_TARIFA_CLASS,
     OG_CAPTACAO_CLASS,
   ])];
   // As OGs padrão da Raccolto são globais (fazenda_id NULL) — filtrar só por

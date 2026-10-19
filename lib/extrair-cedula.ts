@@ -21,7 +21,9 @@ export interface CedulaExtraida {
   // Financeiro
   moeda: "BRL" | "USD" | null;
   valor_financiado: number | null;     // Valor total do crédito concedido pelo banco
-  valor_liberado: number | null;       // Valor efetivamente liberado (sem recursos próprios)
+  valor_liberado: number | null;       // Valor efetivamente LIBERADO/DEPOSITADO pelo banco (líquido de IOF e despesas financiadas)
+  valor_iof: number | null;            // IOF em R$ (+ IOF adicional) financiado, embutido no valor financiado
+  valor_tarifas: number | null;        // Tarifas + seguro + outras despesas em R$ financiadas, embutidas no valor financiado
   // Taxa de juros — fixa OU variável (indexador + spread)
   taxa_tipo: "fixa" | "variavel" | null;
   indexador: string | null;         // CDI, IPCA, SELIC, TR, TJLP, TLP, INPC, IGP-M, Outro
@@ -66,6 +68,8 @@ CAMPOS A EXTRAIR:
 
 6. data_liberacao: Data em que o banco liberou/liberará o dinheiro. Procure em "Forma de Utilização", "Cronograma de Liberação", "Data de Liberação".
    IMPORTANTE: Se o campo diz "imediata", "imediato" ou similar, use a mesma data_contrato.
+   Se o documento só informa "forma de disponibilização do crédito: conta corrente" sem data própria (empréstimo
+   pessoal/CCB), a liberação é na emissão: use a mesma data_contrato.
 
 7. credor_nome: Razão social COMPLETA do banco/credor (ex: "CAIXA ECONÔMICA FEDERAL", "BANCO DO BRASIL S.A.").
    Procure em "CREDOR", "FINANCIADOR", "INSTITUIÇÃO FINANCEIRA", cabeçalho do documento.
@@ -82,10 +86,20 @@ CAMPOS A EXTRAIR:
 12. valor_financiado: Valor TOTAL do crédito concedido pelo banco. Campo "Valor do Crédito", "Limite", "Valor Financiado".
     Se houver múltiplos empreendimentos, SOME apenas os valores financiados pelo banco (não recursos próprios).
 
-13. valor_liberado: Valor efetivamente liberado pelo banco nesta cédula.
+13. valor_liberado: Valor efetivamente liberado/depositado pelo banco nesta cédula.
+    Procure "VALOR LIBERADO", "Valor líquido liberado", "Valor creditado" (bloco "Informações complementares CET",
+    "Características da operação"). Quando a cédula tem IOF/tarifas FINANCIADOS (somados ao valor contratado),
+    valor_liberado é MENOR que valor_financiado: ex. "VALOR TOTAL DEVIDO/CONTRATADO 206.972,70" e
+    "VALOR LIBERADO 200.000,00" → valor_financiado = 206972.70 e valor_liberado = 200000.00.
     ATENÇÃO: Alguns contratos de investimento têm "Recursos Próprios" (contrapartida do produtor) que NÃO são financiados.
     valor_liberado = apenas o que o banco desembolsou.
-    Se não houver distinção, use o mesmo valor de valor_financiado.
+    Se não houver distinção entre contratado e liberado, use o mesmo valor de valor_financiado.
+
+13a. valor_iof: IOF em R$ (some "IOF" + "IOF adicional") conforme o bloco "TOTAL DE DESPESAS"/"Informações complementares CET".
+    Ex.: "- IOF + IOF ADICIONAL: R$ 6.972,70 (3,37 %)" → valor_iof = 6972.70. null se não houver.
+13b. valor_tarifas: soma em R$ de TARIFAS + SEGURO + DESPESAS (outras) financiadas, do mesmo bloco. 0/null se zero ou ausente.
+    Regra de conferência: valor_financiado ≈ valor_liberado + valor_iof + valor_tarifas. Se não bater, extraia cada campo
+    exatamente como está escrito, sem forçar a conta.
 
 14. taxa_tipo: "fixa" ou "variavel".
     - "variavel": o contrato menciona um INDEXADOR seguido de um spread. Exemplos:
@@ -115,7 +129,10 @@ CAMPOS A EXTRAIR:
     Se só encontrar taxa anual, calcule: ((1 + aa/100)^(1/12) - 1) * 100.
     null quando taxa_tipo = "variavel".
 
-20. tipo_calculo: "sac" (amortização constante/decrescente), "price" (prestação fixa), "outros"
+20. tipo_calculo: "sac" (amortização constante/decrescente), "price" (prestação fixa), "outros".
+    Procure "SISTEMA DE AMORTIZAÇÃO". "TABELA PRICE", "PRICE", "PRESTAÇÕES IGUAIS/FIXAS" → "price".
+    "SAC", "SAC DECRESCENTE", "AMORTIZAÇÃO CONSTANTE" → "sac". "SACRE"/"SAC CRESCENTE" → "sac_crescente".
+    NÃO assuma "sac" por padrão: se o documento nomeia o sistema, siga o documento.
 
 21. carencia_meses: Meses de carência antes do início dos pagamentos. 0 se não houver.
     ATENÇÃO: Carência ≠ periodicidade. Carência = período sem amortização (só juros ou totalizado).
@@ -169,6 +186,8 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
   "moeda": "BRL",
   "valor_financiado": null,
   "valor_liberado": null,
+  "valor_iof": null,
+  "valor_tarifas": null,
   "taxa_tipo": "fixa",
   "indexador": null,
   "spread_aa": null,

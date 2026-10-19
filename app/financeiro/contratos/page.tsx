@@ -1,4 +1,5 @@
 "use client";
+import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -10,7 +11,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import {
   listarContratosFinanceiros, listarContratosFinanceirosDaConta, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
-  listarParcelasLiberacao, criarParcelaLiberacao, excluirParcelaLiberacao,
+  listarParcelasLiberacao, criarParcelaLiberacao, criarParcelaDespesaFinanciada, excluirParcelaLiberacao,
   listarParcelasPagamento, salvarParcelasPagamento, baixarLancamento, reabrirLancamento,
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
@@ -176,7 +177,7 @@ const FC_VAZIO = {
   indexador: "", spread_aa: "", spread_am: "",
   taxa_variavel_ref: "",
   taxa_juros_aa: "", taxa_juros_am: "",
-  iof_pct: "", tac_valor: "", outros_custos: "",
+  iof_pct: "", tac_valor: "", outros_custos: "", iof_valor: "", tarifas_financiadas: "",
   conta_liberacao_id: "", conta_pagamento_id: "",
   forma_pagamento: "", local_pagamento: "",
   carencia_meses: "0", periodicidade_meses: "1",
@@ -460,6 +461,7 @@ export default function ContratosFinanceiros() {
       taxa_juros_am: c.taxa_juros_am != null ? String(c.taxa_juros_am) : "",
       iof_pct: c.iof_pct ? String(c.iof_pct) : "", tac_valor: c.tac_valor ? String(c.tac_valor) : "",
       outros_custos: c.outros_custos ? String(c.outros_custos) : "",
+      iof_valor: c.iof_valor ? String(c.iof_valor) : "", tarifas_financiadas: c.tarifas_financiadas ? String(c.tarifas_financiadas) : "",
       conta_liberacao_id: c.conta_liberacao_id ?? "", conta_pagamento_id: c.conta_pagamento_id ?? "",
       forma_pagamento: c.forma_pagamento ?? "", local_pagamento: c.local_pagamento ?? "",
       observacao: c.observacao ?? "", carencia_meses: String(c.carencia_meses ?? 0),
@@ -510,6 +512,9 @@ export default function ContratosFinanceiros() {
         ? produtores.find(p => normDoc(p.cpf_cnpj) === normDoc(d.produtor_cpf) && normDoc(d.produtor_cpf).length > 0)
         : null;
 
+      // IOF/tarifas FINANCIADOS: contratado = liberado + despesas (ex.: 206.972,70 = 200.000,00 + 6.972,70 de IOF).
+      // Sem o detalhe na cédula, a diferença entre contratado e liberado é tratada como despesa financiada.
+      const { iof: iofIA, tarifas: tarIA, liberadoLiquido: libIA } = derivarDespesasFinanciadas(d);
       // Preenche o form com os dados extraídos
       const credorNomeIA = d.credor_nome ?? d.credor ?? null;
       setFC(prev => ({
@@ -535,8 +540,12 @@ export default function ContratosFinanceiros() {
         periodicidade_meses: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade_meses,
         iof_pct:          d.iof_pct           ? String(d.iof_pct)          : prev.iof_pct,
         tac_valor:        d.tac_valor         ? String(d.tac_valor)         : prev.tac_valor,
+        iof_valor:        iofIA > 0           ? String(iofIA)               : prev.iof_valor,
+        tarifas_financiadas: tarIA > 0        ? String(tarIA)               : prev.tarifas_financiadas,
         observacao:       d.observacao        ?? prev.observacao,
       }));
+      // Aba Liberação já vem preenchida: o que o banco depositou (líquido), na data da liberação
+      if (libIA > 0) setFLib({ data_liberacao: d.data_liberacao ?? d.data_contrato ?? "", valor_liberado: String(libIA), parcelas_liberacao: "1" });
 
       // Auto-preencher fCalc com dados do cronograma extraído
       const cronograma: { data_vencimento: string; valor: number }[] = Array.isArray(d.parcelas_cronograma) ? d.parcelas_cronograma : [];
@@ -647,6 +656,9 @@ export default function ContratosFinanceiros() {
       iof_pct: fC.iof_pct ? parseFloat(fC.iof_pct.replace(",", ".")) : undefined,
       tac_valor: fC.tac_valor ? parseFloat(fC.tac_valor.replace(",", ".")) : undefined,
       outros_custos: fC.outros_custos ? parseFloat(fC.outros_custos.replace(",", ".")) : undefined,
+      // IOF/tarifas financiados em R$ — só vai no payload quando informado (ou para zerar um valor antigo)
+      iof_valor: (parseFloat(String(fC.iof_valor).replace(",", ".")) || 0) > 0 ? parseFloat(String(fC.iof_valor).replace(",", ".")) : (contratoModal?.iof_valor ? 0 : undefined),
+      tarifas_financiadas: (parseFloat(String(fC.tarifas_financiadas).replace(",", ".")) || 0) > 0 ? parseFloat(String(fC.tarifas_financiadas).replace(",", ".")) : (contratoModal?.tarifas_financiadas ? 0 : undefined),
       conta_liberacao_id: fC.conta_liberacao_id || undefined, conta_pagamento_id: fC.conta_pagamento_id || undefined,
       forma_pagamento: fC.forma_pagamento || undefined, local_pagamento: fC.local_pagamento || undefined,
       observacao: fC.observacao || undefined, carencia_meses: Number(fC.carencia_meses) || 0,
@@ -708,8 +720,21 @@ export default function ContratosFinanceiros() {
       }, contratoModal);
       setParcelasLiberacao(p => [...p, nova]);
     }
+    // IOF/tarifas financiados: lança junto com a primeira liberação, separando a despesa do capital
+    await lancarDespesasFinanciadas(fLib.data_liberacao, parcelasLiberacao.length + nParcelas);
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
   });
+
+  // IOF/tarifas embutidos no valor financiado: CR do capital + CP da despesa (OG IOF / Tarifas bancárias), uma única vez
+  const lancarDespesasFinanciadas = async (dataLib: string, ultimoNum: number) => {
+    if (!contratoModal || parcelasLiberacao.some(p => p.tipo === "despesa_financiada")) return;
+    let n = ultimoNum;
+    const iof = contratoModal.iof_valor ?? 0;
+    const tar = contratoModal.tarifas_financiadas ?? 0;
+    const data = dataLib || parcelasLiberacao[0]?.data_liberacao || contratoModal.data_contrato;
+    if (iof > 0) { const nova = await criarParcelaDespesaFinanciada(contratoModal, contratoModal.fazenda_id ?? fazendaId!, ++n, data, iof, "iof"); setParcelasLiberacao(p => [...p, nova]); }
+    if (tar > 0) { const nova = await criarParcelaDespesaFinanciada(contratoModal, contratoModal.fazenda_id ?? fazendaId!, ++n, data, tar, "tarifas"); setParcelasLiberacao(p => [...p, nova]); }
+  };
 
   // ── Calcular parcelas ──
   const calcularParcelas = () => salvar(async () => {
@@ -1783,6 +1808,26 @@ export default function ContratosFinanceiros() {
                     </>
                   )}
 
+                  {/* IOF/tarifas financiados: embutidos no valor financiado (contratado = liberado + despesas) */}
+                  <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12, marginTop: 8, marginBottom: 4 }}>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>IOF financiado (R$)</label>
+                      <InputMonetario style={inp} placeholder="Ex: 6.972,70" value={fC.iof_valor} onChange={v => setFC(p => ({ ...p, iof_valor: String(v) }))} />
+                    </div>
+                    <div>
+                      <label data-arato-label="true" style={lbl}>Tarifas / seguro financiados (R$)</label>
+                      <InputMonetario style={inp} placeholder="Ex: 0,00" value={fC.tarifas_financiadas} onChange={v => setFC(p => ({ ...p, tarifas_financiadas: String(v) }))} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end", fontSize: 11, color: "var(--text-2)", paddingBottom: 8 }}>
+                      {(() => {
+                        const vf = parseFloat(String(fC.valor_financiado).replace(",", ".")) || 0;
+                        const d = (parseFloat(String(fC.iof_valor).replace(",", ".")) || 0) + (parseFloat(String(fC.tarifas_financiadas).replace(",", ".")) || 0);
+                        return d > 0 ? <span>Valor liberado pelo banco = {fmtBRL(vf)} − {fmtBRL(d)} = <strong>{fmtBRL(vf - d)}</strong>. O IOF/tarifas entram como despesa, com a operação gerencial própria, ao registrar a liberação.</span>
+                          : <span>Se o banco soma IOF/tarifas ao valor contratado e deposita só o líquido, informe aqui para separar a despesa do capital.</span>;
+                      })()}
+                    </div>
+                  </div>
+
                   <SecTitle>Contas Bancárias</SecTitle>
                   <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
@@ -1852,6 +1897,22 @@ export default function ContratosFinanceiros() {
                   <div style={{ background: "#E4F0F9", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>
                     ✦ Ao registrar uma liberação, um lançamento CR é criado automaticamente no financeiro{contratoModal.conta_liberacao_id ? ` · Conta: ${nomeConta(contratoModal.conta_liberacao_id)}` : ""}.
                   </div>
+                  {((contratoModal.iof_valor ?? 0) + (contratoModal.tarifas_financiadas ?? 0)) > 0 && (() => {
+                    const desp = (contratoModal.iof_valor ?? 0) + (contratoModal.tarifas_financiadas ?? 0);
+                    const jaLancou = parcelasLiberacao.some(p => p.tipo === "despesa_financiada");
+                    return (
+                      <div style={{ background: "#FBF3E0", border: "0.5px solid #EF9F27", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#7A4300", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ flex: 1, minWidth: 260 }}>
+                          <strong>Contratado {fmtBRL(contratoModal.valor_financiado)} = liberado pelo banco {fmtBRL(contratoModal.valor_financiado - desp)} + {contratoModal.iof_valor ? `IOF ${fmtBRL(contratoModal.iof_valor)}` : ""}{contratoModal.iof_valor && contratoModal.tarifas_financiadas ? " + " : ""}{contratoModal.tarifas_financiadas ? `tarifas/seguro ${fmtBRL(contratoModal.tarifas_financiadas)}` : ""}.</strong>
+                          {" "}{jaLancou ? "A despesa financiada já está lançada, separada do capital." : "Ao adicionar a liberação, o IOF/tarifas são lançados como despesa (operação gerencial própria) e o capital correspondente entra como captação, sem alterar o caixa."}
+                        </div>
+                        {!jaLancou && parcelasLiberacao.length > 0 && (
+                          <OperationalButton data-arato-button="secondary" style={{ ...btnV, padding: "6px 12px" }} disabled={salvando}
+                            onClick={() => salvar(async () => { await lancarDespesasFinanciadas(parcelasLiberacao[0]?.data_liberacao ?? "", parcelasLiberacao.length); })}>Lançar IOF/tarifas financiados</OperationalButton>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
                     <div><label data-arato-label="true" style={lbl}>Data Liberação</label><InputData style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
                     <div><label data-arato-label="true" style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
@@ -1870,7 +1931,7 @@ export default function ContratosFinanceiros() {
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
                             {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.tipo === "despesa_financiada" ? badge("IOF/tarifas financiados", "#FBF3E0", "#7A4300") : p.lancamento_id ? badge("✓ CR", "#E8E8E8", "#0D0D0D") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
                             <td style={{ padding: "8px 12px", textAlign: "right" }}><OperationalButton data-arato-button="danger" style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</OperationalButton></td>
                           </tr>
                         ))}

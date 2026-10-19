@@ -16787,3 +16787,19 @@ END $$;
 ALTER TABLE ctes ADD CONSTRAINT ctes_tomador_tipo_check
   CHECK (tomador_tipo IN ('remetente','destinatario','expedidor','recebedor','outros'));
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 349 — Contratos financeiros: IOF e tarifas FINANCIADOS (embutidos no valor financiado)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Em cédulas como a CCB do Sicoob, Valor contratado (206.972,70) = Valor liberado pelo banco (200.000,00)
+-- + IOF financiado (6.972,70). Sem separar, a diferença virava "saldo a liberar" e o IOF não aparecia como
+-- despesa com a operação gerencial própria. iof_valor/tarifas_financiadas guardam os valores em R$;
+-- parcelas_liberacao.tipo distingue o capital ('capital') da despesa financiada ('despesa_financiada'),
+-- e despesa_lancamento_id aponta o CP da despesa (OG IOF / Tarifas bancárias).
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS iof_valor numeric(14,2),
+  ADD COLUMN IF NOT EXISTS tarifas_financiadas numeric(14,2);
+ALTER TABLE parcelas_liberacao
+  ADD COLUMN IF NOT EXISTS tipo text NOT NULL DEFAULT 'capital',
+  ADD COLUMN IF NOT EXISTS despesa_lancamento_id uuid;
+NOTIFY pgrst, 'reload schema';

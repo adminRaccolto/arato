@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-l",
+    data: "19/10/2026",
+    titulo: "Contratos financeiros: IOF e tarifas financiados, e liberação preenchida pela IA",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Leitura da cédula por IA: agora extrai o valor liberado pelo banco, o IOF em reais (IOF + IOF adicional) e tarifas/seguro financiados, e respeita o sistema de amortização escrito no documento (Tabela Price não vira mais SAC). A aba Liberação já vem com a data e o valor líquido liberado preenchidos." },
+      { tipo: "novo", texto: "Principal → Taxas e custos: novos campos IOF financiado (R$) e Tarifas / seguro financiados (R$), para cédulas em que o banco soma a despesa ao valor contratado e deposita só o líquido (ex.: contratado 206.972,70 = liberado 200.000,00 + IOF 6.972,70). Ao adicionar a liberação, o sistema lança o IOF como despesa, com a operação gerencial IOF (ou Tarifas bancárias), e a captação correspondente, sem alterar o caixa. A diferença deixa de aparecer como Saldo a liberar." },
+      { tipo: "novo", texto: "Aba Liberação: quadro com Contratado = liberado + IOF/tarifas e, quando já houver liberação sem o IOF lançado, botão Lançar IOF/tarifas financiados. Excluir a parcela do IOF remove também o CP dela. Requer a Seção 348/349 do banco para guardar os valores." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → Principal e Liberação",
+  },
+  {
     versao: "2026.10.19-k",
     data: "19/10/2026",
     titulo: "Exportação Excel do CP/CR: NF e operação gerencial pelo servidor",

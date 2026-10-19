@@ -23,6 +23,9 @@ const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
     ["funcionario_id", "mão de obra (funcionário/prestador)"], ["veiculo_sel", "veículo/máquina vinculado"],
     ["ciclosPorSafra", "rateio por vencimento (safra e ciclo por parcela)"], ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
   ],
+  "app/financeiro/contratos/page.tsx": [
+    ["lancarDespesasFinanciadas", "IOF/tarifas financiados lançados separados do capital na liberação"], ["derivarDespesasFinanciadas", "IA preenche valor liberado e despesas financiadas"],
+  ],
   "app/financeiro/conciliacao/page.tsx": [
     ["popupDetalhe", "produtor e documento de origem no popup do extrato vinculado"], ["produtorDoTitulo", "coluna Produtor na lista de títulos da conciliação"],
   ],

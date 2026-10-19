@@ -1641,6 +1641,8 @@ export type ContratoFinanceiro = {
   taxa_juros_aa?: number;          // taxa de juros anual — só para taxa fixa (%)
   taxa_juros_am?: number;          // taxa de juros mensal — só para taxa fixa (%)
   iof_pct?: number;              // IOF (%)
+  iof_valor?: number;            // IOF em R$ financiado (embutido no valor financiado; Seção 349)
+  tarifas_financiadas?: number;  // tarifas/seguro/despesas em R$ financiadas (Seção 349)
   tac_valor?: number;            // TAC — Tarifa de Abertura de Crédito (R$)
   outros_custos?: number;        // outros custos fixos da operação (R$)
   conta_liberacao_id?: string;   // FK contas_bancarias — onde cai o crédito
@@ -1683,6 +1685,8 @@ export type ParcelaLiberacao = {
   valor_liberado: number;
   valor_liberado_brl?: number;
   lancamento_id?: string;
+  tipo?: "capital" | "despesa_financiada";   // despesa_financiada = IOF/tarifas embutidos no valor financiado (Seção 349)
+  despesa_lancamento_id?: string;           // CP da despesa financiada
   created_at?: string;
 };
 
