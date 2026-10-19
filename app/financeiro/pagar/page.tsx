@@ -1617,11 +1617,11 @@ export default function ContasAPagarPage() {
                   </th>
                 ); })}
               </tr>
-              {/* Linha de filtros por coluna — texto: contém; valores: exato, >n, <n ou faixa n-m */}
+              {/* Filtro da coluna Valor: exato, >n, <n ou faixa n-m */}
               <tr style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
                 {colunasVisiveis.map(c => {
-                  const filtravel = c.key !== "checkbox" && c.key !== "acoes";
-                  const numerico = ["valor", "pago", "saldo", "dias"].includes(c.key);
+                  const filtravel = c.key === "valor"; // só Valor: as demais colunas já têm filtro na barra acima
+                  const numerico = true;
                   return (
                     <th key={c.key} style={{ padding: "3px 6px", background: "#fff", borderBottom: "0.5px solid #DDE2EE", fontWeight: 400 }}>
                       {filtravel && (

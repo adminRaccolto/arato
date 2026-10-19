@@ -34,11 +34,11 @@ const RELEASES = [
   {
     versao: "2026.10.19-c",
     data: "19/10/2026",
-    titulo: "CP e CR: valores em dólar e filtros por coluna de volta",
+    titulo: "CP e CR: valores em dólar e filtro de Valor de volta",
     modulos: ["Financeiro"],
     itens: [
       { tipo: "correcao", texto: "Lançamento em dólar no grid de Contas a Pagar e a Receber volta a mostrar o valor em reais (convertido pela cotação do lançamento, ou pela PTAX do dia se faltar) e, logo abaixo em fonte menor, o valor real em US$. Pago, Saldo e o detalhe do título passam a usar o símbolo US$; os totais do filtro somam em reais." },
-      { tipo: "correcao", texto: "A linha de filtros sob o cabeçalho voltou: cada coluna tem um campo. Texto filtra por trecho (sem acento); Valor, Pago, Saldo e Dias aceitam número exato, >1000, <1000 ou faixa 1000-2000. Limpar filtros também zera os filtros das colunas." },
+      { tipo: "correcao", texto: "Voltou o filtro da coluna Valor, sob o cabeçalho: aceita número exato, >1000, <1000 ou faixa 1000-2000. Limpar filtros também o zera." },
     ],
     onde: "Financeiro → Contas a Pagar / Contas a Receber",
   },
