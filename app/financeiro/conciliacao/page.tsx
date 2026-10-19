@@ -12,6 +12,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarCentrosCustoGeralDaConta, listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
+import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -381,7 +382,26 @@ function ConciliacaoInner() {
   const [lotes, setLotes]                   = useState<Map<string, LoteInfo>>(new Map());
   const [lotesAbertos, setLotesAbertos]     = useState<Set<string>>(new Set());
   // Popup com a relação de CPs/CRs de uma conciliação (um lançamento do extrato ligado a vários títulos)
-  const [popupRelacao, setPopupRelacao]     = useState<{ descricao: string; valor: number; data: string; ids: string[] } | null>(null);   // borderôs expandidos na lista
+  const [popupRelacao, setPopupRelacao]     = useState<{ descricao: string; valor: number; data: string; ids: string[] } | null>(null);
+  // Produtor/empresa e documento de origem de cada título do popup (vêm do espelho rel_lancamentos + nº da NF)
+  const [popupDetalhe, setPopupDetalhe] = useState<Record<string, { dono: string; documento: string; origem: string }>>({});
+  useEffect(() => {
+    if (!popupRelacao?.ids.length) { setPopupDetalhe({}); return; }
+    let vivo = true;
+    (async () => {
+      const { data } = await supabase.from("rel_lancamentos")
+        .select("id, origem_tabela, produtor_nome, empresa_nome, numero_documento, nfe_numero, origem_lancamento").in("id", popupRelacao.ids);
+      const rows = await carregarNumerosNF(supabase, (data ?? []) as { id: string; origem_tabela: string; nfe_numero: string | null; produtor_nome: string | null; empresa_nome: string | null; numero_documento: string | null; origem_lancamento: string | null }[]);
+      const ORIG: Record<string, string> = { nf_entrada: "NF de entrada", nf_servico: "NF de serviço", manual: "Manual", folha: "Folha", contrato_financeiro: "Contrato financeiro", compra_terra: "Compra de terra", arrendamento: "Arrendamento", cartao_fatura: "Fatura de cartão" };
+      const mapa: Record<string, { dono: string; documento: string; origem: string }> = {};
+      for (const r of rows) {
+        const nf = r.nfe_numero || r.numero_documento || "";
+        mapa[r.id] = { dono: r.empresa_nome || r.produtor_nome || "—", documento: nf ? `${r.nfe_numero ? "NF " : "Doc. "}${nf}` : "", origem: r.origem_lancamento ? (ORIG[r.origem_lancamento] ?? r.origem_lancamento) : "" };
+      }
+      if (vivo) setPopupDetalhe(mapa);
+    })().catch(() => { if (vivo) setPopupDetalhe({}); });
+    return () => { vivo = false; };
+  }, [popupRelacao]);   // borderôs expandidos na lista
   const [filtroBaixados, setFiltroBaixados] = useState<"todos" | "pendentes" | "conciliados">("todos");
   const [parHover, setParHover] = useState<string | null>(null);
   const [inconsEscolha, setInconsEscolha] = useState<Map<string, string>>(new Map());
@@ -1836,6 +1856,13 @@ function ConciliacaoInner() {
     const c = l.conta_bancaria ? contas.find(x => x.id === l.conta_bancaria) : undefined;
     return c?.produtor_id ? (produtoresNomes.get(c.produtor_id) ?? "—") : "—";
   };
+  // Coluna Produtor: titular da conta em que foi baixado; título ainda em aberto (sem conta de baixa) mostra o produtor do próprio título
+  const produtorDoTitulo = (l: Lancamento) => {
+    const baixa = produtorDaBaixa(l);
+    if (baixa !== "—") return { nome: baixa, tit: "Titular da conta em que foi baixado" };
+    const doTit = l.produtor_id ? produtoresNomes.get(l.produtor_id) : undefined;
+    return { nome: doTit ?? "—", tit: doTit ? "Produtor do título" : "Sem produtor no título" };
+  };
   // Sem fornecedor/cliente cadastrado no lançamento (34% dos baixados), cai na descrição
   const fornecedorDe = (l: Lancamento) => (l.pessoa_id ? pessoasNomes.get(l.pessoa_id) : undefined) ?? l.descricao;
   const emIntervalo = (d?: string | null) => !!d && (!filtroLancDe || d >= filtroLancDe) && (!filtroLancAte || d <= filtroLancAte);
@@ -2142,7 +2169,7 @@ function ConciliacaoInner() {
               <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870" }}>= valor de {batem.length} linha{batem.length > 1 ? "s" : ""} do OFX ({batem.slice(0, 2).map(b => fmtDt(b.data).slice(0, 5)).join(", ")}{batem.length > 2 ? "…" : ""})</div>
             )}
           </div>
-          <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title="Titular da conta em que foi baixado">{produtorDaBaixa(l)}</div>
+          <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={produtorDoTitulo(l).tit}>{produtorDoTitulo(l).nome}</div>
           <div style={{ color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contaNomeDe(lt?.conta_bancaria ?? l.conta_bancaria)}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <Sinal cor={conciliadoRow ? COR_OK : COR_PEND} titulo={conciliadoRow ? "Conciliado" : "Pendente"} />
@@ -2277,6 +2304,10 @@ function ConciliacaoInner() {
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Títulos desta conciliação</div>
                   <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>Extrato: {fmtDt(popupRelacao.data)} · {popupRelacao.descricao} · <b>{fmtBRL(popupRelacao.valor)}</b></div>
+                  {extrato && (() => {
+                    const cx = contas.find(c => c.id === extrato.conta_id);
+                    return <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>Conta do extrato: <b>{cx?.nome ?? extrato.conta_nome}</b> · Titular: <b>{cx?.produtor_id ? (produtoresNomes.get(cx.produtor_id) ?? "—") : "—"}</b></div>;
+                  })()}
                 </div>
                 <button onClick={() => setPopupRelacao(null)} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
               </div>
@@ -2285,8 +2316,8 @@ function ConciliacaoInner() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)", textAlign: "left" }}>
-                        {["Tipo", "Fornecedor / Cliente", "Descrição", "Vencimento", "Baixa", "Status", "Valor"].map((h, i) => (
-                          <th key={h} style={{ padding: "6px 8px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", textAlign: i === 6 ? "right" : "left" }}>{h}</th>
+                        {["Tipo", "Fornecedor / Cliente", "Produtor / Empresa", "Descrição", "Documento de origem", "Vencimento", "Baixa", "Status", "Valor"].map((h, i) => (
+                          <th key={h} style={{ padding: "6px 8px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", textAlign: i === 8 ? "right" : "left" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -2295,19 +2326,21 @@ function ConciliacaoInner() {
                         <tr key={id} style={{ borderTop: "0.5px solid var(--border)" }}>
                           <td style={{ padding: "6px 8px" }}><span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: l.tipo === "pagar" ? "#FCEBEB" : "#E8F5E9", color: l.tipo === "pagar" ? "#791F1F" : "#14532D" }}>{l.tipo === "pagar" ? "CP" : "CR"}</span></td>
                           <td style={{ padding: "6px 8px" }}>{fornecedorDe(l)}</td>
+                          <td style={{ padding: "6px 8px", fontWeight: 600 }}>{popupDetalhe[id]?.dono ?? "…"}{titularDivergente(l) && <div title="O titular da conta do extrato (quem pagou/recebeu) é diferente do dono do título — não indica conta errada" style={{ fontSize: 10, fontWeight: 600, color: "#7A5200" }}>pago por outro titular</div>}</td>
                           <td style={{ padding: "6px 8px", color: "var(--text-2)" }}>{l.descricao}</td>
+                          <td style={{ padding: "6px 8px" }}>{popupDetalhe[id]?.documento || "—"}{popupDetalhe[id]?.origem ? <div style={{ fontSize: 10, color: "var(--text-3)" }}>{popupDetalhe[id].origem}</div> : null}</td>
                           <td style={{ padding: "6px 8px" }}>{fmtDt(l.data_vencimento)}</td>
                           <td style={{ padding: "6px 8px" }}>{fmtDt(l.data_baixa)}</td>
                           <td style={{ padding: "6px 8px" }}>{l.status}</td>
                           <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600, color: l.tipo === "pagar" ? "#791F1F" : "#14532D" }}>{fmtBRL(Number(l.valor_pago ?? l.valor))}</td>
                         </tr>
                       ) : (
-                        <tr key={id} style={{ borderTop: "0.5px solid var(--border)" }}><td colSpan={7} style={{ padding: "6px 8px", color: "var(--text-3)" }}>Título {id.slice(0, 8)} não está na lista carregada (pode estar fora do período).</td></tr>
+                        <tr key={id} style={{ borderTop: "0.5px solid var(--border)" }}><td colSpan={9} style={{ padding: "6px 8px", color: "var(--text-3)" }}>Título {id.slice(0, 8)} não está na lista carregada (pode estar fora do período).</td></tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr style={{ borderTop: "1px solid var(--border)" }}>
-                        <td colSpan={6} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>Saldo dos {tits.length} título(s) (CR − CP)</td>
+                        <td colSpan={8} style={{ padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>Saldo dos {tits.length} título(s) (CR − CP)</td>
                         <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700 }}>{fmtBRL(totalPag)}</td>
                       </tr>
                     </tfoot>
@@ -3332,7 +3365,7 @@ function ConciliacaoInner() {
                     <div style={{ minWidth: 760, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "grid", gridTemplateColumns: abaSistema === "abertos" ? COLS_SIS_ABERTOS : COLS_SIS_CONC, gap: 8, padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
                         <div />
-                        <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Produtor da baixa</div><div>Conta de baixa</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
+                        <div>Vencim.</div><div>Baixa</div><div>Fornecedor / Cliente</div><div>Produtor</div><div>Conta de baixa</div><div>Tipo</div><div style={{ textAlign: "right" }}>Valor</div>
                         {abaSistema === "conciliados" && <div>Origem</div>}
                       </div>
                       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>

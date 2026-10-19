@@ -18,16 +18,20 @@ const MARCADORES: [string, string][] = [
 // Recursos restaurados em 19/10/2026 após a comparação com a tela anterior (page.legado.tsx)
 const MARCADORES_POR_TELA: Record<string, [string, string][]> = {
   "app/financeiro/pagar/page.tsx": [
-    ["Efetivar", "botão Efetivar previsão"], ["ModalVincularNf", "vincular NF à baixa"], ["bClass", "classificação e salvar padrão do fornecedor na baixa"],
+    ["fProdutor", "filtro e coluna de Produtor"], ["Efetivar", "botão Efetivar previsão"], ["ModalVincularNf", "vincular NF à baixa"], ["bClass", "classificação e salvar padrão do fornecedor na baixa"],
     ["bNovaData", "nova data do saldo em baixa parcial"], ["juros_pct", "% juros, multa e desconto de pontualidade do título"],
     ["funcionario_id", "mão de obra (funcionário/prestador)"], ["veiculo_sel", "veículo/máquina vinculado"],
     ["ciclosPorSafra", "rateio por vencimento (safra e ciclo por parcela)"], ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
   ],
+  "app/financeiro/conciliacao/page.tsx": [
+    ["popupDetalhe", "produtor e documento de origem no popup do extrato vinculado"], ["produtorDoTitulo", "coluna Produtor na lista de títulos da conciliação"],
+  ],
   "app/financeiro/relatorios/page.tsx": [
+    ["resolverExtras", "Nº da NF e operação gerencial resolvidos do banco na exportação/impressão CP/CR"],
     ["printCpcrRef", "impressão limpa do relatório CP/CR (sem filtros da tela)"], ["printOutrosRef", "impressão própria de DFC e Posição por Conta"], ["escopoImpressao", "cabeçalho do relatório mostra o escopo real (conta/produtor), não a fazenda ativa"],
   ],
   "app/financeiro/receber/page.tsx": [
-    ["Efetivar", "botão Efetivar previsão"], ["bClass", "classificação na baixa"], ["bNovaData", "nova data do saldo em recebimento parcial"],
+    ["fProdutor", "filtro e coluna de Produtor"], ["Efetivar", "botão Efetivar previsão"], ["bClass", "classificação na baixa"], ["bNovaData", "nova data do saldo em recebimento parcial"],
     ["fAtalho", "atalhos de status"], ["Confirmar entrega (barter)", "baixa barter"],
   ],
 };

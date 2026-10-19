@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.19-i",
+    data: "19/10/2026",
+    titulo: "Produtor na conciliação e no CP/CR; exportação CP/CR completa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Conciliação Bancária: o popup do OFX vinculado agora mostra, para cada título, o Produtor/Empresa dono, o documento de origem (NF ou documento, com a origem do lançamento) e, no topo, a conta do extrato com o titular. Quando o titular da conta do extrato é diferente do dono do título, aparece o aviso pago por outro titular." },
+      { tipo: "novo", texto: "Conciliação Bancária: a coluna Produtor da lista de CP/CR passa a mostrar o produtor do título quando ele ainda está em aberto (antes ficava em branco)." },
+      { tipo: "novo", texto: "Contas a Pagar e a Receber: nova coluna Produtor no grid, campo Produtor no popup do título e filtro Produtor no bloco de filtros, valendo também para títulos baixados." },
+      { tipo: "correcao", texto: "Exportação Excel (e impressão) do relatório CP/CR: o Nº da NF e a Operação Gerencial saíam em branco em muitas linhas. Agora são buscados no banco na hora de exportar, inclusive operações gerenciais que a tela não listava." },
+    ],
+    onde: "Financeiro → Conciliação Bancária; Contas a Pagar/Receber; Relatórios → CP / CR",
+  },
+  {
     versao: "2026.10.19-h",
     data: "19/10/2026",
     titulo: "DFC e Posição por Conta imprimem relatório próprio",

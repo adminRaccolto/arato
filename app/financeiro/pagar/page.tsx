@@ -207,6 +207,7 @@ const chip = (ativo: boolean): React.CSSProperties => ({
 const COLS_GRID_CP: ColDef[] = [
   { key: "checkbox", label: "Selecionar", fixo: true },
   { key: "origem", label: "Origem" },
+  { key: "produtor", label: "Produtor" },
   { key: "numero", label: "Nº" },
   { key: "pessoa", label: "Fornecedor" },
   { key: "descricao", label: "Descrição" },
@@ -251,6 +252,7 @@ export default function ContasAPagarPage() {
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
   const [fAtalho, setFAtalho] = useState("");
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
+  const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
@@ -362,7 +364,7 @@ export default function ContasAPagarPage() {
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({
     origem: l.origem_tabela === "lancamentos" ? "PF Produtor" : "PJ Empresa",
-    numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? "",
+    produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? "",
     descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
@@ -387,7 +389,7 @@ export default function ContasAPagarPage() {
     if (fAtalho === "barter") return l.moeda === "barter";
     return l.origem_lancamento === fAtalho;
   };
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")));
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [
@@ -1566,6 +1568,10 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>Moeda</label>
             <MultiSelectDropdown opcoes={MOEDA_OPCOES} selecionados={fMoeda} onChange={setFMoeda} textoTodos="Todas" largura={130} />
           </div>
+          <div>
+            <label data-arato-label="true" style={lblMini}>Produtor</label>
+            <MultiSelectDropdown opcoes={[...new Set((resultado ?? []).map(l => l.produtor_nome ?? l.empresa_nome ?? "").filter(Boolean))].sort().map(n => ({ v: n, label: n }))} selecionados={fProdutor} onChange={setFProdutor} textoTodos="Todos" largura={190} />
+          </div>
           <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
@@ -1574,7 +1580,7 @@ export default function ContasAPagarPage() {
             <label data-arato-label="true" style={lblMini}>até</label>
             <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
           </div>
-          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); setFProdutor(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
@@ -1691,6 +1697,9 @@ export default function ContasAPagarPage() {
                         {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                       </span>
                     </td>
+                  ),
+                  produtor: (
+                    <td style={{ padding: "7px 10px" }}>{l.produtor_nome ?? l.empresa_nome ?? "—"}</td>
                   ),
                   numero: (
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
@@ -1907,6 +1916,10 @@ export default function ContasAPagarPage() {
                     <div style={{ fontWeight: 600, color: dias != null && dias < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtData(l.data_vencimento)}</div>
                     {dias != null && <div style={{ fontSize: 10, color: dias < 0 ? "#E24B4A" : "#888", fontWeight: 700 }}>{dias < 0 ? `${Math.abs(dias)} dia${Math.abs(dias) !== 1 ? "s" : ""} em atraso` : dias === 0 ? "Vence hoje" : `em ${dias} dia${dias !== 1 ? "s" : ""}`}</div>}
                   </div>
+                  {(l.produtor_nome || l.empresa_nome) && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>{l.produtor_nome ? "Produtor" : "Empresa"}</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.produtor_nome ?? l.empresa_nome}</div>
+                  </div>}
                   {l.operacao_gerencial_nome && <div>
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Operação Gerencial</div>
                     <div style={{ color: "#1a1a1a" }}>{l.operacao_gerencial_nome}</div>

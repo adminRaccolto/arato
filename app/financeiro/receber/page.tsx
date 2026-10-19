@@ -65,6 +65,7 @@ import TopNav from "../../../components/TopNav";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import AnexoDocumentos from "../../../components/AnexoDocumentos";
 import SelectBusca from "../../../components/SelectBusca";
+import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 
@@ -184,6 +185,7 @@ const chip = (ativo: boolean): React.CSSProperties => ({
 const COLS_GRID_CR: ColDef[] = [
   { key: "checkbox", label: "Selecionar", fixo: true },
   { key: "origem", label: "Origem" },
+  { key: "produtor", label: "Produtor" },
   { key: "numero", label: "Nº" },
   { key: "pessoa", label: "Cliente" },
   { key: "descricao", label: "Descrição" },
@@ -228,6 +230,7 @@ export default function ContasAReceberPage() {
   const [fStatus,  setFStatus]  = useState<Set<string>>(new Set());
   const [fAtalho, setFAtalho] = useState("");
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
+  const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
@@ -346,7 +349,7 @@ export default function ContasAReceberPage() {
   // Ordenação também é client-side — reordena o que já está carregado.
   const textoColuna = (l: RelLancamento, k: string): string => ({
     origem: l.origem_tabela === "lancamentos" ? "PF Produtor" : "PJ Empresa",
-    numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? "",
+    produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? "",
     descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
@@ -369,6 +372,7 @@ export default function ContasAReceberPage() {
     if (fStatus.size > 0 && !fStatus.has(l.status_normalizado ?? "")) return false;
     if (!passaColunas(l)) return false;
     if (fMoeda.size > 0 && !fMoeda.has(l.moeda ?? "BRL")) return false;
+    if (fProdutor.size > 0 && !fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")) return false;
     if (fAtalho) {
       const aberto = l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado";
       const h = hojeISO(); const lim = new Date(`${h}T12:00:00`); lim.setDate(lim.getDate() + 7);
@@ -1345,6 +1349,10 @@ export default function ContasAReceberPage() {
             </div>
           </div>
           <div>
+            <label data-arato-label="true" style={lblMini}>Produtor</label>
+            <MultiSelectDropdown opcoes={[...new Set((resultado ?? []).map(l => l.produtor_nome ?? l.empresa_nome ?? "").filter(Boolean))].sort().map(n => ({ v: n, label: n }))} selecionados={fProdutor} onChange={setFProdutor} textoTodos="Todos" largura={190} />
+          </div>
+          <div>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
             <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
           </div>
@@ -1475,6 +1483,9 @@ export default function ContasAReceberPage() {
                         {l.origem_tabela === "lancamentos" ? "PF" : "PJ"}
                       </span>
                     </td>
+                  ),
+                  produtor: (
+                    <td style={{ padding: "7px 10px" }}>{l.produtor_nome ?? l.empresa_nome ?? "—"}</td>
                   ),
                   numero: (
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
@@ -1637,6 +1648,10 @@ export default function ContasAReceberPage() {
                     <div style={{ fontWeight: 600, color: dias != null && dias < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtData(l.data_vencimento)}</div>
                     {dias != null && <div style={{ fontSize: 10, color: dias < 0 ? "#E24B4A" : "#888", fontWeight: 700 }}>{dias < 0 ? `${Math.abs(dias)} dia${Math.abs(dias) !== 1 ? "s" : ""} em atraso` : dias === 0 ? "Vence hoje" : `em ${dias} dia${dias !== 1 ? "s" : ""}`}</div>}
                   </div>
+                  {(l.produtor_nome || l.empresa_nome) && <div>
+                    <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>{l.produtor_nome ? "Produtor" : "Empresa"}</div>
+                    <div style={{ color: "#1a1a1a" }}>{l.produtor_nome ?? l.empresa_nome}</div>
+                  </div>}
                   {l.operacao_gerencial_nome && <div>
                     <div style={{ color: "#888", marginBottom: 1, fontSize: 10 }}>Operação Gerencial</div>
                     <div style={{ color: "#1a1a1a" }}>{l.operacao_gerencial_nome}</div>

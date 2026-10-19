@@ -11,6 +11,7 @@ import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import { listarLancamentos, listarEmpresaLancamentosComoLancamento, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor, Pessoa } from "../../../lib/supabase";
 import PlanoGate from "../../../components/PlanoGate";
 import { statusEfetivo, filtrarTitulos, dedupeTitulos, hojeLocal } from "../../../lib/financeiro/titulos";
@@ -166,7 +167,7 @@ function FinanceiroRelatoriosInner() {
   };
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
   // Relatório CP/CR: função que monta o HTML limpo (sem filtros/botões da tela) a partir do que está filtrado na aba
-  const printCpcrRef = useRef<(() => { html: string; escopo: string }) | null>(null);
+  const printCpcrRef = useRef<(() => Promise<{ html: string; escopo: string }>) | null>(null);
   // DFC e Posição por Conta: HTML próprio de impressão (a tela tem filtros e botões que não vão para o papel)
   const printOutrosRef = useRef<{ dfc?: () => string; posicao?: () => string }>({});
 
@@ -416,7 +417,7 @@ function FinanceiroRelatoriosInner() {
               {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", comercializacao: "Posição de Comercialização" }[aba]}
             </h1>
           </div>
-          {aba !== "comercializacao" && <OperationalButton data-arato-button="primary" onClick={() => {
+          {aba !== "comercializacao" && <OperationalButton data-arato-button="primary" onClick={async () => {
             // Os relatórios desta tela somam TODAS as fazendas da conta (não só a fazenda ativa do topo):
             // o cabeçalho diz o escopo real. Na aba CP/CR, o filtro de Produtor define o escopo.
             const escopoImpressao = aba === "cpcr" && prodCPCR.size > 0
@@ -596,7 +597,7 @@ function FinanceiroRelatoriosInner() {
             } else if ((aba === "dfc" || aba === "posicao") && printOutrosRef.current[aba]) {
               abrirPreviewImpressao(aba === "dfc" ? `DFC — Demonstrativo ${dfcAno}` : "Posição por Conta", printOutrosRef.current[aba]!(), { ...opts, subtitulo: fazenda });
             } else if (aba === "cpcr" && printCpcrRef.current) {
-              const r = printCpcrRef.current();
+              const r = await printCpcrRef.current();
               abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { ...opts, subtitulo: fazenda });
             } else {
               // Demais abas: DOM com elementos interativos ocultos
@@ -1875,6 +1876,19 @@ function FinanceiroRelatoriosInner() {
                   [arr[i], arr[j]] = [arr[j], arr[i]]; return arr;
                 });
 
+                // Nº da NF e Operação Gerencial de cada título: o título guarda só o vínculo (id da NF / id da OG).
+                // A lista de OGs da tela é deduplicada por classificação (ids de cópias ficam de fora) e o número da
+                // NF mora na própria NF — por isso são resolvidos aqui, direto do banco, na hora de exportar/imprimir.
+                const extras = { nf: new Map<string, string>(), og: new Map<string, string>() };
+                const resolverExtras = async () => {
+                  const nfRows = await carregarNumerosNF(supabase, lancsCPCR.map(l => ({ id: l.id, origem_tabela: (l as unknown as { empresa_id?: string | null }).empresa_id ? "empresa_lancamentos" : "lancamentos", nfe_numero: l.nfe_numero ?? null })));
+                  for (const r of nfRows) if (r.nfe_numero) extras.nf.set(r.id, String(r.nfe_numero));
+                  const faltam = [...new Set(lancsCPCR.map(l => l.operacao_gerencial_id).filter((x): x is string => !!x && !ogMap[x]))];
+                  for (let i = 0; i < faltam.length; i += 200) {
+                    const { data } = await supabase.from("operacoes_gerenciais").select("id, descricao").in("id", faltam.slice(i, i + 200));
+                    for (const o of data ?? []) extras.og.set(o.id as string, o.descricao as string);
+                  }
+                };
                 const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado", parcial: "Parcial" };
                 // Colunas respeitam a ordem e visibilidade do grid
                 const colsVisiveis = cpcrColOrder
@@ -1887,7 +1901,7 @@ function FinanceiroRelatoriosInner() {
                   switch (col.key) {
                     case "tipo":           return l.tipo === "receber" ? "CR" : "CP";
                     case "fornecedor":     return (l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? "";
-                    case "numero_nf":      return l.numero_documento ?? "";
+                    case "numero_nf":      return extras.nf.get(l.id) ?? l.nfe_numero ?? l.numero_documento ?? "";
                     case "emissao":        return l.data_lancamento ? new Date(l.data_lancamento+"T12:00").toLocaleDateString("pt-BR") : "";
                     case "vencimento":     return l.data_vencimento ? new Date(l.data_vencimento+"T12:00").toLocaleDateString("pt-BR") : "";
                     case "valor":          return sinal * brl;
@@ -1896,7 +1910,7 @@ function FinanceiroRelatoriosInner() {
                     case "valor_pago":     return l.valor_pago != null ? (sinal * l.valor_pago) : "";
                     case "moeda":          return (l.moeda ?? "brl").toUpperCase();
                     case "forma_pgto":     return l.forma_pagamento ?? "";
-                    case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? "") : "";
+                    case "op_gerencial":   return l.operacao_gerencial_id ? (ogMap[l.operacao_gerencial_id] ?? extras.og.get(l.operacao_gerencial_id) ?? "") : "";
                     case "produtor":       return (l.produtor_id ? prodMap[l.produtor_id] : null) ?? "";
                     case "observacao":     return l.observacao ?? "";
                     default:               return "";
@@ -1905,7 +1919,8 @@ function FinanceiroRelatoriosInner() {
 
 
                 // ── impressão (relatório limpo: sem filtros nem botões da tela) ──
-                printCpcrRef.current = () => {
+                printCpcrRef.current = async () => {
+                  await resolverExtras();
                   const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
                   const fmtV = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
                   const dt = (iso: string) => iso ? new Date(iso + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -1946,6 +1961,7 @@ function FinanceiroRelatoriosInner() {
 
                 // ── exportar XLSX ─────────────────────────────────────
                 const exportarXLSX = async () => {
+                  await resolverExtras();
                   const XLSX = await import("xlsx");
                   const resumo = [
                     ["Relatório CP / CR Analítico"],
