@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-g",
+    data: "20/10/2026",
+    titulo: "Fluxo de Caixa diário: Considerar atrasados?",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A tarja de compromissos não baixados saiu do topo do Fluxo de Caixa diário. O resumo dos atrasados (CP e CR vencidos e não baixados antes da data inicial) agora fica discreto, à direita da linha de filtros, com a opção Considerar atrasados?. Ligada, o saldo inicial passa a ser os saldos das contas mais os CR atrasados menos os CP atrasados, e o saldo acumulado do fluxo parte desse valor; o relatório impresso explica a composição. Desligada (padrão), tudo fica como antes. A escolha fica lembrada no seu navegador." },
+      { tipo: "correcao", texto: "Os valores de atrasados passam a respeitar os filtros de Produtores / Contas e de Moeda da tela (antes somavam todos os lançamentos)." },
+    ],
+    onde: "Financeiro → Relatórios → Fluxo de Caixa → Diário",
+  },
+  {
     versao: "2026.10.20-f",
     data: "20/10/2026",
     titulo: "NFS-e repetida: SIEG, lançamento manual e limpeza",

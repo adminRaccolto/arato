@@ -163,6 +163,10 @@ function FinanceiroRelatoriosInner() {
   const [simEntries,        setSimEntries]        = useState<SimEntry[]>([]);
   const [simulacoesAtivas,  setSimulacoesAtivas]  = useState(true);
   const [incluirPrevisoes,  setIncluirPrevisoes]  = useState(true);
+  // Fluxo diário: compromissos vencidos e não baixados (antes do início) entram no saldo inicial junto com os saldos das contas
+  const [considerarAtrasados, setConsiderarAtrasados] = useState(false);
+  useEffect(() => { try { if (localStorage.getItem("fc_considerar_atrasados") === "1") setConsiderarAtrasados(true); } catch { /* ok */ } }, []);
+  const alternarAtrasados = (v: boolean) => { setConsiderarAtrasados(v); try { localStorage.setItem("fc_considerar_atrasados", v ? "1" : "0"); } catch { /* ok */ } };
   const [simForm,           setSimForm]           = useState({ descricao: "", valor: "", data: "", tipo: "entrada" as "entrada"|"saida", fornecedor: "" });
   const [simEditId,         setSimEditId]         = useState<string | null>(null);
   const [simPopupAberto,    setSimPopupAberto]    = useState(false);
@@ -196,6 +200,7 @@ function FinanceiroRelatoriosInner() {
     totalSaidas: number;
     saldoFinal: number;
     saldoInicial: number;
+    saldoInicialNota?: string;   // quando o saldo inicial inclui os atrasados, explica a composição
     filtroInicio: string;
     filtroFim: string;
     tipoVis: string;
@@ -657,7 +662,7 @@ function FinanceiroRelatoriosInner() {
                 <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F8FAFB;border:0.5px solid #DDE2EE;border-radius:8px;font-size:11px;color:#555">
                   <span><strong>Período:</strong> ${periodo}</span>
                   <span><strong>Tipo:</strong> ${tipoLabel}</span>
-                  ${d.saldoInicial !== 0 ? `<span><strong>Saldo Inicial:</strong> <span style="color:${d.saldoInicial >= 0 ? "#111" : "#E24B4A"}">${fmtV(d.saldoInicial)}</span></span>` : ""}
+                  ${d.saldoInicial !== 0 ? `<span><strong>Saldo Inicial${d.saldoInicialNota ? " (contas + atrasados)" : ""}:</strong> <span style="color:${d.saldoInicial >= 0 ? "#111" : "#E24B4A"}">${fmtV(d.saldoInicial)}</span></span>${d.saldoInicialNota ? `<span style="color:#7A4300">${d.saldoInicialNota}</span>` : ""}` : ""}
                 </div>
                 <!-- KPIs -->
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
@@ -770,7 +775,7 @@ function FinanceiroRelatoriosInner() {
                 const contasFluxoIds    = new Set(contasFluxo.map(c => c.id));
 
                 // Saldo inicial: soma dos saldos das contas efetivas
-                const saldoInicial = contasEfetivas.reduce((s, c) => s + (c.saldo_inicial ?? 0), 0);
+                const saldoContas = contasEfetivas.reduce((s, c) => s + (c.saldo_inicial ?? 0), 0);
 
                 const lansFiltrados = lancamentos.filter(l => {
                   const dt = l.data_vencimento ?? l.data_lancamento ?? "";
@@ -796,19 +801,22 @@ function FinanceiroRelatoriosInner() {
                     })
                   : lansFiltrados.filter(l => l.moeda !== "barter"); // barter excluído por padrão
 
-                // Contas não baixadas ANTES do período (compromissos pendentes)
-                const cpAntPeriodo = lancamentos.filter(l =>
-                  l.moeda !== "barter" && l.tipo === "pagar" &&
-                  l.status !== "baixado" && l.natureza !== "previsao" &&
-                  (l.data_vencimento ?? "") < (filtro.inicio || "")
-                ).reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
-                const crAntPeriodo = lancamentos.filter(l =>
-                  l.moeda !== "barter" && l.tipo === "receber" &&
-                  l.status !== "baixado" && l.natureza !== "previsao" &&
-                  (l.data_vencimento ?? "") < (filtro.inicio || "")
-                ).reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
-
-                const mostrarAntPeriodo = filtro.tipoVis !== "realizado" && filtro.inicio && (cpAntPeriodo > 0 || crAntPeriodo > 0);
+                // Compromissos vencidos e não baixados ANTES do período (respeitam os mesmos filtros de produtor, conta, apoio e moeda)
+                const atrasados = lancamentos.filter(l => {
+                  if ((l.data_vencimento ?? "") >= (filtro.inicio || "")) return false;
+                  if (!filtro.inicio || l.status === "baixado" || l.natureza === "previsao") return false;
+                  if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
+                  if (filtro.contasSel.length > 0 && l.conta_bancaria && !contasEfetivasIds.has(l.conta_bancaria)) return false;
+                  if (temApoio && apoioBaixasIds.has(l.id)) return false;
+                  const m = l.moeda === "barter" ? "barter" : (l.moeda ?? "BRL");
+                  return filtro.moedasSel.length > 0 ? filtro.moedasSel.includes(m) : m !== "barter";
+                });
+                const cpAntPeriodo = atrasados.filter(l => l.tipo === "pagar").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const crAntPeriodo = atrasados.filter(l => l.tipo === "receber").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const temAtrasados = filtro.tipoVis !== "realizado" && !!filtro.inicio && (cpAntPeriodo > 0 || crAntPeriodo > 0);
+                const aplicaAtrasados = considerarAtrasados && temAtrasados;
+                // Saldo inicial = saldos das contas (+ CR atrasados − CP atrasados, se "Considerar atrasados?" estiver ligado)
+                const saldoInicial = saldoContas + (aplicaAtrasados ? crAntPeriodo - cpAntPeriodo : 0);
 
                 // Separa realizados x pendentes x previsões
                 // Lancamentos baixados via Apoio Financeiro → realizado (mesmo que status ainda seja "em_aberto" no lancamento principal)
@@ -884,7 +892,7 @@ function FinanceiroRelatoriosInner() {
                 const fmtDia = (dt: string) => dt ? new Date(dt + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
                 // Atualiza ref para impressão limpa
-                printDiarioRef.current = { dias, diasMap, totalEntradas, totalSaidas, saldoFinal, saldoInicial, filtroInicio: filtro.inicio, filtroFim: filtro.fim, tipoVis: filtro.tipoVis };
+                printDiarioRef.current = { dias, diasMap, totalEntradas, totalSaidas, saldoFinal, saldoInicial, saldoInicialNota: aplicaAtrasados ? `Contas ${fmtBRL(saldoContas, 2)} · CR atrasados +${fmtBRL(crAntPeriodo, 2)} · CP atrasados −${fmtBRL(cpAntPeriodo, 2)}` : undefined, filtroInicio: filtro.inicio, filtroFim: filtro.fim, tipoVis: filtro.tipoVis };
 
                 const salvarSim = async () => {
                   if (!simForm.descricao || !simForm.valor || !simForm.data || !contaId) return;
@@ -1165,7 +1173,7 @@ function FinanceiroRelatoriosInner() {
                         </div>
                         {saldoInicial !== 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 2, justifyContent: "flex-end" }}>
-                            <label data-arato-label="true" style={labelStyle}>Saldo Inicial</label>
+                            <label data-arato-label="true" style={labelStyle}>Saldo Inicial{aplicaAtrasados ? " (contas + atrasados)" : ""}</label>
                             <div style={{ padding: "7px 12px", background: saldoInicial >= 0 ? "#E8E8E8" : "#FCEBEB", borderRadius: 8, fontSize: 13, fontWeight: 700, color: saldoInicial >= 0 ? "#0D0D0D" : "#E24B4A", whiteSpace: "nowrap" }}>
                               {fmtBRL(saldoInicial, 2)}
                             </div>
@@ -1204,6 +1212,20 @@ function FinanceiroRelatoriosInner() {
                           style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                           ⟳ Gerenciar{simEntries.length > 0 ? ` (${simEntries.length})` : ""}
                         </OperationalButton>
+                        {temAtrasados && (
+                          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "var(--text-3)", flexWrap: "wrap" }}
+                            title={`Compromissos vencidos e não baixados antes de ${new Date(filtro.inicio + "T12:00:00").toLocaleDateString("pt-BR")}. Ligado, entram no saldo inicial junto com os saldos das contas.`}>
+                            <span>Atrasados:
+                              {cpAntPeriodo > 0 && <span style={{ color: "#E24B4A", fontWeight: 600 }}> CP {fmtBRL(cpAntPeriodo, 2)}</span>}
+                              {cpAntPeriodo > 0 && crAntPeriodo > 0 && " ·"}
+                              {crAntPeriodo > 0 && <span style={{ color: "#16A34A", fontWeight: 600 }}> CR {fmtBRL(crAntPeriodo, 2)}</span>}
+                            </span>
+                            <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: "var(--text-2)" }}>
+                              <input type="checkbox" checked={considerarAtrasados} onChange={e => alternarAtrasados(e.target.checked)} style={{ accentColor: "#1A4870" }} />
+                              Considerar atrasados?
+                            </label>
+                          </div>
+                        )}
                       </div>
 
                       {/* Painel de checkboxes Produtores / Contas */}
@@ -1264,24 +1286,10 @@ function FinanceiroRelatoriosInner() {
                         </OperationalFilters>
                       )}
 
-                      {/* Quadro de compromissos anteriores ao período */}
-                      {mostrarAntPeriodo && (
-                        <div style={{ margin: "12px 20px 0", padding: "12px 16px", background: "#FEF3E2", border: "0.5px solid #C9921B", borderRadius: 10, display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: "#7A4300" }}>⚠ Compromissos não baixados antes de {new Date(filtro.inicio + "T12:00:00").toLocaleDateString("pt-BR")}</span>
-                          {cpAntPeriodo > 0 && (
-                            <span style={{ fontSize: 12, color: "#E24B4A", fontWeight: 600 }}>CP em aberto: <strong>{fmtBRL(cpAntPeriodo, 2)}</strong></span>
-                          )}
-                          {crAntPeriodo > 0 && (
-                            <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>CR em aberto: <strong>{fmtBRL(crAntPeriodo, 2)}</strong></span>
-                          )}
-                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>Esses valores afetarão o saldo quando forem baixados.</span>
-                        </div>
-                      )}
-
                       {/* KPIs */}
-                      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginTop: mostrarAntPeriodo ? 12 : 0 }}>
+                      <div data-arato-kpis="true" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)" }}>
                         {[
-                          ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "var(--text-2)" : "#E24B4A" }] : []),
+                          ...(saldoInicial !== 0 ? [{ label: aplicaAtrasados ? "Saldo Inicial (contas + atrasados)" : "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "var(--text-2)" : "#E24B4A" }] : []),
                           { label: "Total Entradas",           valor: fmtBRL(totalEntradas), cor: "#16A34A" },
                           { label: "Total Saídas",             valor: fmtBRL(totalSaidas),   cor: "#E24B4A" },
                           { label: `Saldo Final${simsAtivas.length > 0 ? " (c/ sim)" : ""}`, valor: fmtBRL(saldoFinal), cor: saldoFinal >= 0 ? "#111111" : "#E24B4A" },
