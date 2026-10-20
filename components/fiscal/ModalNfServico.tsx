@@ -15,6 +15,7 @@
 // Monte o componente só quando for abrir (id=null → nova; id=<uuid> → edita/
 // visualiza) — ao desmontar, todo o estado interno se perde naturalmente.
 // ═══════════════════════════════════════════════════════════════════════════
+import { buscarNfseExistente } from "../../lib/fiscal/nfse-existente";
 import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
@@ -406,6 +407,12 @@ export default function ModalNfServico({
     setSaving(true);
     try {
       let nfId = nfEdit?.id ?? "";
+      if (!nfEdit) {
+        const jaTem = await buscarNfseExistente(supabase, { numero_nf: cab.numero_nf, prestador_cnpj: cab.prestador_cnpj, data_prestacao: cab.data_prestacao, chave_nfse: cab.chave_nfse });
+        if (jaTem) {
+          throw new Error(`Esta NFS-e já está no sistema (nº ${jaTem.numero_nf}${jaTem.prestador_nome ? ` — ${jaTem.prestador_nome}` : ""}, ${jaTem.status === "processada" ? "já processada" : "pendente"}). Mesmo número e prestador. Abra a existente em vez de lançar de novo.`);
+        }
+      }
       if (nfEdit) {
         await supabase.from("nf_servicos").update(payload).eq("id", nfEdit.id);
       } else {

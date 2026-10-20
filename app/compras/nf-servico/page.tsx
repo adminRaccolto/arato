@@ -1,4 +1,5 @@
 "use client";
+import { buscarNfseExistente } from "../../../lib/fiscal/nfse-existente";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -164,6 +165,7 @@ export default function NfServicoPage() {
   const [siegDtFim,         setSiegDtFim]         = useState(() => hojeLocal());
   const [siegForceReimport, setSiegForceReimport] = useState(false);
   const [siegSyncing,       setSiegSyncing]       = useState(false);
+  const [nfseDeduping,      setNfseDeduping]      = useState(false);
   const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
   const [siegDiag,          setSiegDiag]          = useState<string[]>([]);
   const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome:string;cnpj:string}>>([]);
@@ -534,6 +536,12 @@ export default function NfServicoPage() {
     setSaving(true);
     try {
       let nfId = nfEdit?.id ?? "";
+      if (!nfEdit) {
+        const jaTem = await buscarNfseExistente(supabase, { numero_nf: cab.numero_nf, prestador_cnpj: cab.prestador_cnpj, data_prestacao: cab.data_prestacao, chave_nfse: cab.chave_nfse });
+        if (jaTem) {
+          throw new Error(`Esta NFS-e já está no sistema (nº ${jaTem.numero_nf}${jaTem.prestador_nome ? ` — ${jaTem.prestador_nome}` : ""}, ${jaTem.status === "processada" ? "já processada" : "pendente"}). Mesmo número e prestador. Abra a existente em vez de lançar de novo.`);
+        }
+      }
       if (nfEdit) {
         await supabase.from("nf_servicos").update(payload).eq("id", nfEdit.id);
       } else {
@@ -756,6 +764,30 @@ export default function NfServicoPage() {
   }
 
   // ── SIEG — sincronização NFSe ───────────────────────────────
+  // Limpa NFS-e duplicadas (mesmo número + prestador, qualquer fazenda da conta): prévia antes de apagar; nunca apaga processada
+  async function limparDuplicatasNfse() {
+    if (!fazendaId) return;
+    setNfseDeduping(true);
+    try {
+      const chamar = async (dry_run: boolean) => {
+        const res = await fetch("/api/integracoes/nfse-dedup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: fazendaId, dry_run }) });
+        const txt = await res.text();
+        try { return JSON.parse(txt) as { registros_removidos?: number; grupos_duplicados?: number; mantidas_por_vinculo?: number; erro?: string }; }
+        catch { throw new Error(`resposta inválida do servidor (${res.status}): ${txt.slice(0, 160)}`); }
+      };
+      const previa = await chamar(true);
+      if (previa.erro) { alert(`Erro: ${previa.erro}`); return; }
+      const rem = previa.registros_removidos ?? 0, grupos = previa.grupos_duplicados ?? 0, presas = previa.mantidas_por_vinculo ?? 0;
+      if (rem === 0) { alert(grupos > 0 ? `${grupos} NFS-e repetida(s), mas nenhuma cópia pode ser removida com segurança (${presas} com título vinculado; o resto é processada).` : "Nenhuma NFS-e duplicada encontrada."); return; }
+      if (!confirm(`Encontradas ${grupos} NFS-e repetida(s) (mesmo número e prestador).\n\n${rem} cópia(s) pendente(s) sem título vinculado serão excluídas.${presas ? `\n${presas} cópia(s) ficam por já terem título vinculado.` : ""}\nNFS-e processadas nunca são apagadas. Continuar?`)) return;
+      const d = await chamar(false);
+      if (d.erro) { alert(`Erro: ${d.erro}`); return; }
+      alert(`Limpeza concluída: ${d.registros_removidos ?? 0} NFS-e duplicada(s) removida(s).`);
+      await carregar();
+    } catch (e) { alert(`Erro: ${e instanceof Error ? e.message : e}`); }
+    finally { setNfseDeduping(false); }
+  }
+
   async function sincronizarSiegNfse() {
     if (!fazendaId) return;
     setSiegSyncing(true); setSiegSyncMsg(""); setSiegDiag([]);
@@ -890,6 +922,10 @@ export default function NfServicoPage() {
             <OperationalButton data-arato-button="toggle" onClick={sincronizarSiegNfse} disabled={siegSyncing}
               style={{ padding: "6px 18px", background: siegSyncing ? "var(--border-table)" : "#111111", color: siegSyncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
+            </OperationalButton>
+            <OperationalButton data-arato-button="toggle" onClick={limparDuplicatasNfse} disabled={nfseDeduping}
+              style={{ padding: "6px 14px", background: nfseDeduping ? "var(--border-table)" : "#FBF3E0", color: nfseDeduping ? "var(--text-3)" : "#7B4A00", border: "0.5px solid #C9921B", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: nfseDeduping ? "not-allowed" : "pointer" }}>
+              {nfseDeduping ? "Limpando…" : "Limpar Duplicatas"}
             </OperationalButton>
             {siegSyncMsg && (
               <span style={{ fontSize: 12, fontWeight: 600, color: siegSyncMsg.startsWith("✗") ? "#E24B4A" : "#16A34A" }}>{siegSyncMsg}</span>

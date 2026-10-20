@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-f",
+    data: "20/10/2026",
+    titulo: "NFS-e repetida: SIEG, lançamento manual e limpeza",
+    modulos: ["Fiscal", "Compras"],
+    itens: [
+      { tipo: "correcao", texto: "A sincronização de NFS-e do SIEG só reconhecia a nota já existente se fosse da mesma fazenda, com a mesma data e o CNPJ igual byte a byte; por isso a nota lançada à mão em outra fazenda, com a data um dia diferente ou o CNPJ com pontuação, entrava de novo. Agora a mesma NFS-e é reconhecida em qualquer fazenda da conta: mesmo número (sem zeros à esquerda) e mesmo CNPJ/CPF do prestador (só dígitos), com a data da prestação a até 45 dias, ou a mesma chave. A série é ignorada." },
+      { tipo: "novo", texto: "Lançamento manual de NFS-e: recusa a nota que já existe (lançada antes ou vinda do SIEG), com o aviso de qual é. O banco também recusa a repetida (Seção 351)." },
+      { tipo: "novo", texto: "Botão Limpar Duplicatas na tela de NFS-e: mostra antes quantas cópias serão removidas e pede confirmação. Nunca apaga NFS-e processada nem cópia com título vinculado; mantém a processada, ou a mais antiga." },
+    ],
+    onde: "Compras → NFS-e; Documentos Fiscais",
+  },
+  {
     versao: "2026.10.20-e",
     data: "20/10/2026",
     titulo: "Janela de filtro do relatório CP/CR mais larga",

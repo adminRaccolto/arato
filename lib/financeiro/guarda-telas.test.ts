@@ -75,3 +75,13 @@ test("limpeza de NF duplicada usa planejarLimpeza e a migration de bloqueio exis
   const mig = readFileSync(new URL("../../supabase_migrations.sql", import.meta.url), "utf8");
   assert.ok(mig.includes("trg_nf_entradas_bloqueia_duplicada") && mig.includes("trg_nf_entradas_reabrir_exige_estorno"));
 });
+
+// NFS-e repetida (20/10/2026): regra única no SIEG, no lançamento manual, na limpeza e no banco
+test("NFS-e repetida: SIEG, tela manual, limpeza e migration usam a regra", () => {
+  const le = (f: string) => readFileSync(new URL(`../../${f}`, import.meta.url), "utf8");
+  assert.ok(le("app/api/integracoes/sieg-sync-nfse/route.ts").includes("mesmaNfse"));
+  assert.ok(le("components/fiscal/ModalNfServico.tsx").includes("buscarNfseExistente"));
+  assert.ok(le("app/compras/nf-servico/page.tsx").includes("buscarNfseExistente") && le("app/compras/nf-servico/page.tsx").includes("limparDuplicatasNfse"));
+  assert.ok(le("app/api/integracoes/nfse-dedup/route.ts").includes("planejarLimpezaNfse"));
+  assert.ok(le("supabase_migrations.sql").includes("trg_nf_servicos_bloqueia_duplicada"));
+});

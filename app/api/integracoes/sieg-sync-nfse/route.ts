@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
+import { mesmaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
 import { baixarXmlsSieg, baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
@@ -300,13 +301,17 @@ export async function POST(req: NextRequest) {
       }
 
       // Verificar duplicata
-      const { data: existing } = await db
-        .from("nf_servicos").select("id")
-        .eq("fazenda_id", fazenda_id)
-        .eq("numero_nf", nfse.numero)
-        .eq("prestador_cnpj", nfse.prestador_cnpj || "")
-        .eq("data_prestacao", nfse.data_emissao)
-        .maybeSingle();
+      // Duplicata = mesma NFS-e em QUALQUER fazenda da conta (número + prestador sem pontuação, data até 45 dias, ou a mesma
+      // chave): antes só olhava a própria fazenda e a data exata — a nota lançada à mão em outra fazenda, com a data um dia
+      // diferente ou o CNPJ com pontuação, entrava de novo.
+      const numBusca = String(nfse.numero ?? "").trim().replace(/^0+(?=\d)/, "");
+      const { data: candidatos } = await db
+        .from("nf_servicos").select("id, fazenda_id, numero_nf, serie, prestador_cnpj, data_prestacao, chave_nfse, status, created_at")
+        .in("fazenda_id", fazendaIdsDaConta).like("numero_nf", `%${numBusca}`);
+      const novaNfse: NfseDup = { id: "novo", fazenda_id, numero_nf: nfse.numero, prestador_cnpj: nfse.prestador_cnpj || null, data_prestacao: nfse.data_emissao, chave_nfse: nfse.chave.includes("-") ? null : nfse.chave, status: "pendente", created_at: "" };
+      const existing = ((candidatos ?? []) as NfseDup[])
+        .filter(c => mesmaNfse(c, novaNfse))
+        .sort((x, y) => (x.status === "processada" ? 0 : 1) - (y.status === "processada" ? 0 : 1) || x.created_at.localeCompare(y.created_at))[0] ?? null;
 
       if (existing) {
         if (!force) { duplicadas++; continue; }

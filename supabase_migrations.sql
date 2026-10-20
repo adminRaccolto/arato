@@ -16866,3 +16866,35 @@ DROP TRIGGER IF EXISTS trg_nf_entradas_reabrir_exige_estorno ON nf_entradas;
 CREATE TRIGGER trg_nf_entradas_reabrir_exige_estorno BEFORE UPDATE OF status ON nf_entradas
   FOR EACH ROW EXECUTE FUNCTION fn_nf_entradas_reabrir_exige_estorno();
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 351 — NFS-e (nf_servicos): bloqueio de NFS-e repetida
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Mesma nota = mesmo número (sem zeros à esquerda) + mesmo CNPJ/CPF do prestador (só dígitos), em qualquer fazenda da
+-- conta, com data da prestação a até 45 dias (numeração de algumas prefeituras recomeça todo ano); a série é ignorada
+-- (SIEG grava "NFS", a tela sugere "1"). Só INSERT — duplicatas existentes não são tocadas (limpeza pelo botão).
+CREATE INDEX IF NOT EXISTS idx_nf_servicos_numero_cnpj ON nf_servicos (numero_nf, prestador_cnpj);
+CREATE OR REPLACE FUNCTION fn_nf_servicos_bloqueia_duplicada() RETURNS trigger AS $$
+DECLARE v_conta uuid; v_cnpj text; v_num text; v_dup record;
+BEGIN
+  v_cnpj := regexp_replace(coalesce(NEW.prestador_cnpj, ''), '\D', '', 'g');
+  v_num  := ltrim(btrim(coalesce(NEW.numero_nf, '')), '0');
+  IF length(v_cnpj) < 11 OR v_num = '' THEN RETURN NEW; END IF;
+  SELECT conta_id INTO v_conta FROM fazendas WHERE id = NEW.fazenda_id;
+  SELECT n.numero_nf, n.status INTO v_dup FROM nf_servicos n
+   WHERE ltrim(btrim(coalesce(n.numero_nf, '')), '0') = v_num
+     AND regexp_replace(coalesce(n.prestador_cnpj, ''), '\D', '', 'g') = v_cnpj
+     AND coalesce(n.status, '') <> 'cancelada'
+     AND (n.data_prestacao IS NULL OR NEW.data_prestacao IS NULL
+          OR abs((n.data_prestacao)::date - (NEW.data_prestacao)::date) <= 45)
+     AND (n.fazenda_id = NEW.fazenda_id OR n.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = v_conta))
+   LIMIT 1;
+  IF FOUND THEN
+    RAISE EXCEPTION 'NFS-e duplicada: a NFS-e nº % deste prestador já está no sistema (%).', v_dup.numero_nf, v_dup.status USING ERRCODE = '23505';
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nf_servicos_bloqueia_duplicada ON nf_servicos;
+CREATE TRIGGER trg_nf_servicos_bloqueia_duplicada BEFORE INSERT ON nf_servicos
+  FOR EACH ROW EXECUTE FUNCTION fn_nf_servicos_bloqueia_duplicada();
+NOTIFY pgrst, 'reload schema';
