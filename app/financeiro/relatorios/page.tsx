@@ -2620,7 +2620,7 @@ function FinanceiroRelatoriosInner() {
                     </div>
                     {cpcrPopup && (
                       <div data-arato-overlay="true" onClick={() => setCpcrPopup(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                        <div role="dialog" aria-label="Filtro do relatório CP/CR" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(96vw, 720px)", maxHeight: "92vh", overflowY: "auto", padding: 22, textAlign: "left" }}>
+                        <div role="dialog" aria-label="Filtro do relatório CP/CR" onClick={e => e.stopPropagation()} style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(96vw, 980px)", maxHeight: "92vh", overflowY: "auto", overflowX: "hidden", padding: 22, textAlign: "left" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Relatório CP / CR — filtro</div>
                             <button type="button" aria-label="Fechar" onClick={() => setCpcrPopup(false)} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>

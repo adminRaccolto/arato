@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-e",
+    data: "20/10/2026",
+    titulo: "Janela de filtro do relatório CP/CR mais larga",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "A janela de filtro do relatório CP/CR ficou mais larga e a lista aberta dos dropdowns (principalmente Conta bancária, com nomes longos) passa a caber dentro da janela, quebrando o texto em mais de uma linha em vez de ultrapassar a margem." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → Abrir filtro e gerar",
+  },
+  {
     versao: "2026.10.20-d",
     data: "20/10/2026",
     titulo: "Pedido de compra: unidade bag disponível",

@@ -49,7 +49,7 @@ export default function MultiSelectDropdown({ opcoes, selecionados, onChange, te
         <span style={{ fontSize: 9, color: "#888" }}>▼</span>
       </button>
       {aberto && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, minWidth: "100%", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.12)", zIndex: 50, padding: 6 }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, minWidth: "100%", ...(buscavel ? { right: 0, boxSizing: "border-box" as const, overflowX: "hidden" as const } : {}), background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.12)", zIndex: 50, padding: 6 }}>
           {buscavel && (
             <input autoFocus value={busca} onChange={e => setBusca(e.target.value)} placeholder={placeholderBusca} aria-label={placeholderBusca}
               style={{ width: "100%", boxSizing: "border-box", padding: "6px 8px", marginBottom: 4, border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none" }} />
@@ -60,7 +60,7 @@ export default function MultiSelectDropdown({ opcoes, selecionados, onChange, te
           <div style={{ maxHeight: 220, overflowY: "auto" }}>
           {visiveis.length === 0 && <div style={{ padding: "8px", fontSize: 12, color: "#888" }}>Nada encontrado</div>}
           {visiveis.slice(0, limite).map(o => (
-            <label data-arato-label="true" key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: 13, cursor: "pointer", borderRadius: 6, whiteSpace: "nowrap" }}>
+            <label data-arato-label="true" key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", fontSize: 13, cursor: "pointer", borderRadius: 6, whiteSpace: buscavel ? "normal" : "nowrap", wordBreak: buscavel ? "break-word" : undefined }}>
               <input type="checkbox" checked={selecionados.has(o.v)} onChange={() => alternar(o.v)} />
               {o.label}
             </label>
