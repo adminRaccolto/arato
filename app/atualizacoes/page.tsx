@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-a",
+    data: "20/10/2026",
+    titulo: "Relatório CP/CR: conta bancária, cadastro de fornecedor e agrupamento",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Janela de filtro do relatório CP/CR: novo filtro Conta bancária (caixas de seleção, com as contas de todas as fazendas da conta) e a opção Mostrar a conta bancária (de pagamento) no relatório, que liga ou desliga a coluna no PDF e no Excel." },
+      { tipo: "correcao", texto: "O filtro de fornecedor era um texto livre. Agora é um seletor do cadastro de Pessoas, com busca por nome ou CNPJ/CPF e vários marcados ao mesmo tempo, usando o vínculo do título com o cadastro." },
+      { tipo: "novo", texto: "Agrupamento do relatório: escolha os níveis (Produtor/Empresa, Operação gerencial, Mês de vencimento, Categoria, Tipo, Status, Fornecedor/Cliente, Conta bancária) e a ordem deles com as setas. Cada grupo traz subtotal e o relatório termina com o Total geral, no PDF e no Excel. Sem nenhum nível marcado, sai a lista simples ordenada por vencimento." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → Abrir filtro e gerar",
+  },
+  {
     versao: "2026.10.19-s",
     data: "19/10/2026",
     titulo: "CP de Empresa (PJ) com a operação gerencial da NF",

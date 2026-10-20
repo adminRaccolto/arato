@@ -201,7 +201,7 @@ function FinanceiroRelatoriosInner() {
   };
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
   // Relatório CP/CR: função que monta o HTML limpo (sem filtros/botões da tela) a partir do que está filtrado na aba
-  const printCpcrRef = useRef<((chaves?: string[]) => Promise<{ html: string; escopo: string }>) | null>(null);
+  const printCpcrRef = useRef<((chaves?: string[], grupos?: string[]) => Promise<{ html: string; escopo: string }>) | null>(null);
   // DFC e Posição por Conta: HTML próprio de impressão (a tela tem filtros e botões que não vão para o papel)
   const printOutrosRef = useRef<{ dfc?: () => string; posicao?: () => string }>({});
 
@@ -229,7 +229,7 @@ function FinanceiroRelatoriosInner() {
   const [cpcrVerTela, setCpcrVerTela] = useState(false);
   const [cpcrFormato, setCpcrFormato] = useState<"pdf" | "xlsx">("pdf");
   const [cpcrEmitir, setCpcrEmitir] = useState<"pdf" | "xlsx" | null>(null);
-  const exportCpcrRef = useRef<{ exportar: (chaves?: string[]) => Promise<void>; qtd: number } | null>(null);
+  const exportCpcrRef = useRef<{ exportar: (chaves?: string[], grupos?: string[]) => Promise<void>; qtd: number } | null>(null);
   // Emite o relatório assim que a janela de filtro é confirmada (os estados já foram aplicados no render anterior)
   useEffect(() => {
     if (!cpcrEmitir) return;
@@ -238,9 +238,9 @@ function FinanceiroRelatoriosInner() {
     (async () => {
       const info = exportCpcrRef.current;
       if (!info || info.qtd === 0) { alert("Nenhum lançamento encontrado para esse filtro."); return; }
-      if (formato === "xlsx") { await info.exportar(relCols); return; }
+      if (formato === "xlsx") { await info.exportar(relCols, relGrupos); return; }
       if (!printCpcrRef.current) return;
-      const r = await printCpcrRef.current(relCols);
+      const r = await printCpcrRef.current(relCols, relGrupos);
       const escopo = prodCPCR.size > 0
         ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
         : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
@@ -275,6 +275,17 @@ function FinanceiroRelatoriosInner() {
     { key: "venc_orig",      label: "Venc. original",    defaultW: 100, align: "left"  as const },
     { key: "conta_bancaria", label: "Conta bancária",    defaultW: 140, align: "left"  as const },
   ];
+  // Níveis de agrupamento disponíveis no relatório (a ordem escolhida define o aninhamento)
+  const GRUPOS_REL = [
+    { key: "produtor",   label: "Produtor / Empresa" },
+    { key: "og",         label: "Operação gerencial" },
+    { key: "mes",        label: "Mês de vencimento" },
+    { key: "categoria",  label: "Categoria" },
+    { key: "tipo",       label: "Tipo (CP/CR)" },
+    { key: "status",     label: "Status" },
+    { key: "fornecedor", label: "Fornecedor / Cliente" },
+    { key: "conta",      label: "Conta bancária" },
+  ];
   const _defCPCROrder = COLUNAS_CPCR_DEF.map(c => c.key);
   const _defCPCRVis   = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, true]));
   const _defCPCRW     = Object.fromEntries(COLUNAS_CPCR_DEF.map(c => [c.key, c.defaultW]));
@@ -291,6 +302,22 @@ function FinanceiroRelatoriosInner() {
     } catch { /* ok */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailUsuario]);
+  const [relGrupos, setRelGrupos] = useState<string[]>([]);
+  const [contasCPCR, setContasCPCR] = useState<Set<string>>(new Set());     // vazio = todas as contas
+  const [pessoasCPCR, setPessoasCPCR] = useState<Set<string>>(new Set());   // fornecedores/clientes do cadastro; vazio = todos
+  const [buscaPessoaCPCR, setBuscaPessoaCPCR] = useState("");
+  useEffect(() => {
+    if (!emailUsuario || typeof window === "undefined") return;
+    try {
+      const g = localStorage.getItem(`cpcr_relGrupos_${emailUsuario}`);
+      if (g) setRelGrupos((JSON.parse(g) as string[]).filter(k => GRUPOS_REL.some(x => x.key === k)));
+    } catch { /* ok */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailUsuario]);
+  const salvarRelGrupos = (arr: string[]) => {
+    setRelGrupos(arr);
+    if (emailUsuario) localStorage.setItem(`cpcr_relGrupos_${emailUsuario}`, JSON.stringify(arr));
+  };
   const salvarRelCols = (arr: string[]) => {
     setRelCols(arr);
     if (emailUsuario) localStorage.setItem(`cpcr_relCols_${emailUsuario}`, JSON.stringify(arr));
@@ -361,7 +388,7 @@ function FinanceiroRelatoriosInner() {
     }).catch(() => {})
       .finally(() => setCarregando(false));
     listarEmpresasDaConta(fazendaIds?.length ? fazendaIds : [fazendaId]).then(setEmpresas).catch(() => setEmpresas([]));
-    listarContas(fazendaId).then(setContas).catch(() => setContas([]));
+    Promise.all((fazendaIds?.length ? fazendaIds : [fazendaId]).map(f => listarContas(f).catch(() => [] as ContaBancaria[]))).then(r => setContas(r.flat())).catch(() => setContas([]));
     // Combina as duas fontes: produtores da conta (por conta_id) + da fazenda (fallback/sem conta_id)
     Promise.all([
       contaId ? listarProdutoresDaConta(contaId).catch(() => [] as Produtor[]) : Promise.resolve([] as Produtor[]),
@@ -1880,7 +1907,7 @@ function FinanceiroRelatoriosInner() {
                   lancamentos,
                   { inicio: inicioCPCR, fim: fimCPCR, tipo: tipoCPCR, status: statusCPCR, categorias: catCPCR, produtores: prodCPCR, fornecedor: fornCPCR },
                   l => ((l.pessoa_id ? pessoaMap[l.pessoa_id] : null) ?? (l.descricao ? extrairFornecedor(l.descricao) : "") ?? ""),
-                );
+                ).filter(l => (pessoasCPCR.size === 0 || pessoasCPCR.has(l.pessoa_id ?? "")) && (contasCPCR.size === 0 || contasCPCR.has(l.conta_bancaria ?? "")));
 
                 const categorias = [...new Set(lancamentos.filter(l => l.moeda !== "barter").map(l => l.categoria).filter(Boolean))].sort() as string[];
                 const produtoresPresentes = produtores.filter(p => lancamentos.some(l => l.produtor_id === p.id));
@@ -2025,8 +2052,39 @@ function FinanceiroRelatoriosInner() {
                 };
 
 
+                // ── agrupamento do relatório (PDF/XLSX): níveis na ordem escolhida, subtotal por grupo e total geral ──
+                type TotaisRel = { valor: number; pago: number; saldo: number; n: number };
+                type ItemRel = { t: "grupo"; nivel: number; rot: string; tot: TotaisRel } | { t: "linha"; l: Lancamento } | { t: "sub"; nivel: number; rot: string; tot: TotaisRel };
+                const montarLinhas = (grupos: string[]): { itens: ItemRel[]; geral: TotaisRel } => {
+                  const somar = (itens: Lancamento[]): TotaisRel => itens.reduce((a, l) => {
+                    const brl = paraBRLRel(l, cotacaoUSD); const sg = l.tipo === "pagar" ? -1 : 1; const pago = l.valor_pago ?? 0;
+                    a.valor += sg * brl; a.pago += sg * pago; a.saldo += sg * Math.max(0, brl - pago); a.n++; return a;
+                  }, { valor: 0, pago: 0, saldo: 0, n: 0 });
+                  const colDoGrupo: Record<string, string> = { produtor: "produtor", og: "op_gerencial", categoria: "categoria", tipo: "tipo", status: "status", fornecedor: "fornecedor", conta: "conta_bancaria" };
+                  const rotuloDe = (key: string, l: Lancamento): string => key === "mes"
+                    ? (l.data_vencimento ? `${l.data_vencimento.slice(5, 7)}/${l.data_vencimento.slice(0, 4)}` : "Sem data")
+                    : (String(getCellVal({ key: colDoGrupo[key] ?? key }, l) || "") || "Sem informação");
+                  const chaveOrd = (key: string, l: Lancamento) => key === "mes" ? (l.data_vencimento ?? "").slice(0, 7) : rotuloDe(key, l);
+                  const ordenar = (itens: Lancamento[]) => [...itens].sort((a, b) => (a.data_vencimento ?? "").localeCompare(b.data_vencimento ?? ""));
+                  const out: ItemRel[] = [];
+                  const rec = (itens: Lancamento[], nivel: number) => {
+                    if (nivel >= grupos.length) { ordenar(itens).forEach(l => out.push({ t: "linha", l })); return; }
+                    const key = grupos[nivel];
+                    const mapa = new Map<string, Lancamento[]>();
+                    for (const l of itens) { const k = chaveOrd(key, l); const arr = mapa.get(k); if (arr) arr.push(l); else mapa.set(k, [l]); }
+                    [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([, ls]) => {
+                      const rot = rotuloDe(key, ls[0]); const tot = somar(ls);
+                      out.push({ t: "grupo", nivel, rot: `${GRUPOS_REL.find(g => g.key === key)?.label ?? key}: ${rot}`, tot });
+                      rec(ls, nivel + 1);
+                      out.push({ t: "sub", nivel, rot: `Subtotal — ${rot}`, tot });
+                    });
+                  };
+                  rec(lancsCPCR, 0);
+                  return { itens: out, geral: somar(lancsCPCR) };
+                };
+
                 // ── impressão (relatório limpo: sem filtros nem botões da tela) ──
-                printCpcrRef.current = async (chaves?: string[]) => {
+                printCpcrRef.current = async (chaves?: string[], grupos?: string[]) => {
                   usarColunas(chaves);
                   await resolverExtras();
                   const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -2039,16 +2097,33 @@ function FinanceiroRelatoriosInner() {
                     ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].map(k => statusLabel[k] ?? k).join(", ")],
                     ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
                     ["Produtor", escopo],
-                    ["Fornecedor", fornCPCR.trim() || "Todos"],
+                    ["Fornecedor / Cliente", pessoasCPCR.size > 0 ? [...pessoasCPCR].map(id => pessoaMap[id] ?? id).join(", ") : (fornCPCR.trim() || "Todos")],
+                    ["Conta bancária", contasCPCR.size > 0 ? [...contasCPCR].map(id => contas.find(c => c.id === id)?.nome ?? id).join(", ") : "Todas"],
+                    ...((grupos ?? []).length ? [["Agrupado por", (grupos ?? []).map(k => GRUPOS_REL.find(g => g.key === k)?.label ?? k).join(" › ")]] : []),
                   ];
                   const numCols = new Set(["valor", "valor_pago", "saldo", "dias"]);
                   const cab = colsVisiveis.map(c => `<th style="padding:7px 8px;text-align:${numCols.has(c.key) ? "right" : "left"};font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${esc(c.label)}</th>`).join("");
-                  const corpo = lancsCPCR.map(l => `<tr style="border-bottom:0.5px solid #E8ECF4">${colsVisiveis.map(c => {
-                    const v = getCellVal(c, l);
-                    const txt = typeof v === "number" ? fmtV(v) : String(v ?? "");
-                    const cor = typeof v === "number" ? (v < 0 ? "#B91C1C" : "#166534") : "#222";
-                    return `<td style="padding:5px 8px;font-size:10px;text-align:${numCols.has(c.key) ? "right" : "left"};color:${cor};${numCols.has(c.key) ? "font-weight:600;white-space:nowrap" : ""}">${esc(txt || "—")}</td>`;
-                  }).join("")}</tr>`).join("");
+                  const { itens: itensRel, geral } = montarLinhas(grupos ?? []);
+                  const somaCols = ["valor", "valor_pago", "saldo"];
+                  const iSoma = colsVisiveis.findIndex(c => somaCols.includes(c.key));
+                  const valTot = (k: string, t: TotaisRel) => k === "valor" ? t.valor : k === "valor_pago" ? t.pago : t.saldo;
+                  const corNum = (v: number) => v < 0 ? "#B91C1C" : "#166534";
+                  const linhaTot = (rot: string, t: TotaisRel, fundo: string, cor: string, pad: number) => {
+                    const estilo = `padding:5px 8px;font-size:10px;font-weight:700;background:${fundo};color:${cor};border-top:0.5px solid #C9D3E6`;
+                    if (iSoma <= 0) return `<tr><td colspan="${colsVisiveis.length}" style="${estilo};padding-left:${8 + pad}px">${esc(rot)} (${t.n}) — líquido ${fmtV(t.valor)}</td></tr>`;
+                    return `<tr><td colspan="${iSoma}" style="${estilo};padding-left:${8 + pad}px">${esc(rot)} (${t.n})</td>${colsVisiveis.slice(iSoma).map(c => somaCols.includes(c.key) ? `<td style="${estilo};text-align:right;white-space:nowrap;color:${fundo === "#1A4870" ? "#fff" : corNum(valTot(c.key, t))}">${fmtV(valTot(c.key, t))}</td>` : `<td style="${estilo}"></td>`).join("")}</tr>`;
+                  };
+                  const corpo = itensRel.map(it => {
+                    if (it.t === "grupo") return `<tr><td colspan="${colsVisiveis.length}" style="padding:6px 8px 6px ${8 + it.nivel * 14}px;font-size:${it.nivel === 0 ? 11 : 10}px;font-weight:700;background:${["#E3EAF3", "#EEF3FA", "#F6F8FC"][Math.min(it.nivel, 2)]};color:#0B2D50;border-top:0.5px solid #C9D3E6">${esc(it.rot)}</td></tr>`;
+                    if (it.t === "sub") return linhaTot(it.rot, it.tot, "#F4F6FA", "#1a1a1a", it.nivel * 14);
+                    const l = it.l;
+                    return `<tr style="border-bottom:0.5px solid #E8ECF4">${colsVisiveis.map(c => {
+                      const v = getCellVal(c, l);
+                      const txt = typeof v === "number" ? fmtV(v) : String(v ?? "");
+                      const cor = typeof v === "number" ? (v < 0 ? "#B91C1C" : "#166534") : "#222";
+                      return `<td style="padding:5px 8px;font-size:10px;text-align:${numCols.has(c.key) ? "right" : "left"};color:${cor};${numCols.has(c.key) ? "font-weight:600;white-space:nowrap" : ""}">${esc(txt || "—")}</td>`;
+                    }).join("")}</tr>`;
+                  }).join("") + (itensRel.length ? linhaTot("TOTAL GERAL", geral, "#1A4870", "#fff", 0) : "");
                   const html = `
                     <div style="display:flex;gap:6px 24px;flex-wrap:wrap;margin-bottom:12px;padding:9px 14px;background:#F8FAFB;border:0.5px solid #DDE2EE;border-radius:8px;font-size:11px;color:#555">
                       ${resumo.map(([k, v]) => `<span><strong>${k}:</strong> ${esc(v)}</span>`).join("")}
@@ -2068,7 +2143,7 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 // ── exportar XLSX ─────────────────────────────────────
-                const exportarXLSX = async (chaves?: string[]) => {
+                const exportarXLSX = async (chaves?: string[], grupos?: string[]) => {
                   usarColunas(chaves);
                   await resolverExtras();
                   const XLSX = await import("xlsx");
@@ -2079,8 +2154,9 @@ function FinanceiroRelatoriosInner() {
                     ["Status", statusCPCR.size === 0 ? "Todos" : [...statusCPCR].join(", ")],
                     ["Categoria", catCPCR.size === 0 ? "Todas" : [...catCPCR].join(", ")],
                     ["Produtor", prodCPCR.size === 0 ? "Todos" : [...prodCPCR].map(id => prodMap[id] ?? id).join(", ")],
-                    ["Fornecedor", fornCPCR.trim() || "Todos"],
-                    ["Agrupamentos", agrupAtivos.map(k => GRUPOS_CONF.find(c => c.key === k)?.label ?? k).join(" › ")],
+                    ["Fornecedor / Cliente", pessoasCPCR.size > 0 ? [...pessoasCPCR].map(id => pessoaMap[id] ?? id).join(", ") : (fornCPCR.trim() || "Todos")],
+                    ["Conta bancária", contasCPCR.size > 0 ? [...contasCPCR].map(id => contas.find(c => c.id === id)?.nome ?? id).join(", ") : "Todas"],
+                    ["Agrupado por", (grupos ?? []).length ? (grupos ?? []).map(k => GRUPOS_REL.find(g => g.key === k)?.label ?? k).join(" › ") : "Sem agrupamento"],
                     [],
                     ["Total a Receber (CR)", totalCR],
                     ["Total a Pagar (CP)", totalCP],
@@ -2093,11 +2169,26 @@ function FinanceiroRelatoriosInner() {
                   const isoData = (col: { key: string }, l: Lancamento): string | null | undefined =>
                     col.key === "emissao" ? l.data_lancamento : col.key === "vencimento" ? l.data_vencimento : col.key === "data_pagamento" ? l.data_baixa : col.key === "venc_orig" ? l.data_prorrogacao : undefined;
                   const colsData = new Set(["emissao", "vencimento", "data_pagamento", "venc_orig"]);
-                  const linhas = lancsCPCR.map(l => colsVisiveis.map(col => {
-                    if (!colsData.has(col.key)) return getCellVal(col, l);
-                    const iso = isoData(col, l);
-                    return iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : "";
-                  }));
+                  const { itens: itensRel, geral } = montarLinhas(grupos ?? []);
+                  const somaCols = ["valor", "valor_pago", "saldo"];
+                  const iSoma = colsVisiveis.findIndex(c => somaCols.includes(c.key));
+                  const valTot = (k: string, t: TotaisRel) => k === "valor" ? t.valor : k === "valor_pago" ? t.pago : t.saldo;
+                  const linhaTotal = (rot: string, t: TotaisRel, recuo: number): (string | number | Date)[] => {
+                    const marg = "    ".repeat(recuo);
+                    if (iSoma <= 0) return colsVisiveis.map((_, i) => i === 0 ? `${marg}${rot} (${t.n}) — líquido ${t.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : "");
+                    return colsVisiveis.map((c, i) => i === 0 ? `${marg}${rot} (${t.n})` : somaCols.includes(c.key) ? Math.round(valTot(c.key, t) * 100) / 100 : "");
+                  };
+                  const linhas: (string | number | Date)[][] = itensRel.map(it => {
+                    if (it.t === "grupo") return colsVisiveis.map((_, i) => i === 0 ? `${"    ".repeat(it.nivel)}${it.rot}` : "");
+                    if (it.t === "sub") return linhaTotal(it.rot, it.tot, it.nivel);
+                    const l = it.l;
+                    return colsVisiveis.map(col => {
+                      if (!colsData.has(col.key)) return getCellVal(col, l);
+                      const iso = isoData(col, l);
+                      return iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : "";
+                    });
+                  });
+                  if (itensRel.length) linhas.push(linhaTotal("TOTAL GERAL", geral, 0));
                   const wb = XLSX.utils.book_new();
                   const ws1 = XLSX.utils.aoa_to_sheet(resumo); ws1["!cols"] = [{wch:32},{wch:22}];
                   XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
@@ -2558,10 +2649,49 @@ function FinanceiroRelatoriosInner() {
                             <div><label data-arato-label="true" style={labelStyle}>Categoria (nenhuma marcada = todas)</label>{caixas(categorias.map(c => ({ v: c, l: c })), catCPCR, setCatCPCR, 140)}</div>
                             <div><label data-arato-label="true" style={labelStyle}>Produtor (nenhum marcado = todos)</label>{caixas(produtoresPresentes.map(p => ({ v: p.id, l: p.nome })), prodCPCR, setProdCPCR, 140)}</div>
                           </div>
-                          <div style={{ marginBottom: 14 }}><label data-arato-label="true" style={labelStyle}>Fornecedor (parte do nome; vazio = todos)</label>
-                            <input value={fornCPCR} onChange={e => setFornCPCR(e.target.value)} placeholder="Buscar por nome…" style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} /></div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                            <div>
+                              <label data-arato-label="true" style={labelStyle}>Conta bancária (nenhuma marcada = todas)</label>
+                              {caixas(contas.map(c => ({ v: c.id, l: c.nome })), contasCPCR, setContasCPCR, 120)}
+                              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginTop: 6, cursor: "pointer", color: "var(--text-1)" }}>
+                                <input type="checkbox" checked={relCols.includes("conta_bancaria")} style={{ accentColor: "#1A4870" }}
+                                  onChange={() => salvarRelCols(relCols.includes("conta_bancaria") ? relCols.filter(x => x !== "conta_bancaria") : [...relCols, "conta_bancaria"])} />
+                                Mostrar a conta bancária (de pagamento) no relatório
+                              </label>
+                            </div>
+                            <div>
+                              <label data-arato-label="true" style={labelStyle}>Fornecedor / Cliente do cadastro (nenhum marcado = todos)</label>
+                              <input value={buscaPessoaCPCR} onChange={e => setBuscaPessoaCPCR(e.target.value)} placeholder="Buscar no cadastro por nome ou CNPJ/CPF…" style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: 6 }} />
+                              {pessoasCPCR.size > 0 && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+                                  {[...pessoasCPCR].map(id => (
+                                    <span key={id} style={{ background: "#D5E8F5", color: "#0B2D50", borderRadius: 12, padding: "2px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                      {pessoaMap[id] ?? id}
+                                      <button type="button" aria-label="Remover" onClick={() => alterna(pessoasCPCR, setPessoasCPCR, id)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#0B2D50", padding: 0 }}>×</button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {(() => {
+                                const q = buscaPessoaCPCR.trim().toLowerCase(); const qd = q.replace(/\D/g, "");
+                                const achadas = pessoas.filter(x => !q || (x.nome ?? "").toLowerCase().includes(q) || (qd.length >= 3 && (x.cpf_cnpj ?? "").replace(/\D/g, "").includes(qd)));
+                                return (
+                                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: 120, overflowY: "auto", background: "var(--bg-input)" }}>
+                                    {achadas.length === 0 && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Nenhum cadastro encontrado</span>}
+                                    {achadas.slice(0, 100).map(x => (
+                                      <label key={x.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer", padding: "2px 0" }}>
+                                        <input type="checkbox" checked={pessoasCPCR.has(x.id)} onChange={() => alterna(pessoasCPCR, setPessoasCPCR, x.id)} style={{ accentColor: "#1A4870" }} />
+                                        <span>{x.nome}{x.cpf_cnpj ? <span style={{ color: "var(--text-3)" }}> · {x.cpf_cnpj}</span> : null}</span>
+                                      </label>
+                                    ))}
+                                    {achadas.length > 100 && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>Mostrando 100 de {achadas.length}; refine a busca.</div>}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
                           <div style={{ marginBottom: 14 }}>
-                            <label data-arato-label="true" style={labelStyle}>Colunas do relatório (marque as que quer ver; use ↑ ↓ para a ordem — fica salvo para você)</label>
+                            <label data-arato-label="true" style={labelStyle}>Colunas do relatório — o que aparece (marque as que quer ver; ↑ ↓ para a ordem; fica salvo para você)</label>
                             <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: 190, overflowY: "auto", background: "var(--bg-input)" }}>
                               {[...relCols, ...COLUNAS_REL.map(c => c.key).filter(k => !relCols.includes(k))].map(k => {
                                 const def = COLUNAS_REL.find(c => c.key === k); if (!def) return null;
@@ -2582,6 +2712,29 @@ function FinanceiroRelatoriosInner() {
                             </div>
                             {relCols.length === 0 && <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 4 }}>Marque ao menos uma coluna.</div>}
                           </div>
+                          <div style={{ marginBottom: 14 }}>
+                            <label data-arato-label="true" style={labelStyle}>Agrupamento (marque os níveis; o 1º da lista é o nível principal — use ↑ ↓; sem nenhum = lista simples)</label>
+                            <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", background: "var(--bg-input)" }}>
+                              {[...relGrupos, ...GRUPOS_REL.map(g => g.key).filter(k => !relGrupos.includes(k))].map(k => {
+                                const def = GRUPOS_REL.find(g => g.key === k); if (!def) return null;
+                                const marcado = relGrupos.includes(k); const idx = relGrupos.indexOf(k);
+                                return (
+                                  <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", fontSize: 12, color: marcado ? "var(--text-1)" : "var(--text-3)" }}>
+                                    <label style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, cursor: "pointer" }}>
+                                      <input type="checkbox" checked={marcado} style={{ accentColor: "#1A4870" }}
+                                        onChange={() => salvarRelGrupos(marcado ? relGrupos.filter(x => x !== k) : [...relGrupos, k])} />
+                                      {marcado ? `${idx + 1}º nível — ` : ""}{def.label}
+                                    </label>
+                                    {marcado && <>
+                                      <button type="button" aria-label="Subir" disabled={idx === 0} onClick={() => { const a = [...relGrupos]; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; salvarRelGrupos(a); }} style={{ border: "0.5px solid var(--border)", background: "var(--bg-card)", borderRadius: 4, cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.3 : 1, fontSize: 11, padding: "0 6px" }}>↑</button>
+                                      <button type="button" aria-label="Descer" disabled={idx === relGrupos.length - 1} onClick={() => { const a = [...relGrupos]; [a[idx + 1], a[idx]] = [a[idx], a[idx + 1]]; salvarRelGrupos(a); }} style={{ border: "0.5px solid var(--border)", background: "var(--bg-card)", borderRadius: 4, cursor: idx === relGrupos.length - 1 ? "default" : "pointer", opacity: idx === relGrupos.length - 1 ? 0.3 : 1, fontSize: 11, padding: "0 6px" }}>↓</button>
+                                    </>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {relGrupos.length > 0 && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>Cada grupo traz subtotal e o relatório termina com o total geral.</div>}
+                          </div>
                           <div style={{ marginBottom: 16 }}><label data-arato-label="true" style={labelStyle}>Emissão</label>
                             <div style={{ display: "flex", gap: 18 }}>
                               {([["pdf", "PDF (abre para imprimir)"], ["xlsx", "XLSX (baixa o arquivo)"]] as const).map(([v, rot]) => (
@@ -2589,7 +2742,7 @@ function FinanceiroRelatoriosInner() {
                               ))}
                             </div></div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                            <button type="button" onClick={() => { setInicioCPCR(""); setFimCPCR(""); setTipoCPCR("todos"); setStatusCPCR(new Set()); setCatCPCR(new Set()); setProdCPCR(new Set()); setFornCPCR(""); }} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}>Limpar tudo</button>
+                            <button type="button" onClick={() => { setInicioCPCR(""); setFimCPCR(""); setTipoCPCR("todos"); setStatusCPCR(new Set()); setCatCPCR(new Set()); setProdCPCR(new Set()); setFornCPCR(""); setContasCPCR(new Set()); setPessoasCPCR(new Set()); setBuscaPessoaCPCR(""); }} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}>Limpar tudo</button>
                             <div style={{ display: "flex", gap: 8 }}>
                               <OperationalButton data-arato-button="secondary" onClick={() => setCpcrPopup(false)} style={{ ...inputStyle, background: "var(--bg-card)", cursor: "pointer" }}>Cancelar</OperationalButton>
                               <OperationalButton data-arato-button="primary" disabled={relCols.length === 0} onClick={() => { setCpcrPopup(false); setCpcrEmitir(cpcrFormato); }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Gerar relatório</OperationalButton>
