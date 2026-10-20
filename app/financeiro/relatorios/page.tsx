@@ -1,4 +1,5 @@
 "use client";
+import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
@@ -305,7 +306,6 @@ function FinanceiroRelatoriosInner() {
   const [relGrupos, setRelGrupos] = useState<string[]>([]);
   const [contasCPCR, setContasCPCR] = useState<Set<string>>(new Set());     // vazio = todas as contas
   const [pessoasCPCR, setPessoasCPCR] = useState<Set<string>>(new Set());   // fornecedores/clientes do cadastro; vazio = todos
-  const [buscaPessoaCPCR, setBuscaPessoaCPCR] = useState("");
   useEffect(() => {
     if (!emailUsuario || typeof window === "undefined") return;
     try {
@@ -2607,17 +2607,6 @@ function FinanceiroRelatoriosInner() {
                 );
 
                 const STATUS_OPC = [{ v: "em_aberto", l: "Em aberto" }, { v: "vencido", l: "Vencido" }, { v: "vencendo", l: "Vencendo" }, { v: "baixado", l: "Baixado / pago" }, { v: "parcial", l: "Parcial" }];
-                const alterna = (set: Set<string>, setSet: (s: Set<string>) => void, v: string) => { const n = new Set(set); if (n.has(v)) n.delete(v); else n.add(v); setSet(n); };
-                const caixas = (opcoes: { v: string; l: string }[], sel: Set<string>, setSel: (s: Set<string>) => void, altura?: number) => (
-                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: altura, overflowY: altura ? "auto" : undefined, display: altura ? "block" : "flex", flexWrap: "wrap", gap: altura ? 0 : "4px 16px", background: "var(--bg-input)" }}>
-                    {opcoes.length === 0 && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Nenhuma opção</span>}
-                    {opcoes.map(o => (
-                      <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer", padding: altura ? "2px 0" : 0 }}>
-                        <input type="checkbox" checked={sel.has(o.v)} onChange={() => alterna(sel, setSel, o.v)} style={{ accentColor: "#1A4870" }} />{o.l}
-                      </label>
-                    ))}
-                  </div>
-                );
                 exportCpcrRef.current = { exportar: exportarXLSX, qtd: lancsCPCR.length };
                 const landing = (
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "28px 24px", textAlign: "center" }}>
@@ -2644,52 +2633,24 @@ function FinanceiroRelatoriosInner() {
                                 <option value="todos">Todos (CR + CP)</option><option value="receber">Contas a Receber (CR)</option><option value="pagar">Contas a Pagar (CP)</option>
                               </SelectField></div>
                           </div>
-                          <div style={{ marginBottom: 12 }}><label data-arato-label="true" style={labelStyle}>Status (nenhum marcado = todos)</label>{caixas(STATUS_OPC, statusCPCR, setStatusCPCR)}</div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                            <div><label data-arato-label="true" style={labelStyle}>Categoria (nenhuma marcada = todas)</label>{caixas(categorias.map(c => ({ v: c, l: c })), catCPCR, setCatCPCR, 140)}</div>
-                            <div><label data-arato-label="true" style={labelStyle}>Produtor (nenhum marcado = todos)</label>{caixas(produtoresPresentes.map(p => ({ v: p.id, l: p.nome })), prodCPCR, setProdCPCR, 140)}</div>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                            <div>
-                              <label data-arato-label="true" style={labelStyle}>Conta bancária (nenhuma marcada = todas)</label>
-                              {caixas(contas.map(c => ({ v: c.id, l: c.nome })), contasCPCR, setContasCPCR, 120)}
+                            <div><label data-arato-label="true" style={labelStyle}>Status</label>
+                              <MultiSelectDropdown opcoes={STATUS_OPC.map(o => ({ v: o.v, label: o.l }))} selecionados={statusCPCR} onChange={setStatusCPCR} textoTodos="Todos" largura="100%" /></div>
+                            <div><label data-arato-label="true" style={labelStyle}>Categoria</label>
+                              <MultiSelectDropdown opcoes={categorias.map(c => ({ v: c, label: c }))} selecionados={catCPCR} onChange={setCatCPCR} textoTodos="Todas" largura="100%" buscavel placeholderBusca="Pesquisar categoria…" /></div>
+                            <div><label data-arato-label="true" style={labelStyle}>Produtor</label>
+                              <MultiSelectDropdown opcoes={produtoresPresentes.map(p => ({ v: p.id, label: p.nome }))} selecionados={prodCPCR} onChange={setProdCPCR} textoTodos="Todos" largura="100%" buscavel placeholderBusca="Pesquisar produtor…" /></div>
+                            <div><label data-arato-label="true" style={labelStyle}>Conta bancária</label>
+                              <MultiSelectDropdown opcoes={contas.map(c => ({ v: c.id, label: c.nome }))} selecionados={contasCPCR} onChange={setContasCPCR} textoTodos="Todas" largura="100%" buscavel placeholderBusca="Pesquisar conta…" />
                               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginTop: 6, cursor: "pointer", color: "var(--text-1)" }}>
                                 <input type="checkbox" checked={relCols.includes("conta_bancaria")} style={{ accentColor: "#1A4870" }}
                                   onChange={() => salvarRelCols(relCols.includes("conta_bancaria") ? relCols.filter(x => x !== "conta_bancaria") : [...relCols, "conta_bancaria"])} />
                                 Mostrar a conta bancária (de pagamento) no relatório
                               </label>
                             </div>
-                            <div>
-                              <label data-arato-label="true" style={labelStyle}>Fornecedor / Cliente do cadastro (nenhum marcado = todos)</label>
-                              <input value={buscaPessoaCPCR} onChange={e => setBuscaPessoaCPCR(e.target.value)} placeholder="Buscar no cadastro por nome ou CNPJ/CPF…" style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: 6 }} />
-                              {pessoasCPCR.size > 0 && (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
-                                  {[...pessoasCPCR].map(id => (
-                                    <span key={id} style={{ background: "#D5E8F5", color: "#0B2D50", borderRadius: 12, padding: "2px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                      {pessoaMap[id] ?? id}
-                                      <button type="button" aria-label="Remover" onClick={() => alterna(pessoasCPCR, setPessoasCPCR, id)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "#0B2D50", padding: 0 }}>×</button>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                              {(() => {
-                                const q = buscaPessoaCPCR.trim().toLowerCase(); const qd = q.replace(/\D/g, "");
-                                const achadas = pessoas.filter(x => !q || (x.nome ?? "").toLowerCase().includes(q) || (qd.length >= 3 && (x.cpf_cnpj ?? "").replace(/\D/g, "").includes(qd)));
-                                return (
-                                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: 120, overflowY: "auto", background: "var(--bg-input)" }}>
-                                    {achadas.length === 0 && <span style={{ fontSize: 11, color: "var(--text-3)" }}>Nenhum cadastro encontrado</span>}
-                                    {achadas.slice(0, 100).map(x => (
-                                      <label key={x.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-1)", cursor: "pointer", padding: "2px 0" }}>
-                                        <input type="checkbox" checked={pessoasCPCR.has(x.id)} onChange={() => alterna(pessoasCPCR, setPessoasCPCR, x.id)} style={{ accentColor: "#1A4870" }} />
-                                        <span>{x.nome}{x.cpf_cnpj ? <span style={{ color: "var(--text-3)" }}> · {x.cpf_cnpj}</span> : null}</span>
-                                      </label>
-                                    ))}
-                                    {achadas.length > 100 && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>Mostrando 100 de {achadas.length}; refine a busca.</div>}
-                                  </div>
-                                );
-                              })()}
-                            </div>
                           </div>
+                          <div style={{ marginBottom: 14 }}><label data-arato-label="true" style={labelStyle}>Fornecedor / Cliente (do cadastro)</label>
+                            <MultiSelectDropdown opcoes={pessoas.map(x => ({ v: x.id, label: x.nome ?? "", busca: x.cpf_cnpj ?? "" }))} selecionados={pessoasCPCR} onChange={setPessoasCPCR} textoTodos="Todos" largura="100%" buscavel placeholderBusca="Pesquisar por nome ou CNPJ/CPF…" limite={150} /></div>
                           <div style={{ marginBottom: 14 }}>
                             <label data-arato-label="true" style={labelStyle}>Colunas do relatório — o que aparece (marque as que quer ver; ↑ ↓ para a ordem; fica salvo para você)</label>
                             <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, padding: "6px 10px", maxHeight: 190, overflowY: "auto", background: "var(--bg-input)" }}>
@@ -2742,7 +2703,7 @@ function FinanceiroRelatoriosInner() {
                               ))}
                             </div></div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                            <button type="button" onClick={() => { setInicioCPCR(""); setFimCPCR(""); setTipoCPCR("todos"); setStatusCPCR(new Set()); setCatCPCR(new Set()); setProdCPCR(new Set()); setFornCPCR(""); setContasCPCR(new Set()); setPessoasCPCR(new Set()); setBuscaPessoaCPCR(""); }} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}>Limpar tudo</button>
+                            <button type="button" onClick={() => { setInicioCPCR(""); setFimCPCR(""); setTipoCPCR("todos"); setStatusCPCR(new Set()); setCatCPCR(new Set()); setProdCPCR(new Set()); setFornCPCR(""); setContasCPCR(new Set()); setPessoasCPCR(new Set());  }} style={{ background: "none", border: "none", color: "var(--text-2)", fontSize: 12, textDecoration: "underline", cursor: "pointer" }}>Limpar tudo</button>
                             <div style={{ display: "flex", gap: 8 }}>
                               <OperationalButton data-arato-button="secondary" onClick={() => setCpcrPopup(false)} style={{ ...inputStyle, background: "var(--bg-card)", cursor: "pointer" }}>Cancelar</OperationalButton>
                               <OperationalButton data-arato-button="primary" disabled={relCols.length === 0} onClick={() => { setCpcrPopup(false); setCpcrEmitir(cpcrFormato); }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Gerar relatório</OperationalButton>

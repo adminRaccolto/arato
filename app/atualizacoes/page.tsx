@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-c",
+    data: "20/10/2026",
+    titulo: "Relatório CP/CR: filtros em dropdown com pesquisa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na janela de filtro do relatório CP/CR, Status, Categoria, Produtor, Conta bancária e Fornecedor/Cliente deixam de ser listas fixas e viram dropdowns de seleção múltipla, com campo de pesquisa para filtrar as opções (por nome e, nos fornecedores/clientes, também por CNPJ/CPF). Janela mais enxuta e com mais espaço." },
+    ],
+    onde: "Financeiro → Relatórios → CP / CR → Abrir filtro e gerar",
+  },
+  {
     versao: "2026.10.20-b",
     data: "20/10/2026",
     titulo: "NF de entrada: limpar duplicadas, bloqueio de repetida e reabrir com estorno",
