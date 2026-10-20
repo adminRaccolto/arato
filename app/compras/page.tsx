@@ -2287,7 +2287,7 @@ export default function ComprasPage() {
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 60 }}>
                                   <SelectField style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, unidade: e.target.value } : x))}>
-                                    {["kg","sc","t","L","mL","g","un","cx","m","m²","m³","hr"].map(u => <option key={u} value={u}>{u}</option>)}
+                                    {["kg","sc","bag","t","L","mL","g","un","cx","m","m²","m³","hr", ...(it.unidade && !["kg","sc","bag","t","L","mL","g","un","cx","m","m²","m³","hr"].includes(it.unidade) ? [it.unidade] : [])].map(u => <option key={u} value={u}>{u}</option>)}
                                   </SelectField>
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 90 }}>

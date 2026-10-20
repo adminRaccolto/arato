@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-d",
+    data: "20/10/2026",
+    titulo: "Pedido de compra: unidade bag disponível",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "correcao", texto: "O seletor de unidade dos itens do Pedido de Compra agora tem bag (além de kg, sc, t, L, mL, g, un, cx, m, m², m³ e hr). Se um item já vier com outra unidade, ela continua aparecendo no seletor." },
+    ],
+    onde: "Compras → Pedidos de Compra → itens do pedido",
+  },
+  {
     versao: "2026.10.20-c",
     data: "20/10/2026",
     titulo: "Relatório CP/CR: filtros em dropdown com pesquisa",
