@@ -16803,3 +16803,66 @@ ALTER TABLE parcelas_liberacao
   ADD COLUMN IF NOT EXISTS tipo text NOT NULL DEFAULT 'capital',
   ADD COLUMN IF NOT EXISTS despesa_lancamento_id uuid;
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Seção 350 — NF de entrada: bloqueio de duplicada e de reabertura sem estorno
+-- ═══════════════════════════════════════════════════════════════════════════
+-- (1) Não entra NF repetida: mesma chave de acesso OU mesmo número + série + CNPJ do fornecedor, em qualquer fazenda da
+--     conta (quando as duas têm chave, a chave decide). Vale para TODO caminho de gravação (tela, XML, SIEG, WhatsApp).
+--     Só INSERT: as duplicatas que já existem não são tocadas (a limpeza é o botão Limpar Duplicadas).
+-- (2) Uma NF processada não volta a pendente enquanto ainda houver título (CP) ou movimentação de estoque dela: a
+--     reabertura tem que passar pelo Estornar. O estorno apaga os títulos/estoque ANTES de mudar o status, então segue livre.
+CREATE INDEX IF NOT EXISTS idx_nf_entradas_chave ON nf_entradas (chave_acesso);
+CREATE INDEX IF NOT EXISTS idx_nf_entradas_numero_cnpj ON nf_entradas (numero, emitente_cnpj);
+
+CREATE OR REPLACE FUNCTION fn_nf_entradas_bloqueia_duplicada() RETURNS trigger AS $$
+DECLARE
+  v_conta uuid; v_chave text; v_cnpj text; v_dup record;
+BEGIN
+  v_chave := regexp_replace(coalesce(NEW.chave_acesso, ''), '\D', '', 'g');
+  v_cnpj  := regexp_replace(coalesce(NEW.emitente_cnpj, ''), '\D', '', 'g');
+  SELECT conta_id INTO v_conta FROM fazendas WHERE id = NEW.fazenda_id;
+
+  IF length(v_chave) = 44 THEN
+    SELECT n.numero, n.status INTO v_dup FROM nf_entradas n
+     WHERE n.chave_acesso = v_chave AND coalesce(n.status, '') <> 'cancelada'
+       AND (n.fazenda_id = NEW.fazenda_id OR n.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = v_conta))
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION 'NF duplicada: a chave de acesso desta NF (nº %) já está no sistema (%).', v_dup.numero, v_dup.status USING ERRCODE = '23505';
+    END IF;
+  END IF;
+
+  IF NEW.numero IS NOT NULL AND length(v_cnpj) >= 11 THEN
+    SELECT n.numero, n.status INTO v_dup FROM nf_entradas n
+     WHERE n.numero = NEW.numero AND coalesce(n.serie, '') = coalesce(NEW.serie, '')
+       AND regexp_replace(coalesce(n.emitente_cnpj, ''), '\D', '', 'g') = v_cnpj
+       AND coalesce(n.status, '') <> 'cancelada'
+       AND (length(v_chave) <> 44 OR length(regexp_replace(coalesce(n.chave_acesso, ''), '\D', '', 'g')) <> 44)
+       AND (n.fazenda_id = NEW.fazenda_id OR n.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = v_conta))
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION 'NF duplicada: já existe a NF nº % deste fornecedor (mesmo número e série) no sistema (%).', v_dup.numero, v_dup.status USING ERRCODE = '23505';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nf_entradas_bloqueia_duplicada ON nf_entradas;
+CREATE TRIGGER trg_nf_entradas_bloqueia_duplicada BEFORE INSERT ON nf_entradas
+  FOR EACH ROW EXECUTE FUNCTION fn_nf_entradas_bloqueia_duplicada();
+
+CREATE OR REPLACE FUNCTION fn_nf_entradas_reabrir_exige_estorno() RETURNS trigger AS $$
+BEGIN
+  IF OLD.status = 'processada' AND NEW.status IN ('pendente', 'rascunho') THEN
+    IF EXISTS (SELECT 1 FROM lancamentos WHERE nf_entrada_id = NEW.id)
+       OR EXISTS (SELECT 1 FROM empresa_lancamentos WHERE nf_entrada_id = NEW.id)
+       OR EXISTS (SELECT 1 FROM movimentacoes_estoque WHERE nf_entrada_id = NEW.id) THEN
+      RAISE EXCEPTION 'Esta NF já foi processada e ainda tem título a pagar ou estoque lançado. Use Estornar (ele desfaz o financeiro e o estoque) em vez de reabrir direto.' USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nf_entradas_reabrir_exige_estorno ON nf_entradas;
+CREATE TRIGGER trg_nf_entradas_reabrir_exige_estorno BEFORE UPDATE OF status ON nf_entradas
+  FOR EACH ROW EXECUTE FUNCTION fn_nf_entradas_reabrir_exige_estorno();
+NOTIFY pgrst, 'reload schema';

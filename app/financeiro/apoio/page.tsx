@@ -269,7 +269,7 @@ export default function ApoioFinanceiroPage() {
           .gte("data_vencimento", dataIni)
           .lte("data_vencimento", dataFim)
           .order("data_vencimento")
-          .range(from, from + PAGE - 1);
+          .order("id", { ascending: true }).range(from, from + PAGE - 1);
         if (!batch || batch.length === 0) break;
         allApoio.push(...(batch as ApoioLancamento[]));
         if (batch.length < PAGE) break;

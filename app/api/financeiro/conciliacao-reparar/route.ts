@@ -24,7 +24,7 @@ const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.
 async function todas<T>(sb: SupabaseClient, tab: string, cols: string, fazIds: string[]): Promise<T[]> {
   let out: T[] = []; let from = 0;
   while (true) {
-    const { data, error } = await sb.from(tab).select(cols).in("fazenda_id", fazIds).range(from, from + 999);
+    const { data, error } = await sb.from(tab).select(cols).in("fazenda_id", fazIds).order("id", { ascending: true }).range(from, from + 999);
     if (error) throw new Error(`${tab}: ${error.message}`);
     out = out.concat((data ?? []) as T[]);
     if (!data || data.length < 1000) break;

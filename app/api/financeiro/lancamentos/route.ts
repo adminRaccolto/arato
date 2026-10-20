@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         .select("*")
         .in("fazenda_id", body.fazenda_ids)
         .order("data_vencimento")
-        .range(from, from + PAGE - 1);
+        .order("id", { ascending: true }).range(from, from + PAGE - 1);
 
       if (body.tipo) q = q.eq("tipo", body.tipo);
 

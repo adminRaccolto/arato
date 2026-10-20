@@ -1130,13 +1130,24 @@ export default function ModalNf({
     // financeiro em dobro. Confere a conta inteira (a mesma nota pode estar em outra fazenda do cliente).
     if (!nfEdit) {
       const chaveNova = (cab.chave_acesso || "").replace(/\D/g, "");
+      const cnpjNovo = (cab.emitente_cnpj || "").replace(/\D/g, "");
+      // Duplicada = mesma chave de acesso OU mesmo número + série + CNPJ do fornecedor (quando as duas têm chave, a chave decide)
+      let jaExiste: { id: string; numero: string; status: string; origem: string | null; chave_acesso: string | null; emitente_cnpj: string | null; serie: string | null }[] = [];
       if (chaveNova.length === 44) {
-        const { data: jaExiste } = await supabase.from("nf_entradas").select("id, numero, status, origem, fazenda_id").eq("chave_acesso", chaveNova).limit(3);
-        if (jaExiste?.length) {
-          const x = jaExiste[0];
-          setErr(`Esta NF já está no sistema (nº ${x.numero}, ${x.status === "processada" ? "já processada" : "pendente"}, entrada via ${x.origem ?? "—"}). Abra a existente em Documentos Fiscais em vez de lançar de novo.`);
-          return null;
-        }
+        const { data } = await supabase.from("nf_entradas").select("id, numero, status, origem, chave_acesso, emitente_cnpj, serie").eq("chave_acesso", chaveNova).neq("status", "cancelada").limit(3);
+        jaExiste = data ?? [];
+      }
+      if (!jaExiste.length && cab.numero && cnpjNovo.length >= 11) {
+        const { data } = await supabase.from("nf_entradas").select("id, numero, status, origem, chave_acesso, emitente_cnpj, serie").eq("numero", cab.numero).neq("status", "cancelada").limit(50);
+        jaExiste = (data ?? []).filter(x =>
+          (x.emitente_cnpj ?? "").replace(/\D/g, "") === cnpjNovo
+          && (x.serie ?? "") === (cab.serie ?? "")
+          && (chaveNova.length !== 44 || (x.chave_acesso ?? "").replace(/\D/g, "").length !== 44));
+      }
+      if (jaExiste.length) {
+        const x = jaExiste[0];
+        setErr(`Esta NF já está no sistema (nº ${x.numero}, ${x.status === "processada" ? "já processada" : "pendente"}, entrada via ${x.origem ?? "—"}). Mesma chave de acesso ou mesmo número, série e fornecedor. Abra a existente em Documentos Fiscais em vez de lançar de novo.`);
+        return null;
       }
     }
     const payload: Omit<NfEntrada, "id" | "created_at"> = {
@@ -3866,6 +3877,8 @@ export default function ModalNf({
                     {!viewOnly && (
                       <div style={{ display: "flex", gap: 10 }}>
                         <button data-arato-button="secondary" style={btnR} onClick={async () => {
+                          // NF já processada NÃO volta a pendente direto (deixava título e estoque lançados): reabrir = estornar
+                          if (nfEdit?.status === "processada") { await estornarNFClick(nfEdit); return; }
                           // Salvar como pendente sem processar
                           if (nfEdit) {
                             await atualizarNfEntrada(nfEdit.id, { status: "pendente" });
@@ -3873,7 +3886,7 @@ export default function ModalNf({
                             onClose();
                           }
                         }}>
-                          Salvar como Pendente
+                          {nfEdit?.status === "processada" ? "↺ Reabrir (estornar)" : "Salvar como Pendente"}
                         </button>
                         <button data-arato-button="toggle"
                           style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }}

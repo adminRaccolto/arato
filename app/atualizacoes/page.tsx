@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.20-b",
+    data: "20/10/2026",
+    titulo: "NF de entrada: limpar duplicadas, bloqueio de repetida e reabrir com estorno",
+    modulos: ["Fiscal", "Compras", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Limpar Duplicatas não fazia nada porque só olhava cópias vindas do SIEG: a duplicata costuma ser a mesma NF entrada por XML (processada) mais a cópia do SIEG (pendente), e as duas nunca formavam um par. Agora considera qualquer origem, enxerga cópias em fazenda sem cadastro, e mostra antes quantas serão removidas. Nunca apaga NF processada nem cópia com título, pedido ou estoque vinculado." },
+      { tipo: "novo", texto: "Bloqueio de NF repetida: não entra NF com a mesma chave de acesso, nem com o mesmo número, série e CNPJ do fornecedor, em nenhuma fazenda da conta. Vale na tela de lançamento e também para o SIEG, XML e WhatsApp (regra no banco, Seção 350)." },
+      { tipo: "correcao", texto: "O botão Salvar como Pendente, numa NF já processada, voltava a NF para pendente sem desfazer o título a pagar nem o estoque. Agora ele vira Reabrir (estornar) e faz o estorno completo. O banco também recusa reabrir NF processada que ainda tenha título ou estoque (Seção 350)." },
+      { tipo: "correcao", texto: "Consultas que leem em páginas de 1.000 linhas (títulos, empresas, pessoas, operações gerenciais, conciliação, backup e outras) passam a ter ordem estável, para não pular nem repetir linhas entre as páginas." },
+    ],
+    onde: "Compras → NF de Entrada; Documentos Fiscais",
+  },
+  {
     versao: "2026.10.20-a",
     data: "20/10/2026",
     titulo: "Relatório CP/CR: conta bancária, cadastro de fornecedor e agrupamento",

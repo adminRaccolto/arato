@@ -389,7 +389,7 @@ function RelFinClassInner() {
           .lte("data_vencimento", fim)
           .order("data_vencimento", { ascending: true })
           .order("id", { ascending: true })
-          .range(from, from + 999);
+          .order("id", { ascending: true }).range(from, from + 999);
         if (tipos.length === 1) q = q.eq("tipo", tipos[0]);
         if (filtrarStatus) q = q.in("status", [...statusSel]);
         const { data: pg, error } = await q;

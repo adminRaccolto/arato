@@ -61,3 +61,17 @@ test("sincronização SIEG grava a marca pelo fim da janela consultada, não por
   const src = readFileSync(new URL("../../app/api/integracoes/sieg-sync/route.ts", import.meta.url), "utf8");
   assert.ok(src.includes("avancaMarca") && src.includes("marcaTs"), "a marca de última sincronização voltou a usar o horário do fim do processamento");
 });
+
+// NF de entrada (20/10/2026): reabrir NF processada exige estorno; limpeza de duplicadas usa a regra testada
+test("Salvar como Pendente de NF processada passa pelo estorno (modal da NF e tela antiga)", () => {
+  for (const f of ["components/fiscal/ModalNf.tsx", "app/compras/nf/page.tsx"]) {
+    const src = readFileSync(new URL(`../../${f}`, import.meta.url), "utf8");
+    assert.ok(src.includes('Reabrir (estornar)'), `${f} voltou a reabrir NF processada sem estornar`);
+  }
+});
+test("limpeza de NF duplicada usa planejarLimpeza e a migration de bloqueio existe", () => {
+  const rota = readFileSync(new URL("../../app/api/integracoes/sieg-dedup/route.ts", import.meta.url), "utf8");
+  assert.ok(rota.includes("planejarLimpeza"));
+  const mig = readFileSync(new URL("../../supabase_migrations.sql", import.meta.url), "utf8");
+  assert.ok(mig.includes("trg_nf_entradas_bloqueia_duplicada") && mig.includes("trg_nf_entradas_reabrir_exige_estorno"));
+});

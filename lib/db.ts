@@ -598,6 +598,7 @@ export async function listarSaldoPorDeposito(fazenda_id: string | string[]): Pro
     const { data, error } = await filtroFazenda(supabase
       .from("saldo_insumo_deposito")
       .select("insumo_id, deposito_id, saldo"), fazenda_id)
+      .order("insumo_id").order("deposito_id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
     all = all.concat(data ?? []);
@@ -658,6 +659,7 @@ export async function saldoPorLote(
       .eq("insumo_id", insumo_id)
       .eq("fazenda_id", fazenda_id)
       .not("lote_semente", "is", null)
+      .order("id")
       .range(from, from + PAGE - 1);
     const { data, error } = await q;
     if (error) throw error;
@@ -693,6 +695,7 @@ export async function saldoPorLoteDetalhado(
       .eq("insumo_id", insumo_id)
       .eq("fazenda_id", fazenda_id)
       .not("lote_semente", "is", null)
+      .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
     for (const m of (data ?? [])) {
@@ -777,6 +780,7 @@ export async function listarLancamentos(fazenda_id: string): Promise<Lancamento[
       .select("*")
       .eq("fazenda_id", fazenda_id)
       .order("data_vencimento")
+      .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
     all = all.concat(data ?? []);
@@ -803,6 +807,7 @@ export async function listarLancamentosPeriodo(
       .gte("data_vencimento", dataInicio)
       .lte("data_vencimento", dataFim)
       .order("data_vencimento")
+      .order("id")
       .range(from, from + PAGE - 1);
     if (tipo) q = q.eq("tipo", tipo);
     const { data, error } = await q;
@@ -881,6 +886,7 @@ export async function listarLancamentosContaPeriodo(
         .gte("data_vencimento", dataInicio)
         .lte("data_vencimento", dataFim)
         .order("data_vencimento")
+        .order("id")
         .range(from, from + PAGE - 1);
       if (tipo) q = q.eq("tipo", tipo);
       const { data, error } = await q;
@@ -1635,7 +1641,7 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
   let all: Pessoa[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome").range(from, from + PAGE - 1);
+    const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome").order("id").range(from, from + PAGE - 1);
     if (error) throw error;
     all = [...all, ...(data ?? [])];
     if (!data || data.length < PAGE) break;
@@ -1699,7 +1705,7 @@ export async function listarPessoasDaConta(fazenda_id_fallback?: string | null):
     let all: Pessoa[] = [];
     let from = 0;
     while (true) {
-      const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").range(from, from + PAGE - 1);
+      const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").order("id").range(from, from + PAGE - 1);
       if (error) throw error;
       all = [...all, ...(data ?? [])];
       if (!data || data.length < PAGE) break;
@@ -2293,7 +2299,7 @@ export async function listarEmpresaLancamentosComoLancamento(fazendaIds: string[
   let todos: Record<string, any>[] = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase.from("empresa_lancamentos").select("*")
-      .in("fazenda_id", fazendaIds).order("data_vencimento", { ascending: true }).range(from, from + 999);
+      .in("fazenda_id", fazendaIds).order("data_vencimento", { ascending: true }).order("id", { ascending: true }).range(from, from + 999);
     if (error) throw error;
     todos = todos.concat(data ?? []);
     if (!data || data.length < 1000) break;
@@ -5908,6 +5914,7 @@ export async function listarOperacoesGerenciais(fazenda_id: string | string[]): 
         .select("*")
         .or(orFilter)
         .order("classificacao")
+        .order("id")
         .range(from, from + PAGE - 1);
       if (error) throw error;
       data = data.concat(page ?? []);
@@ -5941,6 +5948,7 @@ export async function listarOperacoesGerenciaisAtivas(
         .or(orFilter)
         .eq("inativo", false)
         .order("classificacao")
+        .order("id")
         .range(from, from + PAGE - 1);
       if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
       if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
@@ -5989,6 +5997,7 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
         .or(orFilter)
         .eq("inativo", false)
         .order("classificacao")
+        .order("id")
         .range(from, from + PAGE - 1);
       if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
       if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);

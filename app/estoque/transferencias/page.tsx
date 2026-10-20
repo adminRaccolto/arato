@@ -238,7 +238,7 @@ export default function TransferenciasEstoquePage() {
           const { data } = await supabase
             .from("insumos").select("*")
             .eq("fazenda_id", f.id).order("nome")
-            .range(from, from + PAGE - 1);
+            .order("id", { ascending: true }).range(from, from + PAGE - 1);
           all = all.concat((data ?? []) as Insumo[]);
           if (!data || data.length < PAGE) break;
           from += PAGE;

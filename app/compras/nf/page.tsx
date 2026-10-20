@@ -879,19 +879,38 @@ export default function NfCompraPage() {
 
   async function limparDuplicatas() {
     if (!fazendaId) return;
-    if (!confirm("Remover NFs duplicadas do SIEG?\n\nNFs processadas serão preservadas. Apenas cópias pendentes duplicadas serão excluídas.")) return;
     setSiegDeduping(true);
     try {
-      const res = await fetch("/api/integracoes/sieg-dedup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId }),
-      });
-      const d = await res.json() as { sucesso?: boolean; registros_removidos?: number; duplicatas_encontradas?: number; erro?: string };
+      const chamar = async (dry_run: boolean) => {
+        const res = await fetch("/api/integracoes/sieg-dedup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazenda_id: fazendaId, dry_run }),
+        });
+        const txt = await res.text();
+        let d: { sucesso?: boolean; registros_removidos?: number; grupos_duplicados?: number; mantidas_por_vinculo?: number; erro?: string };
+        try { d = JSON.parse(txt); } catch { throw new Error(`resposta inválida do servidor (${res.status}): ${txt.slice(0, 160)}`); }
+        return d;
+      };
+      // 1) simula: mostra o que seria feito antes de apagar qualquer coisa
+      const previa = await chamar(true);
+      if (previa.erro) { alert(`Erro: ${previa.erro}`); return; }
+      const aRemover = previa.registros_removidos ?? 0;
+      const grupos = previa.grupos_duplicados ?? 0;
+      const presas = previa.mantidas_por_vinculo ?? 0;
+      if (aRemover === 0) {
+        setSiegSyncMsg(grupos > 0
+          ? `✓ ${grupos} NF(s) repetida(s), mas nenhuma cópia pode ser removida com segurança (${presas} têm título/pedido/estoque vinculado, o resto é processada).`
+          : "✓ Nenhuma NF duplicada encontrada.");
+        return;
+      }
+      if (!confirm(`Encontradas ${grupos} NF(s) repetida(s) (mesma chave de acesso, ou mesmo número + série + fornecedor).\n\n${aRemover} cópia(s) pendente(s) sem vínculo serão excluídas.${presas ? `\n${presas} cópia(s) ficam, por já terem título, pedido ou estoque vinculado.` : ""}\nNFs processadas nunca são apagadas. Continuar?`)) return;
+      // 2) executa
+      const d = await chamar(false);
       if (d.erro) { alert(`Erro: ${d.erro}`); return; }
       setSiegSyncMsg(`✓ Limpeza: ${d.registros_removidos ?? 0} duplicata(s) removida(s)`);
       await carregar();
-    } catch (e) { alert(`Erro: ${e}`); }
+    } catch (e) { alert(`Erro: ${e instanceof Error ? e.message : e}`); }
     finally { setSiegDeduping(false); }
   }
 
@@ -4838,6 +4857,8 @@ export default function NfCompraPage() {
                     <OperationalButton data-arato-button="toggle" style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</OperationalButton>
                     <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
                       <OperationalButton data-arato-button="secondary" style={btnR} onClick={async () => {
+                        // NF já processada NÃO volta a pendente direto (deixava título e estoque lançados): reabrir = estornar
+                        if (nfEdit?.status === "processada") { await estornarNFClick(nfEdit); setWizard(false); return; }
                         // Salvar como pendente sem processar
                         if (nfEdit) {
                           await atualizarNfEntrada(nfEdit.id, { status: "pendente" });
@@ -4845,7 +4866,7 @@ export default function NfCompraPage() {
                           setWizard(false);
                         }
                       }}>
-                        Salvar como Pendente
+                        {nfEdit?.status === "processada" ? "↺ Reabrir (estornar)" : "Salvar como Pendente"}
                       </OperationalButton>
                       <OperationalButton data-arato-button="toggle"
                         style={{ ...btnV, background: saving ? "#ccc" : "#1A5C38" }}

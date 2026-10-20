@@ -152,7 +152,7 @@ export function AuditoriaClassificacaoPainel({ embedded = false }: { embedded?: 
           .select("id, ncm, descricao_produto, tipo_apropiacao, insumo_id, operacao_gerencial_id, nf_entrada_id")
           .in("nf_entrada_id", nfIds)
           .not("ncm", "is", null)
-          .range(from, from + PAGE - 1);
+          .order("id", { ascending: true }).range(from, from + PAGE - 1);
         if (error) break;
         allItens = allItens.concat((page ?? []) as Record<string, unknown>[]);
         if (!page || page.length < PAGE) break;

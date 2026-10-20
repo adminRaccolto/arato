@@ -475,7 +475,7 @@ function ConciliacaoInner() {
         // pulava/duplicava lançamentos na fronteira das páginas.
         .order("data_vencimento", { ascending: false })
         .order("id", { ascending: true })
-        .range(from, from + PAGE - 1);
+        .order("id", { ascending: true }).range(from, from + PAGE - 1);
       if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
       const { data, error } = await q;
       if (error) throw error;
@@ -493,7 +493,7 @@ function ConciliacaoInner() {
         .not("status", "eq", "cancelado")
         .order("data_vencimento", { ascending: false })
         .order("id", { ascending: true })
-        .range(f, f + PAGE - 1);
+        .order("id", { ascending: true }).range(f, f + PAGE - 1);
       if (filtroData) q = q.gte("data_vencimento", filtroData.de).lte("data_vencimento", filtroData.ate);
       const { data, error } = await q;
       if (error) throw error;
@@ -662,7 +662,7 @@ function ConciliacaoInner() {
         .in("fazenda_id", fazendaIds)
         .gte("data", dataIni)
         .lte("data", dataFim)
-        .order("data", { ascending: true }).order("fitid", { ascending: true })
+        .order("data", { ascending: true }).order("fitid", { ascending: true }).order("id", { ascending: true })
         .range(de, ate) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>);
 
       const linhas: LinhaOFX[] = data.map(t => ({

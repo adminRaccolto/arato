@@ -113,11 +113,11 @@ export async function executarBackup(fazendaId: string): Promise<{
       let from = 0;
       const PAGE = 1000;
       while (true) {
-        const { data, error } = await admin
-          .from(tabela)
-          .select("*")
-          .eq("fazenda_id", fazendaId)
-          .range(from, from + PAGE - 1);
+        // Ordem estável por id: sem ORDER BY a paginação pode repetir ou pular linhas entre páginas (backup incompleto).
+        // Tabela sem coluna id cai para a consulta antiga.
+        let res = await admin.from(tabela).select("*").eq("fazenda_id", fazendaId).order("id", { ascending: true }).range(from, from + PAGE - 1);
+        if (res.error) res = await admin.from(tabela).select("*").eq("fazenda_id", fazendaId).range(from, from + PAGE - 1);
+        const { data, error } = res;
         if (error) break;
         todos = todos.concat(data ?? []);
         if ((data?.length ?? 0) < PAGE) break;
