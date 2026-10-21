@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
 import { mesmaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
+import { detectarCancelamentoNfse } from "../../../../lib/fiscal/nfse-cancelamento";
 import { baixarXmlsSieg, baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
@@ -291,7 +292,49 @@ export async function POST(req: NextRequest) {
 
     // ── Processar XMLs ────────────────────────────────────────────────────────
 
+    // NFS-e cancelada pelo prestador: a cópia PENDENTE vira "cancelada" (sai do painel); a já PROCESSADA não é mexida
+    // (tem título no CP): ganha um aviso na observação para o usuário estornar.
+    let canceladas = 0;
+    const canceladasProcessadas: string[] = [];
+    const hojeBR = new Date().toLocaleDateString("pt-BR");
+    const marcarCanceladas = async (rows: Array<NfseDup & { observacao?: string | null }>) => {
+      for (const r of rows) {
+        if (r.status === "cancelada") continue;
+        const { data: atual } = await db.from("nf_servicos").select("observacao").eq("id", r.id).maybeSingle();
+        const obs = String(atual?.observacao ?? "");
+        if (r.status === "processada") {
+          if (!obs.includes("[CANCELADA PELO PRESTADOR")) {
+            await db.from("nf_servicos").update({ observacao: `[CANCELADA PELO PRESTADOR em ${hojeBR} — estorne o lançamento] ${obs}`.trim() }).eq("id", r.id);
+          }
+          canceladasProcessadas.push(String(r.numero_nf ?? ""));
+          continue;
+        }
+        await db.from("nf_servicos").update({ status: "cancelada", observacao: `${obs ? obs + " · " : ""}Cancelada pelo prestador (SIEG, ${hojeBR})` }).eq("id", r.id);
+        canceladas++;
+      }
+    };
+    const mesmaNotaQualquerStatus = (c: NfseDup, alvo: NfseDup) => mesmaNfse({ ...c, status: "pendente" }, { ...alvo, status: "pendente" });
+
     for (const { xml, cnpj } of xmlsList) {
+      const canc = detectarCancelamentoNfse(xml);
+      if (canc.tipo === "evento") {
+        // Evento do padrão nacional: acha a nota pela chave ou por número + prestador (que vêm dentro da chave)
+        const alvos: NfseDup[] = [];
+        if (canc.chave) {
+          const { data } = await db.from("nf_servicos").select("id, fazenda_id, numero_nf, serie, prestador_cnpj, data_prestacao, chave_nfse, status, created_at")
+            .in("fazenda_id", fazendaIdsDaConta).eq("chave_nfse", canc.chave);
+          alvos.push(...((data ?? []) as NfseDup[]));
+        }
+        if (!alvos.length && canc.numero && canc.prestadorCnpj) {
+          const { data } = await db.from("nf_servicos").select("id, fazenda_id, numero_nf, serie, prestador_cnpj, data_prestacao, chave_nfse, status, created_at")
+            .in("fazenda_id", fazendaIdsDaConta).like("numero_nf", `%${canc.numero}`);
+          const ref: NfseDup = { id: "evento", fazenda_id, numero_nf: canc.numero, prestador_cnpj: canc.prestadorCnpj, data_prestacao: null, status: "pendente", created_at: "" };
+          alvos.push(...((data ?? []) as NfseDup[]).filter(c => mesmaNotaQualquerStatus(c, ref)));
+        }
+        await marcarCanceladas(alvos);
+        continue;
+      }
+
       const nfse = parseNfse(xml);
       if (!nfse) {
         const trecho = xml.slice(0, 150).replace(/\s+/g, " ");
@@ -312,6 +355,11 @@ export async function POST(req: NextRequest) {
       const existing = ((candidatos ?? []) as NfseDup[])
         .filter(c => mesmaNfse(c, novaNfse))
         .sort((x, y) => (x.status === "processada" ? 0 : 1) - (y.status === "processada" ? 0 : 1) || x.created_at.localeCompare(y.created_at))[0] ?? null;
+
+      if (canc.tipo === "nota_cancelada") {
+        const todas = ((candidatos ?? []) as NfseDup[]).filter(c => mesmaNotaQualquerStatus(c, novaNfse));
+        if (todas.length) { await marcarCanceladas(todas); continue; }
+      }
 
       if (existing) {
         if (!force) { duplicadas++; continue; }
@@ -368,9 +416,9 @@ export async function POST(req: NextRequest) {
         valor_ir:            nfse.valor_ir,
         valor_outras_retencoes: 0,
         valor_liquido:       nfse.valor_liquido,
-        status:              "pendente",
+        status:              canc.tipo === "nota_cancelada" ? "cancelada" : "pendente",
         origem:              "api",
-        observacao:          `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")} — Tomador: ${cnpj}`,
+        observacao:          `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")} — Tomador: ${cnpj}${canc.tipo === "nota_cancelada" ? " · Cancelada pelo prestador" : ""}`,
       });
 
       if (insErr) {
@@ -396,7 +444,8 @@ export async function POST(req: NextRequest) {
     console.log(`[nfse] importadas=${importadas} duplicadas=${duplicadas} erros=${erros.length}`);
 
     return NextResponse.json({
-      sucesso: true, importadas, duplicadas,
+      sucesso: true, importadas, duplicadas, canceladas,
+      canceladas_processadas: canceladasProcessadas,
       total_xmls: xmlsList.length,
       erros: erros.slice(0, 10),
       diagnostico,

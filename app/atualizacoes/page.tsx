@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-i",
+    data: "21/10/2026",
+    titulo: "NFS-e cancelada pelo prestador sai das pendentes",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A sincronização de NFS-e com o SIEG passa a reconhecer a nota cancelada pelo prestador (bloco de cancelamento do padrão ABRASF, situação Cancelada informada pela prefeitura e evento de cancelamento 101101 do padrão nacional). A cópia pendente vira Cancelada e sai do painel de pendentes; nota já processada não é alterada, mas ganha o aviso [CANCELADA PELO PRESTADOR — estorne o lançamento] e aparece no resultado da sincronização." },
+    ],
+    onde: "Documentos Fiscais / NF de Serviços → Sincronizar SIEG",
+  },
+  {
     versao: "2026.10.21-h",
     data: "21/10/2026",
     titulo: "Arrendamento em reais: baixa com conta bancária e título no Contas a Pagar",

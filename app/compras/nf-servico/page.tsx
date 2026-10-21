@@ -826,6 +826,10 @@ export default function NfServicoPage() {
           ? `✗ 0 XMLs encontrados no SIEG`
           : `✓ ${imp} importada${imp !== 1 ? "s" : ""} de ${tot} XML${tot !== 1 ? "s" : ""} SIEG`;
         if (dup > 0) msg += ` · ${dup} já existia${dup !== 1 ? "m" : ""}`;
+        const canc = Number(d.canceladas ?? 0);
+        const cancProc = Array.isArray(d.canceladas_processadas) ? (d.canceladas_processadas as string[]) : [];
+        if (canc > 0) msg += ` · ${canc} cancelada${canc !== 1 ? "s" : ""} pelo prestador`;
+        if (cancProc.length > 0) msg += ` · ⚠ já processada${cancProc.length !== 1 ? "s" : ""} e cancelada${cancProc.length !== 1 ? "s" : ""} pelo prestador: nº ${cancProc.join(", ")} (estorne)`;
         if (errs.length > 0) msg += ` · ${errs[0].slice(0, 80)}`;
         setSiegSyncMsg(msg);
         setSiegDiag(diag);
