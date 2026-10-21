@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-b",
+    data: "21/10/2026",
+    titulo: "Carta de Correção do CT-e voltou a ser aceita",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A Carta de Correção do CT-e era rejeitada pela SEFAZ (cStat 630, falha no schema do evento) porque o texto da condição de uso estava desatualizado. Passou a usar o texto oficial atual (Art. 58-B do Convênio SINIEF 06/89). Tente enviar a carta novamente." },
+    ],
+    onde: "Transporte → CT-e → Carta de Correção",
+  },
+  {
     versao: "2026.10.21-a",
     data: "21/10/2026",
     titulo: "Folha de pagamento: previsão no caixa e botão Excluir",

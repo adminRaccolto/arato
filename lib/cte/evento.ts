@@ -111,8 +111,9 @@ export interface CartaCorrecaoCTeInput {
   correcoes: CorrecaoCTeItem[]; // 1 a 20 itens por carta
 }
 
+// Texto fixo exigido pelo XSD evCCeCTe_v4.00 (enumeração): o texto antigo (Convênio SINIEF 01/2006) gerava rejeição 630.
 export const COND_USO_CCE_CTE =
-  "A Carta de Correção é disciplinada pelo Convênio SINIEF 01/2006 e pode ser utilizada para regularização de erro ocorrido na prestação de serviço de transporte, desde que o erro não esteja relacionado com: I - as variáveis que determinam o valor do imposto tais como: base de cálculo, alíquota, diferença de preço, quantidade, valor da prestação;II - a correção de dados cadastrais que implique mudança do emitente, tomador, remetente ou do destinatário;III - a data de emissão ou de saída.";
+  "A Carta de Correção é disciplinada pelo Art. 58-B do CONVÊNIO/SINIEF 06/89: Fica permitida a utilização de carta de correção, para regularização de erro ocorrido na emissão de documentos fiscais relativos à prestação de serviço de transporte, desde que o erro não esteja relacionado com: I - as variáveis que determinam o valor do imposto tais como: base de cálculo, alíquota, diferença de preço, quantidade, valor da prestação;II - a correção de dados cadastrais que implique mudança do emitente, tomador, remetente ou do destinatário;III - a data de emissão ou de saída.";
 
 export function montarEventoCCeCTe(input: CartaCorrecaoCTeInput): { xml: string; id: string } {
   const chave = digits(input.chave);
