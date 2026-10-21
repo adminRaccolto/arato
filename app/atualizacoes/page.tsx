@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-o",
+    data: "21/10/2026",
+    titulo: "Monitor de Auditoria em linguagem clara",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Cada linha agora diz em uma frase o que aconteceu (ex.: Baixou a conta a pagar \"ENERGIA\" de R$ 104,62 — pago em 13/10/2026; Sistema cancelou a conta a pagar do pedido: as NFs vinculadas cobriram o saldo), com o selo Ação do usuário ou Automático e o tipo (Criou, Alterou, Baixou, Cancelou, Conciliou...)." },
+      { tipo: "melhoria", texto: "As consequências automáticas ficam agrupadas embaixo da ação que as disparou: ao processar uma NF, aparece a ação e, abaixo, o título gerado, o pedido marcado como entregue e o título do pedido cancelado. Abrindo a linha, cada parte tem o detalhe dos campos." },
+    ],
+    onde: "Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.21-n",
     data: "21/10/2026",
     titulo: "Monitor de Auditoria explica o evento",

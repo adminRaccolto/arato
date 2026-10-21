@@ -3,7 +3,8 @@ import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { agruparEventos, type Tipo } from "../../../lib/auditoria/descrever";
 import { createBrowserClient } from "@supabase/ssr";
 import TopNav from "@/components/TopNav";
 import { useAuth } from "@/components/AuthProvider";
@@ -36,15 +37,24 @@ const TABELA_LABEL: Record<string, string> = {
   pedidos_compra: "Pedidos de Compra",
 };
 
-const ACAO_CONFIG = {
-  INSERT: { label: "Criado",   bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
-  UPDATE: { label: "Alterado", bg: "#FEF9C3", color: "#854D0E", border: "#FDE047" },
-  DELETE: { label: "Excluído", bg: "#FEE2E2", color: "#B91C1C", border: "#FCA5A5" },
-  LOGIN:  { label: "Login",    bg: "#EFF6FF", color: "#1D4ED8", border: "#93C5FD" },
-  CUSTOM: { label: "Ação",     bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" },
-  CANCEL: { label: "Cancelado", bg: "#F3E8FF", color: "#6B21A8", border: "#C4B5FD" },
-};
 const STATUS_CANCELADO = ["cancelado", "cancelada"];
+const TIPO_LABEL: Record<Tipo, string> = {
+  criou: "Criou", alterou: "Alterou", excluiu: "Excluiu", cancelou: "Cancelou", baixou: "Baixou", estornou: "Estornou",
+  conciliou: "Conciliou", aprovou: "Aprovou", fechou: "Fechou", reabriu: "Reabriu", vinculou: "Vinculou",
+};
+const TIPO_COR: Record<Tipo, { bg: string; color: string; border: string }> = {
+  criou:     { bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
+  aprovou:   { bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
+  alterou:   { bg: "#FEF9C3", color: "#854D0E", border: "#FDE047" },
+  excluiu:   { bg: "#FEE2E2", color: "#B91C1C", border: "#FCA5A5" },
+  cancelou:  { bg: "#F3E8FF", color: "#6B21A8", border: "#C4B5FD" },
+  baixou:    { bg: "#D5E8F5", color: "#0B2D50", border: "#93C5FD" },
+  fechou:    { bg: "#D5E8F5", color: "#0B2D50", border: "#93C5FD" },
+  conciliou: { bg: "#E0F2F1", color: "#115E59", border: "#99D5CF" },
+  estornou:  { bg: "#FFEDD5", color: "#9A3412", border: "#FDBA74" },
+  reabriu:   { bg: "#FFEDD5", color: "#9A3412", border: "#FDBA74" },
+  vinculou:  { bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" },
+};
 /** Alteração que levou o registro para cancelado (o banco grava como UPDATE do status). */
 function ehCancelamento(l: { acao: string; dados_antes: Record<string, unknown> | null; dados_depois: Record<string, unknown> | null }) {
   return l.acao === "UPDATE"
@@ -89,20 +99,6 @@ function campoLabel(campo: string): string {
   return mapa[campo] ?? campo.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function resumoRegistro(tabela: string, dados: Record<string, unknown> | null): string {
-  if (!dados) return "";
-  const campos: Record<string, string[]> = {
-    lancamentos: ["descricao", "valor", "data_vencimento", "categoria"],
-    folha_pagamento: ["competencia", "status", "valor_bruto"],
-    folha_funcionarios: ["folha_id"],
-    contratos: ["numero", "produto", "quantidade_kg", "status"],
-    contratos_financeiros: ["descricao", "valor_financiado", "status"],
-    romaneios: ["numero_romaneio", "produto", "peso_liquido_kg"],
-    pedidos_compra: ["numero", "status", "valor_total"],
-  };
-  const chaves = campos[tabela] ?? ["id"];
-  return chaves.map(c => dados[c] != null ? fmtVal(dados[c]) : null).filter(Boolean).join(" · ") || dados["id"] as string || "";
-}
 
 // ── Colunas e filtros próprios de cada tabela (aparecem quando a Tabela é escolhida) ──
 type Dados = Record<string, unknown>;
@@ -407,7 +403,7 @@ export default function AuditoriaPage() {
   const [ocultarSistema, setOcultarSistema] = useState(true);
   // Filtros da tabela escolhida: texto por coluna e faixa (de/até) nas colunas de valor
   const [fCols, setFCols] = useState<Record<string, string>>({});
-  const colsTabela = fTabela ? (COLS_TABELA[fTabela] ?? []) : [];
+  const colsTabela = useMemo(() => (fTabela ? (COLS_TABELA[fTabela] ?? []) : []), [fTabela]);
   useEffect(() => { setFCols({}); }, [fTabela]);
   const [nomesPessoas, setNomesPessoas] = useState<Record<string, string>>({});
 
@@ -456,7 +452,6 @@ export default function AuditoriaPage() {
 
   const logsFiltrados = useMemo(() => {
     return logs.filter(l => {
-      if (ocultarSistema && (l.usuario_app === "Sistema" || l.usuario_app === null)) return false;
       if (colsTabela.length) {
         const d = (l.dados_depois ?? l.dados_antes ?? {}) as Dados;
         for (const c of colsTabela) {
@@ -480,7 +475,13 @@ export default function AuditoriaPage() {
         JSON.stringify(l.dados_antes ?? {}).toLowerCase().includes(q)
       );
     });
-  }, [logs, fBusca, ocultarSistema, colsTabela, fCols, nomesPessoas]);
+  }, [logs, fBusca, colsTabela, fCols, nomesPessoas]);
+
+  // Agrupado por ação: a ação do usuário com as consequências automáticas embaixo. "Ocultar Sistema" esconde só as
+  // ações que o sistema fez sozinho (sem ninguém por trás), nunca as consequências de uma ação de usuário.
+  const grupos = useMemo(() => agruparEventos(logsFiltrados).filter(g =>
+    !(ocultarSistema && g.descricao.automatico && !g.principal.usuario_app && g.consequencias.every(c => !c.e.usuario_app))
+  ), [logsFiltrados, ocultarSistema]);
 
   // Stat cards
   const hojeStr = hoje;
@@ -623,97 +624,80 @@ export default function AuditoriaPage() {
                 <thead>
                   <tr style={{ background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>QUANDO</th>
-                    <th style={{ padding: "10px 8px", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#888" }}>AÇÃO</th>
-                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>TABELA</th>
-                    {colsTabela.length
-                      ? colsTabela.map(c => <th key={c.k} style={{ padding: "10px 8px", textAlign: c.tipo === "valor" ? "right" : "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>{c.label.toUpperCase()}</th>)
-                      : <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>RESUMO</th>}
-                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>CAMPOS ALTERADOS</th>
-                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>USUÁRIO</th>
-                    <th style={{ padding: "10px 8px", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#888" }}>ID</th>
+                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>QUEM</th>
+                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>O QUE ACONTECEU</th>
+                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>ONDE</th>
+                    {colsTabela.map(c => <th key={c.k} style={{ padding: "10px 8px", textAlign: c.tipo === "valor" ? "right" : "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>{c.label.toUpperCase()}</th>)}
                     <th style={{ padding: "10px 8px", width: 36 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logsFiltrados.map((l, i) => {
-                    const ac = ehCancelamento(l) ? ACAO_CONFIG.CANCEL : (ACAO_CONFIG[l.acao] ?? ACAO_CONFIG.CUSTOM);
+                  {grupos.map((g, i) => {
+                    const l = g.principal;
                     const aberto = expandido.has(l.id);
-                    const resumo = resumoRegistro(l.tabela, l.dados_depois ?? l.dados_antes);
-                    const campos = l.campos_alterados ?? [];
-                    const isDelete = l.acao === "DELETE";
+                    const tc = TIPO_COR[g.descricao.tipo];
+                    const quem = resolveUser(l.usuario_app);
+                    const d = (l.dados_depois ?? l.dados_antes ?? {}) as Dados;
                     return (
-                      <>
-                        <tr key={l.id}
-                          onClick={() => toggleExpandido(l.id)}
-                          style={{
-                            borderBottom: "0.5px solid #F0F0F0",
-                            background: isDelete ? "#FFF5F5" : aberto ? "#FAFCFF" : i % 2 === 0 ? "#fff" : "#FAFAFA",
-                            cursor: "pointer",
-                            borderLeft: `3px solid ${ac.border}`,
-                          }}>
-                          <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#555", fontSize: 11 }}>{fmtTs(l.created_at)}</td>
-                          <td style={{ padding: "9px 8px", textAlign: "center" }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, background: ac.bg, color: ac.color, border: `0.5px solid ${ac.border}`, borderRadius: 5, padding: "2px 8px", whiteSpace: "nowrap" }}>
-                              {ac.label}
-                            </span>
+                      <Fragment key={l.id}>
+                        <tr onClick={() => toggleExpandido(l.id)}
+                          style={{ borderBottom: "0.5px solid #F0F0F0", background: aberto ? "#FAFCFF" : i % 2 === 0 ? "#fff" : "#FAFAFA", cursor: "pointer", borderLeft: `3px solid ${tc.border}` }}>
+                          <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#555", fontSize: 11, verticalAlign: "top" }}>{fmtTs(l.created_at)}</td>
+                          <td style={{ padding: "9px 8px", whiteSpace: "nowrap", fontSize: 12, verticalAlign: "top" }}>
+                            {quem ? <span style={{ color: "#1a1a1a", fontWeight: 600 }}>{quem}</span>
+                              : g.descricao.automatico ? <span style={{ color: "#888" }}>Sistema</span>
+                              : <span style={{ color: "#888" }} title="Ação feita por uma rotina do servidor antes de 21/10/2026, quando o usuário ainda não era gravado">não registrado</span>}
                           </td>
-                          <td style={{ padding: "9px 8px", whiteSpace: "nowrap", color: "#374151", fontWeight: 600, fontSize: 11 }}>
-                            {TABELA_LABEL[l.tabela] ?? l.tabela}
-                          </td>
-                          {colsTabela.length ? colsTabela.map(c => {
-                            const d = (l.dados_depois ?? l.dados_antes ?? {}) as Dados;
-                            const v = c.get(d, nomesPessoas);
-                            // valor que mudou nesta alteração: mostra antes → depois
-                            const mudou = l.acao === "UPDATE" && l.dados_antes && c.tipo === "valor" && num(c.get(l.dados_antes as Dados, nomesPessoas)) !== num(v);
-                            return (
-                              <td key={c.k} title={String(v ?? "")} style={{ padding: "9px 8px", color: "#1a1a1a", maxWidth: c.k === "descricao" || c.k === "pessoa" ? 280 : 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: c.tipo === "valor" ? "right" : "left", fontVariantNumeric: c.tipo === "valor" ? "tabular-nums" : undefined }}>
-                                {mudou && <span style={{ color: "#B91C1C", textDecoration: "line-through", marginRight: 4 }}>{fmtCel(c, c.get(l.dados_antes as Dados, nomesPessoas))}</span>}
-                                {fmtCel(c, v)}
-                              </td>
-                            );
-                          }) : (
-                          <td style={{ padding: "9px 8px", color: "#555", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {resumo}
-                          </td>)}
-                          <td style={{ padding: "9px 8px", maxWidth: 240 }}>
-                            {campos.length > 0 ? (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                                {campos.slice(0, 5).map(c => (
-                                  <span key={c} style={{ fontSize: 9, background: "#FEF9C3", color: "#854D0E", border: "0.5px solid #FDE047", borderRadius: 4, padding: "1px 5px", fontWeight: 600 }}>
-                                    {campoLabel(c)}
-                                  </span>
-                                ))}
-                                {campos.length > 5 && <span style={{ fontSize: 9, color: "#9CA3AF" }}>+{campos.length - 5}</span>}
-                              </div>
-                            ) : <span style={{ color: "#D1D5DB" }}>—</span>}
-                          </td>
-                          <td style={{ padding: "9px 8px", color: "#555", fontSize: 11, whiteSpace: "nowrap" }}>
-                            {(() => {
-                              const nome = resolveUser(l.usuario_app);
-                              return nome
-                                ? <span title={l.usuario_app ?? undefined} style={{ fontSize: 10 }}>{nome}</span>
-                                : <span style={{ color: "#D1D5DB", fontSize: 10 }}>Sistema</span>;
-                            })()}
-                          </td>
-                          <td style={{ padding: "9px 8px", textAlign: "center" }}>
-                            {l.registro_id && (
-                              <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "monospace" }}>
-                                {l.registro_id.slice(0, 8)}…
+                          <td style={{ padding: "9px 8px", verticalAlign: "top" }}>
+                            <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap",
+                                background: g.descricao.automatico ? "#D5E8F5" : "#FBF3E0", color: g.descricao.automatico ? "#0B2D50" : "#7A4300" }}>
+                                {g.descricao.automatico ? "Automático" : "Ação do usuário"}
                               </span>
+                              <span style={{ fontSize: 10, fontWeight: 700, background: tc.bg, color: tc.color, border: `0.5px solid ${tc.border}`, borderRadius: 5, padding: "2px 7px", whiteSpace: "nowrap" }}>{TIPO_LABEL[g.descricao.tipo]}</span>
+                              <span style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.4 }}>{g.descricao.texto}</span>
+                            </div>
+                            {g.consequencias.length > 0 && (
+                              <div style={{ marginTop: 4, fontSize: 11, color: "#1A4870" }}>
+                                ↳ e mais {g.consequencias.length} {g.consequencias.length === 1 ? "consequência" : "consequências"}: {g.consequencias.slice(0, 2).map(c => c.d.texto).join(" · ")}{g.consequencias.length > 2 ? " …" : ""}
+                              </div>
                             )}
                           </td>
-                          <td style={{ padding: "9px 8px", textAlign: "center" }}>
-                            <span style={{ fontSize: 12, color: "#9CA3AF" }}>{aberto ? "▲" : "▼"}</span>
-                          </td>
+                          <td style={{ padding: "9px 8px", whiteSpace: "nowrap", color: "#374151", fontWeight: 600, fontSize: 11, verticalAlign: "top" }}>{TABELA_LABEL[l.tabela] ?? l.tabela}</td>
+                          {colsTabela.map(c => {
+                            const v = c.get(d, nomesPessoas);
+                            return <td key={c.k} style={{ padding: "9px 8px", verticalAlign: "top", whiteSpace: "nowrap", textAlign: c.tipo === "valor" ? "right" : "left", fontVariantNumeric: c.tipo === "valor" ? "tabular-nums" : undefined, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>{fmtCel(c, v)}</td>;
+                          })}
+                          <td style={{ padding: "9px 8px", textAlign: "center", verticalAlign: "top" }}><span style={{ fontSize: 12, color: "#9CA3AF" }}>{aberto ? "▲" : "▼"}</span></td>
                         </tr>
                         {aberto && (
-                          <tr key={l.id + "_detail"}>
-                            <td colSpan={7 + Math.max(1, colsTabela.length)} style={{ padding: "0 16px 12px", background: isDelete ? "#FFF5F5" : "#FAFCFF" }}>
-                              <ExpandedDetail entry={l} usuario={resolveUser(l.usuario_app)} />
+                          <tr>
+                            <td colSpan={5 + colsTabela.length} style={{ padding: "4px 16px 14px", background: "#FAFCFF" }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A4300", margin: "6px 0 4px" }}>O que foi feito — {quem ?? "Sistema"}, {fmtTs(l.created_at)}</div>
+                              <ExpandedDetail entry={l} usuario={quem} />
+                              {g.consequencias.length > 0 && (
+                                <div style={{ marginTop: 10 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 4 }}>Consequências automáticas desta ação</div>
+                                  {g.consequencias.slice().reverse().map(c => {
+                                    const ab = expandido.has(c.e.id);
+                                    return (
+                                      <div key={c.e.id} style={{ borderLeft: "2px solid #D5E8F5", padding: "4px 10px", marginBottom: 4, background: "#fff", borderRadius: 4 }}>
+                                        <div onClick={() => toggleExpandido(c.e.id)} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 12 }}>
+                                          <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtTs(c.e.created_at).slice(11)}</span>
+                                          <span style={{ fontSize: 10, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{TABELA_LABEL[c.e.tabela] ?? c.e.tabela}</span>
+                                          <span style={{ color: "#1a1a1a" }}>{c.d.texto}</span>
+                                          <span style={{ marginLeft: "auto", color: "#9CA3AF", fontSize: 11 }}>{ab ? "▲" : "▼"}</span>
+                                        </div>
+                                        {ab && <ExpandedDetail entry={c.e} usuario={resolveUser(c.e.usuario_app)} />}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -723,7 +707,7 @@ export default function AuditoriaPage() {
 
           {/* Rodapé */}
           <div style={{ padding: "10px 16px", borderTop: "0.5px solid #F0F0F0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#888" }}>
-            <span>Exibindo {logsFiltrados.length} eventos</span>
+            <span>{grupos.length} ações · {logsFiltrados.length} eventos</span>
             {logs.length === PAGE * (pagina + 1) && (
               <OperationalButton data-arato-button="secondary" onClick={() => carregar(pagina + 1)} disabled={loading}
                 style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 11, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", fontWeight: 600 }}>
