@@ -1,6 +1,6 @@
 // API route: salva produtor_id nos lançamentos CP confirmados pelo usuário
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../../lib/supabase-servidor";
 import { getSessionUser } from "../../../../../lib/api-auth";
 
 const sb = () =>

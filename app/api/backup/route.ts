@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../lib/api-auth";
 
 // ── Tabelas exportadas no backup (em ordem de dependência) ──────

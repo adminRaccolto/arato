@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // Valida que o solicitante é role=bpo com parceiro_id definido.
 // Retorna { ok, parceiroId } ou um Response de erro.

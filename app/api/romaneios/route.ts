@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 
 // DELETE /api/romaneios?id=<romaneio_id>
 // Exclui o romaneio e recalcula entregue_sc + status do contrato

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend } from "resend";
 import { enviarTexto } from "../../../../lib/whatsapp-evolution";
 import { seedOperacoesGerenciais } from "../../../../lib/seedOperacoesGerenciais";

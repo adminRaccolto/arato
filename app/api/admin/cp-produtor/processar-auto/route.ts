@@ -1,7 +1,7 @@
 // Processa automaticamente todos os CP sem produtor de uma conta:
 // carrega NFs vinculadas, envia para Claude Haiku em lotes e aplica os UPDATEs.
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../../lib/supabase-servidor";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const maxDuration = 300; // Vercel — até 5 min

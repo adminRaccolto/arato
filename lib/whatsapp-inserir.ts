@@ -1,6 +1,6 @@
 // Executa as inserções no banco após confirmação do usuário
 import { hojeLocal } from "./data-local";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase-servidor";
 import type { FluxoNome } from "./whatsapp-flows";
 
 function sb() {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { enviarTexto } from "@/lib/whatsapp-evolution";
 
 export const dynamic = "force-dynamic";

@@ -12,7 +12,7 @@
  * rotas já buscam duplicatas em todas as fazendas da conta pela chave de acesso. Contas mais atrasadas
  * primeiro; se o tempo acabar, o resto continua na rodada seguinte.
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";

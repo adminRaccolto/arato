@@ -10,7 +10,7 @@
  */
 import { falharSeErro } from "../../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../../lib/supabase-servidor";
 
 export const runtime = "nodejs";
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

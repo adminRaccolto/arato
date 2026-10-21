@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";

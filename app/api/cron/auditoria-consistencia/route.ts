@@ -9,7 +9,8 @@
  * arquivos/auditoria/ultima.json), para o aviso não repetir todo dia o que já é conhecido.
  */
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend } from "resend";
 import { excedeLimiteBaixa } from "../../../../lib/financeiro/baixa";
 

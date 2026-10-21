@@ -9,7 +9,7 @@
  * Resposta: { ok, nf: { [id]: "numero" }, og: { [id]: "descrição da operação" } }
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";

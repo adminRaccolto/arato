@@ -13,7 +13,7 @@
  */
 
 import { ciotExigido } from "./ciot-regra";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 import { buildMDFe } from "./builder";
 import { assinarMDFe } from "./signer";
 import { transmitirMDFe } from "./transmitter";

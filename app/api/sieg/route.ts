@@ -10,7 +10,7 @@
  * O fazenda_id vem do header x-fazenda-id ou query param fazenda_id.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient }              from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 import { baixarXmlsSieg, credenciaisEnv, credenciaisValidas, parseNFeXml } from "../../../lib/sieg";
 
 export const runtime = "nodejs";

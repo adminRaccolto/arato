@@ -14,7 +14,8 @@
 import { falharSeErro } from "../../../../lib/db-util";
 import { planejarLimpeza } from "../../../../lib/fiscal/dedup-nf";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 

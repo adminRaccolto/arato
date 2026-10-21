@@ -8,7 +8,7 @@
  * - Se id ausente  → INSERT
  */
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 

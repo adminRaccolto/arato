@@ -3,7 +3,7 @@
  * Atualiza o role (campo | client) de um usuário pertencente à mesma conta do caller.
  */
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 

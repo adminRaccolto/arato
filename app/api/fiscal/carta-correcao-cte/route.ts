@@ -3,7 +3,7 @@
  * GET  /api/fiscal/carta-correcao-cte?fazenda_id=&cte_id= — histórico de cartas do CT-e.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { emitirCartaCorrecaoCTe } from "../../../../lib/cte/index";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import https from "https";
 import { pfxParaPem } from "../../../../lib/nfe/signer";
 import { resolverConfigCTe } from "../../../../lib/cte/config";

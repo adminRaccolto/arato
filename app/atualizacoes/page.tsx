@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-l",
+    data: "21/10/2026",
+    titulo: "Auditoria registra o usuário também nas ações feitas pelo servidor",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Títulos criados ou alterados ao processar NF, fechar folha, baixar, conciliar, aprovar pedido e outras rotinas do servidor apareciam no Monitor de Auditoria como Sistema. Agora levam o nome de quem fez a ação. Requer a Seção 353 do supabase_migrations.sql; eventos anteriores continuam como estavam." },
+    ],
+    onde: "Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.21-k",
     data: "21/10/2026",
     titulo: "Monitor de Auditoria: colunas e filtros por tabela, tela inteira",

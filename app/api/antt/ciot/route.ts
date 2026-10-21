@@ -7,7 +7,7 @@
  * acao "consultar" | "encerrar" | "cancelar": operam sobre um CIOT já gerado.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { criarCiotService, type DeclaracaoCIOT, type AmbienteCiot } from "../../../../lib/antt/ciot";
 import { carregarCertificadoEmitente } from "../../../../lib/antt/certificado";
 import { prepararDeclaracao } from "../../../../lib/antt/validacao";

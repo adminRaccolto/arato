@@ -7,7 +7,7 @@
  *   4. Salva XML autorizado no Storage e atualiza a nota no banco
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 import { buildNFe }        from "./builder";
 import { assinarNFe, pfxParaPem } from "./signer";
 import { transmitirNFe }   from "./transmitter";

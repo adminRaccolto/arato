@@ -1,6 +1,6 @@
 // Resolve o cliente (conta_id) do usuário logado para as rotas de Conciliação.
 // Rotas usam service_role (ignoram RLS), então a autorização é feita aqui.
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase-servidor";
 import { getRequestUser } from "./api-auth";
 
 export const adminSb = () =>

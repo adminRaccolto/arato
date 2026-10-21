@@ -15,7 +15,8 @@
  * 7. NFs/itens não classificados ficam status="pendente" → tela de Pendências
  */
 
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { NextRequest, NextResponse }     from "next/server";
 import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml } from "../../../../lib/sieg";
 import { classificarItemNF } from "../../../../lib/ai-classificador";

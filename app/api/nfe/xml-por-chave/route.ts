@@ -6,7 +6,7 @@
  *   2. Consulta SEFAZ como fallback (requer A1 configurado)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { consultarNfePorChave } from "../../../../lib/sefaz-consulta";
 
 export async function POST(req: NextRequest) {

@@ -1,6 +1,6 @@
 import { hojeLocal } from "../../../lib/data-local";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 import { criarCliente, criarCobranca, buscarPixQrCode, proximoVencimento } from "../../../lib/asaas";
 import type { PlanoId } from "../../../lib/planos";
 import { PLANOS_DEFAULT } from "../../../lib/planos";

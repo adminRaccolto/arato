@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { executarBackup, limparBackupsAntigos } from "../../backup/route";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 function autorizado(req: Request): boolean {
   const secret = process.env.CRON_SECRET;

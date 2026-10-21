@@ -5,7 +5,7 @@
 //    (lancamentos, com a operação FRETES conforme o produto) ou outra empresa do grupo
 //    (empresa_lancamentos). Tomador de fora da conta → só o recebível da transportadora.
 // Idempotente (não duplica ao reprocessar) e nunca derruba a emissão: erros só vão pro log.
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 
 const sb = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { autoRefreshToken: false, persistSession: false } });
 const dig = (v: unknown) => String(v ?? "").replace(/\D/g, "");

@@ -2,7 +2,7 @@ import { falharSeErro } from "../../../../lib/db-util";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { consumirPrevisao, tabelaPrevisoesAusente } from "../../../../lib/financeiro/previsoes-server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

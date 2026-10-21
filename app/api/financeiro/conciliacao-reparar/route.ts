@@ -14,7 +14,8 @@
  * Sem "aplicar" só devolve o relatório (nada é gravado).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";

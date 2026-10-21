@@ -3,7 +3,7 @@
 // Body: { conta_id, valor?, descricao?, metodo? }
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { criarCobranca, buscarPixQrCode } from "../../../../lib/asaas";
 
 function sb() {

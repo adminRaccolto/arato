@@ -1,6 +1,6 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { statusAsaasParaLocal } from "../../../../lib/asaas";
 
 // Webhook do Asaas — recebe notificações de pagamento

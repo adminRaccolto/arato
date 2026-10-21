@@ -1,7 +1,7 @@
 // Testa o fluxo interno do bot sem depender do WhatsApp
 // Útil para diagnosticar quando tudo está verde mas o bot não responde
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { processarMensagemIA } from "../../../../lib/whatsapp-claude";
 import { enviarTexto } from "../../../../lib/whatsapp-evolution";
 import { requireRaccotloAdmin } from "../../../../lib/api-auth";

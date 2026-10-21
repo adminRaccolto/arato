@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase-servidor";
 import { cookies } from "next/headers";
 import { isRaccotloAdmin } from "./raccotlo-auth";
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // ─── Segurança: só Vercel Cron pode chamar este endpoint ──────
 // A Vercel injeta o header Authorization: Bearer <CRON_SECRET>

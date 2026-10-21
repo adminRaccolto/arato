@@ -9,7 +9,7 @@
 //   GET  /api/saas                          → healthcheck
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
 

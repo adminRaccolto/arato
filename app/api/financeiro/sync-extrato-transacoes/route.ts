@@ -7,7 +7,7 @@
  * recusado e a conciliação inteira era revertida na tela ("Não foi possível salvar a conciliação").
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
 import { ajustarVinculosParaFk, linhaMudou } from "../../../../lib/financeiro/conciliacao";
 

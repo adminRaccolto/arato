@@ -1,6 +1,6 @@
 // Webhook principal — Evolution API
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { transcreverAudio, lerNotaFiscal } from "../../../../lib/whatsapp-ai";
 import { enviarTexto, baixarMidiaBase64 } from "../../../../lib/whatsapp-evolution";
 import { buscarSessao, salvarSessao, limparSessao } from "../../../../lib/whatsapp-flows";

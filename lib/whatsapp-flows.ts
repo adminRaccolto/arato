@@ -1,5 +1,5 @@
 // Motor de fluxos conversacionais — máquina de estados do WhatsApp IA
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase-servidor";
 import { extrairEntidade } from "./whatsapp-ai";
 
 export type FluxoNome =

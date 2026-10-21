@@ -2,7 +2,8 @@ import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/fin
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // Espelha lib/db.ts:alocarEntregaPorLinha — pedido pode ter o mesmo produto
 // em mais de uma linha (embalagens ou valor fiscal por unidade diferentes);

@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cancelarNFeEmitida, corrigirNFeEmitida } from "../../../../lib/nfe/index";

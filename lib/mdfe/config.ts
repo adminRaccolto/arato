@@ -4,7 +4,7 @@
  * mesmo padrão já usado pro CT-e (lib/cte/config.ts): parâmetros de emitente são da conta
  * inteira, não de uma fazenda específica.
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 
 export interface ConfigMDFeResolvida {
   mdfeConfig: Record<string, string>;

@@ -11,7 +11,7 @@
  * - Operações de lavoura em andamento
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend }        from "resend";
 import { NextRequest, NextResponse } from "next/server";
 

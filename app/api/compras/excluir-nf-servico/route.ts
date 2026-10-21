@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // POST /api/compras/excluir-nf-servico
 // Exclui uma NFS-e e seu CP vinculado.

@@ -3,7 +3,7 @@
  * cancelado no banco (nunca o contrário: cancelar só localmente deixava o manifesto válido na SEFAZ).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { cancelarMDFePorChave } from "../../../../lib/mdfe/cancelamento";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 

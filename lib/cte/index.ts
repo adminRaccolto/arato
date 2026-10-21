@@ -8,7 +8,7 @@
  */
 
 import { lancarFinanceiroCte, cancelarFinanceiroCte } from "./financeiro";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 import { createHash }  from "crypto";
 import { buildCTe }     from "./builder";
 import { assinarCTe }   from "./signer";

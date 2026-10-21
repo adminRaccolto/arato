@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient }              from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { mesmaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
 import { detectarCancelamentoNfse } from "../../../../lib/fiscal/nfse-cancelamento";
 import { baixarXmlsSieg, baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";

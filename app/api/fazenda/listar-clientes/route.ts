@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // Retorna clientes agrupados por conta — uma entrada por cliente,
 // com todas as fazendas de cada conta listadas internamente.

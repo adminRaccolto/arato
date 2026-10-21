@@ -5,7 +5,7 @@
  * autorizado/aberto na SEFAZ (bloqueando a placa e ainda válido para fiscalização).
  * Regra: só cancela MDF-e não encerrado e dentro do prazo da SEFAZ (24h da autorização).
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 import { assinarXmlPorId, pfxParaPem } from "../nfe/signer";
 import { gerarDhEmi } from "../nfe/builder";
 import { resolverConfigMDFe } from "./config";

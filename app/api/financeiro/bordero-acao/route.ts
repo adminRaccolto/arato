@@ -20,7 +20,8 @@
  * igual ao resto do sistema).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { estornarBorderoComSaldo } from "../../../../lib/financeiro/estornar-bordero";
 import { confirmarBorderoComSaldo } from "../../../../lib/financeiro/confirmar-bordero";
 import { resumoBordero } from "../../../../lib/financeiro/saldo-bordero";

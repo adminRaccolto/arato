@@ -14,7 +14,7 @@
  *   relatorio               → { de, ate, leitura } Previsto × Realizado por OG e mês
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { getRequestUser, validateFazendaAccess } from "../../../../lib/api-auth";
 import { datasRecorrencia, previstoRealizado, type LeituraRealizado, type TituloRealAgg } from "../../../../lib/financeiro/previsoes";
 import {

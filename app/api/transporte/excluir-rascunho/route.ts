@@ -5,7 +5,7 @@
  * service_role_key (imune ao JWT expirado) com validação de acesso à fazenda do registro.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";

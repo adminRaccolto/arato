@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../lib/api-auth";
 import { validarCertificadoA1 } from "../../../lib/nfe/certificado-a1";
 

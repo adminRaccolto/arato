@@ -5,7 +5,7 @@
  * Requer role=raccotlo.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { seedOperacoesGerenciaisTemplate } from "../../../../lib/seedOperacoesGerenciais";
 
 export const dynamic = "force-dynamic";

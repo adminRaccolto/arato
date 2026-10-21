@@ -7,7 +7,7 @@
  * anteriores ao período, para que o badge "Vencidos" nunca mostre 0 incorreto.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 const admin = () =>
   createClient(

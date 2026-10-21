@@ -5,7 +5,7 @@
  * Retorna { ok, ids } onde ids é array na mesma ordem dos rows.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../lib/supabase-servidor";
 
 const admin = () =>
   createClient(

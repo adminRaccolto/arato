@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // ─── Segurança: só Vercel Cron pode chamar este endpoint (mesmo padrão dos outros crons) ───
 function autorizado(req: Request): boolean {

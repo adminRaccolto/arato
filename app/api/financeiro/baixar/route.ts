@@ -9,7 +9,7 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 const admin = () =>
   createClient(

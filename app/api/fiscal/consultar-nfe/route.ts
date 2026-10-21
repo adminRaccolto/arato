@@ -1,7 +1,7 @@
 // API Route — consulta NF-e na SEFAZ e resolve pendência fiscal
 // Suporta também NFS-e (nota de serviço municipal) que não tem chave SEFAZ
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { consultarNfePorChave, salvarXmlStorage } from "../../../../lib/sefaz-consulta";
 import { lerNotaFiscal } from "../../../../lib/whatsapp-ai";
 

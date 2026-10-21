@@ -1,7 +1,7 @@
 // Reprocessa uma pendência operacional após o usuário vincular o insumo correto
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { converterUnidade } from "../../../../lib/whatsapp-inserir";
 
 function sb() {

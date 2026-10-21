@@ -8,7 +8,7 @@
 
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse }                     from "next/server";
-import { createClient }                                   from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { credenciaisEnv, credenciaisValidas, manifestarPorChave, TipoManifestacao } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";

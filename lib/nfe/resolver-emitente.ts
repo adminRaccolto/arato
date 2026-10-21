@@ -8,7 +8,8 @@
  * emissão, inclusive num que nunca teve a senha do certificado preenchida — mesmo com o
  * certificado CERTO, do emitente CERTO daquela operação, configurado e visível na tela.
  */
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 
 function sb(): SupabaseClient {
   return createClient(

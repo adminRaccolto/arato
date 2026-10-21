@@ -1,5 +1,6 @@
 import { hojeLocal } from "../../../../lib/data-local";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { emitirNFe, buscarConfEmitente, cancelarNFeEmitida } from "../../../../lib/nfe/index";

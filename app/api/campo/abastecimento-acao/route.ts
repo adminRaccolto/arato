@@ -11,7 +11,7 @@
  * correspondente + movimentação de estoque, e Conta a Pagar opcional.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 const sb = () =>

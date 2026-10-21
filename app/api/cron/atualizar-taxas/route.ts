@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 
 // Séries do BCB (api.bcb.gov.br) — taxa acumulada no mês, anualizada onde necessário
 // Séries mensais: retornam o valor do mês em % (formato variado por série)

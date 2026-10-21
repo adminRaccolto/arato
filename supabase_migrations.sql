@@ -16997,3 +16997,71 @@ CREATE POLICY "previsoes_config_tenant" ON previsoes_config FOR ALL
   WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 353 — Auditoria: usuário real nas ações feitas pelas rotas do servidor
+-- =============================================================================
+-- As rotas do servidor usam a chave de serviço (sem usuário no JWT), e o audit_log gravava esses eventos sem usuário
+-- ("Sistema"): NF processada, folha, baixas, conciliação, pedidos. Agora o servidor envia o cabeçalho x-arato-usuario
+-- (lib/supabase-servidor.ts) e o gatilho usa o usuário do JWT ou, na falta dele, o do cabeçalho; o nome vem de perfis.
+-- Eventos antigos não mudam.
+CREATE OR REPLACE FUNCTION fn_audit_log()
+RETURNS trigger AS $$
+DECLARE
+  faz_id   uuid   := NULL;
+  reg_id   text   := NULL;
+  campos   text[] := NULL;
+  old_json jsonb;
+  new_json jsonb;
+  uid_app  text   := NULL;
+  nome_app text   := NULL;
+BEGIN
+  old_json := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN row_to_json(OLD)::jsonb ELSE NULL END;
+  new_json := CASE WHEN TG_OP IN ('UPDATE','INSERT') THEN row_to_json(NEW)::jsonb ELSE NULL END;
+
+  BEGIN
+    faz_id := COALESCE(new_json->>'fazenda_id', old_json->>'fazenda_id')::uuid;
+    reg_id := COALESCE(new_json->>'id', old_json->>'id');
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  -- 1) usuário do JWT (chamada feita pelo navegador)
+  BEGIN
+    uid_app := NULLIF(current_setting('request.jwt.claims', true), '')::json->>'sub';
+  EXCEPTION WHEN OTHERS THEN uid_app := NULL;
+  END;
+  -- 2) usuário enviado pelas rotas do servidor (chave de serviço)
+  IF uid_app IS NULL THEN
+    BEGIN
+      uid_app := NULLIF(current_setting('request.headers', true), '')::json->>'x-arato-usuario';
+    EXCEPTION WHEN OTHERS THEN uid_app := NULL;
+    END;
+  END IF;
+  -- 3) legado
+  IF uid_app IS NULL THEN
+    uid_app := NULLIF(current_setting('app.current_user', true), '');
+  END IF;
+
+  IF uid_app ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    SELECT p.nome INTO nome_app FROM perfis p WHERE p.user_id = uid_app::uuid AND p.nome IS NOT NULL LIMIT 1;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    SELECT array_agg(key ORDER BY key) INTO campos
+    FROM (
+      SELECT key FROM jsonb_each(new_json)
+      WHERE new_json->key IS DISTINCT FROM old_json->key
+        AND key NOT IN ('updated_at','created_at')
+    ) t;
+  END IF;
+
+  INSERT INTO audit_log
+    (fazenda_id, tabela, registro_id, acao, dados_antes, dados_depois, campos_alterados, usuario_app)
+  VALUES
+    (faz_id, TG_TABLE_NAME, reg_id, TG_OP, old_json, new_json, campos, COALESCE(nome_app, uid_app));
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+NOTIFY pgrst, 'reload schema';

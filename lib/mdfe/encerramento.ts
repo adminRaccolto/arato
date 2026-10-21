@@ -7,7 +7,7 @@
  * (CNPJ/CPF) e a UF saem da própria chave de acesso; o certificado vem da config do emitente.
  * Antes de 23/09/2026 o "Encerrar" da tela era só um UPDATE local — nunca transmitia à SEFAZ.
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 import { assinarXmlPorId, pfxParaPem } from "../nfe/signer";
 import { gerarDhEmi } from "../nfe/builder";
 import { resolverConfigMDFe } from "./config";

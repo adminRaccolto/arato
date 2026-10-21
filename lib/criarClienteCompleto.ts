@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase-servidor";
 import { Resend } from "resend";
 import { seedOperacoesGerenciais } from "./seedOperacoesGerenciais";
 

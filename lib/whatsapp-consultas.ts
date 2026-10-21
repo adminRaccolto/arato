@@ -1,6 +1,6 @@
 // Todas as 23 consultas disponíveis via WhatsApp
 import { hojeLocal } from "./data-local";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase-servidor";
 
 function sb() {
   return createClient(

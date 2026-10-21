@@ -1,5 +1,5 @@
 // Certificado A1 do emitente (o mesmo da SEFAZ) para o mTLS da ANTT.
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../supabase-servidor";
 import { pfxParaPem } from "../nfe/signer";
 import { resolverConfigMDFe } from "../mdfe/config";
 import type { CertificadoPem } from "./ciot";

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "../../../../lib/supabase-servidor";
 import { CONHECIMENTO_OLIVIA } from "../../../../lib/conhecimento-olivia";
 
 const SYSTEM_PROMPT = `Você é a Olívia — assistente virtual do Arato, sistema de gestão agrícola.
