@@ -16898,3 +16898,102 @@ DROP TRIGGER IF EXISTS trg_nf_servicos_bloqueia_duplicada ON nf_servicos;
 CREATE TRIGGER trg_nf_servicos_bloqueia_duplicada BEFORE INSERT ON nf_servicos
   FOR EACH ROW EXECUTE FUNCTION fn_nf_servicos_bloqueia_duplicada();
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 352 — Previsão de Gastos (Previsto × Realizado)
+-- =============================================================================
+-- Cada linha é um gasto previsto por Operação Gerencial (OG) e vencimento. Enquanto tem saldo, ela mantém um
+-- título de PREVISÃO no CP (lancamentos.natureza = 'previsao', previsao_gasto_id) que entra no fluxo de caixa.
+-- Ao ser consumida por um título real (NF de entrada, CP manual, folha) a previsão fica "cumprida"; se o valor
+-- real foi diferente, ela vai para a Decisão do Gestor (efetivar = vira desvio / manter saldo = continua prevista).
+-- Previsão vencida sem consumo aparece na aba Vencidas (nova data ou efetivar). As linhas nunca são apagadas:
+-- são a base do Previsto. O Realizado é calculado sobre todos os títulos reais da OG.
+CREATE TABLE IF NOT EXISTS previsoes_gasto (
+  id                     uuid primary key default gen_random_uuid(),
+  conta_id               uuid not null references contas(id) on delete cascade,
+  fazenda_id             uuid not null references fazendas(id) on delete cascade,
+  produtor_id            uuid references produtores(id) on delete set null,
+  empresa_id             uuid,
+  operacao_gerencial_id  uuid not null references operacoes_gerenciais(id),
+  og_classificacao       text not null,                 -- casa títulos de OGs de outras fazendas e OGs filhas
+  pessoa_id              uuid references pessoas(id) on delete set null,
+  ano_safra_id           uuid,
+  ciclo_id               uuid,
+  centro_custo_id        uuid,
+  descricao              text,
+  valor                  numeric(15,2) not null check (valor > 0),   -- previsto original (não muda)
+  saldo                  numeric(15,2) not null default 0,           -- ainda previsto no CP / fluxo
+  data_vencimento        date not null,
+  status                 text not null default 'aberta'
+                           check (status in ('aberta','pendente_decisao','cumprida','efetivada','cancelada')),
+  diferenca              numeric(15,2),                 -- previsto − consumido, quando foi para Decisão do Gestor
+  decisao                text check (decisao in ('efetivada','saldo','nova_data','vencida_efetivada','tolerancia')),
+  decidido_em            timestamptz,
+  decidido_por           uuid,
+  origem                 text not null default 'manual' check (origem in ('manual','recorrencia','importacao','folha')),
+  recorrencia_grupo      uuid,
+  folha_id               uuid,
+  lancamento_previsao_id uuid references lancamentos(id) on delete set null,
+  observacao             text,
+  created_at             timestamptz default now(),
+  created_by             uuid,
+  updated_at             timestamptz default now()
+);
+CREATE INDEX IF NOT EXISTS idx_prev_gasto_conta   ON previsoes_gasto (conta_id, status);
+CREATE INDEX IF NOT EXISTS idx_prev_gasto_venc    ON previsoes_gasto (conta_id, data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_prev_gasto_og      ON previsoes_gasto (conta_id, og_classificacao);
+CREATE INDEX IF NOT EXISTS idx_prev_gasto_folha   ON previsoes_gasto (folha_id) WHERE folha_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS previsoes_gasto_consumos (
+  id                  uuid primary key default gen_random_uuid(),
+  previsao_id         uuid not null references previsoes_gasto(id) on delete cascade,
+  lancamento_id       uuid references lancamentos(id) on delete cascade,
+  emp_lancamento_id   uuid references empresa_lancamentos(id) on delete cascade,
+  nf_entrada_id       uuid,
+  valor               numeric(15,2) not null,
+  origem              text not null default 'cp_manual' check (origem in ('cp_manual','nf_entrada','folha','efetivar_cp')),
+  created_at          timestamptz default now(),
+  created_by          uuid
+);
+CREATE INDEX IF NOT EXISTS idx_prev_consumo_prev ON previsoes_gasto_consumos (previsao_id);
+CREATE INDEX IF NOT EXISTS idx_prev_consumo_lanc ON previsoes_gasto_consumos (lancamento_id) WHERE lancamento_id IS NOT NULL;
+
+-- Tolerância: diferença até X% ou R$ Y é efetivada sozinha (não vai para a Decisão do Gestor). Padrão 0 = tudo vai.
+CREATE TABLE IF NOT EXISTS previsoes_config (
+  conta_id          uuid primary key references contas(id) on delete cascade,
+  tolerancia_pct    numeric(6,2) not null default 0,
+  tolerancia_valor  numeric(15,2) not null default 0,
+  updated_at        timestamptz default now()
+);
+
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS previsao_gasto_id uuid REFERENCES previsoes_gasto(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_lanc_previsao_gasto ON lancamentos (previsao_gasto_id) WHERE previsao_gasto_id IS NOT NULL;
+
+ALTER TABLE lancamentos
+  DROP CONSTRAINT IF EXISTS lancamentos_origem_lancamento_check;
+ALTER TABLE lancamentos
+  ADD CONSTRAINT lancamentos_origem_lancamento_check
+  CHECK (origem_lancamento IS NULL OR origem_lancamento IN (
+    'nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria',
+    'plantio','contrato_financeiro','consorcio','manual','compra_terra',
+    'nf_servico','seguro','cartao_fatura',
+    'folha','aplicacao_financeira','mutuo','cte','apoio_financeiro','previsao'
+  ));
+
+ALTER TABLE previsoes_gasto          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE previsoes_gasto_consumos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE previsoes_config         ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "previsoes_gasto_tenant" ON previsoes_gasto;
+CREATE POLICY "previsoes_gasto_tenant" ON previsoes_gasto FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+DROP POLICY IF EXISTS "previsoes_gasto_consumos_tenant" ON previsoes_gasto_consumos;
+CREATE POLICY "previsoes_gasto_consumos_tenant" ON previsoes_gasto_consumos FOR ALL
+  USING (previsao_id IN (SELECT id FROM previsoes_gasto WHERE conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo())
+  WITH CHECK (previsao_id IN (SELECT id FROM previsoes_gasto WHERE conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo());
+DROP POLICY IF EXISTS "previsoes_config_tenant" ON previsoes_config;
+CREATE POLICY "previsoes_config_tenant" ON previsoes_config FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+
+NOTIFY pgrst, 'reload schema';

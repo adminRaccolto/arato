@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-d",
+    data: "21/10/2026",
+    titulo: "Previsão de Gastos: Previsto × Realizado",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Novo módulo Financeiro → Previsão de Gastos: lance o gasto previsto por Operação Gerencial e vencimento (com fornecedor, ciclo e centro de custo opcionais e recorrência). Cada previsão entra no Contas a Pagar e no fluxo de caixa como previsão." },
+      { tipo: "novo", texto: "O gasto real consome a previsão pela NF de Entrada, pelo lançamento manual de CP ou pelo Efetivar do título de previsão no CP. A previsão fica cumprida e sai do caixa; diferença de valor vai para a aba Decisão do Gestor (Efetivar como desvio ou Manter saldo), com tolerância configurável." },
+      { tipo: "novo", texto: "Aba Previsões Vencidas (alterar data ou efetivar como desvio) e relatório Previsto × Realizado por Operação Gerencial e mês, com semáforo, leitura por vencimento, competência ou caixa, e exportação Excel." },
+      { tipo: "melhoria", texto: "Folha de pagamento em rascunho passa a gerar suas previsões dentro do módulo; ao fechar a folha, os títulos reais consomem essas previsões." },
+    ],
+    onde: "Financeiro → Previsão de Gastos",
+  },
+  {
     versao: "2026.10.21-c",
     data: "21/10/2026",
     titulo: "CT-e rejeitado por IE com pontuação e NCM com espaço",

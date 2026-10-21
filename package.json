@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test lib/financeiro/titulos.test.ts lib/financeiro/conciliacao.test.ts lib/financeiro/baixa.test.ts lib/financeiro/saldo-pedido.test.ts lib/financeiro/moeda.test.ts lib/financeiro/filtro-colunas.test.ts lib/financeiro/guarda-telas.test.ts lib/financeiro/cedula-despesas.test.ts lib/financeiro/cronograma.test.ts lib/fiscal/dedup-nf.test.ts lib/fiscal/dedup-nfse.test.ts"
+    "test": "node --test lib/financeiro/titulos.test.ts lib/financeiro/conciliacao.test.ts lib/financeiro/baixa.test.ts lib/financeiro/saldo-pedido.test.ts lib/financeiro/moeda.test.ts lib/financeiro/filtro-colunas.test.ts lib/financeiro/guarda-telas.test.ts lib/financeiro/cedula-despesas.test.ts lib/financeiro/cronograma.test.ts lib/fiscal/dedup-nf.test.ts lib/fiscal/dedup-nfse.test.ts lib/financeiro/previsoes.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

@@ -429,6 +429,21 @@ export default function ModalNf({
   // Operações Gerenciais ativas — usado no select do cabeçalho e no cálculo
   // de modoDireto (combustível/manutenção/CC) em Apropriação Direta.
   const [reclassOps, setReclassOps] = useState<OperacaoGerencial[]>([]);
+  // Previsão de Gastos (Seção 352): NF que consome uma previsão em aberto ao ser processada
+  type PrevAbertaNf = { id: string; og_classificacao: string; og_nome: string; pessoa_nome: string; descricao: string | null; saldo: number; data_vencimento: string };
+  const [prevAbertasNf, setPrevAbertasNf] = useState<PrevAbertaNf[]>([]);
+  const [prevNfSel, setPrevNfSel] = useState("");
+  const apiPrevisoesNf = useCallback(async (body: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const r = await fetch("/api/financeiro/previsoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+      body: JSON.stringify({ fazenda_id: fazendaId, ...body }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error ?? "Erro na Previsão de Gastos");
+    return j;
+  }, [fazendaId]);
 
   // Cabeçalho da NF
   const [cab, setCab] = useState({
@@ -461,6 +476,11 @@ export default function ModalNf({
     valor_desconto:"",
     valor_icms_deson: "",
   });
+  useEffect(() => {
+    if (!fazendaId || !nfEdit?.id || nfEdit.status === "processada") { setPrevAbertasNf([]); return; }
+    setPrevNfSel("");
+    apiPrevisoesNf({ operacao: "abertas" }).then(j => setPrevAbertasNf(j.previsoes as PrevAbertaNf[])).catch(() => setPrevAbertasNf([]));
+  }, [fazendaId, nfEdit?.id, nfEdit?.status, apiPrevisoesNf]);
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
   const [ciclosNF,    setCiclosNF]    = useState<Ciclo[]>([]);
   const [cadFornAberto, setCadFornAberto] = useState(false);
@@ -1607,6 +1627,16 @@ export default function ModalNf({
 
       // 3. Marcar como processada
       await atualizarNfEntrada(nfEdit.id, { status: "processada", processado_por: nomeUsuario ?? undefined });
+
+      // 3a. Previsão de Gastos escolhida: o total dos títulos gerados pela NF consome a previsão
+      if (prevNfSel) {
+        try {
+          const r = await apiPrevisoesNf({ operacao: "consumir_nf", previsao_id: prevNfSel, nf_entrada_id: nfEdit.id });
+          if (r.status === "pendente_decisao") window.alert("NF processada. A previsão foi consumida com valor diferente do previsto: a diferença foi para a Decisão do Gestor (Financeiro → Previsão de Gastos).");
+        } catch (e) {
+          window.alert(`NF processada, mas a previsão não foi consumida: ${e instanceof Error ? e.message : String(e)}. Consuma pela tela Previsão de Gastos.`);
+        }
+      }
 
       // 3b. Pedido vinculado que ainda não estava marcado "Fiscal" — achado real
       // 01/10/2026: um pedido criado sem marcar essa flag, mas que recebe uma NF
@@ -3852,6 +3882,27 @@ export default function ModalNf({
                   )}
                 </div>
 
+                  {!viewOnly && prevAbertasNf.length > 0 && nfEdit?.status !== "processada" && (() => {
+                    const clsOg = reclassOps.find(o => o.id === cab.operacao_gerencial_id)?.classificacao ?? "";
+                    const casa = (c: string) => !!clsOg && (clsOg === c || clsOg.startsWith(c + "."));
+                    const ordenadas = [...prevAbertasNf].sort((a, b) => Number(casa(b.og_classificacao)) - Number(casa(a.og_classificacao)) || a.data_vencimento.localeCompare(b.data_vencimento));
+                    return (
+                      <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px", marginBottom: 12 }}>
+                        <label data-arato-label="true" style={lbl}>Consumir previsão (Previsão de Gastos) — opcional</label>
+                        <SelectBusca
+                          value={prevNfSel}
+                          onChange={setPrevNfSel}
+                          options={[{ value: "", label: "— Esta NF não consome previsão —" }, ...ordenadas.map(p => ({
+                            value: p.id,
+                            label: `${p.data_vencimento.split("-").reverse().join("/")} · ${p.og_classificacao} ${p.og_nome}${p.pessoa_nome ? ` · ${p.pessoa_nome}` : ""}${p.descricao ? ` · ${p.descricao}` : ""} · saldo ${p.saldo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
+                            group: casa(p.og_classificacao) ? "Mesma Operação Gerencial" : "Outras previsões",
+                          }))]}
+                          style={inp}
+                        />
+                        {prevNfSel && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 4 }}>Ao processar, o total a pagar da NF consome esta previsão; diferença vai para a Decisão do Gestor.</div>}
+                      </div>
+                    );
+                  })()}
                   <div data-arato-dialog-heading="true" style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                     <div data-arato-dialog-body="true" style={{ display: "flex", gap: 10 }}>
                       <button data-arato-button="toggle" style={btnR} onClick={() => setEtapa("cabecalho")}>← Voltar</button>

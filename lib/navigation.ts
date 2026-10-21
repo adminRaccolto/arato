@@ -171,6 +171,7 @@ export const NAV: NavItem[] = [
       { id: "fin-receber",         label: "Contas a Receber",             path: "/financeiro/receber",              moduleId: "fin_receber"    },
       { id: "fin-adiantamentos",   label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos",        moduleId: "fin_pagar"      },
       { id: "fin-folha",           label: "Folha de Pagamento",           path: "/financeiro/folha"                                            },
+      { id: "fin-previsoes",       label: "Previsão de Gastos",           path: "/financeiro/previsoes",            moduleId: "fin_pagar"      },
       { id: "fin-emp-folha",       label: "Folha de Pagamento — Empresa", path: "/empresas/folha"                                             },
       { type: "divider", label: "Tesouraria" },
       { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria",     path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },

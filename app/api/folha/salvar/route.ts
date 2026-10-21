@@ -3,6 +3,7 @@ import { hojeLocal } from "../../../../lib/data-local";
 import { NextResponse } from "next/server";
 import { vencimentoSalario } from "../../../../lib/folha-calculo";
 import { createClient } from "@supabase/supabase-js";
+import { consumirPrevisao, tabelaPrevisoesAusente } from "../../../../lib/financeiro/previsoes-server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function resolverOgPorClassificacao(sb: any, fazenda_id: string, classificacao: string): Promise<string | null> {
@@ -70,6 +71,45 @@ function vencimentoEncargoFolha(competencia: string): string {
   return `${prox.a}-${String(prox.m).padStart(2, "0")}-20`;
 }
 
+/** Registra no módulo Previsão de Gastos (Seção 352) a previsão que a folha acabou de lançar no CP. Sem a tabela
+ *  (migration pendente) ou sem OG, o título de previsão continua valendo sozinho, como antes. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function registrarPrevisaoFolha(sb: any, r: {
+  conta_id: string | null; fazenda_id: string; produtor_id: string | null; empresa_id: string | null; og_id: string | null;
+  descricao: string; valor: number; data_vencimento: string; ano_safra_id: string | null; folha_id: string; titulo_id: string | null;
+}): Promise<void> {
+  if (!r.conta_id || !r.og_id || !r.titulo_id || !(r.valor > 0)) return;
+  const { data: og } = await sb.from("operacoes_gerenciais").select("classificacao").eq("id", r.og_id).maybeSingle();
+  if (!og?.classificacao) return;
+  const { data, error } = await sb.from("previsoes_gasto").insert({
+    conta_id: r.conta_id, fazenda_id: r.fazenda_id, produtor_id: r.produtor_id, empresa_id: r.empresa_id,
+    operacao_gerencial_id: r.og_id, og_classificacao: og.classificacao, ano_safra_id: r.ano_safra_id,
+    descricao: r.descricao, valor: r.valor, saldo: r.valor, data_vencimento: r.data_vencimento,
+    status: "aberta", origem: "folha", folha_id: r.folha_id, lancamento_previsao_id: r.titulo_id,
+  }).select("id").single();
+  if (error) { if (!tabelaPrevisoesAusente(error)) console.error("[folha] previsão de gastos:", error.message); return; }
+  await sb.from("lancamentos").update({ previsao_gasto_id: data.id }).eq("id", r.titulo_id);
+}
+
+/** Título da folha virou real: consome a previsão ligada a ele (se houver), com o valor final. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function consumirPrevisaoDoTitulo(sb: any, tituloId: string | null | undefined, valor: number): Promise<void> {
+  if (!tituloId || !(valor > 0)) return;
+  const { data, error } = await sb.from("lancamentos").select("previsao_gasto_id").eq("id", tituloId).maybeSingle();
+  if (error || !data?.previsao_gasto_id) return;
+  const { data: prev } = await sb.from("previsoes_gasto").select("status").eq("id", data.previsao_gasto_id).maybeSingle();
+  if (prev?.status !== "aberta") return;
+  try { await consumirPrevisao(sb, { previsao_id: data.previsao_gasto_id, valor, lancamento_id: tituloId, origem: "folha" }); }
+  catch (e) { console.error("[folha] consumir previsão:", e instanceof Error ? e.message : e); }
+}
+
+/** Remove as linhas da Previsão de Gastos geradas por esta folha (são refeitas a partir dela). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function apagarPrevisoesDaFolha(sb: any, folhaId: string): Promise<void> {
+  const { error } = await sb.from("previsoes_gasto").delete().eq("folha_id", folhaId).eq("origem", "folha");
+  if (error && !tabelaPrevisoesAusente(error)) console.error("[folha] apagar previsões:", error.message);
+}
+
 /** Folha em rascunho já aparece no Contas a Pagar e no fluxo de caixa como PREVISÃO (natureza "previsao"):
  *  um título por funcionário + FGTS + INSS Patronal. Ao fechar a folha (ou ao efetivar o título no CP) a
  *  previsão vira título real com o valor que estiver nela. Refaz todas as previsões da folha a partir das
@@ -89,9 +129,12 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
     ...(itens ?? []).map((i: any) => i.cp_lancamento_id),
     folha.cp_fgts_id, folha.cp_inss_patronal_id,
   ].filter(Boolean) as string[];
+  await apagarPrevisoesDaFolha(sb, folhaId);
   if (antigos.length) {
     await falharSeErro(sb.from("lancamentos").delete().in("id", antigos).eq("natureza", "previsao").neq("status", "baixado"), "excluir previsões da folha");
   }
+  const { data: fazRow } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  const contaFolha = (fazRow?.conta_id as string | undefined) ?? null;
 
   const ogSalario = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.001");
   let anoSafra: string | null = null;
@@ -122,6 +165,12 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
     });
     if (error) throw new Error(`Previsão ${it.nome_funcionario}: ${error.message}`);
     await sb.from("folha_funcionarios").update({ cp_lancamento_id: lanc?.id ?? null }).eq("id", it.id);
+    await registrarPrevisaoFolha(sb, {
+      conta_id: contaFolha, fazenda_id, produtor_id: it.produtor_id ?? vinculo[it.funcionario_id]?.produtor_id ?? null,
+      empresa_id: empresa_id ?? vinculo[it.funcionario_id]?.empresa_id ?? null, og_id: ogSalario,
+      descricao: `Salário ${rotulo} — ${it.nome_funcionario}`, valor: liquidoItem(it), data_vencimento: vencimento,
+      ano_safra_id: anoSafra, folha_id: folhaId, titulo_id: lanc?.id ?? null,
+    });
   }
 
   const produtorIdFolha = ((itens ?? []) as any[]).find(it => it.produtor_id)?.produtor_id ?? null;
@@ -140,6 +189,8 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
     });
     if (error) throw new Error(`Previsão FGTS: ${error.message}`);
     cpFgts = l?.id ?? null;
+    await registrarPrevisaoFolha(sb, { conta_id: contaFolha, fazenda_id, produtor_id: produtorIdFolha, empresa_id: empresa_id ?? null, og_id: og,
+      descricao: `FGTS ${rotulo}`, valor: Math.round(totalFGTS * 100) / 100, data_vencimento: vencEncargo, ano_safra_id: null, folha_id: folhaId, titulo_id: cpFgts });
   }
   if (empresa_id && totalINSSPat > 0.005) {
     const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
@@ -152,6 +203,8 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
     });
     if (error) throw new Error(`Previsão INSS Patronal: ${error.message}`);
     cpInss = l?.id ?? null;
+    await registrarPrevisaoFolha(sb, { conta_id: contaFolha, fazenda_id, produtor_id: null, empresa_id, og_id: og,
+      descricao: `INSS Patronal ${rotulo}`, valor: Math.round(totalINSSPat * 100) / 100, data_vencimento: vencEncargo, ano_safra_id: null, folha_id: folhaId, titulo_id: cpInss });
   }
   // Seção 261 ausente: a coluna não existe e a previsão de encargo não fica rastreada (mesmo limite já existente no fechamento)
   await sb.from("folha_pagamento").update({ cp_fgts_id: cpFgts, cp_inss_patronal_id: cpInss }).eq("id", folhaId);
@@ -204,6 +257,25 @@ export async function POST(req: Request) {
         });
         // Folha em rascunho gerada antes da previsão no CP: lança as previsões na primeira listagem (uma vez só,
         // depois as linhas já ficam ligadas aos títulos). Falha aqui nunca derruba a listagem.
+        // Rascunhos lançados antes da Previsão de Gastos (Seção 352): títulos de previsão sem linha no módulo
+        const rascunhos = (data ?? []).filter((f: any) => f.status === "rascunho");
+        const { error: semTabela } = await sb.from("previsoes_gasto").select("id", { head: true, count: "exact" }).limit(1);
+        if (!semTabela && rascunhos.length) {
+          const titulosPorFolha = new Map<string, string>();
+          (counts ?? []).forEach((row: any) => { if (row.cp_lancamento_id && rascunhos.some((f: any) => f.id === row.folha_id)) titulosPorFolha.set(row.cp_lancamento_id, row.folha_id); });
+          const ids = [...titulosPorFolha.keys()];
+          const ogOk = new Map<string, boolean>();
+          for (let i = 0; i < ids.length; i += 200) {
+            const { data: ls } = await sb.from("lancamentos").select("id, previsao_gasto_id").in("id", ids.slice(i, i + 200));
+            for (const l of ls ?? []) {
+              if (l.previsao_gasto_id) continue;
+              const fid = titulosPorFolha.get(l.id)!;
+              const faz = rascunhos.find((f: any) => f.id === fid)?.fazenda_id as string;
+              if (!ogOk.has(faz)) ogOk.set(faz, !!(await resolverOgPorClassificacao(sb, faz, "2.01.01.10.001")));
+              if (ogOk.get(faz)) semPrevisao.add(fid);
+            }
+          }
+        }
         const pendentes = (data ?? []).filter((f: any) => f.status === "rascunho" && semPrevisao.has(f.id)).slice(0, 60);
         for (let i = 0; i < pendentes.length; i += 6) {
           await Promise.all(pendentes.slice(i, i + 6).map((f: any) => sincronizarPrevisoesFolha(sb, f.id).catch(() => undefined)));
@@ -377,10 +449,15 @@ export async function POST(req: Request) {
         if (ex) {
           if (ex.natureza === "previsao") {
             const editado = Math.abs(ex.valor - (liqAntes[it.id] ?? liq)) > 0.005;
+            const valorFinal = editado ? ex.valor : liq;
             const { error: upErr } = await sb.from("lancamentos")
-              .update({ natureza: "real", valor: editado ? ex.valor : liq, status: "em_aberto" })
+              .update({ natureza: "real", valor: valorFinal, status: "em_aberto" })
               .eq("id", it.cp_lancamento_id);
             if (upErr) throw new Error(`CP ${it.nome_funcionario}: ${upErr.message}`);
+            await consumirPrevisaoDoTitulo(sb, it.cp_lancamento_id, valorFinal);
+          } else {
+            // Já efetivado no CP: se a previsão ainda não foi consumida (efetivado antes desta regra), consome agora
+            await consumirPrevisaoDoTitulo(sb, it.cp_lancamento_id, ex.valor);
           }
           continue;
         }
@@ -430,9 +507,10 @@ export async function POST(req: Request) {
       let fgtsConvertido = false, inssConvertido = false;
       for (const [campo, cpId] of [["fgts", (encPrev as any)?.cp_fgts_id], ["inss", (encPrev as any)?.cp_inss_patronal_id]] as const) {
         if (!cpId) continue;
-        const { data: ex } = await sb.from("lancamentos").select("id, natureza").eq("id", cpId).maybeSingle();
+        const { data: ex } = await sb.from("lancamentos").select("id, natureza, valor").eq("id", cpId).maybeSingle();
         if (!ex) continue;
         if ((ex as any).natureza === "previsao") await falharSeErro(sb.from("lancamentos").update({ natureza: "real", status: "em_aberto" }).eq("id", cpId), "converter encargo da folha");
+        await consumirPrevisaoDoTitulo(sb, cpId, Number((ex as any).valor ?? 0));
         if (campo === "fgts") fgtsConvertido = true; else inssConvertido = true;
       }
 
@@ -611,6 +689,7 @@ export async function POST(req: Request) {
           .in("funcionario_id", funcIds);
       }
 
+      await apagarPrevisoesDaFolha(sb, id);
       await falharSeErro(sb.from("folha_funcionarios").delete().eq("folha_id", id), "excluir folha_funcionarios");
       const { error } = await sb.from("folha_pagamento").delete().eq("id", id);
       if (error) throw error;

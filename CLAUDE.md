@@ -1335,6 +1335,26 @@ fluxo em produção (amplia os `CHECK` constraints de `lancamentos.status` e `.o
 
 ---
 
+### Sessão de 21 de outubro de 2026 — Previsão de Gastos (Previsto × Realizado)
+
+Módulo novo `app/financeiro/previsoes/page.tsx` (Financeiro → Previsão de Gastos), API `app/api/financeiro/previsoes/route.ts`,
+regras puras `lib/financeiro/previsoes.ts` (+ testes) e operações de banco `lib/financeiro/previsoes-server.ts`.
+Migration **Seção 352** (`previsoes_gasto`, `previsoes_gasto_consumos`, `previsoes_config`, `lancamentos.previsao_gasto_id`,
+origem `'previsao'` no CHECK de `lancamentos.origem_lancamento`).
+
+#### Arquitetura — Previsão de Gastos
+- Linha de previsão = OG (obrigatória, pode ser grupo; casa com OGs filhas por prefixo de `og_classificacao`) + valor + vencimento
+  (+ fornecedor, ciclo, centro de custo, produtor/empresa opcionais). Nunca é apagada (cancelar = status `cancelada`).
+- Enquanto tem saldo, mantém um título `natureza='previsao'` em `lancamentos` (`previsao_gasto_id`) → aparece no CP e no fluxo.
+- Consumo (NF de entrada, CP manual, Efetivar no CP, fechar folha) → `consumirPrevisao`: previsão fica `cumprida`; diferença
+  acima da tolerância → `pendente_decisao` (aba Decisão do Gestor: efetivar = desvio / manter saldo = volta a `aberta`).
+  Sobra pendente continua prevista no caixa até o gestor decidir.
+- Vencida (aberta, saldo > 0, vencimento < hoje) → aba Vencidas: nova data ou efetivar (`vencida_efetivada`).
+- Desvio do relatório é sempre calculado (Previsto − Realizado); Realizado = todos os títulos reais da OG (lancamentos +
+  empresa_lancamentos), não só os vindos de previsão.
+- Folha: rascunho cria linhas `origem='folha'` (`folha_id`); fechar consome; reabrir/excluir apaga e refaz.
+- Contratos financeiros e arrendamentos ficam fora (decisão do dono).
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.

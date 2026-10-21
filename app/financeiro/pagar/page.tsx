@@ -783,6 +783,44 @@ export default function ContasAPagarPage() {
     });
   }
 
+  // ── Previsão de Gastos: título real que consome uma previsão em aberto ──
+  type PrevAberta = { id: string; og_classificacao: string; og_nome: string; pessoa_nome: string; descricao: string | null; saldo: number; data_vencimento: string };
+  const [prevAbertas, setPrevAbertas] = useState<PrevAberta[]>([]);
+  const [prevSel, setPrevSel] = useState("");
+  async function apiPrevisoes(body: Record<string, unknown>) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const r = await fetch("/api/financeiro/previsoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+      body: JSON.stringify({ fazenda_id: fazendaId, ...body }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error ?? "Erro na Previsão de Gastos");
+    return j;
+  }
+  useEffect(() => {
+    if (!modalNovo || editandoId || !fazendaId) return;
+    setPrevSel("");
+    apiPrevisoes({ operacao: "abertas", lado: novoForm.origem === "empresa_lancamentos" ? "empresa" : "produtor" })
+      .then(j => setPrevAbertas(j.previsoes as PrevAberta[]))
+      .catch(() => setPrevAbertas([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalNovo, editandoId, fazendaId, novoForm.origem]);
+  /** Consome a previsão escolhida com o(s) título(s) recém-criado(s). Falha aqui não desfaz o título: só avisa. */
+  async function consumirPrevisaoSelecionada(criados: { id: string; valor: number }[], empresa: boolean): Promise<string | null> {
+    if (!prevSel || !criados.length) return null;
+    const total = Math.round(criados.reduce((t, c) => t + c.valor, 0) * 100) / 100;
+    try {
+      const r = await apiPrevisoes({
+        operacao: "consumir", previsao_id: prevSel, valor: total, origem: "cp_manual",
+        lancamento_id: empresa ? null : criados[0].id, emp_lancamento_id: empresa ? criados[0].id : null,
+      });
+      return r.status === "pendente_decisao" ? "Título lançado. A previsão foi consumida com diferença e foi para a Decisão do Gestor." : null;
+    } catch (e) {
+      return `Título lançado, mas a previsão não foi consumida: ${e instanceof Error ? e.message : String(e)}. Consuma pela Previsão de Gastos.`;
+    }
+  }
+
   function abrirNovo() {
     setErroNovo("");
     setNovoTab("principal");
@@ -984,7 +1022,17 @@ export default function ContasAPagarPage() {
             const j = await r.json() as { ok: boolean; error?: string };
             if (!j.ok) throw new Error(`A 1ª parcela foi salva, mas as demais não: ${j.error}. Abra o título e tente de novo.`);
           } else {
+            // Título de previsão da Previsão de Gastos sendo efetivado: o valor (editado) consome a previsão
+            const { data: antes } = await supabase.from("lancamentos").select("natureza, previsao_gasto_id").eq("id", editandoId).maybeSingle();
             await atualizarLancamento(editandoId, camposEdit);
+            if (antes?.previsao_gasto_id && antes.natureza === "previsao" && novoForm.natureza === "real") {
+              try {
+                const r = await apiPrevisoes({ operacao: "consumir", previsao_id: antes.previsao_gasto_id, valor: valorFinal, lancamento_id: editandoId, origem: "efetivar_cp" });
+                if (r.status === "pendente_decisao") alert("Previsão efetivada com valor diferente do previsto: a diferença foi para a Decisão do Gestor (Previsão de Gastos).");
+              } catch (e) {
+                alert(`Título efetivado, mas a Previsão de Gastos não foi atualizada: ${e instanceof Error ? e.message : String(e)}`);
+              }
+            }
           }
           if (salvarComoRegra) await criarRegraClassificacaoNovo();
         } else {
@@ -1084,20 +1132,26 @@ export default function ContasAPagarPage() {
         const criar = cartaoSel
           ? (l: typeof base) => criarLancamentoNoCartao(l, cartaoSel, contaId!)
           : criarLancamento;
+        const criados: { id: string; valor: number }[] = [];
         if (novoForm.condicao === "prazo" && parcelasNovo.length > 0) {
           const agrupador = Date.now().toString(36);
           const total = parcelasNovo.length;
           for (let i = 0; i < total; i++) {
-            await criar({ ...base, ano_safra_id: parcelasNovo[i].ano_safra_id ?? base.ano_safra_id, ciclo_id: parcelasNovo[i].ciclo_id ?? base.ciclo_id, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
+            const l = await criar({ ...base, ano_safra_id: parcelasNovo[i].ano_safra_id ?? base.ano_safra_id, ciclo_id: parcelasNovo[i].ciclo_id ?? base.ciclo_id, data_vencimento: parcelasNovo[i].data, valor: parcelasNovo[i].valor, num_parcela: i + 1, total_parcelas: total, agrupador });
+            criados.push({ id: l.id, valor: Number(l.valor) });
           }
         } else if (novoForm.condicao === "prazo") {
-          await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
+          criados.push(...(await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia))).map(l => ({ id: l.id, valor: Number(l.valor) })));
         } else if (novoForm.condicao === "recorrencia") {
-          await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia));
+          criados.push(...(await criarParcelamento(base, Math.max(2, novoForm.qtd_parcelas), Math.max(1, novoForm.frequencia))).map(l => ({ id: l.id, valor: Number(l.valor) })));
         } else {
-          await criar(base);
+          const l = await criar(base);
+          criados.push({ id: l.id, valor: Number(l.valor) });
         }
         if (salvarComoRegra) await criarRegraClassificacaoNovo();
+        // Recorrência consome a previsão só com o 1º título (os demais são de outros meses)
+        const avisoPrev = await consumirPrevisaoSelecionada(novoForm.condicao === "recorrencia" ? criados.slice(0, 1) : criados, false);
+        if (avisoPrev) alert(avisoPrev);
       } else {
         // Uma linha por parcela, todas com o mesmo agrupador (mesmo título parcelado).
         // Avulso = uma linha só. Parcelado = parcelasNovo (datas/valores editáveis na grade).
@@ -1113,12 +1167,14 @@ export default function ContasAPagarPage() {
           numero_documento: novoForm.numero_documento || undefined,
           observacao: novoForm.observacao.trim() || undefined,
         };
+        const criadosEmp: { id: string; valor: number }[] = [];
         if (novoForm.condicao === "prazo" && parcelasNovo.length > 1) {
           const agrupador = crypto.randomUUID();
           const total = parcelasNovo.length;
           for (let k = 0; k < total; k++) {
             const p = parcelasNovo[k];
-            await criarEmpresaLancamento({ ...baseEmp, valor: p.valor, data_vencimento: p.data, agrupador, parcela_num: k + 1, parcelas_total: total });
+            const l = await criarEmpresaLancamento({ ...baseEmp, valor: p.valor, data_vencimento: p.data, agrupador, parcela_num: k + 1, parcelas_total: total });
+            criadosEmp.push({ id: l.id, valor: Number(l.valor) });
           }
         } else if (novoForm.condicao === "recorrencia" && Math.max(2, novoForm.qtd_parcelas) >= 2) {
           const agrupador = crypto.randomUUID();
@@ -1126,11 +1182,15 @@ export default function ContasAPagarPage() {
           for (let k = 0; k < total; k++) {
             const d = new Date(novoForm.data_vencimento + "T12:00:00");
             d.setMonth(d.getMonth() + k * Math.max(1, novoForm.frequencia));
-            await criarEmpresaLancamento({ ...baseEmp, valor: novoForm.valor, data_vencimento: d.toISOString().split("T")[0], agrupador, parcela_num: k + 1, parcelas_total: total });
+            const l = await criarEmpresaLancamento({ ...baseEmp, valor: novoForm.valor, data_vencimento: d.toISOString().split("T")[0], agrupador, parcela_num: k + 1, parcelas_total: total });
+            if (k === 0) criadosEmp.push({ id: l.id, valor: Number(l.valor) });
           }
         } else {
-          await criarEmpresaLancamento({ ...baseEmp, valor: novoForm.valor, data_vencimento: novoForm.data_vencimento });
+          const l = await criarEmpresaLancamento({ ...baseEmp, valor: novoForm.valor, data_vencimento: novoForm.data_vencimento });
+          criadosEmp.push({ id: l.id, valor: Number(l.valor) });
         }
+        const avisoPrevEmp = await consumirPrevisaoSelecionada(criadosEmp, true);
+        if (avisoPrevEmp) alert(avisoPrevEmp);
       }
       setModalNovo(false);
       await carregar();
@@ -1403,6 +1463,29 @@ export default function ContasAPagarPage() {
 
   // Bloco de Condição de Pagamento (À Vista / Parcelado / Recorrência) — compartilhado
   // pelos dois lados (Produtor e Empresa), para o mesmo fluxo de parcelas valer nos dois.
+  const previsaoNovoJsx = !editandoId && prevAbertas.length > 0 ? (() => {
+    const clsOg = opGerenciais.find(o => o.id === novoForm.operacao_gerencial_id)?.classificacao ?? "";
+    const casa = (c: string) => !!clsOg && (clsOg === c || clsOg.startsWith(c + "."));
+    const ordenadas = [...prevAbertas].sort((a, b) => Number(casa(b.og_classificacao)) - Number(casa(a.og_classificacao)) || a.data_vencimento.localeCompare(b.data_vencimento));
+    const sel = prevAbertas.find(p => p.id === prevSel);
+    return (
+      <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6, background: "#F4F6FA", borderRadius: 8, padding: "10px 12px" }}>
+        <label data-arato-label="true" style={lbl}>Consumir previsão (Previsão de Gastos) — opcional</label>
+        <SelectBusca
+          value={prevSel}
+          onChange={setPrevSel}
+          options={[{ value: "", label: "— Não consome previsão —" }, ...ordenadas.map(p => ({
+            value: p.id,
+            label: `${fmtData(p.data_vencimento)} · ${p.og_classificacao} ${p.og_nome}${p.pessoa_nome ? ` · ${p.pessoa_nome}` : ""}${p.descricao ? ` · ${p.descricao}` : ""} · saldo ${fmtBRL(p.saldo)}`,
+            group: casa(p.og_classificacao) ? "Mesma Operação Gerencial" : "Outras previsões",
+          }))]}
+          style={{ ...inp, width: "100%", boxSizing: "border-box" }}
+        />
+        {sel && <div style={{ fontSize: 11, color: "#555" }}>A previsão sai do CP e do fluxo de caixa e fica cumprida com o valor deste título; se for diferente de {fmtBRL(sel.saldo)}, a diferença vai para a Decisão do Gestor.</div>}
+      </div>
+    );
+  })() : null;
+
   const condicaoNovoJsx = (
     <>
                       {/* Condição de Pagamento */}
@@ -2598,6 +2681,7 @@ export default function ContasAPagarPage() {
                         </div>
                       </div>
                       {condicaoNovoJsx}
+                      {previsaoNovoJsx}
                     </>
                   ) : (
                     <>
@@ -2643,6 +2727,7 @@ export default function ContasAPagarPage() {
                           </SelectField>
                         </div>
                       </div>
+                      {previsaoNovoJsx}
                       {!ehEmpresa && (
                         <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                           <div>
