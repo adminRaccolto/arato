@@ -177,8 +177,141 @@ function DiffRow({ campo, antes, depois }: { campo: string; antes: unknown; depo
   );
 }
 
+// ── Contexto do evento: explica o que aconteceu, com os registros envolvidos (carregado ao abrir a linha) ──
+const MARCA_SALDO_ZERADO = "[Saldo do pedido zerado pelas NFs vinculadas]";
+const ORIGEM_LABEL: Record<string, string> = {
+  nf_entrada: "NF de Entrada", nf_saida: "NF de Saída", pedido_compra: "Pedido de Compra", arrendamento: "Arrendamento",
+  tesouraria: "Tesouraria", contrato_financeiro: "Contrato Financeiro", consorcio: "Consórcio", manual: "Lançamento manual",
+  compra_terra: "Compra de Terra", nf_servico: "NF de Serviço", seguro: "Seguro", folha: "Folha de Pagamento",
+  cartao_fatura: "Fatura de Cartão", cte: "CT-e", previsao: "Previsão de Gastos", apoio_financeiro: "Apoio Financeiro",
+};
+type Ctx = {
+  pessoa?: string; nf?: { numero: string; emitente: string } | null;
+  pedido?: { numero: string; fornecedor: string; total: number; moeda: string } | null;
+  nfsPedido?: { numero: string; emitente: string; data: string | null; valor: number; status: string; processado_por: string | null }[];
+};
+const moedaFmt = (v: number, moeda?: unknown) => moeda === "USD"
+  ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function ContextoEvento({ entry, usuario }: { entry: AuditEntry; usuario: string | null }) {
+  const d = (entry.dados_depois ?? entry.dados_antes ?? {}) as Dados;
+  const [ctx, setCtx] = useState<Ctx | null>(null);
+  const ehLanc = entry.tabela === "lancamentos";
+  const cancelPorSaldo = ehLanc && entry.acao === "UPDATE" && String(entry.dados_depois?.observacao ?? "").includes(MARCA_SALDO_ZERADO)
+    && entry.dados_depois?.status === "cancelado" && entry.dados_antes?.status !== "cancelado";
+  const reativadoPorEstorno = ehLanc && entry.acao === "UPDATE" && entry.dados_antes?.status === "cancelado"
+    && String(entry.dados_antes?.observacao ?? "").includes(MARCA_SALDO_ZERADO) && entry.dados_depois?.status !== "cancelado";
+
+  useEffect(() => {
+    if (!ehLanc) return;
+    let vivo = true;
+    (async () => {
+      const c: Ctx = {};
+      if (d.pessoa_id) {
+        const { data } = await sb.from("pessoas").select("nome").eq("id", String(d.pessoa_id)).maybeSingle();
+        c.pessoa = data?.nome ?? undefined;
+      }
+      if (d.nf_entrada_id) {
+        const { data } = await sb.from("nf_entradas").select("numero, emitente_nome").eq("id", String(d.nf_entrada_id)).maybeSingle();
+        c.nf = data ? { numero: String(data.numero ?? ""), emitente: String(data.emitente_nome ?? "") } : null;
+      }
+      if (d.origem_lancamento === "pedido_compra" && entry.registro_id) {
+        const { data: ped } = await sb.from("pedidos_compra").select("id, numero, nr_pedido_fornecedor, fornecedor_id, total_financeiro").eq("lancamento_id", entry.registro_id).maybeSingle();
+        if (ped) {
+          let forn = "";
+          if (ped.fornecedor_id) { const { data: f } = await sb.from("pessoas").select("nome").eq("id", ped.fornecedor_id).maybeSingle(); forn = f?.nome ?? ""; }
+          c.pedido = { numero: String(ped.numero ?? "") + (ped.nr_pedido_fornecedor ? ` (nº do fornecedor ${ped.nr_pedido_fornecedor})` : ""), fornecedor: forn, total: Number(ped.total_financeiro ?? 0), moeda: String(d.moeda ?? "BRL") };
+          const { data: nfs } = await sb.from("nf_entradas").select("numero, emitente_nome, data_entrada, data_emissao, valor_total, status, processado_por")
+            .eq("pedido_compra_id", ped.id).order("data_emissao");
+          c.nfsPedido = (nfs ?? []).map(n => ({ numero: String(n.numero ?? ""), emitente: String(n.emitente_nome ?? ""), data: (n.data_entrada ?? n.data_emissao) as string | null, valor: Number(n.valor_total ?? 0), status: String(n.status ?? ""), processado_por: (n.processado_por as string | null) ?? null }));
+        }
+      }
+      if (vivo) setCtx(c);
+    })();
+    return () => { vivo = false; };
+  }, [entry.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!ehLanc) return null;
+  const valor = Number(d.valor ?? 0);
+  const linha = (rot: string, val: React.ReactNode) => (
+    <><div style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>{rot}</div><div style={{ fontSize: 12, color: "#1a1a1a" }}>{val}</div></>
+  );
+  const somaNfs = (ctx?.nfsPedido ?? []).filter(n => n.status === "processada").reduce((t, n) => t + n.valor, 0);
+  return (
+    <div style={{ display: "grid", gap: 10, margin: "6px 0" }}>
+      {cancelPorSaldo && (
+        <div style={{ background: "#F3E8FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#3B0764", lineHeight: 1.5 }}>
+          <strong>Cancelamento automático feito pelo sistema</strong> — ninguém cancelou este título à mão. Ele era o título do
+          {ctx?.pedido ? <> <strong>Pedido de Compra nº {ctx.pedido.numero}</strong></> : " Pedido de Compra"}, que representa no fluxo de caixa o saldo do pedido ainda sem nota.
+          Quando as NFs vinculadas ao pedido foram processadas e cobriram o total, o sistema cancelou este título para o valor não contar em dobro
+          (as NFs já geraram os próprios títulos no Contas a Pagar).{usuario ? <> O cancelamento foi disparado quando <strong>{usuario}</strong> processou a NF.</> : null}
+          {" "}Se uma dessas NFs for estornada, o título volta sozinho com o saldo.
+        </div>
+      )}
+      {reativadoPorEstorno && (
+        <div style={{ background: "#D5E8F5", border: "0.5px solid #1A4870", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", lineHeight: 1.5 }}>
+          <strong>Reativado automaticamente pelo sistema</strong> — uma NF vinculada ao pedido foi estornada ou excluída e o saldo do pedido voltou a existir, então o título do pedido voltou para em aberto com esse saldo.
+        </div>
+      )}
+      <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 14px" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 6 }}>Título</div>
+        <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: "4px 12px" }}>
+          {linha("Tipo", d.tipo === "receber" ? "Conta a Receber" : "Conta a Pagar")}
+          {linha("Descrição", String(d.descricao ?? "—"))}
+          {linha(d.tipo === "receber" ? "Cliente" : "Fornecedor", ctx?.pessoa ?? (d.pessoa_id ? "…" : "—"))}
+          {linha("Valor", moedaFmt(valor, d.moeda))}
+          {linha("Vencimento", fmtVal(d.data_vencimento))}
+          {linha("Origem", ORIGEM_LABEL[String(d.origem_lancamento ?? "")] ?? String(d.origem_lancamento ?? "—"))}
+          {ctx?.nf && linha("NF", `${ctx.nf.numero} — ${ctx.nf.emitente}`)}
+        </div>
+      </div>
+      {ctx?.pedido && (
+        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 14px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 6 }}>
+            Pedido de Compra nº {ctx.pedido.numero}{ctx.pedido.fornecedor ? ` — ${ctx.pedido.fornecedor}` : ""} · total {moedaFmt(ctx.pedido.total, ctx.pedido.moeda)}
+          </div>
+          {(ctx.nfsPedido ?? []).length === 0 ? <div style={{ fontSize: 12, color: "#666" }}>Nenhuma NF vinculada a este pedido hoje.</div> : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead><tr>{["NF", "Emitente", "Data", "Valor", "Situação", "Processada por"].map(h => <th key={h} style={{ textAlign: h === "Valor" ? "right" : "left", fontSize: 10, color: "#888", padding: "4px 6px", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {(ctx.nfsPedido ?? []).map((n, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: "4px 6px" }}>{n.numero}</td>
+                    <td style={{ padding: "4px 6px" }}>{n.emitente}</td>
+                    <td style={{ padding: "4px 6px" }}>{fmtVal(n.data)}</td>
+                    <td style={{ padding: "4px 6px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{moedaFmt(n.valor)}</td>
+                    <td style={{ padding: "4px 6px" }}>{n.status}</td>
+                    <td style={{ padding: "4px 6px" }}>{n.processado_por ?? "—"}</td>
+                  </tr>
+                ))}
+                <tr><td colSpan={3} style={{ padding: "4px 6px", fontWeight: 600 }}>Total das NFs processadas</td>
+                  <td style={{ padding: "4px 6px", textAlign: "right", fontWeight: 600 }}>{moedaFmt(somaNfs)}</td><td colSpan={2} /></tr>
+              </tbody>
+            </table>
+          )}
+          {ctx.pedido.moeda === "USD" && (ctx.nfsPedido ?? []).length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 11, color: "#7A4300", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 6, padding: "6px 10px" }}>
+              Atenção: o pedido está em dólar e as NFs em reais. O saldo foi calculado comparando os dois valores sem converter a moeda.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Componente ExpandedDetail ───────────────────────────────────────────────
-function ExpandedDetail({ entry }: { entry: AuditEntry }) {
+function ExpandedDetail({ entry, usuario }: { entry: AuditEntry; usuario: string | null }) {
+  return (
+    <>
+      <ContextoEvento entry={entry} usuario={usuario} />
+      <DetalheCampos entry={entry} />
+    </>
+  );
+}
+
+function DetalheCampos({ entry }: { entry: AuditEntry }) {
   const campos = entry.campos_alterados ?? [];
 
   if (entry.acao === "DELETE" && entry.dados_antes) {
@@ -576,7 +709,7 @@ export default function AuditoriaPage() {
                         {aberto && (
                           <tr key={l.id + "_detail"}>
                             <td colSpan={7 + Math.max(1, colsTabela.length)} style={{ padding: "0 16px 12px", background: isDelete ? "#FFF5F5" : "#FAFCFF" }}>
-                              <ExpandedDetail entry={l} />
+                              <ExpandedDetail entry={l} usuario={resolveUser(l.usuario_app)} />
                             </td>
                           </tr>
                         )}

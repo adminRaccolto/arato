@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-n",
+    data: "21/10/2026",
+    titulo: "Monitor de Auditoria explica o evento",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao abrir um evento de CP/CR, o Monitor mostra o título (tipo, descrição, fornecedor/cliente, valor, vencimento, origem e NF). Quando o título de um Pedido de Compra foi cancelado automaticamente porque as NFs cobriram o pedido, aparece a explicação, o pedido com o total e a lista das NFs vinculadas com valor e quem processou; também explica a reativação automática quando uma NF é estornada." },
+    ],
+    onde: "Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.21-m",
     data: "21/10/2026",
     titulo: "Contratos de outras fazendas da conta sumiam da lista",
