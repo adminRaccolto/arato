@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-a",
+    data: "21/10/2026",
+    titulo: "Folha de pagamento: previsão no caixa e botão Excluir",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Ao salvar a folha (ainda em rascunho), ela já entra no Contas a Pagar e no fluxo de caixa como previsão: um título por funcionário, FGTS e INSS Patronal. Ao Fechar Folha, cada previsão vira título real com o valor que estiver nela, inclusive o que você editou no Contas a Pagar; sem edição, vale o líquido recalculado com os adiantamentos. Título já efetivado no CP é mantido." },
+      { tipo: "novo", texto: "Botão Excluir na lista de folhas (também dentro da folha). Apaga a folha e, em cascata, os títulos do Contas a Pagar; bloqueia se algum já foi baixado em borderô e devolve adiantamentos descontados para Pendente." },
+      { tipo: "melhoria", texto: "Reabrir a folha volta a lançar os títulos como previsão no CP e no fluxo de caixa." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.20-g",
     data: "20/10/2026",
     titulo: "Fluxo de Caixa diário: Considerar atrasados?",

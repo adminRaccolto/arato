@@ -51,6 +51,112 @@ async function inserirLancamentoFolha(sb: any, row: Record<string, unknown>) {
   return r;
 }
 
+const MESES_ABREV = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+function rotuloCompetencia(competencia: string): string {
+  const [ano, mes] = competencia.split("-");
+  return `${MESES_ABREV[parseInt(mes) - 1]}/${ano}`;
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function liquidoItem(it: any): number {
+  return Math.max(0, Math.round((
+    it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento
+    - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios
+    + (it.complemento_salarial ?? 0)
+  ) * 100) / 100);
+}
+function vencimentoEncargoFolha(competencia: string): string {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const prox = mes === 12 ? { a: ano + 1, m: 1 } : { a: ano, m: mes + 1 };
+  return `${prox.a}-${String(prox.m).padStart(2, "0")}-20`;
+}
+
+/** Folha em rascunho já aparece no Contas a Pagar e no fluxo de caixa como PREVISÃO (natureza "previsao"):
+ *  um título por funcionário + FGTS + INSS Patronal. Ao fechar a folha (ou ao efetivar o título no CP) a
+ *  previsão vira título real com o valor que estiver nela. Refaz todas as previsões da folha a partir das
+ *  linhas gravadas — chamado ao salvar a folha e ao reabri-la. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void> {
+  const { data: folha } = await sb.from("folha_pagamento").select("*").eq("id", folhaId).maybeSingle();
+  if (!folha || folha.status === "fechado") return;
+  const { fazenda_id, empresa_id, competencia } = folha as { fazenda_id: string; empresa_id: string | null; competencia: string };
+  const { data: itens } = await sb.from("folha_funcionarios").select("*").eq("folha_id", folhaId);
+  const hoje = hojeLocal();
+  const vencimento = (folha.data_vencimento as string | null) || vencimentoSalario(competencia);
+  const rotulo = rotuloCompetencia(competencia);
+
+  // Previsões antigas (salário já ligado às linhas + encargos) saem para entrar as novas; título real nunca é tocado.
+  const antigos = [
+    ...(itens ?? []).map((i: any) => i.cp_lancamento_id),
+    folha.cp_fgts_id, folha.cp_inss_patronal_id,
+  ].filter(Boolean) as string[];
+  if (antigos.length) {
+    await falharSeErro(sb.from("lancamentos").delete().in("id", antigos).eq("natureza", "previsao").neq("status", "baixado"), "excluir previsões da folha");
+  }
+
+  const ogSalario = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.001");
+  let anoSafra: string | null = null;
+  try {
+    const { data: as1 } = await sb.rpc("fn_ano_safra_da_data", { p_fazenda: fazenda_id, p_data: vencimento });
+    if (typeof as1 === "string") anoSafra = as1;
+  } catch { /* sem ano safra para a data */ }
+  const idsFuncs = (itens ?? []).map((i: any) => i.funcionario_id).filter(Boolean) as string[];
+  const vinculo: Record<string, { produtor_id: string | null; empresa_id: string | null }> = {};
+  if (idsFuncs.length) {
+    const { data: fs } = await sb.from("funcionarios").select("id, produtor_id, empresa_id").in("id", idsFuncs);
+    for (const f of fs ?? []) vinculo[f.id as string] = { produtor_id: (f as any).produtor_id ?? null, empresa_id: (f as any).empresa_id ?? null };
+  }
+
+  for (const it of (itens ?? []) as any[]) {
+    const { data: lanc, error } = await inserirLancamentoFolha(sb, {
+      fazenda_id,
+      empresa_id: empresa_id ?? vinculo[it.funcionario_id]?.empresa_id ?? null,
+      produtor_id: it.produtor_id ?? vinculo[it.funcionario_id]?.produtor_id ?? null,
+      funcionario_id: it.funcionario_id ?? null,
+      ano_safra_id: anoSafra,
+      natureza: "previsao", tipo: "pagar",
+      descricao: `Salário ${rotulo} — ${it.nome_funcionario}`,
+      valor: liquidoItem(it), moeda: "BRL", status: "em_aberto",
+      categoria: "Pessoal / Salários", origem_lancamento: "folha",
+      operacao_gerencial_id: ogSalario,
+      data_vencimento: vencimento, data_lancamento: hoje,
+    });
+    if (error) throw new Error(`Previsão ${it.nome_funcionario}: ${error.message}`);
+    await sb.from("folha_funcionarios").update({ cp_lancamento_id: lanc?.id ?? null }).eq("id", it.id);
+  }
+
+  const produtorIdFolha = ((itens ?? []) as any[]).find(it => it.produtor_id)?.produtor_id ?? null;
+  const totalFGTS = ((itens ?? []) as any[]).reduce((s, it) => s + (it.fgts ?? 0), 0);
+  const totalINSSPat = ((itens ?? []) as any[]).reduce((s, it) => s + (it.inss_patronal ?? 0), 0);
+  const vencEncargo = vencimentoEncargoFolha(competencia);
+  let cpFgts: string | null = null, cpInss: string | null = null;
+  if (totalFGTS > 0.005) {
+    const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.013");
+    const { data: l, error } = await inserirLancamentoFolha(sb, {
+      fazenda_id, empresa_id: empresa_id ?? null, produtor_id: produtorIdFolha,
+      natureza: "previsao", tipo: "pagar", descricao: `FGTS ${rotulo}`,
+      valor: Math.round(totalFGTS * 100) / 100, moeda: "BRL", status: "em_aberto",
+      categoria: "Pessoal / Encargos", origem_lancamento: "folha", operacao_gerencial_id: og,
+      data_vencimento: vencEncargo, data_lancamento: hoje,
+    });
+    if (error) throw new Error(`Previsão FGTS: ${error.message}`);
+    cpFgts = l?.id ?? null;
+  }
+  if (empresa_id && totalINSSPat > 0.005) {
+    const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
+    const { data: l, error } = await inserirLancamentoFolha(sb, {
+      fazenda_id, empresa_id, produtor_id: null,
+      natureza: "previsao", tipo: "pagar", descricao: `INSS Patronal ${rotulo}`,
+      valor: Math.round(totalINSSPat * 100) / 100, moeda: "BRL", status: "em_aberto",
+      categoria: "Pessoal / Encargos", origem_lancamento: "folha", operacao_gerencial_id: og,
+      data_vencimento: vencEncargo, data_lancamento: hoje,
+    });
+    if (error) throw new Error(`Previsão INSS Patronal: ${error.message}`);
+    cpInss = l?.id ?? null;
+  }
+  // Seção 261 ausente: a coluna não existe e a previsão de encargo não fica rastreada (mesmo limite já existente no fechamento)
+  await sb.from("folha_pagamento").update({ cp_fgts_id: cpFgts, cp_inss_patronal_id: cpInss }).eq("id", folhaId);
+}
+
 export async function POST(req: Request) {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -166,6 +272,10 @@ export async function POST(req: Request) {
     // ─── delete_funcionarios ──────────────────────────────────────────────────
     if (operacao === "delete_funcionarios") {
       const { folha_id } = payload as { folha_id: string };
+      // Previsões de salário ligadas às linhas saem junto (título real e baixado ficam intactos)
+      const { data: ligadas } = await sb.from("folha_funcionarios").select("cp_lancamento_id").eq("folha_id", folha_id);
+      const idsPrev = (ligadas ?? []).map((r: any) => r.cp_lancamento_id).filter(Boolean) as string[];
+      if (idsPrev.length) await falharSeErro(sb.from("lancamentos").delete().in("id", idsPrev).eq("natureza", "previsao").neq("status", "baixado"), "excluir previsões da folha");
       const { error } = await sb.from("folha_funcionarios").delete().eq("folha_id", folha_id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
@@ -177,6 +287,8 @@ export async function POST(req: Request) {
       if (rows.length) {
         const { error } = await sb.from("folha_funcionarios").insert(rows);
         if (error) throw error;
+        const folhaId = (rows[0] as { folha_id?: string }).folha_id;
+        if (folhaId) await sincronizarPrevisoesFolha(sb, folhaId);
       }
       return NextResponse.json({ ok: true });
     }
@@ -196,6 +308,9 @@ export async function POST(req: Request) {
       // foram lançados DEPOIS de a folha ser salva — antes o salário saía cheio e o adiantamento
       // ficava "pendente" pra sempre. O desconto vem só da aba Adiantamentos: vale sempre a soma dos pendentes
       // (a coluna manual de adiantamento na folha foi retirada).
+      // Líquido como estava ao salvar: serve para saber se o valor da previsão foi editado à mão no CP
+      const liqAntes: Record<string, number> = {};
+      for (const it of (itens ?? []) as any[]) liqAntes[it.id] = liquidoItem(it);
       const funcIdsFolha = (itens ?? []).map((it: any) => it.funcionario_id).filter(Boolean) as string[];
       if (funcIdsFolha.length > 0) {
         const { data: adisPend } = await sb.from("adiantamentos_salario")
@@ -239,12 +354,28 @@ export async function POST(req: Request) {
         const { data: fs } = await sb.from("funcionarios").select("id, produtor_id, empresa_id").in("id", idsFuncs);
         for (const f of fs ?? []) vinculoFunc[f.id as string] = { produtor_id: (f as any).produtor_id ?? null, empresa_id: (f as any).empresa_id ?? null };
       }
-      for (const it of (itens ?? [])) {
-        const liq = Math.max(0, Math.round((
-          it.salario_bruto - it.inss_trabalhador - it.irrf - it.adiantamento
-          - it.outros_descontos + it.vale_transporte + it.vale_refeicao + it.outros_beneficios
-          + (it.complemento_salarial ?? 0)
-        ) * 100) / 100);
+      // Folha salva já deixou uma PREVISÃO por funcionário no CP: aqui ela vira título real. Se o valor da previsão
+      // foi editado no CP, vale o editado; se não, vale o líquido recalculado (com adiantamentos lançados depois).
+      // Título que o usuário já efetivou no CP fica como está.
+      const idsPrevSal = (itens ?? []).map((it: any) => it.cp_lancamento_id).filter(Boolean) as string[];
+      const prevSal: Record<string, { natureza: string; valor: number; status: string }> = {};
+      if (idsPrevSal.length) {
+        const { data: ex } = await sb.from("lancamentos").select("id, natureza, valor, status").in("id", idsPrevSal);
+        for (const l of ex ?? []) prevSal[l.id as string] = { natureza: (l as any).natureza, valor: Number((l as any).valor ?? 0), status: (l as any).status };
+      }
+      for (const it of (itens ?? []) as any[]) {
+        const liq = liquidoItem(it);
+        const ex = it.cp_lancamento_id ? prevSal[it.cp_lancamento_id] : undefined;
+        if (ex) {
+          if (ex.natureza === "previsao") {
+            const editado = Math.abs(ex.valor - (liqAntes[it.id] ?? liq)) > 0.005;
+            const { error: upErr } = await sb.from("lancamentos")
+              .update({ natureza: "real", valor: editado ? ex.valor : liq, status: "em_aberto" })
+              .eq("id", it.cp_lancamento_id);
+            if (upErr) throw new Error(`CP ${it.nome_funcionario}: ${upErr.message}`);
+          }
+          continue;
+        }
 
         const { data: lancamento, error: lancErr } = await inserirLancamentoFolha(sb, {
           fazenda_id,
@@ -286,7 +417,18 @@ export async function POST(req: Request) {
         return `${prox.a}-${String(prox.m).padStart(2, "0")}-20`;
       })();
 
-      if (totalFGTS > 0.005) {
+      // Previsões de encargos ligadas à folha: viram reais com o valor que tiverem (editado ou não)
+      const { data: encPrev } = await sb.from("folha_pagamento").select("cp_fgts_id, cp_inss_patronal_id").eq("id", id).maybeSingle();
+      let fgtsConvertido = false, inssConvertido = false;
+      for (const [campo, cpId] of [["fgts", (encPrev as any)?.cp_fgts_id], ["inss", (encPrev as any)?.cp_inss_patronal_id]] as const) {
+        if (!cpId) continue;
+        const { data: ex } = await sb.from("lancamentos").select("id, natureza").eq("id", cpId).maybeSingle();
+        if (!ex) continue;
+        if ((ex as any).natureza === "previsao") await falharSeErro(sb.from("lancamentos").update({ natureza: "real", status: "em_aberto" }).eq("id", cpId), "converter encargo da folha");
+        if (campo === "fgts") fgtsConvertido = true; else inssConvertido = true;
+      }
+
+      if (totalFGTS > 0.005 && !fgtsConvertido) {
         const ogFgts = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.013");
         const { data: fgtsLanc, error: fgtsErr } = await inserirLancamentoFolha(sb, {
           fazenda_id, empresa_id: empresa_id ?? null, produtor_id: produtorIdFolha,
@@ -306,7 +448,7 @@ export async function POST(req: Request) {
         if (fgtsLanc?.id) await sb.from("folha_pagamento").update({ cp_fgts_id: fgtsLanc.id }).eq("id", id);
       }
 
-      if (empresa_id && totalINSSPat > 0.005) {
+      if (empresa_id && totalINSSPat > 0.005 && !inssConvertido) {
         const ogInssPat = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
         const { data: inssLanc, error: inssErr } = await inserirLancamentoFolha(sb, {
           fazenda_id, empresa_id, produtor_id: null,
@@ -417,6 +559,9 @@ export async function POST(req: Request) {
         .update({ status: "rascunho" })
         .eq("id", id);
       if (error) throw error;
+
+      // Folha aberta de novo volta a ser previsão no CP / fluxo de caixa
+      await sincronizarPrevisoesFolha(sb, id);
 
       return NextResponse.json({ ok: true });
     }

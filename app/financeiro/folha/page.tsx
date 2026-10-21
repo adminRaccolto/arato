@@ -620,11 +620,11 @@ export default function FolhaPagamentoPage() {
     if (adisPendentesComp.length > 0) {
       const nomes = adisPendentesComp.map(a => `${a.funcionario_nome ?? "funcionário"} (${a.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`).join(", ");
       const ok = confirm(
-        `Há ${adisPendentesComp.length} adiantamento(s) pendente(s) para ${nomeMes(folha.competencia)}:\n\n${nomes}\n\nEles serão descontados automaticamente do salário líquido ao fechar a folha, mesmo os lançados depois de salvar a folha.\n\nFechar a folha?`
+        `Há ${adisPendentesComp.length} adiantamento(s) pendente(s) para ${nomeMes(folha.competencia)}:\n\n${nomes}\n\nEles serão descontados automaticamente do salário líquido ao fechar a folha, exceto nos títulos cujo valor você editou no Contas a Pagar.\n\nFechar a folha?`
       );
       if (!ok) return;
     } else {
-      if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? Isso irá gerar os lançamentos de CP.`)) return;
+      if (!confirm(`Fechar a folha de ${nomeMes(folha.competencia)}? As previsões do Contas a Pagar viram títulos reais (vale o valor que estiver na previsão).`)) return;
     }
     setSaving(true);
     try {
@@ -650,7 +650,7 @@ export default function FolhaPagamentoPage() {
     if (!folhaEdit.id || !folhaEdit.competencia || !folhaEdit.fazenda_id) return;
     if (!confirm(
       `Reabrir a folha de ${nomeMes(folhaEdit.competencia)}?\n\n` +
-      `Isso irá:\n• Excluir os CPs gerados (salários a pagar)\n` +
+      `Isso irá:\n• Excluir os CPs gerados (salários a pagar) e voltá-los a previsão\n` +
       `• Reverter adiantamentos de "Descontado" para "Pendente"\n` +
       `• Colocar a folha de volta em Rascunho para edição\n\n` +
       `Atenção: se algum CP já foi baixado em borderô, a operação será bloqueada.`
@@ -673,21 +673,21 @@ export default function FolhaPagamentoPage() {
     }
   }
 
-  async function excluirFolha() {
-    if (!folhaEdit.id || !folhaEdit.competencia) return;
-    const fechada = folhaEdit.status === "fechado";
-    const mesLabel = nomeMes(folhaEdit.competencia);
+  async function excluirFolha(alvo: Partial<Folha> = folhaEdit) {
+    if (!alvo.id || !alvo.competencia) return;
+    const fechada = alvo.status === "fechado";
+    const mesLabel = nomeMes(alvo.competencia);
     const aviso = fechada
       ? `Excluir a folha de ${mesLabel}?\n\nEsta folha está fechada — isso vai:\n• Excluir os CPs gerados (salário de cada funcionário, FGTS e INSS Patronal)\n• Reverter adiantamentos de "Descontado" para "Pendente"\n• Apagar a folha e todos os funcionários dela\n\nAtenção: se algum CP já foi baixado em borderô, a exclusão será bloqueada — estorne o borderô primeiro.`
-      : `Excluir a folha de ${mesLabel} (rascunho)?\n\nA folha e todos os funcionários dela serão apagados.`;
+      : `Excluir a folha de ${mesLabel} (rascunho)?\n\nA folha, todos os funcionários dela e as previsões lançadas no Contas a Pagar / fluxo de caixa serão apagados.`;
     if (!confirm(aviso)) return;
     setSaving(true);
     try {
       await apiFolha({
         operacao: "delete_folha",
-        id: folhaEdit.id,
-        fazenda_id: folhaEdit.fazenda_id,
-        competencia: folhaEdit.competencia,
+        id: alvo.id,
+        fazenda_id: alvo.fazenda_id,
+        competencia: alvo.competencia,
       });
       setModalFolha(false);
       setMsg("Folha excluída.");
@@ -1017,6 +1017,7 @@ export default function FolhaPagamentoPage() {
                           {f.status === "rascunho" && (
                             <OperationalButton data-arato-button="secondary" onClick={()=>fecharFolha(f)} style={{ ...S.btn("#C9921B"), fontSize:12 }} disabled={saving}>Fechar Folha</OperationalButton>
                           )}
+                          <OperationalButton data-arato-button="secondary" onClick={()=>excluirFolha(f)} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5", fontSize:12, marginLeft:6 }} disabled={saving}>Excluir</OperationalButton>
                         </td>
                       </tr>
                     ))}
@@ -1414,7 +1415,7 @@ export default function FolhaPagamentoPage() {
                   </OperationalButton>
                 )}
                 {folhaEdit.id && (
-                  <OperationalButton data-arato-button="secondary" onClick={excluirFolha} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5" }} disabled={saving}>
+                  <OperationalButton data-arato-button="secondary" onClick={() => excluirFolha()} style={{ ...S.btn("#FEE2E2","#B91C1C"), border:"0.5px solid #F5B5B5" }} disabled={saving}>
                     🗑 Excluir Folha
                   </OperationalButton>
                 )}
