@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-f",
+    data: "21/10/2026",
+    titulo: "Contratos Financeiros: barra Editar parcelas sempre visível",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Na aba Pagamento do contrato financeiro, a barra com Editar parcelas, Repartir juros × amortização e Salvar Parcelas e Lançar no CP fica fixa no topo enquanto você rola a tabela de parcelas." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → contrato → Pagamento",
+  },
+  {
     versao: "2026.10.21-e",
     data: "21/10/2026",
     titulo: "Fluxo de Caixa em Excel (Diário, Mensal e Anual)",

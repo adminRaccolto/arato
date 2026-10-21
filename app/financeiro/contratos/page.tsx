@@ -2055,7 +2055,7 @@ export default function ContratosFinanceiros() {
                         const colsEditaveis = ["Amortização", "Juros"];
                         return (
                           <>
-                            <div data-arato-panel="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: temEdits ? "#FBF3E0" : "var(--bg-page)", border: `0.5px solid ${temEdits ? "#C9921B" : "var(--border-table)"}`, borderRadius: 8, padding: "8px 14px", marginBottom: 10 }}>
+                            <div data-arato-panel="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: temEdits ? "#FBF3E0" : "var(--bg-page)", border: `0.5px solid ${temEdits ? "#C9921B" : "var(--border-table)"}`, borderRadius: 8, padding: "8px 14px", marginBottom: 10, position: "sticky", top: 0, zIndex: 6, boxShadow: "0 2px 6px rgba(0,0,0,0.06)" }}>
                               <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: temEdits ? "#7A4300" : "var(--text-2)", cursor: "pointer" }}>
                                 <input type="checkbox" checked={editandoParcelas} onChange={e => setEditandoParcelas(e.target.checked)} />
                                 Editar parcelas (libera Amortização e Juros pra edição manual)
