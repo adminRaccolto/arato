@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarIEsDoProdutor } from "../../../lib/db";
+import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarIEsDoProdutor, baixarLancamento, listarContasBancariasDaConta } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
@@ -451,6 +451,7 @@ export default function Arrendamentos() {
                 valor, status: "em_aberto", auto: true,
                 observacao: obs,
                 produtor_id: prodId1,
+                pessoa_id: arr.proprietario_id || undefined,
                 ano_safra_id: cfg.ano_safra_id || undefined,
                 origem_lancamento: "arrendamento",
               } as Parameters<typeof criarLancamento>[0]);
@@ -772,6 +773,7 @@ export default function Arrendamentos() {
             auto: true,
             observacao: "Lançado manualmente na tela de Contratos de Arrendamento.",
             produtor_id: selArr.produtor_id || undefined,
+            pessoa_id: selArr.proprietario_id || undefined,
             ano_safra_id: payload.ano_safra_id || undefined,
             origem_lancamento: "arrendamento",
           } as Parameters<typeof criarLancamento>[0]);
@@ -792,8 +794,55 @@ export default function Arrendamentos() {
     finally { setSalvando(false); }
   }
 
+  // ── baixa em reais: título real no CP, baixado na conta bancária (entra no fluxo de caixa e na conciliação) ──
+  const [baixaBrl, setBaixaBrl] = useState<{ p: Pagamento; data: string; valor: string; conta: string } | null>(null);
+  const [contasBaixa, setContasBaixa] = useState<{ id: string; nome: string; banco: string; conta: string }[]>([]);
+  const [erroBaixaBrl, setErroBaixaBrl] = useState("");
+  async function confirmarBaixaBrl() {
+    if (!baixaBrl) return;
+    const { p } = baixaBrl;
+    const valor = parseFloat(baixaBrl.valor.replace(/\./g, "").replace(",", ".")) || 0;
+    if (!baixaBrl.data) { setErroBaixaBrl("Informe a data do pagamento."); return; }
+    if (!(valor > 0)) { setErroBaixaBrl("Informe o valor pago."); return; }
+    if (!baixaBrl.conta) { setErroBaixaBrl("Selecione a conta bancária de onde saiu o pagamento."); return; }
+    setSalvando(true); setErroBaixaBrl("");
+    try {
+      const arr = arrendamentos.find(a => a.id === p.arrendamento_id);
+      let lancId = p.lancamento_id ?? null;
+      // Parcela sem título no CP (gerada antes do vínculo): cria o título antes de baixar
+      if (!lancId) {
+        const lanc = await criarLancamento({
+          fazenda_id: arr?.fazenda_id ?? fazendaId, tipo: "pagar", moeda: "BRL",
+          descricao: `Arrendamento — ${arr?.proprietario_nome ?? "Proprietário"}`, categoria: "Arrendamento de Terra",
+          data_lancamento: hoje(), data_vencimento: p.data_vencimento,
+          valor: p.valor_previsto ?? valor, status: "em_aberto", auto: true,
+          produtor_id: arr?.produtor_id || undefined, pessoa_id: arr?.proprietario_id || undefined,
+          ano_safra_id: p.ano_safra_id || undefined, origem_lancamento: "arrendamento",
+        } as Parameters<typeof criarLancamento>[0]);
+        lancId = lanc.id;
+      } else if (arr?.proprietario_id) {
+        await supabase.from("lancamentos").update({ pessoa_id: arr.proprietario_id }).eq("id", lancId).is("pessoa_id", null);
+      }
+      await baixarLancamento(lancId, valor, baixaBrl.data, baixaBrl.conta);
+      const patch = { status: "pago" as StatusPag, data_pagamento: baixaBrl.data, valor_pago: valor, lancamento_id: lancId };
+      const { error } = await supabase.from("arrendamento_pagamentos").update(patch).eq("id", p.id);
+      if (error) throw error;
+      setPagamentos(prev => prev.map(x => x.id === p.id ? { ...x, ...patch } : x));
+      setBaixaBrl(null);
+    } catch (e) {
+      setErroBaixaBrl((e as { message?: string })?.message ?? "Erro ao baixar.");
+    } finally { setSalvando(false); }
+  }
+
   // ── baixar pagamento ────────────────────────────────────
   async function baixarPagamento(p: Pagamento) {
+    const arrBrl = arrendamentos.find(a => a.id === p.arrendamento_id);
+    if (arrBrl?.forma_pagamento === "brl") {
+      setErroBaixaBrl("");
+      setBaixaBrl({ p, data: hoje(), valor: (p.valor_previsto ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 }), conta: "" });
+      listarContasBancariasDaConta(arrBrl.fazenda_id ?? fazendaId).then(setContasBaixa).catch(() => setContasBaixa([]));
+      return;
+    }
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Baixar pagamento)", perigo: false }))) return;
     const dtPag = prompt("Data do pagamento (AAAA-MM-DD):", hoje());
     if (!dtPag) return;
@@ -1924,6 +1973,36 @@ export default function Arrendamentos() {
               disabled={salvando || configSafras.every(c => !c.incluir)} onClick={gerarParcelas}>
               {salvando ? "Gerando…" : `Gerar ${configSafras.filter(c => c.incluir).length} Safra${configSafras.filter(c => c.incluir).length !== 1 ? "s" : ""}`}
             </OperationalButton>
+          </div>
+        </Modal>
+      )}
+
+      {baixaBrl && (
+        <Modal titulo="Baixar pagamento do arrendamento" width={520}
+          subtitulo={`${arrendamentos.find(a => a.id === baixaBrl.p.arrendamento_id)?.proprietario_nome ?? ""} · vencimento ${baixaBrl.p.data_vencimento.split("-").reverse().join("/")}`}
+          onClose={() => !salvando && setBaixaBrl(null)}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={lbl}>Data do pagamento *</label>
+              <InputData type="date" value={baixaBrl.data} onChange={e => setBaixaBrl(b => b && { ...b, data: e.target.value })} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Valor pago (R$) *</label>
+              <input value={baixaBrl.valor} onChange={e => setBaixaBrl(b => b && { ...b, valor: e.target.value })} style={{ ...inp, textAlign: "right" }} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={lbl}>Conta bancária *</label>
+              <SelectField value={baixaBrl.conta} onChange={e => setBaixaBrl(b => b && { ...b, conta: e.target.value })} style={inp}>
+                <option value="">— Selecione —</option>
+                {contasBaixa.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.conta ? ` ${c.conta}` : ""}</option>)}
+              </SelectField>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12 }}>O pagamento é baixado no Contas a Pagar nesta conta e entra no fluxo de caixa e na conciliação bancária.</div>
+          {erroBaixaBrl && <div style={{ background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 12, marginBottom: 12 }}>{erroBaixaBrl}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setBaixaBrl(null)} disabled={salvando}>Cancelar</OperationalButton>
+            <OperationalButton data-arato-button="primary" style={btnV} onClick={confirmarBaixaBrl} disabled={salvando}>{salvando ? "Baixando…" : "Confirmar baixa"}</OperationalButton>
           </div>
         </Modal>
       )}

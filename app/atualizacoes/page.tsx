@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-h",
+    data: "21/10/2026",
+    titulo: "Arrendamento em reais: baixa com conta bancária e título no Contas a Pagar",
+    modulos: ["Comercial", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O ✓ Baixar de arrendamento em reais marcava o título como pago sem conta bancária (fora do fluxo de caixa e da conciliação) e, quando a parcela não tinha título no Contas a Pagar, não criava nenhum. Agora abre uma janela com data, valor e conta bancária, cria o título se faltar e faz a baixa de verdade no CP." },
+      { tipo: "correcao", texto: "Títulos de arrendamento passam a nascer com o proprietário como fornecedor (antes a coluna Fornecedor ficava vazia e o filtro não os achava). Os 15 títulos existentes sem fornecedor foram corrigidos." },
+    ],
+    onde: "Comercial → Contratos de Arrendamento",
+  },
+  {
     versao: "2026.10.21-g",
     data: "21/10/2026",
     titulo: "Contratos Financeiros: edição de parcelas corrigida; NFS-e com Cadastro Fornecedor",
