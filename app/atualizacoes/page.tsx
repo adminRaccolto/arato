@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-c",
+    data: "21/10/2026",
+    titulo: "CT-e rejeitado por IE com pontuação e NCM com espaço",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "CT-e voltava da SEFAZ com cStat 215 (falha no schema XML) quando a Inscrição Estadual do remetente/destinatário vinha com pontos e traço (ex.: 13.348.485-8) ou quando o campo de outras características da carga tinha espaço sobrando. O XML agora envia só os dígitos da IE (ou ISENTO) e limpa os espaços. Basta clicar em Autorizar SEFAZ de novo nos rascunhos." },
+    ],
+    onde: "Transporte → CT-e",
+  },
+  {
     versao: "2026.10.21-b",
     data: "21/10/2026",
     titulo: "Carta de Correção do CT-e voltou a ser aceita",

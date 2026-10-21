@@ -238,7 +238,7 @@ function xmlParticipante(tag: string, p: ParticipanteCTe, endTag: string, homolo
   const xNome   = homologacao ? NOME_HOMOLOGACAO : p.nome;
   return `<${tag}>
     ${cpfcnpj ? `<${docTag}>${cpfcnpj}</${docTag}>` : "<CNPJ/>"}
-    ${p.ie   ? `<IE>${esc(p.ie)}</IE>` : ""}
+    ${ieXml(p.ie)}
     <xNome>${escLimite(xNome, 60)}</xNome>
     ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
     ${xmlEndereco(endTag, p)}
@@ -253,11 +253,20 @@ function xmlToma4(p: ParticipanteCTe, homologacao = false): string {
   return `<toma4>
         <toma>4</toma>
         ${cpfcnpj ? `<${docTag}>${cpfcnpj}</${docTag}>` : "<CNPJ/>"}
-        ${p.ie ? `<IE>${esc(p.ie)}</IE>` : ""}
+        ${ieXml(p.ie)}
         <xNome>${escLimite(xNome, 60)}</xNome>
         ${p.fone ? `<fone>${p.fone.replace(/\D/g, "")}</fone>` : ""}
         ${xmlEndereco("enderToma", p)}
       </toma4>`;
+}
+
+// IE no XSD: só dígitos (2 a 14) ou "ISENTO" — pontos, traços e espaços do cadastro geram rejeição 215.
+function ieXml(ie?: string | null): string {
+  const bruto = (ie ?? "").trim();
+  if (!bruto) return "";
+  if (/isent/i.test(bruto)) return "<IE>ISENTO</IE>";
+  const d = bruto.replace(/\D/g, "");
+  return d.length >= 2 ? `<IE>${d.slice(0, 14)}</IE>` : "";
 }
 
 // ── Builder principal ─────────────────────────────────────────────────────────
@@ -424,7 +433,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
     ${input.observacao && input.observacao.trim().length >= 15 ? `<compl><xObs>${esc(input.observacao.trim().slice(0, 2000))}</xObs></compl>` : ""}
     <emit>
       <${docTagE}>${cpfcnpjE}</${docTagE}>
-      ${e.ie ? `<IE>${esc(e.ie)}</IE>` : "<IE>ISENTO</IE>"}
+      ${ieXml(e.ie) || "<IE>ISENTO</IE>"}
       <xNome>${escLimite(e.razao_social, 60)}</xNome>
       <enderEmit>
         <xLgr>${escLimite(e.logradouro || "Nao informado", 60)}</xLgr>
@@ -470,7 +479,7 @@ export function buildCTe(input: CTeInput): CTeBuiltResult {
       <infCarga>
         <vCarga>${p2(input.valor_mercadoria)}</vCarga>
         <proPred>${escLimite(input.produto_descricao || "CARGA AGRICOLA", 60) || "CARGA AGRICOLA"}</proPred>
-        ${input.ncm ? `<xOutCat>${input.ncm}</xOutCat>` : ""}
+        ${input.ncm?.trim() ? `<xOutCat>${esc(input.ncm.trim())}</xOutCat>` : ""}
         <infQ>
           <cUnid>01</cUnid>
           <tpMed>PESO BRUTO</tpMed>
