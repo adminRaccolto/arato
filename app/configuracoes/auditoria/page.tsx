@@ -42,7 +42,15 @@ const ACAO_CONFIG = {
   DELETE: { label: "Excluído", bg: "#FEE2E2", color: "#B91C1C", border: "#FCA5A5" },
   LOGIN:  { label: "Login",    bg: "#EFF6FF", color: "#1D4ED8", border: "#93C5FD" },
   CUSTOM: { label: "Ação",     bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" },
+  CANCEL: { label: "Cancelado", bg: "#F3E8FF", color: "#6B21A8", border: "#C4B5FD" },
 };
+const STATUS_CANCELADO = ["cancelado", "cancelada"];
+/** Alteração que levou o registro para cancelado (o banco grava como UPDATE do status). */
+function ehCancelamento(l: { acao: string; dados_antes: Record<string, unknown> | null; dados_depois: Record<string, unknown> | null }) {
+  return l.acao === "UPDATE"
+    && STATUS_CANCELADO.includes(String(l.dados_depois?.status ?? ""))
+    && !STATUS_CANCELADO.includes(String(l.dados_antes?.status ?? ""));
+}
 
 const CAMPOS_SENSIVEIS = ["senha", "password", "token", "secret", "chave_pix"];
 
@@ -221,22 +229,24 @@ export default function AuditoriaPage() {
         .range(pag * PAGE, (pag + 1) * PAGE - 1);
 
       if (fTabela) q = q.eq("tabela", fTabela);
-      if (fAcao)   q = q.eq("acao",   fAcao);
+      if (fAcao === "CANCEL") q = q.eq("acao", "UPDATE").in("dados_depois->>status", STATUS_CANCELADO);
+      else if (fAcao) q = q.eq("acao", fAcao);
 
       const { data, error } = await q;
       if (error) throw error;
-      setLogs(prev => pag === 0 ? (data ?? []) : [...prev, ...(data ?? [])]);
+      const lidos = ((data ?? []) as AuditEntry[]).filter(l => fAcao !== "CANCEL" || ehCancelamento(l));
+      setLogs(prev => pag === 0 ? lidos : [...prev, ...lidos]);
       setPagina(pag);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds]);
+  // Filtros entram nas dependências: antes a função guardava os filtros da primeira carga e o Atualizar os ignorava
+  }, [fazendaId, fazendaIds, fDe, fAte, fTabela, fAcao]);
 
-  // Carrega uma única vez quando a fazenda estiver disponível
-  useEffect(() => { if (fazendaId) carregar(0); }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Recarrega ao abrir e quando muda período, tabela ou ação (a busca filtra o que já foi carregado)
+  useEffect(() => { if (fazendaId && fDe && fAte) carregar(0); }, [carregar, fazendaId, fDe, fAte]);
 
   const logsFiltrados = useMemo(() => {
     return logs.filter(l => {
@@ -331,6 +341,7 @@ export default function AuditoriaPage() {
               <option value="INSERT">Criação</option>
               <option value="UPDATE">Alteração</option>
               <option value="DELETE">Exclusão</option>
+              <option value="CANCEL">Cancelamento</option>
             </SelectField>
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
@@ -379,7 +390,7 @@ export default function AuditoriaPage() {
                 </thead>
                 <tbody>
                   {logsFiltrados.map((l, i) => {
-                    const ac = ACAO_CONFIG[l.acao] ?? ACAO_CONFIG.CUSTOM;
+                    const ac = ehCancelamento(l) ? ACAO_CONFIG.CANCEL : (ACAO_CONFIG[l.acao] ?? ACAO_CONFIG.CUSTOM);
                     const aberto = expandido.has(l.id);
                     const resumo = resumoRegistro(l.tabela, l.dados_depois ?? l.dados_antes);
                     const campos = l.campos_alterados ?? [];

@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-j",
+    data: "21/10/2026",
+    titulo: "Monitor de Auditoria: filtros funcionando e ação Cancelamento",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Os filtros De, Até, Tabela e Ação do Monitor de Auditoria eram ignorados (o Atualizar usava sempre os filtros da primeira carga). Agora a lista recarrega ao mudar o período, a tabela ou a ação." },
+      { tipo: "novo", texto: "Nova ação Cancelamento no filtro e selo Cancelado na lista: mostra quem cancelou cada título, contrato ou pedido (alteração do status para cancelado)." },
+    ],
+    onde: "Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.21-i",
     data: "21/10/2026",
     titulo: "NFS-e cancelada pelo prestador sai das pendentes",
