@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-e",
+    data: "21/10/2026",
+    titulo: "Fluxo de Caixa em Excel (Diário, Mensal e Anual)",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Botão ⬇ Excel no Fluxo de Caixa, ao lado de Imprimir / PDF. Exporta a visão aberta com os filtros da tela: no Diário, uma linha por lançamento com saldo inicial, entradas, saídas e saldo acumulado; no Mensal e no Anual, categorias por mês ou por ano com totais, saldo do período e saldo acumulado. Cada arquivo traz também uma aba Resumo. Valores saem como número e datas como data." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → Fluxo de Caixa",
+  },
+  {
     versao: "2026.10.21-d",
     data: "21/10/2026",
     titulo: "Previsão de Gastos: Previsto × Realizado",

@@ -206,6 +206,14 @@ function FinanceiroRelatoriosInner() {
     tipoVis: string;
   };
   const printDiarioRef = useRef<PrintDiarioData | null>(null);
+  type PrintMensalData = {
+    meses: { ym: string; label: string }[];
+    entradasM: { cat: string; meses: { real: number; prev: number; sim: number }[] }[];
+    saidasM:   { cat: string; meses: { real: number; prev: number; sim: number }[] }[];
+    totEntM: number[]; totSaiM: number[]; saldoMesM: number[]; saldoAcM: number[];
+    inicio: string; fim: string; incluirPrevisoes: boolean;
+  };
+  const printMensalRef = useRef<PrintMensalData | null>(null);
   // Relatório CP/CR: função que monta o HTML limpo (sem filtros/botões da tela) a partir do que está filtrado na aba
   const printCpcrRef = useRef<((chaves?: string[], grupos?: string[]) => Promise<{ html: string; escopo: string }>) | null>(null);
   // DFC e Posição por Conta: HTML próprio de impressão (a tela tem filtros e botões que não vão para o papel)
@@ -518,6 +526,94 @@ function FinanceiroRelatoriosInner() {
   const anosDispo = Array.from(new Set(lancamentos.map(l => (l.data_vencimento ?? "").slice(0, 4)).filter(a => a.length === 4))).sort().reverse();
   if (!anosDispo.includes(String(anoAtual))) anosDispo.unshift(String(anoAtual));
 
+  // ── Fluxo de Caixa → Excel (Diário, Mensal, Anual): mesmos dados da tela/impressão, valores como número e datas como data ──
+  async function exportarFluxoXlsx() {
+    const XLSX = await import("xlsx");
+    const escopo = (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
+    const NUM = "#,##0.00;[Red]-#,##0.00";
+    const formatarNumeros = (ws: import("xlsx").WorkSheet, linhaIni: number, colIni: number) => {
+      const ref = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+      for (let r = linhaIni; r <= ref.e.r; r++) for (let c = colIni; c <= ref.e.c; c++) {
+        const cel = ws[XLSX.utils.encode_cell({ r, c })];
+        if (cel && cel.t === "n") cel.z = NUM;
+      }
+    };
+    const dataXls = (iso: string) => iso ? new Date(`${iso.slice(0, 10)}T12:00:00`) : "";
+    const wb = XLSX.utils.book_new();
+    let nome = "";
+
+    if (subAbaFluxo === "diario") {
+      const d = printDiarioRef.current;
+      if (!d) { alert("Abra o Fluxo de Caixa Diário antes de exportar."); return; }
+      const ORIG: Record<string, string> = {
+        pedido_compra: "Pedido Compra", nf_entrada: "NF Entrada", nf_saida: "NF Saída", contrato: "Contrato Venda",
+        arrendamento: "Arrendamento", contrato_financeiro: "Contrato Fin.", manual: "Manual", cron: "Automático",
+        transporte: "Transporte", apoio_financeiro: "Apoio Financeiro", folha: "Folha", previsao: "Previsão de Gastos",
+      };
+      const TIPO: Record<string, string> = { real: "Realizado", pendente: "Pendente", previsao: "Previsão", simulacao: "Simulação" };
+      const linhas: (string | number | Date)[][] = [["", "Saldo inicial", d.saldoInicialNota ?? "", "", "", "", "", d.saldoInicial]];
+      for (const dia of d.dias) for (const r of d.diasMap[dia]) {
+        linhas.push([dataXls(r.data), r.fornecedor || "", r.descricao || "", r.origem_lancamento ? (ORIG[r.origem_lancamento] ?? r.origem_lancamento) : "", TIPO[r.tipo_row] ?? r.tipo_row, r.entrada || 0, r.saida || 0, r.saldo]);
+      }
+      linhas.push(["", "TOTAIS", "", "", "", d.totalEntradas, d.totalSaidas, d.saldoFinal]);
+      const ws = XLSX.utils.aoa_to_sheet([["Data", "Fornecedor / Pagador", "Descrição", "Origem", "Situação", "Entrada", "Saída", "Saldo Acumulado"], ...linhas], { cellDates: true });
+      const ref = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+      for (let r = 1; r <= ref.e.r; r++) { const c = ws[XLSX.utils.encode_cell({ r, c: 0 })]; if (c && c.t === "d") c.z = "dd/mm/yyyy"; }
+      formatarNumeros(ws, 1, 5);
+      ws["!cols"] = [{ wch: 11 }, { wch: 34 }, { wch: 40 }, { wch: 16 }, { wch: 11 }, { wch: 15 }, { wch: 15 }, { wch: 17 }];
+      const resumo = XLSX.utils.aoa_to_sheet([
+        ["Fluxo de Caixa — Diário"], ["Escopo", escopo],
+        ["Período", `${d.filtroInicio.split("-").reverse().join("/")} a ${d.filtroFim.split("-").reverse().join("/")}`],
+        ["Tipo", ({ ambos: "Previstos + Realizados", previsto: "Somente Previstos", realizado: "Somente Realizados" } as Record<string, string>)[d.tipoVis] ?? d.tipoVis],
+        ["Saldo inicial", d.saldoInicial], ...(d.saldoInicialNota ? [["Composição do saldo inicial", d.saldoInicialNota]] : []),
+        ["Total entradas", d.totalEntradas], ["Total saídas", d.totalSaidas], ["Saldo final", d.saldoFinal],
+      ]);
+      formatarNumeros(resumo, 0, 1);
+      resumo["!cols"] = [{ wch: 28 }, { wch: 60 }];
+      XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
+      XLSX.utils.book_append_sheet(wb, ws, "Fluxo Diário");
+      nome = `Fluxo-Caixa-Diario_${d.filtroInicio}_${d.filtroFim}.xlsx`;
+    } else {
+      const mensal = subAbaFluxo === "mensal";
+      const dm = printMensalRef.current, da = printAnualRef.current;
+      if (mensal ? !dm : !da) { alert(`Abra o Fluxo de Caixa ${mensal ? "Mensal" : "Anual"} antes de exportar.`); return; }
+      const colunas = mensal ? dm!.meses.map(m => m.label) : da!.anosPresentes;
+      const cel = (c: { real: number; prev: number; sim?: number }) => c.real + c.prev + (c.sim ?? 0);
+      const ent = mensal ? dm!.entradasM.map(r => ({ cat: r.cat, v: r.meses.map(cel) })) : da!.entradasA.map(r => ({ cat: r.cat, v: r.anos.map(cel) }));
+      const sai = mensal ? dm!.saidasM.map(r => ({ cat: r.cat, v: r.meses.map(cel) })) : da!.saidasA.map(r => ({ cat: r.cat, v: r.anos.map(cel) }));
+      const soma = (v: number[]) => v.reduce((a, b) => a + b, 0);
+      const totE = mensal ? dm!.totEntM : da!.totEntA, totS = mensal ? dm!.totSaiM : da!.totSaiA;
+      const saldo = mensal ? dm!.saldoMesM : da!.saldoAnoA, acum = mensal ? dm!.saldoAcM : da!.saldoAcA;
+      const linhas: (string | number)[][] = [
+        ["Categoria", ...colunas, "Total"],
+        ["ENTRADAS"],
+        ...ent.filter(r => soma(r.v) !== 0).map(r => [r.cat, ...r.v, soma(r.v)]),
+        ["Total Entradas", ...totE, soma(totE)],
+        [],
+        ["SAÍDAS"],
+        ...sai.filter(r => soma(r.v) !== 0).map(r => [r.cat, ...r.v, soma(r.v)]),
+        ["Total Saídas", ...totS, soma(totS)],
+        [],
+        [mensal ? "Saldo do Mês" : "Saldo do Ano", ...saldo, soma(saldo)],
+        ["Saldo Acumulado", ...acum, acum[acum.length - 1] ?? 0],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(linhas);
+      formatarNumeros(ws, 1, 1);
+      ws["!cols"] = [{ wch: 36 }, ...colunas.map(() => ({ wch: 15 })), { wch: 17 }];
+      const filtro = mensal
+        ? `${dm!.inicio.split("-").reverse().join("/")} a ${dm!.fim.split("-").reverse().join("/")} · ${dm!.incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}`
+        : `Anos ${da!.anosPresentes.join(", ")} · ${da!.incluirPrevisoes ? "Realizados + pendentes" : "Somente os status marcados"}`;
+      const resumo = XLSX.utils.aoa_to_sheet([[`Fluxo de Caixa — ${mensal ? "Mensal" : "Anual"}`], ["Escopo", escopo], ["Filtro", filtro],
+        ["Total entradas", soma(totE)], ["Total saídas", soma(totS)], ["Resultado", soma(totE) - soma(totS)]]);
+      formatarNumeros(resumo, 0, 1);
+      resumo["!cols"] = [{ wch: 20 }, { wch: 60 }];
+      XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
+      XLSX.utils.book_append_sheet(wb, ws, mensal ? "Fluxo Mensal" : "Fluxo Anual");
+      nome = mensal ? `Fluxo-Caixa-Mensal_${dm!.inicio.slice(0, 7)}_${dm!.fim.slice(0, 7)}.xlsx` : `Fluxo-Caixa-Anual_${da!.anosPresentes[0] ?? ""}-${da!.anosPresentes[da!.anosPresentes.length - 1] ?? ""}.xlsx`;
+    }
+    XLSX.writeFile(wb, nome);
+  }
+
   return (
     <div data-arato-page="true" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
@@ -529,6 +625,11 @@ function FinanceiroRelatoriosInner() {
               {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta", comercializacao: "Posição de Comercialização" }[aba]}
             </h1>
           </div>
+          <div style={{ display: "flex", gap: 8 }}>
+          {aba === "fluxo" && <OperationalButton data-arato-button="secondary" onClick={() => exportarFluxoXlsx()}
+            style={{ background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            ⬇ Excel
+          </OperationalButton>}
           {aba !== "comercializacao" && !(aba === "cpcr" && !cpcrVerTela) && <OperationalButton data-arato-button="primary" onClick={async () => {
             // Os relatórios desta tela somam TODAS as fazendas da conta (não só a fazenda ativa do topo):
             // o cabeçalho diz o escopo real. Na aba CP/CR, o filtro de Produtor define o escopo.
@@ -723,6 +824,7 @@ function FinanceiroRelatoriosInner() {
           }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Imprimir / PDF
           </OperationalButton>}
+          </div>
         </OperationalHeading>
 
         {/* ── Banner Apoio Financeiro (só exibe se addon ativo e aba fluxo) ── */}
@@ -1503,6 +1605,7 @@ function FinanceiroRelatoriosInner() {
                       const totEntAnual = totEntM.reduce((s, v) => s + v, 0);
                       const totSaiAnual = totSaiM.reduce((s, v) => s + v, 0);
                       const totLiqAnual = totEntAnual - totSaiAnual;
+                      printMensalRef.current = { meses: mensalMeses, entradasM, saidasM, totEntM, totSaiM, saldoMesM, saldoAcM, inicio: mensalInicio, fim: mensalFim, incluirPrevisoes };
                       const isSim = (cat: string) => cat.startsWith("◆ ");
                       const corM = (tipo: "receber"|"pagar", sim: boolean) =>
                         sim ? "#7C3AED" : tipo === "receber" ? "#111111" : "var(--text-1)";
