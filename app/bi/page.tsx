@@ -596,7 +596,7 @@ export default function BI() {
       setCfContratos(cs as unknown as CFContrato[]);
       setCfParcelas((ps ?? []) as CFParcela[]);
     } catch { /* ignora */ } finally { setCfLoading(false); }
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, (fazendaIds ?? []).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (fazendaId && ["raccotlo","raccotlo_gestor","raccotlo_operacional"].includes(userRole ?? "")) carregarCF();

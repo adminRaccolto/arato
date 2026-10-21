@@ -292,7 +292,7 @@ export default function ContratosFinanceiros() {
     buscarPtax();
     const timer = setInterval(buscarPtax, 5 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, (fazendaIds ?? []).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Carrega parcelas por contrato (prazo + resumo pago/aberto) ──
   useEffect(() => {

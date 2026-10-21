@@ -268,7 +268,7 @@ export default function RelatorioEndividamento() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId, contaId]);
+  }, [fazendaId, contaId, (fazendaIds ?? []).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 

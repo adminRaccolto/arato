@@ -790,7 +790,10 @@ export default function Contratos() {
   }, [filtroAno, fazendaId]);
 
   // ── carga ────────────────────────────────────────────────────
-  useEffect(() => { if (fazendaId) carregarTudo(); }, [fazendaId, contaId]);
+  // Recarrega também quando chega a lista completa de fazendas da conta: a primeira carga sai com a lista provisória
+  // (só a fazenda ativa) e os contratos das outras fazendas não apareciam.
+  const fazendaIdsChave = (fazendaIds ?? []).join(",");
+  useEffect(() => { if (fazendaId) carregarTudo(); }, [fazendaId, contaId, fazendaIdsChave]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function carregarTudo() {
     try {

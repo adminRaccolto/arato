@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-m",
+    data: "21/10/2026",
+    titulo: "Contratos de outras fazendas da conta sumiam da lista",
+    modulos: ["Comercial", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Contratos de Grãos, Contratos Financeiros, Endividamento e o BI carregavam a lista antes de o sistema saber todas as fazendas da conta e não recarregavam depois: contratos de fazendas diferentes da fazenda ativa podiam não aparecer. Agora a lista é recarregada assim que todas as fazendas da conta são conhecidas." },
+    ],
+    onde: "Comercial → Contratos de Grãos · Financeiro → Contratos Financeiros / Endividamento · BI",
+  },
+  {
     versao: "2026.10.21-l",
     data: "21/10/2026",
     titulo: "Auditoria registra o usuário também nas ações feitas pelo servidor",
