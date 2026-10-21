@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-k",
+    data: "21/10/2026",
+    titulo: "Monitor de Auditoria: colunas e filtros por tabela, tela inteira",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao escolher uma Tabela, o Resumo vira colunas próprias dela, com filtros: CP/CR (CP ou CR, fornecedor/cliente, descrição, documento, vencimento, moeda, valor de/até, status), Contratos de Grãos (nº do contrato, comprador, produto, safra, quantidade de/até, preço, status), Pedidos de Compra (nº, fornecedor, pedido do fornecedor, valor de/até, status), Contratos Financeiros, Folha e Romaneios. Valor alterado aparece riscado com o novo ao lado." },
+      { tipo: "melhoria", texto: "A tela usa a largura inteira e carrega até 500 eventos por vez." },
+    ],
+    onde: "Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.21-j",
     data: "21/10/2026",
     titulo: "Monitor de Auditoria: filtros funcionando e ação Cancelamento",

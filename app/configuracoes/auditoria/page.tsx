@@ -104,6 +104,64 @@ function resumoRegistro(tabela: string, dados: Record<string, unknown> | null): 
   return chaves.map(c => dados[c] != null ? fmtVal(dados[c]) : null).filter(Boolean).join(" · ") || dados["id"] as string || "";
 }
 
+// ── Colunas e filtros próprios de cada tabela (aparecem quando a Tabela é escolhida) ──
+type Dados = Record<string, unknown>;
+type ColAud = { k: string; label: string; tipo?: "valor" | "data" | "texto"; filtro?: "texto" | "faixa"; get: (d: Dados, nomes: Record<string, string>) => unknown };
+const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+const COLS_TABELA: Record<string, ColAud[]> = {
+  lancamentos: [
+    { k: "tipo", label: "CP/CR", get: d => d.tipo === "receber" ? "CR" : d.tipo === "pagar" ? "CP" : "" },
+    { k: "pessoa", label: "Fornecedor / Cliente", filtro: "texto", get: (d, n) => (d.pessoa_id ? n[String(d.pessoa_id)] : "") || "" },
+    { k: "descricao", label: "Descrição", filtro: "texto", get: d => d.descricao },
+    { k: "documento", label: "Documento", filtro: "texto", get: d => d.nfe_numero || d.numero_documento || "" },
+    { k: "vencimento", label: "Vencimento", tipo: "data", get: d => d.data_vencimento },
+    { k: "moeda", label: "Moeda", get: d => d.moeda },
+    { k: "valor", label: "Valor", tipo: "valor", filtro: "faixa", get: d => num(d.valor) },
+    { k: "status", label: "Status", get: d => d.status },
+  ],
+  contratos: [
+    { k: "numero", label: "Nº Contrato", filtro: "texto", get: d => d.numero },
+    { k: "comprador", label: "Comprador", filtro: "texto", get: (d, n) => (d.pessoa_id ? n[String(d.pessoa_id)] : "") || d.comprador || "" },
+    { k: "produto", label: "Produto", filtro: "texto", get: d => d.produto },
+    { k: "safra", label: "Safra", get: d => d.safra },
+    { k: "quantidade", label: "Quantidade", tipo: "valor", filtro: "faixa", get: d => num(d.quantidade_sc ?? d.quantidade_kg) },
+    { k: "preco", label: "Preço", tipo: "valor", get: d => num(d.preco) },
+    { k: "status", label: "Status", get: d => d.status },
+  ],
+  pedidos_compra: [
+    { k: "numero", label: "Nº Pedido", filtro: "texto", get: d => d.numero },
+    { k: "fornecedor", label: "Fornecedor", filtro: "texto", get: (d, n) => (d.fornecedor_id ? n[String(d.fornecedor_id)] : "") || "" },
+    { k: "nr_forn", label: "Pedido do fornecedor", filtro: "texto", get: d => d.nr_pedido_fornecedor },
+    { k: "valor", label: "Valor total", tipo: "valor", filtro: "faixa", get: d => num(d.valor_total) },
+    { k: "status", label: "Status", get: d => d.status },
+  ],
+  contratos_financeiros: [
+    { k: "descricao", label: "Descrição", filtro: "texto", get: d => d.descricao },
+    { k: "documento", label: "Nº documento", filtro: "texto", get: d => d.numero_documento },
+    { k: "credor", label: "Credor", filtro: "texto", get: (d, n) => (d.pessoa_id ? n[String(d.pessoa_id)] : "") || "" },
+    { k: "valor", label: "Valor financiado", tipo: "valor", filtro: "faixa", get: d => num(d.valor_financiado) },
+    { k: "status", label: "Status", get: d => d.status },
+  ],
+  folha_pagamento: [
+    { k: "competencia", label: "Competência", filtro: "texto", get: d => d.competencia },
+    { k: "valor", label: "Valor bruto", tipo: "valor", filtro: "faixa", get: d => num(d.valor_bruto) },
+    { k: "liquido", label: "Valor líquido", tipo: "valor", get: d => num(d.valor_liquido) },
+    { k: "status", label: "Status", get: d => d.status },
+  ],
+  romaneios: [
+    { k: "numero", label: "Nº Romaneio", filtro: "texto", get: d => d.numero_romaneio },
+    { k: "produto", label: "Produto", filtro: "texto", get: d => d.produto },
+    { k: "peso", label: "Peso líquido (kg)", tipo: "valor", filtro: "faixa", get: d => num(d.peso_liquido_kg) },
+  ],
+};
+const IDS_PESSOA = ["pessoa_id", "fornecedor_id"];
+const fmtCel = (c: ColAud, v: unknown) => {
+  if (v == null || v === "") return "—";
+  if (c.tipo === "valor" && typeof v === "number") return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (c.tipo === "data") return fmtVal(v);
+  return String(v);
+};
+
 // ── Componente DiffRow ──────────────────────────────────────────────────────
 function DiffRow({ campo, antes, depois }: { campo: string; antes: unknown; depois: unknown }) {
   const isSens = CAMPOS_SENSIVEIS.some(s => campo.toLowerCase().includes(s));
@@ -187,7 +245,7 @@ export default function AuditoriaPage() {
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
   const [pagina, setPagina]     = useState(0);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
-  const PAGE = 100;
+  const PAGE = 500;
 
   // Carrega mapa UUID→nome para resolver registros já gravados como UUID
   useEffect(() => {
@@ -214,6 +272,11 @@ export default function AuditoriaPage() {
   const [fAcao,   setFAcao]   = useState("");
   const [fBusca,        setFBusca]        = useState("");
   const [ocultarSistema, setOcultarSistema] = useState(true);
+  // Filtros da tabela escolhida: texto por coluna e faixa (de/até) nas colunas de valor
+  const [fCols, setFCols] = useState<Record<string, string>>({});
+  const colsTabela = fTabela ? (COLS_TABELA[fTabela] ?? []) : [];
+  useEffect(() => { setFCols({}); }, [fTabela]);
+  const [nomesPessoas, setNomesPessoas] = useState<Record<string, string>>({});
 
   // Fetch manual — não reage a mudança de filtro; só dispara via botão ou mount
   const carregar = useCallback(async (pag = 0) => {
@@ -235,6 +298,16 @@ export default function AuditoriaPage() {
       const { data, error } = await q;
       if (error) throw error;
       const lidos = ((data ?? []) as AuditEntry[]).filter(l => fAcao !== "CANCEL" || ehCancelamento(l));
+      // Nome do fornecedor/cliente/comprador dos registros (o log guarda só o id)
+      const ids = [...new Set(lidos.flatMap(l => IDS_PESSOA.map(k => (l.dados_depois ?? l.dados_antes ?? {})[k]).filter(Boolean).map(String)))];
+      if (ids.length) {
+        const m: Record<string, string> = {};
+        for (let i = 0; i < ids.length; i += 200) {
+          const { data: ps } = await sb.from("pessoas").select("id, nome").in("id", ids.slice(i, i + 200));
+          for (const p of ps ?? []) m[p.id as string] = p.nome as string;
+        }
+        setNomesPessoas(prev => ({ ...prev, ...m }));
+      }
       setLogs(prev => pag === 0 ? lidos : [...prev, ...lidos]);
       setPagina(pag);
     } catch (e) {
@@ -251,6 +324,18 @@ export default function AuditoriaPage() {
   const logsFiltrados = useMemo(() => {
     return logs.filter(l => {
       if (ocultarSistema && (l.usuario_app === "Sistema" || l.usuario_app === null)) return false;
+      if (colsTabela.length) {
+        const d = (l.dados_depois ?? l.dados_antes ?? {}) as Dados;
+        for (const c of colsTabela) {
+          if (c.filtro === "texto" && fCols[c.k]?.trim() && !String(c.get(d, nomesPessoas) ?? "").toLowerCase().includes(fCols[c.k].trim().toLowerCase())) return false;
+          if (c.filtro === "faixa") {
+            const v = num(c.get(d, nomesPessoas));
+            const de = fCols[c.k + "_de"] ? Number(fCols[c.k + "_de"].replace(/\./g, "").replace(",", ".")) : null;
+            const ate = fCols[c.k + "_ate"] ? Number(fCols[c.k + "_ate"].replace(/\./g, "").replace(",", ".")) : null;
+            if ((de != null && !Number.isNaN(de) && (v == null || v < de)) || (ate != null && !Number.isNaN(ate) && (v == null || v > ate))) return false;
+          }
+        }
+      }
       if (!fBusca) return true;
       const q = fBusca.toLowerCase();
       return (
@@ -262,7 +347,7 @@ export default function AuditoriaPage() {
         JSON.stringify(l.dados_antes ?? {}).toLowerCase().includes(q)
       );
     });
-  }, [logs, fBusca, ocultarSistema]);
+  }, [logs, fBusca, ocultarSistema, colsTabela, fCols, nomesPessoas]);
 
   // Stat cards
   const hojeStr = hoje;
@@ -286,7 +371,7 @@ export default function AuditoriaPage() {
   return (
     <div data-arato-page="true" style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
+      <div style={{ width: "100%", boxSizing: "border-box", padding: "20px 16px" }}>
 
         {/* Cabeçalho */}
         <div data-arato-page-heading="true" style={{ marginBottom: 20 }}>
@@ -364,6 +449,32 @@ export default function AuditoriaPage() {
           </OperationalButton>
         </OperationalFilters>
 
+        {colsTabela.some(c => c.filtro) && (
+          <div style={{ background: "#fff", borderRadius: 12, padding: "12px 18px", border: "0.5px solid #DDE2EE", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div style={{ fontSize: 11, color: "#1A4870", fontWeight: 700, alignSelf: "center" }}>Filtros de {TABELA_LABEL[fTabela] ?? fTabela}</div>
+            {colsTabela.filter(c => c.filtro).map(c => c.filtro === "faixa" ? (
+              <div key={c.k}>
+                <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>{c.label.toUpperCase()} DE / ATÉ</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input inputMode="decimal" placeholder="mín." value={fCols[c.k + "_de"] ?? ""} onChange={e => setFCols(f => ({ ...f, [c.k + "_de"]: e.target.value }))}
+                    style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, width: 100, textAlign: "right" }} />
+                  <input inputMode="decimal" placeholder="máx." value={fCols[c.k + "_ate"] ?? ""} onChange={e => setFCols(f => ({ ...f, [c.k + "_ate"]: e.target.value }))}
+                    style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, width: 100, textAlign: "right" }} />
+                </div>
+              </div>
+            ) : (
+              <div key={c.k} style={{ minWidth: 150 }}>
+                <div style={{ fontSize: 10, color: "#888", marginBottom: 3, fontWeight: 600 }}>{c.label.toUpperCase()}</div>
+                <input value={fCols[c.k] ?? ""} onChange={e => setFCols(f => ({ ...f, [c.k]: e.target.value }))}
+                  style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 8px", fontSize: 12, width: "100%", boxSizing: "border-box" }} />
+              </div>
+            ))}
+            {Object.values(fCols).some(Boolean) && (
+              <button onClick={() => setFCols({})} style={{ border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 12px", fontSize: 12, color: "#666", background: "#F9FAFB", cursor: "pointer" }}>Limpar filtros da tabela</button>
+            )}
+          </div>
+        )}
+
         {/* Tabela de logs */}
         <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
           {loading && pagina === 0 ? (
@@ -381,7 +492,9 @@ export default function AuditoriaPage() {
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>QUANDO</th>
                     <th style={{ padding: "10px 8px", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#888" }}>AÇÃO</th>
                     <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>TABELA</th>
-                    <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>RESUMO</th>
+                    {colsTabela.length
+                      ? colsTabela.map(c => <th key={c.k} style={{ padding: "10px 8px", textAlign: c.tipo === "valor" ? "right" : "left", fontSize: 10, fontWeight: 700, color: "#888", whiteSpace: "nowrap" }}>{c.label.toUpperCase()}</th>)
+                      : <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>RESUMO</th>}
                     <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>CAMPOS ALTERADOS</th>
                     <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888" }}>USUÁRIO</th>
                     <th style={{ padding: "10px 8px", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#888" }}>ID</th>
@@ -414,9 +527,21 @@ export default function AuditoriaPage() {
                           <td style={{ padding: "9px 8px", whiteSpace: "nowrap", color: "#374151", fontWeight: 600, fontSize: 11 }}>
                             {TABELA_LABEL[l.tabela] ?? l.tabela}
                           </td>
-                          <td style={{ padding: "9px 8px", color: "#555", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {colsTabela.length ? colsTabela.map(c => {
+                            const d = (l.dados_depois ?? l.dados_antes ?? {}) as Dados;
+                            const v = c.get(d, nomesPessoas);
+                            // valor que mudou nesta alteração: mostra antes → depois
+                            const mudou = l.acao === "UPDATE" && l.dados_antes && c.tipo === "valor" && num(c.get(l.dados_antes as Dados, nomesPessoas)) !== num(v);
+                            return (
+                              <td key={c.k} title={String(v ?? "")} style={{ padding: "9px 8px", color: "#1a1a1a", maxWidth: c.k === "descricao" || c.k === "pessoa" ? 280 : 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: c.tipo === "valor" ? "right" : "left", fontVariantNumeric: c.tipo === "valor" ? "tabular-nums" : undefined }}>
+                                {mudou && <span style={{ color: "#B91C1C", textDecoration: "line-through", marginRight: 4 }}>{fmtCel(c, c.get(l.dados_antes as Dados, nomesPessoas))}</span>}
+                                {fmtCel(c, v)}
+                              </td>
+                            );
+                          }) : (
+                          <td style={{ padding: "9px 8px", color: "#555", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {resumo}
-                          </td>
+                          </td>)}
                           <td style={{ padding: "9px 8px", maxWidth: 240 }}>
                             {campos.length > 0 ? (
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -450,7 +575,7 @@ export default function AuditoriaPage() {
                         </tr>
                         {aberto && (
                           <tr key={l.id + "_detail"}>
-                            <td colSpan={8} style={{ padding: "0 16px 12px", background: isDelete ? "#FFF5F5" : "#FAFCFF" }}>
+                            <td colSpan={7 + Math.max(1, colsTabela.length)} style={{ padding: "0 16px 12px", background: isDelete ? "#FFF5F5" : "#FAFCFF" }}>
                               <ExpandedDetail entry={l} />
                             </td>
                           </tr>
