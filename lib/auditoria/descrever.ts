@@ -7,7 +7,7 @@ export type EventoAud = {
   dados_antes: Record<string, unknown> | null; dados_depois: Record<string, unknown> | null;
   campos_alterados: string[] | null; usuario_app: string | null; created_at: string;
 };
-export type Tipo = "criou" | "alterou" | "excluiu" | "cancelou" | "baixou" | "estornou" | "conciliou" | "aprovou" | "fechou" | "reabriu" | "vinculou";
+export type Tipo = "criou" | "alterou" | "excluiu" | "cancelou" | "baixou" | "estornou" | "conciliou" | "aprovou" | "fechou" | "reabriu" | "vinculou" | "processou" | "recalculou";
 export type Descricao = { texto: string; automatico: boolean; tipo: Tipo; objeto: string };
 
 const MARCA_SALDO_ZERADO = "[Saldo do pedido zerado pelas NFs vinculadas]";
@@ -47,6 +47,31 @@ export function descreverEvento(e: EventoAud): Descricao {
   const a = e.dados_antes ?? {}, d = e.dados_depois ?? e.dados_antes ?? {};
   const mud = camposMudados(e);
   const statusAntes = s(a.status), statusDepois = s((e.dados_depois ?? {}).status);
+
+  // Gravação sem nenhuma mudança: o sistema recalculou o registro (ex.: pedido recalculado ao processar uma NF)
+  if (e.acao === "UPDATE" && mud.length === 0) {
+    const nome = e.tabela === "pedidos_compra" ? `o pedido de compra nº ${s(d.numero)}${d.nr_pedido_fornecedor ? ` (nº do fornecedor ${s(d.nr_pedido_fornecedor)})` : ""}`
+      : e.tabela === "contratos" ? `o contrato ${s(d.numero)}` : e.tabela === "lancamentos" ? `a ${titulo(d)}` : `o registro de ${e.tabela}`;
+    return { texto: `Sistema recalculou ${nome} (nada mudou)`, automatico: true, tipo: "recalculou", objeto: nome };
+  }
+
+  if (e.tabela === "nf_entradas" || e.tabela === "nf_servicos") {
+    const servico = e.tabela === "nf_servicos";
+    const numero = s(servico ? d.numero_nf : d.numero);
+    const quem = s(servico ? d.prestador_nome : d.emitente_nome);
+    const valor = servico ? (d.valor_liquido ?? d.valor_servico) : d.valor_total;
+    const obj = `${servico ? "NFS-e" : "NF"} ${numero}${quem ? ` de ${curto(quem, 50)}` : ""} (${dinheiro(valor)})`;
+    const viaSieg = s(d.origem) === "sieg" || s(d.origem) === "api";
+    if (e.acao === "INSERT") return viaSieg
+      ? { texto: `Sistema importou do SIEG a ${obj}`, automatico: true, tipo: "criou", objeto: obj }
+      : { texto: `Lançou a ${obj}`, automatico: false, tipo: "criou", objeto: obj };
+    if (e.acao === "DELETE") return { texto: `Excluiu a ${obj}`, automatico: false, tipo: "excluiu", objeto: obj };
+    if (statusDepois === "processada" && statusAntes !== "processada") return { texto: `Processou a ${obj}${d.processado_por ? ` (processada por ${s(d.processado_por)})` : ""}`, automatico: false, tipo: "processou", objeto: obj };
+    if (statusAntes === "processada" && statusDepois && statusDepois !== "processada") return { texto: `Estornou a ${obj} (voltou para ${statusDepois})`, automatico: false, tipo: "estornou", objeto: obj };
+    if (statusDepois === "cancelada" && statusAntes !== "cancelada") return { texto: `${servico ? "NFS-e" : "NF"} cancelada: ${obj}${s(d.observacao).toLowerCase().includes("prestador") ? " (cancelada pelo prestador)" : ""}`, automatico: !e.usuario_app, tipo: "cancelou", objeto: obj };
+    if (soTecnicos(e) || mud.every(c => CAMPOS_TECNICOS.has(c) || c === "valor_total")) return { texto: `Sistema atualizou a ${obj} (${mud.map(rotuloCampo).join(", ")})`, automatico: true, tipo: "vinculou", objeto: obj };
+    return { texto: `Alterou a ${obj}: ${mud.filter(c => !CAMPOS_TECNICOS.has(c)).map(rotuloCampo).join(", ")}`, automatico: false, tipo: "alterou", objeto: obj };
+  }
 
   if (e.tabela === "lancamentos") {
     const obj = titulo(d);
@@ -151,6 +176,11 @@ export function rotuloCampo(campo: string): string {
   return mapa[campo] ?? campo.replace(/_id$/, "").replace(/_/g, " ");
 }
 
+const PESO: Record<Tipo, number> = {
+  processou: 9, fechou: 8, aprovou: 8, baixou: 7, estornou: 7, cancelou: 7, conciliou: 6, reabriu: 6, excluiu: 6,
+  criou: 4, alterou: 2, vinculou: 1, recalculou: 0,
+};
+
 export type GrupoEventos<T extends EventoAud = EventoAud> = { principal: T; descricao: Descricao; consequencias: { e: T; d: Descricao }[] };
 
 /**
@@ -170,9 +200,13 @@ export function agruparEventos<T extends EventoAud>(eventos: T[], janelaSeg = 4)
     else grupos.push({ itens: [{ e, d }], usuario: e.usuario_app, t });
   }
   return grupos.map(g => {
-    // ação principal: a mais antiga feita pelo usuário (é a que disparou as outras); se só houver automáticos, a mais antiga
+    // Ação principal: a ação de usuário mais importante (processar NF, baixar, cancelar... antes de "alterou");
+    // empate fica com a mais antiga, que é a que disparou as outras. Só automáticos: a mais antiga.
     const ordem = [...g.itens].reverse();
-    const p = ordem.find(x => !x.d.automatico) ?? ordem[0];
+    const doUsuario = ordem.filter(x => !x.d.automatico);
+    const p = doUsuario.length
+      ? doUsuario.reduce((m, x) => (PESO[x.d.tipo] > PESO[m.d.tipo] ? x : m), doUsuario[0])
+      : ordem[0];
     return { principal: p.e, descricao: p.d, consequencias: g.itens.filter(x => x !== p) };
   });
 }

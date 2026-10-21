@@ -35,12 +35,15 @@ const TABELA_LABEL: Record<string, string> = {
   contratos_financeiros: "Contratos Financeiros",
   romaneios: "Romaneios",
   pedidos_compra: "Pedidos de Compra",
+  nf_entradas: "NF de Entrada",
+  nf_servicos: "NFS-e",
 };
 
 const STATUS_CANCELADO = ["cancelado", "cancelada"];
 const TIPO_LABEL: Record<Tipo, string> = {
   criou: "Criou", alterou: "Alterou", excluiu: "Excluiu", cancelou: "Cancelou", baixou: "Baixou", estornou: "Estornou",
   conciliou: "Conciliou", aprovou: "Aprovou", fechou: "Fechou", reabriu: "Reabriu", vinculou: "Vinculou",
+  processou: "Processou", recalculou: "Recalculou",
 };
 const TIPO_COR: Record<Tipo, { bg: string; color: string; border: string }> = {
   criou:     { bg: "#DCFCE7", color: "#15803D", border: "#86EFAC" },
@@ -54,6 +57,8 @@ const TIPO_COR: Record<Tipo, { bg: string; color: string; border: string }> = {
   estornou:  { bg: "#FFEDD5", color: "#9A3412", border: "#FDBA74" },
   reabriu:   { bg: "#FFEDD5", color: "#9A3412", border: "#FDBA74" },
   vinculou:  { bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" },
+  recalculou:{ bg: "#F3F4F6", color: "#374151", border: "#D1D5DB" },
+  processou: { bg: "#D5E8F5", color: "#0B2D50", border: "#1A4870" },
 };
 /** Alteração que levou o registro para cancelado (o banco grava como UPDATE do status). */
 function ehCancelamento(l: { acao: string; dados_antes: Record<string, unknown> | null; dados_depois: Record<string, unknown> | null }) {
@@ -143,6 +148,21 @@ const COLS_TABELA: Record<string, ColAud[]> = {
     { k: "valor", label: "Valor bruto", tipo: "valor", filtro: "faixa", get: d => num(d.valor_bruto) },
     { k: "liquido", label: "Valor líquido", tipo: "valor", get: d => num(d.valor_liquido) },
     { k: "status", label: "Status", get: d => d.status },
+  ],
+  nf_entradas: [
+    { k: "numero", label: "Nº NF", filtro: "texto", get: d => d.numero },
+    { k: "emitente", label: "Emitente", filtro: "texto", get: d => d.emitente_nome },
+    { k: "emissao", label: "Emissão", tipo: "data", get: d => d.data_emissao },
+    { k: "valor", label: "Valor", tipo: "valor", filtro: "faixa", get: d => num(d.valor_total) },
+    { k: "status", label: "Situação", get: d => d.status },
+    { k: "processado_por", label: "Processada por", filtro: "texto", get: d => d.processado_por },
+  ],
+  nf_servicos: [
+    { k: "numero", label: "Nº NFS-e", filtro: "texto", get: d => d.numero_nf },
+    { k: "prestador", label: "Prestador", filtro: "texto", get: d => d.prestador_nome },
+    { k: "data", label: "Prestação", tipo: "data", get: d => d.data_prestacao },
+    { k: "valor", label: "Valor", tipo: "valor", filtro: "faixa", get: d => num(d.valor_servico) },
+    { k: "status", label: "Situação", get: d => d.status },
   ],
   romaneios: [
     { k: "numero", label: "Nº Romaneio", filtro: "texto", get: d => d.numero_romaneio },

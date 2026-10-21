@@ -49,3 +49,17 @@ test("agrupa a ação do usuário com as consequências automáticas próximas",
   assert.equal(g[0].principal.id, "a");
   assert.deepEqual(g[0].consequencias.map(c => c.e.id).sort(), ["b", "c"]);
 });
+
+test("NF processada é a ação principal; pedido recalculado sem mudança é automático", () => {
+  const lista = [
+    ev({ id: "t", created_at: "2026-10-20T13:23:53Z", usuario_app: "Jack", dados_antes: { status: "em_aberto" }, dados_depois: { status: "cancelado", observacao: "[Saldo do pedido zerado pelas NFs vinculadas]", tipo: "pagar" }, campos_alterados: ["status", "observacao"] }),
+    ev({ id: "p", created_at: "2026-10-20T13:23:52Z", usuario_app: "Jack", tabela: "pedidos_compra", dados_antes: { numero: 453 }, dados_depois: { numero: 453, nr_pedido_fornecedor: "1009" }, campos_alterados: [] }),
+    ev({ id: "n", created_at: "2026-10-20T13:23:51Z", usuario_app: "Jack", tabela: "nf_entradas", dados_antes: { status: "pendente" }, dados_depois: { status: "processada", numero: "50997", emitente_nome: "COOP", valor_total: 10126.31 }, campos_alterados: ["status"] }),
+    ev({ id: "h", created_at: "2026-10-20T13:23:50Z", usuario_app: "Jack", tabela: "nf_entradas", dados_antes: { valor_total: 1 }, dados_depois: { numero: "50997", valor_total: 10126.31 }, campos_alterados: ["valor_total"] }),
+  ];
+  const [g] = agruparEventos(lista);
+  assert.equal(g.principal.id, "n");
+  assert.match(g.descricao.texto, /^Processou a NF 50997 de COOP/);
+  assert.match(descreverEvento(lista[1]).texto, /^Sistema recalculou o pedido de compra nº 453/);
+  assert.equal(descreverEvento(lista[1]).automatico, true);
+});

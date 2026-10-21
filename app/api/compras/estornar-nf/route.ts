@@ -1,5 +1,6 @@
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
+import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
 import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -227,7 +228,7 @@ export async function POST(req: NextRequest) {
     // Estorno reverte a entrega — pedido fiscal pode voltar de "entregue"/
     // "parcialmente_entregue" pra "aprovado".
     if (nfRow?.pedido_compra_id) await recalcularEntregaPedidoFiscal(sb, nfRow.pedido_compra_id);
-    if (nfRow?.pedido_compra_id) await ajustarSaldoPedidoNoFC(sb, nfRow.pedido_compra_id).catch(() => {});
+    if (nfRow?.pedido_compra_id) await ajustarSaldoPedidoNoFC(sb, nfRow.pedido_compra_id, ptaxDoDia).catch(() => {});
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {

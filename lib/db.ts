@@ -6,6 +6,7 @@
 
 import { falharSeErro } from "./db-util";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
+import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
 import { excluirTitulosDaNf } from "./financeiro/titulos-nf";
 import { hojeLocal } from "./data-local";
 import { supabase } from "./supabase";
@@ -5391,7 +5392,7 @@ export function alocarEntregaPorLinha(
 export async function recalcularEntregaPedidoFiscal(pedido_id: string | null | undefined): Promise<void> {
   if (!pedido_id) return;
   // O título do pedido no fluxo de caixa vale só o saldo ainda não coberto por NF processada
-  await ajustarSaldoPedidoNoFC(supabase, pedido_id).catch(e => console.error("[saldo-pedido]", e));
+  await ajustarSaldoPedidoNoFC(supabase, pedido_id, ptaxDoDiaQualquerLado).catch(e => console.error("[saldo-pedido]", e));
   const { data: ped } = await supabase.from("pedidos_compra").select("status").eq("id", pedido_id).maybeSingle();
   if (!ped) return;
   // Nunca promove rascunho pra aprovado nem reabre um pedido cancelado — só

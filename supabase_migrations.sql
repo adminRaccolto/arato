@@ -17065,3 +17065,15 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 354 — Auditoria das notas fiscais de entrada e de serviço
+-- =============================================================================
+-- Sem isto o Monitor de Auditoria mostrava só as consequências (títulos criados, pedido recalculado, título do pedido
+-- cancelado) e nunca a ação de origem: "processou a NF". Mesmo gatilho das demais tabelas (fn_audit_log, Seção 353).
+DROP TRIGGER IF EXISTS audit_nf_entradas ON nf_entradas;
+CREATE TRIGGER audit_nf_entradas AFTER INSERT OR UPDATE OR DELETE ON nf_entradas FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+DROP TRIGGER IF EXISTS audit_nf_servicos ON nf_servicos;
+CREATE TRIGGER audit_nf_servicos AFTER INSERT OR UPDATE OR DELETE ON nf_servicos FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
+
+NOTIFY pgrst, 'reload schema';

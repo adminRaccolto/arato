@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-p",
+    data: "21/10/2026",
+    titulo: "Pedido em dólar: saldo pelo câmbio das NFs; auditoria das notas fiscais",
+    modulos: ["Compras", "Financeiro", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "O título de Pedido de Compra em dólar era cancelado comparando o total do pedido em US$ com o total das NFs em R$ (ex.: pedido de US$ 8.257,20 \"coberto\" por uma NF de R$ 10.126,31). Agora cada NF é convertida pela PTAX do dia da emissão; sobra de até 2% do pedido é tratada como diferença de câmbio. Sem PTAX disponível, o título não é mexido. Os 7 títulos cancelados por engano foram reabertos com o saldo em dólar." },
+      { tipo: "novo", texto: "Monitor de Auditoria passa a registrar as NFs de entrada e de serviço (Seção 354): a ação de origem aparece (Processou a NF 50997…) e os títulos e o pedido recalculado aparecem como consequência. Gravação sem nenhuma mudança é mostrada como Automático: Sistema recalculou … (nada mudou)." },
+    ],
+    onde: "Compras → Pedidos · Financeiro → Contas a Pagar · Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.21-o",
     data: "21/10/2026",
     titulo: "Monitor de Auditoria em linguagem clara",
