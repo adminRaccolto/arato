@@ -1,5 +1,6 @@
 "use client";
 import { repartirCronograma } from "../../../lib/financeiro/cronograma";
+import { registrarEdicao, resolverParcela, type EdicaoParcela } from "../../../lib/financeiro/parcela-edicao";
 import { derivarDespesasFinanciadas } from "../../../lib/financeiro/cedula-despesas";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -227,7 +228,7 @@ export default function ContratosFinanceiros() {
   // dados das abas
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
-  const [parcelasEditadas,  setParcelasEditadas]  = useState<Record<string, { data_vencimento?: string; valor_parcela?: string; juros?: string; amortizacao?: string }>>({});
+  const [parcelasEditadas,  setParcelasEditadas]  = useState<Record<string, EdicaoParcela>>({});
   // Libera edição manual de Juros/Amortização no grid calculado — fora disso
   // (padrão), essas 2 colunas são só exibição, calculadas pelo método SAC/PRICE/SACRE.
   const [editandoParcelas, setEditandoParcelas] = useState(false);
@@ -843,7 +844,7 @@ export default function ContratosFinanceiros() {
   // ligado (editandoParcelas) — Vencimento e Valor Parcela continuam sempre
   // editáveis, como já era antes.
   const editarParcela = (id: string, campo: "data_vencimento" | "valor_parcela" | "juros" | "amortizacao", valor: string) => {
-    setParcelasEditadas(prev => ({ ...prev, [id]: { ...prev[id], [campo]: valor } }));
+    setParcelasEditadas(prev => ({ ...prev, [id]: registrarEdicao(prev[id], campo, valor) }));
   };
 
   async function confirmarBaixaParcela() {
@@ -952,32 +953,21 @@ export default function ContratosFinanceiros() {
   const salvarParcelasELancarCP = async () => salvar(async () => {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar parcelas elancar cp)", perigo: false }))) return;
     if (!contratoModal || !fazendaId) return;
+    // Valor = Amortização + Juros + Encargos: o que o usuário editou fica, o restante é calculado (mesma regra da tela)
+    const comErro = parcelasPagamento.map(p => ({ p, r: resolverParcela(p, parcelasEditadas[p.id]) })).find(x => x.r.erro);
+    if (comErro) throw new Error(`Parcela ${comErro.p.num_parcela}: ${comErro.r.erro}`);
     const atualizadas = parcelasPagamento.map(p => {
       const ed = parcelasEditadas[p.id];
-      if (!ed) return p;
-      const novaData = ed.data_vencimento ?? p.data_vencimento;
-      if (ed.valor_parcela) {
-        const novoValor = parseFloat(ed.valor_parcela.replace(/\./g, "").replace(",", "."));
-        if (isNaN(novoValor)) return { ...p, data_vencimento: novaData };
-        // Valor editado: os juros do período continuam, a amortização é o resto da prestação (antes, o valor inteiro virava
-        // amortização e os juros zeravam). Se o valor não cobre nem os juros, tudo vira juros.
-        const juros0 = p.juros ?? 0, acess = p.despesas_acessorios ?? 0;
-        const sobra = novoValor - acess - juros0;
-        return sobra >= 0
-          ? { ...p, data_vencimento: novaData, valor_parcela: novoValor, amortizacao: Math.round(sobra * 100) / 100 }
-          : { ...p, data_vencimento: novaData, valor_parcela: novoValor, amortizacao: 0, juros: Math.max(0, Math.round((novoValor - acess) * 100) / 100) };
-      }
-      if (ed.juros === undefined && ed.amortizacao === undefined) return { ...p, data_vencimento: novaData };
-      const novaAmort = ed.amortizacao !== undefined ? (parseFloat(ed.amortizacao.replace(/\./g, "").replace(",", ".")) || 0) : p.amortizacao;
-      const novoJuros = ed.juros !== undefined ? (parseFloat(ed.juros.replace(/\./g, "").replace(",", ".")) || 0) : p.juros;
-      return { ...p, data_vencimento: novaData, amortizacao: novaAmort, juros: novoJuros, valor_parcela: novaAmort + novoJuros + p.despesas_acessorios };
+      if (!ed || p.status === "pago") return p;
+      const r = resolverParcela(p, ed);
+      return { ...p, data_vencimento: ed.data_vencimento ?? p.data_vencimento, valor_parcela: r.valor_parcela, amortizacao: r.amortizacao, juros: r.juros };
     });
     // Saldo devedor refeito a partir da primeira parcela alterada (a amortização mudou)
     const idxEdit = parcelasPagamento.findIndex(p => !!parcelasEditadas[p.id]);
     if (idxEdit >= 0) {
-      let saldoAc = idxEdit === 0
-        ? (parseFloat(String(fC.valor_financiado).replace(",", ".")) || contratoModal.valor_financiado)
-        : atualizadas[idxEdit - 1].saldo_devedor;
+      // Sem valor financiado no contrato, o saldo inicial é a soma das amortizações do cronograma
+      const principalSaldo = parseFloat(String(fC.valor_financiado).replace(",", ".")) || Number(contratoModal.valor_financiado) || atualizadas.reduce((t, x) => t + (x.amortizacao || 0), 0);
+      let saldoAc = idxEdit === 0 ? principalSaldo : atualizadas[idxEdit - 1].saldo_devedor;
       for (let i = idxEdit; i < atualizadas.length; i++) {
         saldoAc = Math.max(0, Math.round((saldoAc - atualizadas[i].amortizacao) * 100) / 100);
         atualizadas[i] = { ...atualizadas[i], saldo_devedor: saldoAc };
@@ -992,9 +982,25 @@ export default function ContratosFinanceiros() {
     // parcelas (já com os ajustes acima aplicados) — idempotente, pode ser
     // clicado de novo depois de mais edições sem duplicar nem afetar o que já
     // foi baixado.
-    await supabase.from("lancamentos").delete()
-      .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-      .eq("contrato_financeiro_id", contratoModal.id).neq("status", "baixado");
+    // Títulos das parcelas (auto, "— Parcela N") deste contrato. Ficam intocados: os pagos de verdade (com conta,
+    // conciliação ou borderô) e os da Liberação (IOF/tarifas financiados). Antes a limpeza só apagava os não baixados e
+    // filtrava pela fazenda ativa: parcela vencida nascia "baixada" e era recriada a cada salvamento (duplicava), e
+    // contrato de outra fazenda nunca era limpo.
+    const fazContrato = (contratoModal as { fazenda_id?: string }).fazenda_id || fazendaId;
+    const { data: libs } = await supabase.from("parcelas_liberacao").select("lancamento_id, despesa_lancamento_id").eq("contrato_id", contratoModal.id);
+    const idsLiberacao = new Set((libs ?? []).flatMap(l => [(l as { lancamento_id?: string }).lancamento_id, (l as { despesa_lancamento_id?: string }).despesa_lancamento_id]).filter(Boolean) as string[]);
+    const { data: lancsAtuais, error: errL } = await supabase.from("lancamentos")
+      .select("id, data_vencimento, status, conta_bancaria, conciliado, lote_id, descricao")
+      .eq("contrato_financeiro_id", contratoModal.id).eq("tipo", "pagar").eq("auto", true).ilike("descricao", "%— Parcela %");
+    if (errL) throw errL;
+    const pagoDeVerdade = (l: { status: string; conta_bancaria?: string | null; conciliado?: boolean | null; lote_id?: string | null }) =>
+      l.status === "baixado" && (!!l.conta_bancaria || !!l.conciliado || !!l.lote_id);
+    const datasPagas = new Set((lancsAtuais ?? []).filter(pagoDeVerdade).map(l => l.data_vencimento as string));
+    const apagar = (lancsAtuais ?? []).filter(l => !idsLiberacao.has(l.id) && !pagoDeVerdade(l)).map(l => l.id as string);
+    for (let i = 0; i < apagar.length; i += 200) {
+      const { error } = await supabase.from("lancamentos").delete().in("id", apagar.slice(i, i + 200));
+      if (error) throw error;
+    }
 
     const hoje = hojeLocal();
     const ogMap = await buscarOgsCf(fazendaId);
@@ -1013,11 +1019,14 @@ export default function ContratosFinanceiros() {
       cpr: "2.02.01.03.003", egf: "2.02.01.03.001", outros: "2.02.01.03.005",
     };
     const lancsParcelas: Record<string, unknown>[] = [];
+    const parcelasJaPagas: number[] = [];
     for (const p of salvas) {
+      // Parcela com pagamento real no CP não é relançada (o título pago fica como está)
+      if (datasPagas.has(p.data_vencimento)) { parcelasJaPagas.push(p.num_parcela); continue; }
       const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
       const descBase = `${descricaoCalc} — Parcela ${p.num_parcela}`;
       const camposBase = {
-        fazenda_id: fazendaId, contrato_financeiro_id: contratoModal.id, tipo: "pagar",
+        fazenda_id: fazContrato, contrato_financeiro_id: contratoModal.id, tipo: "pagar",
         moeda: moedaCalc, data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
         status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro",
         pessoa_id: pessoaId || null, produtor_id: produtorIdCalc,
@@ -1028,7 +1037,11 @@ export default function ContratosFinanceiros() {
       if (p.despesas_acessorios > 0) lancsParcelas.push({ ...camposBase, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", operacao_gerencial_id: ogMap.get("2.02.01.01.001") ?? null, valor: p.despesas_acessorios });
       if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ ...camposBase, descricao: descBase, categoria: CAT_AMORT[tipoContrato], operacao_gerencial_id: ogMap.get(OG_AMORT_CALC[tipoContrato]) ?? null, valor: p.valor_parcela });
     }
-    if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
+    if (lancsParcelas.length > 0) {
+      const { error } = await supabase.from("lancamentos").insert(lancsParcelas);
+      if (error) throw error;
+    }
+    if (parcelasJaPagas.length) alert(`Parcela(s) ${parcelasJaPagas.join(", ")} já paga(s) no Contas a Pagar: o título pago não foi alterado. Para mudar o valor, estorne o pagamento antes.`);
 
     setParcelasPagamento(salvas);
     setParcelasEditadas({});
@@ -2080,13 +2093,22 @@ export default function ContratosFinanceiros() {
                                   const corSt = p.status === "pago" ? "#111111" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
                                   const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v);
                                   const ed = parcelasEditadas[p.id];
+                                  const res = resolverParcela(p, ed);
+                                  const bloqueada = p.status === "pago";
                                   const dataEditada = !!ed?.data_vencimento;
-                                  const valorEditado = ed?.valor_parcela !== undefined;
-                                  const valorExibir = valorEditado ? ed!.valor_parcela! : String(p.valor_parcela);
-                                  const amortEditada = ed?.amortizacao !== undefined;
-                                  const jurosEditado = ed?.juros !== undefined;
-                                  const amortExibir = amortEditada ? ed!.amortizacao! : String(p.amortizacao);
-                                  const jurosExibir = jurosEditado ? ed!.juros! : String(p.juros);
+                                  // Os dois últimos campos digitados ficam como digitados; o outro é recalculado
+                                  const fixos = (ed?.ordem ?? []).slice(-2);
+                                  const valorEditado = fixos.includes("valor_parcela");
+                                  const amortEditada = fixos.includes("amortizacao");
+                                  const jurosEditado = fixos.includes("juros");
+                                  const exibir = (campo: "valor_parcela" | "amortizacao" | "juros") => fixos.includes(campo) ? (ed?.[campo] ?? "") : String(res[campo]);
+                                  const valorExibir = exibir("valor_parcela");
+                                  const amortExibir = exibir("amortizacao");
+                                  const jurosExibir = exibir("juros");
+                                  const calculado = (campo: "valor_parcela" | "amortizacao" | "juros") => !!ed && Math.abs(res[campo] - p[campo]) > 0.004;
+                                  const inpCalculado: React.CSSProperties = { ...inpCell, background: "#D5E8F5", border: "0.5px solid #1A4870" };
+                                  const estilo = (campo: "valor_parcela" | "amortizacao" | "juros", editado: boolean) =>
+                                    res.erro && editado ? { ...inpEditado, border: "0.5px solid #E24B4A", background: "#FCEBEB" } : editado ? inpEditado : calculado(campo) ? inpCalculado : inpCell;
                                   return (
                                     <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
                                       <td style={{ padding: "5px 10px", textAlign: "center" }}>{p.num_parcela}</td>
@@ -2101,16 +2123,18 @@ export default function ContratosFinanceiros() {
                                       <td style={{ padding: editandoParcelas ? "4px 8px" : "5px 10px", textAlign: "right" }}>
                                         {editandoParcelas ? (
                                           <input type="number" step="0.01" min="0" value={amortExibir}
-                                            onChange={e => editarParcela(p.id, "amortizacao", e.target.value)}
-                                            style={amortEditada ? inpEditado : inpCell} />
-                                        ) : fmtV(p.amortizacao)}
+                                            onChange={e => editarParcela(p.id, "amortizacao", e.target.value)} disabled={bloqueada}
+                                            title={bloqueada ? "Parcela paga: estorne o pagamento para alterar" : undefined}
+                                            style={estilo("amortizacao", amortEditada)} />
+                                        ) : fmtV(res.amortizacao)}
                                       </td>
                                       <td style={{ padding: editandoParcelas ? "4px 8px" : "5px 10px", textAlign: "right", color: editandoParcelas ? undefined : "#E24B4A" }}>
                                         {editandoParcelas ? (
                                           <input type="number" step="0.01" min="0" value={jurosExibir}
-                                            onChange={e => editarParcela(p.id, "juros", e.target.value)}
-                                            style={jurosEditado ? inpEditado : inpCell} />
-                                        ) : fmtV(p.juros)}
+                                            onChange={e => editarParcela(p.id, "juros", e.target.value)} disabled={bloqueada}
+                                            title={bloqueada ? "Parcela paga: estorne o pagamento para alterar" : undefined}
+                                            style={estilo("juros", jurosEditado)} />
+                                        ) : fmtV(res.juros)}
                                       </td>
                                       <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.despesas_acessorios)}</td>
                                       <td style={{ padding: "4px 8px" }}>
@@ -2120,7 +2144,9 @@ export default function ContratosFinanceiros() {
                                           min="0"
                                           value={valorExibir}
                                           onChange={e => editarParcela(p.id, "valor_parcela", e.target.value)}
-                                          style={valorEditado ? inpEditado : inpCell}
+                                          disabled={bloqueada}
+                                          title={res.erro ?? (bloqueada ? "Parcela paga: estorne o pagamento para alterar" : undefined)}
+                                          style={estilo("valor_parcela", valorEditado)}
                                         />
                                       </td>
                                       <td style={{ padding: "5px 10px", textAlign: "right" }}>{fmtV(p.saldo_devedor)}</td>
@@ -2154,14 +2180,10 @@ export default function ContratosFinanceiros() {
                                 <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
                                   {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); return (<>
                                     <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
-                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
-                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + resolverParcela(p, parcelasEditadas[p.id]).amortizacao, 0))}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + resolverParcela(p, parcelasEditadas[p.id]).juros, 0))}</td>
                                     <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
-                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => {
-                                      const ed = parcelasEditadas[p.id];
-                                      const v = ed?.valor_parcela !== undefined ? parseFloat(ed.valor_parcela) || p.valor_parcela : p.valor_parcela;
-                                      return s + v;
-                                    }, 0))}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + resolverParcela(p, parcelasEditadas[p.id]).valor_parcela, 0))}</td>
                                     <td colSpan={3} />
                                   </>); })()}
                                 </tr>

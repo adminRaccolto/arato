@@ -7,6 +7,20 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.21-g",
+    data: "21/10/2026",
+    titulo: "Contratos Financeiros: edição de parcelas corrigida; NFS-e com Cadastro Fornecedor",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Editar parcelas: ao salvar, os valores com centavos eram lidos sem a vírgula decimal (R$ 1.424.527,96 virava R$ 142.452.795,85). Corrigido." },
+      { tipo: "melhoria", texto: "Editar parcelas recalcula na hora: mudando amortização e juros, o valor da parcela acompanha; mudando valor e amortização, os juros são calculados; mudando valor e juros, a amortização é calculada. O campo calculado fica destacado em azul. Combinação que daria valor negativo é avisada e não deixa salvar." },
+      { tipo: "correcao", texto: "Salvar Parcelas e Lançar no CP duplicava os títulos das parcelas vencidas a cada salvamento e não limpava contratos de outra fazenda. Agora os títulos das parcelas são refeitos uma vez só; parcela paga de verdade (com conta, conciliação ou borderô) não é mexida e o sistema avisa; os títulos de IOF/tarifas da Liberação não são mais apagados." },
+      { tipo: "melhoria", texto: "Parcela já paga fica travada na edição (estorne o pagamento para alterar)." },
+      { tipo: "novo", texto: "NFS-e: botão Cadastro Fornecedor ao lado do Prestador quando o prestador ainda não está no cadastro, igual à NF de Produtos." },
+    ],
+    onde: "Financeiro → Contratos Financeiros → Pagamento · Documentos Fiscais → NFS-e",
+  },
+  {
     versao: "2026.10.21-f",
     data: "21/10/2026",
     titulo: "Contratos Financeiros: barra Editar parcelas sempre visível",

@@ -27,6 +27,7 @@ import type { Pessoa, CentroCusto, AnoSafra, Empresa, Produtor } from "../../lib
 import SelectBusca from "../SelectBusca";
 import { listarPessoasDaConta, listarCentrosCustoGeralDaConta, listarAnosSafra, listarOperacoesGerenciaisAtivasDaConta, listarEmpresasDaConta, listarProdutoresDaConta } from "../../lib/db";
 import InputMonetario from "../InputMonetario";
+import ModalCadastroFornecedor from "./ModalCadastroFornecedor";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -132,6 +133,7 @@ export default function ModalNfServico({
   const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId } = useAuth();
 
   const [pessoas,  setPessoas]  = useState<Pessoa[]>([]);
+  const [cadFornAberto, setCadFornAberto] = useState(false);
   const [centros,  setCentros]  = useState<CentroCusto[]>([]);
   const [opsGer,   setOpsGer]   = useState<OpGerencial[]>([]);
   const [anos,     setAnos]     = useState<AnoSafra[]>([]);
@@ -656,7 +658,18 @@ export default function ModalNfServico({
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
                 <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                   <div>
-                    <label data-arato-label="true" style={lbl}>Prestador — do cadastro</label>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                      <label data-arato-label="true" style={{ ...lbl, marginBottom: 0 }}>Prestador — do cadastro</label>
+                      {!viewOnly && !cab.prestador_id && (cab.prestador_cnpj || cab.prestador_nome) && (
+                        <button data-arato-button="secondary" type="button"
+                          title="Abre o cadastro de fornecedor com os dados da NFS-e e da consulta de CNPJ"
+                          onClick={() => setCadFornAberto(true)}
+                          style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #111111", background: "#E8E8E8", color: "#0D0D0D", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                        >
+                          Cadastro Fornecedor
+                        </button>
+                      )}
+                    </div>
                     <SelectField value={cab.prestador_id} onChange={e => onPrestadorChange(e.target.value)} style={inp}>
                       <option value="">Selecionar do cadastro…</option>
                       {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
@@ -1099,6 +1112,19 @@ export default function ModalNfServico({
             )}
           </div>
         </div>
+      )}
+      {cadFornAberto && (cab.fazenda_id || fazendaId) && (
+        <ModalCadastroFornecedor
+          fazendaId={(cab.fazenda_id || fazendaId)!}
+          documento={cab.prestador_cnpj ?? ""}
+          nome={cab.prestador_nome ?? ""}
+          onClose={() => setCadFornAberto(false)}
+          onSaved={nova => {
+            setPessoas(prev => prev.some(x => x.id === nova.id) ? prev : [...prev, nova]);
+            setCab(p => ({ ...p, prestador_id: nova.id, prestador_nome: nova.nome ?? p.prestador_nome, prestador_cnpj: nova.cpf_cnpj ?? p.prestador_cnpj }));
+            setCadFornAberto(false);
+          }}
+        />
       )}
     </>
   );
