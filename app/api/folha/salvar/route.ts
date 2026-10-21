@@ -195,11 +195,19 @@ export async function POST(req: Request) {
       if (folhaIds.length > 0) {
         const { data: counts } = await sb
           .from("folha_funcionarios")
-          .select("folha_id")
+          .select("folha_id, cp_lancamento_id")
           .in("folha_id", folhaIds);
+        const semPrevisao = new Set<string>();
         (counts ?? []).forEach((row: any) => {
           countMap[row.folha_id] = (countMap[row.folha_id] ?? 0) + 1;
+          if (!row.cp_lancamento_id) semPrevisao.add(row.folha_id);
         });
+        // Folha em rascunho gerada antes da previsão no CP: lança as previsões na primeira listagem (uma vez só,
+        // depois as linhas já ficam ligadas aos títulos). Falha aqui nunca derruba a listagem.
+        const pendentes = (data ?? []).filter((f: any) => f.status === "rascunho" && semPrevisao.has(f.id)).slice(0, 60);
+        for (let i = 0; i < pendentes.length; i += 6) {
+          await Promise.all(pendentes.slice(i, i + 6).map((f: any) => sincronizarPrevisoesFolha(sb, f.id).catch(() => undefined)));
+        }
       }
       const result = (data ?? []).map((f: any) => ({
         ...f,

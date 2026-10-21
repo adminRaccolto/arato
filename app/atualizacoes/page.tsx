@@ -14,6 +14,7 @@ const RELEASES = [
     itens: [
       { tipo: "novo", texto: "Ao salvar a folha (ainda em rascunho), ela já entra no Contas a Pagar e no fluxo de caixa como previsão: um título por funcionário, FGTS e INSS Patronal. Ao Fechar Folha, cada previsão vira título real com o valor que estiver nela, inclusive o que você editou no Contas a Pagar; sem edição, vale o líquido recalculado com os adiantamentos. Título já efetivado no CP é mantido." },
       { tipo: "novo", texto: "Botão Excluir na lista de folhas (também dentro da folha). Apaga a folha e, em cascata, os títulos do Contas a Pagar; bloqueia se algum já foi baixado em borderô e devolve adiantamentos descontados para Pendente." },
+      { tipo: "melhoria", texto: "Folhas em rascunho já geradas recebem as previsões sozinhas na primeira vez que a lista de folhas é aberta; não precisa salvar uma a uma." },
       { tipo: "melhoria", texto: "Reabrir a folha volta a lançar os títulos como previsão no CP e no fluxo de caixa." },
     ],
     onde: "Financeiro → Folha de Pagamento",
