@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -55,6 +56,7 @@ interface GrupoMaq {
 // ─── componente ──────────────────────────────────────────────────────────────
 function RelManutInner() {
   const { fazendaId, contaId, contaNome } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   const nomeCliente = contaNome ?? "";
 
   // Relatório da CONTA toda: frota, anos safra e ciclos de todas as fazendas do cliente (a frota é do
@@ -243,7 +245,7 @@ function RelManutInner() {
       orientation: "landscape",
       fazenda: nomeCliente,
       subtitulo: periodoLabel,
-      nomeArquivo: nomeRelatorio("MANUTENCAO", contaNome ?? nomeCliente, periodoInicio, periodoFim),
+      nomeArquivo: nomeRelatorio("MANUTENCAO", clienteRelatorio, periodoInicio, periodoFim),
     });
   }
 
@@ -310,7 +312,7 @@ function RelManutInner() {
     }
     XLSX.utils.book_append_sheet(wb, wsRes, "Resumo por Máquina");
 
-    const nomeArquivo = `${nomeRelatorio("MANUTENCAO", contaNome ?? nomeCliente, periodoInicio, periodoFim)}.xlsx`;
+    const nomeArquivo = `${nomeRelatorio("MANUTENCAO", clienteRelatorio, periodoInicio, periodoFim)}.xlsx`;
     XLSX.writeFile(wb, nomeArquivo);
   }
 

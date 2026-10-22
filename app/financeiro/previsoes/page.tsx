@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
@@ -59,6 +60,7 @@ const FORM_VAZIO = {
 
 export default function PrevisaoGastosPage() {
   const { fazendaId, contaId, contaNome } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   const hoje = hojeLocal();
   const [aba, setAba] = useState<Aba>("previsoes");
   const [previsoes, setPrevisoes] = useState<Previsao[]>([]);
@@ -271,7 +273,7 @@ export default function PrevisaoGastosPage() {
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Previsto x Realizado");
-    XLSX.writeFile(wb, `${nomeRelatorio("PREVISTO X REALIZADO", contaNome, rDe, rAte)}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("PREVISTO X REALIZADO", clienteRelatorio, rDe, rAte)}.xlsx`);
   }
 
   // ─── Render ──────────────────────────────────────────────────

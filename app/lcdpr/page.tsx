@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../components/useClienteRelatorio";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -187,6 +188,7 @@ const MOTIVO_LABEL: Record<MotivoExclusaoLcdpr, string> = {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function LCDPR() {
   const { fazendaId, fazendaIds, contaId, contaNome: contaNomeAuth, podeAcessarPlano } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   // Busca contas.nome pelo contaId desta tela (não pelo do AuthProvider) —
   // um raccotlo navegando pela conta de um cliente tem conta_id NULL no
   // próprio perfil, então useAuth().contaNome nunca carrega pra ele, mesmo
@@ -812,7 +814,7 @@ export default function LCDPR() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
     XLSX.utils.book_append_sheet(wb, ws2, "Resumo Mensal");
-    XLSX.writeFile(wb, `${nomeRelatorio("LCDPR", contaNome ?? nomeArq, `${anoSel}-01-01`, `${anoSel}-12-31`)}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("LCDPR", clienteRelatorio ?? nomeArq, `${anoSel}-01-01`, `${anoSel}-12-31`)}.xlsx`);
   };
 
   // ── Relatório PDF — visão estruturada do Livro Caixa (não é o arquivo
@@ -992,7 +994,7 @@ export default function LCDPR() {
     abrirPreviewImpressao(
       "LCDPR — Livro Caixa Digital do Produtor Rural",
       html,
-      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: contaNome ?? nomeProd, nomeArquivo: nomeRelatorio("LCDPR", contaNome ?? nomeProd, `${anoSel}-01-01`, `${anoSel}-12-31`) },
+      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: contaNome ?? nomeProd, nomeArquivo: nomeRelatorio("LCDPR", clienteRelatorio ?? nomeProd, `${anoSel}-01-01`, `${anoSel}-12-31`) },
     );
   };
 

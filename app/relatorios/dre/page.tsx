@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
@@ -99,6 +100,7 @@ type CpDre = { valor: number; categoria?: string; operacao_gerencial_id?: string
 
 export default function DrePage() {
   const { fazendaId, fazendaIds: authFazendaIds, contaId, contaNome } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   // Suporte multi-fazenda
   const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
@@ -670,7 +672,7 @@ export default function DrePage() {
             <OperationalButton data-arato-button="secondary"
               onClick={() => {
                 const el = document.getElementById("dre-print-content");
-                abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", { orientation: "landscape", subtitulo: "Demonstrativo de Resultado do Exercício", nomeArquivo: nomeRelatorio("DRE", contaNome, null, null, anoLabel ? `SAFRA ${anoLabel}` : undefined) });
+                abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", { orientation: "landscape", subtitulo: "Demonstrativo de Resultado do Exercício", nomeArquivo: nomeRelatorio("DRE", clienteRelatorio, null, null, anoLabel ? `SAFRA ${anoLabel}` : undefined) });
               }}
               style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "#444" }}
             >

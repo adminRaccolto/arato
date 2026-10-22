@@ -15,6 +15,7 @@
 // (necessários no corpo do relatório) são buscados ao vivo por pedido
 // selecionado, via lib/db.ts (mesmas funções já usadas em Compras).
 // ═══════════════════════════════════════════════════════════════════════════
+import { useClienteRelatorio } from "../useClienteRelatorio";
 import { nomeRelatorio } from "../../lib/print";
 import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
@@ -132,6 +133,7 @@ function logoFazendaSrc(fzId?: string | null): string | null {
 
 export default function PedidosCompraRelatorioTab() {
   const { fazendaId, fazendaIds, contaId, nomeUsuario, contaNome, logoCliente } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   const [modalAberto, setModalAberto] = useState(false);
   const [gerando, setGerando] = useState(false);
@@ -408,7 +410,7 @@ export default function PedidosCompraRelatorioTab() {
   }
 
   function buildRelatorioHtml(paginas: string[], tituloToolbar: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${nomeRelatorio("PEDIDOS DE COMPRA", contaNome, fDataDe || null, fDataAte || null)}</title>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${nomeRelatorio("PEDIDOS DE COMPRA", clienteRelatorio, fDataDe || null, fDataAte || null)}</title>
 <style>
   body{margin:0;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#D1D5DB}
   .rt-toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -489,7 +491,7 @@ export default function PedidosCompraRelatorioTab() {
             }
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Detalhado");
           }
-          XLSX.writeFile(wb, `${nomeRelatorio("PEDIDOS DE COMPRA CONSOLIDADO POR INSUMO", contaNome, fDataDe || null, fDataAte || null)}.xlsx`);
+          XLSX.writeFile(wb, `${nomeRelatorio("PEDIDOS DE COMPRA CONSOLIDADO POR INSUMO", clienteRelatorio, fDataDe || null, fDataAte || null)}.xlsx`);
         }
         setModalAberto(false);
         return;
@@ -533,7 +535,7 @@ export default function PedidosCompraRelatorioTab() {
           }
           XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Detalhado");
         }
-        XLSX.writeFile(wb, `${nomeRelatorio("PEDIDOS DE COMPRA", contaNome, fDataDe || null, fDataAte || null)}.xlsx`);
+        XLSX.writeFile(wb, `${nomeRelatorio("PEDIDOS DE COMPRA", clienteRelatorio, fDataDe || null, fDataAte || null)}.xlsx`);
       }
       setModalAberto(false);
     } catch (e: unknown) {

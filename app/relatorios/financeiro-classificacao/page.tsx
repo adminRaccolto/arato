@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import InputData from "../../../components/InputData";
@@ -179,6 +180,7 @@ function countRows(no: NoGrupo): number {
 // ─── componente principal ─────────────────────────────────────────────────────
 function RelFinClassInner() {
   const { fazendaId, fazendaIds, nomeFazendaSelecionada, contaId, contaNome } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   // ── filtros ──
   const [inicio, setInicio]   = useState(mesInicio());
@@ -553,7 +555,7 @@ function RelFinClassInner() {
       orientation: "landscape",
       fazenda: nomeFazendaSelecionada ?? "",
       subtitulo: `${periodoLabel} · ${tipoLabelPdf}`,
-      nomeArquivo: nomeRelatorio("FINANCEIRO POR CLASSIFICACAO", contaNome ?? nomeFazendaSelecionada, inicio, fim),
+      nomeArquivo: nomeRelatorio("FINANCEIRO POR CLASSIFICACAO", clienteRelatorio, inicio, fim),
     });
   }
 
@@ -575,7 +577,7 @@ function RelFinClassInner() {
       for (let R = 5; R <= rg.e.r; R++) for (let C = 2; C <= 4; C++) { const c = w[XLSX.utils.encode_cell({ r: R, c: C })]; if (c && typeof c.v === "number") c.z = "#,##0.00"; }
       const b = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(b, w, "Sintético por OG");
-      XLSX.writeFile(b, `${nomeRelatorio("FINANCEIRO POR CLASSIFICACAO SINTETICO", contaNome ?? nomeFazendaSelecionada, inicio, fim)}.xlsx`);
+      XLSX.writeFile(b, `${nomeRelatorio("FINANCEIRO POR CLASSIFICACAO SINTETICO", clienteRelatorio, inicio, fim)}.xlsx`);
       return;
     }
     const ws_data: (string | number)[][] = [];
@@ -626,7 +628,7 @@ function RelFinClassInner() {
       if (cell && typeof cell.v === "number") cell.z = "#,##0.00";
     }
     XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
-    XLSX.writeFile(wb, `${nomeRelatorio("FINANCEIRO POR CLASSIFICACAO", contaNome ?? nomeFazendaSelecionada, inicio, fim)}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("FINANCEIRO POR CLASSIFICACAO", clienteRelatorio, inicio, fim)}.xlsx`);
   }
 
   // ── estilos ───────────────────────────────────────────────────────────────

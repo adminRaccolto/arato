@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-h",
+    data: "22/10/2026",
+    titulo: "Nome do relatório usa sempre o cliente",
+    modulos: ["Relatórios"],
+    itens: [
+      { tipo: "correcao", texto: "O nome do arquivo dos relatórios saía com o nome da fazenda ativa (ex.: CP CR_ARMAZEM SANTA RITA_…) quando o nome da conta ainda não tinha carregado. Agora sai sempre o nome do cliente (ex.: CP CR_GRUPO OGLIARI_01-09-2026 A 30-09-2026), lido do cadastro da conta se preciso — nunca o da fazenda. Vale para todos os relatórios, inclusive Aplicações e Endividamento." },
+    ],
+    onde: "Todos os relatórios",
+  },
+  {
     versao: "2026.10.22-g",
     data: "22/10/2026",
     titulo: "NF de entrada: máquina para todos os itens de uma vez",

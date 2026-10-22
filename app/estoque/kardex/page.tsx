@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -63,6 +64,7 @@ type LinhaKardex = {
 
 export default function Kardex() {
   const { fazendaId, fazendaIds, contaNome } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [insumoId,     setInsumoId]     = useState("");
@@ -327,7 +329,7 @@ export default function Kardex() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Kardex");
-    const nome = `${nomeRelatorio(`KARDEX ${insumoSel.nome}`, contaNome, dataIni, dataFim)}.xlsx`;
+    const nome = `${nomeRelatorio(`KARDEX ${insumoSel.nome}`, clienteRelatorio, dataIni, dataFim)}.xlsx`;
     XLSX.writeFile(wb, nome);
   }
 

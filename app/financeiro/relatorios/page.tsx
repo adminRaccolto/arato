@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -88,6 +89,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
   const { fazendaId, fazendaIds, contaId, emailUsuario, podeAcessarPlano, nomeFazendaSelecionada, contaNome, contaModulosOverrides } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -258,7 +260,7 @@ function FinanceiroRelatoriosInner() {
       const escopo = prodCPCR.size > 0
         ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
         : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
-      abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo, nomeArquivo: nomeRelatorio("CP CR", contaNome ?? nomeFazendaSelecionada, inicioCPCR, fimCPCR) });
+      abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo, nomeArquivo: nomeRelatorio("CP CR", clienteRelatorio, inicioCPCR, fimCPCR) });
     })();
   }, [cpcrEmitir]); // eslint-disable-line react-hooks/exhaustive-deps
   const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
@@ -572,7 +574,7 @@ function FinanceiroRelatoriosInner() {
       resumo["!cols"] = [{ wch: 28 }, { wch: 60 }];
       XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
       XLSX.utils.book_append_sheet(wb, ws, "Fluxo Diário");
-      nome = `${nomeRelatorio("FLUXO DE CAIXA DIARIO", contaNome ?? nomeFazendaSelecionada, d.filtroInicio, d.filtroFim)}.xlsx`;
+      nome = `${nomeRelatorio("FLUXO DE CAIXA DIARIO", clienteRelatorio, d.filtroInicio, d.filtroFim)}.xlsx`;
     } else {
       const mensal = subAbaFluxo === "mensal";
       const dm = printMensalRef.current, da = printAnualRef.current;
@@ -610,8 +612,8 @@ function FinanceiroRelatoriosInner() {
       XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
       XLSX.utils.book_append_sheet(wb, ws, mensal ? "Fluxo Mensal" : "Fluxo Anual");
       nome = mensal
-        ? `${nomeRelatorio("FLUXO DE CAIXA MENSAL", contaNome ?? nomeFazendaSelecionada, dm!.inicio, dm!.fim)}.xlsx`
-        : `${nomeRelatorio("FLUXO DE CAIXA ANUAL", contaNome ?? nomeFazendaSelecionada, null, null, `${da!.anosPresentes[0] ?? ""} A ${da!.anosPresentes[da!.anosPresentes.length - 1] ?? ""}`)}.xlsx`;
+        ? `${nomeRelatorio("FLUXO DE CAIXA MENSAL", clienteRelatorio, dm!.inicio, dm!.fim)}.xlsx`
+        : `${nomeRelatorio("FLUXO DE CAIXA ANUAL", clienteRelatorio, null, null, `${da!.anosPresentes[0] ?? ""} A ${da!.anosPresentes[da!.anosPresentes.length - 1] ?? ""}`)}.xlsx`;
     }
     XLSX.writeFile(wb, nome);
   }
@@ -640,7 +642,7 @@ function FinanceiroRelatoriosInner() {
               : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
             const fazenda = escopoImpressao;
             // Nome do arquivo no padrão TIPO_CLIENTE_INTERVALO (ex.: CP CR_GRUPO OGLIARI_01-09-2026 A 30-09-2026)
-            const cliente = contaNome ?? nomeFazendaSelecionada ?? "";
+            const cliente = clienteRelatorio ?? "";
             const anosA = printAnualRef.current?.anosPresentes ?? [];
             const nomeArquivo =
               aba === "cpcr" ? nomeRelatorio("CP CR", cliente, inicioCPCR, fimCPCR)
@@ -2333,7 +2335,7 @@ function FinanceiroRelatoriosInner() {
                   });
                   ws2["!cols"] = colsVisiveis.map(c => ({ wch: Math.round(cpcrW[c.key] / 7) }));
                   XLSX.utils.book_append_sheet(wb, ws2, "Lançamentos");
-                  XLSX.writeFile(wb, `${nomeRelatorio("CP CR", contaNome ?? nomeFazendaSelecionada, inicioCPCR, fimCPCR)}.xlsx`);
+                  XLSX.writeFile(wb, `${nomeRelatorio("CP CR", clienteRelatorio, inicioCPCR, fimCPCR)}.xlsx`);
                 };
 
                 // ── dropdown helper ───────────────────────────────────

@@ -1,4 +1,5 @@
 "use client";
+import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -142,6 +143,7 @@ interface ContratoEnriquecido extends ContratoFinanceiro {
 
 export default function RelatorioEndividamento() {
   const { fazendaId, fazendaIds, contaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
+  const clienteRelatorio = useClienteRelatorio();   // nome da conta (cliente) para o nome dos relatórios
 
   const [contratos,    setContratos]   = useState<ContratoEnriquecido[]>([]);
   const [produtores,   setProdutores]  = useState<Produtor[]>([]);
@@ -471,7 +473,7 @@ export default function RelatorioEndividamento() {
     }
 
     win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>${nomeRelatorio("ENDIVIDAMENTO", fazendaNome, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}</title>
+<title>${nomeRelatorio("ENDIVIDAMENTO", clienteRelatorio, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
@@ -572,7 +574,7 @@ export default function RelatorioEndividamento() {
     }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Cronograma");
-    XLSX.writeFile(wb, `${nomeRelatorio("ENDIVIDAMENTO", fazendaNome, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("ENDIVIDAMENTO", clienteRelatorio, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}.xlsx`);
   }
 
   // ── Estilos ─────────────────────────────────────────────────────
