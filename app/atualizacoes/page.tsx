@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-k",
+    data: "22/10/2026",
+    titulo: "NFS-e de Empresa processada sem CP quando outro prestador tinha o mesmo número",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Ao processar NFS-e tomada por Empresa, o sistema deixava de criar o CP quando já existia um título de NFS-e com o mesmo número de outro prestador. Agora a checagem compara o número e o prestador." },
+    ],
+    onde: "Documentos Fiscais → NFS-e (tomador Empresa)",
+  },
+  {
     versao: "2026.10.22-j",
     data: "22/10/2026",
     titulo: "CP/CR: Buscar só por nome e filtro de Nº NF no cabeçalho",

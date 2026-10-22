@@ -85,3 +85,10 @@ test("NFS-e repetida: SIEG, tela manual, limpeza e migration usam a regra", () =
   assert.ok(le("app/api/integracoes/nfse-dedup/route.ts").includes("planejarLimpezaNfse"));
   assert.ok(le("supabase_migrations.sql").includes("trg_nf_servicos_bloqueia_duplicada"));
 });
+
+// NFS-e de Empresa (22/10/2026): CP já existente só conta se for do mesmo prestador (mesmo nº entre prestadores diferentes)
+test("NFS-e de Empresa: checagem de CP existente compara o prestador, não só o número", () => {
+  const le = (f: string) => readFileSync(new URL(`../../${f}`, import.meta.url), "utf8");
+  for (const f of ["components/fiscal/ModalNfServico.tsx", "app/compras/nf-servico/page.tsx"])
+    assert.ok(le(f).includes(`qJaEmp.eq("pessoa_id", cab.prestador_id)`), f);
+});

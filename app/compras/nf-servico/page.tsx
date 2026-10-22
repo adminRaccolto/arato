@@ -587,7 +587,11 @@ export default function NfServicoPage() {
           ? nfParcelas.map((parc, i) => ({ ...baseEmp, data_vencimento: parc.data, valor: parseFloat(parc.valorMask.replace(/\./g, "").replace(",", ".")) || 0, observacao: `Parcela ${i + 1}/${nfParcelas.length}` }))
           : [{ ...baseEmp, data_vencimento: cab.data_vencimento_cp || cab.data_prestacao, valor: vLiquido }];
         // Idempotente: reprocessar/editar a NFS-e não duplica o CP da Empresa
-        const { data: jaEmp } = await supabase.from("empresa_lancamentos").select("id").eq("empresa_id", empTranspNfs.id).eq("origem", "nf_servico").eq("numero_documento", cab.numero_nf).limit(1);
+        // Mesmo número de NFS-e é comum entre prestadores diferentes: o CP já existente só conta se for do MESMO prestador
+        // (antes só o número era comparado e a NFS-e ficava processada sem CP quando outro prestador tinha o mesmo nº).
+        let qJaEmp = supabase.from("empresa_lancamentos").select("id").eq("empresa_id", empTranspNfs.id).eq("origem", "nf_servico").eq("numero_documento", cab.numero_nf);
+        qJaEmp = cab.prestador_id ? qJaEmp.eq("pessoa_id", cab.prestador_id) : qJaEmp.eq("descricao", baseEmp.descricao);
+        const { data: jaEmp } = await qJaEmp.limit(1);
         if (jaEmp?.length) empRows.length = 0;
         const empRes = empRows.length === 0 ? { json: async () => ({ ok: true }) } : await fetch("/api/empresa-lancamentos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows: empRows }) });
         const empJson = await empRes.json() as { ok: boolean; error?: string };
