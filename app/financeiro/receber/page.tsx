@@ -292,7 +292,7 @@ export default function ContasAReceberPage() {
       if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       if (fBusca.trim()) {
         const t = fBusca.trim();
-        q = q.or(`descricao.ilike.%${t}%,pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%`);
+        q = q.or(`pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%`);
       }
       q = q.order("data_lancamento", { ascending: false }).limit(1000);
 
@@ -1322,7 +1322,7 @@ export default function ContasAReceberPage() {
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 14, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
             <label data-arato-label="true" style={lblMini}>Buscar</label>
-            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, cliente..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Nome do cliente..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Origem</label>
@@ -1410,16 +1410,16 @@ export default function ContasAReceberPage() {
                   </th>
                 ); })}
               </tr>
-              {/* Filtro da coluna Valor: exato, >n, <n ou faixa n-m */}
+              {/* Filtros de coluna: Valor (exato, >n, <n ou faixa n-m) e Nº NF */}
               <tr className="arato-grid-column-filters" style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
                 {colunasVisiveis.map(c => {
-                  const filtravel = c.key === "valor"; // só Valor: as demais colunas já têm filtro na barra acima
-                  const numerico = true;
+                  const filtravel = c.key === "valor" || c.key === "nf"; // Valor e Nº NF: as demais colunas já têm filtro na barra acima
+                  const numerico = c.key === "valor";
                   return (
                     <th key={c.key} style={{ padding: "3px 6px", background: "#fff", borderBottom: "0.5px solid #DDE2EE", fontWeight: 400 }}>
                       {filtravel && (
                         <input value={filtrosCol[c.key] ?? ""} onChange={e => setFiltrosCol(p => ({ ...p, [c.key]: e.target.value }))}
-                          placeholder={numerico ? "ex.: >1000" : "filtrar"} aria-label={`Filtrar ${c.label}`}
+                          placeholder={numerico ? "ex.: >1000" : "nº NF"} aria-label={`Filtrar ${c.label}`}
                           style={{ width: "100%", boxSizing: "border-box", fontSize: 10, padding: "3px 5px", border: "0.5px solid #DDE2EE", borderRadius: 5, background: filtrosCol[c.key] ? "#FBF3E0" : "#fff" }} />
                       )}
                     </th>

@@ -44,11 +44,16 @@ test("Vencido respeita vencimento próprio e exclui pagos", () => {
   assert.equal(filtrarBordero({ ...pendente, data_vencimento: "2026-10-01" }, [titulo], f), true);
   assert.equal(filtrarBordero({ ...pago, data_vencimento: "2026-10-01" }, [titulo], f), false);
 });
-test("busca por fornecedor, NF e título encontra borderô pelos membros; origem PF/PJ não se confunde", () => {
-  for (const busca of ["dipagro", "123", "combustivel", "987"]) {
-    assert.equal(filtrarBordero(pendente, [titulo], filtros({ busca })), true);
+test("busca só por fornecedor; NF tem filtro próprio; borderô é achado pelos membros; origem PF/PJ não se confunde", () => {
+  assert.equal(filtrarBordero(pendente, [titulo], filtros({ busca: "dipagro" })), true);
+  assert.equal(filtrarTitulo(titulo, filtros({ busca: "dipagro" })), true);
+  for (const busca of ["123", "combustivel", "insumos", "inexistente"]) {
+    assert.equal(filtrarBordero(pendente, [titulo], filtros({ busca })), false);
+    assert.equal(filtrarTitulo(titulo, filtros({ busca })), false);
   }
-  assert.equal(filtrarBordero(pendente, [titulo], filtros({ busca: "inexistente" })), false);
+  assert.equal(filtrarTitulo(titulo, filtros({ nf: "123" })), true);
+  assert.equal(filtrarBordero(pendente, [titulo], filtros({ nf: "123" })), true);
+  assert.equal(filtrarBordero(pendente, [titulo], filtros({ nf: "999" })), false);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ origens: new Set(["empresa_lancamentos"]) })), false);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ origens: new Set(["lancamentos"]) })), true);
 });

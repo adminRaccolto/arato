@@ -359,7 +359,7 @@ export default function ContasAPagarPage() {
 
   const todosBorderos = [...borderosPendentes, ...borderosPagos];
   const vinculos = vinculosBorderos(todosBorderos);
-  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, de: fDataDe, ate: fDataAte, hoje: hojeISO() };
+  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: fDataDe, ate: fDataAte, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({
@@ -1652,7 +1652,7 @@ export default function ContasAPagarPage() {
         <OperationalFilters data-arato-panel="true" data-arato-filters="true" style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 220px", minWidth: 200, maxWidth: 380 }}>
             <label data-arato-label="true" style={lblMini}>Buscar</label>
-            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Descrição, fornecedor, nº NF ou borderô..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+            <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} placeholder="Fornecedor ou cliente..." style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Origem</label>
@@ -1731,16 +1731,16 @@ export default function ContasAPagarPage() {
                   </th>
                 ); })}
               </tr>
-              {/* Filtro da coluna Valor: exato, >n, <n ou faixa n-m */}
+              {/* Filtros de coluna: Valor (exato, >n, <n ou faixa n-m) e Nº NF */}
               <tr className="arato-grid-column-filters" style={{ background: "#fff", position: "sticky", top: 30, zIndex: 1 }}>
                 {colunasVisiveis.map(c => {
-                  const filtravel = c.key === "valor"; // só Valor: as demais colunas já têm filtro na barra acima
-                  const numerico = true;
+                  const filtravel = c.key === "valor" || c.key === "nf"; // Valor e Nº NF: as demais colunas já têm filtro na barra acima
+                  const numerico = c.key === "valor";
                   return (
                     <th key={c.key} style={{ padding: "3px 6px", background: "#fff", borderBottom: "0.5px solid #DDE2EE", fontWeight: 400 }}>
                       {filtravel && (
                         <input value={filtrosCol[c.key] ?? ""} onChange={e => setFiltrosCol(p => ({ ...p, [c.key]: e.target.value }))}
-                          placeholder={numerico ? "ex.: >1000" : "filtrar"} aria-label={`Filtrar ${c.label}`}
+                          placeholder={numerico ? "ex.: >1000" : "nº NF"} aria-label={`Filtrar ${c.label}`}
                           style={{ width: "100%", boxSizing: "border-box", fontSize: 10, padding: "3px 5px", border: "0.5px solid #DDE2EE", borderRadius: 5, background: filtrosCol[c.key] ? "#FBF3E0" : "#fff" }} />
                       )}
                     </th>

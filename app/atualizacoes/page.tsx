@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-j",
+    data: "22/10/2026",
+    titulo: "CP/CR: Buscar só por nome e filtro de Nº NF no cabeçalho",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "O campo Buscar do Contas a Pagar e do Contas a Receber procura só pelo nome do fornecedor/cliente (não mais pela descrição ou pela NF)." },
+      { tipo: "melhoria", texto: "O número da NF ganhou filtro próprio sob o cabeçalho da coluna Nº NF, igual ao filtro de Valor. No CP, o borderô aparece quando algum título dele tem a NF filtrada." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.22-i",
     data: "22/10/2026",
     titulo: "Pedido de Compra: total do item editável e mais casas decimais",
