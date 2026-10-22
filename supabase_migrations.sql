@@ -17121,7 +17121,8 @@ BEGIN
     IF NEW.origem_lancamento = 'folha' THEN
       RAISE EXCEPTION 'Este salário ainda é uma previsão de folha em aberto (rascunho): feche a folha em Financeiro → Folha de Pagamento antes de pagar. (%)', NEW.descricao USING ERRCODE = 'P0001';
     END IF;
-    IF NEW.previsao_gasto_id IS NOT NULL THEN
+    -- to_jsonb: funciona mesmo antes da Seção 352 (sem a coluna previsao_gasto_id)
+    IF to_jsonb(NEW)->>'previsao_gasto_id' IS NOT NULL THEN
       RAISE EXCEPTION 'Este título é uma previsão da Previsão de Gastos: abra o título no Contas a Pagar e clique em Efetivar antes de pagar. (%)', NEW.descricao USING ERRCODE = 'P0001';
     END IF;
     NEW.natureza := 'real';
@@ -17136,6 +17137,6 @@ CREATE TRIGGER trg_lancamentos_previsao_na_baixa BEFORE UPDATE ON lancamentos
 -- As da folha ficam como estão: o Fechar Folha converte (sem reabrir o que já foi pago).
 UPDATE lancamentos SET natureza = 'real'
  WHERE natureza = 'previsao' AND status IN ('baixado','parcial')
-   AND COALESCE(origem_lancamento, '') <> 'folha' AND previsao_gasto_id IS NULL;
+   AND COALESCE(origem_lancamento, '') <> 'folha' AND to_jsonb(lancamentos)->>'previsao_gasto_id' IS NULL;
 
 NOTIFY pgrst, 'reload schema';
