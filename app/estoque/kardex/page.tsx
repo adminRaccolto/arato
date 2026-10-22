@@ -323,7 +323,7 @@ export default function Kardex() {
       "Saldo Qtd":         fmtQty(l.saldo_qty),
       "Custo Médio R$":    fmt(l.custo_medio),
       "Saldo Total R$":    fmt(l.saldo_total),
-      "Usuário":           l.usuario ?? (l.tipo === "saldo_inicial" ? "" : "Sistema"),
+      "Usuário":           l.usuario ?? (l.tipo === "saldo_inicial" ? "" : "não registrado"),
       "Observação":        l.obs ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -587,7 +587,7 @@ export default function Kardex() {
                             ) : l.usuario ? (
                               <span style={{ color: "var(--text-2)" }}>{l.usuario}</span>
                             ) : (
-                              <span style={{ color: "var(--text-3)", fontStyle: "italic" }}>Sistema</span>
+                              <span style={{ color: "var(--text-3)", fontStyle: "italic" }} title="Movimentação antiga, gravada antes do registro do usuário">não registrado</span>
                             )}
                           </td>
                           {/* Excluir — bloqueado quando a movimentação vem de uma NF: excluir só o

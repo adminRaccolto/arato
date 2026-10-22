@@ -1734,7 +1734,8 @@ export default function Estoque() {
                                           </td>
                                           <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
                                           <td style={{ padding: "8px 14px", fontSize: 12, color: m.auto ? "var(--text-3)" : "var(--text-2)" }}>
-                                            {m.auto ? <span style={{ fontStyle: "italic", color: "var(--text-3)" }}>Sistema</span> : (m.usuario_nome ?? "—")}
+                                            {/* Movimentação gerada por outra rotina (NF, transferência, operação) mostra quem disparou a rotina */}
+                                            {m.usuario_nome ?? <span style={{ fontStyle: "italic", color: "var(--text-3)" }} title="Movimentação antiga, gravada antes do registro do usuário">não registrado</span>}
                                           </td>
                                         </tr>
                                       );

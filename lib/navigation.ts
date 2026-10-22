@@ -117,6 +117,8 @@ export const NAV: NavItem[] = [
       { type: "divider", label: "Transporte" },
       { id: "docfis-cte",        label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",                moduleId: "transporte" },
       { id: "docfis-mdfe",       label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",               moduleId: "transporte" },
+      { type: "divider", label: "Relatórios" },
+      { id: "docfis-rel-processamento", label: "Processamento de NF e NFS-e", path: "/fiscal/relatorio-processamento", moduleId: "nf_entrada" },
     ],
   },
 

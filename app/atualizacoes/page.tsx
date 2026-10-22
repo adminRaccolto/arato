@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-l",
+    data: "22/10/2026",
+    titulo: "Relatório de Processamento de NF e NFS-e; usuário no Kardex; leitura de chave de acesso",
+    modulos: ["Fiscal", "Estoque"],
+    itens: [
+      { tipo: "novo", texto: "Novo relatório Processamento de NF e NFS-e (Documentos Fiscais → Relatórios): uma linha por item de NF de Produtos e uma por NFS-e processadas, com Operação Gerencial, Centro de Custo, CFOP, quantidade, valor e quem processou. Filtros por período de emissão, tipo, Operação Gerencial (o grupo traz as filhas), Centro de Custo (inclusive Sem centro de custo), produto, número da NF e fornecedor (nome ou CNPJ). Imprime em PDF e exporta para Excel." },
+      { tipo: "melhoria", texto: "Movimentações de estoque passam a gravar o usuário que disparou a rotina (processar NF, transferência, operação de lavoura, abastecimento), e o Kardex e a tela de Movimentações mostram esse nome em vez de Sistema. Movimentações antigas sem esse registro aparecem como não registrado. Requer a Seção 359 do supabase_migrations.sql." },
+      { tipo: "correcao", texto: "Leitura por chave de acesso na NF de entrada: o sistema procura o XML em todas as fazendas do cliente antes de ir à SEFAZ. Quando a SEFAZ confirma a nota mas não entrega o XML (ela não fornece o XML a terceiros pela chave), a mensagem agora explica isso e orienta importar o XML do fornecedor ou sincronizar o SIEG." },
+    ],
+    onde: "Documentos Fiscais → Relatórios; Estoque → Kardex / Movimentações; NF de Compra → Chave / Leitor",
+  },
+  {
     versao: "2026.10.22-k",
     data: "22/10/2026",
     titulo: "NFS-e de Empresa processada sem CP quando outro prestador tinha o mesmo número",

@@ -29,22 +29,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, erro: "Chave de acesso inválida — deve ter exatamente 44 dígitos." }, { status: 400 });
   }
 
-  // ── 1. Tenta buscar no Storage (SIEG salva aqui ao sincronizar) ────────────
-  const xmlPath = `nfs-sieg/${fazendaId}/${chave}.xml`;
-  try {
-    const { data: blob, error: storErr } = await supabaseAdmin.storage
-      .from("arquivos")
-      .download(xmlPath);
+  // ── 1. XML já guardado no Arato, em qualquer fazenda da conta ─────────────
+  // (a mesma nota pode ter chegado pelo SIEG em outra fazenda do cliente, ou já existir em nf_entradas)
+  const { data: faz } = await supabaseAdmin.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
+  const { data: fazConta } = faz?.conta_id
+    ? await supabaseAdmin.from("fazendas").select("id").eq("conta_id", faz.conta_id)
+    : { data: [{ id: fazendaId }] };
+  const fids = [fazendaId, ...(fazConta ?? []).map(f => f.id as string).filter(id => id !== fazendaId)];
+  const ehNfe = (x?: string | null) => !!x && (x.includes("<NFe") || x.includes("<nfeProc"));
 
-    if (!storErr && blob) {
-      const xmlText = await blob.text();
-      if (xmlText && (xmlText.includes("<NFe") || xmlText.includes("<nfeProc"))) {
-        return NextResponse.json({ ok: true, xmlCompleto: xmlText, fonte: "storage" });
+  const { data: nfExistente } = await supabaseAdmin.from("nf_entradas").select("xml_content, xml_storage_path")
+    .eq("chave_acesso", chave).in("fazenda_id", fids).not("xml_content", "is", null).limit(1).maybeSingle();
+  if (ehNfe(nfExistente?.xml_content)) return NextResponse.json({ ok: true, xmlCompleto: nfExistente!.xml_content, fonte: "arato" });
+
+  const caminhos = [nfExistente?.xml_storage_path, ...fids.flatMap(id => [`nfs-sieg/${id}/${chave}.xml`, `${id}/nfe_entradas/${chave}.xml`])].filter((c): c is string => !!c);
+  for (const caminho of caminhos) {
+    try {
+      const { data: blob, error: storErr } = await supabaseAdmin.storage.from("arquivos").download(caminho);
+      if (!storErr && blob) {
+        const xmlText = await blob.text();
+        if (ehNfe(xmlText)) return NextResponse.json({ ok: true, xmlCompleto: xmlText, fonte: "storage" });
       }
-    }
-  } catch {
-    // Storage não disponível — segue para SEFAZ
+    } catch { /* tenta o próximo caminho */ }
   }
+  const xmlPath = `nfs-sieg/${fazendaId}/${chave}.xml`;
 
   // ── 2. Fallback: consulta SEFAZ ────────────────────────────────────────────
   const resultado = await consultarNfePorChave(chave, fazendaId, ambiente);
@@ -54,6 +62,14 @@ export async function POST(req: NextRequest) {
   }
 
   const xmlCompleto = resultado.xmlCompleto ?? resultado.nfeXml ?? "";
+  // A Consulta de Situação da SEFAZ confirma que a nota existe, mas não devolve o XML a terceiros.
+  if (!xmlCompleto) {
+    return NextResponse.json({
+      ok: false,
+      cStat: resultado.cStat,
+      erro: `A SEFAZ confirmou a nota (${resultado.cStat ?? ""} ${resultado.xMotivo ?? ""}`.trim() + `), mas não entrega o XML completo pela chave. A nota ainda não chegou ao Arato pelo SIEG. Importe o XML enviado pelo fornecedor (opção XML) ou sincronize o SIEG do período da emissão e abra a nota em Documentos Fiscais.`,
+    });
+  }
 
   // Salva no Storage para consultas futuras (evita nova ida à SEFAZ)
   if (xmlCompleto) {

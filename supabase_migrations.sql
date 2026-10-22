@@ -17149,3 +17149,47 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE pedidos_compra_itens ALTER COLUMN valor_unitario   TYPE numeric(20,8);
 ALTER TABLE pedidos_compra_itens ALTER COLUMN desconto_unitario TYPE numeric(20,8);
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 358 — Transferência: fazenda dona do estoque no depósito de origem
+-- =============================================================================
+-- Um depósito pode guardar produto de outra fazenda da conta. Quando há mais de uma fazenda com saldo do mesmo
+-- produto no depósito, o operador escolhe de qual sai; a escolha fica gravada no item da transferência.
+ALTER TABLE transferencias_estoque_itens ADD COLUMN IF NOT EXISTS fazenda_estoque_id uuid REFERENCES fazendas(id) ON DELETE SET NULL;
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 359 — Kardex: movimentação de estoque sempre com o usuário de origem
+-- =============================================================================
+-- As movimentações são gravadas por várias rotinas (NF de entrada, transferência, operações de lavoura, abastecimento,
+-- romaneio) e quase nenhuma informava usuario_nome, então o Kardex mostrava "Sistema". O gatilho preenche o nome de quem
+-- disparou a rotina: usuário do JWT (navegador) ou o cabeçalho x-arato-usuario enviado pelas rotas do servidor (Seção 353).
+-- Se a rotina já informou usuario_nome, ele é mantido.
+CREATE OR REPLACE FUNCTION fn_mov_estoque_usuario()
+RETURNS trigger AS $$
+DECLARE
+  uid text := NULL;
+  nome text := NULL;
+BEGIN
+  IF NEW.usuario_nome IS NOT NULL AND btrim(NEW.usuario_nome) <> '' THEN RETURN NEW; END IF;
+  BEGIN
+    uid := NULLIF(current_setting('request.jwt.claims', true), '')::json->>'sub';
+  EXCEPTION WHEN OTHERS THEN uid := NULL;
+  END;
+  IF uid IS NULL THEN
+    BEGIN
+      uid := NULLIF(current_setting('request.headers', true), '')::json->>'x-arato-usuario';
+    EXCEPTION WHEN OTHERS THEN uid := NULL;
+    END;
+  END IF;
+  IF uid ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    SELECT p.nome INTO nome FROM perfis p WHERE p.user_id = uid::uuid AND p.nome IS NOT NULL LIMIT 1;
+  END IF;
+  NEW.usuario_nome := nome;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_mov_estoque_usuario ON movimentacoes_estoque;
+CREATE TRIGGER trg_mov_estoque_usuario BEFORE INSERT ON movimentacoes_estoque FOR EACH ROW EXECUTE FUNCTION fn_mov_estoque_usuario();
+NOTIFY pgrst, 'reload schema';
