@@ -1161,6 +1161,13 @@ export default function FolhaPagamentoPage() {
               <OperationalButton data-arato-button="icon" onClick={()=>setModalFolha(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</OperationalButton>
             </div>
 
+            {folhaEdit.status === "fechado" && (
+              <div style={{ background:"#FBF3E0", border:"0.5px solid #C9921B", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#7A4300" }}>
+                🔒 Folha fechada: nada pode ser alterado. Para editar, clique em <strong>↩ Reabrir Folha</strong> (os títulos do Contas a Pagar voltam a ser previsão) e feche de novo depois.
+              </div>
+            )}
+            {/* Folha fechada: todos os campos ficam travados (o fieldset desabilita cada campo de dentro) */}
+            <fieldset disabled={folhaEdit.status === "fechado"} style={{ border:"none", padding:0, margin:0, minWidth:0 }}>
             {/* Competência — editável para nova folha (retroativa), somente leitura para existente) */}
             <div data-arato-panel="true" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
               {folhaEdit.id ? (
@@ -1401,6 +1408,8 @@ export default function FolhaPagamentoPage() {
                 </div>
               </div>
             )}
+
+            </fieldset>
 
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <div style={{ display:"flex", gap:8 }}>

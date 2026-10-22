@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-a",
+    data: "22/10/2026",
+    titulo: "Folha fechada não aceita alteração",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Com a folha fechada, ainda era possível mexer em campos como gratificação, outros descontos, seleção de funcionários e observação. Agora a folha fechada abre travada, com o aviso para usar ↩ Reabrir Folha, e o servidor também recusa qualquer gravação em folha fechada." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.21-p",
     data: "21/10/2026",
     titulo: "Pedido em dólar: saldo pelo câmbio das NFs; auditoria das notas fiscais",

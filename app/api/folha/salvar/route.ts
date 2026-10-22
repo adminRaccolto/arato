@@ -210,6 +210,14 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
   await sb.from("folha_pagamento").update({ cp_fgts_id: cpFgts, cp_inss_patronal_id: cpInss }).eq("id", folhaId);
 }
 
+class FolhaFechadaError extends Error {}
+/** Folha fechada não aceita alteração: precisa ser reaberta (Reabrir Folha) antes. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function exigirFolhaAberta(sb: any, folhaId: string): Promise<void> {
+  const { data } = await sb.from("folha_pagamento").select("status, competencia").eq("id", folhaId).maybeSingle();
+  if (data?.status === "fechado") throw new FolhaFechadaError(`A folha de ${String(data.competencia ?? "")} está fechada. Para alterar, reabra a folha primeiro (↩ Reabrir Folha).`);
+}
+
 export async function POST(req: Request) {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -321,6 +329,7 @@ export async function POST(req: Request) {
       const semDataVenc = (d: Record<string, unknown>) => { const { data_vencimento: _x, ...r } = d; void _x; return r; };
       const colunaAusente = (e: { message?: string } | null) => !!e?.message?.includes("data_vencimento");
       if (exist?.id) {
+        await exigirFolhaAberta(sb, exist.id);
         let { error } = await sb.from("folha_pagamento").update(dados).eq("id", exist.id);
         if (error && colunaAusente(error)) ({ error } = await sb.from("folha_pagamento").update(semDataVenc(dados)).eq("id", exist.id));
         if (error) throw error;
@@ -340,6 +349,7 @@ export async function POST(req: Request) {
     // ─── update_folha ─────────────────────────────────────────────────────────
     if (operacao === "update_folha") {
       const { id, ...dados } = payload as { id: string } & Record<string, unknown>;
+      await exigirFolhaAberta(sb, id);
       let { error } = await sb.from("folha_pagamento").update(dados).eq("id", id);
       if (error?.message?.includes("data_vencimento")) {
         const { data_vencimento: _x, ...resto } = dados; void _x;
@@ -352,6 +362,7 @@ export async function POST(req: Request) {
     // ─── delete_funcionarios ──────────────────────────────────────────────────
     if (operacao === "delete_funcionarios") {
       const { folha_id } = payload as { folha_id: string };
+      await exigirFolhaAberta(sb, folha_id);
       // Previsões de salário ligadas às linhas saem junto (título real e baixado ficam intactos)
       const { data: ligadas } = await sb.from("folha_funcionarios").select("cp_lancamento_id").eq("folha_id", folha_id);
       const idsPrev = (ligadas ?? []).map((r: any) => r.cp_lancamento_id).filter(Boolean) as string[];
@@ -364,6 +375,8 @@ export async function POST(req: Request) {
     // ─── insert_funcionarios ──────────────────────────────────────────────────
     if (operacao === "insert_funcionarios") {
       const { rows } = payload as { rows: unknown[] };
+      const folhaDasLinhas = [...new Set((rows as { folha_id?: string }[]).map(r => r.folha_id).filter(Boolean))] as string[];
+      for (const f of folhaDasLinhas) await exigirFolhaAberta(sb, f);
       if (rows.length) {
         const { error } = await sb.from("folha_funcionarios").insert(rows);
         if (error) throw error;
@@ -862,6 +875,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "operacao inválida" }, { status: 400 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : JSON.stringify(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: err instanceof FolhaFechadaError ? 409 : 500 });
   }
 }
