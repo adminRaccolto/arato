@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-m",
+    data: "22/10/2026",
+    titulo: "Popups só fecham pelos botões",
+    modulos: ["Geral"],
+    itens: [
+      { tipo: "melhoria", texto: "Clicar fora de uma janela (no fundo escurecido) não fecha mais o popup, em todo o sistema. A janela fecha só pelos botões dela (Cancelar, Fechar, Salvar), evitando perder o que estava sendo digitado. Menus e listas suspensas continuam fechando ao clicar fora." },
+    ],
+    onde: "Todas as telas",
+  },
+  {
     versao: "2026.10.22-l",
     data: "22/10/2026",
     titulo: "Relatório de Processamento de NF e NFS-e; usuário no Kardex; leitura de chave de acesso",

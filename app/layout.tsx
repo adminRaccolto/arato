@@ -7,6 +7,7 @@ import VersionChecker from "../components/VersionChecker";
 import Footer from "../components/Footer";
 import SidebarAtalhos from "../components/SidebarAtalhos";
 import OliviaWidget from "../components/OliviaWidget";
+import ModalNaoFechaFora from "../components/ModalNaoFechaFora";
 import "./globals.css";
 import "./operational.css";
 import AppearanceProvider from "../components/AppearanceProvider";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ margin: 0, padding: 0, display: "flex", flexDirection: "column", minHeight: "100vh", paddingBottom: 28 }}>
         <AppearanceProvider />
+        <ModalNaoFechaFora />
         <AuthProvider>
           <LayoutProvider />
           <ConfirmarAcaoHost />
