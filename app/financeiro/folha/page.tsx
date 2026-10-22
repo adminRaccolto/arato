@@ -93,7 +93,7 @@ interface Adiantamento {
   descricao?: string;
   lancamento_id?: string;
   status: "pendente" | "descontado" | "cancelado";
-  tipo?: "salario" | "gratificacao";
+  tipo?: "salario" | "gratificacao" | "devolucao";
   created_at?: string;
 }
 interface Premiacao {
@@ -186,7 +186,14 @@ type Aba = "processamento" | "adiantamentos" | "gratificacoes";
 
 // ─── Componente ───────────────────────────────────────────────
 export default function FolhaPagamentoPage() {
-  const { fazendaId, contaId, fazendaIds = [] } = useAuth();
+  const { fazendaId, contaId, fazendaIds = [], podeAcao } = useAuth();
+  // Reprocessar folha fechada é rotina liberada por grupo (Configurações → Usuários → Folha de Pagamento → Reprocessar)
+  const podeReprocessar = podeAcao("folha", "reprocessar");
+  type ItemRep = { tipo: "atualizar" | "criar" | "cancelar" | "sem_mudanca" | "pendencia_pago_maior" | "desconto"; funcionario_id?: string | null; nome: string; antes: number; depois: number; diferenca?: number };
+  const [repPlano, setRepPlano] = useState<ItemRep[] | null>(null);
+  const [repAdiNovos, setRepAdiNovos] = useState(0);
+  const [repDesc, setRepDesc] = useState<Record<string, { valor: string; competencia: string }>>({});
+  const [repErro, setRepErro] = useState("");
   const [aba, setAba]             = useState<Aba>("processamento");
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState("");
@@ -673,6 +680,47 @@ export default function FolhaPagamentoPage() {
     }
   }
 
+  // Linhas da folha como vão para o banco (mesmo formato do Salvar Folha)
+  function linhasDaFolha(funcs: FolhaFunc[]) {
+    return funcs.map(f => ({
+      funcionario_id: f.funcionario_id ?? null, empresa_id: f.empresa_id ?? null, produtor_id: f.produtor_id ?? null,
+      nome_funcionario: f.nome_funcionario, cargo: f.cargo, salario_bruto: f.salario_bruto,
+      complemento_salarial: f.complemento_salarial ?? 0, gratificacao: f.gratificacao,
+      inss_trabalhador: f.inss_trabalhador, irrf: f.irrf, adiantamento: f.adiantamento,
+      outros_descontos: f.outros_descontos, desc_outros_descontos: f.desc_outros_descontos,
+      vale_transporte: f.vale_transporte, vale_refeicao: f.vale_refeicao, outros_beneficios: f.outros_beneficios,
+      inss_patronal: f.inss_patronal, fgts: f.fgts,
+    }));
+  }
+
+  // ⟳ Reprocessar Folha (folha fechada): 1º mostra a prévia do que muda no CP; 2º grava, com os descontos informados
+  async function reprocessarFolha(simular: boolean) {
+    if (!folhaEdit.id) return;
+    const funcs = (folhaEdit.funcionarios ?? []).filter((_, i) => selecionados.has(i));
+    setSaving(true); setRepErro("");
+    try {
+      const descontos = Object.entries(repDesc).map(([funcionario_id, d]) => ({
+        funcionario_id, valor: parseFloat(d.valor.replace(/\./g, "").replace(",", ".")) || 0, competencia_ref: d.competencia, data: hojeLocal(),
+      }));
+      const r = await apiFolha({ operacao: "reprocessar_folha", id: folhaEdit.id, rows: linhasDaFolha(funcs), dadosFolha: { obs: folhaEdit.obs }, simular, descontos });
+      if (simular) {
+        const plano = r.plano as ItemRep[];
+        setRepPlano(plano); setRepAdiNovos(Number(r.adiantamentos_novos ?? 0));
+        const prox = (() => { const [a, m] = (folhaEdit.competencia ?? "").split("-").map(Number); return m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, "0")}`; })();
+        setRepDesc(Object.fromEntries(plano.filter(p => p.tipo === "desconto" && p.funcionario_id).map(p => [String(p.funcionario_id), { valor: (p.diferenca ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 }), competencia: prox }])));
+      } else {
+        setRepPlano(null); setRepDesc({});
+        setMsg(`Folha reprocessada: ${r.alterados ?? 0} alteração(ões) no Contas a Pagar.`);
+        setModalFolha(false);
+        carregar();
+      }
+    } catch (e: any) {
+      if (simular) setMsg("Erro: " + e.message); else setRepErro(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function excluirFolha(alvo: Partial<Folha> = folhaEdit) {
     if (!alvo.id || !alvo.competencia) return;
     const fechada = alvo.status === "fechado";
@@ -1058,7 +1106,7 @@ export default function FolhaPagamentoPage() {
                   <tbody>
                     {adiantamentos.map(a => (
                       <tr key={a.id}>
-                        <td style={{ ...S.td, fontWeight:600 }}>{a.funcionario_nome ?? "—"}{a.tipo === "gratificacao" && <div style={{ fontSize:10, fontWeight:600, color:"#7B4A00" }}>Gratificação</div>}</td>
+                        <td style={{ ...S.td, fontWeight:600 }}>{a.funcionario_nome ?? "—"}{a.tipo === "gratificacao" && <div style={{ fontSize:10, fontWeight:600, color:"#7B4A00" }}>Gratificação</div>}{a.tipo === "devolucao" && <div style={{ fontSize:10, fontWeight:600, color:"#1A4870" }}>Desconto de devolução (reprocessamento)</div>}</td>
                         <td style={S.td}>{dataFmt(a.data)}</td>
                         <td style={{ ...S.td, fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(a.valor)}</td>
                         <td style={S.td}>{a.competencia_ref ? nomeMes(a.competencia_ref) : "—"}</td>
@@ -1163,11 +1211,13 @@ export default function FolhaPagamentoPage() {
 
             {folhaEdit.status === "fechado" && (
               <div style={{ background:"#FBF3E0", border:"0.5px solid #C9921B", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#7A4300" }}>
-                🔒 Folha fechada: nada pode ser alterado. Para editar, clique em <strong>↩ Reabrir Folha</strong> (os títulos do Contas a Pagar voltam a ser previsão) e feche de novo depois.
+                {podeReprocessar
+                  ? <>Folha fechada: faça os ajustes e clique em <strong>⟳ Reprocessar Folha</strong>. O sistema recalcula e altera no Contas a Pagar só os valores que mudaram; títulos já pagos não são mexidos.</>
+                  : <>🔒 Folha fechada: seu grupo de usuário não tem a rotina Reprocessar Folha (Configurações → Usuários e Permissões). Peça a quem tem a permissão, ou reabra a folha.</>}
               </div>
             )}
-            {/* Folha fechada: todos os campos ficam travados (o fieldset desabilita cada campo de dentro) */}
-            <fieldset disabled={folhaEdit.status === "fechado"} style={{ border:"none", padding:0, margin:0, minWidth:0 }}>
+            {/* Folha fechada sem a permissão de reprocessar: todos os campos ficam travados */}
+            <fieldset disabled={folhaEdit.status === "fechado" && !podeReprocessar} style={{ border:"none", padding:0, margin:0, minWidth:0 }}>
             {/* Competência — editável para nova folha (retroativa), somente leitura para existente) */}
             <div data-arato-panel="true" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14, padding:"10px 14px", background:"#F8FAFD", borderRadius:8, border:"0.5px solid #DDE2EE" }}>
               {folhaEdit.id ? (
@@ -1411,11 +1461,69 @@ export default function FolhaPagamentoPage() {
 
             </fieldset>
 
+            {repPlano && (
+              <div style={S.overlay} onClick={() => !saving && setRepPlano(null)}>
+                <div style={{ ...S.modal, width: "min(96vw,900px)" }} onClick={e => e.stopPropagation()}>
+                  <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#0B2D50" }}>Reprocessar folha de {nomeMes(folhaEdit.competencia ?? "")}</h3>
+                  <div style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>
+                    Confira o que vai mudar no Contas a Pagar. Títulos com valor igual não são mexidos.{repAdiNovos > 0 ? ` ${repAdiNovos} adiantamento(s) lançado(s) depois do fechamento serão descontados.` : ""}
+                  </div>
+                  {(() => {
+                    const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                    const muda = repPlano.filter(p => p.tipo !== "sem_mudanca");
+                    const ROT: Record<string, { t: string; c: string; bg: string }> = {
+                      atualizar: { t: "Atualiza o título", c: "#0B2D50", bg: "#D5E8F5" },
+                      criar: { t: "Cria título", c: "#166534", bg: "#DCFCE7" },
+                      cancelar: { t: "Cancela título (em aberto)", c: "#6B21A8", bg: "#F3E8FF" },
+                      pendencia_pago_maior: { t: "Título já pago — não muda", c: "#9A3412", bg: "#FFEDD5" },
+                      desconto: { t: "Recebeu a mais — desconto", c: "#7A4300", bg: "#FBF3E0" },
+                    };
+                    if (!muda.length) return <div style={{ padding: 16, background: "#F4F6FA", borderRadius: 8, fontSize: 13 }}>Nada muda no Contas a Pagar: os valores recalculados são iguais aos títulos atuais.</div>;
+                    return (
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead><tr>{["Funcionário / título", "O que acontece", "Antes", "Depois", ""].map((h, i) => <th key={i} style={{ ...S.th, textAlign: i >= 2 && i <= 3 ? "right" : "left" }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {muda.map((p, i) => (
+                            <tr key={i}>
+                              <td style={S.td}>{p.nome}</td>
+                              <td style={S.td}><span style={{ fontSize: 11, fontWeight: 700, color: ROT[p.tipo].c, background: ROT[p.tipo].bg, borderRadius: 4, padding: "2px 7px" }}>{ROT[p.tipo].t}</span>
+                                {p.tipo === "pendencia_pago_maior" && <div style={{ fontSize: 11, color: "#9A3412", marginTop: 3 }}>Falta pagar {fmt(p.diferenca ?? 0)}: reabra (estorne) o título no Contas a Pagar e reprocesse.</div>}
+                              </td>
+                              <td style={{ ...S.td, textAlign: "right" }}>{fmt(p.antes)}</td>
+                              <td style={{ ...S.td, textAlign: "right", fontWeight: 600 }}>{fmt(p.depois)}</td>
+                              <td style={S.td}>
+                                {p.tipo === "desconto" && p.funcionario_id && repDesc[String(p.funcionario_id)] && (
+                                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                    <span style={{ fontSize: 11, color: "#555" }}>Descontar</span>
+                                    <input value={repDesc[String(p.funcionario_id)].valor} onChange={e => setRepDesc(d => ({ ...d, [String(p.funcionario_id)]: { ...d[String(p.funcionario_id)], valor: e.target.value } }))}
+                                      style={{ ...S.inp, width: 100, textAlign: "right" }} />
+                                    <span style={{ fontSize: 11, color: "#555" }}>na folha de</span>
+                                    <InputData type="month" value={repDesc[String(p.funcionario_id)].competencia} onChange={e => setRepDesc(d => ({ ...d, [String(p.funcionario_id)]: { ...d[String(p.funcionario_id)], competencia: e.target.value } }))}
+                                      style={{ ...S.inp, width: 140 }} />
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                  {repErro && <div style={{ background: "#FCEBEB", color: "#791F1F", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 12, marginTop: 12 }}>{repErro}</div>}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+                    <OperationalButton data-arato-button="secondary" onClick={() => setRepPlano(null)} style={S.btn("#F4F6FA", "#555")} disabled={saving}>Voltar</OperationalButton>
+                    <OperationalButton data-arato-button="primary" onClick={() => reprocessarFolha(false)} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Reprocessando..." : "Confirmar reprocessamento"}</OperationalButton>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:20, borderTop:"0.5px solid #DDE2EE", paddingTop:16 }}>
               <div style={{ display:"flex", gap:8 }}>
                 {folhaEdit.id && folhaEdit.status === "fechado" && (
-                  <OperationalButton data-arato-button="secondary" onClick={reabrirFolha} style={{ ...S.btn("#FBF3E0","#C9921B"), border:"1px solid #C9921B" }} disabled={saving}>
-                    {saving ? "Abrindo..." : "↩ Reabrir Folha"}
+                  <OperationalButton data-arato-button="secondary" onClick={reabrirFolha} title="Volta a folha inteira para rascunho: apaga os títulos reais e relança como previsão. Use só para refazer do zero."
+                    style={{ ...S.btn("#F4F6FA","#555"), border:"0.5px solid #DDE2EE", fontSize:12 }} disabled={saving}>
+                    {saving ? "Abrindo..." : "↩ Reabrir (refazer do zero)"}
                   </OperationalButton>
                 )}
                 {folhaEdit.id && (
@@ -1433,6 +1541,9 @@ export default function FolhaPagamentoPage() {
                 <OperationalButton data-arato-button="secondary" onClick={()=>setModalFolha(false)} style={S.btn("#F4F6FA","#555")}>Cancelar</OperationalButton>
                 {folhaEdit.status !== "fechado" && (
                   <OperationalButton data-arato-button="secondary" onClick={salvarFolha} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Salvando..." : "Salvar Folha"}</OperationalButton>
+                )}
+                {folhaEdit.id && folhaEdit.status === "fechado" && podeReprocessar && (
+                  <OperationalButton data-arato-button="primary" onClick={() => reprocessarFolha(true)} style={S.btn("#1A4870")} disabled={saving}>{saving ? "Calculando..." : "⟳ Reprocessar Folha"}</OperationalButton>
                 )}
               </div>
             </div>

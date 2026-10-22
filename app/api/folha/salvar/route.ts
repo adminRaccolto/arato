@@ -210,6 +210,19 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
   await sb.from("folha_pagamento").update({ cp_fgts_id: cpFgts, cp_inss_patronal_id: cpInss }).eq("id", folhaId);
 }
 
+/** Reprocessar folha fechada é rotina liberada por grupo de usuário (Configurações → Usuários → grupo → Folha de
+ *  Pagamento → Reprocessar). Grupo sem a Folha configurada = liberado (regra geral das permissões do sistema). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function semPermissaoReprocessar(sb: any, userId: string): Promise<string | null> {
+  const { data: perfil } = await sb.from("perfis").select("role").eq("user_id", userId).maybeSingle();
+  if (String(perfil?.role ?? "").startsWith("raccotlo") || perfil?.role === "bpo") return null;
+  const { data: u } = await sb.from("usuarios").select("grupos_usuarios(permissoes)").eq("auth_user_id", userId).maybeSingle();
+  const g = Array.isArray(u?.grupos_usuarios) ? u?.grupos_usuarios[0] : u?.grupos_usuarios;
+  const p = (g?.permissoes ?? {})["folha"];
+  if (Array.isArray(p) && p.length > 0 && !p.includes("reprocessar")) return "Seu grupo de usuário não tem permissão para reprocessar folha fechada (Configurações → Usuários e Permissões).";
+  return null;
+}
+
 class FolhaFechadaError extends Error {}
 /** Folha fechada não aceita alteração: precisa ser reaberta (Reabrir Folha) antes. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -384,6 +397,180 @@ export async function POST(req: Request) {
         if (folhaId) await sincronizarPrevisoesFolha(sb, folhaId);
       }
       return NextResponse.json({ ok: true });
+    }
+
+    // ─── reprocessar_folha ────────────────────────────────────────────────────
+    // Folha FECHADA ajustada (adiantamento esquecido, gratificação, desconto, funcionário incluído/retirado): recalcula
+    // e mexe no Contas a Pagar só onde o valor mudou. Título pago (baixado, parcial, em borderô ou conciliado) nunca é
+    // alterado: se o novo valor for MAIOR, vira pendência (reabrir o título no CP); se for MENOR (ou o funcionário saiu),
+    // a diferença vira desconto numa folha futura, com valor e competência escolhidos pelo operador.
+    // simular=true devolve só o plano, sem gravar nada.
+    if (operacao === "reprocessar_folha") {
+      const { id, rows, dadosFolha, descontos, simular } = payload as {
+        id: string; rows: Record<string, unknown>[]; dadosFolha?: Record<string, unknown>; simular?: boolean;
+        descontos?: { funcionario_id: string; valor: number; competencia_ref: string; data?: string }[];
+      };
+      const negado = await semPermissaoReprocessar(sb, user.id);
+      if (negado) return NextResponse.json({ error: negado }, { status: 403 });
+      const { data: folha } = await sb.from("folha_pagamento").select("*").eq("id", id).maybeSingle();
+      if (!folha) throw new Error("Folha não encontrada.");
+      if (folha.status !== "fechado") throw new Error("Só uma folha fechada é reprocessada. Folha em rascunho: use Salvar Folha.");
+      const competencia = String(folha.competencia);
+      const rotulo = rotuloCompetencia(competencia);
+      const hojeStr = hojeLocal();
+      const { data: perfil } = await sb.from("perfis").select("nome").eq("user_id", user.id).maybeSingle();
+      const quem = (perfil?.nome as string | undefined) ?? user.email ?? "usuário";
+
+      // Linhas atuais (com o título de cada funcionário) e as novas que vieram da tela
+      const { data: antigas } = await sb.from("folha_funcionarios").select("*").eq("folha_id", id);
+      const chave = (r: any) => String(r.funcionario_id ?? `nome:${r.nome_funcionario}`);
+      const antigaPor = new Map<string, any>((antigas ?? []).map((r: any) => [chave(r), r]));
+      const novas = (rows ?? []).map(r => ({ ...r, folha_id: id })) as any[];
+
+      // Adiantamentos: o que esta folha já descontou (gravado na linha ao fechar) + os pendentes da competência ou sem
+      // competência (inclusive os lançados depois de fechar). Os pendentes passam a "descontado" ao gravar.
+      const funcIds = novas.map(r => r.funcionario_id).filter(Boolean) as string[];
+      const pendentesUsados: string[] = [];
+      {
+        const somaPend: Record<string, number> = {};
+        if (funcIds.length) {
+          const { data: adis } = await sb.from("adiantamentos_salario").select("id, funcionario_id, valor, competencia_ref")
+            .in("funcionario_id", funcIds).eq("status", "pendente").or(`competencia_ref.eq.${competencia},competencia_ref.is.null`);
+          for (const a of (adis ?? []) as any[]) { somaPend[a.funcionario_id] = (somaPend[a.funcionario_id] ?? 0) + Number(a.valor ?? 0); pendentesUsados.push(a.id); }
+        }
+        for (const r of novas) {
+          const jaDescontado = Number(antigaPor.get(chave(r))?.adiantamento ?? 0);
+          r.adiantamento = Math.round((jaDescontado + (r.funcionario_id ? (somaPend[r.funcionario_id] ?? 0) : 0)) * 100) / 100;
+        }
+      }
+
+      // Títulos atuais
+      const idsTitulos = [...(antigas ?? []).map((r: any) => r.cp_lancamento_id), folha.cp_fgts_id, folha.cp_inss_patronal_id].filter(Boolean) as string[];
+      const { data: titulos } = idsTitulos.length
+        ? await sb.from("lancamentos").select("id, valor, valor_pago, status, natureza, lote_id, conciliado, observacao, descricao").in("id", idsTitulos)
+        : { data: [] as any[] };
+      const tituloPor = new Map<string, any>((titulos ?? []).map((t: any) => [t.id, t]));
+      const pago = (t: any) => !!t && (t.status === "baixado" || t.status === "parcial" || !!t.lote_id || !!t.conciliado || Number(t.valor_pago ?? 0) > 0);
+      const r2 = (v: number) => Math.round(v * 100) / 100;
+
+      type Item = { tipo: "atualizar" | "criar" | "cancelar" | "sem_mudanca" | "pendencia_pago_maior" | "desconto"; funcionario_id?: string | null; nome: string; antes: number; depois: number; titulo_id?: string | null; diferenca?: number };
+      const plano: Item[] = [];
+      for (const r of novas) {
+        const liq = liquidoItem(r);
+        const velha = antigaPor.get(chave(r));
+        const t = velha?.cp_lancamento_id ? tituloPor.get(velha.cp_lancamento_id) : null;
+        if (!t) { plano.push({ tipo: liq > 0.005 ? "criar" : "sem_mudanca", funcionario_id: r.funcionario_id, nome: r.nome_funcionario, antes: 0, depois: liq }); continue; }
+        const antes = Number(t.valor ?? 0);
+        if (Math.abs(antes - liq) < 0.005) { plano.push({ tipo: "sem_mudanca", funcionario_id: r.funcionario_id, nome: r.nome_funcionario, antes, depois: liq, titulo_id: t.id }); continue; }
+        if (!pago(t)) { plano.push({ tipo: "atualizar", funcionario_id: r.funcionario_id, nome: r.nome_funcionario, antes, depois: liq, titulo_id: t.id }); continue; }
+        plano.push(liq > antes
+          ? { tipo: "pendencia_pago_maior", funcionario_id: r.funcionario_id, nome: r.nome_funcionario, antes, depois: liq, titulo_id: t.id, diferenca: r2(liq - antes) }
+          : { tipo: "desconto", funcionario_id: r.funcionario_id, nome: r.nome_funcionario, antes, depois: liq, titulo_id: t.id, diferenca: r2(antes - liq) });
+      }
+      // Funcionários retirados da folha
+      const chavesNovas = new Set(novas.map(chave));
+      for (const v of (antigas ?? []) as any[]) {
+        if (chavesNovas.has(chave(v))) continue;
+        const t = v.cp_lancamento_id ? tituloPor.get(v.cp_lancamento_id) : null;
+        if (!t || t.status === "cancelado") continue;
+        plano.push(pago(t)
+          ? { tipo: "desconto", funcionario_id: v.funcionario_id, nome: v.nome_funcionario, antes: Number(t.valor), depois: 0, titulo_id: t.id, diferenca: r2(Number(t.valor_pago ?? t.valor)) }
+          : { tipo: "cancelar", funcionario_id: v.funcionario_id, nome: v.nome_funcionario, antes: Number(t.valor), depois: 0, titulo_id: t.id });
+      }
+      // Encargos (totais da folha)
+      const totFGTS = r2(novas.reduce((t, r) => t + Number(r.fgts ?? 0), 0));
+      const totINSS = r2(novas.reduce((t, r) => t + Number(r.inss_patronal ?? 0), 0));
+      for (const [nome, tid, novo] of [["FGTS", folha.cp_fgts_id, totFGTS], ["INSS Patronal", folha.cp_inss_patronal_id, folha.empresa_id ? totINSS : 0]] as [string, string | null, number][]) {
+        let t = tid ? tituloPor.get(tid) : null;
+        if (!t && novo > 0.005) {
+          // Folha sem o vínculo gravado: o título do encargo pode existir (fechada antes do vínculo) — usa ele, não duplica
+          const { data: ex } = await sb.from("lancamentos").select("id, valor, valor_pago, status, natureza, lote_id, conciliado, observacao, descricao")
+            .eq("fazenda_id", folha.fazenda_id).eq("descricao", `${nome} ${rotulo}`).neq("status", "cancelado").limit(1);
+          if (ex?.[0]) { t = ex[0]; tituloPor.set(t.id, t); await sb.from("folha_pagamento").update(nome === "FGTS" ? { cp_fgts_id: t.id } : { cp_inss_patronal_id: t.id }).eq("id", id); }
+        }
+        if (!t) { if (novo > 0.005) plano.push({ tipo: "criar", nome, antes: 0, depois: novo }); continue; }
+        const antes = Number(t.valor ?? 0);
+        if (Math.abs(antes - novo) < 0.005) plano.push({ tipo: "sem_mudanca", nome, antes, depois: novo, titulo_id: t.id });
+        else if (!pago(t)) plano.push({ tipo: novo > 0.005 ? "atualizar" : "cancelar", nome, antes, depois: novo, titulo_id: t.id });
+        else plano.push({ tipo: "pendencia_pago_maior", nome, antes, depois: novo, titulo_id: t.id, diferenca: r2(novo - antes) });
+      }
+
+      if (simular) return NextResponse.json({ ok: true, plano, adiantamentos_novos: pendentesUsados.length });
+
+      // Descontos de quem recebeu a mais: só com valor e competência informados pelo operador
+      const descPor = new Map((descontos ?? []).map(d => [String(d.funcionario_id), d]));
+      for (const it of plano.filter(p => p.tipo === "desconto")) {
+        const d = it.funcionario_id ? descPor.get(String(it.funcionario_id)) : undefined;
+        if (!d || !(Number(d.valor) > 0) || !/^\d{4}-\d{2}$/.test(String(d.competencia_ref ?? ""))) {
+          throw new Error(`Informe o valor e a competência do desconto de ${it.nome} (recebeu ${it.diferenca?.toFixed(2)} a mais).`);
+        }
+      }
+
+      const marca = (antes: number, depois: number) => `Ajustado no reprocessamento de ${hojeStr.split("-").reverse().join("/")} por ${quem}: R$ ${antes.toFixed(2)} → R$ ${depois.toFixed(2)}`;
+      const ogSalario = await resolverOgPorClassificacao(sb, folha.fazenda_id, "2.01.01.10.001");
+      const vencimento = (folha.data_vencimento as string | null) || vencimentoSalario(competencia);
+      const vinculo: Record<string, { produtor_id: string | null; empresa_id: string | null }> = {};
+      if (funcIds.length) {
+        const { data: fs } = await sb.from("funcionarios").select("id, produtor_id, empresa_id").in("id", funcIds);
+        for (const f of fs ?? []) vinculo[f.id as string] = { produtor_id: (f as any).produtor_id ?? null, empresa_id: (f as any).empresa_id ?? null };
+      }
+      const novoTituloPor: Record<string, string> = {};
+      for (const it of plano) {
+        if (it.tipo === "atualizar" && it.titulo_id) {
+          const t = tituloPor.get(it.titulo_id);
+          await falharSeErro(sb.from("lancamentos").update({ valor: it.depois, observacao: `${t?.observacao ? t.observacao + " · " : ""}${marca(it.antes, it.depois)}` }).eq("id", it.titulo_id), "atualizar título da folha");
+          await consumirPrevisaoDoTitulo(sb, it.titulo_id, it.depois);
+        } else if (it.tipo === "cancelar" && it.titulo_id) {
+          const t = tituloPor.get(it.titulo_id);
+          await falharSeErro(sb.from("lancamentos").update({ status: "cancelado", observacao: `${t?.observacao ? t.observacao + " · " : ""}Cancelado no reprocessamento de ${hojeStr.split("-").reverse().join("/")} por ${quem}` }).eq("id", it.titulo_id), "cancelar título da folha");
+        } else if (it.tipo === "criar") {
+          const ehEncargo = it.nome === "FGTS" || it.nome === "INSS Patronal";
+          const r = ehEncargo ? null : novas.find(x => chave(x) === String(it.funcionario_id ?? `nome:${it.nome}`));
+          const og = ehEncargo ? await resolverOgPorClassificacao(sb, folha.fazenda_id, it.nome === "FGTS" ? "2.01.01.10.013" : "2.01.01.10.014") : ogSalario;
+          const { data: l, error } = await inserirLancamentoFolha(sb, {
+            fazenda_id: folha.fazenda_id,
+            empresa_id: ehEncargo ? (folha.empresa_id ?? null) : (folha.empresa_id ?? vinculo[r?.funcionario_id]?.empresa_id ?? null),
+            produtor_id: ehEncargo ? (it.nome === "FGTS" ? (novas.find(x => x.produtor_id)?.produtor_id ?? null) : null) : (r?.produtor_id ?? vinculo[r?.funcionario_id]?.produtor_id ?? null),
+            funcionario_id: ehEncargo ? null : (r?.funcionario_id ?? null),
+            natureza: "real", tipo: "pagar", moeda: "BRL", status: "em_aberto",
+            descricao: ehEncargo ? `${it.nome} ${rotulo}` : `Salário ${rotulo} — ${it.nome}`,
+            valor: it.depois, categoria: ehEncargo ? "Pessoal / Encargos" : "Pessoal / Salários",
+            origem_lancamento: "folha", operacao_gerencial_id: og,
+            data_vencimento: ehEncargo ? vencimentoEncargoFolha(competencia) : vencimento, data_lancamento: hojeStr,
+            observacao: `Incluído no reprocessamento de ${hojeStr.split("-").reverse().join("/")} por ${quem}`,
+          });
+          if (error) throw new Error(`Título de ${it.nome}: ${error.message}`);
+          if (it.nome === "FGTS") await sb.from("folha_pagamento").update({ cp_fgts_id: l.id }).eq("id", id);
+          else if (it.nome === "INSS Patronal") await sb.from("folha_pagamento").update({ cp_inss_patronal_id: l.id }).eq("id", id);
+          else novoTituloPor[String(it.funcionario_id ?? `nome:${it.nome}`)] = l.id;
+        } else if (it.tipo === "desconto") {
+          const d = descPor.get(String(it.funcionario_id))!;
+          const { error } = await sb.from("adiantamentos_salario").insert({
+            fazenda_id: folha.fazenda_id, funcionario_id: it.funcionario_id, data: d.data || hojeStr, valor: r2(Number(d.valor)),
+            competencia_ref: d.competencia_ref, status: "pendente", tipo: "devolucao",
+            descricao: `Devolução — recebeu a mais na folha de ${rotulo} (reprocessada em ${hojeStr.split("-").reverse().join("/")} por ${quem})`,
+          });
+          if (error) throw new Error(`Desconto de ${it.nome}: ${error.message}${error.message.includes("tipo") ? " — aplique a Seção 355 do supabase_migrations.sql." : ""}`);
+        }
+      }
+
+      // Linhas da folha: substitui mantendo o título de cada funcionário
+      await falharSeErro(sb.from("folha_funcionarios").delete().eq("folha_id", id), "regravar linhas da folha");
+      const linhas = novas.map(r => ({ ...r, cp_lancamento_id: antigaPor.get(chave(r))?.cp_lancamento_id ?? novoTituloPor[chave(r)] ?? null }));
+      if (linhas.length) await falharSeErro(sb.from("folha_funcionarios").insert(linhas), "regravar linhas da folha");
+      const totais = {
+        valor_bruto: r2(novas.reduce((t, r) => t + Number(r.salario_bruto ?? 0), 0)),
+        valor_liquido: r2(novas.reduce((t, r) => t + liquidoItem(r), 0)),
+        inss_patronal: totINSS, fgts_total: totFGTS,
+      };
+      await falharSeErro(sb.from("folha_pagamento").update({ ...totais, ...(dadosFolha?.obs !== undefined ? { obs: dadosFolha.obs } : {}) }).eq("id", id), "atualizar folha");
+      if (pendentesUsados.length) await sb.from("adiantamentos_salario").update({ status: "descontado" }).in("id", pendentesUsados).eq("status", "pendente");
+
+      // Histórico do reprocessamento (Seção 355); sem a tabela, o registro fica só na auditoria e nas observações
+      const mudou = plano.filter(p => p.tipo !== "sem_mudanca");
+      const { error: eh } = await sb.from("folha_historico").insert({ folha_id: id, usuario_id: user.id, usuario_nome: quem, acao: "reprocessar", alteracoes: mudou });
+      if (eh && !/folha_historico/.test(eh.message ?? "")) console.error("[folha] histórico:", eh.message);
+      return NextResponse.json({ ok: true, plano, alterados: mudou.length });
     }
 
     // ─── fechar_folha ─────────────────────────────────────────────────────────

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-b",
+    data: "22/10/2026",
+    titulo: "Folha fechada: Reprocessar Folha",
+    modulos: ["Financeiro", "Configurações"],
+    itens: [
+      { tipo: "novo", texto: "Folha fechada pode ser ajustada (adiantamento esquecido, gratificação, desconto, funcionário incluído ou retirado) e o botão passa a ser ⟳ Reprocessar Folha: mostra antes o que muda e altera no Contas a Pagar só os títulos cujo valor mudou, cria os que faltam e cancela os de quem saiu (se ainda em aberto). Adiantamentos lançados depois do fechamento são descontados. Cada título ajustado recebe na observação quem reprocessou, quando e o valor antes → depois; o reprocessamento fica no histórico da folha e no Monitor de Auditoria." },
+      { tipo: "novo", texto: "Título já pago não é alterado: se o valor novo for maior, a prévia avisa para reabrir (estornar) o título no CP; se for menor, ou o funcionário saiu com o salário pago, a diferença vira um desconto de devolução com valor e competência escolhidos pelo operador, descontado automaticamente naquela folha." },
+      { tipo: "melhoria", texto: "Reprocessar é uma rotina por grupo de usuário: Configurações → Usuários e Permissões → Folha de Pagamento → Reprocessar. Sem a permissão, a folha fechada fica travada. ↩ Reabrir continua disponível como opção secundária, para refazer do zero." },
+    ],
+    onde: "Financeiro → Folha de Pagamento",
+  },
+  {
     versao: "2026.10.22-a",
     data: "22/10/2026",
     titulo: "Folha fechada não aceita alteração",

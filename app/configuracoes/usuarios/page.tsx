@@ -10,7 +10,7 @@ import type { GrupoUsuario, Usuario } from "../../../lib/supabase";
 import { listarUsuarios } from "../../../lib/db";
 
 // ── Estrutura de permissões ────────────────────────────────────────────────────
-type Acao = "visualizar" | "criar" | "editar" | "excluir" | "exportar" | "aprovar";
+type Acao = "visualizar" | "criar" | "editar" | "excluir" | "exportar" | "aprovar" | "reprocessar";
 
 interface ModuloPermissao {
   id: string;
@@ -35,6 +35,7 @@ const MODULOS_PERM: ModuloPermissao[] = [
   { id: "fin_receber",      label: "Contas a Receber",          grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","aprovar"] },
   { id: "fin_pagar",        label: "Contas a Pagar",            grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","aprovar"] },
   { id: "fin_contratos",    label: "Contratos Financeiros",     grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "folha",            label: "Folha de Pagamento",        grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir","reprocessar"] },
   { id: "fin_tesouraria",   label: "Tesouraria",                grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
   { id: "fin_seguros",      label: "Seguros",                   grupo: "Financeiro", acoes: ["visualizar","criar","editar","excluir"] },
   { id: "fiscal_nfe",       label: "Emissão NF-e",              grupo: "Fiscal",     acoes: ["visualizar","criar","aprovar"] },
@@ -127,6 +128,7 @@ const ACAO_META: Record<Acao, { label: string; cor: string; bg: string }> = {
   excluir:    { label: "Excluir",  cor: "#E24B4A", bg: "#FCEBEB" },
   exportar:   { label: "Exportar", cor: "#7C3AED", bg: "#EDE9FE" },
   aprovar:    { label: "Aprovar",  cor: "#0891B2", bg: "#E0F2FE" },
+  reprocessar:{ label: "Reprocessar", cor: "#1A4870", bg: "#D5E8F5" },
 };
 
 type PermMap = Record<string, Acao[]>;

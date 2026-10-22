@@ -17077,3 +17077,30 @@ DROP TRIGGER IF EXISTS audit_nf_servicos ON nf_servicos;
 CREATE TRIGGER audit_nf_servicos AFTER INSERT OR UPDATE OR DELETE ON nf_servicos FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 355 — Reprocessar folha fechada: desconto de devolução e histórico
+-- =============================================================================
+-- Desconto de quem recebeu a mais (título já pago não é alterado): vira um "adiantamento" do tipo devolução, sem
+-- título no CP, descontado na folha da competência escolhida pelo operador.
+ALTER TABLE adiantamentos_salario DROP CONSTRAINT IF EXISTS adiantamentos_salario_tipo_check;
+ALTER TABLE adiantamentos_salario ADD CONSTRAINT adiantamentos_salario_tipo_check CHECK (tipo IN ('salario','gratificacao','devolucao'));
+
+-- Histórico das ações na folha (quem reprocessou, quando e o que mudou)
+CREATE TABLE IF NOT EXISTS folha_historico (
+  id            uuid primary key default gen_random_uuid(),
+  folha_id      uuid not null references folha_pagamento(id) on delete cascade,
+  usuario_id    uuid,
+  usuario_nome  text,
+  acao          text not null,
+  alteracoes    jsonb,
+  created_at    timestamptz default now()
+);
+CREATE INDEX IF NOT EXISTS idx_folha_historico_folha ON folha_historico (folha_id, created_at desc);
+ALTER TABLE folha_historico ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "folha_historico_tenant" ON folha_historico;
+CREATE POLICY "folha_historico_tenant" ON folha_historico FOR SELECT
+  USING (folha_id IN (SELECT f.id FROM folha_pagamento f JOIN fazendas z ON z.id = f.fazenda_id
+                      WHERE z.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo());
+
+NOTIFY pgrst, 'reload schema';

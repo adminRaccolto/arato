@@ -48,6 +48,7 @@ type AuthCtx = {
   // Helpers
   podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
   podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
+  podeAcao:               (modulo: string, acao: string) => boolean;  // ação específica (ex.: folha → reprocessar)
   podeAcessarPlano:       (modulo: string) => boolean;  // false se módulo não está no plano nem em add-on
   modulosCarregados:      boolean;  // true quando plano e overrides foram carregados
   refetchOnboarding:      () => void;
@@ -83,6 +84,7 @@ const Ctx = createContext<AuthCtx>({
   anoSafraVigenteDesc:    null,
   podeAcessar:            () => true,
   podeEscrever:           () => true,
+  podeAcao:               () => true,
   podeAcessarPlano:       () => true,
   modulosCarregados:      false,
   refetchOnboarding:      () => {},
@@ -587,6 +589,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return (p as string) !== "nenhum";             // formato legado
   }, [permissoes, userRole]);
 
+  // Ação específica de um módulo (ex.: "reprocessar" da Folha). Módulo não configurado no grupo = permitido.
+  const podeAcao = useCallback((modulo: string, acao: string) => {
+    if (["raccotlo","raccotlo_gestor","raccotlo_operacional","raccotlo_seletor","bpo"].includes(userRole ?? "")) return true;
+    const p = permissoes[modulo] as unknown;
+    if (p === undefined) return true;
+    if (Array.isArray(p)) return (p as string[]).length === 0 || (p as string[]).includes(acao);
+    return (p as string) === "escrita";
+  }, [permissoes, userRole]);
+
   const podeEscrever = useCallback((modulo: string) => {
     const p = permissoes[modulo] as unknown;
     if (p === undefined) return true;
@@ -654,7 +665,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,
-      permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcessarPlano, modulosCarregados,
+      permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcao, podeAcessarPlano, modulosCarregados,
       anoSafraVigenteId, anoSafraVigenteDesc,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>
