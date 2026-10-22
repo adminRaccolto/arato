@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-o",
+    data: "22/10/2026",
+    titulo: "Transferência de estoque sai da fazenda dona do produto no depósito",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "Um depósito pode guardar produto de outra fazenda do cliente (ex.: semente comprada pela Frei Galvão no depósito do Santa Rita). A transferência dava baixa sempre na fazenda de origem, deixando o saldo dela negativo e o da fazenda dona intacto. Agora a saída é lançada na fazenda que tem o produto naquele depósito." },
+      { tipo: "melhoria", texto: "Na transferência, cada item mostra o saldo de cada fazenda no depósito de origem. Quando mais de uma fazenda tem saldo, aparece o campo Sai de para escolher; sem a escolha a transferência não é salva. Requer a Seção 358 do supabase_migrations.sql." },
+    ],
+    onde: "Estoque → Transferências",
+  },
+  {
     versao: "2026.10.22-n",
     data: "22/10/2026",
     titulo: "Suporte Remoto",

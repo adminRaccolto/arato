@@ -29,6 +29,8 @@ interface ItemForm {
   custo_unitario: string;
   variedade: string;
   lote_semente: string;
+  /** Fazenda dona do estoque no depósito de origem (quando o depósito guarda produto de mais de uma fazenda) */
+  fazenda_estoque_id?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -385,6 +387,48 @@ export default function TransferenciasEstoquePage() {
   const todosInsumos = Object.values(insumosPorFazenda).flat();
   const insumosOrigem = (form.fazendaOrigemId ? (insumosPorFazenda[form.fazendaOrigemId] ?? []) : todosInsumos).filter(insumoAtivo);
 
+  // Saldo de cada insumo no depósito de origem, separado por fazenda dona do estoque. Um depósito pode guardar produto
+  // de outra fazenda da conta (NF de compra da Frei Galvão guardada no depósito do Armazém Santa Rita); a saída sai
+  // da fazenda que tem o saldo — antes saía sempre da fazenda de origem, que muitas vezes não tinha o produto.
+  const [saldoDeposito, setSaldoDeposito] = useState<Record<string, Record<string, number>>>({});
+  useEffect(() => {
+    if (!form.fazendaOrigemId || !todasFazendas.length) return;
+    const ids = Array.from(new Set(itens.map(it => it.insumo_id).filter(Boolean)));
+    const faltando = ids.filter(id => !(`${id}|${form.depositoOrigemId}` in saldoDeposito));
+    if (!faltando.length) return;
+    (async () => {
+      const novos: Record<string, Record<string, number>> = {};
+      const fazIds = todasFazendas.map(f => f.id);
+      for (const id of faltando) {
+        const saldo: Record<string, number> = {};
+        for (let de = 0; ; de += 1000) {
+          let q = supabase.from("movimentacoes_estoque").select("fazenda_id, tipo, quantidade").eq("insumo_id", id).in("fazenda_id", fazIds);
+          q = form.depositoOrigemId ? q.eq("deposito_id", form.depositoOrigemId) : q.is("deposito_id", null);
+          const { data } = await q.order("id").range(de, de + 999);
+          for (const m of (data ?? []) as { fazenda_id: string; tipo: string; quantidade: number }[]) {
+            saldo[m.fazenda_id] = (saldo[m.fazenda_id] ?? 0) + (m.tipo === "entrada" ? 1 : m.tipo === "saida" ? -1 : 0) * Number(m.quantidade ?? 0);
+          }
+          if (!data || data.length < 1000) break;
+        }
+        novos[`${id}|${form.depositoOrigemId}`] = saldo;
+      }
+      setSaldoDeposito(prev => ({ ...prev, ...novos }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, form.fazendaOrigemId, form.depositoOrigemId, todasFazendas]);
+  /** Fazenda de onde sai o estoque do item: escolhida > origem com saldo > única com saldo; null = precisa escolher */
+  function donoDoItem(it: ItemForm): { dono: string | null; comSaldo: [string, number][] } {
+    const saldo = saldoDeposito[`${it.insumo_id}|${form.depositoOrigemId}`] ?? {};
+    const comSaldo = Object.entries(saldo).filter(([, v]) => v > 0.0001) as [string, number][];
+    if (it.fazenda_estoque_id) return { dono: it.fazenda_estoque_id, comSaldo };
+    const qtd = parseFloat((it.quantidade || "0").replace(",", ".")) || 0;
+    if ((saldo[form.fazendaOrigemId] ?? 0) >= qtd - 0.0001 && (saldo[form.fazendaOrigemId] ?? 0) > 0) return { dono: form.fazendaOrigemId, comSaldo };
+    if (comSaldo.length === 1) return { dono: comSaldo[0][0], comSaldo };
+    if (comSaldo.length > 1) return { dono: null, comSaldo };
+    return { dono: form.fazendaOrigemId, comSaldo };
+  }
+  const nomeFazenda = (id: string) => todasFazendas.find(f => f.id === id)?.nome ?? "—";
+
   // Saldo por lote: um lote só faz sentido pra uma fazenda/depósito de origem
   // específica — a chave composta invalida o cache sozinha quando a origem muda.
   useEffect(() => {
@@ -392,20 +436,21 @@ export default function TransferenciasEstoquePage() {
     const sementeIds = Array.from(new Set(
       itens.map(it => it.insumo_id).filter(id => todosInsumos.find(x => x.id === id)?.categoria === "semente")
     ));
-    const faltando = sementeIds.filter(id => !(`${id}|${form.fazendaOrigemId}|${form.depositoOrigemId}` in lotesPorInsumo));
+    const donoDe = (id: string) => { const it = itens.find(x => x.insumo_id === id); return (it && donoDoItem(it).dono) || form.fazendaOrigemId; };
+    const faltando = sementeIds.filter(id => !(`${id}|${donoDe(id)}|${form.depositoOrigemId}` in lotesPorInsumo));
     if (faltando.length === 0) return;
     (async () => {
       const novos: Record<string, { lote: string; saldo: number }[]> = {};
       for (const id of faltando) {
-        const chave = `${id}|${form.fazendaOrigemId}|${form.depositoOrigemId}`;
+        const chave = `${id}|${donoDe(id)}|${form.depositoOrigemId}`;
         try {
-          novos[chave] = await saldoPorLote(id, form.fazendaOrigemId, form.depositoOrigemId || undefined);
+          novos[chave] = await saldoPorLote(id, donoDe(id), form.depositoOrigemId || undefined);
         } catch { novos[chave] = []; }
       }
       setLotesPorInsumo(prev => ({ ...prev, ...novos }));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itens, form.fazendaOrigemId, form.depositoOrigemId]);
+  }, [itens, form.fazendaOrigemId, form.depositoOrigemId, saldoDeposito]);
   const prefixo = prefixoCfop(fazendaOrigem?.estado, fazendaDestino?.estado);
   const cfopCalculado = prefixo + form.cfopSufixo;
   const estadosDiferentes = fazendaOrigem?.estado !== fazendaDestino?.estado && !!fazendaOrigem && !!fazendaDestino;
@@ -441,6 +486,10 @@ export default function TransferenciasEstoquePage() {
     }
     if (itens.some(it => !it.insumo_id || !it.quantidade)) {
       setErro("Preencha todos os itens."); return;
+    }
+    const ambiguo = itens.find(it => it.insumo_id && donoDoItem(it).dono === null);
+    if (ambiguo) {
+      setErro(`${todosInsumos.find(x => x.id === ambiguo.insumo_id)?.nome ?? "Um item"}: o depósito guarda este produto em nome de mais de uma fazenda. Escolha no item de qual fazenda sai o estoque.`); return;
     }
     if (form.fazendaOrigemId === form.fazendaDestinoId && form.depositoOrigemId === form.depositoDestinoId) {
       setErro("Origem e destino não podem ser iguais."); return;
@@ -482,6 +531,7 @@ export default function TransferenciasEstoquePage() {
         custo_unitario: it.custo_unitario ? parseFloat(it.custo_unitario.replace(",", ".")) : null,
         variedade:      it.variedade || null,
         lote_semente:   it.lote_semente || null,
+        ...(() => { const d = donoDoItem(it).dono; return d && d !== form.fazendaOrigemId ? { fazenda_estoque_id: d } : {}; })(),
       }));
       // NF histórica (já emitida no sistema anterior): força status "emitida"
       // direto — o "salvar" já cria as movimentações de estoque quando
@@ -657,6 +707,7 @@ export default function TransferenciasEstoquePage() {
             custo_unitario: i.custo_unitario != null ? String(i.custo_unitario) : "",
             variedade:      i.variedade ?? "",
             lote_semente:   i.lote_semente ?? "",
+            fazenda_estoque_id: (i as { fazenda_estoque_id?: string | null }).fazenda_estoque_id ?? "",
           }))
         : [{ insumo_id: "", quantidade: "", unidade_medida: "kg", custo_unitario: "", variedade: "", lote_semente: "" }]
     );
@@ -1179,6 +1230,25 @@ export default function TransferenciasEstoquePage() {
                                 })),
                               ]}
                             />
+                            {it.insumo_id && (() => {
+                              const { dono, comSaldo } = donoDoItem(it);
+                              const un = insumoSel?.unidade ?? "";
+                              if (!comSaldo.length) return <div style={{ fontSize: 10, color: "#B45309", marginTop: 2 }}>Sem saldo neste depósito em nenhuma fazenda — a saída fica na fazenda de origem.</div>;
+                              return (
+                                <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 2, maxWidth: 260 }}>
+                                  Neste depósito: {comSaldo.map(([f, v]) => `${nomeFazenda(f)} ${v.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${un}`).join(" · ")}
+                                  {comSaldo.length > 1 ? (
+                                    <SelectField value={it.fazenda_estoque_id ?? ""} onChange={e => updateItem(i, "fazenda_estoque_id", e.target.value)}
+                                      style={{ ...inp, width: 200, marginTop: 3, borderColor: dono ? undefined : "#E24B4A" }}>
+                                      <option value="">{dono ? `Sai de: ${nomeFazenda(dono)}` : "Escolha de qual fazenda sai *"}</option>
+                                      {comSaldo.map(([f]) => <option key={f} value={f}>Sai de: {nomeFazenda(f)}</option>)}
+                                    </SelectField>
+                                  ) : dono && dono !== form.fazendaOrigemId ? (
+                                    <div style={{ color: "#1A4870", fontWeight: 600 }}>Sai do estoque de: {nomeFazenda(dono)}</div>
+                                  ) : null}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td style={td}>
                             <input type="text" value={it.quantidade} onChange={e => updateItem(i, "quantidade", e.target.value)} placeholder="0,000" style={{ ...inp, width: 78 }} />
@@ -1199,7 +1269,7 @@ export default function TransferenciasEstoquePage() {
                           </td>
                           <td style={td}>
                             {isSemente ? (() => {
-                              const chave = `${it.insumo_id}|${form.fazendaOrigemId}|${form.depositoOrigemId}`;
+                              const chave = `${it.insumo_id}|${donoDoItem(it).dono || form.fazendaOrigemId}|${form.depositoOrigemId}`;
                               const lotes = lotesPorInsumo[chave];
                               // Sem lote com saldo conhecido (dado legado sem rastreio, ou ainda carregando) → texto livre
                               if (!lotes || lotes.length === 0) {

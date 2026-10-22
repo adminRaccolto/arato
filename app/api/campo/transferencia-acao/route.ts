@@ -137,6 +137,12 @@ export async function POST(request: NextRequest) {
       if (tErr) return NextResponse.json({ ok: false, error: tErr.message }, { status: 500 });
 
       const itensTransf = (t.transferencias_estoque_itens ?? []) as Array<Record<string, unknown>>;
+      // De qual fazenda sai o estoque de cada item — resolvido ANTES de transmitir, para nunca emitir a NF e depois
+      // descobrir que a saída é ambígua
+      const donosEstoque = t.status === "emitida" || t.status === "entrada_confirmada"
+        ? { donos: [] as string[], avisos: [] as string[] }
+        : await _resolverDonosEstoque(t, itensTransf, adm);
+      if ("erro" in donosEstoque && donosEstoque.erro) return NextResponse.json({ ok: false, error: donosEstoque.erro }, { status: 422 });
 
       // Retry: se já passou por aqui antes (status emitida/entrada_confirmada —
       // inclusive pelo caminho "sem config fiscal" abaixo, que também marca
@@ -439,7 +445,7 @@ export async function POST(request: NextRequest) {
       });
 
       // 7. Movimentações de estoque
-      if (!jaProcessado) await _criarMovimentacoes(t, itensTransf, adm);
+      if (!jaProcessado) await _criarMovimentacoes(t, itensTransf, adm, donosEstoque.donos);
 
       return NextResponse.json({
         ok: true,
@@ -447,6 +453,7 @@ export async function POST(request: NextRequest) {
         nf_chave:  resultado.chave,
         protocolo: resultado.protocolo,
         xmlUrl:    resultado.xmlUrl,
+        avisos:    donosEstoque.avisos,
       });
     }
 
@@ -485,6 +492,11 @@ export async function POST(request: NextRequest) {
       if (!transferencia) return NextResponse.json({ ok: false, error: "Dados ausentes" }, { status: 400 });
 
       const status = transferencia.status as string;
+      // Saída direta (sem NF): mesma regra de qual fazenda é dona do estoque no depósito
+      const donosSalvar = status === "emitida" && itens?.length
+        ? await _resolverDonosEstoque(transferencia as Record<string, unknown>, itens as Array<Record<string, unknown>>, adm)
+        : { donos: [] as string[], avisos: [] as string[] };
+      if ("erro" in donosSalvar && donosSalvar.erro) return NextResponse.json({ ok: false, error: donosSalvar.erro }, { status: 422 });
 
       const { data: transf, error: tErr } = await adm
         .from("transferencias_estoque")
@@ -499,9 +511,9 @@ export async function POST(request: NextRequest) {
       }
 
       if (status === "emitida" && itens) {
-        for (const it of itens) {
+        for (const [idxIt, it] of itens.entries()) {
           await adm.from("movimentacoes_estoque").insert({
-            fazenda_id:      transferencia.fazenda_origem_id,
+            fazenda_id:      donosSalvar.donos[idxIt] ?? transferencia.fazenda_origem_id,
             insumo_id:       it.insumo_id,
             tipo:            "saida",
             motivo:          `Transferência ${transf.numero}`,
@@ -664,16 +676,75 @@ async function _resolverInsumoDestino(
   return novo.id;
 }
 
+// ── Helper: de qual fazenda sai o estoque de cada item ──────────────────────
+// O estoque é por fazenda, mas um depósito pode guardar produto de outra fazenda da conta (NF de compra da Frei
+// Galvão guardada no Depósito Santa Rita, do Armazém Santa Rita). Antes a saída ia sempre para a fazenda de origem
+// da transferência (a dona do depósito) — que muitas vezes não tinha o produto — e o estoque de quem tinha nunca
+// baixava (achado 22/10/2026: 51 combinações insumo × fazenda negativas). Regra:
+//   1. fazenda escolhida no item (fazenda_estoque_id);
+//   2. a fazenda de origem, se tem saldo suficiente nesse depósito;
+//   3. a única fazenda da conta com saldo nesse depósito;
+//   4. mais de uma com saldo → erro pedindo para escolher (antes de emitir a NF);
+//   5. nenhuma com saldo → fazenda de origem (como antes), com aviso.
+async function _resolverDonosEstoque(
+  t: Record<string, unknown>,
+  itens: Array<Record<string, unknown>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adm: any,
+): Promise<{ donos: string[]; erro?: string; avisos: string[] }> {
+  const origem = t.fazenda_origem_id as string;
+  const deposito = (t.deposito_origem_id as string | null) || null;
+  const { data: fz } = await adm.from("fazendas").select("conta_id").eq("id", origem).maybeSingle();
+  const { data: fzs } = fz?.conta_id ? await adm.from("fazendas").select("id, nome").eq("conta_id", fz.conta_id) : { data: [{ id: origem, nome: "" }] };
+  const nomeFaz: Record<string, string> = Object.fromEntries((fzs ?? []).map((f: { id: string; nome: string }) => [f.id, f.nome]));
+  const idsConta = Object.keys(nomeFaz);
+  const donos: string[] = [];
+  const avisos: string[] = [];
+  const cache = new Map<string, Record<string, number>>();
+  for (const it of itens) {
+    const qtd = Number(it.quantidade ?? 0);
+    const escolhida = (it.fazenda_estoque_id as string | null) || null;
+    if (escolhida) { donos.push(escolhida); continue; }
+    const chave = `${it.insumo_id}|${deposito}`;
+    let saldo = cache.get(chave);
+    if (!saldo) {
+      saldo = {};
+      for (let de = 0; ; de += 1000) {
+        let q = adm.from("movimentacoes_estoque").select("fazenda_id, tipo, quantidade").eq("insumo_id", it.insumo_id).in("fazenda_id", idsConta);
+        q = deposito ? q.eq("deposito_id", deposito) : q.is("deposito_id", null);
+        const { data } = await q.order("id").range(de, de + 999);
+        for (const m of (data ?? []) as Array<{ fazenda_id: string; tipo: string; quantidade: number }>) {
+          const sinal = m.tipo === "entrada" ? 1 : m.tipo === "saida" ? -1 : 0;
+          saldo[m.fazenda_id] = (saldo[m.fazenda_id] ?? 0) + sinal * Number(m.quantidade ?? 0);
+        }
+        if (!data || data.length < 1000) break;
+      }
+      cache.set(chave, saldo);
+    }
+    const nome = String(it.nome_insumo ?? it.descricao ?? "item");
+    if ((saldo[origem] ?? 0) >= qtd - 0.0001) { donos.push(origem); saldo[origem] -= qtd; continue; }
+    const comSaldo = Object.entries(saldo).filter(([, v]) => v > 0.0001).map(([f]) => f);
+    if (comSaldo.length === 1) { donos.push(comSaldo[0]); saldo[comSaldo[0]] -= qtd; continue; }
+    if (comSaldo.length > 1) {
+      return { donos: [], avisos, erro: `O produto ${nome} está guardado neste depósito em nome de mais de uma fazenda (${comSaldo.map(f => `${nomeFaz[f] ?? f}: ${saldo![f].toLocaleString("pt-BR")}`).join("; ")}). Escolha no item de qual fazenda sai o estoque.` };
+    }
+    avisos.push(`${nome}: nenhuma fazenda tem saldo neste depósito; a saída foi lançada na fazenda de origem.`);
+    donos.push(origem);
+  }
+  return { donos, avisos };
+}
+
 // ── Helper: movimentações de estoque ─────────────────────────────────────────
 async function _criarMovimentacoes(
   t: Record<string, unknown>,
   itens: Array<Record<string, unknown>>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adm: any,
+  donos?: string[],
 ) {
-  for (const it of itens) {
-    await adm.from("movimentacoes_estoque").insert({
-      fazenda_id:      t.fazenda_origem_id,
+  for (const [idx, it] of itens.entries()) {
+    const { error: eSaida } = await adm.from("movimentacoes_estoque").insert({
+      fazenda_id:      donos?.[idx] ?? t.fazenda_origem_id,
       insumo_id:       it.insumo_id,
       tipo:            "saida",
       motivo:          `Transferência ${t.numero} → destino`,
@@ -685,6 +756,7 @@ async function _criarMovimentacoes(
       lote_semente:    it.lote_semente ?? null,
       auto:            true,
     });
+    if (eSaida) console.error("[transferencia] saída de estoque não gravada:", eSaida.message);
     if (t.entrada_automatica) {
       const insumoDestinoId = await _resolverInsumoDestino(
         it.insumo_id as string,
