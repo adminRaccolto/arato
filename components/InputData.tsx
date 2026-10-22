@@ -1,6 +1,6 @@
 "use client";
 import { forwardRef, useState, type ChangeEvent, type InputHTMLAttributes } from "react";
-import { exibirData, mascararData, dataParaIso, dataLocalAgora, type TipoData } from "../lib/input-data";
+import { exibirData, mascararData, dataParaIso, dataLocalAgora, corrigirFimDoMes, type TipoData } from "../lib/input-data";
 
 /**
  * Campo de data com botão "Hoje" ao lado. Digitação fluida (dd/mm/aaaa) — os números
@@ -44,7 +44,9 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
   }
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    const masked = mascararData(e.target.value, type);
+    // 31/09 → 30/09: dia além do fim do mês vira o último dia (antes a data sumia e o filtro ficava sem limite)
+    const digitado = mascararData(e.target.value, type);
+    const masked = (calendario && corrigirFimDoMes(digitado, type)) || digitado;
     const iso = dataParaIso(masked, type, calendario);
     if (calendario || masked === "" || iso) {
       const proximoValor = calendario && !dentroDoPeriodo(iso) ? "" : iso;
@@ -80,7 +82,10 @@ const InputData = forwardRef<HTMLInputElement, Props>(function InputData(
         onChange={handleChange}
         onFocus={onFocus}
         onBlur={onBlur}
-        style={calendario ? { ...style, minWidth: 0, flex: 1 } : style}
+        title={calendario && !!display && !dentroDoPeriodo(dataParaIso(display, type)) ? "Data inválida ou fora do período: o campo fica sem data" : resto.title}
+        style={calendario
+          ? { ...style, minWidth: 0, flex: 1, ...(display && display.replace(/\D/g, "").length >= (type === "month" ? 6 : 8) && !dentroDoPeriodo(dataParaIso(display, type)) ? { borderColor: "#E24B4A", background: "#FCEBEB" } : {}) }
+          : style}
       />
       {calendario && !disabled && !readOnly && (
         <span className="input-data-calendario" style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 30, height: 30, border: "0.5px solid var(--border-table, #DDE2EE)", borderRadius: 5, background: "var(--bg-input, #F4F6FA)", color: "var(--text-2, #1A4870)" }}>

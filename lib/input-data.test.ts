@@ -51,3 +51,13 @@ test("competência mensal aceita digitação contínua e mantém o formato ISO s
   }
   assert.equal(dataLocalAgora("month", new Date(2026, 9, 9)), "2026-10");
 });
+
+test("dia além do fim do mês vira o último dia (31/09 → 30/09)", async () => {
+  const { corrigirFimDoMes } = await import("./input-data.ts");
+  assert.equal(corrigirFimDoMes("31/09/2026"), "30/09/2026");
+  assert.equal(corrigirFimDoMes("30/02/2026"), "28/02/2026");
+  assert.equal(corrigirFimDoMes("30/02/2028"), "29/02/2028");
+  assert.equal(corrigirFimDoMes("30/09/2026"), null);
+  assert.equal(corrigirFimDoMes("32/09/2026"), null);
+  assert.equal(corrigirFimDoMes("31/09/20"), null);
+});

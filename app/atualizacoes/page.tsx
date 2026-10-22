@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-d",
+    data: "22/10/2026",
+    titulo: "Data inexistente não some mais dos filtros",
+    modulos: ["Geral", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Digitar um dia que não existe no mês (ex.: 31/09/2026) deixava o campo sem data sem avisar, e o relatório CP/CR ficava sem data final, trazendo vencimentos de outubro. Agora o dia além do fim do mês vira o último dia (31/09 → 30/09) em todos os campos de data do sistema; data inválida de outro jeito fica destacada em vermelho." },
+    ],
+    onde: "Todos os campos de data · Relatórios Financeiros → CP / CR",
+  },
+  {
     versao: "2026.10.22-c",
     data: "22/10/2026",
     titulo: "Previsão de folha não pode ser paga com a folha aberta",

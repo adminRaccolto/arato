@@ -50,6 +50,23 @@ export function dataParaIso(display: string, tipo: TipoData = "date", validar = 
   return tipo === "datetime-local" ? `${data}T${hora}:${minuto}` : data;
 }
 
+/**
+ * Dia além do fim do mês (31/09, 30/02, 29/02 em ano comum) vira o último dia daquele mês.
+ * Devolve o texto corrigido (dd/mm/aaaa[ hh:mm]) ou null quando não há o que corrigir.
+ * Antes a data inexistente era descartada em silêncio e o filtro ficava "sem data" (relatório sem data final).
+ */
+export function corrigirFimDoMes(display: string, tipo: TipoData = "date"): string | null {
+  if (tipo === "month") return null;
+  const nums = display.replace(/\D/g, "");
+  if (nums.length !== (tipo === "date" ? 8 : 12)) return null;
+  const d = Number(nums.slice(0, 2)), m = Number(nums.slice(2, 4)), a = Number(nums.slice(4, 8));
+  if (a < 1 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate();
+  if (d <= ultimo) return null;
+  const novo = `${String(ultimo).padStart(2, "0")}/${nums.slice(2, 4)}/${nums.slice(4, 8)}`;
+  return tipo === "datetime-local" ? `${novo} ${nums.slice(8, 10)}:${nums.slice(10, 12)}` : novo;
+}
+
 export function dataLocalAgora(tipo: TipoData = "date", agora = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   if (tipo === "month") return `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}`;
