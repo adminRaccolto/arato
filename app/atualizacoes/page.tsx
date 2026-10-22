@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-f",
+    data: "22/10/2026",
+    titulo: "Relatório CP/CR em PDF cabe na folha",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "No PDF do relatório CP/CR as colunas a partir da Operação Gerencial ficavam fora da folha: a tabela era reduzida por uma escala medida na tela, diferente da folha impressa. Agora a tabela tem largura fixa na folha (cada coluna com sua fração), fonte menor e o texto longo quebra dentro da própria célula; o que aparece na pré-visualização é o que sai impresso. O cabeçalho da tabela se repete em cada página e uma linha não é cortada entre páginas." },
+    ],
+    onde: "Financeiro → Relatórios Financeiros → CP / CR",
+  },
+  {
     versao: "2026.10.22-e",
     data: "22/10/2026",
     titulo: "Nome padrão dos relatórios",

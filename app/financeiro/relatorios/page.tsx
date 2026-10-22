@@ -2226,26 +2226,32 @@ function FinanceiroRelatoriosInner() {
                     ...((grupos ?? []).length ? [["Agrupado por", (grupos ?? []).map(k => GRUPOS_REL.find(g => g.key === k)?.label ?? k).join(" › ")]] : []),
                   ];
                   const numCols = new Set(["valor", "valor_pago", "saldo", "dias"]);
-                  const cab = colsVisiveis.map(c => `<th style="padding:7px 8px;text-align:${numCols.has(c.key) ? "right" : "left"};font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${esc(c.label)}</th>`).join("");
+                  // PDF: tabela de largura FIXA (cada coluna com fração da folha, texto quebra dentro da célula) — antes a
+                  // tabela era encolhida por escala medida na tela e, na impressão, as colunas a partir de OG ficavam fora da folha.
+                  const PESO_COL: Record<string, number> = { tipo: 30, moeda: 34, status: 56, emissao: 62, vencimento: 62, data_baixa: 62, venc_orig: 62, dias: 46, valor: 80, valor_pago: 80, saldo: 80 };
+                  const pesos = colsVisiveis.map(c => PESO_COL[c.key] ?? Math.max(70, Math.min(160, (c as { defaultW?: number }).defaultW ?? 110)));
+                  const somaPeso = pesos.reduce((a, b) => a + b, 0) || 1;
+                  const colgroup = `<colgroup>${pesos.map(w => `<col style="width:${(w / somaPeso * 100).toFixed(2)}%">`).join("")}</colgroup>`;
+                  const cab = colsVisiveis.map(c => `<th style="padding:4px 4px;text-align:${numCols.has(c.key) ? "right" : "left"};font-size:8px;font-weight:700;color:#fff;line-height:1.2;overflow-wrap:anywhere">${esc(c.label)}</th>`).join("");
                   const { itens: itensRel, geral } = montarLinhas(grupos ?? []);
                   const somaCols = ["valor", "valor_pago", "saldo"];
                   const iSoma = colsVisiveis.findIndex(c => somaCols.includes(c.key));
                   const valTot = (k: string, t: TotaisRel) => k === "valor" ? t.valor : k === "valor_pago" ? t.pago : t.saldo;
                   const corNum = (v: number) => v < 0 ? "#B91C1C" : "#166534";
                   const linhaTot = (rot: string, t: TotaisRel, fundo: string, cor: string, pad: number) => {
-                    const estilo = `padding:5px 8px;font-size:10px;font-weight:700;background:${fundo};color:${cor};border-top:0.5px solid #C9D3E6`;
+                    const estilo = `padding:3px 4px;font-size:8.5px;font-weight:700;background:${fundo};color:${cor};border-top:0.5px solid #C9D3E6`;
                     if (iSoma <= 0) return `<tr><td colspan="${colsVisiveis.length}" style="${estilo};padding-left:${8 + pad}px">${esc(rot)} (${t.n}) — líquido ${fmtV(t.valor)}</td></tr>`;
                     return `<tr><td colspan="${iSoma}" style="${estilo};padding-left:${8 + pad}px">${esc(rot)} (${t.n})</td>${colsVisiveis.slice(iSoma).map(c => somaCols.includes(c.key) ? `<td style="${estilo};text-align:right;white-space:nowrap;color:${fundo === "#1A4870" ? "#fff" : corNum(valTot(c.key, t))}">${fmtV(valTot(c.key, t))}</td>` : `<td style="${estilo}"></td>`).join("")}</tr>`;
                   };
                   const corpo = itensRel.map(it => {
-                    if (it.t === "grupo") return `<tr><td colspan="${colsVisiveis.length}" style="padding:6px 8px 6px ${8 + it.nivel * 14}px;font-size:${it.nivel === 0 ? 11 : 10}px;font-weight:700;background:${["#E3EAF3", "#EEF3FA", "#F6F8FC"][Math.min(it.nivel, 2)]};color:#0B2D50;border-top:0.5px solid #C9D3E6">${esc(it.rot)}</td></tr>`;
+                    if (it.t === "grupo") return `<tr><td colspan="${colsVisiveis.length}" style="padding:4px 4px 4px ${4 + it.nivel * 12}px;font-size:${it.nivel === 0 ? 9.5 : 9}px;font-weight:700;background:${["#E3EAF3", "#EEF3FA", "#F6F8FC"][Math.min(it.nivel, 2)]};color:#0B2D50;border-top:0.5px solid #C9D3E6">${esc(it.rot)}</td></tr>`;
                     if (it.t === "sub") return linhaTot(it.rot, it.tot, "#F4F6FA", "#1a1a1a", it.nivel * 14);
                     const l = it.l;
-                    return `<tr style="border-bottom:0.5px solid #E8ECF4">${colsVisiveis.map(c => {
+                    return `<tr style="border-bottom:0.5px solid #E8ECF4;page-break-inside:avoid">${colsVisiveis.map(c => {
                       const v = getCellVal(c, l);
                       const txt = typeof v === "number" ? fmtV(v) : String(v ?? "");
                       const cor = typeof v === "number" ? (v < 0 ? "#B91C1C" : "#166534") : "#222";
-                      return `<td style="padding:5px 8px;font-size:10px;text-align:${numCols.has(c.key) ? "right" : "left"};color:${cor};${numCols.has(c.key) ? "font-weight:600;white-space:nowrap" : ""}">${esc(txt || "—")}</td>`;
+                      return `<td style="padding:3px 4px;font-size:8.5px;line-height:1.25;vertical-align:top;overflow-wrap:anywhere;text-align:${numCols.has(c.key) ? "right" : "left"};color:${cor};${numCols.has(c.key) ? "font-weight:600" : ""}">${esc(txt || "—")}</td>`;
                     }).join("")}</tr>`;
                   }).join("") + (itensRel.length ? linhaTot("TOTAL GERAL", geral, "#1A4870", "#fff", 0) : "");
                   const html = `
@@ -2258,8 +2264,9 @@ function FinanceiroRelatoriosInner() {
                       <div style="background:#FEF2F2;border:0.5px solid #FECACA;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#991B1B">Vencidos</div><div style="font-size:15px;font-weight:700;color:#E24B4A">${fmtV(totalVenc)}</div></div>
                       <div style="background:#EFF6FF;border:0.5px solid #BFDBFE;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#1E3A5F">Já baixados / pagos</div><div style="font-size:15px;font-weight:700;color:#1A4870">${fmtV(totalBaixado)}</div></div>
                     </div>
-                    <div class="auto-fit-table"><table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
-                      <thead><tr style="background:#1A4870">${cab}</tr></thead>
+                    <div><table style="width:100%;table-layout:fixed;border-collapse:collapse;font-family:system-ui,sans-serif">
+                      ${colgroup}
+                      <thead style="display:table-header-group"><tr style="background:#1A4870">${cab}</tr></thead>
                       <tbody>${corpo || `<tr><td colspan="${colsVisiveis.length}" style="padding:20px;text-align:center;color:#999">Nenhum lançamento para os filtros aplicados.</td></tr>`}</tbody>
                     </table></div>
                     <div style="margin-top:8px;font-size:10px;color:#888">${lancsCPCR.length} lançamento(s). Valores em R$ (dólar convertido pela cotação). Pagar em vermelho, receber em verde.</div>`;
