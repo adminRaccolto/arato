@@ -326,6 +326,11 @@ export default function DocumentosFiscaisPage() {
   }
 
   useEffect(() => { carregar(); }, [fazendaId, fazendaIds?.join(","), contaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ?abrir=<id>: abre a NF direto (vindo do aviso de NF duplicada em outra tela)
+  useEffect(() => {
+    const abrir = new URLSearchParams(window.location.search).get("abrir");
+    if (abrir) { setModalNf({ id: abrir }); window.history.replaceState(null, "", window.location.pathname); }
+  }, []);
 
   // ── Modais por tipo ligados nesta fase ──
   const [modalNfs, setModalNfs] = useState<{ id: string | null; viewOnly?: boolean } | null>(null);
@@ -1084,10 +1089,12 @@ export default function DocumentosFiscaisPage() {
 
       {modalNf && fazendaId && (
         <ModalNf
+          key={modalNf.id ?? "nova"}
           id={modalNf.id}
           acaoInicial={modalNf.acaoInicial}
           onClose={() => setModalNf(null)}
           onSaved={carregar}
+          onAbrirExistente={nfId => setModalNf({ id: nfId })}
         />
       )}
 

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-p",
+    data: "22/10/2026",
+    titulo: "NF duplicada: abrir a existente com um clique",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Ao lançar uma NF que já está no sistema, o aviso agora informa em qual fazenda ela está e traz o botão Abrir a NF existente, que abre a nota direto (pendente para processar ou já processada). Antes era preciso procurá-la na lista de Documentos Fiscais." },
+    ],
+    onde: "Documentos Fiscais → Nova NF de Produtos",
+  },
+  {
     versao: "2026.10.22-o",
     data: "22/10/2026",
     titulo: "Transferência de estoque sai da fazenda dona do produto no depósito",

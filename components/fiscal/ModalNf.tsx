@@ -368,11 +368,13 @@ const CFOPS_DEVOLUCAO: { v: string; l: string }[] = [
 ];
 
 export default function ModalNf({
-  id, onClose, onSaved, acaoInicial,
+  id, onClose, onSaved, acaoInicial, onAbrirExistente,
 }: {
   id: string | null;
   onClose: () => void;
   onSaved: () => void;
+  /** Troca para a NF já existente (aviso de duplicada). Sem isso, vai para Documentos Fiscais com ?abrir=. */
+  onAbrirExistente?: (id: string) => void;
   // Dispara uma ação assim que a NF carrega, sem exigir um segundo clique no
   // rodapé — usado pelo "⋮" do grid unificado (Documentos Fiscais) pra dar
   // acesso a Estornar/Devolver direto da lista, sem duplicar a lógica fiscal
@@ -381,6 +383,7 @@ export default function ModalNf({
 }) {
   const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId } = useAuth();
   const router = useRouter();
+  const [nfExistente, setNfExistente] = useState<{ id: string; numero: string } | null>(null);
 
   // Dados mestre (apoio ao wizard — carregados pelo modal, não por uma lista)
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
@@ -1154,13 +1157,13 @@ export default function ModalNf({
       const chaveNova = (cab.chave_acesso || "").replace(/\D/g, "");
       const cnpjNovo = (cab.emitente_cnpj || "").replace(/\D/g, "");
       // Duplicada = mesma chave de acesso OU mesmo número + série + CNPJ do fornecedor (quando as duas têm chave, a chave decide)
-      let jaExiste: { id: string; numero: string; status: string; origem: string | null; chave_acesso: string | null; emitente_cnpj: string | null; serie: string | null }[] = [];
+      let jaExiste: { id: string; numero: string; status: string; origem: string | null; chave_acesso: string | null; emitente_cnpj: string | null; serie: string | null; fazenda_id: string | null }[] = [];
       if (chaveNova.length === 44) {
-        const { data } = await supabase.from("nf_entradas").select("id, numero, status, origem, chave_acesso, emitente_cnpj, serie").eq("chave_acesso", chaveNova).neq("status", "cancelada").limit(3);
+        const { data } = await supabase.from("nf_entradas").select("id, numero, status, origem, chave_acesso, emitente_cnpj, serie, fazenda_id").eq("chave_acesso", chaveNova).neq("status", "cancelada").limit(3);
         jaExiste = data ?? [];
       }
       if (!jaExiste.length && cab.numero && cnpjNovo.length >= 11) {
-        const { data } = await supabase.from("nf_entradas").select("id, numero, status, origem, chave_acesso, emitente_cnpj, serie").eq("numero", cab.numero).neq("status", "cancelada").limit(50);
+        const { data } = await supabase.from("nf_entradas").select("id, numero, status, origem, chave_acesso, emitente_cnpj, serie, fazenda_id").eq("numero", cab.numero).neq("status", "cancelada").limit(50);
         jaExiste = (data ?? []).filter(x =>
           (x.emitente_cnpj ?? "").replace(/\D/g, "") === cnpjNovo
           && (x.serie ?? "") === (cab.serie ?? "")
@@ -1168,7 +1171,11 @@ export default function ModalNf({
       }
       if (jaExiste.length) {
         const x = jaExiste[0];
-        setErr(`Esta NF já está no sistema (nº ${x.numero}, ${x.status === "processada" ? "já processada" : "pendente"}, entrada via ${x.origem ?? "—"}). Mesma chave de acesso ou mesmo número, série e fornecedor. Abra a existente em Documentos Fiscais em vez de lançar de novo.`);
+        // Diz em qual fazenda a nota está e oferece abrir direto: a NF existente costuma estar em outra fazenda do
+        // cliente (ex.: chegou pelo Sieg na fazenda do CNPJ destinatário) e o usuário não a achava na lista.
+        const { data: fzEx } = x.fazenda_id ? await supabase.from("fazendas").select("nome").eq("id", x.fazenda_id).maybeSingle() : { data: null };
+        setNfExistente({ id: x.id, numero: x.numero });
+        setErr(`Esta NF já está no sistema (nº ${x.numero}, ${x.status === "processada" ? "já processada" : "pendente"}, entrada via ${x.origem ?? "—"}${fzEx?.nome ? `, fazenda ${fzEx.nome}` : ""}). Mesma chave de acesso ou mesmo número, série e fornecedor. Abra a existente em vez de lançar de novo.`);
         return null;
       }
     }
@@ -2394,7 +2401,17 @@ export default function ModalNf({
             </div>
 
             <div data-arato-dialog-body="true" style={{ padding: "16px 20px" }}>
-              {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{err}</div>}
+              {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>
+                {err}
+                {nfExistente && err.startsWith("Esta NF já está no sistema") && (
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" onClick={() => { if (onAbrirExistente) onAbrirExistente(nfExistente.id); else { onClose(); router.push(`/fiscal/documentos?abrir=${nfExistente.id}`); } }}
+                      style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Abrir a NF {nfExistente.numero} existente
+                    </button>
+                  </div>
+                )}
+              </div>}
               {viewOnly && (
                 <div style={{ background: "#F4F6FA", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "var(--text-2)", marginBottom: 12 }}>
                   🔒 NF já processada — somente leitura. Para editar cabeçalho/itens, use <strong>↺ Estornar</strong> primeiro (reverte estoque e financeiro); Devolver, Reclassificar e Emitir Remessa continuam disponíveis normalmente.
