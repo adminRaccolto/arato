@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-i",
+    data: "22/10/2026",
+    titulo: "Pedido de Compra: total do item editável e mais casas decimais",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Na lista de itens do pedido, o Total do item agora pode ser digitado: o sistema calcula o valor unitário dividindo o total pela quantidade (somando o desconto unitário, se houver). Útil quando o fornecedor passa só o total." },
+      { tipo: "melhoria", texto: "Valor unitário aceita até 8 casas decimais e quantidade até 4 (as casas extras só aparecem se forem digitadas). Requer a Seção 357 do supabase_migrations.sql." },
+    ],
+    onde: "Compras → Pedidos de Compra → itens",
+  },
+  {
     versao: "2026.10.22-h",
     data: "22/10/2026",
     titulo: "Nome do relatório usa sempre o cliente",

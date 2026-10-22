@@ -2291,13 +2291,15 @@ export default function ComprasPage() {
                                   </SelectField>
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 90 }}>
-                                  <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.quantidade} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: v } : x))} placeholder="0" />
+                                  <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={4} value={it.quantidade} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: v } : x))} placeholder="0" />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
-                                  <InputMonetario
+                                  {/* Até 8 casas decimais: as casas extras só aparecem se digitar além da vírgula */}
+                                  <InputNumerico
+                                    decimais={8}
                                     style={{ ...inp, fontSize: 12, textAlign: "right" }}
                                     value={it.valor_unitario}
-                                    onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(v) } : x))}
+                                    onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: v } : x))}
                                     placeholder="0,00"
                                   />
                                 </td>
@@ -2310,10 +2312,24 @@ export default function ComprasPage() {
                                     placeholder="0,000000"
                                   />
                                 </td>
-                                <td style={{ padding: "5px 6px", width: 110 }}>
-                                  <div style={{ ...inp, fontSize: 12, textAlign: "right", color: "#111111", fontWeight: 600, background: "var(--bg-page)" }}>
-                                    {fmtMoeda(calcItem(it), f.cotacao_moeda)}
-                                  </div>
+                                <td style={{ padding: "5px 6px", width: 120 }}>
+                                  {/* Total editável: digitando o total, o valor unitário é calculado (total ÷ quantidade + desconto unitário) */}
+                                  <InputMonetario
+                                    style={{ ...inp, fontSize: 12, textAlign: "right", color: "#111111", fontWeight: 600 }}
+                                    value={calcItem(it) ? Math.round(calcItem(it) * 100) / 100 : ""}
+                                    title={(parseFloat(it.quantidade) || 0) > 0 ? "Digite o total do item: o valor unitário é calculado sozinho" : "Informe a quantidade antes do total"}
+                                    disabled={!((parseFloat(it.quantidade) || 0) > 0)}
+                                    onChange={v => setItens(prev => prev.map((x, j) => {
+                                      if (j !== it._idx) return x;
+                                      const qtd = parseFloat(x.quantidade) || 0;
+                                      if (!(qtd > 0)) return x;
+                                      const total = parseFloat(String(v)) || 0;
+                                      const desc = parseFloat(x.desconto_unitario) || 0;
+                                      const vu = Math.round((total / qtd + desc) * 1e8) / 1e8;
+                                      return { ...x, valor_unitario: String(vu) };
+                                    }))}
+                                    placeholder="0,00"
+                                  />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 80 }}>
                                   <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.qtd_cancelada} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: v } : x))} />

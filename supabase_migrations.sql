@@ -17140,3 +17140,12 @@ UPDATE lancamentos SET natureza = 'real'
    AND COALESCE(origem_lancamento, '') <> 'folha' AND to_jsonb(lancamentos)->>'previsao_gasto_id' IS NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 357 — Pedido de Compra: valor unitário com até 8 casas decimais
+-- =============================================================================
+-- O valor unitário era gravado com 4 casas (e a tela aceitava 2). Agora a tela aceita até 8 e calcula o unitário a
+-- partir do total digitado (total ÷ quantidade), o que pede mais precisão para o total bater com o da NF.
+ALTER TABLE pedidos_compra_itens ALTER COLUMN valor_unitario   TYPE numeric(20,8);
+ALTER TABLE pedidos_compra_itens ALTER COLUMN desconto_unitario TYPE numeric(20,8);
+NOTIFY pgrst, 'reload schema';
