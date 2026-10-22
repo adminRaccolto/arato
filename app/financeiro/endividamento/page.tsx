@@ -1,4 +1,5 @@
 "use client";
+import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -470,7 +471,7 @@ export default function RelatorioEndividamento() {
     }
 
     win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Endividamento — ${fazendaNome ?? "Fazenda"}</title>
+<title>${nomeRelatorio("ENDIVIDAMENTO", fazendaNome, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
@@ -571,7 +572,7 @@ export default function RelatorioEndividamento() {
     }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Cronograma");
-    XLSX.writeFile(wb, `Endividamento_${anoInicio}_${anoFim}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("ENDIVIDAMENTO", fazendaNome, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}.xlsx`);
   }
 
   // ── Estilos ─────────────────────────────────────────────────────

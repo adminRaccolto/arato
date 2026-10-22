@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-e",
+    data: "22/10/2026",
+    titulo: "Nome padrão dos relatórios",
+    modulos: ["Relatórios"],
+    itens: [
+      { tipo: "melhoria", texto: "PDFs e planilhas dos relatórios saem com o nome no padrão TIPO_CLIENTE_PERÍODO, em maiúsculas. Ex.: CP CR_GRUPO OGLIARI_01-09-2026 A 30-09-2026. Vale para CP/CR, Fluxo de Caixa (diário, mensal, anual), DFC, Posição por Conta, DRE, Financeiro por Classificação, LCDPR, Manutenção, Endividamento, Aplicações, Kardex, Apoio Financeiro, Pedidos de Compra, Posição de Comercialização e Previsto × Realizado." },
+    ],
+    onde: "Todos os relatórios",
+  },
+  {
     versao: "2026.10.22-d",
     data: "22/10/2026",
     titulo: "Data inexistente não some mais dos filtros",

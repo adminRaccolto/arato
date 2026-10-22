@@ -6,6 +6,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { supabase } from "../../../lib/supabase";
 import { hojeLocal } from "../../../lib/data-local";
+import { nomeRelatorio } from "../../../lib/print";
 import {
   listarOperacoesGerenciaisAtivasDaConta, listarPessoasDaConta, listarEmpresasDaConta, listarAnosSafra, listarCiclos,
   listarCentrosCustoGeralDaConta, listarProdutoresDaConta, listarFazendas,
@@ -57,7 +58,7 @@ const FORM_VAZIO = {
 };
 
 export default function PrevisaoGastosPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, contaId, contaNome } = useAuth();
   const hoje = hojeLocal();
   const [aba, setAba] = useState<Aba>("previsoes");
   const [previsoes, setPrevisoes] = useState<Previsao[]>([]);
@@ -270,7 +271,7 @@ export default function PrevisaoGastosPage() {
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhas), "Previsto x Realizado");
-    XLSX.writeFile(wb, `previsto-realizado_${rDe}_${rAte}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("PREVISTO X REALIZADO", contaNome, rDe, rAte)}.xlsx`);
   }
 
   // ─── Render ──────────────────────────────────────────────────

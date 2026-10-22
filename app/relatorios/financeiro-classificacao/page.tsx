@@ -4,7 +4,7 @@ import { OperationalButton, OperationalGrid, OperationalHeading } from "../../..
 import InputData from "../../../components/InputData";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
-import { abrirPreviewImpressao } from "../../../lib/print";
+import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarOperacoesGerenciais, listarEmpresaLancamentosComoLancamento } from "../../../lib/db";
@@ -178,7 +178,7 @@ function countRows(no: NoGrupo): number {
 
 // ─── componente principal ─────────────────────────────────────────────────────
 function RelFinClassInner() {
-  const { fazendaId, fazendaIds, nomeFazendaSelecionada, contaId } = useAuth();
+  const { fazendaId, fazendaIds, nomeFazendaSelecionada, contaId, contaNome } = useAuth();
 
   // ── filtros ──
   const [inicio, setInicio]   = useState(mesInicio());
@@ -553,6 +553,7 @@ function RelFinClassInner() {
       orientation: "landscape",
       fazenda: nomeFazendaSelecionada ?? "",
       subtitulo: `${periodoLabel} · ${tipoLabelPdf}`,
+      nomeArquivo: nomeRelatorio("FINANCEIRO POR CLASSIFICACAO", contaNome ?? nomeFazendaSelecionada, inicio, fim),
     });
   }
 
@@ -574,7 +575,7 @@ function RelFinClassInner() {
       for (let R = 5; R <= rg.e.r; R++) for (let C = 2; C <= 4; C++) { const c = w[XLSX.utils.encode_cell({ r: R, c: C })]; if (c && typeof c.v === "number") c.z = "#,##0.00"; }
       const b = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(b, w, "Sintético por OG");
-      XLSX.writeFile(b, `fin-classif-sintetico_${(nomeFazendaSelecionada ?? "").replace(/\s+/g, "_")}_${inicio}_${fim}.xlsx`);
+      XLSX.writeFile(b, `${nomeRelatorio("FINANCEIRO POR CLASSIFICACAO SINTETICO", contaNome ?? nomeFazendaSelecionada, inicio, fim)}.xlsx`);
       return;
     }
     const ws_data: (string | number)[][] = [];
@@ -625,7 +626,7 @@ function RelFinClassInner() {
       if (cell && typeof cell.v === "number") cell.z = "#,##0.00";
     }
     XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
-    XLSX.writeFile(wb, `fin-classif_${(nomeFazendaSelecionada ?? "").replace(/\s+/g, "_")}_${inicio}_${fim}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("FINANCEIRO POR CLASSIFICACAO", contaNome ?? nomeFazendaSelecionada, inicio, fim)}.xlsx`);
   }
 
   // ── estilos ───────────────────────────────────────────────────────────────

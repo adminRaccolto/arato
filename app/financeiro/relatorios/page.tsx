@@ -7,7 +7,7 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
-import { abrirPreviewImpressao } from "../../../lib/print";
+import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import { listarLancamentos, listarEmpresaLancamentosComoLancamento, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores, listarProdutoresDaConta, listarPessoasDaConta, listarSimulacoes, criarSimulacao, atualizarSimulacao, toggleSimulacao, excluirSimulacao, listarEmpresasDaConta } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -258,7 +258,7 @@ function FinanceiroRelatoriosInner() {
       const escopo = prodCPCR.size > 0
         ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
         : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
-      abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo });
+      abrirPreviewImpressao("CP / CR — Contas a Pagar e a Receber", r.html, { orientation: "landscape", fazenda: escopo, subtitulo: escopo, nomeArquivo: nomeRelatorio("CP CR", contaNome ?? nomeFazendaSelecionada, inicioCPCR, fimCPCR) });
     })();
   }, [cpcrEmitir]); // eslint-disable-line react-hooks/exhaustive-deps
   const [gruposExpand, setGruposExpand] = useState<Set<string>>(new Set());
@@ -572,7 +572,7 @@ function FinanceiroRelatoriosInner() {
       resumo["!cols"] = [{ wch: 28 }, { wch: 60 }];
       XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
       XLSX.utils.book_append_sheet(wb, ws, "Fluxo Diário");
-      nome = `Fluxo-Caixa-Diario_${d.filtroInicio}_${d.filtroFim}.xlsx`;
+      nome = `${nomeRelatorio("FLUXO DE CAIXA DIARIO", contaNome ?? nomeFazendaSelecionada, d.filtroInicio, d.filtroFim)}.xlsx`;
     } else {
       const mensal = subAbaFluxo === "mensal";
       const dm = printMensalRef.current, da = printAnualRef.current;
@@ -609,7 +609,9 @@ function FinanceiroRelatoriosInner() {
       resumo["!cols"] = [{ wch: 20 }, { wch: 60 }];
       XLSX.utils.book_append_sheet(wb, resumo, "Resumo");
       XLSX.utils.book_append_sheet(wb, ws, mensal ? "Fluxo Mensal" : "Fluxo Anual");
-      nome = mensal ? `Fluxo-Caixa-Mensal_${dm!.inicio.slice(0, 7)}_${dm!.fim.slice(0, 7)}.xlsx` : `Fluxo-Caixa-Anual_${da!.anosPresentes[0] ?? ""}-${da!.anosPresentes[da!.anosPresentes.length - 1] ?? ""}.xlsx`;
+      nome = mensal
+        ? `${nomeRelatorio("FLUXO DE CAIXA MENSAL", contaNome ?? nomeFazendaSelecionada, dm!.inicio, dm!.fim)}.xlsx`
+        : `${nomeRelatorio("FLUXO DE CAIXA ANUAL", contaNome ?? nomeFazendaSelecionada, null, null, `${da!.anosPresentes[0] ?? ""} A ${da!.anosPresentes[da!.anosPresentes.length - 1] ?? ""}`)}.xlsx`;
     }
     XLSX.writeFile(wb, nome);
   }
@@ -637,7 +639,18 @@ function FinanceiroRelatoriosInner() {
               ? [...prodCPCR].map(id => produtores.find(p => p.id === id)?.nome ?? id).join(", ")
               : (fazendaIds?.length ?? 0) > 1 ? `Todas as fazendas${contaNome ? ` — ${contaNome}` : " da conta"}` : (nomeFazendaSelecionada ?? "");
             const fazenda = escopoImpressao;
-            const opts = { orientation: "landscape" as const, fazenda };
+            // Nome do arquivo no padrão TIPO_CLIENTE_INTERVALO (ex.: CP CR_GRUPO OGLIARI_01-09-2026 A 30-09-2026)
+            const cliente = contaNome ?? nomeFazendaSelecionada ?? "";
+            const anosA = printAnualRef.current?.anosPresentes ?? [];
+            const nomeArquivo =
+              aba === "cpcr" ? nomeRelatorio("CP CR", cliente, inicioCPCR, fimCPCR)
+              : aba === "fluxo" && subAbaFluxo === "diario" ? nomeRelatorio("FLUXO DE CAIXA DIARIO", cliente, filtro.inicio, filtro.fim)
+              : aba === "fluxo" && subAbaFluxo === "mensal" ? nomeRelatorio("FLUXO DE CAIXA MENSAL", cliente, mensalInicio, mensalFim)
+              : aba === "fluxo" ? nomeRelatorio("FLUXO DE CAIXA ANUAL", cliente, null, null, anosA.length ? `${anosA[0]} A ${anosA[anosA.length - 1]}` : undefined)
+              : aba === "dfc" ? nomeRelatorio("DFC", cliente, null, null, String(dfcAno))
+              : aba === "posicao" ? nomeRelatorio("POSICAO POR CONTA", cliente)
+              : nomeRelatorio("RELATORIO", cliente);
+            const opts = { orientation: "landscape" as const, fazenda, nomeArquivo };
 
             if (aba === "fluxo" && subAbaFluxo === "anual" && printAnualRef.current) {
               // Gera HTML limpo — tabela de categorias × anos sem elementos interativos
@@ -2313,7 +2326,7 @@ function FinanceiroRelatoriosInner() {
                   });
                   ws2["!cols"] = colsVisiveis.map(c => ({ wch: Math.round(cpcrW[c.key] / 7) }));
                   XLSX.utils.book_append_sheet(wb, ws2, "Lançamentos");
-                  XLSX.writeFile(wb, `CP-CR_${inicioCPCR}_${fimCPCR}_${hoje}.xlsx`);
+                  XLSX.writeFile(wb, `${nomeRelatorio("CP CR", contaNome ?? nomeFazendaSelecionada, inicioCPCR, fimCPCR)}.xlsx`);
                 };
 
                 // ── dropdown helper ───────────────────────────────────

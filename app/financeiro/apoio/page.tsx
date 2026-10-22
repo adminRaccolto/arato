@@ -1,4 +1,5 @@
 "use client";
+import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -138,7 +139,7 @@ const FORM_VAZIO = {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function ApoioFinanceiroPage() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, anoSafraVigenteId, contaNome } = useAuth();
   // Fazenda de trabalho — seletor explícito no topo da página; fazendaId é
   // só o hint inicial, nunca uma restrição (não existe "fazenda ativa").
   const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
@@ -561,7 +562,7 @@ export default function ApoioFinanceiroPage() {
     const ws3 = XLSX.utils.json_to_sheet(rowsFluxo.length ? rowsFluxo : [{ "(vazio)": "" }]);
     XLSX.utils.book_append_sheet(wb, ws3, "Fluxo Consolidado");
 
-    XLSX.writeFile(wb, `Apoio_Financeiro_${dataIni}_${dataFim}_${hoje()}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("APOIO FINANCEIRO", contaNome, dataIni, dataFim)}.xlsx`);
     setMsg("Excel exportado com sucesso.");
     setTimeout(() => setMsg(null), 3000);
   }

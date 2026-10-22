@@ -12,6 +12,25 @@ export interface PrintOptions {
   fazenda?: string;
   /** Data de geração — padrão: agora */
   dataGeracao?: string;
+  /** Nome sugerido ao salvar o PDF (padrão TIPO_CLIENTE_INTERVALO — use nomeRelatorio) */
+  nomeArquivo?: string;
+}
+
+const dataNome = (iso?: string | null) => {
+  const t = String(iso ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t.split("-").reverse().join("-") : t;
+};
+
+/**
+ * Nome padrão dos relatórios (PDF e Excel): TIPO DE RELATÓRIO_CLIENTE_INTERVALO DE DATAS, em maiúsculas.
+ * Ex.: nomeRelatorio("CP CR", "Grupo Ogliari", "2026-09-01", "2026-09-30") → "CP CR_GRUPO OGLIARI_01-09-2026 A 30-09-2026".
+ * Sem datas, usa `intervalo` (ex.: "SAFRA 2025-2026") ou a data de hoje. Tira caracteres que o sistema de arquivos não aceita.
+ */
+export function nomeRelatorio(tipo: string, cliente?: string | null, de?: string | null, ate?: string | null, intervalo?: string): string {
+  const per = intervalo
+    ?? (de && ate ? `${dataNome(de)} A ${dataNome(ate)}` : de ? `A PARTIR DE ${dataNome(de)}` : ate ? `ATE ${dataNome(ate)}` : dataNome(new Date().toISOString()));
+  const limpo = (t: string) => t.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s*—\s*/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+  return [tipo, cliente || "", per].map(limpo).filter(Boolean).join("_");
 }
 
 /**
@@ -58,7 +77,7 @@ export function abrirPreviewImpressao(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arato — ${titulo}</title>
+  <title>${opts.nomeArquivo ?? `Arato — ${titulo}`}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #D1D5DB; color: #1a1a1a; }

@@ -1,4 +1,5 @@
 "use client";
+import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
 import SelectField from "../../../components/SelectField";
@@ -61,7 +62,7 @@ type LinhaKardex = {
 // ─── componente ─────────────────────────────────────────────────────────────
 
 export default function Kardex() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaNome } = useAuth();
 
   const [insumos,      setInsumos]      = useState<Insumo[]>([]);
   const [insumoId,     setInsumoId]     = useState("");
@@ -326,7 +327,7 @@ export default function Kardex() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Kardex");
-    const nome = `Kardex_${insumoSel.nome.replace(/\s+/g, "_")}_${dataIni}_${dataFim}.xlsx`;
+    const nome = `${nomeRelatorio(`KARDEX ${insumoSel.nome}`, contaNome, dataIni, dataFim)}.xlsx`;
     XLSX.writeFile(wb, nome);
   }
 

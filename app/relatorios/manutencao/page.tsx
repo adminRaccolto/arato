@@ -5,7 +5,7 @@ import SelectField from "../../../components/SelectField";
 import InputData from "../../../components/InputData";
 import React, { useState, useEffect, Suspense } from "react";
 import TopNav from "../../../components/TopNav";
-import { abrirPreviewImpressao } from "../../../lib/print";
+import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarMaquinas, listarAnosSafra, listarCiclos, listarFazendasDaConta } from "../../../lib/db";
@@ -243,6 +243,7 @@ function RelManutInner() {
       orientation: "landscape",
       fazenda: nomeCliente,
       subtitulo: periodoLabel,
+      nomeArquivo: nomeRelatorio("MANUTENCAO", contaNome ?? nomeCliente, periodoInicio, periodoFim),
     });
   }
 
@@ -309,7 +310,7 @@ function RelManutInner() {
     }
     XLSX.utils.book_append_sheet(wb, wsRes, "Resumo por Máquina");
 
-    const nomeArquivo = `manutencao_${(nomeCliente || "cliente").replace(/\s+/g, "_")}_${periodoInicio}_${periodoFim}.xlsx`;
+    const nomeArquivo = `${nomeRelatorio("MANUTENCAO", contaNome ?? nomeCliente, periodoInicio, periodoFim)}.xlsx`;
     XLSX.writeFile(wb, nomeArquivo);
   }
 

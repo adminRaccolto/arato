@@ -16,7 +16,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import type { Lancamento } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
-import { abrirPreviewImpressao } from "../../lib/print";
+import { abrirPreviewImpressao, nomeRelatorio } from "../../lib/print";
 
 // ─── Leiaute oficial do LCDPR — Anexo ao Ato Declaratório Executivo COPES nº
 // 1/2020 (leiaute 1.3), confirmado registro a registro contra o Manual de
@@ -812,7 +812,7 @@ export default function LCDPR() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
     XLSX.utils.book_append_sheet(wb, ws2, "Resumo Mensal");
-    XLSX.writeFile(wb, `LCDPR_${nomeArq}_${cpfSel || "TODOS"}_${comp}.xlsx`);
+    XLSX.writeFile(wb, `${nomeRelatorio("LCDPR", contaNome ?? nomeArq, `${anoSel}-01-01`, `${anoSel}-12-31`)}.xlsx`);
   };
 
   // ── Relatório PDF — visão estruturada do Livro Caixa (não é o arquivo
@@ -992,7 +992,7 @@ export default function LCDPR() {
     abrirPreviewImpressao(
       "LCDPR — Livro Caixa Digital do Produtor Rural",
       html,
-      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: contaNome ?? nomeProd },
+      { orientation: "landscape", subtitulo: `${nomeProd} · ${periodo}`, fazenda: contaNome ?? nomeProd, nomeArquivo: nomeRelatorio("LCDPR", contaNome ?? nomeProd, `${anoSel}-01-01`, `${anoSel}-12-31`) },
     );
   };
 

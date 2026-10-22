@@ -1,4 +1,5 @@
 "use client";
+import { nomeRelatorio } from "../../../../lib/print";
 import { hojeLocal } from "../../../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../../components/OperationalUI";
 import SelectField from "../../../../components/SelectField";
@@ -361,7 +362,7 @@ export default function RelAplicacoesPage() {
                   + (fazenda?.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : "");
     const agrupLabel = AGRUP_LABELS.find(a => a.key === agrupamento)?.label ?? "";
     return `<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Relatório de Aplicações — ${fazNome}</title>
+<title>${nomeRelatorio("APLICACOES", fazNome, fDtInicio || null, fDtFim || null)}</title>
 <style>
   body{margin:0;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#D1D5DB}
   .rt-toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -566,7 +567,7 @@ export default function RelAplicacoesPage() {
       },
     });
 
-    const nome = `aplicacoes_${fazenda?.nome?.replace(/\s+/g,"_") ?? "fazenda"}_${hojeLocal()}.pdf`;
+    const nome = `${nomeRelatorio("APLICACOES", fazenda?.nome, fDtInicio || null, fDtFim || null)}.pdf`;
     doc.save(nome);
   };
 
@@ -641,7 +642,7 @@ export default function RelAplicacoesPage() {
     XLSX.utils.book_append_sheet(wb, ws1, "Resumo");
     XLSX.utils.book_append_sheet(wb, ws2, "Aplicações");
 
-    const nome = `aplicacoes_${fazenda?.nome?.replace(/\s+/g, "_") ?? "fazenda"}_${hojeLocal()}.xlsx`;
+    const nome = `${nomeRelatorio("APLICACOES", fazenda?.nome, fDtInicio || null, fDtFim || null)}.xlsx`;
     XLSX.writeFile(wb, nome);
   };
 

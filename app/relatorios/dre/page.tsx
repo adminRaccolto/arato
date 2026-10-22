@@ -3,7 +3,7 @@ import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHead
 import SelectField from "../../../components/SelectField";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
-import { abrirPreviewImpressao } from "../../../lib/print";
+import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 // listarFazendas removido — usa authFazendaIds do AuthProvider para isolamento de tenant
@@ -98,7 +98,7 @@ const CULT_LABELS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª",
 type CpDre = { valor: number; categoria?: string; operacao_gerencial_id?: string; moeda?: string; sacas?: number; preco_saca_barter?: number };
 
 export default function DrePage() {
-  const { fazendaId, fazendaIds: authFazendaIds, contaId } = useAuth();
+  const { fazendaId, fazendaIds: authFazendaIds, contaId, contaNome } = useAuth();
 
   // Suporte multi-fazenda
   const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
@@ -670,7 +670,7 @@ export default function DrePage() {
             <OperationalButton data-arato-button="secondary"
               onClick={() => {
                 const el = document.getElementById("dre-print-content");
-                abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", "landscape", "Demonstrativo de Resultado do Exercício");
+                abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", { orientation: "landscape", subtitulo: "Demonstrativo de Resultado do Exercício", nomeArquivo: nomeRelatorio("DRE", contaNome, null, null, anoLabel ? `SAFRA ${anoLabel}` : undefined) });
               }}
               style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "#444" }}
             >

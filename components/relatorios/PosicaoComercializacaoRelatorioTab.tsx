@@ -12,6 +12,7 @@
 // (COALESCE pessoas.nome), ano safra e conta_id resolvidos, além de saldo_sc
 // já calculado (quantidade_sc - entregue_sc).
 // ═══════════════════════════════════════════════════════════════════════════
+import { nomeRelatorio } from "../../lib/print";
 import { hojeLocal } from "../../lib/data-local";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
@@ -155,7 +156,7 @@ export default function PosicaoComercializacaoRelatorioTab() {
       ${td(produto)}${td(fmtN(v.qtd), true)}${td(fmtN(v.entregue), true)}${td(fmtN(v.saldo), true, true)}
     </tr>`).join("");
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${nomeRelatorio("POSICAO DE COMERCIALIZACAO", contaNome, fDataDe || null, fDataAte || null)}</title>
 <style>
   body{margin:0;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#D1D5DB}
   .rt-toolbar{position:sticky;top:0;background:#111111;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -259,7 +260,7 @@ ${fTipo === "analitico" ? `
           }));
           XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(linhasDet), "Contratos");
         }
-        XLSX.writeFile(wb, `${titulo.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")}_${hojeLocal()}.xlsx`);
+        XLSX.writeFile(wb, `${nomeRelatorio("POSICAO DE COMERCIALIZACAO", contaNome, fDataDe || null, fDataAte || null)}.xlsx`);
       }
       setModalAberto(false);
     } catch (e: unknown) {
