@@ -52,6 +52,8 @@ test("busca só por fornecedor; NF tem filtro próprio; borderô é achado pelos
     assert.equal(filtrarTitulo(titulo, filtros({ busca })), false);
   }
   assert.equal(filtrarTitulo(titulo, filtros({ nf: "123" })), true);
+  const semCadastro = { ...titulo, pessoa_nome: null, descricao: "NFS-e 286 — RETITURBO COMERCIO" };
+  assert.equal(filtrarTitulo(semCadastro, filtros({ busca: "retiturbo" })), true);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ nf: "123" })), true);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ nf: "999" })), false);
   assert.equal(filtrarBordero(pendente, [titulo], filtros({ origens: new Set(["empresa_lancamentos"]) })), false);

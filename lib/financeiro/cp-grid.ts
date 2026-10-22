@@ -34,6 +34,9 @@ function corresponde(status: string, vencimento: string | null, nomes: unknown[]
   if (f.nf?.trim() && !nfs.some(v => texto(v).includes(texto(f.nf!.trim())))) return false;
   return !f.busca.trim() || nomes.some(v => texto(v).includes(texto(f.busca.trim())));
 }
+// Nome do fornecedor/cliente para o Buscar. Título sem cadastro vinculado tem o nome só na descrição
+// (ex.: "NFS-e 286 — RETITURBO..." ou lançamento manual sem fornecedor), então ela vale como nome.
+const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome || t.empresa_nome ? [t.pessoa_nome, t.empresa_nome] : [t.descricao];
 export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   // 'cartao': comprometido no cartão de crédito — nunca é saldo em aberto do
   // fornecedor/produtor, não entra no grid de CP de jeito nenhum (nem sem
@@ -42,7 +45,7 @@ export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   if (t.status_normalizado === "cartao") return false;
   return (!f.origens.size || f.origens.has(t.origem_tabela)) && corresponde(
     t.status_normalizado ?? "", t.data_vencimento,
-    [t.pessoa_nome, t.empresa_nome], [t.nfe_numero], f);
+    nomesDoTitulo(t), [t.nfe_numero], f);
 }
 export function itensDoBordero<T extends TituloGrid>(b: PagamentoLote, titulos: T[]) {
   const vinculos = vinculosBorderos([b]);
@@ -56,7 +59,7 @@ export function filtrarBordero(b: PagamentoLote, titulos: TituloGrid[], f: Filtr
   if (f.origens.size && !(b.itens ?? []).some(i => f.origens.has(i.origem_tabela ?? "lancamentos"))) return false;
   const itens = itensDoBordero(b, titulos);
   return corresponde(resumoBordero(b).status, vencimentoBordero(b, titulos),
-    itens.flatMap(t => [t.pessoa_nome, t.empresa_nome]), itens.map(t => t.nfe_numero), f);
+    itens.flatMap(nomesDoTitulo), itens.map(t => t.nfe_numero), f);
 }
 
 // O número sequencial do lançamento e documentos de contratos não são números de NF.

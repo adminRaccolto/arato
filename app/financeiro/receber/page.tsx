@@ -292,7 +292,7 @@ export default function ContasAReceberPage() {
       if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       if (fBusca.trim()) {
         const t = fBusca.trim();
-        q = q.or(`pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%`);
+        q = q.or(`pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%,and(pessoa_nome.is.null,empresa_nome.is.null,descricao.ilike.%${t}%)`);
       }
       q = q.order("data_lancamento", { ascending: false }).limit(1000);
 
