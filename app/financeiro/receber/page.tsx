@@ -44,7 +44,7 @@ import InputData from "../../../components/InputData";
 import GridPagination, { useGridPagination } from "../../../components/GridPagination";
 import { ResizeHandle } from "../../../hooks/useColumnResize";
 import { confirmarAcao } from "../../../components/ConfirmarAcao";
-import { useState, useEffect, useCallback, Fragment, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, Fragment, type ReactNode } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
@@ -288,8 +288,13 @@ export default function ContasAReceberPage() {
       q = contaId ? q.eq("conta_id", contaId) : q.in("fazenda_id", fids);
       if (fOrigem.size > 0) q = q.in("origem_tabela", Array.from(fOrigem));
       if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
-      if (fDataDe) q = q.gte("data_vencimento", fDataDe);
-      if (fDataAte) q = q.lte("data_vencimento", fDataAte);
+      // Buscando cliente ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas
+      const nfBusca = (filtrosCol.nf ?? "").trim();
+      if (!fBusca.trim() && !nfBusca) {
+        if (fDataDe) q = q.gte("data_vencimento", fDataDe);
+        if (fDataAte) q = q.lte("data_vencimento", fDataAte);
+      }
+      if (nfBusca) q = q.ilike("nfe_numero", `%${nfBusca}%`);
       if (fBusca.trim()) {
         const t = fBusca.trim();
         q = q.or(`pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%,and(pessoa_nome.is.null,empresa_nome.is.null,descricao.ilike.%${t}%)`);
@@ -312,13 +317,21 @@ export default function ContasAReceberPage() {
   // nenhum ao clicar Atualizar). O efeito abaixo NÃO depende de carregar —
   // só de fazenda/conta — pra não disparar uma consulta nova a cada tecla.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca]);
+  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca, filtrosCol.nf]);
 
   // Carrega automaticamente ao abrir a tela (período padrão) — nunca espera
   // o usuário escolher filtro primeiro. Refiltrar é sempre sobre o que já
   // está carregado; só período/busca disparam nova consulta (botão Atualizar).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { carregar(); }, [contaId ? null : fazendaId, contaId ? null : fazendaIds?.join(","), contaId]);
+  // Filtro de Nº NF consulta o banco sem o período (para trazer todas as parcelas da nota); espera parar de digitar
+  const nfFiltroCR = (filtrosCol.nf ?? "").trim();
+  const nfFiltroInicial = useRef(true);
+  useEffect(() => {
+    if (nfFiltroInicial.current) { nfFiltroInicial.current = false; return; }
+    const t = setTimeout(() => { carregar(); }, 500);
+    return () => clearTimeout(t);
+  }, [nfFiltroCR]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Borderôs — pendentes (ainda não confirmados) e pagos (título já
   // quitado) ───────────────────────────────────────────────────────

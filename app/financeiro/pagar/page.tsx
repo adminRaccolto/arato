@@ -359,7 +359,10 @@ export default function ContasAPagarPage() {
 
   const todosBorderos = [...borderosPendentes, ...borderosPagos];
   const vinculos = vinculosBorderos(todosBorderos);
-  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: fDataDe, ate: fDataAte, hoje: hojeISO() };
+  // Buscando fornecedor ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas, inclusive as
+  // que vencem depois do "Até" (que abre em hoje + 3 meses).
+  const buscaSemData = !!fBusca.trim() || !!filtrosCol.nf?.trim();
+  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: buscaSemData ? "" : fDataDe, ate: buscaSemData ? "" : fDataAte, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({

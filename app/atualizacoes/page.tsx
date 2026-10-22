@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-q",
+    data: "22/10/2026",
+    titulo: "CP/CR: busca por fornecedor ou NF mostra todas as parcelas",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "No Contas a Pagar e no Contas a Receber, ao buscar por fornecedor/cliente (Buscar) ou pelo número da NF (filtro da coluna Nº NF), o período de vencimento é ignorado e aparecem todas as parcelas, inclusive as que vencem depois da data Até. Sem busca, a tela continua abrindo com os vencimentos até daqui a 3 meses." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.22-p",
     data: "22/10/2026",
     titulo: "NF duplicada: abrir a existente com um clique",
