@@ -272,6 +272,7 @@ export const NAV: NavItem[] = [
     children: [
       { type: "divider", label: "Suporte" },
       { id: "ajuda-learning", label: "Aprendizado", path: "/learning" },
+      { id: "ajuda-suporte-remoto", label: "Suporte Remoto", path: "/ajuda/suporte-remoto" },
       // Suporte IA (Olívia) saiu daqui — agora é o balão flutuante global (OliviaWidget),
       // sempre acessível no canto inferior direito, sem precisar navegar até aqui.
     ],

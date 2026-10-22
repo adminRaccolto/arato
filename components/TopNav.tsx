@@ -213,7 +213,7 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
     if (item.id === "resultados")    return pathname.startsWith("/custos") || pathname.startsWith("/relatorios") || pathname === "/financeiro/empresas";
     if (item.id === "cadastros")     return pathname === "/cadastros" || pathname.startsWith("/cadastros");
     if (item.id === "configuracoes") return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
-    if (item.id === "ajuda")         return pathname === "/learning" || pathname === "/suporte";
+    if (item.id === "ajuda")         return pathname === "/learning" || pathname === "/suporte" || pathname.startsWith("/ajuda");
     return false;
   };
 

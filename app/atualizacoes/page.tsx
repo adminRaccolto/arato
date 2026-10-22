@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-n",
+    data: "22/10/2026",
+    titulo: "Suporte Remoto",
+    modulos: ["Ajuda"],
+    itens: [
+      { tipo: "novo", texto: "Nova tela Ajuda → Suporte Remoto: o cliente baixa o programa de acesso remoto (RustDesk) já ligado ao servidor de suporte da Arato e passa o ID e a senha ao atendente. No Windows o arquivo já vem configurado; no Mac basta copiar a configuração e importar no programa." },
+    ],
+    onde: "Ajuda → Suporte Remoto",
+  },
+  {
     versao: "2026.10.22-m",
     data: "22/10/2026",
     titulo: "Popups só fecham pelos botões",
