@@ -17104,3 +17104,38 @@ CREATE POLICY "folha_historico_tenant" ON folha_historico FOR SELECT
                       WHERE z.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())) OR public.rls_sou_raccotlo());
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 356 — Previsão não é paga como previsão
+-- =============================================================================
+-- Achado 22/10/2026: a folha em rascunho lança os salários como previsão no CP, e a conciliação/baixa pagou esses
+-- títulos com a folha ainda aberta. Regra, para qualquer caminho de baixa (tela, lote, borderô, conciliação):
+--   • previsão da FOLHA não pode ser paga: feche a folha antes (o fechamento transforma em título real);
+--   • previsão da Previsão de Gastos não pode ser paga direto: efetive no CP (⚡ Efetivar) para consumir a previsão;
+--   • qualquer outra previsão paga vira título real na hora da baixa (antes ficava "previsão" mesmo paga).
+CREATE OR REPLACE FUNCTION fn_lancamentos_previsao_na_baixa() RETURNS trigger AS $$
+BEGIN
+  IF NEW.natureza = 'previsao'
+     AND NEW.status IN ('baixado','parcial')
+     AND COALESCE(OLD.status, '') NOT IN ('baixado','parcial') THEN
+    IF NEW.origem_lancamento = 'folha' THEN
+      RAISE EXCEPTION 'Este salário ainda é uma previsão de folha em aberto (rascunho): feche a folha em Financeiro → Folha de Pagamento antes de pagar. (%)', NEW.descricao USING ERRCODE = 'P0001';
+    END IF;
+    IF NEW.previsao_gasto_id IS NOT NULL THEN
+      RAISE EXCEPTION 'Este título é uma previsão da Previsão de Gastos: abra o título no Contas a Pagar e clique em Efetivar antes de pagar. (%)', NEW.descricao USING ERRCODE = 'P0001';
+    END IF;
+    NEW.natureza := 'real';
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_lancamentos_previsao_na_baixa ON lancamentos;
+CREATE TRIGGER trg_lancamentos_previsao_na_baixa BEFORE UPDATE ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_lancamentos_previsao_na_baixa();
+
+-- Previsões manuais que já foram pagas viram reais (eram pagamentos de verdade marcados como previsão).
+-- As da folha ficam como estão: o Fechar Folha converte (sem reabrir o que já foi pago).
+UPDATE lancamentos SET natureza = 'real'
+ WHERE natureza = 'previsao' AND status IN ('baixado','parcial')
+   AND COALESCE(origem_lancamento, '') <> 'folha' AND previsao_gasto_id IS NULL;
+
+NOTIFY pgrst, 'reload schema';

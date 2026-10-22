@@ -448,6 +448,19 @@ export default function ContasAPagarPage() {
     && !CATEGORIAS_SEM_NF.includes(l.categoria ?? "");
 
   async function abrirBaixa(l: RelLancamento, pularNF = false) {
+    // Previsão não é paga como previsão (mesma regra do banco, Seção 356): folha precisa ser fechada; previsão da
+    // Previsão de Gastos precisa ser efetivada antes.
+    if (l.origem_tabela === "lancamentos") {
+      const { data: nat } = await supabase.from("lancamentos").select("natureza, origem_lancamento, previsao_gasto_id").eq("id", l.id).maybeSingle();
+      if (nat?.natureza === "previsao" && nat.origem_lancamento === "folha") {
+        alert("Este salário ainda é previsão de uma folha em rascunho. Feche a folha em Financeiro → Folha de Pagamento; o fechamento gera o título real para pagar.");
+        return;
+      }
+      if (nat?.natureza === "previsao" && nat.previsao_gasto_id) {
+        alert("Este título é uma previsão da Previsão de Gastos. Abra o título e clique em ⚡ Efetivar (com o valor real) antes de pagar.");
+        return;
+      }
+    }
     if (!pularNF && precisaVincularNF(l)) { setAlertaNF(l); return; }
     setErroAcao("");
     setModalBaixa(l);
@@ -1023,7 +1036,9 @@ export default function ContasAPagarPage() {
             if (!j.ok) throw new Error(`A 1ª parcela foi salva, mas as demais não: ${j.error}. Abra o título e tente de novo.`);
           } else {
             // Título de previsão da Previsão de Gastos sendo efetivado: o valor (editado) consome a previsão
-            const { data: antes } = await supabase.from("lancamentos").select("natureza, previsao_gasto_id").eq("id", editandoId).maybeSingle();
+            const { data: antes } = await supabase.from("lancamentos").select("natureza, previsao_gasto_id, origem_lancamento").eq("id", editandoId).maybeSingle();
+            if (antes?.natureza === "previsao" && antes.origem_lancamento === "folha" && novoForm.natureza === "real")
+              throw new Error("Salário em previsão é efetivado pelo Fechar Folha (Financeiro → Folha de Pagamento), não por aqui.");
             await atualizarLancamento(editandoId, camposEdit);
             if (antes?.previsao_gasto_id && antes.natureza === "previsao" && novoForm.natureza === "real") {
               try {

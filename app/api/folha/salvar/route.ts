@@ -129,9 +129,15 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
     ...(itens ?? []).map((i: any) => i.cp_lancamento_id),
     folha.cp_fgts_id, folha.cp_inss_patronal_id,
   ].filter(Boolean) as string[];
+  // Título de previsão que já foi pago (conciliação/baixa antes da trava) fica como está e não ganha previsão nova
+  const pagos = new Set<string>();
+  if (antigos.length) {
+    const { data: st } = await sb.from("lancamentos").select("id, status").in("id", antigos);
+    for (const t of st ?? []) if (t.status === "baixado" || t.status === "parcial") pagos.add(t.id as string);
+  }
   await apagarPrevisoesDaFolha(sb, folhaId);
   if (antigos.length) {
-    await falharSeErro(sb.from("lancamentos").delete().in("id", antigos).eq("natureza", "previsao").neq("status", "baixado"), "excluir previsões da folha");
+    await falharSeErro(sb.from("lancamentos").delete().in("id", antigos).eq("natureza", "previsao").not("status", "in", "(baixado,parcial)"), "excluir previsões da folha");
   }
   const { data: fazRow } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
   const contaFolha = (fazRow?.conta_id as string | undefined) ?? null;
@@ -150,6 +156,7 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
   }
 
   for (const it of (itens ?? []) as any[]) {
+    if (it.cp_lancamento_id && pagos.has(it.cp_lancamento_id)) continue;
     const { data: lanc, error } = await inserirLancamentoFolha(sb, {
       fazenda_id,
       empresa_id: empresa_id ?? vinculo[it.funcionario_id]?.empresa_id ?? null,
@@ -177,8 +184,9 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
   const totalFGTS = ((itens ?? []) as any[]).reduce((s, it) => s + (it.fgts ?? 0), 0);
   const totalINSSPat = ((itens ?? []) as any[]).reduce((s, it) => s + (it.inss_patronal ?? 0), 0);
   const vencEncargo = vencimentoEncargoFolha(competencia);
-  let cpFgts: string | null = null, cpInss: string | null = null;
-  if (totalFGTS > 0.005) {
+  let cpFgts: string | null = folha.cp_fgts_id && pagos.has(folha.cp_fgts_id) ? folha.cp_fgts_id : null;
+  let cpInss: string | null = folha.cp_inss_patronal_id && pagos.has(folha.cp_inss_patronal_id) ? folha.cp_inss_patronal_id : null;
+  if (totalFGTS > 0.005 && !cpFgts) {
     const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.013");
     const { data: l, error } = await inserirLancamentoFolha(sb, {
       fazenda_id, empresa_id: empresa_id ?? null, produtor_id: produtorIdFolha,
@@ -192,7 +200,7 @@ async function sincronizarPrevisoesFolha(sb: any, folhaId: string): Promise<void
     await registrarPrevisaoFolha(sb, { conta_id: contaFolha, fazenda_id, produtor_id: produtorIdFolha, empresa_id: empresa_id ?? null, og_id: og,
       descricao: `FGTS ${rotulo}`, valor: Math.round(totalFGTS * 100) / 100, data_vencimento: vencEncargo, ano_safra_id: null, folha_id: folhaId, titulo_id: cpFgts });
   }
-  if (empresa_id && totalINSSPat > 0.005) {
+  if (empresa_id && totalINSSPat > 0.005 && !cpInss) {
     const og = await resolverOgPorClassificacao(sb, fazenda_id, "2.01.01.10.014");
     const { data: l, error } = await inserirLancamentoFolha(sb, {
       fazenda_id, empresa_id, produtor_id: null,
@@ -647,7 +655,13 @@ export async function POST(req: Request) {
         const liq = liquidoItem(it);
         const ex = it.cp_lancamento_id ? prevSal[it.cp_lancamento_id] : undefined;
         if (ex) {
-          if (ex.natureza === "previsao") {
+          const jaPago = ex.status === "baixado" || ex.status === "parcial";
+          if (ex.natureza === "previsao" && jaPago) {
+            // Previsão que já foi paga (antes da trava da Seção 356): vira real como está — nunca volta a "em aberto"
+            const { error: upErr } = await sb.from("lancamentos").update({ natureza: "real" }).eq("id", it.cp_lancamento_id);
+            if (upErr) throw new Error(`CP ${it.nome_funcionario}: ${upErr.message}`);
+            await consumirPrevisaoDoTitulo(sb, it.cp_lancamento_id, ex.valor);
+          } else if (ex.natureza === "previsao") {
             const editado = Math.abs(ex.valor - (liqAntes[it.id] ?? liq)) > 0.005;
             const valorFinal = editado ? ex.valor : liq;
             const { error: upErr } = await sb.from("lancamentos")
@@ -707,9 +721,12 @@ export async function POST(req: Request) {
       let fgtsConvertido = false, inssConvertido = false;
       for (const [campo, cpId] of [["fgts", (encPrev as any)?.cp_fgts_id], ["inss", (encPrev as any)?.cp_inss_patronal_id]] as const) {
         if (!cpId) continue;
-        const { data: ex } = await sb.from("lancamentos").select("id, natureza, valor").eq("id", cpId).maybeSingle();
+        const { data: ex } = await sb.from("lancamentos").select("id, natureza, valor, status").eq("id", cpId).maybeSingle();
         if (!ex) continue;
-        if ((ex as any).natureza === "previsao") await falharSeErro(sb.from("lancamentos").update({ natureza: "real", status: "em_aberto" }).eq("id", cpId), "converter encargo da folha");
+        if ((ex as any).natureza === "previsao") {
+          const pagoEnc = ["baixado", "parcial"].includes(String((ex as any).status ?? ""));
+          await falharSeErro(sb.from("lancamentos").update(pagoEnc ? { natureza: "real" } : { natureza: "real", status: "em_aberto" }).eq("id", cpId), "converter encargo da folha");
+        }
         await consumirPrevisaoDoTitulo(sb, cpId, Number((ex as any).valor ?? 0));
         if (campo === "fgts") fgtsConvertido = true; else inssConvertido = true;
       }

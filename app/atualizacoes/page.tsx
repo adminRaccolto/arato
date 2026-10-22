@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-c",
+    data: "22/10/2026",
+    titulo: "Previsão de folha não pode ser paga com a folha aberta",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Com a folha em rascunho lançando os salários como previsão, a baixa e a conciliação conseguiam pagar esses títulos com a folha ainda aberta. Agora, em qualquer caminho (tela, lote, borderô, conciliação), salário em previsão só é pago depois de Fechar Folha, e previsão da Previsão de Gastos precisa ser efetivada antes. Outras previsões pagas viram título real na hora da baixa (Seção 356)." },
+      { tipo: "correcao", texto: "Fechar uma folha cujos salários em previsão já tinham sido pagos não reabre mais esses títulos: eles viram reais como estão. Salvar de novo uma folha nessa situação também não cria previsão em dobro." },
+    ],
+    onde: "Financeiro → Folha de Pagamento · Contas a Pagar · Conciliação",
+  },
+  {
     versao: "2026.10.22-b",
     data: "22/10/2026",
     titulo: "Folha fechada: Reprocessar Folha",
