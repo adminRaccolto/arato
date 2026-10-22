@@ -485,6 +485,8 @@ export default function ModalNf({
   const [ciclosNF,    setCiclosNF]    = useState<Ciclo[]>([]);
   const [cadFornAberto, setCadFornAberto] = useState(false);
   const [ccGlobalMaquinaId, setCcGlobalMaquinaId] = useState("");
+  // Rateio de frota (manutenção, Apropriação Direta) montado uma vez e aplicado a todos os itens
+  const [rateioGlobal, setRateioGlobal] = useState<{ maquina_id: string; percentual: number }[]>([]);
 
   // Itens
   const [itens, setItens] = useState<ItemRascunho[]>([ITEM_VAZIO()]);
@@ -3217,6 +3219,44 @@ export default function ModalNf({
                     </div>
                     </div>
                   )}
+
+                  {/* Rateio por frota para todos os itens de uma vez (mesma ideia do "aplicar centro de custo a todos") */}
+                  {tipo === "custo_direto" && modoDireto === "manutencao" && itens.some(i => i.descricao_nf.trim()) && (() => {
+                    const totalPct = rateioGlobal.reduce((s2, r) => s2 + (r.percentual || 0), 0);
+                    const ok = rateioGlobal.length > 0 && rateioGlobal.every(r => r.maquina_id) && Math.abs(totalPct - 100) < 0.01;
+                    return (
+                      <div style={{ padding: "10px 14px", background: "#FBF0D8", border: "0.5px solid #F6C87A", borderRadius: 10, marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5A12", marginBottom: 6 }}>🔧 Máquina(s) para todos os itens — monte o rateio uma vez e aplique a todos</div>
+                        {rateioGlobal.map((r, idx) => (
+                          <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 4, alignItems: "center" }}>
+                            <SelectField value={r.maquina_id} onChange={e => setRateioGlobal(g => g.map((x, i) => i === idx ? { ...x, maquina_id: e.target.value } : x))} style={{ ...inp, fontSize: 12, flex: 1, background: "#fff" }}>
+                              <option value="">— máquina —</option>
+                              {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                            </SelectField>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <InputNumerico decimais={1} value={r.percentual || ""} onChange={v => setRateioGlobal(g => g.map((x, i) => i === idx ? { ...x, percentual: parseFloat(v) || 0 } : x))} style={{ ...inp, fontSize: 12, width: 70, background: "#fff" }} />
+                              <span style={{ fontSize: 11, color: "#7A5A12" }}>%</span>
+                            </div>
+                            <button data-arato-button="icon" onClick={() => setRateioGlobal(g => g.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1 }}>×</button>
+                          </div>
+                        ))}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <button data-arato-button="secondary" onClick={() => setRateioGlobal(g => [...g, { maquina_id: "", percentual: g.length === 0 ? 100 : 0 }])} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #F6C87A", background: "#fff", cursor: "pointer", color: "#7A5A12" }}>+ Adicionar máquina</button>
+                          {rateioGlobal.length > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: ok ? "#166534" : "#B91C1C" }}>Total: {totalPct.toFixed(1)}%{!ok ? " — escolha as máquinas e some 100%" : ""}</span>
+                          )}
+                          {rateioGlobal.length > 0 && (
+                            <button data-arato-button="secondary" disabled={!ok}
+                              onClick={() => setItens(prev => prev.map(it => it.descricao_nf.trim() ? { ...it, maquinas_rateio: rateioGlobal.map(r => ({ ...r })) } : it))}
+                              style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: ok ? "#fff" : "#F4F6FA", color: ok ? "#1A4870" : "#888", fontSize: 12, fontWeight: 600, cursor: ok ? "pointer" : "not-allowed" }}>
+                              ↓ Aplicar a todos os itens
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#7A5A12", marginTop: 4 }}>Substitui o rateio de cada item; depois dá para ajustar item a item abaixo.</div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Grid de itens */}
                   <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>

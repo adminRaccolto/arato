@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.22-g",
+    data: "22/10/2026",
+    titulo: "NF de entrada: máquina para todos os itens de uma vez",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Na NF de entrada com Apropriação Direta de manutenção, acima da lista de itens há o quadro Máquina(s) para todos os itens: escolha a máquina (ou várias, com o percentual de cada uma somando 100%) e clique em Aplicar a todos os itens. Depois ainda dá para ajustar item a item, como já era com o centro de custo." },
+    ],
+    onde: "Documentos Fiscais → NF de Entrada → Itens",
+  },
+  {
     versao: "2026.10.22-f",
     data: "22/10/2026",
     titulo: "Relatório CP/CR em PDF cabe na folha",
