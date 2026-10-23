@@ -298,7 +298,7 @@ export default function ContasAReceberPage() {
       if (nfBusca) q = q.ilike("nfe_numero", `%${nfBusca}%`);
       if (fBusca.trim()) {
         const t = fBusca.trim();
-        q = q.or(`pessoa_nome.ilike.%${t}%,empresa_nome.ilike.%${t}%,and(pessoa_nome.is.null,empresa_nome.is.null,descricao.ilike.%${t}%)`);
+        q = q.or(`pessoa_nome.ilike.%${t}%,and(pessoa_nome.is.null,descricao.ilike.%${t}%)`);
       }
       q = q.order("data_lancamento", { ascending: false }).limit(1000);
 
@@ -363,7 +363,7 @@ export default function ContasAReceberPage() {
   // Ordenação também é client-side — reordena o que já está carregado.
   const textoColuna = (l: RelLancamento, k: string): string => ({
     origem: l.origem_tabela === "lancamentos" ? "PF Produtor" : "PJ Empresa",
-    produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? "",
+    produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.pessoa_nome ?? "",
     descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
@@ -1508,7 +1508,7 @@ export default function ContasAReceberPage() {
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
                   ),
                   pessoa: (
-                    <td style={{ padding: "7px 10px" }}>{l.empresa_nome ?? l.pessoa_nome ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.pessoa_nome ?? "—"}</td>
                   ),
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>{l.descricao ?? "—"}</td>
@@ -1609,7 +1609,7 @@ export default function ContasAReceberPage() {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
         const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
-        const nome = l.empresa_nome ?? l.pessoa_nome ?? l.descricao ?? "—";
+        const nome = l.pessoa_nome ?? l.descricao ?? "—";
         const saldo = saldoBRL(l);
         const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
         const W = 560, H = 420;
@@ -1801,7 +1801,7 @@ export default function ContasAReceberPage() {
               {itensLote.map((l, i) => (
                 <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 110px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
-                  <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                  <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.pessoa_nome ?? l.descricao}</span>
                   <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.numero ?? "—"}</span>
                   <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                   <span style={{ textAlign: "right", fontWeight: 600, color: "#555", whiteSpace: "nowrap" }}>{fmtBRL(saldoLote(l))}</span>
@@ -1928,7 +1928,7 @@ export default function ContasAReceberPage() {
                 {verBorderoItens.map((l, i) => (
                   <div key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 90px 90px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
-                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.pessoa_nome ?? l.descricao}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{l.nfe_numero ?? "—"}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>{fmtBRL(l.valor)}</span>
@@ -1980,7 +1980,7 @@ export default function ContasAReceberPage() {
                 return (
                   <div data-arato-item-grid="true" key={l.id} style={{ display: "grid", gridTemplateColumns: "60px 1.6fr 68px 80px 70px 70px 70px 90px", gap: 6, padding: "6px 10px", borderTop: i > 0 ? "0.5px solid #F0F2F7" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: l.origem_tabela === "lancamentos" ? "#0C447C" : "#5B21B6" }}>{l.origem_tabela === "lancamentos" ? "PF" : "PJ"}</span>
-                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.empresa_nome ?? l.pessoa_nome ?? l.descricao}</span>
+                    <span style={{ color: "#111", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.pessoa_nome ?? l.descricao}</span>
                     <span style={{ color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ color: "#888", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }}>{fmtBRL(saldoLote(l))}</span>
                     <input value={e.multa} onChange={ev => setEncargoLote(l.id, "multa", ev.target.value)} style={inpMini} />

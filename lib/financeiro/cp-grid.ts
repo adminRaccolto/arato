@@ -36,7 +36,8 @@ function corresponde(status: string, vencimento: string | null, nomes: unknown[]
 }
 // Nome do fornecedor/cliente para o Buscar. Título sem cadastro vinculado tem o nome só na descrição
 // (ex.: "NFS-e 286 — RETITURBO..." ou lançamento manual sem fornecedor), então ela vale como nome.
-const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome || t.empresa_nome ? [t.pessoa_nome, t.empresa_nome] : [t.descricao];
+// empresa_nome não entra: em título PJ é a própria empresa do cliente (tomadora), não o fornecedor.
+const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome ? [t.pessoa_nome] : [t.descricao];
 export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   // 'cartao': comprometido no cartão de crédito — nunca é saldo em aberto do
   // fornecedor/produtor, não entra no grid de CP de jeito nenhum (nem sem

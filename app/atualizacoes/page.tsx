@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-c",
+    data: "23/10/2026",
+    titulo: "CP/CR: coluna Fornecedor dos títulos de Empresa",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Nos títulos de Empresa (PJ), a coluna Fornecedor/Cliente mostrava o nome da própria empresa do cliente (ex.: Muriana Transportes) em vez do fornecedor. Agora mostra o fornecedor/cliente do título; a empresa continua na coluna Produtor. O Buscar também procura só pelo fornecedor/cliente." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.23-b",
     data: "23/10/2026",
     titulo: "Título de NF processada não pode mais ser excluído solto",

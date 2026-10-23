@@ -368,7 +368,7 @@ export default function ContasAPagarPage() {
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({
     origem: l.origem_tabela === "lancamentos" ? "PF Produtor" : "PJ Empresa",
-    produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? "",
+    produtor: l.produtor_nome ?? l.empresa_nome ?? "", numero: String(l.numero ?? ""), pessoa: l.pessoa_nome ?? nomeDoFuncionario(l) ?? "",
     descricao: l.descricao ?? "", operacao: l.operacao_gerencial_nome ?? "", safra: l.ano_safra_descricao ?? "",
     ciclo: l.ciclo_descricao ?? "", cc: l.centro_custo_nome ?? "", lancamento: fmtData(l.data_lancamento),
     vencimento: fmtData(l.data_vencimento), venc_orig: l.data_prorrogacao ? fmtData(l.data_prorrogacao) : "",
@@ -1810,7 +1810,7 @@ export default function ContasAPagarPage() {
                     <td style={{ padding: "7px 10px", color: "#888", fontVariantNumeric: "tabular-nums" }}>{l.numero ?? "—"}</td>
                   ),
                   pessoa: (
-                    <td style={{ padding: "7px 10px" }}>{l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}</td>
+                    <td style={{ padding: "7px 10px" }}>{l.pessoa_nome ?? nomeDoFuncionario(l) ?? "—"}</td>
                   ),
                   descricao: (
                     <td style={{ padding: "7px 10px" }}>{l.descricao ?? "—"}</td>
@@ -1965,7 +1965,7 @@ export default function ContasAPagarPage() {
         const l = popover.l;
         const dias = diasVencimento(l.data_vencimento, l.status_normalizado);
         const sm = STATUS_OPCOES.find(s => s.v === statusExibido(l.status_normalizado, l.data_vencimento));
-        const nome = l.empresa_nome ?? l.pessoa_nome ?? nomeDoFuncionario(l) ?? l.descricao ?? "—";
+        const nome = l.pessoa_nome ?? nomeDoFuncionario(l) ?? l.descricao ?? "—";
         const saldo = saldoBRL(l);
         const aberto = l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido" || l.status_normalizado === "parcial";
         const W = 560, H = 420;
