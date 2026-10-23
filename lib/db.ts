@@ -368,11 +368,15 @@ export async function listarInsumos(fazenda_id: string | string[]): Promise<Insu
   if (contaIds.length > 0) {
     const { data: fzsConta } = await supabase.from("fazendas").select("id").in("conta_id", contaIds);
     const idsConta = (fzsConta ?? []).map((f: { id: string }) => f.id);
-    const { data, error } = await supabase.from("insumos").select("*")
-      .in("fazenda_id", idsConta.length > 0 ? idsConta : fazendaIds)
-      .order("nome");
-    if (error) throw error;
-    return data ?? [];
+    // Paginado: o Supabase devolve no máximo 1.000 linhas — catálogo maior perdia itens em silêncio.
+    const ids = idsConta.length > 0 ? idsConta : fazendaIds;
+    const todos: Insumo[] = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await supabase.from("insumos").select("*").in("fazenda_id", ids).order("nome").order("id").range(de, de + 999);
+      if (error) throw error;
+      todos.push(...((data ?? []) as Insumo[]));
+      if ((data ?? []).length < 1000) return todos;
+    }
   }
 
   // Legado: fazenda sem conta_id (não deveria acontecer hoje) — mantém filtro antigo
@@ -516,6 +520,12 @@ export async function buscarRegistroPorDocumentoNaConta(
     String(r[colunaDocumento] ?? "").replace(/\D/g, "") === digitos
   );
   return achado ? { id: achado.id as string } : null;
+}
+
+/** Reabre um grupo já revisado (volta para a lista de Possíveis Duplicados). */
+export async function reabrirDuplicadoRevisado(contaId: string, chaveNormalizada: string): Promise<void> {
+  const { error } = await supabase.from("insumos_duplicados_revisados").delete().eq("conta_id", contaId).eq("chave_normalizada", chaveNormalizada);
+  if (error) throw error;
 }
 
 export async function marcarDuplicadoRevisado(

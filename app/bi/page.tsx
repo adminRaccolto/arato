@@ -384,10 +384,10 @@ export default function BI() {
   const [deletandoDup,  setDeletandoDup]  = useState(false);
   const [dupSelecionadas, setDupSelecionadas] = useState<Set<string>>(new Set());
   const [auditExpand,   setAuditExpand]   = useState<Set<string>>(new Set());
-  const [auditRomaneios, setAuditRomaneios] = useState<{ id: string; numero?: string; fazenda_id: string; data: string; produto?: string; status?: string }[]>([]);
-  const [auditUomDiv,    setAuditUomDiv]    = useState<{ id: string; nf_entrada_id: string; produto_nome?: string; unidade_nf?: string; unidade?: string }[]>([]);
-  const [auditSemCC,     setAuditSemCC]     = useState<{ id: string; descricao?: string; quantidade?: number; unidade_medida?: string; created_at: string }[]>([]);
   const [auditExtraLoading, setAuditExtraLoading] = useState(false);
+  const [auditVerif, setAuditVerif] = useState<import("../../lib/auditoria/bi/carregar").Verificacao[]>([]);
+  const [auditVerifErro, setAuditVerifErro] = useState<string | null>(null);
+  const [auditVerifEm, setAuditVerifEm] = useState<string | null>(null);
 
   // ── Posição Comercial (sub-aba de Produção) ───────────────────
   const [fazendas,     setFazendas]     = useState<FazendaBI[]>([]);
@@ -549,33 +549,24 @@ export default function BI() {
     } finally { setAuditLoading(false); }
   }, []);
 
+  // Verificações do CLIENTE (todas as fazendas da conta), no servidor. Antes cada consulta pedia coluna que não
+  // existia, o erro era engolido e tudo aparecia ✓ (achado real 23/10/2026).
   const carregarAuditExtra = useCallback(async () => {
-    if (!fazendaId) return;
-    setAuditExtraLoading(true);
+    if (!contaId) return;
+    setAuditExtraLoading(true); setAuditVerifErro(null);
     try {
-      const limiteData = new Date();
-      limiteData.setDate(limiteData.getDate() - 3);
-      const dataLimite = limiteData.toISOString().slice(0, 10);
-      const [romRes, uomRes, ccRes] = await Promise.all([
-        supabase.from("romaneios").select("id,numero,fazenda_id,data,produto,status")
-          .eq("fazenda_id", fazendaId).lte("data", dataLimite).is("nfe_numero", null)
-          .in("status", ["aberto", "em_andamento", "pendente"]),
-        supabase.from("nf_entrada_itens").select("id,nf_entrada_id,produto_nome,unidade_nf,unidade")
-          .eq("fazenda_id", fazendaId).not("unidade_nf", "is", null).not("unidade", "is", null),
-        supabase.from("movimentacoes_estoque")
-          .select("id,descricao,quantidade,unidade_medida,created_at")
-          .eq("fazenda_id", fazendaId).eq("tipo", "saida").eq("auto", false)
-          .is("centro_custo_id", null).order("created_at", { ascending: false }).limit(100),
-      ]);
-      setAuditRomaneios(romRes.data ?? []);
-      setAuditUomDiv((uomRes.data ?? []).filter(r => r.unidade_nf && r.unidade && r.unidade_nf.toLowerCase() !== r.unidade.toLowerCase()));
-      setAuditSemCC(ccRes.data ?? []);
-    } finally { setAuditExtraLoading(false); }
-  }, [fazendaId]);
+      const r = await fetch("/api/bi/auditoria", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conta_id: contaId }) });
+      const j = await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }));
+      if (!j.ok) { setAuditVerifErro(j.error ?? `HTTP ${r.status}`); return; }
+      setAuditVerif(j.verificacoes ?? []); setAuditVerifEm(j.em ?? null);
+    } catch (e) { setAuditVerifErro(e instanceof Error ? e.message : String(e)); }
+    finally { setAuditExtraLoading(false); }
+  }, [contaId]);
 
   useEffect(() => {
-    if (aba === "controller" && fazendaId) { carregarAlertas(); carregarAuditExtra(); }
-  }, [aba, fazendaId, carregarAlertas, carregarAuditExtra]);
+    if (aba === "controller" && fazendaId) carregarAlertas();
+    if (aba === "controller" && contaId) carregarAuditExtra();
+  }, [aba, fazendaId, contaId, carregarAlertas, carregarAuditExtra]);
 
   useEffect(() => {
     if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos);
@@ -5227,126 +5218,99 @@ export default function BI() {
                 );
               })()}
 
-              {/* ── 4 Cards de Auditoria (accordion) ─────────────── */}
+              {/* ── Verificações de dados do CLIENTE (servidor: /api/bi/auditoria) ─────────────── */}
               {(() => {
                 const toggleAudit = (key: string) => setAuditExpand(prev => {
                   const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next;
                 });
-                const AuditCard = ({ id, icon, titulo, subtitulo, count, corBadge, loading: ld, children }: { id: string; icon: string; titulo: string; subtitulo: string; count: number; corBadge: string; loading?: boolean; children: React.ReactNode }) => {
-                  const expanded = auditExpand.has(id);
-                  const cor = ld ? "#ccc" : count > 0 ? "#E24B4A" : "#16A34A";
-                  return (
-                    <div data-arato-statistic="action" style={{ border: `0.5px solid ${count > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
-                      <OperationalButton data-arato-button="secondary" onClick={() => toggleAudit(id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>{icon}</span>
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{titulo}</span>
-                          <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{subtitulo}</span>
-                        </span>
-                        {ld ? <span style={{ fontSize: 11, color: "var(--text-3)" }}>carregando…</span> : (
-                          <span style={{ background: count > 0 ? corBadge : "#DCFCE7", color: count > 0 ? "#991B1B" : "#166534", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
-                            {count > 0 ? count : "✓"}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
-                      </OperationalButton>
-                      {expanded && <div style={{ borderTop: "0.5px solid var(--border)" }}>{children}</div>}
-                    </div>
-                  );
+                // Colunas exibidas por verificação (chave do item → título). O resto do item fica fora da tabela.
+                const COLUNAS: Record<string, [string, string][]> = {
+                  romaneios_sem_nf:         [["numero", "Romaneio"], ["data", "Data"], ["placa", "Placa"], ["sacas", "Sacas"], ["fazenda", "Fazenda"]],
+                  romaneio_entrada_pesagem: [["ticket_numero", "Ticket"], ["data", "Data"], ["placa", "Placa"], ["produto_nome", "Produto"], ["peso_bruto_kg", "Peso bruto (kg)"], ["fazenda", "Fazenda"]],
+                  uom_divergente:           [["nf", "NF"], ["data", "Emissão"], ["fornecedor", "Fornecedor"], ["insumo", "Item no cadastro"], ["quantidade", "Qtd."], ["unidade_nf", "Unid. NF"], ["unidade_cadastro", "Unid. cadastro"], ["fazenda", "Fazenda"]],
+                  estoque_negativo:         [["insumo", "Item"], ["estoque", "Saldo"], ["unidade", "Unid."], ["fazenda", "Fazenda"]],
+                  saidas_sem_ciclo:         [["data", "Data"], ["insumo", "Item"], ["quantidade", "Qtd."], ["unidade", "Unid."], ["motivo", "Motivo"], ["usuario_nome", "Usuário"], ["fazenda", "Fazenda"]],
+                  contratos_sem_cp:         [["descricao", "Contrato"], ["numero_contrato", "Nº"], ["credor", "Credor"], ["valor_total", "Valor"], ["status", "Status"], ["fazenda", "Fazenda"]],
+                };
+                const ICONES: Record<string, string> = { romaneios_sem_nf: "📋", romaneio_entrada_pesagem: "⚖️", uom_divergente: "📏", estoque_negativo: "⛔", saidas_sem_ciclo: "🏷️", contratos_sem_cp: "📄" };
+                const fmtCel = (k: string, v: unknown) => {
+                  if (v == null || v === "") return "—";
+                  if (k === "data") return fmtDt(String(v).slice(0, 10));
+                  if (k === "valor_total") return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  if (typeof v === "number") return fmtN(v, Number.isInteger(v) ? 0 : 3);
+                  return String(v);
                 };
                 return (
                   <div style={{ marginTop: 24 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Verificações de Dados</div>
-                        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Clique em cada item para ver os detalhes</div>
+                        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                          Todas as fazendas do cliente. Clique em cada item para ver os detalhes.{auditVerifEm ? ` Verificado às ${new Date(auditVerifEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.` : ""}
+                        </div>
                       </div>
                       <OperationalButton data-arato-button="secondary" onClick={() => { carregarAuditExtra(); if (cfContratos.length > 0) carregarAuditContratos(cfContratos.map(c => c.id), cfContratos); }} disabled={auditExtraLoading}
                         style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: auditExtraLoading ? "not-allowed" : "pointer", opacity: auditExtraLoading ? 0.6 : 1 }}>
                         ⟳ Reprocessar
                       </OperationalButton>
                     </div>
+                    {auditVerifErro && (
+                      <div style={{ padding: "10px 14px", marginBottom: 10, borderRadius: 8, background: "#FCEBEB", color: "#791F1F", fontSize: 12 }}>
+                        Não foi possível rodar as verificações: {auditVerifErro}
+                      </div>
+                    )}
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-
-                      <AuditCard id="romaneios_sem_nf" icon="📋" titulo="Romaneios sem NF vinculada" subtitulo="Abertos há mais de 3 dias sem nota fiscal lançada" count={auditRomaneios.length} corBadge="#FEE2E2" loading={auditExtraLoading}>
-                        {auditRomaneios.length === 0 ? (
-                          <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Nenhum romaneio pendente</div>
-                        ) : (
-                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                              <thead><tr style={{ background: "var(--bg-page)" }}>
-                                {["Número","Data","Produto","Status"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
-                              </tr></thead>
-                              <tbody>{auditRomaneios.map((r, i) => (
-                                <tr key={r.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
-                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)" }}>{r.numero ?? "—"}</td>
-                                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{fmtDt(r.data)}</td>
-                                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{r.produto ?? "—"}</td>
-                                  <td style={{ padding: "8px 12px" }}><span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 600 }}>{r.status ?? "aberto"}</span></td>
-                                </tr>
-                              ))}</tbody>
-                            </OperationalGrid>
+                      {auditExtraLoading && auditVerif.length === 0 && (
+                        <div style={{ padding: 16, fontSize: 12, color: "var(--text-3)" }}>Verificando os dados do cliente…</div>
+                      )}
+                      {auditVerif.map(v => {
+                        const expanded = auditExpand.has(v.id);
+                        const cor = v.erro ? "#EF9F27" : v.total > 0 ? "#E24B4A" : "#16A34A";
+                        const cols = COLUNAS[v.id] ?? Object.keys(v.itens[0] ?? {}).filter(k => k !== "id").slice(0, 6).map(k => [k, k] as [string, string]);
+                        return (
+                          <div key={v.id} data-arato-statistic="action" style={{ border: `0.5px solid ${v.erro ? "rgba(239,159,39,0.4)" : v.total > 0 ? "rgba(226,75,74,0.3)" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+                            <OperationalButton data-arato-button="secondary" onClick={() => toggleAudit(v.id)} style={{ width: "100%", background: "none", border: "none", padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: cor, flexShrink: 0, display: "inline-block" }} />
+                              <span style={{ fontSize: 18, flexShrink: 0 }}>{ICONES[v.id] ?? "🔎"}</span>
+                              <span style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{v.titulo}</span>
+                                <span style={{ display: "block", fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{v.subtitulo}</span>
+                              </span>
+                              {v.erro
+                                ? <span style={{ background: "#FAEEDA", color: "#633806", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>não verificado</span>
+                                : <span style={{ background: v.total > 0 ? "#FEE2E2" : "#DCFCE7", color: v.total > 0 ? "#991B1B" : "#166534", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700 }}>{v.total > 0 ? v.total : "✓"}</span>}
+                              <span style={{ fontSize: 14, color: "var(--text-3)", marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
+                            </OperationalButton>
+                            {expanded && (
+                              <div style={{ borderTop: "0.5px solid var(--border)" }}>
+                                {v.erro ? (
+                                  <div style={{ padding: "12px 16px", fontSize: 12, color: "#633806", background: "#FAEEDA" }}>A verificação falhou e por isso não pode dizer que está tudo certo: {v.erro}</div>
+                                ) : v.total === 0 ? (
+                                  <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Nada encontrado</div>
+                                ) : (
+                                  <>
+                                    <div style={{ padding: "8px 16px", fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>Onde corrigir: <strong>{v.caminho}</strong>{v.itens.length > 200 ? ` · mostrando 200 de ${v.itens.length}` : ""}</div>
+                                    <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
+                                      <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                        <thead><tr style={{ background: "var(--bg-page)" }}>
+                                          {cols.map(([, h]) => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
+                                        </tr></thead>
+                                        <tbody>{v.itens.slice(0, 200).map((r, i) => (
+                                          <tr key={String(r.id ?? i)} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
+                                            {cols.map(([k]) => <td key={k} style={{ padding: "8px 12px", color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{fmtCel(k, r[k])}</td>)}
+                                          </tr>
+                                        ))}</tbody>
+                                      </OperationalGrid>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </AuditCard>
-
-                      <AuditCard id="uom_divergente" icon="⚖️" titulo="Entradas com unidade de medida divergente" subtitulo="Unidade na NF difere da unidade cadastrada no sistema" count={auditUomDiv.length} corBadge="#FEE2E2" loading={auditExtraLoading}>
-                        {auditUomDiv.length === 0 ? (
-                          <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Todas as unidades consistentes</div>
-                        ) : (
-                          <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                            <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                              <thead><tr style={{ background: "var(--bg-page)" }}>
-                                {["Produto","Unidade na NF","Unidade no sistema","NF Entrada"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
-                              </tr></thead>
-                              <tbody>{auditUomDiv.map((r, i) => (
-                                <tr key={r.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
-                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)" }}>{r.produto_nome ?? "—"}</td>
-                                  <td style={{ padding: "8px 12px" }}><span style={{ background: "#FEE2E2", color: "#991B1B", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{r.unidade_nf}</span></td>
-                                  <td style={{ padding: "8px 12px" }}><span style={{ background: "#DBEAFE", color: "#1E40AF", padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{r.unidade}</span></td>
-                                  <td style={{ padding: "8px 12px", color: "var(--text-3)", fontSize: 11 }}>{r.nf_entrada_id.slice(0, 8)}…</td>
-                                </tr>
-                              ))}</tbody>
-                            </OperationalGrid>
-                          </div>
-                        )}
-                      </AuditCard>
-
-                      <AuditCard id="saidas_uom" icon="📦" titulo="Saídas de estoque com unidade divergente" subtitulo="Saídas onde a unidade registrada difere do cadastro do produto" count={0} corBadge="#FEE2E2" loading={auditExtraLoading}>
-                        <div style={{ padding: "12px 16px", fontSize: 12, color: "#92400E", background: "#FEF3C7" }}>
-                          ⚠️ Esta verificação requer que a coluna <strong>unidade_medida</strong> seja adicionada à tabela <strong>movimentacoes_estoque</strong> (migration pendente). Após executar a migration, as saídas passarão a registrar a unidade e poderão ser auditadas.
-                        </div>
-                      </AuditCard>
-
-                      <AuditCard id="consumo_sem_cc" icon="🏷️" titulo="Consumo manual sem centro de custo" subtitulo="Saídas manuais de estoque sem CC apontado" count={auditSemCC.length} corBadge="#FEE2E2" loading={auditExtraLoading}>
-                        {auditSemCC.length === 0 ? (
-                          <div style={{ padding: "14px 16px", fontSize: 13, color: "#16A34A", fontWeight: 600 }}>✓ Todos os consumos manuais têm centro de custo</div>
-                        ) : (
-                          <>
-                            <div style={{ padding: "10px 16px 6px", fontSize: 12, color: "#92400E", background: "#FEF3C7", borderBottom: "0.5px solid var(--border)" }}>
-                              ⚠️ Esses consumos não têm CC apontado — o custo não foi apropriado corretamente.
-                            </div>
-                            <div data-arato-grid-container="true" style={{ overflowX: "auto" }}>
-                              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                                <thead><tr style={{ background: "var(--bg-page)" }}>
-                                  {["Descrição","Quantidade","Unidade","Data"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>)}
-                                </tr></thead>
-                                <tbody>{auditSemCC.map((r, i) => (
-                                  <tr key={r.id} style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--border)" }}>
-                                    <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{r.descricao ?? "—"}</td>
-                                    <td style={{ padding: "8px 12px", fontVariantNumeric: "tabular-nums" }}>{fmtN(r.quantidade ?? 0, 3)}</td>
-                                    <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{r.unidade_medida ?? "—"}</td>
-                                    <td style={{ padding: "8px 12px", color: "var(--text-3)", fontSize: 11 }}>{fmtDt(r.created_at?.slice(0, 10))}</td>
-                                  </tr>
-                                ))}</tbody>
-                              </OperationalGrid>
-                            </div>
-                          </>
-                        )}
-                      </AuditCard>
-
+                        );
+                      })}
                     </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10 }}>Cadastros duplicados de insumos e produtos ficam em Estoque → Possíveis Duplicados.</div>
                   </div>
                 );
               })()}

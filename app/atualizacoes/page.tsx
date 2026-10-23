@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-t",
+    data: "23/10/2026",
+    titulo: "Auditoria do BI corrigida e duplicados por semelhança no Estoque",
+    modulos: ["BI", "Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "BI → Auditoria → Verificações de Dados mostrava ✓ em tudo: as consultas falhavam e o erro era ignorado, e só olhavam a fazenda ativa. Agora verificam todas as fazendas do cliente e um erro aparece como \"não verificado\", nunca como ✓." },
+      { tipo: "melhoria", texto: "Verificações novas: romaneio de entrada parado na pesagem, estoque negativo, saída manual sem safra/ciclo e contrato financeiro ativo sem título no CP. Unidade divergente passa a apontar só o que entrou sem fator de conversão. Saem os cards que não podiam ser verificados (unidade da saída e centro de custo do consumo)." },
+      { tipo: "melhoria", texto: "Estoque → Possíveis Duplicados: novo critério Nome parecido (ex.: SEM SOJA CG 7681 × SEMENTE SOJA CG 7681), com os mesmos números para não juntar variedades diferentes. A aba olha o catálogo do cliente inteiro, sem seletor de fazenda, mostra a fazenda de cada cadastro e permite rever grupos já descartados." },
+      { tipo: "correcao", texto: "O catálogo de insumos de clientes com mais de 1.000 itens deixava de carregar parte deles; agora carrega todos." },
+    ],
+    onde: "BI → Auditoria; Estoque → Possíveis Duplicados",
+  },
+  {
     versao: "2026.10.23-s",
     data: "23/10/2026",
     titulo: "Transporte: cavalo, implementos e conjuntos no CT-e e MDF-e",

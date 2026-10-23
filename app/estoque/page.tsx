@@ -29,9 +29,10 @@ import {
   saldoPorLoteDetalhado,
   listarInsumosParaConta,
   normalizarNomeInsumo,
-  listarDuplicadosRevisados, marcarDuplicadoRevisado,
+  listarDuplicadosRevisados, marcarDuplicadoRevisado, reabrirDuplicadoRevisado,
 } from "../../lib/db";
 import type { DuplicadoRevisado } from "../../lib/db";
+import { gruposDuplicados as agruparDuplicados } from "../../lib/estoque/duplicados";
 import { useAuth } from "../../components/AuthProvider";
 import type {
   Insumo, MovimentacaoEstoque, RelMovimentacaoEstoque,
@@ -294,6 +295,9 @@ export default function Estoque() {
   const [insumos, setInsumos]       = useState<Insumo[]>([]);
   const [duplicadosRevisados, setDuplicadosRevisados] = useState<DuplicadoRevisado[]>([]);
   const [duplicadosProcessando, setDuplicadosProcessando] = useState<string | null>(null);
+  // Catálogo inteiro do CLIENTE para a revisão de duplicados — o cadastro de item não é da fazenda.
+  const [insumosCliente, setInsumosCliente] = useState<Insumo[]>([]);
+  const [verDescartados, setVerDescartados] = useState(false);
   // Movimentações (aba) lê direto rel_movimentacoes_estoque (Seção 318) —
   // já vem com insumo/depósito/ciclo/ano-safra/NF resolvidos, sem precisar
   // de insumos.find()/depositos.find() client-side.
@@ -594,7 +598,10 @@ export default function Estoque() {
     }
     if (aba === "nf_entrada")    listarNfEntradas(fazLeitura).then(setNfEntradas).catch(e => setErro(e.message));
     if (aba === "terceiros")     listarEstoqueTerceiros(fazLeitura).then(setTerceiros).catch(e => setErro(e.message));
-    if (aba === "duplicados" && contaId) listarDuplicadosRevisados(contaId).then(setDuplicadosRevisados).catch(e => setErro(e.message));
+    if (aba === "duplicados" && contaId) {
+      listarDuplicadosRevisados(contaId).then(setDuplicadosRevisados).catch(e => setErro(e.message));
+      listarInsumos(fazendasConta.length ? fazendasConta.map(f => f.id) : fazAtiva).then(setInsumosCliente).catch(e => setErro(e.message));
+    }
     if (aba === "relatorios" && relTipo === "historico" && relInsumoId) {
       listarMovimentacoes(fazLeitura, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
     }
@@ -967,26 +974,28 @@ export default function Estoque() {
   const alertas   = insumos.filter(i => i.estoque <= i.estoque_minimo);
   const negativos = insumos.filter(i => i.estoque < 0);
 
-  // ── Possíveis duplicados no catálogo ──────────────────────────────────────
-  // Agrupa por nome normalizado (acento/caixa/pontuação/artigos ignorados) —
-  // critério EXATO de propósito: "SEM SOJA CG 7681" e "SEM SOJA CG 8790" têm
-  // token normalizado diferente (7681 ≠ 8790), então NÃO caem no mesmo grupo,
-  // mesmo compartilhando a abreviação "SEM SOJA CG". Evita falso positivo
-  // entre modelos/variedades diferentes — o pedido explícito foi cautela aqui.
-  const gruposDuplicados = (() => {
-    const porChave = new Map<string, Insumo[]>();
-    for (const ins of insumos) {
-      const chave = normalizarNomeInsumo(ins.nome);
-      if (!chave) continue;
-      if (!porChave.has(chave)) porChave.set(chave, []);
-      porChave.get(chave)!.push(ins);
-    }
-    const jaRevisadas = new Set(duplicadosRevisados.map(d => d.chave_normalizada));
-    return Array.from(porChave.entries())
-      .filter(([chave, itens]) => itens.length > 1 && !jaRevisadas.has(chave))
-      .map(([chave, itens]) => ({ chave, itens: itens.sort((a, b) => b.estoque - a.estoque) }))
-      .sort((a, b) => a.itens[0].nome.localeCompare(b.itens[0].nome));
-  })();
+  // ── Possíveis duplicados no catálogo do cliente ──────────────────────────
+  // Duas regras (lib/estoque/duplicados.ts): nome igual depois de normalizado, e nome parecido com OS MESMOS números
+  // ("CG 7681" × "CG 7682" nunca se juntam). O mesmo nome em fazendas diferentes também conta — o cadastro é do cliente.
+  const revisadosPorChave = new Map(duplicadosRevisados.map(d => [d.chave_normalizada, d]));
+  // Antes de abrir a aba, o contador usa o catálogo já carregado (listarInsumos já traz o cliente todo).
+  const catalogoDup = insumosCliente.length ? insumosCliente : insumos;
+  const gruposDuplicados = agruparDuplicados(
+    catalogoDup.map(i => ({ id: i.id, nome: i.nome, unidade: i.unidade, tipo: i.tipo, categoria: i.categoria, fazenda_id: i.fazenda_id, estoque: i.estoque, ativo: (i as { ativo?: boolean | null }).ativo })),
+    new Set(duplicadosRevisados.filter(d => !verDescartados || d.status !== "descartado").map(d => d.chave_normalizada)),
+  ).map(g => ({ ...g, itens: g.itens.map(x => catalogoDup.find(i => i.id === x.id)!).filter(Boolean).sort((a, b) => b.estoque - a.estoque) }));
+  const totalDescartados = duplicadosRevisados.filter(d => d.status === "descartado").length;
+  const nomeFazendaDup = (id?: string | null) => fazendasConta.find(f => f.id === id)?.nome ?? "—";
+
+  async function reabrirDuplicado(chave: string) {
+    if (!contaId) return;
+    setDuplicadosProcessando(chave);
+    try {
+      await reabrirDuplicadoRevisado(contaId, chave);
+      setDuplicadosRevisados(prev => prev.filter(d => d.chave_normalizada !== chave));
+    } catch (e) { setErro((e as Error).message); }
+    finally { setDuplicadosProcessando(null); }
+  }
 
   async function revisarDuplicado(chave: string, nomes: string[], status: "descartado" | "corrigido") {
     if (!contaId) return;
@@ -1015,7 +1024,7 @@ export default function Estoque() {
               <h1 data-arato-h1="true" style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Estoque</h1>
             </div>
             <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              {fazendasConta.length > 1 && (
+              {fazendasConta.length > 1 && aba !== "duplicados" && (
                 <SelectField
                   value={fazTrabalho}
                   onChange={e => setFazTrabalho(e.target.value)}
@@ -1051,8 +1060,14 @@ export default function Estoque() {
           {aba === "duplicados" && (
             <div>
               <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16, maxWidth: 720 }}>
-                Insumos com o mesmo nome (ignorando acento, maiúscula/minúscula, pontuação e artigos) cadastrados mais de uma vez no catálogo do cliente. Nomes parecidos mas com código/modelo/variedade diferente <strong>não aparecem aqui</strong> — o critério é o nome ficar idêntico depois de normalizado. Revise cada caso: <strong>Descartar</strong> se forem produtos diferentes de verdade, ou <strong>Corrigido</strong> depois de mesclar manualmente (Estoque → Posição → editar/excluir).
+                Itens cadastrados mais de uma vez no catálogo do cliente (todas as fazendas). <strong>Nome igual</strong>: o mesmo nome ignorando acento, maiúscula/minúscula, pontuação e artigos. <strong>Nome parecido</strong>: nomes muito próximos ou um contido no outro (ex.: SEM SOJA CG 7681 × SEMENTE SOJA CG 7681) — sempre com os mesmos números, então variedade ou concentração diferente (CG 7681 × CG 7682, 480 × 720) nunca entra. Revise cada caso: <strong>Descartar</strong> se forem produtos diferentes de verdade, ou <strong>Corrigido</strong> depois de mesclar manualmente (Estoque → Posição → editar/excluir).
               </div>
+              {totalDescartados > 0 && (
+                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-2)", marginBottom: 14, cursor: "pointer" }}>
+                  <input type="checkbox" checked={verDescartados} onChange={e => setVerDescartados(e.target.checked)} />
+                  Mostrar também os {totalDescartados} grupo(s) já descartados (revisar de novo)
+                </label>
+              )}
 
               {gruposDuplicados.length === 0 ? (
                 <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
@@ -1060,11 +1075,22 @@ export default function Estoque() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {gruposDuplicados.map(({ chave, itens }) => (
+                  {gruposDuplicados.map(({ chave, itens, criterio, tipo }) => {
+                    const revisado = revisadosPorChave.get(chave);
+                    return (
                     <div key={chave} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ padding: "10px 16px", background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#92400E" }}>⚠ {itens.length} cadastros com o mesmo nome normalizado</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#92400E", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, background: criterio === "exato" ? "#FCEBEB" : "#FBF3E0", color: criterio === "exato" ? "#791F1F" : "#7A5800" }}>{criterio === "exato" ? "Nome igual" : "Nome parecido"}</span>
+                          ⚠ {itens.length} cadastros de {tipo === "produto" ? "produto" : "insumo"}{new Set(itens.map(i => i.fazenda_id)).size > 1 ? ` em ${new Set(itens.map(i => i.fazenda_id)).size} fazendas` : " na mesma fazenda"}
+                          {revisado && <span style={{ fontWeight: 400, color: "var(--text-2)" }}>· descartado{revisado.revisado_por ? ` por ${revisado.revisado_por}` : ""}{revisado.created_at ? ` em ${new Date(revisado.created_at).toLocaleDateString("pt-BR")}` : ""}</span>}
+                        </span>
                         <div style={{ display: "flex", gap: 8 }}>
+                          {revisado && (
+                            <OperationalButton data-arato-button="secondary" disabled={duplicadosProcessando === chave} onClick={() => reabrirDuplicado(chave)} style={{ ...btnE, background: "var(--bg-card)" }}>
+                              {duplicadosProcessando === chave ? "..." : "Reabrir"}
+                            </OperationalButton>
+                          )}
                           <OperationalButton data-arato-button="secondary"
                             disabled={duplicadosProcessando === chave}
                             onClick={() => revisarDuplicado(chave, itens.map(i => i.nome), "descartado")}
@@ -1079,8 +1105,9 @@ export default function Estoque() {
                           </OperationalButton>
                         </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.8fr 1fr 1fr 1.2fr", gap: 0, fontSize: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 0.8fr 1fr 1fr 1.2fr", gap: 0, fontSize: 12 }}>
                         <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Nome</div>
+                        <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Fazenda</div>
                         <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Categoria</div>
                         <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase" }}>Unidade</div>
                         <div style={{ padding: "8px 16px", fontWeight: 600, color: "var(--text-3)", fontSize: 10, textTransform: "uppercase", textAlign: "right" }}>Estoque</div>
@@ -1089,6 +1116,7 @@ export default function Estoque() {
                         {itens.map((i, idx) => (
                           <React.Fragment key={i.id}>
                             <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", fontWeight: 600, color: "var(--text-1)" }}>{i.nome}</div>
+                            <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", color: "var(--text-2)" }}>{nomeFazendaDup(i.fazenda_id)}</div>
                             <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)" }}>{badge(i.categoria, "var(--bg-tag)", "var(--text-2)")}</div>
                             <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)" }}>{i.unidade}</div>
                             <div style={{ padding: "8px 16px", borderTop: "0.5px solid var(--border-table)", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: idx === 0 ? 700 : 400 }}>{i.estoque.toLocaleString("pt-BR")}</div>
@@ -1098,7 +1126,7 @@ export default function Estoque() {
                         ))}
                       </div>
                     </div>
-                  ))}
+                  ); })}
                 </div>
               )}
             </div>
