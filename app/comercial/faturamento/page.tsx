@@ -58,6 +58,12 @@ const NATUREZAS_VENDA = [
   { codigo: "5.934",    cfop_tipo: null,
     descricao: "Remessa Simbólica para Armazenagem — Interna (mesma UF) (CFOP 5.934)",
     obs: "Remessa simbólica de mercadoria depositada em armazém geral. Não constitui fato gerador de receita. ICMS não tributado (CST 41)." },
+  { codigo: "6.949",    cfop_tipo: null,
+    descricao: "Outra Saída de Mercadoria Não Especificada — Interestadual (CFOP 6.949)",
+    obs: "Outra saída de mercadoria ou prestação de serviço não especificada. Operação não configura venda. ICMS não tributado (CST 41)." },
+  { codigo: "5.949",    cfop_tipo: null,
+    descricao: "Outra Saída de Mercadoria Não Especificada — Interna (mesma UF) (CFOP 5.949)",
+    obs: "Outra saída de mercadoria ou prestação de serviço não especificada. Operação não configura venda. ICMS não tributado (CST 41)." },
   { codigo: "6.906",    cfop_tipo: null,
     descricao: "Retorno de Armazém Geral — Interestadual (CFOP 6.906)",
     obs: "Retorno de mercadoria depositada em armazém geral. Natureza espelho da remessa. Não incide tributo." },
@@ -1005,12 +1011,12 @@ function FaturamentoInner() {
                 fv({ cfop: e.target.value, natureza_texto: nat?.descricao ?? "", observacao: nat ? textoNat(nat) : "" });
               }}>
               <optgroup label="Vendas">
-                {NATUREZAS_VENDA.filter(n => !["6.934","5.934"].includes(n.codigo) && (n.codigo.startsWith("6") || n.codigo.startsWith("5.1") || n.codigo.startsWith("5.5") || n.codigo.startsWith("7"))).map(n => (
+                {NATUREZAS_VENDA.filter(n => !["6.934","5.934","6.949","5.949"].includes(n.codigo) && (n.codigo.startsWith("6") || n.codigo.startsWith("5.1") || n.codigo.startsWith("5.5") || n.codigo.startsWith("7"))).map(n => (
                   <option key={n.codigo} value={n.codigo}>{n.descricao}</option>
                 ))}
               </optgroup>
               <optgroup label="Remessas">
-                {NATUREZAS_VENDA.filter(n => ["6.905","5.905","6.934","5.934","6.906","5.906","6.117","6.119"].includes(n.codigo)).map(n => (
+                {NATUREZAS_VENDA.filter(n => ["6.905","5.905","6.934","5.934","6.949","5.949","6.906","5.906","6.117","6.119"].includes(n.codigo)).map(n => (
                   <option key={n.codigo} value={n.codigo}>{n.descricao}</option>
                 ))}
               </optgroup>

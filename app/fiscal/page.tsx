@@ -28,6 +28,8 @@ const NATUREZAS_VENDA = [
   { codigo: "5.905",    descricao: "Remessa para Armazem Geral / Deposito - Interna (CFOP 5.905)",      obs: "Remessa para deposito em armazem geral de terceiros, dentro do mesmo Estado. Operacao nao configura venda. Nao incide ICMS, PIS, COFINS nem Funrural." },
   { codigo: "6.934",    descricao: "Remessa Simbolica para Armazenagem - Interestadual (CFOP 6.934)",  obs: "Remessa simbolica de mercadoria depositada em armazem geral. Nao constitui fato gerador de receita. ICMS nao tributado (CST 41)." },
   { codigo: "5.934",    descricao: "Remessa Simbolica para Armazenagem - Interna (CFOP 5.934)",         obs: "Remessa simbolica de mercadoria depositada em armazem geral. Nao constitui fato gerador de receita. ICMS nao tributado (CST 41)." },
+  { codigo: "6.949",    descricao: "Outra Saida de Mercadoria Nao Especificada - Interestadual (CFOP 6.949)", obs: "Outra saida de mercadoria ou prestacao de servico nao especificada. Operacao nao configura venda. ICMS nao tributado (CST 41)." },
+  { codigo: "5.949",    descricao: "Outra Saida de Mercadoria Nao Especificada - Interna (CFOP 5.949)",       obs: "Outra saida de mercadoria ou prestacao de servico nao especificada. Operacao nao configura venda. ICMS nao tributado (CST 41)." },
   { codigo: "6.117",    descricao: "Remessa Simbolica - Entrega Futura (CFOP 6.117)",                  obs: "Faturamento antecipado. NF simbolica sem movimentacao fisica de mercadoria. ICMS diferido nos termos do Decreto MT n. 4.540/2004." },
   { codigo: "6.119",    descricao: "Remessa para Venda a Ordem (CFOP 6.119)",                          obs: "Venda a ordem - operacao triangular. ICMS diferido conforme Decreto MT n. 4.540/2004." },
 ];
@@ -2921,7 +2923,7 @@ function FiscalInner() {
                           // aqui — venda/exportação/devolução são de outro fluxo (Nota de Venda
                           // normal), só confundiam a escolha nesse modo.
                           <SelectField style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
-                            {NATUREZAS_VENDA.filter(o => ["6.905", "5.905", "6.934", "5.934", "6.117", "6.119"].includes(o.codigo))
+                            {NATUREZAS_VENDA.filter(o => ["6.905", "5.905", "6.934", "5.934", "6.949", "5.949", "6.117", "6.119"].includes(o.codigo))
                               .map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
                           </SelectField>
                         ) : (

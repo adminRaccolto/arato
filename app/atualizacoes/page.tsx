@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-j",
+    data: "23/10/2026",
+    titulo: "CFOP 5949 / 6949 nas notas de saída",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "A natureza Outra Saída de Mercadoria Não Especificada (CFOP 5.949 interna e 6.949 interestadual) passa a aparecer na emissão de Notas de Venda/Remessa (grupo Remessas) e no modo Remessa, com ICMS não tributado (CST 41) e texto legal preenchido. Também entra como modelo em Parâmetros do Sistema → Operações Fiscais." },
+    ],
+    onde: "Documentos Fiscais → Notas de Venda / Remessa",
+  },
+  {
     versao: "2026.10.23-i",
     data: "23/10/2026",
     titulo: "CP/CR: datas escolhidas valem junto com a busca",
