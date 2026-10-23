@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-n",
+    data: "23/10/2026",
+    titulo: "Estoque: relatório de movimentação com todas as fazendas e o período completo",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "No relatório Movimentação por Produto (Estoque → Relatórios), com Todas as fazendas selecionado, só entravam as movimentações da fazenda do perfil do usuário — por isso usuários diferentes viam itens diferentes com os mesmos filtros. Agora entram todas as fazendas do cliente." },
+      { tipo: "correcao", texto: "Os relatórios de movimentação de estoque mostravam no máximo 1.000 movimentações; em períodos longos, as mais antigas sumiam. Agora trazem todas." },
+    ],
+    onde: "Estoque → Relatórios → Movimentação por Produto",
+  },
+  {
     versao: "2026.10.23-m",
     data: "23/10/2026",
     titulo: "Segurança reforçada nas operações de NF, CT-e e MDF-e",

@@ -636,7 +636,7 @@ export default function Estoque() {
       `${tipoLabel}: ${insNome} — ${fMov.tipo === "ajuste" ? `saldo ajustado para ${qtdNova}` : `${qtd} unid.`}`,
       { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: fMov.tipo, motivo: fMov.motivo, quantidade: qtd, observacao: fMov.observacao } }
     );
-    const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazAtiva!), listarMovimentacoesRel(fazAtiva!)]);
+    const [ins2, movsRelNovo] = await Promise.all([listarInsumos(fazLeitura), listarMovimentacoesRel(fazLeitura)]);
     setInsumos(ins2); setMovsRel(movsRelNovo);
     setModalMov(false);
     setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: hojeLocal(), observacao: "", variedade: "", lote_semente: "" });
@@ -645,7 +645,7 @@ export default function Estoque() {
   // ── Relatório histórico ──
   const buscarHistorico = () => {
     if (!fazAtiva || !relInsumoId) return;
-    listarMovimentacoes(fazAtiva, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
+    listarMovimentacoes(fazLeitura, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
   };
 
   // ── Relatório Saldo por Lote — mesma lógica usada nos seletores de lote
@@ -672,8 +672,10 @@ export default function Estoque() {
       const diaAntes = new Date(kardexInicio);
       diaAntes.setDate(diaAntes.getDate() - 1);
       const [movs, movsAntes] = await Promise.all([
-        listarMovimentacoes(fazAtiva, kardexInsumoId || undefined, kardexInicio, kardexFim),
-        listarMovimentacoes(fazAtiva, kardexInsumoId || undefined, undefined, diaAntes.toISOString().slice(0, 10)),
+        // fazLeitura: com "Todas as fazendas" são todas as fazendas da conta. Antes ia só a fazenda do perfil do usuário
+        // (fazAtiva) e o relatório mudava de usuário para usuário com os mesmos filtros.
+        listarMovimentacoes(fazLeitura, kardexInsumoId || undefined, kardexInicio, kardexFim),
+        listarMovimentacoes(fazLeitura, kardexInsumoId || undefined, undefined, diaAntes.toISOString().slice(0, 10)),
       ]);
       setKardexMovs(movs);
       setKardexMovsAntes(movsAntes);

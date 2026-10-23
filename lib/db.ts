@@ -616,13 +616,21 @@ export async function listarMovimentacoes(fazenda_id: string | string[], insumo_
   // "adivinhar" o número fazendo regex em cima do texto da observação, que
   // também guardava o UUID). Resolver pela FK de verdade corrige até o
   // histórico já gravado, sem precisar de backfill.
-  let q = filtroFazenda(supabase.from("movimentacoes_estoque").select("*, nf_entradas(numero)"), fazenda_id).order("data", { ascending: false });
-  if (insumo_id) q = q.eq("insumo_id", insumo_id);
-  if (dataInicio) q = q.gte("data", dataInicio);
-  if (dataFim)    q = q.lte("data", dataFim);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data ?? [];
+  // Paginado: o banco devolve no máximo 1.000 linhas por consulta e o relatório perdia o período mais antigo
+  // (Grupo Ogliari: 1.301 movimentações desde janeiro, só as 1.000 mais recentes apareciam).
+  const out: MovimentacaoEstoque[] = [];
+  for (let de = 0; ; de += 1000) {
+    let q = filtroFazenda(supabase.from("movimentacoes_estoque").select("*, nf_entradas(numero)"), fazenda_id)
+      .order("data", { ascending: false }).order("id", { ascending: true });
+    if (insumo_id) q = q.eq("insumo_id", insumo_id);
+    if (dataInicio) q = q.gte("data", dataInicio);
+    if (dataFim)    q = q.lte("data", dataFim);
+    const { data, error } = await q.range(de, de + 999);
+    if (error) throw error;
+    out.push(...((data ?? []) as MovimentacaoEstoque[]));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
 }
 
 /**
@@ -633,13 +641,19 @@ export async function listarMovimentacoes(fazenda_id: string | string[], insumo_
  * + joins client-side (insumos.find/depositos.find).
  */
 export async function listarMovimentacoesRel(fazenda_id: string | string[], insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<import("./supabase").RelMovimentacaoEstoque[]> {
-  let qr = filtroFazenda(supabase.from("rel_movimentacoes_estoque").select("*"), fazenda_id).order("data", { ascending: false });
-  if (insumo_id) qr = qr.eq("insumo_id", insumo_id);
-  if (dataInicio) qr = qr.gte("data", dataInicio);
-  if (dataFim)    qr = qr.lte("data", dataFim);
-  const { data, error } = await qr;
-  if (error) throw error;
-  return (data ?? []) as import("./supabase").RelMovimentacaoEstoque[];
+  const out: import("./supabase").RelMovimentacaoEstoque[] = [];
+  for (let de = 0; ; de += 1000) {
+    let qr = filtroFazenda(supabase.from("rel_movimentacoes_estoque").select("*"), fazenda_id)
+      .order("data", { ascending: false }).order("id", { ascending: true });
+    if (insumo_id) qr = qr.eq("insumo_id", insumo_id);
+    if (dataInicio) qr = qr.gte("data", dataInicio);
+    if (dataFim)    qr = qr.lte("data", dataFim);
+    const { data, error } = await qr.range(de, de + 999);
+    if (error) throw error;
+    out.push(...((data ?? []) as import("./supabase").RelMovimentacaoEstoque[]));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
 }
 
 // Saldo de semente por lote — o saldo "de vitrine" do insumo é sempre o total
