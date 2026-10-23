@@ -17334,3 +17334,47 @@ CREATE TABLE IF NOT EXISTS auditoria_execucoes (
 );
 ALTER TABLE auditoria_execucoes ENABLE ROW LEVEL SECURITY;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 362 — NF de entrada: a mesma NF nunca é processada duas vezes
+-- =============================================================================
+-- A Seção 350 bloqueia a ENTRADA de NF repetida (INSERT). As cópias que já existiam antes dela continuam no banco
+-- (pendentes) e qualquer uma ainda podia ser PROCESSADA ao lado da original — estoque e financeiro em dobro (6 casos
+-- reais em ago–set/2026, origens SIEG e XML misturadas). Agora: ao marcar uma NF como processada, se houver outra
+-- processada com a mesma chave de acesso (ou, sem chave, mesmo número + série + CNPJ do fornecedor) em qualquer fazenda
+-- da conta, a operação é recusada. Vale para todo caminho (tela, lote, SIEG, rotinas do servidor).
+CREATE OR REPLACE FUNCTION fn_nf_entradas_processa_uma_vez() RETURNS trigger AS $$
+DECLARE
+  v_conta uuid; v_chave text; v_cnpj text; v_dup record;
+BEGIN
+  IF NEW.status IS DISTINCT FROM 'processada' OR (TG_OP = 'UPDATE' AND OLD.status = 'processada') THEN
+    RETURN NEW;
+  END IF;
+  v_chave := regexp_replace(coalesce(NEW.chave_acesso, ''), '\D', '', 'g');
+  v_cnpj  := regexp_replace(coalesce(NEW.emitente_cnpj, ''), '\D', '', 'g');
+  SELECT conta_id INTO v_conta FROM fazendas WHERE id = NEW.fazenda_id;
+
+  IF length(v_chave) = 44 THEN
+    SELECT n.numero, n.fazenda_id INTO v_dup FROM nf_entradas n
+     WHERE n.id <> NEW.id AND n.status = 'processada' AND regexp_replace(coalesce(n.chave_acesso, ''), '\D', '', 'g') = v_chave
+       AND (n.fazenda_id = NEW.fazenda_id OR n.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = v_conta))
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION 'Esta NF (nº %) já foi processada em outra cópia (mesma chave de acesso). Abra a NF já processada em vez de processar de novo; a cópia pode ser excluída.', v_dup.numero USING ERRCODE = '23505';
+    END IF;
+  ELSIF NEW.numero IS NOT NULL AND length(v_cnpj) >= 11 THEN
+    SELECT n.numero INTO v_dup FROM nf_entradas n
+     WHERE n.id <> NEW.id AND n.status = 'processada' AND n.numero = NEW.numero AND coalesce(n.serie, '') = coalesce(NEW.serie, '')
+       AND regexp_replace(coalesce(n.emitente_cnpj, ''), '\D', '', 'g') = v_cnpj
+       AND (n.fazenda_id = NEW.fazenda_id OR n.fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = v_conta))
+     LIMIT 1;
+    IF FOUND THEN
+      RAISE EXCEPTION 'Esta NF (nº %) deste fornecedor já foi processada em outra cópia (mesmo número e série). Abra a NF já processada em vez de processar de novo; a cópia pode ser excluída.', v_dup.numero USING ERRCODE = '23505';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nf_entradas_processa_uma_vez ON nf_entradas;
+CREATE TRIGGER trg_nf_entradas_processa_uma_vez BEFORE INSERT OR UPDATE OF status ON nf_entradas
+  FOR EACH ROW EXECUTE FUNCTION fn_nf_entradas_processa_uma_vez();
+NOTIFY pgrst, 'reload schema';

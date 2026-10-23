@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-k",
+    data: "23/10/2026",
+    titulo: "A mesma NF nunca é processada duas vezes",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Cópias da mesma NF que já existiam no sistema (por exemplo, uma vinda do SIEG e outra do XML) ainda podiam ser processadas ao lado da original, dobrando estoque e contas a pagar. Agora, ao processar, o sistema verifica se outra cópia da NF (mesma chave de acesso ou, sem chave, mesmo número, série e fornecedor) já foi processada em qualquer fazenda do cliente e recusa antes de lançar estoque ou financeiro, indicando a NF já processada. Requer a Seção 362 do supabase_migrations.sql." },
+    ],
+    onde: "Documentos Fiscais → NF de Produtos → Processar",
+  },
+  {
     versao: "2026.10.23-j",
     data: "23/10/2026",
     titulo: "CFOP 5949 / 6949 nas notas de saída",

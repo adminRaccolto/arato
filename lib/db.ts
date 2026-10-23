@@ -2814,6 +2814,26 @@ export async function resolverProdutorDaNf(nfId: string, fazenda_id: string): Pr
   return null;
 }
 
+/** Outra cópia da mesma NF (mesma chave; sem chave, mesmo número + série + CNPJ) já processada em alguma fazenda da conta. */
+export async function outraCopiaProcessadaDaNf(nfId: string): Promise<{ numero: string; fazenda: string | null } | null> {
+  const { data: nf } = await supabase.from("nf_entradas").select("fazenda_id, numero, serie, chave_acesso, emitente_cnpj").eq("id", nfId).maybeSingle();
+  if (!nf) return null;
+  const fids = await resolverFazendaIdsDaConta(nf.fazenda_id as string);
+  const chave = String(nf.chave_acesso ?? "").replace(/\D/g, "");
+  const cnpj = String(nf.emitente_cnpj ?? "").replace(/\D/g, "");
+  let q = supabase.from("nf_entradas").select("numero, fazenda_id, serie, emitente_cnpj, chave_acesso").eq("status", "processada").neq("id", nfId)
+    .in("fazenda_id", fids.length ? fids : [nf.fazenda_id as string]);
+  if (chave.length === 44) q = q.eq("chave_acesso", chave);
+  else if (nf.numero && cnpj.length >= 11) q = q.eq("numero", nf.numero as string);
+  else return null;
+  const { data } = await q.limit(20);
+  const achada = (data ?? []).find(x => chave.length === 44 ? true
+    : String(x.emitente_cnpj ?? "").replace(/\D/g, "") === cnpj && (x.serie ?? "") === (nf.serie ?? ""));
+  if (!achada) return null;
+  const { data: faz } = await supabase.from("fazendas").select("nome").eq("id", achada.fazenda_id as string).maybeSingle();
+  return { numero: String(achada.numero ?? ""), fazenda: (faz?.nome as string | undefined) ?? null };
+}
+
 export async function processarNfEntrada(
   nfId: string,
   fazenda_id: string,
@@ -2864,6 +2884,12 @@ export async function processarNfEntrada(
     if (nfSt?.status === "processada") {
       throw new Error(`NF ${nfSt.numero ?? ""} já está processada. Para processar de novo, estorne antes (reverte estoque e financeiro).`);
     }
+  }
+  // A mesma NF (outra cópia: SIEG × XML × manual) já processada em qualquer fazenda da conta: recusa ANTES de lançar
+  // estoque ou CP. O banco também recusa (Seção 362), mas só no fim, quando estoque/título já teriam sido criados.
+  {
+    const copia = await outraCopiaProcessadaDaNf(nfId);
+    if (copia) throw new Error(`Esta NF (nº ${copia.numero}) já foi processada em outra cópia${copia.fazenda ? `, na fazenda ${copia.fazenda}` : ""}. Abra a NF já processada em vez de processar de novo; esta cópia pode ser excluída.`);
   }
   await limparMovimentacoesEFinanceiroDaNf(nfId);
   // Classificação do CP: a informada na tela ou, sem ela, a que a própria NF já guarda (antes o CP — principalmente o de
