@@ -1017,6 +1017,12 @@ function FiscalInner() {
   const [moduloKeyAtivo, setModuloKeyAtivo] = useState<string>("");
   type EmissorOpcao = { key: string; label: string };
   const [emissores, setEmissores] = useState<EmissorOpcao[]>([]);
+  // O emitente ativo tem de ser um dos que aparecem no seletor (os que têm CPF/CNPJ). Sem isso, um emitente
+  // guardado antes (outro cliente, config sem documento) ficava ativo enquanto o seletor mostrava o primeiro da lista,
+  // e a transmissão acusava "CPF/CNPJ do emitente não configurado" com o emitente certo na tela.
+  useEffect(() => {
+    if (emissores.length && !emissores.some(e => e.key === moduloKeyAtivo)) setModuloKeyAtivo(emissores[0].key);
+  }, [emissores, moduloKeyAtivo]);
   // Todos os configs de emitentes indexados por moduloKey — evita usar cfgs[0] incorretamente
   const [allEmitCfgs, setAllEmitCfgs] = useState<Record<string, Record<string, string>>>({});
 
