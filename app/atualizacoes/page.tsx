@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-h",
+    data: "23/10/2026",
+    titulo: "Monitor de Auditoria: exclusão de título gerado por NF",
+    modulos: ["Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "No Monitor de Auditoria, a exclusão de um título gerado por NF (ou outra rotina) aparecia como Sistema excluiu, mesmo quando um usuário apagou pelo botão Excluir. Agora mostra Excluiu, como ação do usuário; Sistema só quando não há usuário." },
+    ],
+    onde: "Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.23-g",
     data: "23/10/2026",
     titulo: "Novo padrão visual dos relatórios impressos",

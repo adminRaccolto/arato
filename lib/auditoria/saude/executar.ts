@@ -2,6 +2,7 @@
 // (regras.ts) e grava em auditoria_achados (Seção 361). Chamado pelo cron diário e pelo botão "Rodar agora".
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { excedeLimiteBaixa } from "../../financeiro/baixa";
+import { registrosDoAchado, responsavelDoAchado, type EventoBase } from "./responsaveis";
 import { rodarRegras, REGRAS, type Achado, type Base, type Excluido, type Mov, type NfE, type NfS, type Tit, type RegraId } from "./regras";
 
 async function todas<T>(sb: SupabaseClient, tab: string, cols: string, filtro?: (q: any) => any): Promise<T[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -37,7 +38,7 @@ export async function carregarBase(sb: SupabaseClient): Promise<Base> {
       "id,fazenda_id,tipo,descricao,valor,valor_pago,status,pessoa_id,nf_entrada_id,data_vencimento,numero_documento,origem,moeda,valor_multa,valor_juros,valor_desconto"),
     todas<{ id: string; created_at: string; usuario_app: string | null; tabela: string; dados_antes: Record<string, unknown> }>(sb, "audit_log", "id,created_at,usuario_app,tabela,dados_antes",
       q => q.in("tabela", ["lancamentos", "empresa_lancamentos"]).eq("acao", "DELETE").in("dados_antes->>status", ["baixado", "parcial", "pago"])),
-    todas<Mov & { id: string }>(sb, "movimentacoes_estoque", "id,fazenda_id,deposito_id,insumo_id,tipo,quantidade"),
+    todas<Mov & { id: string }>(sb, "movimentacoes_estoque", "id,fazenda_id,deposito_id,insumo_id,tipo,quantidade,usuario_nome,created_at"),
     todas<{ id: string; nfe_numero: string | null }>(sb, "rel_lancamentos", "id,nfe_numero", q => q.eq("origem_tabela", "empresa_lancamentos")),
     todas<{ id: string; nome: string }>(sb, "insumos", "id,nome"),
     todas<{ id: string; nome: string }>(sb, "depositos", "id,nome"),
@@ -78,6 +79,25 @@ export async function executarAuditoria(sb: SupabaseClient, origem: string) {
     const achados = rodarRegras(base, (t, pago) => excedeLimiteBaixa(t, pago));
     const unicos = new Map<string, Achado>();
     for (const a of achados) unicos.set(`${a.regra}|${a.chave}`, a);
+    // Liga cada achado à auditoria: registros que contam a história e o responsável provável
+    const regsPorAchado = new Map<string, string[]>();
+    for (const [k, a] of unicos) regsPorAchado.set(k, registrosDoAchado(a, base));
+    const todosRegs = [...new Set([...regsPorAchado.values()].flat())];
+    const eventos: EventoBase[] = [];
+    for (let i = 0; i < todosRegs.length; i += 150) {
+      const { data, error } = await sb.from("audit_log")
+        .select("id,tabela,registro_id,acao,usuario_app,created_at,campos_alterados,antes_status:dados_antes->>status,depois_status:dados_depois->>status,depois_origem:dados_depois->>origem")
+        .in("registro_id", todosRegs.slice(i, i + 150));
+      if (error) throw new Error(`auditoria dos achados: ${error.message}`);
+      eventos.push(...((data ?? []) as EventoBase[]));
+    }
+    const evPorReg = new Map<string, EventoBase[]>();
+    for (const e of eventos) if (e.registro_id) evPorReg.set(e.registro_id, [...(evPorReg.get(e.registro_id) ?? []), e]);
+    for (const [k, a] of unicos) {
+      const regs = regsPorAchado.get(k) ?? [];
+      const resp = responsavelDoAchado(a, base, regs.flatMap(r => evPorReg.get(r) ?? []));
+      a.detalhe = { ...a.detalhe, registros: regs, ...(resp ? { responsavel: resp } : {}) };
+    }
     const existentes = await todas<Existente>(sb, "auditoria_achados", "id,regra,chave,status");
     const porChave = new Map(existentes.map(e => [`${e.regra}|${e.chave}`, e]));
     const agora = new Date().toISOString();

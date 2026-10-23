@@ -71,7 +71,7 @@ export type NfE = { id: string; fazenda_id: string; numero: string; emitente_nom
 export type NfS = { id: string; fazenda_id: string; numero_nf: string; prestador_nome: string | null; prestador_id: string | null; valor_liquido: number | null; valor_servico: number | null; empresa_id: string | null; lancamento_id: string | null; processado_por: string | null; data_prestacao: string | null; status: string };
 export type Tit = { id: string; tabela: "lancamentos" | "empresa_lancamentos"; fazenda_id: string; tipo: string; descricao: string | null; valor: number; valor_pago: number | null; status: string; pessoa_id: string | null; nf_entrada_id: string | null; contrato_financeiro_id: string | null; data_vencimento: string | null; numero_documento: string | null; origem: string | null; num_parcela: number | null; moeda: string | null; cotacao_usd: number | null; valor_multa: number | null; valor_juros: number | null; valor_desconto: number | null };
 export type Excluido = { audit_id: string; quando: string; quem: string | null; tabela: "lancamentos" | "empresa_lancamentos"; antes: Record<string, unknown> };
-export type Mov = { fazenda_id: string; deposito_id: string | null; insumo_id: string; tipo: string; quantidade: number };
+export type Mov = { fazenda_id: string; deposito_id: string | null; insumo_id: string; tipo: string; quantidade: number; usuario_nome?: string | null; created_at?: string | null };
 export type EspelhoPj = { id: string; nfe_numero: string | null };
 
 export type Base = {
@@ -201,11 +201,21 @@ export function regraEstoqueNegativo(b: Base): Achado[] {
     cur.s += (m.tipo === "entrada" ? 1 : m.tipo === "saida" ? -1 : 0) * num(m.quantidade);
     saldo.set(k, cur);
   }
-  return [...saldo.entries()].filter(([, v]) => v.s < -0.001).map(([k, v]) => ({
-    regra: "estoque_negativo" as const, chave: k, conta_id: b.contaDaFazenda(v.m.fazenda_id), fazenda_id: v.m.fazenda_id,
-    titulo: `${b.nomeInsumo?.(v.m.insumo_id) ?? v.m.insumo_id} — ${b.nomeFazenda?.(v.m.fazenda_id) ?? ""} · ${b.nomeDeposito?.(v.m.deposito_id) ?? "sem depósito"}`,
-    valor: null, detalhe: { saldo: Math.round(v.s * 1000) / 1000 },
-  }));
+  const saidas = new Map<string, Mov[]>();
+  for (const m of b.movs) if (m.tipo === "saida") { const k = `${m.insumo_id}|${m.fazenda_id}|${m.deposito_id ?? ""}`; saidas.set(k, [...(saidas.get(k) ?? []), m]); }
+  return [...saldo.entries()].filter(([, v]) => v.s < -0.001).map(([k, v]) => {
+    // Quem lançou as saídas dessa fazenda nesse depósito (mais frequente primeiro) — liga o achado ao usuário
+    const ss = saidas.get(k) ?? [];
+    const freq = new Map<string, number>();
+    for (const m of ss) if (m.usuario_nome) freq.set(m.usuario_nome, (freq.get(m.usuario_nome) ?? 0) + 1);
+    const usuarios = [...freq.entries()].sort((x, y) => y[1] - x[1]).map(([u]) => u);
+    const ultima = ss.map(m => m.created_at ?? "").sort().at(-1) || null;
+    return {
+      regra: "estoque_negativo" as const, chave: k, conta_id: b.contaDaFazenda(v.m.fazenda_id), fazenda_id: v.m.fazenda_id,
+      titulo: `${b.nomeInsumo?.(v.m.insumo_id) ?? v.m.insumo_id} — ${b.nomeFazenda?.(v.m.fazenda_id) ?? ""} · ${b.nomeDeposito?.(v.m.deposito_id) ?? "sem depósito"}`,
+      valor: null, detalhe: { saldo: Math.round(v.s * 1000) / 1000, usuarios, ultima_saida: ultima },
+    };
+  });
 }
 
 export function regrasDuplicidade(b: Base): Achado[] {

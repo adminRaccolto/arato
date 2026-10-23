@@ -71,3 +71,11 @@ test("título de Empresa: exclusão e baixa são descritas como os demais títul
   const baixa = descreverEvento(ev({ tabela: "empresa_lancamentos", dados_antes: { status: "pendente", tipo: "pagar", valor: 10 }, dados_depois: { status: "pago", tipo: "pagar", valor: 10, valor_pago: 10, data_pagamento: "2026-10-22" }, campos_alterados: ["status"] }));
   assert.equal(baixa.tipo, "baixou");
 });
+
+test("exclusão de título gerado por NF: com usuário é ação dele; sem usuário é rotina do sistema", () => {
+  const antes = { tipo: "pagar", descricao: "NF 199361 — AGROPECUARIA", valor: 458, origem_lancamento: "nf_entrada" };
+  const comUsuario = descreverEvento(ev({ acao: "DELETE", dados_antes: antes, usuario_app: "Marcia" }));
+  assert.equal(comUsuario.automatico, false);
+  assert.match(comUsuario.texto, /^Excluiu a .* \(gerada por NF de Entrada\)/);
+  assert.equal(descreverEvento(ev({ acao: "DELETE", dados_antes: antes, usuario_app: null })).automatico, true);
+});

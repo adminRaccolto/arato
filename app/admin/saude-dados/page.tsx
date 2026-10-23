@@ -3,6 +3,8 @@
 // (o layout do /admin já barra quem não é raccotlo e a rota /api/admin/saude-dados confere de novo).
 import { useEffect, useMemo, useState } from "react";
 import SelectField from "../../../components/SelectField";
+import InputData from "../../../components/InputData";
+import { abrirPreviewImpressao, nomeRelatorio } from "../../../lib/print";
 
 type Achado = {
   id: string; regra: string; chave: string; conta_id: string | null; fazenda_id: string | null; titulo: string; valor: number | null;
@@ -10,6 +12,9 @@ type Achado = {
   primeiro_em: string; ultimo_em: string; resolvido_em: string | null; atualizado_por: string | null;
 };
 type Regra = { nome: string; gravidade: "alta" | "media" | "baixa"; descricao: string; correcao: string };
+type Resp = { quem: string; quando: string | null; acao: string };
+type EventoHist = { id: string; quando: string; quem: string; texto: string; tipo: string; automatico: boolean };
+const respDe = (a: Achado): Resp | null => (a.detalhe?.responsavel as Resp | undefined) ?? null;
 type Execucao = { id: string; em: string; origem: string | null; abertos: number | null; novos: number | null; resolvidos: number | null; duracao_ms: number | null; erro: string | null };
 
 const GRAV = { alta: { cor: "#E24B4A", bg: "#FCEBEB", rot: "Alta" }, media: { cor: "#EF9F27", bg: "#FEF3E2", rot: "Média" }, baixa: { cor: "#378ADD", bg: "#E6F0FB", rot: "Baixa" } };
@@ -57,6 +62,21 @@ export default function SaudeDadosPage() {
   const [busca, setBusca] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [aberto, setAberto] = useState<string | null>(null);
+  const [aba, setAba] = useState<"problemas" | "usuarios">("problemas");
+  const [fUsuario, setFUsuario] = useState("");
+  const [fDe, setFDe] = useState("");
+  const [fAte, setFAte] = useState("");
+  const [historicos, setHistoricos] = useState<Record<string, EventoHist[] | "carregando" | "erro">>({});
+
+  async function carregarHistorico(id: string) {
+    if (historicos[id] && historicos[id] !== "erro") return;
+    setHistoricos(h => ({ ...h, [id]: "carregando" }));
+    try {
+      const j = await (await fetch(`/api/admin/saude-dados?historico=${id}`)).json();
+      setHistoricos(h => ({ ...h, [id]: j.ok ? j.eventos : "erro" }));
+    } catch { setHistoricos(h => ({ ...h, [id]: "erro" })); }
+  }
+  function abrir(id: string) { const fechar = aberto === id; setAberto(fechar ? null : id); if (!fechar) carregarHistorico(id); }
 
   async function carregar() {
     setCarregando(true); setErro("");
@@ -138,6 +158,18 @@ export default function SaudeDadosPage() {
         {erro && <div style={{ padding: 10, background: "#FCEBEB", color: "#791F1F", borderRadius: 8 }}>{erro}</div>}
         {msg && <div style={{ padding: 10, background: "#E8F5E9", color: "#166534", borderRadius: 8 }}>{msg}</div>}
 
+        <div style={{ display: "flex", gap: 4, borderBottom: "0.5px solid #DDE2EE" }}>
+          {([["problemas", "Problemas"], ["usuarios", "Por usuário"]] as const).map(([k, rot]) => (
+            <button key={k} type="button" onClick={() => setAba(k)}
+              style={{ padding: "8px 16px", border: "none", borderBottom: `2px solid ${aba === k ? "#1A4870" : "transparent"}`, background: "transparent", fontSize: 13, fontWeight: aba === k ? 700 : 500, color: aba === k ? "#1A4870" : "#555", cursor: "pointer" }}>{rot}</button>
+          ))}
+        </div>
+
+        {aba === "usuarios" && <PorUsuario achados={achados} regras={regras} contas={contas} fazendas={fazendas}
+          fConta={fConta} setFConta={setFConta} fUsuario={fUsuario} setFUsuario={setFUsuario} fStatus={fStatus} setFStatus={setFStatus}
+          fDe={fDe} setFDe={setFDe} fAte={fAte} setFAte={setFAte} abrirProblema={id => { setAba("problemas"); setFStatus(""); setBusca(""); setFRegra(""); abrir(id); }} />}
+
+        {aba === "problemas" && <>
         {/* Resumo por regra — clique filtra */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
           {resumo.map(([regra, r]) => {
@@ -201,13 +233,13 @@ export default function SaudeDadosPage() {
               {visiveis.slice(0, 500).map(a => {
                 const r = regras[a.regra]; const g = GRAV[r?.gravidade ?? "baixa"]; const st = STATUS[a.status]; const exp = aberto === a.id;
                 return [
-                  <tr key={a.id} onClick={() => setAberto(exp ? null : a.id)} style={{ borderTop: "0.5px solid #EEF1F6", cursor: "pointer", background: exp ? "#F7FAFD" : undefined }}>
+                  <tr key={a.id} onClick={() => abrir(a.id)} style={{ borderTop: "0.5px solid #EEF1F6", cursor: "pointer", background: exp ? "#F7FAFD" : undefined }}>
                     <td style={{ padding: "7px 10px", borderLeft: `3px solid ${g.cor}` }} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" aria-label="Selecionar" checked={sel.has(a.id)} onChange={e => setSel(p => { const n = new Set(p); if (e.target.checked) n.add(a.id); else n.delete(a.id); return n; })} />
                     </td>
                     <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{contas[a.conta_id ?? ""] ?? "—"}{a.fazenda_id && fazendas[a.fazenda_id] ? <div style={{ fontSize: 10, color: "#888" }}>{fazendas[a.fazenda_id]}</div> : null}</td>
                     <td style={{ padding: "7px 10px" }}><span style={{ fontSize: 11, fontWeight: 600, color: g.cor }}>{r?.nome ?? a.regra}</span></td>
-                    <td style={{ padding: "7px 10px", maxWidth: 420 }}>{a.titulo}<div style={{ fontSize: 11, color: "#666" }}>{linhasDetalhe(a.detalhe).slice(0, 3).join(" · ")}</div></td>
+                    <td style={{ padding: "7px 10px", maxWidth: 420 }}>{a.titulo}<div style={{ fontSize: 11, color: "#666" }}>{linhasDetalhe(a.detalhe).slice(0, 3).join(" · ")}</div>{respDe(a) && <div style={{ fontSize: 11, color: "#7A5A10", marginTop: 2 }}>👤 {respDe(a)!.quem} — {respDe(a)!.acao}{respDe(a)!.quando ? ` em ${fmtDt(respDe(a)!.quando)}` : ""}</div>}</td>
                     <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(a.valor)}</td>
                     <td style={{ padding: "7px 10px", whiteSpace: "nowrap", fontSize: 11, color: "#666" }}>{fmtDt(a.primeiro_em)}</td>
                     <td style={{ padding: "7px 10px" }}><span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: st.bg, color: st.cor }}>{st.rot}</span></td>
@@ -225,7 +257,19 @@ export default function SaudeDadosPage() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>Detalhe</div>
+                            {respDe(a) && <div style={{ color: "#7A5A10", marginBottom: 4 }}>Responsável provável: <b>{respDe(a)!.quem}</b> — {respDe(a)!.acao}{respDe(a)!.quando ? ` em ${fmtDt(respDe(a)!.quando)}` : ""}</div>}
                             {linhasDetalhe(a.detalhe).map((l, i) => <div key={i} style={{ color: "#555" }}>{l}</div>)}
+                            <div style={{ fontWeight: 700, margin: "10px 0 4px" }}>Histórico (Monitor de Auditoria)</div>
+                            {historicos[a.id] === "carregando" && <div style={{ color: "#888" }}>Carregando…</div>}
+                            {historicos[a.id] === "erro" && <div style={{ color: "#E24B4A" }}>Não foi possível carregar o histórico.</div>}
+                            {Array.isArray(historicos[a.id]) && (historicos[a.id] as EventoHist[]).length === 0 && <div style={{ color: "#888" }}>Sem eventos registrados para esses registros (ações anteriores à auditoria).</div>}
+                            {Array.isArray(historicos[a.id]) && (historicos[a.id] as EventoHist[]).map(ev => (
+                              <div key={ev.id} style={{ display: "flex", gap: 8, padding: "3px 0", borderBottom: "0.5px solid #EEF1F6" }}>
+                                <span style={{ color: "#888", whiteSpace: "nowrap", fontSize: 11, minWidth: 92 }}>{fmtDt(ev.quando)}</span>
+                                <span style={{ fontWeight: 600, whiteSpace: "nowrap", minWidth: 110, color: ev.automatico ? "#888" : "#1a1a1a" }}>{ev.quem}</span>
+                                <span style={{ color: "#555" }}>{ev.texto}</span>
+                              </div>
+                            ))}
                             <div style={{ color: "#888", marginTop: 8, fontSize: 11 }}>Visto pela primeira vez {fmtDt(a.primeiro_em)} · última verificação {fmtDt(a.ultimo_em)}{a.atualizado_por ? ` · status por ${a.atualizado_por}` : ""}{a.motivo ? ` · motivo: ${a.motivo}` : ""}</div>
                             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                               {a.status !== "em_analise" && <button type="button" style={btn} onClick={() => mudarStatus([a.id], "em_analise")}>Em análise</button>}
@@ -244,11 +288,132 @@ export default function SaudeDadosPage() {
           </table>
           {visiveis.length > 500 && <div style={{ padding: 10, fontSize: 12, color: "#666" }}>Mostrando 500 de {visiveis.length}. Use os filtros para ver o resto.</div>}
         </div>
+        </>}
 
         <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6 }}>
           Roda sozinho todo dia às 6h30. Um problema que deixa de acontecer é marcado Resolvido automaticamente; um Resolvido que volta a acontecer é reaberto como Novo. Itens Ignorados (com motivo) não voltam.
         </div>
       </main>
     </div>
+  );
+}
+
+
+// ── Aba "Por usuário": cruza os problemas com quem provavelmente os gerou (Monitor de Auditoria) ─────────────────
+function PorUsuario(p: {
+  achados: Achado[]; regras: Record<string, Regra>; contas: Record<string, string>; fazendas: Record<string, string>;
+  fConta: string; setFConta: (v: string) => void; fUsuario: string; setFUsuario: (v: string) => void;
+  fStatus: string; setFStatus: (v: string) => void; fDe: string; setFDe: (v: string) => void; fAte: string; setFAte: (v: string) => void;
+  abrirProblema: (id: string) => void;
+}) {
+  const { achados, regras, contas, fazendas } = p;
+  const inp: React.CSSProperties = { padding: "6px 10px", borderRadius: 8, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff" };
+  const dataEvento = (a: Achado) => (respDe(a)?.quando ?? a.primeiro_em ?? "").slice(0, 10);
+  const base = achados.filter(a => {
+    if (!respDe(a)) return false;
+    if (p.fStatus === "abertos" ? !(a.status === "novo" || a.status === "em_analise") : p.fStatus && a.status !== p.fStatus) return false;
+    if (p.fConta && a.conta_id !== p.fConta) return false;
+    if (p.fDe && dataEvento(a) < p.fDe) return false;
+    if (p.fAte && dataEvento(a) > p.fAte) return false;
+    return true;
+  });
+  const usuarios = [...new Set(base.map(a => respDe(a)!.quem))].sort((x, y) => x.localeCompare(y));
+  const lista = base.filter(a => !p.fUsuario || respDe(a)!.quem === p.fUsuario);
+  const porUsuario = new Map<string, { qtd: number; valor: number; regras: Map<string, number>; itens: Achado[] }>();
+  for (const a of lista) {
+    const u = respDe(a)!.quem;
+    const r = porUsuario.get(u) ?? { qtd: 0, valor: 0, regras: new Map<string, number>(), itens: [] as Achado[] };
+    r.qtd++; r.valor += Number(a.valor ?? 0); r.regras.set(a.regra, (r.regras.get(a.regra) ?? 0) + 1); r.itens.push(a);
+    porUsuario.set(u, r);
+  }
+  const ordem = [...porUsuario.entries()].sort((x, y) => y[1].qtd - x[1].qtd);
+  const contasComAchado = [...new Set(achados.filter(a => respDe(a)).map(a => a.conta_id).filter((c): c is string => !!c))].sort((a, b) => (contas[a] ?? "").localeCompare(contas[b] ?? ""));
+
+  function relatorio() {
+    if (!p.fConta) return;
+    const cliente = contas[p.fConta] ?? "";
+    const e = (t: unknown) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const resumo = `<table style="width:100%;font-size:8.5pt;margin-bottom:14px"><thead><tr><th style="text-align:left">Usuário</th><th style="text-align:left">Pontos de atenção</th><th style="text-align:right">Ocorrências</th><th style="text-align:right">Valor envolvido</th></tr></thead><tbody>${
+      ordem.map(([u, r]) => `<tr><td style="padding:4px 6px;font-weight:600">${e(u)}</td><td style="padding:4px 6px">${[...r.regras.entries()].map(([k, n]) => `${e(regras[k]?.nome ?? k)} (${n})`).join(" · ")}</td><td style="padding:4px 6px;text-align:right">${r.qtd}</td><td style="padding:4px 6px;text-align:right">${r.valor ? fmtBRL(r.valor) : "—"}</td></tr>`).join("")
+    }</tbody></table>`;
+    const detalhe = ordem.map(([u, r]) => `<div style="margin-top:12px;font-size:9.5pt;font-weight:700">${e(u)} <span style="font-weight:400;color:#6B7A90">(${r.qtd})</span></div>
+      <table style="width:100%;font-size:8pt;margin-top:4px"><thead><tr><th style="text-align:left;width:16%">Ponto de atenção</th><th style="text-align:left;width:26%">Item</th><th style="text-align:left;width:16%">O que aconteceu</th><th style="text-align:left;width:9%">Quando</th><th style="text-align:right;width:9%">Valor</th><th style="text-align:left">Como corrigir</th></tr></thead><tbody>${
+        r.itens.map(a => { const rs = respDe(a)!; return `<tr><td style="padding:4px 6px;vertical-align:top">${e(regras[a.regra]?.nome ?? a.regra)}</td><td style="padding:4px 6px;vertical-align:top">${e(a.titulo)}${a.fazenda_id && fazendas[a.fazenda_id] ? `<div style="color:#6B7A90">${e(fazendas[a.fazenda_id])}</div>` : ""}</td><td style="padding:4px 6px;vertical-align:top">${e(rs.acao)}</td><td style="padding:4px 6px;vertical-align:top;white-space:nowrap">${rs.quando ? fmtDt(rs.quando).slice(0, 8) : "—"}</td><td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">${a.valor ? fmtBRL(a.valor) : "—"}</td><td style="padding:4px 6px;vertical-align:top;color:#555">${e(regras[a.regra]?.correcao ?? "")}</td></tr>`; }).join("")
+      }</tbody></table>`).join("");
+    const intro = `<div style="font-size:8.5pt;color:#555;margin-bottom:10px;line-height:1.5">Pontos encontrados pela conferência automática dos dados do sistema, com o usuário que provavelmente realizou a ação que os originou (conforme o registro de auditoria). O objetivo é orientar a equipe e corrigir os lançamentos; quando a ação foi feita por rotina automática, ela aparece como "Sistema".</div>`;
+    abrirPreviewImpressao("Pontos de Atenção — Uso do Sistema", intro + resumo + detalhe, {
+      orientation: "landscape", fazenda: cliente,
+      nomeArquivo: nomeRelatorio("PONTOS DE ATENCAO", cliente, p.fDe || null, p.fAte || null),
+      filtros: [
+        { rotulo: "Cliente", valor: cliente },
+        { rotulo: "Usuário", valor: p.fUsuario || "Todos" },
+        { rotulo: "Situação", valor: p.fStatus === "abertos" ? "Em aberto" : p.fStatus ? (STATUS as Record<string, { rot: string }>)[p.fStatus]?.rot ?? p.fStatus : "Todas" },
+        { rotulo: "Período", valor: p.fDe || p.fAte ? `${p.fDe ? fmtData(p.fDe) : "início"} a ${p.fAte ? fmtData(p.fAte) : "hoje"}` : "Todo o período" },
+      ],
+    });
+  }
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Cliente</div>
+          <SelectField value={p.fConta} onChange={e => p.setFConta(e.target.value)} style={{ ...inp, minWidth: 220 }}>
+            <option value="">Todos os clientes</option>
+            {contasComAchado.map(c => <option key={c} value={c}>{contas[c] ?? c}</option>)}
+          </SelectField></div>
+        <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Usuário</div>
+          <SelectField value={p.fUsuario} onChange={e => p.setFUsuario(e.target.value)} style={{ ...inp, minWidth: 200 }}>
+            <option value="">Todos os usuários</option>
+            {usuarios.map(u => <option key={u} value={u}>{u}</option>)}
+          </SelectField></div>
+        <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Situação</div>
+          <SelectField value={p.fStatus} onChange={e => p.setFStatus(e.target.value)} style={inp}>
+            <option value="abertos">Em aberto</option><option value="resolvido">Resolvido</option><option value="ignorado">Ignorado</option><option value="">Todas</option>
+          </SelectField></div>
+        <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Ação de</div><InputData type="date" value={p.fDe} onChange={e => p.setFDe(e.target.value)} style={inp} /></div>
+        <div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Até</div><InputData type="date" value={p.fAte} onChange={e => p.setFAte(e.target.value)} style={inp} /></div>
+        <button type="button" onClick={relatorio} disabled={!p.fConta} title={p.fConta ? "" : "Escolha um cliente: o relatório é sempre de um cliente só"}
+          style={{ marginLeft: "auto", padding: "8px 14px", borderRadius: 8, border: "none", background: p.fConta ? "#1A4870" : "#C9D1DD", color: "#fff", fontWeight: 600, fontSize: 13, cursor: p.fConta ? "pointer" : "not-allowed" }}>
+          🖨 Relatório para o cliente
+        </button>
+      </div>
+      {!p.fConta && <div style={{ fontSize: 11, color: "#888" }}>Para emitir o relatório, escolha um cliente — ele nunca mistura dados de clientes diferentes.</div>}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+        {ordem.map(([u, r]) => (
+          <button key={u} type="button" onClick={() => p.setFUsuario(p.fUsuario === u ? "" : u)}
+            style={{ textAlign: "left", background: "#fff", border: `0.5px solid ${p.fUsuario === u ? "#1A4870" : "#DDE2EE"}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{u}</span>
+            <span style={{ fontSize: 11, color: "#555" }}><b style={{ fontSize: 18, color: "#1a1a1a" }}>{r.qtd}</b> ocorrência(s){r.valor ? ` · ${fmtBRL(r.valor)}` : ""}</span>
+            <span style={{ fontSize: 11, color: "#666", lineHeight: 1.5 }}>{[...r.regras.entries()].sort((x, y) => y[1] - x[1]).map(([k, n]) => `${regras[k]?.nome ?? k}: ${n}`).join(" · ")}</span>
+          </button>
+        ))}
+        {ordem.length === 0 && <div style={{ color: "#888" }}>Nenhuma ocorrência com responsável para esse filtro.</div>}
+      </div>
+
+      <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+          <thead><tr style={{ background: "#F4F6FA", textAlign: "left" }}>
+            {["Usuário", "Cliente", "Problema", "Item", "O que aconteceu", "Quando", "Valor"].map(h => <th key={h} style={{ padding: "8px 10px", fontSize: 11, color: "#555", fontWeight: 700, textAlign: h === "Valor" ? "right" : "left" }}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {lista.slice(0, 500).sort((x, y) => (respDe(y)!.quando ?? "").localeCompare(respDe(x)!.quando ?? "")).map(a => {
+              const rs = respDe(a)!;
+              return (
+                <tr key={a.id} onClick={() => p.abrirProblema(a.id)} style={{ borderTop: "0.5px solid #EEF1F6", cursor: "pointer" }} title="Abrir o problema">
+                  <td style={{ padding: "7px 10px", fontWeight: 600, whiteSpace: "nowrap" }}>{rs.quem}</td>
+                  <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{contas[a.conta_id ?? ""] ?? "—"}</td>
+                  <td style={{ padding: "7px 10px", fontSize: 12 }}>{regras[a.regra]?.nome ?? a.regra}</td>
+                  <td style={{ padding: "7px 10px", maxWidth: 360 }}>{a.titulo}</td>
+                  <td style={{ padding: "7px 10px", fontSize: 12, color: "#555" }}>{rs.acao}</td>
+                  <td style={{ padding: "7px 10px", whiteSpace: "nowrap", fontSize: 11, color: "#666" }}>{fmtDt(rs.quando)}</td>
+                  <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>{a.valor ? fmtBRL(a.valor) : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

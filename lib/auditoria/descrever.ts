@@ -94,7 +94,11 @@ export function descreverEvento(e: EventoAud): Descricao {
         ? { texto: `Sistema gerou a ${obj} a partir de ${origemTxt}`, automatico: true, tipo: "criou", objeto: obj }
         : { texto: `Lançou a ${obj}`, automatico: false, tipo: "criou", objeto: obj };
     }
-    if (e.acao === "DELETE") return { texto: geradoPorOutro ? `Sistema excluiu a ${obj} (gerada por ${origemTxt})` : `Excluiu a ${obj}`, automatico: geradoPorOutro, tipo: "excluiu", objeto: obj };
+    // Título gerado por outra rotina só é exclusão automática quando não há usuário: com usuário, foi alguém no botão Excluir
+    if (e.acao === "DELETE") {
+      const auto = geradoPorOutro && !e.usuario_app;
+      return { texto: auto ? `Sistema excluiu a ${obj} (gerada por ${origemTxt})` : `Excluiu a ${obj}${geradoPorOutro ? ` (gerada por ${origemTxt})` : ""}`, automatico: auto, tipo: "excluiu", objeto: obj };
+    }
     if (statusDepois === "cancelado" && statusAntes !== "cancelado") {
       return s(d.observacao).includes(MARCA_SALDO_ZERADO)
         ? { texto: `Sistema cancelou a ${obj}: as NFs vinculadas ao pedido cobriram o saldo`, automatico: true, tipo: "cancelou", objeto: obj }

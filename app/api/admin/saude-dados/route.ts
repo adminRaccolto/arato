@@ -1,5 +1,6 @@
 // /api/admin/saude-dados — achados do auditor "Saúde dos dados". Só equipe Raccolto (role raccotlo/raccotlo_gestor).
 //   GET                              → achados (todos os status), últimas execuções, nomes de contas e catálogo de regras
+//   GET ?historico=<achado_id>       → linha do tempo do problema, tirada do Monitor de Auditoria
 //   POST { acao: "executar" }        → roda o auditor agora
 //   POST { acao: "status", ids, status, motivo? } → muda o status (em_analise / resolvido / ignorado / novo)
 import { NextResponse } from "next/server";
@@ -8,6 +9,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { executarAuditoria } from "../../../../lib/auditoria/saude/executar";
 import { REGRAS } from "../../../../lib/auditoria/saude/regras";
+import { descreverEvento, type EventoAud } from "../../../../lib/auditoria/descrever";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -37,9 +39,35 @@ async function todos<T>(tab: string, cols: string): Promise<T[]> {
   return out;
 }
 
-export async function GET() {
+async function historico(id: string) {
+  const sb = admin();
+  const { data: a } = await sb.from("auditoria_achados").select("regra, chave, detalhe").eq("id", id).maybeSingle();
+  if (!a) return NextResponse.json({ ok: false, error: "Achado não encontrado" }, { status: 404 });
+  const regs = ((a.detalhe as Record<string, unknown>)?.registros as string[] | undefined) ?? [];
+  const cols = "id,tabela,registro_id,acao,dados_antes,dados_depois,campos_alterados,usuario_app,created_at";
+  const consultas = [];
+  if (regs.length) {
+    consultas.push(sb.from("audit_log").select(cols).in("registro_id", regs).order("created_at").limit(300));
+    // títulos que já foram apagados não têm mais registro_id ligado à NF: busca a exclusão pela NF que eles tinham
+    consultas.push(sb.from("audit_log").select(cols).in("tabela", ["lancamentos", "empresa_lancamentos"]).in("dados_antes->>nf_entrada_id", regs).order("created_at").limit(300));
+  }
+  // regras de pagamento apagado: a chave do achado é o próprio evento de exclusão
+  if (/^[0-9a-f-]{36}$/i.test(a.chave)) consultas.push(sb.from("audit_log").select(cols).eq("id", a.chave));
+  const res = await Promise.all(consultas);
+  const vistos = new Set<string>();
+  const eventos = res.flatMap(r => (r.data ?? []) as EventoAud[]).filter(e => !vistos.has(e.id) && vistos.add(e.id))
+    .sort((x, y) => x.created_at.localeCompare(y.created_at));
+  return NextResponse.json({ ok: true, eventos: eventos.map(e => {
+    const d = descreverEvento(e);
+    return { id: e.id, quando: e.created_at, quem: e.usuario_app && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(e.usuario_app) ? e.usuario_app : "Sistema", texto: d.texto, tipo: d.tipo, automatico: d.automatico };
+  }) });
+}
+
+export async function GET(req: Request) {
   const quem = await exigirRaccolto();
   if (quem instanceof NextResponse) return quem;
+  const hist = new URL(req.url).searchParams.get("historico");
+  if (hist) return historico(hist);
   try {
     const sb = admin();
     const [achados, contas, fazendas, { data: execucoes }] = await Promise.all([
