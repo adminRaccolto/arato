@@ -397,7 +397,9 @@ export default function ModalNf({
   // Dados do wizard — recarregados para a fazenda específica desta NF
   const [wCentros,    setWCentros]    = useState<CentroCusto[]>([]);
   const [wDepositos,  setWDepositos]  = useState<Deposito[]>([]);
-  const [wBombas,     setWBombas]     = useState<BombaCombustivel[]>([]);
+  const [wBombas,     setWBombas]     = useState<(BombaCombustivel & { fazenda_nome?: string })[]>([]);
+  // IE do destinatário lida do XML (<dest><IE>) — escolhe sozinha a IE do produtor e, por ela, a fazenda que recebe.
+  const [ieDestXml, setIeDestXml] = useState("");
   const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);
   const [wProdutores, setWProdutores] = useState<Array<{id: string; nome: string; cpf_cnpj?: string}>>([]);
   const [iesProdutor,  setIesProdutor]  = useState<ProdutorIE[]>([]);
@@ -895,6 +897,7 @@ export default function ModalNf({
         valor_difal: f(g("vICMSUFDest")), valor_desconto: f(g("vDesc")), valor_icms_deson: f(g("vICMSDeson")),
       }));
       aplicarDuplicatasXml(doc);
+      setIeDestXml((doc.querySelector("dest")?.querySelector("IE")?.textContent ?? "").replace(/\D/g, ""));
       setRefNfeXml(doc.getElementsByTagName("refNFe")[0]?.textContent?.trim() ?? "");
     } catch { /* mantém o que já está */ }
   }
@@ -936,6 +939,7 @@ export default function ModalNf({
       // Destinatário — campo <dest> presente na NF-e completa (não apenas no resumo SIEG)
       const destNome = dest?.querySelector("xNome")?.textContent ?? "";
       const destCnpj = (dest?.querySelector("CNPJ") ?? dest?.querySelector("CPF"))?.textContent ?? "";
+      setIeDestXml((dest?.querySelector("IE")?.textContent ?? "").replace(/\D/g, ""));
 
       // Tenta classificação automática com o CNPJ/nome do emitente
       const regraHeader = aplicarRegraClassificacao(regrasClass, cnpj, xNome, "", "", "");
@@ -2074,7 +2078,12 @@ export default function ModalNf({
     const [ccData, depData, bombaData] = await Promise.all([
       listarCentrosCustoGeralDaConta(fId).catch(() => [] as CentroCusto[]),
       listarDepositosMulti(allFazIds).catch(() => [] as Deposito[]),
-      listarBombas(fId).catch(() => [] as BombaCombustivel[]),
+      // Bombas de todas as fazendas do cliente: a lista na tela é filtrada pela fazenda que recebe o combustível
+      // (a da IE do produtor), que nem sempre é a fazenda onde a NF caiu na importação.
+      Promise.resolve(allFazIds.length > 1
+        ? supabase.from("bombas_combustivel").select("*, fazendas(nome)").in("fazenda_id", allFazIds).order("nome")
+            .then(({ data, error }) => { if (error) throw error; return (data ?? []).map(b => ({ ...b, fazenda_nome: (b as { fazendas?: { nome?: string } }).fazendas?.nome })) as (BombaCombustivel & { fazenda_nome?: string })[]; })
+        : listarBombas(fId)).catch(() => [] as BombaCombustivel[]),
     ]);
     setWCentros(ccData);
     setWDepositos(depData);
@@ -2126,6 +2135,16 @@ export default function ModalNf({
       .catch(() => setIesProdutor([]));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cab.produtor_id]);
+
+  // IE da nota: a do destinatário no XML, quando está entre as IEs ativas do produtor. Achado real 23/10/2026
+  // (NF 96.440 KIRST → DENIS OGLIARI, IE 13.772.197-8): o XML trazia a IE, mas o campo abria em "— selecionar IE —".
+  // Escolha manual nunca é trocada.
+  useEffect(() => {
+    if (!ieDestXml || cab.ie_produtor || nfEdit?.status === "processada") return;
+    const ie = iesProdutor.find(i => i.inscricao_estadual.replace(/\D/g, "") === ieDestXml);
+    if (ie) setCab(p => (p.ie_produtor ? p : { ...p, ie_produtor: ie.inscricao_estadual }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ieDestXml, iesProdutor, cab.ie_produtor]);
 
   // Carrega os itens do pedido vinculado — usado pra detectar produto
   // duplicado (mais de uma linha do mesmo produto) e pedir pra escolher a
@@ -2362,6 +2381,22 @@ export default function ModalNf({
   const modoDireto: "combustivel" | "manutencao" | "cc" =
     opSelecionada?.permite_combustivel ? "combustivel" :
     opSelecionada?.permite_manutencao  ? "manutencao"  : "cc";
+  // Fazenda que recebe o combustível = a da IE do produtor escolhida na nota (cada fazenda tem a sua bomba);
+  // sem IE vinculada a uma fazenda, a fazenda da própria NF.
+  const fazendaBombas = iesProdutor.find(i => i.inscricao_estadual === cab.ie_produtor)?.fazenda_id || nfEdit?.fazenda_id || fazendaId || "";
+  const bombasDaFazenda = wBombas.filter(b => !fazendaBombas || b.fazenda_id === fazendaBombas);
+  // OG de compra de combustível (permite_combustivel) em NF de Insumos/Combustíveis já é combustível: marca
+  // "É Combustível" sozinho e mostra o seletor de bomba — antes dependia de achar e marcar a caixa à mão.
+  useEffect(() => {
+    if (tipo !== "insumos" || !opSelecionada?.permite_combustivel || nfEdit?.status === "processada") return;
+    setCab(p => (p.e_combustivel ? p : { ...p, e_combustivel: true, deposito_destino_id: "" }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, cab.operacao_gerencial_id, opSelecionada?.permite_combustivel]);
+  // Bomba escolhida tem de ser da fazenda da IE: trocar a IE para outra fazenda limpa a escolha.
+  useEffect(() => {
+    if (cab.bomba_destino_id && wBombas.length && !bombasDaFazenda.some(b => b.id === cab.bomba_destino_id)) setCab(p => ({ ...p, bomba_destino_id: "" }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazendaBombas, wBombas]);
 
   if (carregandoNf) {
     return (
@@ -3887,16 +3922,19 @@ export default function ModalNf({
                             style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}
                           >
                             <option value="">Selecione a bomba ou tanque…</option>
-                            {wBombas.map(b => (
+                            {bombasDaFazenda.map(b => (
                               <option key={b.id} value={b.id}>
                                 {b.nome} — {b.estoque_atual_l != null ? `${b.estoque_atual_l.toLocaleString("pt-BR")} L atual` : "sem estoque registrado"}
                               </option>
                             ))}
                           </SelectField>
-                          {wBombas.length === 0 && (
+                          {bombasDaFazenda.length === 0 && (
                             <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-                              Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis &amp; Bombas.
+                              Nenhuma bomba cadastrada {wBombas.length > 0 ? "na fazenda desta IE" : ""}. Confira a I.E. do Produtor ou acesse Cadastros → Combustíveis &amp; Bombas.
                             </div>
+                          )}
+                          {bombasDaFazenda.length > 0 && bombasDaFazenda[0].fazenda_nome && (
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>Bombas da {bombasDaFazenda[0].fazenda_nome}</div>
                           )}
                         </div>
                       )}

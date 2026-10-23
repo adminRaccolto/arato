@@ -935,6 +935,21 @@ function MdfePageInner() {
   // ── Encerrar ─────────────────────────────────────────────
   // Encerramento REAL na SEFAZ (evento 110112). Antes era só um UPDATE local — nunca transmitia,
   // então o MDF-e seguia "aberto" na SEFAZ e bloqueava novos MDF-e da mesma placa. 23/09/2026.
+  // O MDF-e é encerrado onde a carga foi descarregada: município de destino dos CT-e vinculados (a mesma fonte
+  // da emissão, que monta o infMunDescarga a partir deles). Achado real 23/10/2026: a tela abria com o município
+  // de INÍCIO (a origem) e o usuário encerrava no lugar errado se não percebesse.
+  async function abrirEncerramento(m: Mdfe) {
+    setModalEnc(m);
+    setEncForm({ data_encerramento: hoje(), municipio_encerramento: "", uf_encerramento: m.uf_fim });
+    const chaves = (m.documentos ?? []).filter(d => d.tipo === "cte").map(d => d.chave.replace(/\D/g, ""));
+    if (!chaves.length) return;
+    const { data } = await supabase.from("ctes").select("chave_acesso, municipio_destino, uf_destino, status").in("chave_acesso", chaves);
+    const validos = (data ?? []).filter(c => c.status !== "cancelado" && c.municipio_destino);
+    // Vários destinos: encerra no do último documento vinculado (fim do percurso); o usuário pode trocar.
+    const ultimo = [...chaves].reverse().map(ch => validos.find(c => c.chave_acesso === ch)).find(Boolean);
+    if (ultimo) setEncForm(f => (f.municipio_encerramento ? f : { ...f, municipio_encerramento: ultimo.municipio_destino ?? "", uf_encerramento: ultimo.uf_destino || m.uf_fim }));
+  }
+
   async function encerrar() {
     if (!(await confirmarAcao({ titulo: "Excluir ou desfazer?", mensagem: "Esta ação altera ou apaga registros e não pode ser desfeita. Confirma? (Encerrar)", perigo: true }))) return;
     if (!modalEnc || !fazendaId) return;
@@ -1130,7 +1145,7 @@ function MdfePageInner() {
                             </OperationalButton>
                           )}
                           {m.status === "autorizado" && (
-                            <OperationalButton data-arato-button="primary" onClick={() => { setModalEnc(m); setEncForm({ data_encerramento: hoje(), municipio_encerramento: m.municipio_inicio, uf_encerramento: m.uf_fim }); }} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                            <OperationalButton data-arato-button="primary" onClick={() => abrirEncerramento(m)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#111111", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                               Encerrar
                             </OperationalButton>
                           )}

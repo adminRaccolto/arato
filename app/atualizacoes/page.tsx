@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-p",
+    data: "23/10/2026",
+    titulo: "NF de entrada: IE do XML, bomba por fazenda; MDF-e encerra no destino",
+    modulos: ["Fiscal", "Transporte"],
+    itens: [
+      { tipo: "correcao", texto: "A I.E. do Produtor passa a ser preenchida com a IE do destinatário que vem no XML da NF, quando ela está cadastrada para o produtor. Antes o campo abria em \"selecionar IE\" mesmo com a IE na nota." },
+      { tipo: "correcao", texto: "Em NF de Insumos/Combustíveis com a operação de compra de combustível, \"É Combustível\" é marcado sozinho e o seletor de Bomba/Tanque aparece. A lista mostra só as bombas da fazenda da IE do produtor — antes buscava só na fazenda onde a NF caiu e podia vir vazia." },
+      { tipo: "correcao", texto: "Encerrar MDF-e abre com o município e a UF de destino do CT-e vinculado. Antes vinha o município de início (a origem)." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro; Fretes e Transporte → MDF-e",
+  },
+  {
     versao: "2026.10.23-o",
     data: "23/10/2026",
     titulo: "NF de Remessa: emitente certo e desconto da NF de origem",
