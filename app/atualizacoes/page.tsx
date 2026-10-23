@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-s",
+    data: "23/10/2026",
+    titulo: "Transporte: cavalo, implementos e conjuntos no CT-e e MDF-e",
+    modulos: ["Transporte"],
+    itens: [
+      { tipo: "novo", texto: "Cadastro de Veículos com Tipo de cadastro (Cavalo ou Implemento) e Nº de eixos." },
+      { tipo: "novo", texto: "Nova aba Conjuntos: monte o cavalo com até 3 implementos engatados, na ordem. Desmontar libera os veículos para outro conjunto." },
+      { tipo: "novo", texto: "No CT-e e no MDF-e, o campo Veículo passa a listar os conjuntos: escolhido o conjunto, vêm todas as placas. O MDF-e passa a enviar as carretas à SEFAZ (antes ia só o cavalo) e o CIOT recebe as placas e os eixos das carretas sem digitar." },
+      { tipo: "correcao", texto: "A UF da placa do veículo no MDF-e vinha sempre a do emitente; agora é a UF cadastrada na placa." },
+    ],
+    onde: "Comercial & Logística → Fretes e Transporte → Transportadoras e Veículos; CT-e; MDF-e",
+  },
+  {
     versao: "2026.10.23-r",
     data: "23/10/2026",
     titulo: "Segurança reforçada no financeiro, contratos, estoque e integrações",

@@ -51,6 +51,16 @@ export interface VeiculoMDFe {
   tpCar?:   string; // default 00 = não aplicável
 }
 
+/** Implemento (carreta/reboque) engatado no cavalo — vai em <veicReboque>, até 3, na ordem do conjunto. */
+export interface ReboqueMDFe {
+  placa:    string;
+  renavam?: string;
+  tara_kg:  number;
+  cap_kg:   number; // capKG é obrigatório no reboque
+  tpCar:    string; // 00 não aplicável, 01 aberta, 02 fechada/baú, 03 granelera, 04 porta-container, 05 sider
+  uf?:      string;
+}
+
 export interface CondutorMDFe {
   nome: string;
   cpf:  string;
@@ -70,6 +80,7 @@ export interface MDFeInput {
   percurso_ufs?:     string[];
   municipios_descarga: MunicipioDescarga[];
   veiculo:           VeiculoMDFe;
+  reboques?:         ReboqueMDFe[];
   condutores:        CondutorMDFe[];
   ciot?:             CiotMDFe | null;
   peso_bruto_kg:     number;
@@ -282,6 +293,15 @@ export function buildMDFe(input: MDFeInput): MDFeBuiltResult {
       `<tpRod>${tpRod}</tpRod><tpCar>${tpCar}</tpCar>` +
       (input.veiculo.uf ? `<UF>${input.veiculo.uf}</UF>` : "") +
     `</veicTracao>` +
+    (input.reboques ?? []).slice(0, 3).map(r =>
+      `<veicReboque>` +
+        `<placa>${r.placa.replace(/[^A-Z0-9]/gi, "").toUpperCase()}</placa>` +
+        (r.renavam ? `<RENAVAM>${r.renavam.replace(/\D/g, "")}</RENAVAM>` : "") +
+        `<tara>${Math.round(r.tara_kg)}</tara>` +
+        `<capKG>${Math.round(r.cap_kg)}</capKG>` +
+        `<tpCar>${r.tpCar}</tpCar>` +
+        (r.uf ? `<UF>${r.uf}</UF>` : "") +
+      `</veicReboque>`).join("") +
     `</rodo>`;
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>` +

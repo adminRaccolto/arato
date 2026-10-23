@@ -7,6 +7,7 @@ import { confirmarAcao } from "../../../components/ConfirmarAcao";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
+import SeletorConjunto from "../../../components/transporte/SeletorConjunto";
 import InputMonetario from "../../../components/InputMonetario";
 import SelectBusca from "../../../components/SelectBusca";
 import { useAuth } from "../../../components/AuthProvider";
@@ -81,6 +82,8 @@ interface Cte {
   emitente_razao_social?: string | null;
   emitente_cnpj?: string | null;
   veiculo_id?: string | null;
+  conjunto_id?: string | null;      // conjunto (cavalo + implementos) — Seção 363
+  implemento_ids?: string[] | null; // carretas desta viagem
   veiculo_placa: string;
   veiculo_tipo?: string | null;
   motorista_id?: string | null;
@@ -99,7 +102,7 @@ interface Cte {
   created_at?: string;
 }
 
-interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; rntrc?: string; proprietario_tipo?: string | null; }
+interface VeiculoMin { id: string; placa: string; tipo?: string; cap_kg?: number; rntrc?: string; proprietario_tipo?: string | null; categoria?: "cavalo" | "implemento" | null; num_eixos?: number | null; tipo_carroceria?: string | null; ativo?: boolean | null; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; cnh?: string; tipo?: string; rntrc?: string | null; }
 interface TransportadoraMin { id: string; razao_social: string; ativa: boolean; }
 interface PessoaMin {
@@ -579,7 +582,8 @@ function CtePageInner() {
     aliquota_icms: "12",
     pred_bc_icms: "0",
     cst_icms: "00" as "00" | "20" | "40" | "41" | "51",
-    veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
+    veiculo_id: "", conjunto_id: null as string | null, implemento_ids: [] as string[],
+    motorista_id: "", motorista_nome: "", motorista_cpf: "",
     nfe_chave: "", observacao: "",
   });
   const [form, setForm] = useState(FORM_VAZIO());
@@ -636,7 +640,8 @@ function CtePageInner() {
       .then(({ data }) => setNotasEmitidas((data ?? []) as NotaEmitidaMin[]));
     const [{ data: cd }, { data: vd }, { data: md }, todasPessoas, { data: ed }, todosProdutores] = await Promise.all([
       supabase.from("ctes").select("*").in("fazenda_id", ids).order("data_emissao", { ascending: false }),
-      supabase.from("veiculos").select("id, placa, tipo, cap_kg, rntrc, proprietario_tipo").in("fazenda_id", ids).eq("ativo", true),
+      // "*": categoria/num_eixos/carroceria (Seção 363) sem quebrar a lista se a migration ainda não rodou.
+      supabase.from("veiculos").select("*").in("fazenda_id", ids).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, cnh, tipo, rntrc").in("fazenda_id", ids).eq("ativo", true),
       listarPessoasDaConta(fazendaId),
       supabase.from("empresas").select("id, razao_social, nome, cpf_cnpj, rntrc").in("fazenda_id", ids).contains("finalidades", ["transportadora"]),
@@ -801,7 +806,8 @@ function CtePageInner() {
       aliquota_icms: String(c.aliquota_icms),
       pred_bc_icms: String(c.pred_bc_icms ?? 0),
       cst_icms: (c.cst_icms || (c.aliquota_icms > 0 ? "00" : "40")) as "00" | "20" | "40" | "41" | "51",
-      veiculo_id: c.veiculo_id ?? "", motorista_id: c.motorista_id ?? "",
+      veiculo_id: c.veiculo_id ?? "", conjunto_id: c.conjunto_id ?? null, implemento_ids: c.implemento_ids ?? [],
+      motorista_id: c.motorista_id ?? "",
       motorista_nome: c.motorista_nome ?? "", motorista_cpf: c.motorista_cpf ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
     });
@@ -955,9 +961,12 @@ function CtePageInner() {
     }
   }
 
-  function selecionarVeiculo(id: string) {
+  function selecionarVeiculo(id: string, conjunto_id: string | null = null, implemento_ids: string[] = []) {
     const v = veiculos.find(v => v.id === id);
-    setForm(f => ({ ...f, veiculo_id: id, _placa: v?.placa ?? "" } as typeof f & { _placa: string }));
+    setForm(f => ({ ...f, veiculo_id: id, conjunto_id, implemento_ids, _placa: v?.placa ?? "" } as typeof f & { _placa: string }));
+    // CIOT: placas das carretas vêm do conjunto (antes digitadas à mão a cada viagem).
+    setCiotForm(c => ({ ...c, implementos: implemento_ids.map(i => veiculos.find(x => x.id === i)?.placa ?? "").filter(Boolean).join(", ") }));
+    setCiotSemImpl(implemento_ids.length === 0 && !!id);
   }
 
   // ── Cadastro rápido de Veículo/Motorista (popup) — pedido do dono 23/09/2026:
@@ -1070,6 +1079,9 @@ function CtePageInner() {
         pred_bc_icms: form.cst_icms === "20" ? pRedForm : null,
         valor_icms: valorIcms,
         veiculo_id: form.veiculo_id || null,
+        // Só com conjunto (ou ao trocar um que já tinha): sem a Seção 363 essas colunas não existem.
+        ...(form.conjunto_id || form.implemento_ids.length || cteEdit?.conjunto_id
+          ? { conjunto_id: form.conjunto_id || null, implemento_ids: form.implemento_ids.length ? form.implemento_ids : null } : {}),
         veiculo_placa: veiculo?.placa ?? "",
         veiculo_tipo: veiculo?.tipo ?? null,
         // Motorista: pode vir do cadastro (motorista_id setado ao escolher uma sugestão do
@@ -1154,9 +1166,10 @@ function CtePageInner() {
             ValorFrete: Number(form.valor_frete).toFixed(2),
             DataInicioViagem: form.data_emissao, DataFimViagem: dataFim,
             Veiculos: [
-              { Placa: veiculo.placa, RNTRC: "", NumeroEixos: "3" },
-              // Cavalo-trator exige ao menos um implemento (carreta) — placas separadas por vírgula
-              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7).map(pl => ({ Placa: pl, RNTRC: "", NumeroEixos: "3" })),
+              { Placa: veiculo.placa, RNTRC: "", NumeroEixos: String(veiculo.num_eixos ?? 3) },
+              // Cavalo-trator exige ao menos um implemento (carreta) — placas do conjunto (ou digitadas), eixos do cadastro
+              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7)
+                .map(pl => ({ Placa: pl, RNTRC: "", NumeroEixos: String(veiculos.find(v => v.placa.replace(/[^A-Za-z0-9]/g, "").toUpperCase() === pl)?.num_eixos ?? 3) })),
             ],
             OrigemDestino: [{
               Origem:  { CodigoMunicipioOrigem: form.ibge_origem,  CepOrigem: cepOrig },
@@ -2339,10 +2352,11 @@ function CtePageInner() {
               <div data-arato-dialog-body="true" style={{ gridColumn: "1 / 3" }}>
                 <label data-arato-label="true" style={lbl}>Veículo</label>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <SelectField value={form.veiculo_id} onChange={e => selecionarVeiculo(e.target.value)} style={inp}>
-                    <option value="">— Selecionar —</option>
-                    {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
-                  </SelectField>
+                  <div style={{ flex: 1 }}>
+                    <SeletorConjunto contaId={contaId} fazendaIds={fazendaIds} veiculos={veiculos} style={inp}
+                      veiculoId={form.veiculo_id} conjuntoId={form.conjunto_id} implementoIds={form.implemento_ids}
+                      onChange={sel => selecionarVeiculo(sel.veiculo_id, sel.conjunto_id, sel.implemento_ids)} />
+                  </div>
                   <OperationalButton data-arato-button="secondary" type="button" title="Cadastrar novo veículo sem sair daqui" onClick={() => setModalNovoVeiculo(true)}
                     style={{ padding: "0 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
                     + Novo

@@ -8,6 +8,7 @@ import { ciotExigido } from "../../../lib/mdfe/ciot-regra";
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
+import SeletorConjunto from "../../../components/transporte/SeletorConjunto";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -36,7 +37,7 @@ function badge(texto: string, bg = "#E8E8E8", color = "#0D0D0D") {
 // ─────────────────────────────────────────────────────────────
 // DAMDFE — Documento Auxiliar do MDF-e
 // ─────────────────────────────────────────────────────────────
-function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string) {
+function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string, placasReboque: string[] = []) {
   const chave44 = (m.chave_acesso ?? "").replace(/\D/g, "");
   const chaveBlocks = chave44 ? chave44.replace(/(.{4})/g, "$1 ").trim() : "— aguardando autorização SEFAZ —";
   const numFmt = m.numero_mdfe.padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
@@ -137,7 +138,7 @@ function imprimirDamdfe(m: Mdfe, emitenteCnpj: string, emitentNome: string) {
   <div class="section" style="display:grid;grid-template-columns:120px 1fr 180px 180px;border-top:none">
     <div class="field">
       <span class="label">PLACA DO VEÍCULO</span>
-      <span class="value">${m.veiculo_placa || "—"}</span>
+      <span class="value">${m.veiculo_placa || "—"}${placasReboque.length ? `<br><span style="font-size:9px">Reboque: ${placasReboque.join(", ")}</span>` : ""}</span>
     </div>
     <div class="field">
       <span class="label">TIPO DO VEÍCULO</span>
@@ -253,6 +254,8 @@ interface Mdfe {
   uf_fim: string;
   percurso_ufs?: string[] | null;    // UFs intermediárias
   veiculo_id?: string | null;
+  conjunto_id?: string | null;      // conjunto (cavalo + implementos) escolhido — Seção 363
+  implemento_ids?: string[] | null; // carretas desta viagem (vão como veicReboque)
   veiculo_placa: string;
   veiculo_tipo?: string | null;
   motorista_id?: string | null;
@@ -284,7 +287,7 @@ interface Mdfe {
 interface CteMin {
   id: string; numero_cte: string; serie: string; chave_acesso?: string | null;
   remetente_nome: string; destinatario_nome: string; valor_frete: number; status: string;
-  veiculo_id?: string | null; veiculo_placa?: string | null;
+  veiculo_id?: string | null; veiculo_placa?: string | null; conjunto_id?: string | null; implemento_ids?: string[] | null;
   motorista_id?: string | null; motorista_nome?: string | null; motorista_cpf?: string | null;
   peso_bruto_kg?: number | null; valor_mercadoria?: number | null;
   municipio_origem?: string | null; uf_origem?: string | null; ibge_origem?: string | null;
@@ -296,7 +299,7 @@ interface CteMin {
   municipio_destino?: string | null; uf_destino?: string | null;
   produto_descricao?: string | null; ncm?: string | null; unidade?: string | null;
 }
-interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; proprietario_tipo?: string | null; }
+interface VeiculoMin { id: string; placa: string; tipo?: string; rntrc?: string; num_eixos?: number; proprietario_tipo?: string | null; categoria?: "cavalo" | "implemento" | null; tipo_carroceria?: string | null; ativo?: boolean | null; }
 interface MotoristaMin { id: string; nome: string; cpf?: string; tipo?: string; rntrc?: string; }
 
 const STATUS_META: Record<StatusMdfe, { label: string; bg: string; cl: string }> = {
@@ -340,7 +343,7 @@ async function buscarIbgeMdfe(cidade: string, uf: string): Promise<string> {
 // Componente
 // ─────────────────────────────────────────────────────────────
 function MdfePageInner() {
-  const { fazendaId, fazendaIds, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
   const searchParams = useSearchParams();
   const prefillCteApplied = useRef(false);
 
@@ -348,6 +351,8 @@ function MdfePageInner() {
   const [ctes,      setCtes]      = useState<CteMin[]>([]);
   const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
   const [motoristas,setMotoristas]= useState<MotoristaMin[]>([]);
+  // Placas das carretas que o MDF-e levou (foto da viagem, gravada em implemento_ids).
+  const placasReboque = (m: Mdfe) => (m.implemento_ids ?? []).map(id => veiculos.find(v => v.id === id)?.placa).filter((p): p is string => !!p);
   const [empresaCpfCnpj, setEmpresaCpfCnpj] = useState("");
   const [empresaNome,    setEmpresaNome]    = useState("");
   // Empresas transportadoras da conta — seletor "Emitente do MDF-e" (antes o sistema usava sempre a
@@ -372,7 +377,8 @@ function MdfePageInner() {
     uf_inicio: mdfeConfig.uf_ini || "MT", municipio_inicio: "", ibge_inicio: "",
     uf_fim: mdfeConfig.uf_fim || "MT",
     percurso_ufs: [] as string[],
-    veiculo_id: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
+    veiculo_id: "", conjunto_id: null as string | null, implemento_ids: [] as string[],
+    motorista_id: "", motorista_nome: "", motorista_cpf: "",
     peso_total_kg: 0, valor_total_carga: 0,
     produto_predominante: produtoVazio(),
     observacao: "",
@@ -415,7 +421,8 @@ function MdfePageInner() {
       // "num_eixos" nunca existiu na tabela veiculos (achado real: a coluna não existe no banco) —
       // pedir ela na consulta fazia o SELECT inteiro falhar com erro 42703, e a lista de Veículos
       // vinha sempre vazia (Motorista funcionava normal porque sua consulta não tinha esse erro).
-      supabase.from("veiculos").select("id, placa, tipo, rntrc, proprietario_tipo").in("fazenda_id", fazendaIds).eq("ativo", true),
+      // "*": categoria/num_eixos/carroceria (Seção 363) sem quebrar a lista se a migration ainda não rodou.
+      supabase.from("veiculos").select("*").in("fazenda_id", fazendaIds).eq("ativo", true),
       supabase.from("motoristas").select("id, nome, cpf, tipo, rntrc").in("fazenda_id", fazendaIds).eq("ativo", true),
     ]);
     const raw = md ?? [];
@@ -426,6 +433,11 @@ function MdfePageInner() {
     }));
     setMdfes(parsed);
     setCtes(cd ?? []);
+    // Conjunto de cada CT-e (Seção 363), à parte: sem a migration a consulta falha e a lista de CT-e continua igual.
+    if (cd?.length) {
+      const { data: cj } = await supabase.from("ctes").select("id, conjunto_id, implemento_ids").in("id", cd.map((c: CteMin) => c.id));
+      if (cj) setCtes((cd as CteMin[]).map(c => ({ ...c, ...(cj.find(x => x.id === c.id) ?? {}) })));
+    }
     setVeiculos(vd ?? []);
     setMotoristas(mot ?? []);
 
@@ -547,7 +559,8 @@ function MdfePageInner() {
       uf_inicio: m.uf_inicio, municipio_inicio: m.municipio_inicio, ibge_inicio: m.ibge_inicio ?? "",
       uf_fim: m.uf_fim,
       percurso_ufs: m.percurso_ufs ?? [],
-      veiculo_id: m.veiculo_id ?? "", motorista_id: m.motorista_id ?? "",
+      veiculo_id: m.veiculo_id ?? "", conjunto_id: m.conjunto_id ?? null, implemento_ids: m.implemento_ids ?? [],
+      motorista_id: m.motorista_id ?? "",
       motorista_nome: m.motorista_nome ?? "", motorista_cpf: m.motorista_cpf ?? "",
       peso_total_kg: m.peso_total_kg ?? 0,
       valor_total_carga: m.valor_total_carga ?? 0,
@@ -610,8 +623,9 @@ function MdfePageInner() {
             DataFimViagem:      ciotForm.data_fim,
             Veiculos: [
               { Placa: veiculo.placa, RNTRC: "", NumeroEixos: String(veiculo.num_eixos ?? 3) },
-              // Cavalo-trator exige ao menos um implemento (carreta) — placas separadas por vírgula
-              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7).map(pl => ({ Placa: pl, RNTRC: "", NumeroEixos: "3" })),
+              // Cavalo-trator exige ao menos um implemento (carreta) — placas do conjunto (ou digitadas), eixos do cadastro
+              ...ciotForm.implementos.split(/[,;\s]+/).map(x => x.replace(/[^A-Za-z0-9]/g, "").toUpperCase()).filter(x => x.length === 7)
+                .map(pl => ({ Placa: pl, RNTRC: "", NumeroEixos: String(veiculos.find(v => v.placa.replace(/[^A-Za-z0-9]/g, "").toUpperCase() === pl)?.num_eixos ?? 3) })),
             ],
             OrigemDestino: [{
               Origem:  { CodigoMunicipioOrigem:  ciotForm.ibge_origem,  CepOrigem:   ciotForm.cep_origem.replace(/\D/g,"")  },
@@ -740,7 +754,7 @@ function MdfePageInner() {
         if (emp) extra = { ...extra, emitente_id: emp.id };
       }
       if (marcando && !f.veiculo_id && !f.motorista_id && !f.motorista_nome) {
-        if (c?.veiculo_id && veiculos.some(v => v.id === c.veiculo_id)) extra = { ...extra, veiculo_id: c.veiculo_id };
+        if (c?.veiculo_id && veiculos.some(v => v.id === c.veiculo_id)) extra = { ...extra, veiculo_id: c.veiculo_id, conjunto_id: c.conjunto_id ?? null, implemento_ids: c.implemento_ids ?? [] };
         // Herda o motorista do CT-e mesmo quando ele foi digitado livre lá (sem cadastro) —
         // motorista_nome/cpf do CT-e sempre existem, motorista_id só quando bate com o cadastro.
         if (c?.motorista_nome) {
@@ -825,6 +839,9 @@ function MdfePageInner() {
         uf_fim: form.uf_fim,
         percurso_ufs: form.percurso_ufs.length > 0 ? form.percurso_ufs : null,
         veiculo_id: form.veiculo_id || null,
+        // Só com conjunto (ou ao trocar um que já tinha): sem a Seção 363 essas colunas não existem.
+        ...(form.conjunto_id || form.implemento_ids.length || mdfeEdit?.conjunto_id
+          ? { conjunto_id: form.conjunto_id || null, implemento_ids: form.implemento_ids.length ? form.implemento_ids : null } : {}),
         veiculo_placa: veiculo?.placa ?? "",
         veiculo_tipo: veiculo?.tipo ?? null,
         // Motorista: cadastro (motorista_id, ao escolher sugestão) ou texto livre digitado —
@@ -1117,6 +1134,7 @@ function MdfePageInner() {
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>
                         {m.veiculo_placa || "—"}
+                        {placasReboque(m).length > 0 && <div style={{ fontSize: 10, color: "var(--text-2)" }}>+ {placasReboque(m).join(" + ")}</div>}
                         {m.veiculo_tipo && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{m.veiculo_tipo}</div>}
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{m.motorista_nome || "—"}</td>
@@ -1156,7 +1174,7 @@ function MdfePageInner() {
                               const cnpjCte = ctes.find(c => (c.chave_acesso ?? "").replace(/\D/g, "") === cteChave)?.emitente_cnpj ?? null;
                               const doc = m.emitente_cnpj || cnpjCte || empresaCpfCnpj;
                               const emp = empresasTransp.find(e => e.cpf_cnpj.replace(/\D/g, "") === (doc ?? "").replace(/\D/g, ""));
-                              imprimirDamdfe(m, doc, m.emitente_razao_social || emp?.razao_social || emp?.nome || empresaNome);
+                              imprimirDamdfe(m, doc, m.emitente_razao_social || emp?.razao_social || emp?.nome || empresaNome, placasReboque(m));
                             }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#111111", fontWeight: 600 }}>
                               DAMDFE
                             </OperationalButton>
@@ -1357,10 +1375,14 @@ function MdfePageInner() {
               <div data-arato-dialog-body="true" style={divider}>Veículo & Motorista</div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Veículo</label>
-                <SelectField value={form.veiculo_id} onChange={e => setForm(f => ({ ...f, veiculo_id: e.target.value }))} style={inp}>
-                  <option value="">— Selecionar —</option>
-                  {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
-                </SelectField>
+                <SeletorConjunto contaId={contaId} fazendaIds={fazendaIds} veiculos={veiculos} style={inp}
+                  veiculoId={form.veiculo_id} conjuntoId={form.conjunto_id} implementoIds={form.implemento_ids}
+                  onChange={sel => {
+                    setForm(f => ({ ...f, ...sel }));
+                    // CIOT: placas das carretas vêm do conjunto (antes digitadas à mão a cada viagem).
+                    setCiotForm(c => ({ ...c, implementos: sel.implemento_ids.map(id => veiculos.find(v => v.id === id)?.placa ?? "").filter(Boolean).join(", ") }));
+                    setCiotSemImpl(sel.implemento_ids.length === 0 && !!sel.veiculo_id);
+                  }} />
               </div>
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Motorista</label>

@@ -63,3 +63,18 @@ test("infPag (carga lotação, rejeição 302) entra em infANTT depois de infCIO
   const { xml } = buildMDFe(e);
   assert.match(xml, /<infANTT><RNTRC>47964242<\/RNTRC><infCIOT>.*<\/infCIOT><infContratante><CPF>17679842949<\/CPF><\/infContratante><infPag><xNome>Transportadora de teste<\/xNome><CNPJ>12345678000195<\/CNPJ><Comp><tpComp>04<\/tpComp><vComp>3479\.70<\/vComp><\/Comp><vContrato>3479\.70<\/vContrato><indPag>0<\/indPag><infBanc><PIX>12345678000195<\/PIX><\/infBanc><\/infPag><\/infANTT>/);
 });
+
+test("conjunto: cavalo 03 + carretas em veicReboque, na ordem e depois do veicTracao", () => {
+  const input = entrada();
+  input.veiculo = { placa: "QBA1A11", tara_kg: 9000, uf: "MT", tpRod: "03", tpCar: "00" };
+  input.reboques = [
+    { placa: "QCA-1C11", tara_kg: 7000, cap_kg: 30000, tpCar: "03", uf: "MT" },
+    { placa: "QCA2C22", renavam: "123.456", tara_kg: 6000, cap_kg: 25000, tpCar: "03" },
+  ];
+  const { xml } = buildMDFe(input);
+  assert.match(xml, /<tpRod>03<\/tpRod><tpCar>00<\/tpCar><UF>MT<\/UF><\/veicTracao><veicReboque><placa>QCA1C11<\/placa><tara>7000<\/tara><capKG>30000<\/capKG><tpCar>03<\/tpCar><UF>MT<\/UF><\/veicReboque><veicReboque><placa>QCA2C22<\/placa><RENAVAM>123456<\/RENAVAM><tara>6000<\/tara><capKG>25000<\/capKG><tpCar>03<\/tpCar><\/veicReboque><\/rodo>/);
+});
+
+test("sem conjunto: nenhum veicReboque", () => {
+  assert.doesNotMatch(buildMDFe(entrada()).xml, /veicReboque/);
+});

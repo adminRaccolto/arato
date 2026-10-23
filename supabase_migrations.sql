@@ -17378,3 +17378,42 @@ DROP TRIGGER IF EXISTS trg_nf_entradas_processa_uma_vez ON nf_entradas;
 CREATE TRIGGER trg_nf_entradas_processa_uma_vez BEFORE INSERT OR UPDATE OF status ON nf_entradas
   FOR EACH ROW EXECUTE FUNCTION fn_nf_entradas_processa_uma_vez();
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 363 — Transporte: veículo Cavalo × Implemento e Conjuntos (cavalo + carretas)
+-- =============================================================================
+-- Cadastro de Veículos ganha o tipo de cadastro (cavalo = tração, implemento = carreta/reboque) e o nº de eixos (o CIOT
+-- já pedia num_eixos, coluna que não existia — ia sempre 3). Conjunto = um cavalo + até 3 implementos em ordem (limite do
+-- MDF-e). Na emissão de CT-e/MDF-e escolhe-se o conjunto: o documento guarda o cavalo (veiculo_id, como antes), o conjunto
+-- e as carretas daquela viagem (implemento_ids — foto do momento, não muda se o conjunto for desmontado depois).
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS categoria text NOT NULL DEFAULT 'cavalo';
+ALTER TABLE veiculos DROP CONSTRAINT IF EXISTS veiculos_categoria_check;
+ALTER TABLE veiculos ADD CONSTRAINT veiculos_categoria_check CHECK (categoria IN ('cavalo','implemento'));
+ALTER TABLE veiculos ADD COLUMN IF NOT EXISTS num_eixos integer;
+
+CREATE TABLE IF NOT EXISTS conjuntos_veiculos (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id       uuid REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id     uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome           text,
+  cavalo_id      uuid NOT NULL REFERENCES veiculos(id) ON DELETE CASCADE,
+  implemento_ids uuid[] NOT NULL DEFAULT '{}',
+  ativo          boolean NOT NULL DEFAULT true,
+  obs            text,
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT conjuntos_veiculos_max_implementos CHECK (coalesce(array_length(implemento_ids, 1), 0) <= 3)
+);
+CREATE INDEX IF NOT EXISTS idx_conjuntos_veiculos_conta ON conjuntos_veiculos(conta_id);
+CREATE INDEX IF NOT EXISTS idx_conjuntos_veiculos_cavalo ON conjuntos_veiculos(cavalo_id);
+ALTER TABLE conjuntos_veiculos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "conjuntos_veiculos_tenant" ON conjuntos_veiculos;
+CREATE POLICY "conjuntos_veiculos_tenant" ON conjuntos_veiculos FOR ALL
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo())
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()) OR public.rls_sou_raccotlo());
+
+ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS conjunto_id    uuid REFERENCES conjuntos_veiculos(id) ON DELETE SET NULL;
+ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS implemento_ids uuid[];
+ALTER TABLE ctes  ADD COLUMN IF NOT EXISTS conjunto_id    uuid REFERENCES conjuntos_veiculos(id) ON DELETE SET NULL;
+ALTER TABLE ctes  ADD COLUMN IF NOT EXISTS implemento_ids uuid[];
+NOTIFY pgrst, 'reload schema';

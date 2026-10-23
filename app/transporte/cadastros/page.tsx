@@ -8,6 +8,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
 import { buscarRegistroPorDocumentoNaConta } from "../../../lib/db";
+import { validarConjunto, placasDoConjunto, categoriaDe, MAX_IMPLEMENTOS, type ConjuntoVeiculos } from "../../../lib/transporte/conjuntos";
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,8 @@ interface Veiculo {
   id: string; fazenda_id: string;
   placa: string; uf_placa?: string;
   renavam?: string;
+  categoria?: "cavalo" | "implemento"; // cavalo = tração; implemento = carreta/reboque (engata no cavalo pelo Conjunto)
+  num_eixos?: number;
   tipo: string;            // truck, bitrem, rodotrem, carreta, toco, vanderleia, etc.
   tipo_carroceria?: string; // graneleiro, basculante, plataforma, baú, tanque
   tara_kg?: number; cap_kg?: number;
@@ -56,7 +59,7 @@ const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 6
 const btnV: React.CSSProperties = { background: "#2A2A2A", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { background: "#F0F4FA", color: "#444", border: "0.5px solid #CDD5E0", borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" };
 
-type Aba = "transportadoras" | "veiculos" | "motoristas";
+type Aba = "transportadoras" | "veiculos" | "conjuntos" | "motoristas";
 
 const TIPOS_VEICULO = [
   "Toco", "Truck", "Bitruck", "Carreta Simples", "Carreta LS", "Bitrem", "Rodotrem", "Vanderleia",
@@ -98,12 +101,14 @@ function Campo({ label, required, children }: { label: React.ReactNode; required
 
 // ── Página ────────────────────────────────────────────────────────────────────
 export default function TransporteCadastrosPage() {
-  const { fazendaId, fazendaIds } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
   const [aba, setAba] = useState<Aba>("transportadoras");
 
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [veiculos,        setVeiculos]        = useState<Veiculo[]>([]);
   const [motoristas,      setMotoristas]      = useState<Motorista[]>([]);
+  const [conjuntos,       setConjuntos]       = useState<ConjuntoVeiculos[]>([]);
+  const [modalJ, setModalJ] = useState<(Partial<ConjuntoVeiculos> & { implemento_ids: string[]; obs?: string | null }) | null>(null);
   const [empresas,        setEmpresas]        = useState<{ id: string; nome: string; razao_social?: string; cpf_cnpj?: string; inscricao_est?: string; rntrc?: string; cep?: string; logradouro?: string; numero?: string; bairro?: string; municipio?: string; estado?: string; telefone?: string; email?: string; finalidades?: string[] }[]>([]);
   const [sincronizando, setSincronizando] = useState(false);
   const [loading,  setLoading]  = useState(true);
@@ -127,11 +132,16 @@ export default function TransporteCadastrosPage() {
     if (r1.data) setTransportadoras(r1.data);
     if (r2.data) setVeiculos(r2.data);
     if (r3.data) setMotoristas(r3.data);
+    // Conjuntos são do cliente (conta), não da fazenda. Sem a Seção 363 a tabela não existe — a aba fica vazia.
+    const rJ = contaId
+      ? await supabase.from("conjuntos_veiculos").select("*").eq("conta_id", contaId).order("created_at")
+      : await supabase.from("conjuntos_veiculos").select("*").in("fazenda_id", fazendaIds).order("created_at");
+    setConjuntos(((rJ.data ?? []) as ConjuntoVeiculos[]).map(c => ({ ...c, implemento_ids: c.implemento_ids ?? [] })));
     // Carrega empresas para vincular e sincronizar transportadoras internas
     const { data: emp } = await supabase.from("empresas").select("id, nome, razao_social, cpf_cnpj, inscricao_est, rntrc, cep, logradouro, numero, bairro, municipio, estado, telefone, email, finalidades").in("fazenda_id", fazendaIds).order("nome");
     if (emp) setEmpresas(emp);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fazendaId, contaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -177,15 +187,49 @@ export default function TransporteCadastrosPage() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar v)", perigo: false }))) return;
     if (!fazendaId || !modalV?.placa?.trim()) { alert("Placa é obrigatória."); return; }
     setSalvando(true);
-    const pay = { ...modalV, fazenda_id: fazendaId, ativo: modalV.ativo ?? true, placa: (modalV.placa ?? "").toUpperCase() };
-    if (pay.id) {
-      await supabase.from("veiculos").update(pay).eq("id", pay.id);
-    } else {
-      await supabase.from("veiculos").insert(pay);
+    const pay = { ...modalV, fazenda_id: fazendaId, ativo: modalV.ativo ?? true, placa: (modalV.placa ?? "").toUpperCase(), categoria: categoriaDe(modalV) };
+    // Implemento engatado num conjunto não pode virar cavalo (o conjunto ficaria inválido).
+    if (pay.id && pay.categoria === "cavalo" && conjuntos.some(c => c.ativo && c.implemento_ids.includes(pay.id!))) {
+      alert("Este veículo está engatado como implemento num conjunto ativo. Desmonte o conjunto antes de mudar o tipo de cadastro.");
+      setSalvando(false); return;
+    }
+    if (pay.id && pay.categoria === "implemento" && conjuntos.some(c => c.ativo && c.cavalo_id === pay.id)) {
+      alert("Este veículo é o cavalo de um conjunto ativo. Desmonte o conjunto antes de mudar o tipo de cadastro.");
+      setSalvando(false); return;
+    }
+    const { error } = pay.id
+      ? await supabase.from("veiculos").update(pay).eq("id", pay.id)
+      : await supabase.from("veiculos").insert(pay);
+    if (error) {
+      alert("Não foi possível salvar o veículo: " + error.message + (/categoria|num_eixos/.test(error.message) ? "\n\nRode a Seção 363 no Supabase." : ""));
+      setSalvando(false); return;
     }
     await carregar();
     setModalV(null);
     setSalvando(false);
+  };
+
+  // ── Salvar Conjunto (cavalo + implementos) ──────────────────────────────────
+  const salvarJ = async () => {
+    if (!modalJ || !fazendaId) return;
+    const c = { id: modalJ.id, nome: modalJ.nome?.trim() || null, cavalo_id: modalJ.cavalo_id ?? "", implemento_ids: modalJ.implemento_ids.filter(Boolean), ativo: modalJ.ativo ?? true };
+    const erro = validarConjunto(c, conjuntos, veiculos);
+    if (erro) { alert(erro); return; }
+    setSalvando(true);
+    const pay = { ...c, obs: modalJ.obs ?? null, conta_id: contaId, fazenda_id: fazendaId, updated_at: new Date().toISOString() };
+    const { error } = c.id
+      ? await supabase.from("conjuntos_veiculos").update(pay).eq("id", c.id)
+      : await supabase.from("conjuntos_veiculos").insert({ ...pay, id: undefined });
+    setSalvando(false);
+    if (error) { alert("Não foi possível salvar o conjunto: " + error.message + (/conjuntos_veiculos/.test(error.message) ? "\n\nRode a Seção 363 no Supabase." : "")); return; }
+    await carregar();
+    setModalJ(null);
+  };
+  const desmontarJ = async (c: ConjuntoVeiculos) => {
+    if (!(await confirmarAcao({ titulo: "Desmontar conjunto", mensagem: `Desmontar o conjunto ${placasDoConjunto(c, veiculos)}? Os veículos continuam cadastrados e podem ser engatados em outro conjunto. Documentos já emitidos não mudam.`, perigo: false }))) return;
+    const { error } = await supabase.from("conjuntos_veiculos").update({ ativo: false, updated_at: new Date().toISOString() }).eq("id", c.id);
+    if (error) { alert("Não foi possível desmontar: " + error.message); return; }
+    await carregar();
   };
 
   // ── Salvar Motorista ────────────────────────────────────────────────────────
@@ -251,6 +295,9 @@ export default function TransporteCadastrosPage() {
   const veicFilt = veiculos
     .filter(v => !soAtivos || v.ativo)
     .filter(v => !buscaL || v.placa.toLowerCase().includes(buscaL) || (v.tipo ?? "").toLowerCase().includes(buscaL));
+  const conjFilt = conjuntos
+    .filter(c => !soAtivos || c.ativo)
+    .filter(c => !buscaL || placasDoConjunto(c, veiculos).toLowerCase().includes(buscaL) || (c.nome ?? "").toLowerCase().includes(buscaL));
   const motorFilt = motoristas
     .filter(m => !soAtivos || m.ativo)
     .filter(m => !buscaL || m.nome.toLowerCase().includes(buscaL) || (m.cnh_numero ?? "").includes(buscaL));
@@ -293,6 +340,7 @@ export default function TransporteCadastrosPage() {
           {([
             ["transportadoras", `Transportadoras (${transFilt.length})`],
             ["veiculos",        `Veículos / Caminhões (${veicFilt.length})`],
+            ["conjuntos",       `Conjuntos (${conjFilt.length})`],
             ["motoristas",      `Motoristas (${motorFilt.length})`],
           ] as [Aba, string][]).map(([a, l]) => (
             <OperationalButton data-arato-tab-active={aba === (a)} data-arato-tab="true" data-arato-button="toggle" key={a} onClick={() => { setAba(a); setBusca(""); }}
@@ -383,7 +431,13 @@ export default function TransporteCadastrosPage() {
                         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", fontFamily: "monospace", letterSpacing: 1 }}>{v.placa}</div>
                         {v.uf_placa && <div style={{ fontSize: 10, color: "#666" }}>{v.uf_placa} · {v.marca ?? ""} {v.modelo ?? ""} {v.ano_fab ?? ""}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12 }}>{v.tipo}</td>
+                      <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, fontWeight: 600, marginRight: 6,
+                          background: categoriaDe(v) === "implemento" ? "#FBF3E0" : "#D5E8F5", color: categoriaDe(v) === "implemento" ? "#7A5800" : "#0B2D50" }}>
+                          {categoriaDe(v) === "implemento" ? "Implemento" : "Cavalo"}
+                        </span>
+                        {v.tipo}{v.num_eixos ? ` · ${v.num_eixos} eixos` : ""}
+                      </td>
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>{v.tipo_carroceria ?? "—"}</td>
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>
                         {v.tara_kg ? `${(v.tara_kg / 1000).toFixed(1)} t` : "—"}
@@ -402,6 +456,65 @@ export default function TransporteCadastrosPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </OperationalGrid>
+            </div>
+          </div>
+        )}
+
+        {/* ── Conjuntos (cavalo + implementos) ── */}
+        {aba === "conjuntos" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 12 }}>
+              <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+                Monte o cavalo com os implementos engatados (até {MAX_IMPLEMENTOS}, na ordem). No CT-e e no MDF-e escolhe-se o conjunto e todas as placas vêm juntas.
+              </div>
+              <OperationalButton data-arato-button="primary" style={btnV} onClick={() => setModalJ({ ativo: true, implemento_ids: [""] })}>+ Novo Conjunto</OperationalButton>
+            </div>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+              <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#F3F6FB" }}>
+                    {["Conjunto", "Cavalo", "Implementos", "Eixos", "Cap. total", "Status", ""].map(h => (
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {conjFilt.length === 0 ? (
+                    <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                      Nenhum conjunto montado. Cadastre o cavalo e os implementos na aba Veículos e clique em &quot;+ Novo Conjunto&quot;.
+                    </td></tr>
+                  ) : conjFilt.map((c, i) => {
+                    const cav = veiculos.find(v => v.id === c.cavalo_id);
+                    const imps = c.implemento_ids.map(id => veiculos.find(v => v.id === id)).filter((v): v is Veiculo => !!v);
+                    const eixos = [cav, ...imps].reduce((s, v) => s + (v?.num_eixos ?? 0), 0);
+                    const cap = imps.reduce((s, v) => s + (v.cap_kg ?? 0), 0) || (cav?.cap_kg ?? 0);
+                    return (
+                      <tr key={c.id} style={{ borderBottom: i < conjFilt.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
+                        <td style={{ padding: "10px 12px" }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", fontFamily: "monospace", letterSpacing: 0.5 }}>{placasDoConjunto(c, veiculos)}</div>
+                          {c.nome && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.nome}</div>}
+                        </td>
+                        <td style={{ padding: "10px 12px", fontSize: 12 }}>{cav ? `${cav.placa} · ${cav.tipo ?? ""}` : "—"}</td>
+                        <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                          {imps.length === 0 ? "—" : imps.map((v, k) => <div key={v.id}>{k + 1}º {v.placa}{v.tipo_carroceria ? ` · ${v.tipo_carroceria}` : ""}</div>)}
+                        </td>
+                        <td style={{ padding: "10px 12px", fontSize: 12 }}>{eixos || "—"}</td>
+                        <td style={{ padding: "10px 12px", fontSize: 12 }}>{cap ? `${(cap / 1000).toFixed(0)} t` : "—"}</td>
+                        <td style={{ padding: "10px 12px" }}>
+                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 600,
+                            background: c.ativo ? "#ECFDF5" : "var(--bg-page)", color: c.ativo ? "#16A34A" : "var(--text-3)" }}>
+                            {c.ativo ? "Montado" : "Desmontado"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+                          <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11 }} onClick={() => setModalJ({ ...c, implemento_ids: c.implemento_ids.length ? [...c.implemento_ids] : [""] })}>Editar</OperationalButton>
+                          {c.ativo && <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 12px", fontSize: 11, marginLeft: 6 }} onClick={() => desmontarJ(c)}>Desmontar</OperationalButton>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </OperationalGrid>
             </div>
@@ -574,6 +687,21 @@ export default function TransporteCadastrosPage() {
         <Modal titulo={modalV.id ? "Editar Veículo" : "Novo Veículo"} onClose={() => setModalV(null)} width={800}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
+            <Campo label="Tipo de cadastro" required>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([["cavalo", "Cavalo (tração)", "Caminhão que puxa — sozinho ou com implementos engatados"], ["implemento", "Implemento", "Carreta / reboque — engata num cavalo pela aba Conjuntos"]] as const).map(([val, titulo, desc]) => (
+                  <OperationalButton key={val} data-arato-button="toggle" data-arato-tab-active={categoriaDe(modalV) === val}
+                    onClick={() => setModalV(p => ({ ...p!, categoria: val }))}
+                    style={{ flex: 1, textAlign: "left", padding: "8px 12px", borderRadius: 8, cursor: "pointer",
+                      border: categoriaDe(modalV) === val ? "1.5px solid #1A4870" : "0.5px solid #CDD5E0",
+                      background: categoriaDe(modalV) === val ? "#D5E8F5" : "var(--bg-card)" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{titulo}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>{desc}</div>
+                  </OperationalButton>
+                ))}
+              </div>
+            </Campo>
+
             <div data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12 }}>
               <Campo label="Placa" required>
                 <input style={{ ...inp, fontFamily: "monospace", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}
@@ -620,6 +748,17 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
+            <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 3fr", gap: 12 }}>
+              <Campo label="Nº de eixos">
+                <input style={inp} type="number" min={1} max={12} value={modalV.num_eixos ?? ""} onChange={e => setModalV(p => ({ ...p!, num_eixos: parseInt(e.target.value) || undefined }))} placeholder="Ex: 3" />
+              </Campo>
+              <div style={{ fontSize: 11, color: "var(--text-3)", alignSelf: "end", paddingBottom: 8 }}>
+                {categoriaDe(modalV) === "implemento"
+                  ? "Tara, capacidade e carroceria do implemento vão no MDF-e (reboque). Os eixos vão no CIOT."
+                  : "Os eixos do cavalo vão no CIOT, somados aos dos implementos do conjunto."}
+              </div>
+            </div>
+
             <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
               <Campo label="Marca">
                 <input style={inp} value={modalV.marca ?? ""} onChange={e => setModalV(p => ({ ...p!, marca: e.target.value }))} placeholder="Scania, Volvo, Mercedes…" />
@@ -659,6 +798,76 @@ export default function TransporteCadastrosPage() {
           </div>
         </Modal>
       )}
+
+      {/* ══ MODAL CONJUNTO ══ */}
+      {modalJ && (() => {
+        const cavalos = veiculos.filter(v => categoriaDe(v) === "cavalo" && (v.ativo || v.id === modalJ.cavalo_id));
+        const implementos = veiculos.filter(v => categoriaDe(v) === "implemento" && (v.ativo || modalJ.implemento_ids.includes(v.id)));
+        // Engatado em outro conjunto ativo = indisponível (a validação ao salvar diz qual).
+        const engatadoEmOutro = (id: string) => conjuntos.some(c => c.ativo && c.id !== modalJ.id && c.implemento_ids.includes(id));
+        const setImp = (k: number, id: string) => setModalJ(p => p && ({ ...p, implemento_ids: p.implemento_ids.map((x, j) => j === k ? id : x) }));
+        return (
+          <Modal titulo={modalJ.id ? "Editar Conjunto" : "Novo Conjunto"} onClose={() => setModalJ(null)} width={720}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div data-arato-item-grid="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Campo label="Cavalo (tração)" required>
+                  <SelectField style={inp} value={modalJ.cavalo_id ?? ""} onChange={e => setModalJ(p => p && ({ ...p, cavalo_id: e.target.value }))}>
+                    <option value="">— selecione —</option>
+                    {cavalos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.tipo ?? "caminhão"}</option>)}
+                  </SelectField>
+                </Campo>
+                <Campo label="Nome do conjunto (opcional)">
+                  <input style={inp} value={modalJ.nome ?? ""} onChange={e => setModalJ(p => p && ({ ...p, nome: e.target.value }))} placeholder="Ex: Bitrem do João" />
+                </Campo>
+              </div>
+
+              <div>
+                <label data-arato-label="true" style={lbl}>Implementos engatados (na ordem: 1º atrás do cavalo)</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {modalJ.implemento_ids.map((id, k) => (
+                    <div key={k} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", width: 24 }}>{k + 1}º</span>
+                      <SelectField style={{ ...inp, flex: 1 }} value={id} onChange={e => setImp(k, e.target.value)}>
+                        <option value="">— selecione o implemento —</option>
+                        {implementos.map(v => (
+                          <option key={v.id} value={v.id} disabled={engatadoEmOutro(v.id) || (modalJ.implemento_ids.includes(v.id) && v.id !== id)}>
+                            {v.placa}{v.tipo_carroceria ? ` — ${v.tipo_carroceria}` : ""}{v.cap_kg ? ` · ${(v.cap_kg / 1000).toFixed(0)} t` : ""}{engatadoEmOutro(v.id) ? " (já engatado)" : ""}
+                          </option>
+                        ))}
+                      </SelectField>
+                      <OperationalButton data-arato-button="danger" title="Tirar este implemento"
+                        onClick={() => setModalJ(p => p && ({ ...p, implemento_ids: p.implemento_ids.filter((_, j) => j !== k) }))}
+                        style={{ ...btnR, padding: "6px 10px" }}>−</OperationalButton>
+                    </div>
+                  ))}
+                  {modalJ.implemento_ids.length < MAX_IMPLEMENTOS && (
+                    <OperationalButton data-arato-button="secondary" style={{ ...btnR, alignSelf: "flex-start", padding: "6px 14px", fontSize: 12 }}
+                      onClick={() => setModalJ(p => p && ({ ...p, implemento_ids: [...p.implemento_ids, ""] }))}>+ Engatar implemento</OperationalButton>
+                  )}
+                  {implementos.length === 0 && (
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>Nenhum implemento cadastrado. Na aba Veículos, cadastre a carreta com Tipo de cadastro = Implemento.</div>
+                  )}
+                </div>
+              </div>
+
+              <Campo label="Observação">
+                <input style={inp} value={modalJ.obs ?? ""} onChange={e => setModalJ(p => p && ({ ...p, obs: e.target.value }))} />
+              </Campo>
+              <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={modalJ.ativo ?? true} onChange={e => setModalJ(p => p && ({ ...p, ativo: e.target.checked }))} />
+                Montado (aparece na emissão de CT-e e MDF-e)
+              </label>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalJ(null)}>Cancelar</OperationalButton>
+                <OperationalButton data-arato-button="primary" style={{ ...btnV, opacity: salvando ? 0.6 : 1 }} disabled={salvando} onClick={salvarJ}>
+                  {salvando ? "Salvando…" : "Salvar"}
+                </OperationalButton>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* ══ MODAL MOTORISTA ══ */}
       {modalM && (

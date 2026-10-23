@@ -20,7 +20,8 @@ import { transmitirMDFe } from "./transmitter";
 import { pfxParaPem } from "../nfe/signer";
 import { resolverConfigMDFe } from "./config";
 import { validarProdutoMDFe } from "./produto";
-import type { MDFeInput, EmitenteMDFe, MunicipioDescarga } from "./builder";
+import type { MDFeInput, EmitenteMDFe, MunicipioDescarga, ReboqueMDFe } from "./builder";
+import { tpCarPorCarroceria, tpRodDoVeiculo } from "../transporte/conjuntos";
 
 export type { MDFeInput };
 
@@ -211,9 +212,22 @@ export async function emitirMDFe(
 
   // 3. Veículo (placa + tara) e motorista(es)
   if (!m.veiculo_id) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Selecione o Veículo antes de autorizar — a tara é obrigatória no MDF-e." };
-  const { data: veic } = await sb().from("veiculos").select("placa, tara_kg, uf, proprietario_tipo").eq("id", m.veiculo_id).maybeSingle();
+  const { data: veic } = await sb().from("veiculos").select("*").eq("id", m.veiculo_id).maybeSingle();
   if (!veic) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Veículo selecionado não encontrado no cadastro." };
   if (!veic.tara_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Veículo ${veic.placa} sem Tara (kg) cadastrada — obrigatório pra montar o MDF-e. Preencha em Cadastros → Veículos.` };
+
+  // Implementos do conjunto escolhido (Seção 363) → <veicReboque>, na ordem do engate. Tara e capacidade são obrigatórias.
+  const implementoIds = ((m as { implemento_ids?: string[] | null }).implemento_ids ?? []).filter(Boolean);
+  const reboques: ReboqueMDFe[] = [];
+  if (implementoIds.length) {
+    const { data: imps } = await sb().from("veiculos").select("*").in("id", implementoIds);
+    for (const id of implementoIds) {
+      const r = (imps ?? []).find(x => x.id === id);
+      if (!r) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "Um implemento do conjunto não foi encontrado no cadastro. Escolha o conjunto de novo no MDF-e." };
+      if (!r.tara_kg || !r.cap_kg) return { sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: `Implemento ${r.placa} sem Tara ou Capacidade (kg) — obrigatórios pro reboque no MDF-e. Preencha em Fretes e Transporte → Transportadoras e Veículos.` };
+      reboques.push({ placa: r.placa, renavam: r.renavam ?? undefined, tara_kg: r.tara_kg, cap_kg: r.cap_kg, tpCar: tpCarPorCarroceria(r.tipo_carroceria), uf: (r.uf_placa || r.uf) ?? undefined });
+    }
+  }
 
   const condutores: { nome: string; cpf: string }[] = [];
   let motoristaTipo: string | null = null;
@@ -384,7 +398,10 @@ export async function emitirMDFe(
     uf_fim: m.uf_fim,
     percurso_ufs: m.percurso_ufs ?? [],
     municipios_descarga: municipiosDescarga,
-    veiculo: { placa: veic.placa, tara_kg: veic.tara_kg, uf: veic.uf ?? emitente.uf },
+    // UF da placa: o cadastro grava em uf_placa (uf ficava sempre vazio e saía a UF do emitente).
+    veiculo: { placa: veic.placa, renavam: veic.renavam ?? undefined, tara_kg: veic.tara_kg, uf: veic.uf_placa || veic.uf || emitente.uf,
+      tpRod: tpRodDoVeiculo(veic.tipo, reboques.length > 0), tpCar: reboques.length ? "00" : tpCarPorCarroceria(veic.tipo_carroceria) },
+    reboques,
     condutores,
     // infCIOT: CPF/CNPJ do responsável pela geração do CIOT = contratante que declarou (a transportadora), não o motorista.
     ciot: m.ciot ? { codigo: m.ciot, cpf_cnpj: emitente.cpf_cnpj || condutores[0].cpf } : null,
