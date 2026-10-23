@@ -400,6 +400,8 @@ export default function ModalNf({
   const [wBombas,     setWBombas]     = useState<(BombaCombustivel & { fazenda_nome?: string })[]>([]);
   // IE do destinatário lida do XML (<dest><IE>) — escolhe sozinha a IE do produtor e, por ela, a fazenda que recebe.
   const [ieDestXml, setIeDestXml] = useState("");
+  // Fazenda onde o combustível é descarregado — escolhida no seletor; vazio = a sugerida (a da IE).
+  const [fazendaBombaSel, setFazendaBombaSel] = useState("");
   const [wPedidos,    setWPedidos]    = useState<PedidoMin[]>([]);
   const [wProdutores, setWProdutores] = useState<Array<{id: string; nome: string; cpf_cnpj?: string}>>([]);
   const [iesProdutor,  setIesProdutor]  = useState<ProdutorIE[]>([]);
@@ -2381,9 +2383,13 @@ export default function ModalNf({
   const modoDireto: "combustivel" | "manutencao" | "cc" =
     opSelecionada?.permite_combustivel ? "combustivel" :
     opSelecionada?.permite_manutencao  ? "manutencao"  : "cc";
-  // Fazenda que recebe o combustível = a da IE do produtor escolhida na nota (cada fazenda tem a sua bomba);
-  // sem IE vinculada a uma fazenda, a fazenda da própria NF.
-  const fazendaBombas = iesProdutor.find(i => i.inscricao_estadual === cab.ie_produtor)?.fazenda_id || nfEdit?.fazenda_id || fazendaId || "";
+  // Cada fazenda tem a sua bomba. Sugestão: a fazenda da IE do produtor na nota (sem IE vinculada a uma fazenda,
+  // a da própria NF). O local físico de descarga pode ser outro (estoque físico ≠ fiscal) — o usuário troca a
+  // fazenda no seletor acima da bomba.
+  const fazendaBombaSugerida = iesProdutor.find(i => i.inscricao_estadual === cab.ie_produtor)?.fazenda_id || nfEdit?.fazenda_id || fazendaId || "";
+  const fazendaBombas = fazendaBombaSel || fazendaBombaSugerida;
+  const fazendasComBomba = wBombas.reduce<{ id: string; nome: string }[]>((acc, b) =>
+    acc.some(f => f.id === b.fazenda_id) ? acc : [...acc, { id: b.fazenda_id, nome: b.fazenda_nome ?? "Fazenda" }], []);
   const bombasDaFazenda = wBombas.filter(b => !fazendaBombas || b.fazenda_id === fazendaBombas);
   // OG de compra de combustível (permite_combustivel) em NF de Insumos/Combustíveis já é combustível: marca
   // "É Combustível" sozinho e mostra o seletor de bomba — antes dependia de achar e marcar a caixa à mão.
@@ -2397,6 +2403,7 @@ export default function ModalNf({
     if (cab.bomba_destino_id && wBombas.length && !bombasDaFazenda.some(b => b.id === cab.bomba_destino_id)) setCab(p => ({ ...p, bomba_destino_id: "" }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaBombas, wBombas]);
+  useEffect(() => { setFazendaBombaSel(""); }, [nfEdit?.id]);
 
   if (carregandoNf) {
     return (
@@ -3916,6 +3923,17 @@ export default function ModalNf({
                           <div style={{ fontSize: 12, fontWeight: 600, color: "#7A5800", marginBottom: 8 }}>
                             Bomba / Tanque destino (crédito de estoque)
                           </div>
+                          {fazendasComBomba.length > 1 && (
+                            <div style={{ marginBottom: 8 }}>
+                              <label data-arato-label="true" style={lbl}>Fazenda da descarga</label>
+                              <SelectField value={fazendasComBomba.some(f => f.id === fazendaBombas) ? fazendaBombas : ""}
+                                onChange={e => setFazendaBombaSel(e.target.value)}
+                                style={{ ...inp, maxWidth: 380, borderColor: "#C9921B" }}>
+                                {!fazendasComBomba.some(f => f.id === fazendaBombas) && <option value="">Selecione a fazenda…</option>}
+                                {fazendasComBomba.map(f => <option key={f.id} value={f.id}>{f.nome}{f.id === fazendaBombaSugerida ? " (fazenda da IE)" : ""}</option>)}
+                              </SelectField>
+                            </div>
+                          )}
                           <SelectField
                             value={cab.bomba_destino_id}
                             onChange={e => setCab(p => ({ ...p, bomba_destino_id: e.target.value }))}
@@ -3930,11 +3948,8 @@ export default function ModalNf({
                           </SelectField>
                           {bombasDaFazenda.length === 0 && (
                             <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-                              Nenhuma bomba cadastrada {wBombas.length > 0 ? "na fazenda desta IE" : ""}. Confira a I.E. do Produtor ou acesse Cadastros → Combustíveis &amp; Bombas.
+                              {wBombas.length > 0 ? "Nenhuma bomba nesta fazenda — escolha a fazenda da descarga acima." : "Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis & Bombas."}
                             </div>
-                          )}
-                          {bombasDaFazenda.length > 0 && bombasDaFazenda[0].fazenda_nome && (
-                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>Bombas da {bombasDaFazenda[0].fazenda_nome}</div>
                           )}
                         </div>
                       )}
