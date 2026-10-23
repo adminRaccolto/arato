@@ -7,6 +7,7 @@ import { confirmarAcao } from "../../components/ConfirmarAcao";
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { cstExibicaoPorCfop } from "../../lib/nfe/cst-por-cfop";
+import { indexarConfigsEmitentes } from "../../lib/nfe/configs-emitentes";
 import TopNav from "../../components/TopNav";
 import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarProdutoresDaConta, listarIEsDoProdutor, listarPessoasDaConta, listarFazendasDaConta, listarNfEntradaItens, criarNfRemessaLogistica, listarDepositos, buscarDepositoTerceiroPorCnpj } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
@@ -1175,41 +1176,33 @@ function FiscalInner() {
       );
       setNotas(data);
       // Carregar config do primeiro emitente fiscal disponível para o DANFE
-      const { data: cfgs } = await supabase.from("configuracoes_modulo")
-        .select("modulo, config").in("fazenda_id", fazendaIds)
+      const { data: cfgs, error: erroConfigs } = await supabase.from("configuracoes_modulo")
+        .select("modulo, config, fazenda_id, updated_at").in("fazenda_id", fzIds)
         .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal");
-      if (cfgs && cfgs.length > 0) {
-        // Indexar todos os configs por moduloKey — corrige o bug de usar sempre cfgs[0]
-        const byKey: Record<string, Record<string, string>> = {};
-        for (const row of cfgs) {
-          byKey[row.modulo] = (row.config as Record<string, string>) ?? {};
-        }
-        setAllEmitCfgs(byKey);
+      if (erroConfigs) throw erroConfigs;
+      const byKey = indexarConfigsEmitentes(cfgs ?? [], fazendaId);
+      setAllEmitCfgs(byKey);
 
-        // Monta lista de emissores disponíveis (PF e PJ com CPF/CNPJ configurado)
-        const lista: EmissorOpcao[] = cfgs
-          .filter(cfg => (cfg.config as Record<string, string>)?.cpf_cnpj_emitente)
-          .map(cfg => {
-            const cc = cfg.config as Record<string, string>;
-            return { key: cfg.modulo, label: `${cc.razao_social ?? cfg.modulo} (${cc.cpf_cnpj_emitente})` };
-          });
-        setEmissores(lista);
+      // O rótulo e a validação usam a mesma configuração, sem duplicar titulares.
+      const lista: EmissorOpcao[] = Object.entries(byKey)
+        .filter(([, c]) => c.cpf_cnpj_emitente)
+        .map(([key, c]) => ({ key, label: `${c.razao_social ?? key} (${c.cpf_cnpj_emitente})` }));
+      setEmissores(lista);
 
-        // Seleciona o primeiro emitente com CPF/CNPJ como ativo (apenas se nenhum ainda selecionado)
-        const primeiroKey = lista[0]?.key;
-        const keyAtivo = moduloKeyAtivo || primeiroKey || "";
-        if (!moduloKeyAtivo && primeiroKey) setModuloKeyAtivo(primeiroKey);
+      // Seleciona o primeiro emitente com CPF/CNPJ como ativo (apenas se nenhum ainda selecionado)
+      const primeiroKey = lista[0]?.key;
+      const keyAtivo = moduloKeyAtivo || primeiroKey || "";
+      if (!moduloKeyAtivo && primeiroKey) setModuloKeyAtivo(primeiroKey);
 
-        // danfeCfg agora reflete o emitente ativo, não obrigatoriamente cfgs[0]
-        const c = byKey[keyAtivo] ?? byKey[primeiroKey ?? ""] ?? {};
-        setDanfeCfg({
-          razao_social: c.razao_social, cpf_cnpj_emitente: c.cpf_cnpj_emitente,
-          ie_emitente: c.ie_emitente, logradouro: c.logradouro,
-          numero_end: c.numero_end, bairro: c.bairro,
-          municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
-          ambiente: c.ambiente,
-        });
-      }
+      // danfeCfg agora reflete o emitente ativo, não obrigatoriamente cfgs[0]
+      const c = byKey[keyAtivo] ?? {};
+      setDanfeCfg({
+        razao_social: c.razao_social, cpf_cnpj_emitente: c.cpf_cnpj_emitente,
+        ie_emitente: c.ie_emitente, logradouro: c.logradouro,
+        numero_end: c.numero_end, bairro: c.bairro,
+        municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
+        ambiente: c.ambiente,
+      });
     }
     catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar"); }
     finally { setCarregando(false); }
@@ -1374,9 +1367,9 @@ function FiscalInner() {
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
     // Validação mínima no cliente — só bloqueia o que o servidor não consegue suprir com default
     // (CRT default="3", municipio_ibge default="5106455", etc. são preenchidos no server)
-    const emitCfgAtivo = allEmitCfgs[moduloKeyAtivo] ?? danfeCfg as Record<string, string>;
-    const razaoSocial  = emitCfgAtivo.razao_social ?? danfeCfg.razao_social ?? "";
-    const cpfCnpjEmit  = emitCfgAtivo.cpf_cnpj_emitente ?? danfeCfg.cpf_cnpj_emitente ?? "";
+    const emitCfgAtivo = allEmitCfgs[moduloKeyAtivo] ?? {};
+    const razaoSocial  = emitCfgAtivo.razao_social ?? "";
+    const cpfCnpjEmit  = emitCfgAtivo.cpf_cnpj_emitente ?? "";
 
     if (!razaoSocial || razaoSocial === "EMITENTE NÃO CONFIGURADO") {
       alert("⚠ Razão Social do emitente não configurada.\n\nVá em Configurações → Parâmetros do Sistema → Aba Fiscal e preencha o Nome/Razão Social antes de transmitir.");

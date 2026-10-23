@@ -14,6 +14,7 @@ import { transmitirNFe }   from "./transmitter";
 import { cancelarNFe, emitirCartaCorrecao } from "./evento";
 import type { NFeInput, EmitenteCfg } from "./builder";
 import { somenteDigitos, selecionarInscricaoFiscal, aplicarInscricaoFiscal } from "./identidade-fiscal";
+import { indexarConfigsEmitentes } from "./configs-emitentes";
 
 export type { NFeInput, EmitenteCfg };
 
@@ -74,13 +75,14 @@ export async function buscarConfEmitente(
   // Achado real 23/09/2026: fazenda sem cadastro fiscal próprio (só o card por-IE, que não carrega
   // CPF nem certificado) nunca achava a config base, mesmo ela existindo certinha noutra fazenda
   // do mesmo cliente — cliente reenviou o certificado 2x sem resolver.
-  if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente) {
-    const { data: cfgConta } = await sb()
-      .from("configuracoes_modulo").select("config")
+  if (!emitData?.config || !(emitData.config as Record<string,string>).cpf_cnpj_emitente || !(emitData.config as Record<string,string>).razao_social) {
+    const { data: cfgConta, error } = await sb()
+      .from("configuracoes_modulo").select("modulo, config, fazenda_id, updated_at")
       .in("fazenda_id", fazendaIdsConta).eq("modulo", moduloKey)
-      .not("modulo", "like", "%__ie_%")
-      .limit(1);
-    if (cfgConta && cfgConta.length > 0) emitData = { config: cfgConta[0].config };
+      .not("modulo", "like", "%__ie_%");
+    if (error) throw error;
+    const config = indexarConfigsEmitentes(cfgConta ?? [], fazendaId)[moduloKey];
+    if (config) emitData = { config };
   }
 
   // Um módulo explícito nunca pode ser substituído pelo de outro titular.
