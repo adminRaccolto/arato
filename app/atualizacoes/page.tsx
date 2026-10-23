@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-b",
+    data: "23/10/2026",
+    titulo: "Título de NF processada não pode mais ser excluído solto",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "O botão Excluir do Contas a Pagar/Receber e das telas de Empresa recusa títulos gerados por NF ou NFS-e processada (do produtor e da Empresa). A nota ficava processada sem título. Para remover: se o título estiver pago, desfaça a baixa; depois estorne a nota em Documentos Fiscais, que exclui os títulos junto com o estoque." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber; Empresas",
+  },
+  {
     versao: "2026.10.23-a",
     data: "23/10/2026",
     titulo: "CP da Empresa: Nº NF no grid e auditoria dos títulos",

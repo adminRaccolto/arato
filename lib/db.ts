@@ -4,6 +4,7 @@
  * Os componentes importam essas funções e não chamam supabase diretamente.
  */
 
+import { motivoBloqueioExclusao, notaDoTitulo } from "./financeiro/bloqueio-exclusao";
 import { falharSeErro } from "./db-util";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
@@ -958,6 +959,8 @@ export async function excluirLancamento(id: string): Promise<void> {
   // mostrar a parcela "a pagar" sem CP, e a próxima confirmação do plano recriaria o CP sem aviso.
   const { data: atual } = await supabase.from("lancamentos").select("consorcio_id").eq("id", id).maybeSingle();
   if (atual?.consorcio_id) throw new Error("Este CP é parcela de consórcio. Exclua a parcela na tela de Consórcios (plano de parcelas), que apaga o CP junto.");
+  const bloqueio = motivoBloqueioExclusao(await notaDoTitulo(supabase, "lancamentos", id));
+  if (bloqueio) throw new Error(bloqueio);
   const { error } = await supabase.from("lancamentos").delete().eq("id", id);
   if (error) throw error;
 }
@@ -2340,6 +2343,8 @@ export async function atualizarEmpresaLancamento(id: string, patch: Partial<Empr
 }
 
 export async function excluirEmpresaLancamento(id: string): Promise<void> {
+  const bloqueio = motivoBloqueioExclusao(await notaDoTitulo(supabase, "empresa_lancamentos", id));
+  if (bloqueio) throw new Error(bloqueio);
   const { error } = await supabase.from("empresa_lancamentos").delete().eq("id", id);
   if (error) throw error;
 }

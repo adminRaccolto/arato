@@ -1,4 +1,5 @@
 "use client";
+import { motivoBloqueioExclusao, notaDoTitulo } from "../../../lib/financeiro/bloqueio-exclusao";
 import type { VeiculoUnificado } from "../../../lib/db";
 import ModalVincularNf from "../../../components/financeiro/ModalVincularNf";
 import ModalCadastroFornecedor from "../../../components/fiscal/ModalCadastroFornecedor";
@@ -638,7 +639,10 @@ export default function ContasAPagarPage() {
 
   async function excluirLanc(l: RelLancamento) {
     if (!podeExcluir(l)) return;
-    const origemAutomatica = l.origem_tabela === "lancamentos" && l.origem_lancamento && l.origem_lancamento !== "manual";
+    // Título de NF/NFS-e processada: avisa antes de pedir confirmação (a exclusão é recusada em lib/db.ts)
+    const bloqueio = motivoBloqueioExclusao(await notaDoTitulo(supabase, l.origem_tabela === "lancamentos" ? "lancamentos" : "empresa_lancamentos", l.id));
+    if (bloqueio) { alert(bloqueio); return; }
+    const origemAutomatica = !!l.origem_lancamento && l.origem_lancamento !== "manual";
     const aviso = origemAutomatica
       ? `\n\nAtenção: este lançamento foi gerado automaticamente (${ORIGEM_LANC_LABEL[l.origem_lancamento ?? ""] ?? l.origem_lancamento}) — excluir aqui NÃO desfaz nem desvincula o documento de origem (NF, contrato, parcela, etc.), que pode ficar referenciando um lançamento que não existe mais.`
       : "";
