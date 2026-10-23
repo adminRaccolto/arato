@@ -638,7 +638,7 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
                           return (
                             <Fragment key={child.id}>
                             {novoBloco && (
-                              <div style={{ margin: idx === 0 ? "2px 14px 2px" : "8px 14px 2px", borderTop: "0.5px solid #94A3B8", paddingTop: 5, fontSize: 10, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                              <div style={{ margin: idx === 0 ? "2px 14px 2px" : "8px 14px 2px", borderTop: "0.5px solid #94A3B8", paddingTop: 4, fontSize: 8.5, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                                 {child.bloco}
                               </div>
                             )}
