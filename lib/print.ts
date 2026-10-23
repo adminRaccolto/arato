@@ -14,6 +14,8 @@ export interface PrintOptions {
   dataGeracao?: string;
   /** Nome sugerido ao salvar o PDF (padrão TIPO_CLIENTE_INTERVALO — use nomeRelatorio) */
   nomeArquivo?: string;
+  /** Linha de filtros sob o cabeçalho (ex.: [{ rotulo: "Período", valor: "01/09 a 30/09" }]) */
+  filtros?: { rotulo: string; valor: string }[];
 }
 
 const dataNome = (iso?: string | null) => {
@@ -59,8 +61,6 @@ export function abrirPreviewImpressao(
   }
 
   const orientation = opts.orientation ?? "landscape";
-  const pageSize    = orientation === "landscape" ? "A4 landscape" : "A4 portrait";
-  const pageWidth   = orientation === "landscape" ? "297mm" : "210mm";
   const dataGeracao = opts.dataGeracao ?? new Date().toLocaleDateString("pt-BR", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
@@ -71,8 +71,18 @@ export function abrirPreviewImpressao(
     alert("Permita popups neste site para visualizar o documento de impressão.");
     return;
   }
+  win.document.write(montarHtmlImpressao(titulo, html, { ...opts, orientation }, dataGeracao, typeof window !== "undefined" ? window.location.origin : ""));
+  win.document.close();
+}
 
-  win.document.write(`<!DOCTYPE html>
+/** HTML completo da pré-visualização (separado de abrirPreviewImpressao para poder ser testado/renderizado fora da tela). */
+export function montarHtmlImpressao(titulo: string, html: string, opts: PrintOptions, dataGeracao: string, origem: string): string {
+  const orientation = opts.orientation ?? "landscape";
+  const pageSize    = orientation === "landscape" ? "A4 landscape" : "A4 portrait";
+  const pageWidth   = orientation === "landscape" ? "297mm" : "210mm";
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const filtros = (opts.filtros ?? []).filter(f => f.valor);
+  return (`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -125,13 +135,30 @@ export function abrirPreviewImpressao(
     .rt-rep-fazenda { font-size: 12px; color: #555; margin-top: 3px; }
     .rt-rep-date    { font-size: 10px; color: #aaa; margin-top: 4px; }
 
-    /* ── Rodapé do relatório ── */
-    .rt-rep-footer {
-      margin-top: 18px; padding-top: 8px;
-      border-top: 0.5px solid #DDE2EE;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #aaa;
+    /* ── Padrão visual dos relatórios (23/10/2026, mesmo do relatório de Pedidos de Compra): tabelas leves,
+       cabeçalho de coluna sem faixa escura, totais em cinza claro. Os relatórios montam as tabelas com estilos
+       próprios inline; as regras !important abaixo os trazem para o padrão sem precisar mexer em cada um. ── */
+    .rt-filtros { display:flex; flex-wrap:wrap; gap:6px 22px; padding:7px 0; border-bottom:0.5px solid #DDE2EE; margin:-6px 0 14px; font-size:8pt; color:#1a1a1a; }
+    .rt-filtros b { color:#6B7A90; font-weight:600; }
+    .rt-conteudo table { border-collapse: collapse !important; }
+    .rt-conteudo thead tr, .rt-conteudo thead th { background: transparent !important; }
+    .rt-conteudo th { color: #1a1a1a !important; border: none !important; border-bottom: 0.5px solid #C9D1DD !important; font-weight: 700 !important; }
+    .rt-conteudo td { border-left: none !important; border-right: none !important; border-top: none !important; border-bottom: 0.5px solid #EEF1F6 !important; }
+    .rt-conteudo tfoot tr, .rt-conteudo tfoot td, .rt-conteudo tfoot th,
+    .rt-conteudo tr[style*="#1A4870"], .rt-conteudo tr[style*="#111111"], .rt-conteudo tr[style*="#0B2D50"], .rt-conteudo tr[style*="#2A2A2A"],
+    .rt-conteudo tr[style*="26, 72, 112"], .rt-conteudo tr[style*="17, 17, 17"],
+    .rt-conteudo td[style*="background:#1A4870"], .rt-conteudo td[style*="background:#111111"], .rt-conteudo th[style*="background:#1A4870"], .rt-conteudo th[style*="background:#111111"] {
+      background: #F4F6FA !important; color: #1a1a1a !important;
     }
+    .rt-conteudo tr[style*="#1A4870"] td, .rt-conteudo tr[style*="#1A4870"] th, .rt-conteudo tr[style*="#111111"] td, .rt-conteudo tr[style*="#111111"] th,
+    .rt-conteudo tr[style*="#0B2D50"] td, .rt-conteudo tr[style*="#2A2A2A"] td, .rt-conteudo tr[style*="26, 72, 112"] td, .rt-conteudo tr[style*="17, 17, 17"] td { color: #1a1a1a !important; }
+    .rt-conteudo tfoot td, .rt-conteudo tfoot th { font-weight: 700 !important; border-top: 0.5px solid #C9D1DD !important; }
+
+    /* ── Rodapé: logo Arato pequena em cada página impressa. Fica fixo no fim da página; o tfoot vazio da tabela
+       que envolve a folha se repete em toda página e reserva o espaço, para o conteúdo não passar por baixo. ── */
+    .rt-wrap { width: 100%; border-collapse: collapse; }
+    .rt-wrap > tbody > tr > td, .rt-wrap > tfoot > tr > td { padding: 0; border: none !important; }
+    .rt-rodape, .rt-espaco { display: none; }
 
     /* Ocultar elementos marcados como no-print no conteúdo clonado */
     .no-print { display: none !important; }
@@ -141,11 +168,14 @@ export function abrirPreviewImpressao(
     .auto-fit-table table { transform-origin: top left; }
 
     @media print {
-      @page { size: ${pageSize}; margin: 10mm 12mm; }
+      @page { size: ${pageSize}; margin: 10mm 12mm 6mm; }
       body { background: #fff; }
       .rt-toolbar { display: none !important; }
       .rt-page-wrapper { padding: 0; }
       .rt-page { box-shadow: none; width: 100%; padding: 0; }
+      .rt-espaco { display: block; height: 9mm; }
+      .rt-rodape { display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 7mm; justify-content: center; align-items: center; gap: 5px; font-size: 6pt; color: #9AA4B2; border-top: 0.5px solid #E5E9F0; background: #fff; }
+      .rt-rodape img { height: 8px; }
     }
   </style>
   <script>
@@ -201,11 +231,12 @@ export function abrirPreviewImpressao(
   <!-- Folha A4 -->
   <div class="rt-page-wrapper">
     <div class="rt-page">
+    <table class="rt-wrap"><tfoot><tr><td><div class="rt-espaco"></div></td></tr></tfoot><tbody><tr><td>
 
       <!-- Cabeçalho do relatório -->
       <div class="rt-rep-header">
         <div>
-          <img src="${typeof window !== "undefined" ? window.location.origin : ""}/logo_Arato_Nova.png" alt="Arato" style="height:36px;object-fit:contain;display:block;" onerror="this.style.display='none';this.nextSibling.style.display='block';" />
+          <img src="${origem}/logo_Arato_Nova.png" alt="Arato" style="height:36px;object-fit:contain;display:block;" onerror="this.style.display='none';this.nextSibling.style.display='block';" />
           <div class="rt-rep-logo" style="display:none;">Arato</div>
           <div class="rt-rep-tag">Gestão Agrícola · menos cliques, mais campo</div>
         </div>
@@ -216,19 +247,15 @@ export function abrirPreviewImpressao(
         </div>
       </div>
 
+      ${filtros.length ? `<div class="rt-filtros">${filtros.map(f => `<span><b>${esc(f.rotulo)}:</b> ${esc(f.valor)}</span>`).join("")}</div>` : ""}
+
       <!-- Conteúdo do relatório -->
-      ${html}
+      <div class="rt-conteudo">${html}</div>
 
-      <!-- Rodapé do relatório -->
-      <div class="rt-rep-footer">
-        <span>Arato — Gestão Agrícola</span>
-        <span>${opts.fazenda ?? ""}</span>
-        <span>${dataGeracao}</span>
-      </div>
-
+    </td></tr></tbody></table>
     </div>
   </div>
+  <div class="rt-rodape"><img src="${origem}/logo_Arato_Nova.png" alt="Arato" onerror="this.style.display='none'"><span>Arato · Gestão Agrícola${opts.fazenda ? ` · ${esc(opts.fazenda)}` : ""} · ${dataGeracao}</span></div>
 </body>
 </html>`);
-  win.document.close();
 }
