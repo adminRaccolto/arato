@@ -235,6 +235,9 @@ export default function ContasAReceberPage() {
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
+  // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
+  // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
+  const [periodoManual, setPeriodoManual] = useState(false);
 
   // Ordenação — padrão por data de lançamento (não vencimento), mais recente
   // primeiro; clicar no cabeçalho da coluna alterna o campo e a direção, sem
@@ -291,7 +294,7 @@ export default function ContasAReceberPage() {
       if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
       // Buscando cliente ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas
       const nfBusca = (filtrosCol.nf ?? "").trim();
-      if (!fBusca.trim() && !nfBusca) {
+      if (periodoManual || (!fBusca.trim() && !nfBusca)) {
         if (fDataDe) q = q.gte("data_vencimento", fDataDe);
         if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       }
@@ -318,7 +321,7 @@ export default function ContasAReceberPage() {
   // nenhum ao clicar Atualizar). O efeito abaixo NÃO depende de carregar —
   // só de fazenda/conta — pra não disparar uma consulta nova a cada tecla.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca, filtrosCol.nf]);
+  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca, filtrosCol.nf, periodoManual]);
 
   // Carrega automaticamente ao abrir a tela (período padrão) — nunca espera
   // o usuário escolher filtro primeiro. Refiltrar é sempre sobre o que já
@@ -1371,11 +1374,11 @@ export default function ContasAReceberPage() {
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
-            <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataDe} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>até</label>
-            <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <OperationalButton data-arato-button="primary" onClick={carregar} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}

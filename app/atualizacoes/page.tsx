@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-i",
+    data: "23/10/2026",
+    titulo: "CP/CR: datas escolhidas valem junto com a busca",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Com o Buscar (ou o filtro de Nº NF) preenchido, o Contas a Pagar/Receber ignorava também as datas De/Até escolhidas pelo usuário. Agora só o período automático da abertura (vencimentos até daqui a 3 meses) é ignorado na busca; se você mudar De ou Até, o filtro de datas vale junto com a busca. Limpar filtros volta ao comportamento automático." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.23-h",
     data: "23/10/2026",
     titulo: "Monitor de Auditoria: exclusão de título gerado por NF",

@@ -257,6 +257,9 @@ export default function ContasAPagarPage() {
   const [fBusca,   setFBusca]   = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
+  // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
+  // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
+  const [periodoManual, setPeriodoManual] = useState(false);
 
   // Ordenação — padrão por data de lançamento (não vencimento), mais recente
   // primeiro; clicar no cabeçalho da coluna alterna o campo e a direção, sem
@@ -362,7 +365,7 @@ export default function ContasAPagarPage() {
   const vinculos = vinculosBorderos(todosBorderos);
   // Buscando fornecedor ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas, inclusive as
   // que vencem depois do "Até" (que abre em hoje + 3 meses).
-  const buscaSemData = !!fBusca.trim() || !!filtrosCol.nf?.trim();
+  const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim());
   const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: buscaSemData ? "" : fDataDe, ate: buscaSemData ? "" : fDataAte, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
@@ -1679,13 +1682,13 @@ export default function ContasAPagarPage() {
           </div>
           <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>Vencimento de</label>
-            <InputData type="date" value={fDataDe} onChange={e => setFDataDe(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataDe} onChange={e => { setFDataDe(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
           <div style={{ width: 200, flex: "0 0 200px" }}>
             <label data-arato-label="true" style={lblMini}>até</label>
-            <InputData type="date" value={fDataAte} onChange={e => setFDataAte(e.target.value)} style={inp} />
+            <InputData type="date" value={fDataAte} onChange={e => { setFDataAte(e.target.value); setPeriodoManual(true); }} style={inp} />
           </div>
-          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); setFProdutor(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
+          <OperationalButton data-arato-button="secondary" onClick={() => { setFOrigem(new Set()); setFStatus(new Set()); setFBusca(""); setFDataDe(""); setFDataAte(""); setPeriodoManual(false); setFiltrosCol({}); setFAtalho(""); setFMoeda(new Set()); setFProdutor(new Set()); }} style={{ ...inp, cursor: "pointer" }}>Limpar filtros</OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={() => Promise.all([carregar(), carregarBorderos()])} disabled={carregando} style={{ ...inp, background: "#2A2A2A", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
             {carregando ? "Atualizando..." : "↻ Atualizar"}
           </OperationalButton>
