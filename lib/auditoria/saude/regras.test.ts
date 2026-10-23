@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { rodarRegras, regraNfSemTitulo, regraNfseSemTitulo, regrasPagamentosApagados, regraEstoqueNegativo, type Base, type NfE, type Tit, type NfS, type Excluido } from "./regras.ts";
+import { rodarRegras, regraStatusInconsistente, regraNfSemTitulo, regraNfseSemTitulo, regrasPagamentosApagados, regraEstoqueNegativo, type Base, type NfE, type Tit, type NfS, type Excluido } from "./regras.ts";
 
 const nf = (p: Partial<NfE>): NfE => ({ id: "nf1", fazenda_id: "f1", numero: "2503", emitente_nome: "A B COMERCIO", emitente_cnpj: "48078040000182", valor_total: 4600,
   status: "processada", chave_acesso: null, cfop: "5405", nf_origem_id: null, pessoa_id: "p1", lancamento_id: null, emp_lancamento_id: null, processado_por: "Wanessa",
@@ -67,4 +67,11 @@ test("estoque por fazenda dentro do depósito: saída da fazenda sem o produto f
 
 test("rodarRegras junta tudo sem quebrar com base vazia", () => {
   assert.deepEqual(rodarRegras(base({}), () => false), []);
+});
+
+test("NF 416800 Mirian Cuiabá: título de Empresa com valor pago e status pendente é status inconsistente", () => {
+  const t = tit({ tabela: "empresa_lancamentos", status: "pendente", valor: 3603.71, valor_pago: 3603.4, valor_desconto: 0.31 });
+  assert.equal(regraStatusInconsistente(base({ titulos: [t] })).length, 1);
+  assert.equal(regraStatusInconsistente(base({ titulos: [{ ...t, status: "pago" }] })).length, 0);
+  assert.equal(regraStatusInconsistente(base({ titulos: [{ ...t, valor_pago: null }] })).length, 0);
 });

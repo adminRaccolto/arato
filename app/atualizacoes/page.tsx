@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-f",
+    data: "23/10/2026",
+    titulo: "Conciliação: baixa parcial de título de Empresa fica como Parcial",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na Conciliação Bancária, o título de Empresa pago a menor ficava com status Pendente (só com o valor pago gravado): não aparecia como Parcial, mostrava Vencido e não dava para estornar a baixa. Agora fica Parcial, com a data do pagamento, e pode ser completado (baixa do saldo ou desconto) ou estornado." },
+    ],
+    onde: "Financeiro → Conciliação Bancária; Contas a Pagar",
+  },
+  {
     versao: "2026.10.23-e",
     data: "23/10/2026",
     titulo: "Relatório de Pedidos de Compra: novo layout sintético",

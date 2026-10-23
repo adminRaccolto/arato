@@ -104,15 +104,16 @@ export async function POST(req: NextRequest) {
     if (body.baixar?.length) {
       const resultados = await Promise.all(
         body.baixar.map(async item => {
-          // Título de EMPRESA (empresa_lancamentos): baixa na própria tabela. Status da empresa é
-        // pendente/pago — "parcial" vira pendente com valor_pago; conta bancária (uuid) não é gravada aqui.
+          // Título de EMPRESA (empresa_lancamentos): baixa na própria tabela. Status da empresa: pendente/parcial/pago
+        // (parcial existe desde a Seção 301; antes virava "pendente" com valor_pago, e o título pago a menor ficava sem
+        // Parcial e sem Estornar baixa na tela). Conta bancária (uuid) não é gravada aqui.
         if (idsEmpresa.has(item.id)) {
           const { data: curE } = await sb.from("empresa_lancamentos").select("valor,moeda,cotacao_usd,valor_multa,valor_juros,valor_desconto").eq("id", item.id).maybeSingle();
           if (curE && excedeLimiteBaixa(curE, item.valor_pago)) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${mensagemExcesso(curE, item.valor_pago)}`; }
           const r = await sb.from("empresa_lancamentos").update(
             (item.status ?? "baixado") === "baixado"
               ? { status: "pago", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
-              : { status: "pendente", valor_pago: item.valor_pago }
+              : { status: "parcial", data_pagamento: item.data_baixa, valor_pago: item.valor_pago }
           ).eq("id", item.id);
           if (r.error) { idsFalhosBaixa.add(item.id); return `baixa empresa ${item.id}: ${r.error.message}`; }
           return null;

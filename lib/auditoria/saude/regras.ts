@@ -8,7 +8,7 @@ export type Gravidade = "alta" | "media" | "baixa";
 export type RegraId =
   | "nf_sem_titulo" | "nfse_sem_titulo" | "guia_como_nfse" | "baixa_perdida" | "pago_sem_titulo" | "nf_pendente_ja_paga"
   | "liberacao_excluida" | "estoque_negativo" | "nf_chave_repetida" | "nf_processada_2x" | "titulo_duplicado_nf"
-  | "baixa_acima_valor" | "titulo_em_nf_pendente" | "espelho_pj_sem_nf" | "espelho_divergente";
+  | "baixa_acima_valor" | "titulo_em_nf_pendente" | "espelho_pj_sem_nf" | "espelho_divergente" | "status_inconsistente";
 
 export const REGRAS: Record<RegraId, { nome: string; gravidade: Gravidade; descricao: string; correcao: string }> = {
   nf_sem_titulo: { nome: "NF processada sem título", gravidade: "alta",
@@ -53,6 +53,9 @@ export const REGRAS: Record<RegraId, { nome: string; gravidade: Gravidade; descr
   espelho_pj_sem_nf: { nome: "Título PJ sem Nº NF na tela do CP", gravidade: "baixa",
     descricao: "Título de Empresa gerado por nota aparece sem Nº NF no grid (o filtro de Nº NF não o encontra).",
     correcao: "Recalcular o espelho (Seção 360 do supabase_migrations.sql)." },
+  status_inconsistente: { nome: "Pago mas com status em aberto", gravidade: "media",
+    descricao: "Título com valor pago registrado e status em aberto (ou pago sem valor): a tela não mostra Parcial nem Estornar baixa, e o saldo aparece errado.",
+    correcao: "Acertar o status: pago (se pago + desconto cobre o valor) ou parcial; depois, se for o caso, estornar a baixa pela tela." },
   espelho_divergente: { nome: "Tela do CP fora de sincronia", gravidade: "alta",
     descricao: "A quantidade de títulos na tela do CP/CR (rel_lancamentos) difere da origem.",
     correcao: "Recalcular o espelho rel_lancamentos." },
@@ -253,9 +256,18 @@ export function regrasEspelho(b: Base): Achado[] {
   return out;
 }
 
+export function regraStatusInconsistente(b: Base): Achado[] {
+  return b.titulos.filter(t => {
+    const pago = num(t.valor_pago);
+    const aberto = t.tabela === "lancamentos" ? ["em_aberto", "vencido", "vencendo"].includes(t.status) : t.status === "pendente";
+    return aberto && pago > 0;
+  }).map(t => ({ regra: "status_inconsistente" as const, chave: t.id, conta_id: b.contaDaFazenda(t.fazenda_id), fazenda_id: t.fazenda_id,
+    titulo: t.descricao ?? "(sem descrição)", valor: num(t.valor), detalhe: { status: t.status, valor_titulo: t.valor, valor_pago: t.valor_pago, desconto: t.valor_desconto, tabela: t.tabela } }));
+}
+
 export function rodarRegras(b: Base, excede: (t: Tit, pago: number) => boolean): Achado[] {
   return [
     ...regraNfSemTitulo(b), ...regraNfseSemTitulo(b), ...regrasPagamentosApagados(b), ...regraEstoqueNegativo(b),
-    ...regrasDuplicidade(b), ...regraBaixaAcima(b, excede), ...regraTituloEmNfPendente(b), ...regrasEspelho(b),
+    ...regrasDuplicidade(b), ...regraBaixaAcima(b, excede), ...regraTituloEmNfPendente(b), ...regrasEspelho(b), ...regraStatusInconsistente(b),
   ];
 }

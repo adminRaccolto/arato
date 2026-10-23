@@ -27,7 +27,7 @@ const ROTULOS: Record<string, string> = {
   pago_em: "Pago em", valor_pago: "Valor pago", excluido_em: "Excluído em", excluido_por: "Excluído por", processado_por: "Processado por",
   emissao: "Emissão", prestacao: "Prestação", cfops: "CFOP", titulo_em_aberto_vencimento: "Título em aberto vence", titulo_em_aberto_valor: "Título em aberto",
   nf: "NF", saldo: "Saldo", vencimento: "Vencimento", valor_titulo: "Valor do título", juros: "Juros", multa: "Multa", copias: "Cópias", status: "Status",
-  pedido: "Tem pedido", empresa: "Título da Empresa", origem: "Origem do título",
+  pedido: "Tem pedido", empresa: "Título da Empresa", origem: "Origem do título", desconto: "Desconto",
 };
 function linhasDetalhe(d: Record<string, unknown>): string[] {
   const out: string[] = [];
