@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         valor_desconto?: number;
         pRedBC?: number;
         pICMS?: number;
+        cst_icms?: string;
       }>;
       natureza: string;
       inf_cpl?: string;
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
         valor_desconto: item.valor_desconto,
         pRedBC:        item.pRedBC,
         pICMS:         item.pICMS,
+        cst_icms:      item.cst_icms,
       })),
       natureza: body.natureza,
       infCpl:   body.inf_cpl,

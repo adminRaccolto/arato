@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-q",
+    data: "23/10/2026",
+    titulo: "NF de saída: CST do ICMS escolhido na grade e Dados Adicionais completos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A última coluna da grade de itens agora é o CST ICMS. \"Auto\" segue a regra do CFOP; 040, 041 ou 051 escolhidos vão para a NF-e. Antes a coluna era cClassTrib, que nunca chegava à nota — por isso a remessa saía 041 mesmo com 051 escolhido." },
+      { tipo: "correcao", texto: "Tudo que é digitado na aba Dados Adicionais (Informações Complementares, Obs. Legal, Observações e Observação Manual) vai para as informações complementares da NF-e e fica salvo no rascunho. Antes só o primeiro campo ia, e o texto era apagado quando a remessa trocava o CFOP sozinha ao escolher o destinatário." },
+    ],
+    onde: "Documentos Fiscais → Notas de Saída (Venda e Remessa)",
+  },
+  {
     versao: "2026.10.23-p",
     data: "23/10/2026",
     titulo: "NF de entrada: IE do XML, bomba por fazenda; MDF-e encerra no destino",

@@ -112,7 +112,7 @@ const inputSt: React.CSSProperties = {
 const labelSt: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
 // ── NF-e Saída — tipos ────────────────────────────────────────────────────────
-type NFeItem = { id: string; tipo_item: string; item: string; ncm: string; quantidade: string; unidade: string; valor_unitario: string; valor_total: number; valor_financeiro: number; cclass_trib: string; valor_desconto?: number };
+type NFeItem = { id: string; tipo_item: string; item: string; ncm: string; quantidade: string; unidade: string; valor_unitario: string; valor_total: number; valor_financeiro: number; cclass_trib: string; valor_desconto?: number; cst_icms?: string };
 type TabNFe = "produtor"|"destinatario"|"operacoes"|"transportador"|"retirada"|"fiscal"|"obs"|"pontualidade";
 
 const FVENDA_INICIAL = {
@@ -244,7 +244,7 @@ function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}, logoUrl?: string | 
   const itensHtml = itens.map((it, idx) => {
     const itCfopD = (it.cfop ?? "").replace(/\D/g, "");
     const itCfopP = itCfopD.substring(0, 4);
-    const itCst   = itCfopD ? cstExibicaoPorCfop(itCfopD) : defCst;
+    const itCst   = (it as { cst?: string }).cst || (itCfopD ? cstExibicaoPorCfop(itCfopD) : defCst);
     const qtdFmt  = it.quantidade > 0 ? it.quantidade.toLocaleString("pt-BR", { minimumFractionDigits: 3 }) : "—";
     const vlUFmt  = it.valor_unitario > 0 ? it.valor_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 4 }) : "—";
     const vlTFmt  = it.valor_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
@@ -906,6 +906,16 @@ function FiscalInner() {
     setNfeItens(p => [...p, calcItem(novoItem)]);
     setNovoItem({ tipo_item: "Produto", item: "", ncm: "1201.90.00", quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040" });
   }
+  // CST do ICMS por item: "Automático" segue a regra do CFOP (lib/nfe/cst-por-cfop); 040/041/051 vão para o XML
+  // como escolhidos. Antes a coluna era cClassTrib, que nunca chegava à NF-e — escolher 051 não mudava nada.
+  function opcoesCstIcms() {
+    return [
+      <option key="" value="">Auto ({cstExibicaoPorCfop(fVenda.cfop)})</option>,
+      <option key="040" value="040">040 — Isenta</option>,
+      <option key="041" value="041">041 — Não tributada</option>,
+      <option key="051" value="051">051 — Diferimento</option>,
+    ];
+  }
   function removeItem(id: string) { setNfeItens(p => p.filter(i => i.id !== id)); }
   function saveEditItem(updated: NFeItem) {
     const vt = Math.round(Number(updated.quantidade) * desmascarar(updated.valor_unitario) * 100) / 100;
@@ -929,7 +939,16 @@ function FiscalInner() {
   // Auto-fill CFOP → natureza + obs. legal
   function onCfopChange(cfop: string) {
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === cfop);
-    fv({ cfop, natureza_texto: nat?.descricao ?? "", observacao: nat?.obs ?? fVenda.observacao });
+    // Troca só o texto legal do CFOP anterior; o que o usuário escreveu nas Informações Complementares fica.
+    // Achado real 23/10/2026: na remessa o CFOP troca sozinho 6.905→5.905 ao escolher o destinatário e
+    // apagava o texto já digitado.
+    const anterior = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop)?.obs ?? "";
+    const atual = fVenda.observacao ?? "";
+    const novoTexto = nat?.obs ?? "";
+    const observacao = !atual.trim() || atual.trim() === anterior.trim() ? (novoTexto || atual)
+      : anterior && atual.includes(anterior) ? atual.replace(anterior, novoTexto)
+      : atual;
+    fv({ cfop, natureza_texto: nat?.descricao ?? "", observacao });
   }
 
   // Remessa: troca 6.905 ⇄ 5.905 sozinho assim que a UF do destinatário
@@ -1311,12 +1330,20 @@ function FiscalInner() {
         cclass_trib: "040",
         valor_total: i.valor_total,
         valor_desconto: i.valor_desconto || undefined,
+        cst_icms: i.cst || undefined,
         valor_financeiro: Math.round((i.valor_total - (i.valor_desconto ?? 0)) * 100) / 100,
       })));
     }
     setBuscaPessoa(""); setDropdownPessoa(false);
     setTabNFe("produtor");
     setModalVenda(true);
+  }
+
+  // Texto de Dados Adicionais que vai na NF-e (infCpl) e fica gravado na nota: Informações Complementares +
+  // Obs. Legal + Observações + Observação Manual. Antes só o primeiro ia — o resto da aba se perdia ao salvar.
+  function textoDadosAdicionais(): string {
+    const partes = [fVenda.observacao, fVenda.obs_legal, fVenda.observacoes, fVenda.obs_manual].map(t => (t ?? "").trim()).filter(Boolean);
+    return partes.filter((t, i) => partes.indexOf(t) === i).join(" | ");
   }
 
   // Salvar rascunho — grava no DB sem chamar SEFAZ
@@ -1329,6 +1356,7 @@ function FiscalInner() {
       unidade: i.unidade.toUpperCase(), quantidade: Number(i.quantidade),
       valor_unitario: desmascarar(i.valor_unitario),
       ...(i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}),
+      ...(i.cst_icms ? { cst_icms: i.cst_icms.slice(-2) } : {}),
       ...(["5.556","6.556"].includes(fVenda.cfop) ? {
         pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
         pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
@@ -1366,9 +1394,9 @@ function FiscalInner() {
         valor_total: valorTotal,
         data_emissao: fVenda.data_emissao || TODAY,
         status: "em_digitacao",
-        observacao: fVenda.observacao || undefined,
+        observacao: textoDadosAdicionais() || undefined,
         auto: false,
-        itens_json: itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}) })),
+        itens_json: itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}), ...("cst_icms" in i && i.cst_icms ? { cst: `0${i.cst_icms}` } : {}) })),
         dados_nf_json: {
           modulo_key: moduloKeyAtivo,
           rascunho: true,
@@ -1438,6 +1466,7 @@ function FiscalInner() {
       quantidade:     Number(i.quantidade),
       valor_unitario: desmascarar(i.valor_unitario),
       ...(i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}),
+      ...(i.cst_icms ? { cst_icms: i.cst_icms.slice(-2) } : {}),
       ...(["5.556","6.556"].includes(fVenda.cfop) ? {
         pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
         pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
@@ -1487,7 +1516,7 @@ function FiscalInner() {
           itens:    itensPayload,
           natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
           inf_cpl:  [
-            fVenda.observacao || "",
+            textoDadosAdicionais(),
             fVenda.local_entrega.trim()
               ? `LOCAL DE ENTREGA: ${fVenda.local_entrega.trim()}`
               : "",
@@ -1537,9 +1566,9 @@ function FiscalInner() {
         status:            modoContingencia ? "contingencia" : (resultado.sucesso ? "autorizada" : "rejeitada"),
         chave_acesso:      resultado.chave    ?? undefined,
         xml_url:           resultado.xmlUrl   ?? undefined,
-        observacao:        fVenda.observacao  || undefined,
+        observacao:        textoDadosAdicionais() || undefined,
         auto:              false,
-        itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}) })),
+        itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}), ...("cst_icms" in i && i.cst_icms ? { cst: `0${i.cst_icms}` } : {}) })),
         dados_nf_json:     {
           modulo_key:           moduloKeyAtivo,
           protocolo_autorizacao: resultado.protocolo   || undefined,
@@ -1595,7 +1624,7 @@ function FiscalInner() {
             destinatario_uf: fVenda.dest_uf || undefined,
             valor_total: valorTotal,
             natureza_remessa: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
-            observacao: fVenda.observacao || undefined,
+            observacao: textoDadosAdicionais() || undefined,
             status: "emitida",
           });
         } catch { /* não bloqueia o fluxo */ }
@@ -3127,7 +3156,7 @@ function FiscalInner() {
                     <OperationalGrid data-arato-grid="true" style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid #E0E4EE" }}>
-                          {["Tipo Item","Item","NCM","Quantidade","Un.","Valor Unitário","Valor Total","Valor Financeiro","cClassTrib"].map(h => (
+                          {["Tipo Item","Item","NCM","Quantidade","Un.","Valor Unitário","Valor Total","Valor Financeiro","CST ICMS"].map(h => (
                             <th key={h} style={{ padding: "6px 10px", textAlign: h==="Quantidade"||h==="Valor Unitário"||h==="Valor Total"||h==="Valor Financeiro" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{h}</th>
                           ))}
                           <th style={{ width: 40 }}></th>
@@ -3165,7 +3194,9 @@ function FiscalInner() {
                           </td>
                           <td style={{ padding: "4px 6px", textAlign:"right", color:"var(--text-muted)" }}>—</td>
                           <td style={{ padding: "4px 6px" }}>
-                            <input style={{ ...inSt, width: 60 }} value={novoItem.cclass_trib} onChange={e => setNovoItem(p => ({...p, cclass_trib:e.target.value}))} />
+                            <SelectField style={{ ...inSt, width: 110 }} value={novoItem.cst_icms ?? ""} onChange={e => setNovoItem(p => ({...p, cst_icms: e.target.value || undefined}))} title="CST do ICMS deste item na NF-e">
+                              {opcoesCstIcms()}
+                            </SelectField>
                           </td>
                           <td style={{ padding: "4px 6px", textAlign:"center" }}>
                             <OperationalButton data-arato-button="primary" onClick={addItem} title="Adicionar item"
@@ -3185,7 +3216,12 @@ function FiscalInner() {
                             <td style={{ padding: "5px 10px", textAlign:"right" }}>{fmtMoeda(desmascarar(it.valor_unitario))}</td>
                             <td style={{ padding: "5px 10px", textAlign:"right", fontWeight:600 }}>{fmtMoeda(it.valor_total)}</td>
                             <td style={{ padding: "5px 10px", textAlign:"right" }}>{fmtMoeda(it.valor_financeiro)}</td>
-                            <td style={{ padding: "5px 10px", color: "var(--text-2)", fontSize: 11 }}>{it.cclass_trib}</td>
+                            <td style={{ padding: "3px 6px" }}>
+                              <SelectField style={{ ...inSt, width: 110, fontSize: 11 }} value={it.cst_icms ?? ""} title="CST do ICMS deste item na NF-e"
+                                onChange={e => setNfeItens(p => p.map(x => x.id === it.id ? { ...x, cst_icms: e.target.value || undefined } : x))}>
+                                {opcoesCstIcms()}
+                              </SelectField>
+                            </td>
                             <td style={{ padding: "4px 6px", textAlign:"center" }}>
                               <OperationalButton data-arato-button="secondary" onClick={() => setEditItemModal({...it})} title="Editar"
                                 style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0D0D0D", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</OperationalButton>

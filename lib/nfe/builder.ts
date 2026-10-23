@@ -66,6 +66,8 @@ export interface ItemNFe {
   /** CST 20 (CFOP 5556/6556): % de redução da base de cálculo (obrigatório) e alíquota do ICMS (padrão 17% interno / 12% interestadual). */
   pRedBC?: number;
   pICMS?: number;
+  /** CST do ICMS escolhido pelo usuário (40, 41 ou 51). Sem ele, vale a regra por CFOP (icmsRule). */
+  cst_icms?: string;
   ibsCbs?: IBSCBSItem;
 }
 
@@ -337,6 +339,21 @@ function icmsRule(cfop: string, isNaoContribuinte = false, pRedBC?: number, pICM
   };
 }
 
+// CST escolhido à mão na tela de emissão (só os que não têm imposto próprio a destacar): 40 isento,
+// 41 não tributado, 51 diferido 100% (Decreto MT 4.540/2004, mesma montagem da venda interna).
+export const CSTS_ICMS_MANUAIS = ["40", "41", "51"] as const;
+function icmsRulePorCst(cst: string): ICMSRule | null {
+  if (cst === "40" || cst === "41") return { cst, xml: () => `<ICMS40><orig>0</orig><CST>${cst}</CST></ICMS40>` };
+  if (cst === "51") return {
+    cst: "51",
+    xml: (vBC) => {
+      const vICMSOp = fmtVal(vBC * 12 / 100);
+      return `<ICMS51><orig>0</orig><CST>51</CST><modBC>3</modBC><vBC>${fmtVal(vBC)}</vBC><pICMS>12.00</pICMS><vICMSOp>${vICMSOp}</vICMSOp><pDif>100.00</pDif><vICMSDif>${vICMSOp}</vICMSDif><vICMS>0.00</vICMS></ICMS51>`;
+    },
+  };
+  return null;
+}
+
 // ─── Builder principal ────────────────────────────────────────────────────────
 
 export function buildNFe(input: NFeInput): NFeBuiltResult {
@@ -438,7 +455,8 @@ export function buildNFe(input: NFeInput): NFeBuiltResult {
     vProdBrutoTotal += vProdBruto;
     vDescTotal      += vDescItem;
 
-    const rule = icmsRule(item.cfop, indIEDest === "9", item.pRedBC, item.pICMS);
+    const cstManual = String(item.cst_icms ?? "").replace(/\D/g, "").slice(-2);
+    const rule = (cstManual && icmsRulePorCst(cstManual)) || icmsRule(item.cfop, indIEDest === "9", item.pRedBC, item.pICMS);
     // BC = vProd líquido (após desconto) para CST 00/51; CST 20 usa a base reduzida
     const vBC = (rule.cst === "00" || rule.cst === "51") ? vProdLiq : (rule.baseCalc ? rule.baseCalc(vProdLiq) : 0);
     // <ICMSTot><vBC> tem que bater com a soma do <vBC> de TODOS os itens que

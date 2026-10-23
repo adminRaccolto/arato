@@ -748,6 +748,7 @@ export type NotaFiscal = {
     item: string; ncm: string; cfop: string; unidade: string;
     quantidade: number; valor_unitario: number; valor_total: number;
     valor_desconto?: number; // desconto do item (vDesc) — valor_total é o bruto
+    cst?: string;            // CST do ICMS escolhido na emissão (3 dígitos, ex.: "051"); sem ele vale a regra do CFOP
   }>;
   dados_nf_json?: {
     // emitente
