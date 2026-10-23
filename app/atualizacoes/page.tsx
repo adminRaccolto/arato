@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-l",
+    data: "23/10/2026",
+    titulo: "Excluir NF sem título parava no meio",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Excluir uma NF de entrada que não tinha título ligado dava erro no meio da operação: o estoque e os títulos já tinham sido removidos, mas a NF e os itens ficavam no sistema, ainda como processada. Agora a exclusão vai até o fim." },
+    ],
+    onde: "Documentos Fiscais → NF de Produtos → Excluir",
+  },
+  {
     versao: "2026.10.23-k",
     data: "23/10/2026",
     titulo: "A mesma NF nunca é processada duas vezes",

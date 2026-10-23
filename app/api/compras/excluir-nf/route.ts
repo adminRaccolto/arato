@@ -191,7 +191,9 @@ export async function POST(req: NextRequest) {
     await excluirTitulosDaNf(sb, nf_id);
 
     // 6. Pendências fiscais (criadas pelo fluxo WhatsApp)
-    await falharSeErro(sb.from("pendencias_fiscais").delete().eq("lancamento_id", nfRow?.lancamento_id ?? "").neq("lancamento_id", ""), "excluir pendencias_fiscais");
+    // Só quando a NF tinha título: .eq("lancamento_id", "") quebrava (uuid inválido) e a exclusão parava no meio,
+    // depois de já ter apagado estoque e títulos — a NF ficava "processada" sem nada.
+    if (nfRow?.lancamento_id) await falharSeErro(sb.from("pendencias_fiscais").delete().eq("lancamento_id", nfRow.lancamento_id), "excluir pendencias_fiscais");
     await falharSeErro(sb.from("pendencias_fiscais").delete().eq("nf_entrada_id", nf_id), "excluir pendencias_fiscais");
     // 7. Itens da NF
     await falharSeErro(sb.from("nf_entrada_itens").delete().eq("nf_entrada_id", nf_id), "excluir nf_entrada_itens");
