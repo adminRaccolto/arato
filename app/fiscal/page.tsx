@@ -15,6 +15,7 @@ import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor, ProdutorIE, Pessoa, Deposito } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
+import { ratearDescontoNf, emissorDoProdutor } from "../../lib/nfe/remessa";
 
 // ── Naturezas fiscais ────────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -111,7 +112,7 @@ const inputSt: React.CSSProperties = {
 const labelSt: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
 // ── NF-e Saída — tipos ────────────────────────────────────────────────────────
-type NFeItem = { id: string; tipo_item: string; item: string; ncm: string; quantidade: string; unidade: string; valor_unitario: string; valor_total: number; valor_financeiro: number; cclass_trib: string };
+type NFeItem = { id: string; tipo_item: string; item: string; ncm: string; quantidade: string; unidade: string; valor_unitario: string; valor_total: number; valor_financeiro: number; cclass_trib: string; valor_desconto?: number };
 type TabNFe = "produtor"|"destinatario"|"operacoes"|"transportador"|"retirada"|"fiscal"|"obs"|"pontualidade";
 
 const FVENDA_INICIAL = {
@@ -808,6 +809,15 @@ function FiscalInner() {
         (i) => !i.tipo_apropiacao || i.tipo_apropiacao === "estoque" || i.tipo_apropiacao === "maquinario",
       );
       if (estoqueItens.length > 0) {
+        // Desconto da NF de origem vem só no cabeçalho (valor_desconto) — rateia por item, proporcional
+        // ao valor de cada um, pra remessa sair com o mesmo valor líquido da compra (achado real 23/10/2026:
+        // remessa saía com o valor cheio dos produtos, ignorando o desconto da NF de referência).
+        const descontos = ratearDescontoNf(
+          Number((nf as { valor_desconto?: number } | null)?.valor_desconto ?? 0),
+          Number((nf as { valor_produtos?: number } | null)?.valor_produtos ?? 0),
+          itensEntrada.map(i => Number((i as any).valor_total ?? 0)),
+        );
+        const descontoDe = (i: typeof itensEntrada[number]) => descontos[itensEntrada.indexOf(i)] ?? 0;
         setNfeItens(estoqueItens.map((i, idx) => ({
           id: String(idx),
           tipo_item: "Produto" as const,
@@ -818,7 +828,8 @@ function FiscalInner() {
           valor_unitario: String(((i as any).valor_unitario ?? 0).toFixed(2)).replace(".", ","),
           cclass_trib: "041",
           valor_total: (i as any).valor_total ?? 0,
-          valor_financeiro: (i as any).valor_total ?? 0,
+          valor_desconto: descontoDe(i) || undefined,
+          valor_financeiro: Math.round((((i as any).valor_total ?? 0) - descontoDe(i)) * 100) / 100,
         })));
       }
       setRemessaModo({
@@ -882,7 +893,8 @@ function FiscalInner() {
   const totalProdutos   = nfeItens.filter(i => i.tipo_item !== "Serviço").reduce((s, i) => s + i.valor_total, 0);
   const totalServicos   = nfeItens.filter(i => i.tipo_item === "Serviço").reduce((s, i) => s + i.valor_total, 0);
   const totalFinanceiro = nfeItens.reduce((s, i) => s + i.valor_financeiro, 0);
-  const totalNota       = totalProdutos + totalServicos;
+  const totalDesconto   = Math.round(nfeItens.reduce((s, i) => s + (i.valor_desconto ?? 0), 0) * 100) / 100;
+  const totalNota       = totalProdutos + totalServicos - totalDesconto;
 
   // Helpers de itens
   function calcItem(it: Omit<NFeItem,"id"|"valor_total"|"valor_financeiro">): NFeItem {
@@ -897,7 +909,7 @@ function FiscalInner() {
   function removeItem(id: string) { setNfeItens(p => p.filter(i => i.id !== id)); }
   function saveEditItem(updated: NFeItem) {
     const vt = Math.round(Number(updated.quantidade) * desmascarar(updated.valor_unitario) * 100) / 100;
-    setNfeItens(p => p.map(i => i.id === updated.id ? { ...updated, valor_total: vt, valor_financeiro: vt } : i));
+    setNfeItens(p => p.map(i => i.id === updated.id ? { ...updated, valor_total: vt, valor_financeiro: Math.round((vt - (updated.valor_desconto ?? 0)) * 100) / 100 } : i));
     setEditItemModal(null);
   }
 
@@ -1042,6 +1054,24 @@ function FiscalInner() {
   // ── Modal upload certificado ─────────────────────────────────────
   const [modalCert,     setModalCert]     = useState(false);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
+  // Nota própria sai em nome do produtor escolhido: o emitente do topo acompanha o CPF/CNPJ dele. Achado real
+  // 23/10/2026 (remessa Grupo Ogliari): produtor DIRCEU OGLIARI na aba Produtor e emitente DIRCEU OGLIARI JUNIOR
+  // no topo — a IE de um ia com o cadastro fiscal do outro e a SEFAZ nem chegava a ser chamada.
+  useEffect(() => {
+    if (fVenda.tipo_nota !== "propria" || !fVenda.produtor_id) return;
+    const key = emissorDoProdutor(produtores.find(p => p.id === fVenda.produtor_id)?.cpf_cnpj, emissores, allEmitCfgs);
+    if (key) setModuloKeyAtivo(key);
+  }, [fVenda.produtor_id, fVenda.tipo_nota, produtores, emissores, allEmitCfgs]);
+  // Produtor e emitente de titulares diferentes nunca seguem para emissão — mensagem diz qual é qual.
+  function divergenciaProdutorEmitente(): string | null {
+    if (fVenda.tipo_nota !== "propria" || !fVenda.produtor_id) return null;
+    const prod = produtores.find(p => p.id === fVenda.produtor_id);
+    const docProd = (prod?.cpf_cnpj ?? "").replace(/\D/g, "");
+    const cfg = allEmitCfgs[moduloKeyAtivo] ?? {};
+    const docEmit = (cfg.cpf_cnpj_emitente ?? "").replace(/\D/g, "");
+    if (!docProd || !docEmit || docProd === docEmit) return null;
+    return `⚠ O produtor da aba Produtor (${prod?.nome} — ${prod?.cpf_cnpj}) é diferente do emitente selecionado no topo (${cfg.razao_social} — ${cfg.cpf_cnpj_emitente}).\n\nSelecione no topo o emitente do mesmo CPF/CNPJ do produtor. Se ele não aparece na lista, configure-o em Configurações → Parâmetros do Sistema → Fiscal.`;
+  }
   const [empresasCert,  setEmpresasCert]  = useState<{ id: string; razao_social: string | null; nome: string | null; cpf_cnpj: string | null }[]>([]);
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [buscaPessoa,   setBuscaPessoa]   = useState("");
@@ -1280,7 +1310,8 @@ function FiscalInner() {
         valor_unitario: String(i.valor_unitario).replace(".", ","),
         cclass_trib: "040",
         valor_total: i.valor_total,
-        valor_financeiro: i.valor_total,
+        valor_desconto: i.valor_desconto || undefined,
+        valor_financeiro: Math.round((i.valor_total - (i.valor_desconto ?? 0)) * 100) / 100,
       })));
     }
     setBuscaPessoa(""); setDropdownPessoa(false);
@@ -1292,10 +1323,12 @@ function FiscalInner() {
   const salvarRascunho = async () => {
     if (!fVenda.destinatario) { alert("Informe o Destinatário antes de salvar o rascunho."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
+    { const div = divergenciaProdutorEmitente(); if (div) { alert(div); return; } }
     let itensPayload = nfeItens.map(i => ({
       descricao: i.item, ncm: i.ncm, cfop: fVenda.cfop,
       unidade: i.unidade.toUpperCase(), quantidade: Number(i.quantidade),
       valor_unitario: desmascarar(i.valor_unitario),
+      ...(i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}),
       ...(["5.556","6.556"].includes(fVenda.cfop) ? {
         pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
         pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
@@ -1305,7 +1338,7 @@ function FiscalInner() {
       const ncmDesc = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
       itensPayload = [{ descricao: ncmDesc, ncm: fVenda.ncm, cfop: fVenda.cfop, unidade: fVenda.unidade.toUpperCase(), quantidade: Number(fVenda.quantidade), valor_unitario: desmascarar(fVenda.valorUnitario) }];
     }
-    const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0) * 100) / 100;
+    const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario - ("valor_desconto" in i ? i.valor_desconto ?? 0 : 0), 0) * 100) / 100;
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
     setSalvando(true);
     try {
@@ -1335,7 +1368,7 @@ function FiscalInner() {
         status: "em_digitacao",
         observacao: fVenda.observacao || undefined,
         auto: false,
-        itens_json: itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100 })),
+        itens_json: itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}) })),
         dados_nf_json: {
           modulo_key: moduloKeyAtivo,
           rascunho: true,
@@ -1371,6 +1404,7 @@ function FiscalInner() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Emitir venda)", perigo: false }))) return;
     if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
+    { const div = divergenciaProdutorEmitente(); if (div) { alert(div); return; } }
     // Validação mínima no cliente — só bloqueia o que o servidor não consegue suprir com default
     // (CRT default="3", municipio_ibge default="5106455", etc. são preenchidos no server)
     const emitCfgAtivo = allEmitCfgs[moduloKeyAtivo] ?? {};
@@ -1403,6 +1437,7 @@ function FiscalInner() {
       unidade:        i.unidade.toUpperCase(),
       quantidade:     Number(i.quantidade),
       valor_unitario: desmascarar(i.valor_unitario),
+      ...(i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}),
       ...(["5.556","6.556"].includes(fVenda.cfop) ? {
         pRedBC: parseFloat(fVenda.red_bc.replace(",", ".")) || undefined,
         pICMS: parseFloat(fVenda.aliq_icms.replace(",", ".")) || undefined,
@@ -1413,7 +1448,7 @@ function FiscalInner() {
       const ncmDesc = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
       itensPayload = [{ descricao: ncmDesc, ncm: fVenda.ncm, cfop: fVenda.cfop, unidade: fVenda.unidade.toUpperCase(), quantidade: Number(fVenda.quantidade), valor_unitario: desmascarar(fVenda.valorUnitario) }];
     }
-    const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0) * 100) / 100;
+    const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario - ("valor_desconto" in i ? i.valor_desconto ?? 0 : 0), 0) * 100) / 100;
     const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
 
     // IBS/CBS — Reforma Tributária LC 214/2024 + NT 2025.001
@@ -1504,7 +1539,7 @@ function FiscalInner() {
         xml_url:           resultado.xmlUrl   ?? undefined,
         observacao:        fVenda.observacao  || undefined,
         auto:              false,
-        itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100 })),
+        itens_json:        itensPayload.map(i => ({ item: i.descricao, ncm: i.ncm, cfop: i.cfop, unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario, valor_total: Math.round(i.quantidade * i.valor_unitario * 100) / 100, ...("valor_desconto" in i && i.valor_desconto ? { valor_desconto: i.valor_desconto } : {}) })),
         dados_nf_json:     {
           modulo_key:           moduloKeyAtivo,
           protocolo_autorizacao: resultado.protocolo   || undefined,
@@ -3168,6 +3203,7 @@ function FiscalInner() {
                 <div data-arato-dialog-body="true" style={{ background: "var(--bg-page)", borderTop: "1px solid #D0D5DE", padding: "6px 16px", display: "flex", alignItems: "center", gap: 24, flexShrink: 0, fontSize: 12 }}>
                   <span style={{ color: "var(--text-2)" }}>Vl. Produtos: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalProdutos)}</strong></span>
                   <span style={{ color: "var(--text-2)" }}>Vr. Serviços: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalServicos)}</strong></span>
+                  {totalDesconto > 0 && <span style={{ color: "var(--text-2)" }}>Desconto: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalDesconto)}</strong></span>}
                   <span style={{ color: "var(--text-2)" }}>Vl. Financeiro: <strong style={{ color: "var(--text-1)" }}>{fmtMoeda(totalFinanceiro)}</strong></span>
                   <span style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13 }}>Total Nota Fiscal: <span style={{ color: "#16A34A" }}>{fmtMoeda(totalNota)}</span></span>
                 </div>

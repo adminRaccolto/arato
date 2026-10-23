@@ -747,6 +747,7 @@ export type NotaFiscal = {
   itens_json?: Array<{
     item: string; ncm: string; cfop: string; unidade: string;
     quantidade: number; valor_unitario: number; valor_total: number;
+    valor_desconto?: number; // desconto do item (vDesc) — valor_total é o bruto
   }>;
   dados_nf_json?: {
     // emitente

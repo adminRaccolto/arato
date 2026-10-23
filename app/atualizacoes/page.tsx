@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-o",
+    data: "23/10/2026",
+    titulo: "NF de Remessa: emitente certo e desconto da NF de origem",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Na nota própria, o emitente do topo passa a acompanhar o produtor escolhido na aba Produtor. Antes, o topo podia ficar com outro titular (ex.: produtor DIRCEU OGLIARI e emitente DIRCEU OGLIARI JUNIOR) e a emissão parava com \"A IE informada não identifica um único estabelecimento desse titular\". Se o usuário trocar o emitente para outro CPF/CNPJ, o sistema avisa antes de emitir." },
+      { tipo: "correcao", texto: "A NF de Remessa montada a partir de uma NF de entrada agora leva o desconto da nota de origem, rateado por item conforme o valor de cada um. Antes os produtos saíam com o valor cheio. O desconto aparece no rodapé da grade de itens e vai na NF-e como desconto do item." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro → Emitir NF Remessa",
+  },
+  {
     versao: "2026.10.23-n",
     data: "23/10/2026",
     titulo: "Estoque: relatório de movimentação com todas as fazendas e o período completo",
