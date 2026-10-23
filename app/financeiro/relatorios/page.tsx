@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import MultiSelectDropdown from "../../../components/MultiSelectDropdown";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../../components/OperationalUI";
@@ -1113,7 +1114,7 @@ function FinanceiroRelatoriosInner() {
                     <script>window.onload = () => window.print();</script>
                     </body></html>`;
                   const w = window.open("", "_blank", "width=1100,height=720");
-                  if (w) { w.document.write(html); w.document.close(); }
+                  if (w) { w.document.write(aplicarPadraoRelatorio(html, window.location.origin)); w.document.close(); }
                 };
 
                 return (

@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 // ═══════════════════════════════════════════════════════════════════════════
 // Aba "Posição de Comercialização" do espaço dedicado de Relatórios
 // (Financeiro → Relatórios Financeiros → Posição de Comercialização).
@@ -211,9 +212,6 @@ ${fTipo === "analitico" ? `
   </tr></thead>
   <tbody>${linhasDetalhe}</tbody>
 </table>` : ""}
-<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#aaa;text-align:center">
-  Arato · Gestão Agrícola de Precisão
-</div>
 </div></div>
 </body></html>`;
   }
@@ -235,7 +233,7 @@ ${fTipo === "analitico" ? `
       if (fFormato === "pdf") {
         const win = window.open("", "_blank");
         if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-        win.document.write(buildHtml(contratos, `${titulo} — Arato`));
+        win.document.write(aplicarPadraoRelatorio(buildHtml(contratos, `${titulo} — Arato`), window.location.origin));
         win.document.close();
         win.focus();
       } else {

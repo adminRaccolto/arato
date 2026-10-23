@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 // ═══════════════════════════════════════════════════════════════════════════
@@ -811,7 +812,7 @@ export default function ComprasPage() {
     const pagina = buildPaginaPedidoHtml(ped, itens, nfs, nfItens, "analitico");
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(buildRelatorioPedidosHtml([pagina], `Pedido ${ped.nr_pedido || `#${ped.numero}`} — Arato`));
+    win.document.write(aplicarPadraoRelatorio(buildRelatorioPedidosHtml([pagina], `Pedido ${ped.nr_pedido || `#${ped.numero}`} — Arato`), window.location.origin));
     win.document.close();
     win.focus();
   };

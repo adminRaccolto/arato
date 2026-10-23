@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 // ═══════════════════════════════════════════════════════════════════════════
 // Aba "Pedidos de Compra" do espaço dedicado de Relatórios
 // (Financeiro → Relatórios Financeiros → Pedidos de Compra).
@@ -345,9 +346,6 @@ export default function PedidosCompraRelatorioTab() {
     { l: "% Recebido", v: `${Math.round(pctRecebido)}%`, hl: false },
   ].map(s => `<div style="border:1px solid #DDE2EE;border-radius:4px;padding:6px 9px;background:${s.hl ? "#111111" : "#fff"};color:${s.hl ? "#fff" : "#111111"}"><div style="font-size:7pt;color:${s.hl ? "rgba(255,255,255,0.8)" : "#888"};margin-bottom:2px">${s.l}</div><div style="font-size:11pt;font-weight:700">${s.v}</div></div>`).join("")}
 </div>
-<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#aaa;text-align:center">
-  Arato · Gestão Agrícola de Precisão
-</div>
 </div>`;
   }
 
@@ -457,9 +455,6 @@ export default function PedidosCompraRelatorioTab() {
     <td style="background:#111111;border:1px solid #111111"></td>
   </tr></tfoot>
 </table>
-<div style="margin-top:14px;padding-top:6px;border-top:1px solid #DDE2EE;font-size:7pt;color:#aaa;text-align:center">
-  Arato · Gestão Agrícola de Precisão
-</div>
 </div>`;
   }
 
@@ -521,7 +516,7 @@ export default function PedidosCompraRelatorioTab() {
           const pagina = buildPaginaConsolidadoHtml(linhas, titulo, fTipo);
           const win = window.open("", "_blank");
           if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-          win.document.write(buildRelatorioHtml([pagina], `Consolidado por Insumo — ${titulo} — Arato`));
+          win.document.write(aplicarPadraoRelatorio(buildRelatorioHtml([pagina], `Consolidado por Insumo — ${titulo} — Arato`), window.location.origin));
           win.document.close();
           win.focus();
         } else {
@@ -571,7 +566,7 @@ export default function PedidosCompraRelatorioTab() {
         const paginas = dados.map(d => buildPaginaPedidoHtml(d.ped, d.itens, d.nfs, d.nfItens));
         const win = window.open("", "_blank");
         if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
-        win.document.write(buildRelatorioHtml(paginas, `${titulo} — Arato`));
+        win.document.write(aplicarPadraoRelatorio(buildRelatorioHtml(paginas, `${titulo} — Arato`), window.location.origin));
         win.document.close();
         win.focus();
       } else {

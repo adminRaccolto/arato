@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -1743,7 +1744,7 @@ export default function BI() {
 
             const w = window.open("", "_blank", "width=1200,height=800");
             if (!w) return;
-            w.document.write(html);
+            w.document.write(aplicarPadraoRelatorio(html, window.location.origin));
             w.document.close();
             w.onload = () => { w.focus(); w.print(); };
           }
@@ -2285,7 +2286,7 @@ export default function BI() {
 
                           const w = window.open("", "_blank", "width=1100,height=750");
                           if (!w) return;
-                          w.document.write(html);
+                          w.document.write(aplicarPadraoRelatorio(html, window.location.origin));
                           w.document.close();
                           w.onload = () => { w.focus(); w.print(); };
                         }
@@ -5468,7 +5469,7 @@ export default function BI() {
           const thPrint = "padding:5px 6px;color:#fff;font-weight:700;font-size:9px;white-space:nowrap;";
           const colsExtrasHead = isUSD ? `<th style="${thPrint}text-align:right">Equiv. R$</th><th style="${thPrint}text-align:right">PTAX ref.</th>` : "";
           const emissao = new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-          win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+          win.document.write(aplicarPadraoRelatorio(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Arato — ${c.descricao}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -5547,7 +5548,7 @@ export default function BI() {
     <div style="font-size:9px;color:#aaa">Gerado pelo Arato · ${new Date().toLocaleDateString("pt-BR")}</div>
   </div>
 </div></div>
-</body></html>`);
+</body></html>`, window.location.origin));
           win.document.close();
         };
 

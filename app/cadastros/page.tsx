@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalFilters, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -4425,7 +4426,7 @@ function CadastrosInner() {
                       }).join("");
                       const w = window.open("", "_blank", "width=900,height=700");
                       if (!w) return;
-                      w.document.write(`<!DOCTYPE html><html><head><title>Plano de Contas Gerencial</title>
+                      w.document.write(aplicarPadraoRelatorio(`<!DOCTYPE html><html><head><title>Plano de Contas Gerencial</title>
                         <style>body{font-family:Arial,sans-serif;margin:20px;font-size:12px}
                         h2{color:#111111;margin-bottom:4px}p{color:#888;font-size:11px;margin:0 0 14px}
                         table{width:100%;border-collapse:collapse}th{background:#111111;color:#fff;padding:7px 10px;text-align:left;font-size:11px}
@@ -4434,7 +4435,7 @@ function CadastrosInner() {
                         <p>Emitido em ${new Date().toLocaleDateString("pt-BR")} — ${sorted.length} operações</p>
                         <table><thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th>Telas</th><th>Tesouraria</th></tr></thead>
                         <tbody>${linhas}</tbody></table>
-                        <script>window.onload=function(){window.print();}<\/script></body></html>`);
+                        <script>window.onload=function(){window.print();}<\/script></body></html>`, window.location.origin));
                       w.document.close();
                     }}
                     style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer", fontWeight: 600 }}

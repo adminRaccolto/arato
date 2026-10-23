@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { hojeLocal } from "../../lib/data-local";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
@@ -444,7 +445,7 @@ export default function Financeiro() {
 
     const win = window.open("", "_blank", "width=820,height=680");
     if (!win) return;
-    win.document.write(`<!doctype html><html lang="pt-BR"><head>
+    win.document.write(aplicarPadraoRelatorio(`<!doctype html><html lang="pt-BR"><head>
       <meta charset="utf-8"/>
       <title>Simulações de Caixa — ${fazenda}</title>
       <style>
@@ -489,7 +490,7 @@ export default function Financeiro() {
       </div>
       <div class="footer">Arato · Simulações hipotéticas — não representam lançamentos financeiros reais</div>
       <script>window.onload = () => window.print();</script>
-    </body></html>`);
+    </body></html>`, window.location.origin));
     win.document.close();
   };
 

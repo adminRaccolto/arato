@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../../lib/print";
 import { hojeLocal } from "../../../../lib/data-local";
@@ -433,11 +434,6 @@ export default function RelAplicacoesPage() {
     <td class="r">${fmtN(stats.area,1)} ha</td>
   </tr></tfoot>
 </table>
-<div style="margin-top:12px;padding-top:6px;border-top:1px solid var(--border-table);display:flex;justify-content:space-between;align-items:center;font-size:7pt;color:#888">
-  ${logoAratoSrc ? `<img src="${logoAratoSrc}" style="height:20px;object-fit:contain">` : "<span></span>"}
-  <span>Arato — Gestão Agrícola de Precisão</span>
-  <span>Gerado em ${dataGeracao}</span>
-</div>
 </div></div>
 </body></html>`;
   };
@@ -590,7 +586,7 @@ export default function RelAplicacoesPage() {
     const imgArato = await loadImg("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png");
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(buildPrintHtml(imgArato));
+    win.document.write(aplicarPadraoRelatorio(buildPrintHtml(imgArato), window.location.origin));
     win.document.close();
     win.focus();
   };

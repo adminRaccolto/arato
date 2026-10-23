@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../lib/relatorios/layout";
 import { OperationalButton, OperationalGrid, OperationalHeading } from "../../components/OperationalUI";
 import SelectField from "../../components/SelectField";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -345,7 +346,7 @@ function ConfiguracoesInner() {
                       }).join("");
                       const w = window.open("", "_blank", "width=900,height=700");
                       if (!w) return;
-                      w.document.write(`<!DOCTYPE html><html><head><title>Plano de Contas</title>
+                      w.document.write(aplicarPadraoRelatorio(`<!DOCTYPE html><html><head><title>Plano de Contas</title>
                         <style>body{font-family:Arial,sans-serif;margin:20px}h2{color:#111111;margin-bottom:4px}
                         p{color:#888;font-size:11px;margin:0 0 14px}table{width:100%;border-collapse:collapse}
                         th{background:#111111;color:#fff;padding:7px 12px;text-align:left;font-size:11px}
@@ -354,7 +355,7 @@ function ConfiguracoesInner() {
                         <p>Emitido em ${new Date().toLocaleDateString("pt-BR")} · ${contasFiltradas.length} contas</p>
                         <table><thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Natureza</th><th>Operac.</th><th>LCDPR</th></tr></thead>
                         <tbody>${linhas}</tbody></table>
-                        <script>window.onload=function(){window.print();}<\/script></body></html>`);
+                        <script>window.onload=function(){window.print();}<\/script></body></html>`, window.location.origin));
                       w.document.close();
                     }}
                     className="no-print"

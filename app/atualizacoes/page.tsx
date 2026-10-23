@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-g",
+    data: "23/10/2026",
+    titulo: "Novo padrão visual dos relatórios impressos",
+    modulos: ["Relatórios"],
+    itens: [
+      { tipo: "melhoria", texto: "Os relatórios em PDF passam a seguir o mesmo padrão do relatório de Pedidos de Compra: tabelas leves (cabeçalho de coluna sem faixa escura, linhas finas), totais e agrupamentos em cinza claro, caixas de destaque claras e a logo da Arato pequena no rodapé de cada página. Cada relatório mantém o próprio cabeçalho e os próprios campos. Vale para CP/CR, Fluxo de Caixa, Posição Bancária, DFC, DRE, Gastos por Classificação, Manutenção, LCDPR, Processamento de NF, Endividamento, Aplicações por Ciclo, Posição de Comercialização, Pedidos de Compra (analítico e consolidado), impressão do pedido, Plano de Contas e impressões do BI." },
+    ],
+    onde: "Relatórios → Imprimir / PDF",
+  },
+  {
     versao: "2026.10.23-f",
     data: "23/10/2026",
     titulo: "Conciliação: baixa parcial de título de Empresa fica como Parcial",

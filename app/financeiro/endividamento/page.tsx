@@ -1,4 +1,5 @@
 "use client";
+import { aplicarPadraoRelatorio } from "../../../lib/relatorios/layout";
 import { useClienteRelatorio } from "../../../components/useClienteRelatorio";
 import { nomeRelatorio } from "../../../lib/print";
 import { hojeLocal } from "../../../lib/data-local";
@@ -472,7 +473,7 @@ export default function RelatorioEndividamento() {
       </tr>`;
     }
 
-    win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+    win.document.write(aplicarPadraoRelatorio(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>${nomeRelatorio("ENDIVIDAMENTO", clienteRelatorio, null, null, `${anoInicio || ""} A ${anoFim || ""}`)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -542,7 +543,7 @@ export default function RelatorioEndividamento() {
     <div style="margin-left:auto;font-size:8px;color:#aaa;align-self:flex-end">${new Date().toLocaleDateString("pt-BR")}</div>
   </div>
 </div></div>
-</body></html>`);
+</body></html>`, window.location.origin));
     win.document.close();
   }
 
