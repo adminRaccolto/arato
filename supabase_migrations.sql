@@ -17292,3 +17292,45 @@ DROP TRIGGER IF EXISTS audit_empresa_lancamentos ON empresa_lancamentos;
 CREATE TRIGGER audit_empresa_lancamentos AFTER INSERT OR UPDATE OR DELETE ON empresa_lancamentos FOR EACH ROW EXECUTE FUNCTION fn_audit_log();
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 361 — Saúde dos dados: achados do auditor automático (só equipe Raccolto)
+-- =============================================================================
+-- O auditor (lib/auditoria/saude) roda todo dia e grava aqui cada violação das regras (NF processada sem título,
+-- pagamento apagado, baixa perdida, estoque negativo por fazenda/depósito...). Um achado por (regra, chave): o mesmo
+-- problema não duplica a cada execução. Some da base → marcado resolvido automaticamente. Status manual: em_analise,
+-- resolvido ou ignorado (com motivo). Sem policy: só o servidor (chave de serviço) lê e grava, via /api/admin/saude-dados.
+CREATE TABLE IF NOT EXISTS auditoria_achados (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  regra           text NOT NULL,
+  chave           text NOT NULL,
+  conta_id        uuid,
+  fazenda_id      uuid,
+  titulo          text NOT NULL,
+  valor           numeric(15,2),
+  detalhe         jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status          text NOT NULL DEFAULT 'novo' CHECK (status IN ('novo','em_analise','resolvido','ignorado')),
+  motivo          text,
+  primeiro_em     timestamptz NOT NULL DEFAULT now(),
+  ultimo_em       timestamptz NOT NULL DEFAULT now(),
+  resolvido_em    timestamptz,
+  atualizado_por  text,
+  UNIQUE (regra, chave)
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_achados_status ON auditoria_achados(status);
+CREATE INDEX IF NOT EXISTS idx_auditoria_achados_conta ON auditoria_achados(conta_id);
+ALTER TABLE auditoria_achados ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS auditoria_execucoes (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  em          timestamptz NOT NULL DEFAULT now(),
+  origem      text,
+  abertos     integer,
+  novos       integer,
+  resolvidos  integer,
+  por_regra   jsonb,
+  duracao_ms  integer,
+  erro        text
+);
+ALTER TABLE auditoria_execucoes ENABLE ROW LEVEL SECURITY;
+NOTIFY pgrst, 'reload schema';
