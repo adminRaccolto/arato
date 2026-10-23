@@ -1,5 +1,8 @@
 // ─── Tipos ───────────────────────────────────────────────────
-export type NavLink     = { type?: "link";     id: string; label: string; path: string; moduleId?: string; disabled?: boolean };
+// bloco: nome do bloco dentro da seção do painel (ex.: relatórios agrupados pela tela de origem). Itens seguidos com o
+// mesmo bloco ficam juntos sob um separador (traço + nome); todo item do bloco leva o nome, para o separador aparecer
+// mesmo quando o primeiro item estiver oculto por permissão.
+export type NavLink     = { type?: "link";     id: string; label: string; path: string; moduleId?: string; disabled?: boolean; bloco?: string };
 export type NavDivider  = { type: "divider";   label: string };
 export type NavSubgroup = { type: "subgroup";  id: string; label: string; children: NavLink[]; moduleId?: string };
 export type NavChild    = NavLink | NavDivider | NavSubgroup;
@@ -157,11 +160,11 @@ export const NAV: NavItem[] = [
       // Mesmo padrão já usado no grupo Financeiro ("Relatórios Financeiros"
       // como única seção final).
       { type: "divider", label: "Relatórios" },
-      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque"                                          },
-      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex"                                   },
-      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos"                                    },
-      { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/relatorios/pedidos-compra",                       moduleId: "compras" },
-      { id: "com-rel-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"                         },
+      { id: "com-rel-pedidos",    label: "Pedidos de Compra",           path: "/relatorios/pedidos-compra",                       moduleId: "compras", bloco: "Compras" },
+      { id: "com-rel-posicao",    label: "Posição de Insumos",          path: "/estoque",                                         bloco: "Estoque" },
+      { id: "com-rel-kardex",     label: "Kardex (Ficha de Estoque)",   path: "/estoque/kardex",                                  bloco: "Estoque" },
+      { id: "com-rel-graos",      label: "Estoque de Grãos",            path: "/estoque/graos",                                   bloco: "Comercialização" },
+      { id: "com-rel-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf",                        bloco: "Integração de Documentos" },
     ],
   },
 

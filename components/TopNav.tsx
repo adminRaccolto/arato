@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import AppearanceSettings from "./AppearanceSettings";
 import ModernNavigation from "./ModernNavigation";
 import { useLayout } from "./LayoutProvider";
@@ -631,9 +631,17 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
                         <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                           {grupoAtual?.label}
                         </div>
-                        {grupoAtual?.items.filter(i => !i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId))).map(child => {
+                        {grupoAtual?.items.filter(i => !i.moduleId || (podeAcessar(i.moduleId) && podeAcessarPlano(i.moduleId))).map((child, idx, visiveis) => {
                           const ativoChild = isAtivo(child.path);
+                          // Separador de bloco (traço + nome em cinza claro) quando o bloco muda em relação ao item anterior
+                          const novoBloco = child.bloco && child.bloco !== visiveis[idx - 1]?.bloco;
                           return (
+                            <Fragment key={child.id}>
+                            {novoBloco && (
+                              <div style={{ margin: idx === 0 ? "2px 14px 2px" : "8px 14px 2px", borderTop: "0.5px solid #94A3B8", paddingTop: 5, fontSize: 10, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                                {child.bloco}
+                              </div>
+                            )}
                             <Link
                               key={child.id}
                               href={child.path}
@@ -650,6 +658,7 @@ function TopNavContent({ automacoesAtivas, modern }: { automacoesAtivas: number;
                             >
                               {child.label}
                             </Link>
+                            </Fragment>
                           );
                         })}
                       </div>
