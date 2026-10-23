@@ -23,23 +23,31 @@ async function carregar(sb: SupabaseClient, nfId: string) {
   return { prod: [...(prod ?? []), ...extraProd] as TituloProd[], emp: [...(emp ?? []), ...extraEmp] as TituloEmp[] };
 }
 
+export type TituloParaEstorno = { id: string; status: string; conciliado: boolean | null; lote_id: string | null; valor: number };
+
+/** O que impede apagar cada título: pago (inteiro ou parcial), conciliado com o extrato ou dentro de borderô. */
+export function motivosBloqueio(titulos: TituloParaEstorno[], lado: "produtor" | "empresa"): string[] {
+  const nome = lado === "produtor" ? "título a pagar" : "título da Empresa";
+  const pago = lado === "produtor" ? ["baixado", "parcial"] : ["pago", "parcial"];
+  return titulos.flatMap(t => {
+    const v = `R$ ${Number(t.valor).toFixed(2)}`;
+    if (pago.includes(t.status)) return [`${nome} de ${v} já ${lado === "produtor" ? "baixado" : "pago"}`];
+    if (t.conciliado) return [`${nome} de ${v} conciliado com o extrato`];
+    if (t.lote_id) return [`${nome} de ${v} em borderô`];
+    return [];
+  });
+}
+
+export function mensagemBloqueio(problemas: string[], documento = "a NF"): string | null {
+  return problemas.length
+    ? `Não dá para desfazer ${documento}: há ${problemas.join("; ")}. Estorne a baixa, a conciliação ou o borderô antes e tente de novo.`
+    : null;
+}
+
 /** Mensagem se algum título da NF já foi pago, conciliado ou está em borderô (não dá para apagar sem desfazer isso antes). */
 export async function titulosBloqueiamEstorno(sb: SupabaseClient, nfId: string): Promise<string | null> {
   const { prod, emp } = await carregar(sb, nfId);
-  const problemas: string[] = [];
-  for (const t of prod) {
-    if (["baixado", "parcial"].includes(t.status)) problemas.push(`título a pagar de R$ ${Number(t.valor).toFixed(2)} já baixado`);
-    else if (t.conciliado) problemas.push(`título a pagar de R$ ${Number(t.valor).toFixed(2)} conciliado com o extrato`);
-    else if (t.lote_id) problemas.push(`título a pagar de R$ ${Number(t.valor).toFixed(2)} em borderô`);
-  }
-  for (const t of emp) {
-    if (["pago", "parcial"].includes(t.status)) problemas.push(`título da Empresa de R$ ${Number(t.valor).toFixed(2)} já pago`);
-    else if (t.conciliado) problemas.push(`título da Empresa de R$ ${Number(t.valor).toFixed(2)} conciliado com o extrato`);
-    else if (t.lote_id) problemas.push(`título da Empresa de R$ ${Number(t.valor).toFixed(2)} em borderô`);
-  }
-  return problemas.length
-    ? `Não dá para desfazer a NF: há ${problemas.join("; ")}. Estorne a baixa, a conciliação ou o borderô antes e tente de novo.`
-    : null;
+  return mensagemBloqueio([...motivosBloqueio(prod, "produtor"), ...motivosBloqueio(emp, "empresa")]);
 }
 
 /** Apaga todos os títulos da NF (produtor e Empresa). Erro de exclusão interrompe — nunca engole. */

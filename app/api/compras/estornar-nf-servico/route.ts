@@ -1,4 +1,4 @@
-import { falharSeErro } from "../../../../lib/db-util";
+import { excluirTitulosDaNfse, titulosNfseBloqueiamEstorno } from "../../../../lib/financeiro/titulos-nfse";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 
@@ -16,29 +16,12 @@ export async function POST(req: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // 1. Busca lancamento_id (pode ser a 1ª parcela de um parcelamento)
-    const { data: nfRow } = await sb
-      .from("nf_servicos")
-      .select("lancamento_id")
-      .eq("id", nf_id)
-      .single();
+    // 1. Título pago, conciliado ou em borderô (produtor ou Empresa) impede o estorno: desfazer a baixa antes
+    const bloqueio = await titulosNfseBloqueiamEstorno(sb, nf_id);
+    if (bloqueio) return NextResponse.json({ error: bloqueio }, { status: 409 });
 
-    // 2. Remove CP — se parcelado, busca todas via agrupador e deleta em lote
-    if (nfRow?.lancamento_id) {
-      const { data: lancRow } = await sb
-        .from("lancamentos")
-        .select("id, agrupador")
-        .eq("id", nfRow.lancamento_id)
-        .maybeSingle();
-
-      if (lancRow?.agrupador) {
-        // Parcelado: remove todas as parcelas do mesmo agrupador
-        await falharSeErro(sb.from("lancamentos").delete().eq("agrupador", lancRow.agrupador), "excluir lancamentos");
-      } else if (lancRow?.id) {
-        // Parcela única
-        await falharSeErro(sb.from("lancamentos").delete().eq("id", lancRow.id), "excluir lancamentos");
-      }
-    }
+    // 2. Remove todos os títulos da NFS-e (parcelas do produtor e CP da Empresa)
+    await excluirTitulosDaNfse(sb, nf_id);
 
     // 3. Retorna NFS-e para "pendente"
     const { error } = await sb

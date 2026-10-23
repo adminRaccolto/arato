@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-d",
+    data: "23/10/2026",
+    titulo: "Estornar ou excluir NFS-e exige desfazer a baixa antes",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Estornar ou excluir uma NFS-e apagava o título mesmo já pago e deixava para trás o CP da Empresa. Agora, como na NF de Produtos, se algum título da NFS-e (produtor ou Empresa) estiver pago, parcialmente pago, conciliado ou em borderô, o sistema recusa e pede para desfazer a baixa, a conciliação ou o borderô primeiro. Sem impedimento, o estorno remove todas as parcelas e o CP da Empresa." },
+    ],
+    onde: "Documentos Fiscais → NFS-e → Estornar / Excluir",
+  },
+  {
     versao: "2026.10.23-c",
     data: "23/10/2026",
     titulo: "CP/CR: coluna Fornecedor dos títulos de Empresa",

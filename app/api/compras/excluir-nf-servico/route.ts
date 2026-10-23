@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { excluirTitulosDaNfse, titulosNfseBloqueiamEstorno } from "../../../../lib/financeiro/titulos-nfse";
 
 // POST /api/compras/excluir-nf-servico
 // Exclui uma NFS-e e seu CP vinculado.
@@ -17,17 +18,12 @@ export async function POST(req: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // 1. Busca lancamento_id
-    const { data: nfRow } = await sb
-      .from("nf_servicos")
-      .select("lancamento_id")
-      .eq("id", nf_id)
-      .single();
+    // 1. Título pago, conciliado ou em borderô impede a exclusão: desfazer a baixa antes
+    const bloqueio = await titulosNfseBloqueiamEstorno(sb, nf_id);
+    if (bloqueio) return NextResponse.json({ error: bloqueio.replace("desfazer a NFS-e", "excluir a NFS-e") }, { status: 409 });
 
-    // 2. Remove CP (se existir)
-    if (nfRow?.lancamento_id) {
-      await sb.from("lancamentos").delete().eq("id", nfRow.lancamento_id);
-    }
+    // 2. Remove todos os títulos da NFS-e (parcelas do produtor e CP da Empresa; antes só o 1º título do produtor)
+    await excluirTitulosDaNfse(sb, nf_id);
 
     // 3. Remove a NFS-e
     const { error } = await sb
