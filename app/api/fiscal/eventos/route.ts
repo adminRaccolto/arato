@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
@@ -55,6 +56,8 @@ export async function POST(request: NextRequest) {
     if (!acao || !nota_id) {
       return NextResponse.json({ ok: false, error: "acao e nota_id são obrigatórios" }, { status: 400 });
     }
+    const negado = await exigirAcessoRegistro(request, "notas_fiscais", nota_id);
+    if (negado) return negado;
 
     const { data: nota, error: errNota } = await adm.from("notas_fiscais").select("*").eq("id", nota_id).single();
     if (errNota || !nota) {
@@ -136,6 +139,7 @@ export async function GET(request: NextRequest) {
   );
   const notaId = request.nextUrl.searchParams.get("nota_id");
   if (!notaId) return NextResponse.json({ ok: false, error: "nota_id obrigatório" }, { status: 400 });
+  { const negado = await exigirAcessoRegistro(request, "notas_fiscais", notaId); if (negado) return negado; }
   const { data, error } = await adm.from("nfe_cartas_correcao").select("*").eq("nota_id", notaId).order("sequencia", { ascending: true });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, correcoes: data ?? [] });

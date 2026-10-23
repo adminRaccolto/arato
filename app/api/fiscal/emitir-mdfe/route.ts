@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 /**
  * POST /api/fiscal/emitir-mdfe
  * Recebe o id do MDF-e (já salvo como rascunho) e a fazenda, executa build → assina → transmite
@@ -13,6 +14,8 @@ export const preferredRegion = ["gru1"];
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { fazenda_id?: string; mdfe_id?: string };
+    const negado = await exigirAcessoRegistro(req, "mdfes", body.mdfe_id);
+    if (negado) return negado;
     if (!body.fazenda_id || !body.mdfe_id) {
       return NextResponse.json({ sucesso: false, cStat: "400", xMotivo: "fazenda_id e mdfe_id são obrigatórios" }, { status: 400 });
     }

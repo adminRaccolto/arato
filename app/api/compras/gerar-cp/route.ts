@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
       ciclo_id?: string;
       produtor_id?: string;
     };
+    const negado = await exigirAcessoRegistro(req, "pedidos_compra", body.pedido_id);
+    if (negado) return negado;
 
     const sb = admin();
 

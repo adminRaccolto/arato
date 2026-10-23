@@ -1,3 +1,4 @@
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 /**
  * POST /api/fiscal/status-sefaz
  * Diagnóstico: consulta CTeStatusServicoV4 na SEFAZ-MT (homologação ou produção).
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
   const t0 = Date.now();
   try {
     const { fazenda_id, emitente_cnpj } = await req.json() as { fazenda_id?: string; emitente_cnpj?: string | null };
+    const negado = await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
     console.log("[status-sefaz] iniciando diagnóstico", { fazenda_id: fazenda_id ?? "sem_fazenda", emitente_cnpj: emitente_cnpj ?? null });
     if (!fazenda_id) {
       return NextResponse.json({

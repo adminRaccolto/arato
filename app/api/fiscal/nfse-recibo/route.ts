@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 /**
  * GET /api/fiscal/nfse-recibo?id=<nf_servicos.id>&fazenda_id=<opcional>
  *
@@ -35,6 +36,7 @@ function esc(s: string | null | undefined): string {
 export async function GET(req: NextRequest) {
   const id         = req.nextUrl.searchParams.get("id") ?? "";
   const fazenda_id = req.nextUrl.searchParams.get("fazenda_id") ?? "";
+  { const negado = await exigirAcessoRegistro(req, "nf_servicos", id); if (negado) return negado; }
 
   if (!id) return NextResponse.json({ erro: "id obrigatório" }, { status: 400 });
   if (!SERVICE_KEY || !SUPABASE_URL) return NextResponse.json({ erro: "Configuração do servidor incompleta" }, { status: 500 });

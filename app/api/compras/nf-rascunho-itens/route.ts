@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 /**
  * POST /api/compras/nf-rascunho-itens
  *
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
       xml_text?: string;
       itens: ItemRaw[];
     };
+    const negado = await exigirAcessoRegistro(req, "nf_entradas", body.nf_id);
+    if (negado) return negado;
 
     const { nf_id, fazenda_id, chave_acesso, xml_text, itens } = body;
 

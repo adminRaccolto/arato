@@ -1,3 +1,4 @@
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 
@@ -12,6 +13,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as { itens?: { chave: string; fazenda_id: string }[] };
     const itens = (body.itens ?? []).filter(i => i.chave && i.fazenda_id).slice(0, 100);
     if (itens.length === 0) return NextResponse.json({ ok: false, error: "Nenhuma NF com chave de acesso selecionada" }, { status: 400 });
+    // Acesso a todas as fazendas das NFs pedidas (o lote nunca mistura cliente alheio)
+    for (const faz of [...new Set(itens.map(i => i.fazenda_id))]) {
+      const negado = await exigirAcessoFazenda(req, faz);
+      if (negado) return negado;
+    }
 
     const origem = new URL(req.url).origin;
     const pdfFinal = await PDFDocument.create();
@@ -19,7 +25,8 @@ export async function POST(req: NextRequest) {
 
     for (const it of itens) {
       const url = `${origem}/api/fiscal/danfe?chave=${encodeURIComponent(it.chave)}&fazenda_id=${encodeURIComponent(it.fazenda_id)}`;
-      const res = await fetch(url);
+      // repassa o login de quem pediu: a rota do DANFE exige acesso à fazenda
+      const res = await fetch(url, { headers: { cookie: req.headers.get("cookie") ?? "", authorization: req.headers.get("authorization") ?? "" } });
       const ct = res.headers.get("content-type") ?? "";
       if (!res.ok || !ct.includes("application/pdf")) { falhas.push(it.chave); continue; }
       const bytes = new Uint8Array(await res.arrayBuffer());

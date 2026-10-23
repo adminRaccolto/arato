@@ -1,3 +1,4 @@
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 // API Route — consulta NF-e na SEFAZ e resolve pendência fiscal
 // Suporta também NFS-e (nota de serviço municipal) que não tem chave SEFAZ
 import { NextRequest, NextResponse } from "next/server";
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, erro: "Body inválido" }, { status: 400 }); }
 
   const { fazendaId, pendenciaId } = body as { fazendaId: string; pendenciaId?: string; chaveAcesso?: string; fotoBase64?: string };
+  { const negado = await exigirAcessoFazenda(req, fazendaId); if (negado) return negado; }
 
   if (!fazendaId) return NextResponse.json({ ok: false, erro: "fazendaId obrigatório" }, { status: 400 });
 

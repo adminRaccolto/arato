@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { excluirTitulosDaNfse, titulosNfseBloqueiamEstorno } from "../../../../lib/financeiro/titulos-nfse";
@@ -8,6 +9,9 @@ import { excluirTitulosDaNfse, titulosNfseBloqueiamEstorno } from "../../../../l
 export async function POST(req: NextRequest) {
   try {
     const { nf_id, fazenda_id } = (await req.json()) as { nf_id: string; fazenda_id: string };
+
+    const negado = await exigirAcessoRegistro(req, "nf_servicos", nf_id);
+    if (negado) return negado;
     if (!nf_id || !fazenda_id) {
       return NextResponse.json({ error: "nf_id e fazenda_id obrigatórios" }, { status: 400 });
     }

@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { titulosBloqueiamEstorno, excluirTitulosDaNf } from "../../../../lib/financeiro/titulos-nf";
 import { ajustarSaldoPedidoNoFC } from "../../../../lib/financeiro/saldo-pedido";
 import { ptaxDoDia } from "../../../../lib/financeiro/ptax";
@@ -119,6 +120,9 @@ async function recalcularEntregaPedidoFiscal(sb: SupabaseClient, pedido_id: stri
 export async function POST(req: NextRequest) {
   try {
     const { nf_id } = (await req.json()) as { nf_id: string };
+
+    const negado = await exigirAcessoRegistro(req, "nf_entradas", nf_id);
+    if (negado) return negado;
     if (!nf_id) return NextResponse.json({ error: "nf_id obrigatório" }, { status: 400 });
 
     const sb = createClient(

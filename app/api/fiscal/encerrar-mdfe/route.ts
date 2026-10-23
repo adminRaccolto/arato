@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro, exigirAcessoFazenda } from "../../../../lib/api-auth";
 /**
  * POST /api/fiscal/encerrar-mdfe
  * Encerra um MDF-e de verdade na SEFAZ (evento 110112). Aceita chave/protocolo diretos (MDF-e
@@ -14,6 +15,8 @@ export const preferredRegion = ["gru1"];
 export async function POST(req: NextRequest) {
   try {
     const b = await req.json() as { fazenda_id?: string; mdfe_id?: string; chave?: string; protocolo?: string; data_enc?: string; uf_enc?: string; cmun_enc?: string; municipio_enc?: string };
+    const negado = b.mdfe_id ? await exigirAcessoRegistro(req, "mdfes", b.mdfe_id) : await exigirAcessoFazenda(req, b.fazenda_id);
+    if (negado) return negado;
     if (!b.fazenda_id) return NextResponse.json({ sucesso: false, cStat: "400", xMotivo: "fazenda_id obrigatório" }, { status: 400 });
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 

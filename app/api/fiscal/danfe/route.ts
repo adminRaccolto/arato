@@ -1,3 +1,4 @@
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 
@@ -9,6 +10,7 @@ export const runtime = "nodejs"; // sharp (achatamento da logo) e pdfkit precisa
 export async function GET(req: NextRequest) {
   const chave      = req.nextUrl.searchParams.get("chave")?.replace(/\D/g, "") ?? "";
   const fazenda_id = req.nextUrl.searchParams.get("fazenda_id") ?? "";
+  { const negado = await exigirAcessoFazenda(req, fazenda_id); if (negado) return negado; }
 
   if (!chave || chave.length !== 44) {
     return NextResponse.json({ erro: "Chave de acesso inválida (44 dígitos necessários)" }, { status: 400 });

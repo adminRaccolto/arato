@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -21,6 +22,8 @@ export async function POST(request: NextRequest) {
       operacao_gerencial_id?: string | null;
       centro_custo_id?: string | null;
     };
+    const negado = await exigirAcessoRegistro(request, "nf_entradas", body.nf_id);
+    if (negado) return negado;
     if (!body.nf_id || !body.fazenda_id) {
       return NextResponse.json({ ok: false, error: "nf_id e fazenda_id são obrigatórios" }, { status: 400 });
     }

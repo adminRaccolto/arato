@@ -1,3 +1,4 @@
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 /**
  * POST /api/fiscal/emitir-cte
  * Recebe os dados do CT-e, executa build → sign → transmit e retorna resultado.
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
       cte_substituido_chave?: string;
       ind_altera_toma?:   boolean;
     };
+    const negado = await exigirAcessoFazenda(req, body.fazenda_id);
+    if (negado) return negado;
 
     if (!body.fazenda_id || !body.remetente?.nome || !body.destinatario?.nome) {
       return NextResponse.json({ erro: "Campos obrigatórios ausentes" }, { status: 400 });

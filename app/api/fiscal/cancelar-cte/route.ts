@@ -1,3 +1,4 @@
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 /** POST /api/fiscal/cancelar-cte — evento oficial 110111 na SEFAZ. */
 import { NextRequest, NextResponse } from "next/server";
 import { cancelarCTeEmitido } from "../../../../lib/cte/index";
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
       protocolo_autorizacao?: string | null;
       justificativa?: string;
     };
+    const negado = await exigirAcessoRegistro(req, "ctes", body.cte_id);
+    if (negado) return negado;
     if (!body.fazenda_id || !body.cte_id || !body.chave_acesso) {
       return NextResponse.json({ sucesso: false, cStat: "VALIDACAO_LOCAL", xMotivo: "fazenda_id, cte_id e chave_acesso são obrigatórios." }, { status: 400 });
     }

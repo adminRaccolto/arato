@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-m",
+    data: "23/10/2026",
+    titulo: "Segurança reforçada nas operações de NF, CT-e e MDF-e",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Excluir, estornar e reclassificar NF e NFS-e, gerar CP de pedido, emitir/cancelar CT-e, emitir/encerrar MDF-e, eventos de NF-e, DANFE e recibo de NFS-e passam a exigir login e acesso ao cliente dono do documento. Nada muda para quem usa o sistema normalmente." },
+    ],
+    onde: "Documentos Fiscais, Fretes e Transporte",
+  },
+  {
     versao: "2026.10.23-l",
     data: "23/10/2026",
     titulo: "Excluir NF sem título parava no meio",

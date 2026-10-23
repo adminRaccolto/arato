@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "./supabase-servidor";
 import { cookies } from "next/headers";
@@ -116,4 +117,36 @@ export async function validateFazendaAccess(
   }
 
   return { ok: true, userId };
+}
+
+// ── Guardas curtas para rotas de API (23/10/2026) ───────────────────────────────────────────────────────────────
+// Várias rotas de NF/CT-e/MDF-e aceitavam pedidos sem login. Estas funções devolvem a resposta de erro (401/403/404)
+// ou null quando o acesso é permitido. Use a verificação pelo REGISTRO (a NF, o CT-e...) sempre que a rota mexer num
+// registro: validar só a fazenda informada no corpo deixaria alguém mandar a própria fazenda com o id de outro cliente.
+
+const auth = (req: Request) => req.headers.get("authorization") ?? undefined;
+
+/** Exige login e acesso à fazenda informada. */
+export async function exigirAcessoFazenda(req: Request, fazendaId: string | null | undefined): Promise<NextResponse | null> {
+  if (!fazendaId) return NextResponse.json({ ok: false, error: "fazenda_id obrigatório" }, { status: 400 });
+  const r = await validateFazendaAccess(fazendaId, auth(req));
+  return r.ok ? null : NextResponse.json({ ok: false, error: r.error }, { status: r.status });
+}
+
+/** Exige login e acesso à fazenda dona do registro (tabela.id → fazenda_id). */
+export async function exigirAcessoRegistro(req: Request, tabela: string, id: string | null | undefined): Promise<NextResponse | null> {
+  if (!id) return NextResponse.json({ ok: false, error: "id do registro obrigatório" }, { status: 400 });
+  const { data } = await adminClient().from(tabela).select("fazenda_id").eq("id", id).maybeSingle();
+  if (!data) {
+    // registro inexistente: ainda exige login para não revelar nada a quem não está autenticado
+    const u = await getRequestUser(auth(req));
+    return u ? NextResponse.json({ ok: false, error: "Registro não encontrado" }, { status: 404 }) : NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  }
+  return exigirAcessoFazenda(req, (data as { fazenda_id: string }).fazenda_id);
+}
+
+/** Exige só estar logado (rotas sem registro nem fazenda definidos). */
+export async function exigirLogin(req: Request): Promise<NextResponse | null> {
+  const u = await getRequestUser(auth(req));
+  return u ? null : NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 }
