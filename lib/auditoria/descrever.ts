@@ -43,7 +43,18 @@ function titulo(d: Record<string, unknown>): string {
 const camposMudados = (e: EventoAud) => (e.campos_alterados ?? []).filter(c => c !== "updated_at");
 const soTecnicos = (e: EventoAud) => { const c = camposMudados(e); return c.length > 0 && c.every(x => CAMPOS_TECNICOS.has(x)); };
 
+// Título de Empresa (empresa_lancamentos) é descrito como os demais títulos: mesmo vocabulário de status.
+const STATUS_EMPRESA: Record<string, string> = { pendente: "em_aberto", pago: "baixado" };
+function comoTituloProdutor(e: EventoAud): EventoAud {
+  const conv = (x: Record<string, unknown> | null) => x && {
+    ...x, status: STATUS_EMPRESA[s(x.status)] ?? x.status, origem_lancamento: x.origem, data_baixa: x.data_pagamento,
+    descricao: `${s(x.descricao)} (Empresa)`,
+  };
+  return { ...e, tabela: "lancamentos", dados_antes: conv(e.dados_antes ?? null), dados_depois: conv(e.dados_depois ?? null) };
+}
+
 export function descreverEvento(e: EventoAud): Descricao {
+  if (e.tabela === "empresa_lancamentos") return descreverEvento(comoTituloProdutor(e));
   const a = e.dados_antes ?? {}, d = e.dados_depois ?? e.dados_antes ?? {};
   const mud = camposMudados(e);
   const statusAntes = s(a.status), statusDepois = s((e.dados_depois ?? {}).status);

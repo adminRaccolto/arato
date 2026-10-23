@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-a",
+    data: "23/10/2026",
+    titulo: "CP da Empresa: Nº NF no grid e auditoria dos títulos",
+    modulos: ["Financeiro", "Configurações"],
+    itens: [
+      { tipo: "correcao", texto: "Títulos de Empresa (PJ) lançados desde setembro apareciam no Contas a Pagar sem o Nº e sem o Nº NF, e por isso o filtro de Nº NF não os encontrava. Os dois campos voltam a ser preenchidos, inclusive nos títulos já existentes. Requer a Seção 360 do supabase_migrations.sql." },
+      { tipo: "melhoria", texto: "O Monitor de Auditoria passa a registrar inclusão, alteração, baixa e exclusão dos títulos de Empresa (tabela CP / CR Empresa), com o usuário que fez." },
+    ],
+    onde: "Financeiro → Contas a Pagar; Configurações → Monitor de Auditoria",
+  },
+  {
     versao: "2026.10.22-q",
     data: "22/10/2026",
     titulo: "CP/CR: busca por fornecedor ou NF mostra todas as parcelas",

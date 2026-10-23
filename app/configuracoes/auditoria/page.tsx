@@ -29,6 +29,7 @@ type AuditEntry = {
 
 const TABELA_LABEL: Record<string, string> = {
   lancamentos: "CP / CR",
+  empresa_lancamentos: "CP / CR Empresa",
   folha_pagamento: "Folha de Pagamento",
   folha_funcionarios: "Func. na Folha",
   contratos: "Contratos de Grãos",
@@ -117,6 +118,15 @@ const COLS_TABELA: Record<string, ColAud[]> = {
     { k: "documento", label: "Documento", filtro: "texto", get: d => d.nfe_numero || d.numero_documento || "" },
     { k: "vencimento", label: "Vencimento", tipo: "data", get: d => d.data_vencimento },
     { k: "moeda", label: "Moeda", get: d => d.moeda },
+    { k: "valor", label: "Valor", tipo: "valor", filtro: "faixa", get: d => num(d.valor) },
+    { k: "status", label: "Status", get: d => d.status },
+  ],
+  empresa_lancamentos: [
+    { k: "tipo", label: "CP/CR", get: d => d.tipo === "receber" ? "CR" : d.tipo === "pagar" ? "CP" : "" },
+    { k: "pessoa", label: "Fornecedor / Cliente", filtro: "texto", get: (d, n) => (d.pessoa_id ? n[String(d.pessoa_id)] : "") || "" },
+    { k: "descricao", label: "Descrição", filtro: "texto", get: d => d.descricao },
+    { k: "documento", label: "Documento", filtro: "texto", get: d => d.numero_documento || "" },
+    { k: "vencimento", label: "Vencimento", tipo: "data", get: d => d.data_vencimento },
     { k: "valor", label: "Valor", tipo: "valor", filtro: "faixa", get: d => num(d.valor) },
     { k: "status", label: "Status", get: d => d.status },
   ],

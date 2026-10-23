@@ -63,3 +63,11 @@ test("NF processada é a ação principal; pedido recalculado sem mudança é au
   assert.match(descreverEvento(lista[1]).texto, /^Sistema recalculou o pedido de compra nº 453/);
   assert.equal(descreverEvento(lista[1]).automatico, true);
 });
+
+test("título de Empresa: exclusão e baixa são descritas como os demais títulos", () => {
+  const exc = descreverEvento(ev({ tabela: "empresa_lancamentos", acao: "DELETE", dados_antes: { tipo: "pagar", descricao: "NF 2503 — A B", valor: 1533.34, origem: "nf_entrada" } }));
+  assert.equal(exc.tipo, "excluiu");
+  assert.match(exc.texto, /NF 2503 — A B \(Empresa\)/);
+  const baixa = descreverEvento(ev({ tabela: "empresa_lancamentos", dados_antes: { status: "pendente", tipo: "pagar", valor: 10 }, dados_depois: { status: "pago", tipo: "pagar", valor: 10, valor_pago: 10, data_pagamento: "2026-10-22" }, campos_alterados: ["status"] }));
+  assert.equal(baixa.tipo, "baixou");
+});
