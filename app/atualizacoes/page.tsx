@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-e",
+    data: "23/10/2026",
+    titulo: "Relatório de Pedidos de Compra: novo layout sintético",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Na visão Por Pedido, o tipo Sintético (agora o padrão) mostra os pedidos em sequência, cada um num bloco: nº, fornecedor e CNPJ, situação, produtor e IE, fazenda, safra, emissão, vencimento, valor total, atendido, pago e a pagar; a lista de produtos (quantidade total, atendida, cancelada, saldo e valor atendido) e as parcelas do financeiro (do pedido e das NFs dele, com valor pago, saldo e situação). No topo, os filtros usados; no rodapé de cada página impressa, a logo da Arato. O tipo Analítico continua com uma página por pedido e as NFs detalhadas." },
+      { tipo: "melhoria", texto: "Os relatórios do menu Comercial & Logística e de Financeiro → Relatórios Financeiros aparecem agrupados por tela de origem (Compras, Estoque, Tesouraria...), com um separador e o nome do bloco." },
+    ],
+    onde: "Comercial & Logística → Relatórios → Pedidos de Compra",
+  },
+  {
     versao: "2026.10.23-d",
     data: "23/10/2026",
     titulo: "Estornar ou excluir NFS-e exige desfazer a baixa antes",

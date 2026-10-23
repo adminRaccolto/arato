@@ -25,6 +25,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../AuthProvider";
 import { listarPedidoCompraItens, listarNfEntradasPorPedido, alocarEntregaPorLinha, listarInsumosParaConta, listarGruposInsumoDaConta } from "../../lib/db";
 import type { PedidoCompraItem, NfEntrada, NfEntradaItem, Insumo, GrupoInsumo } from "../../lib/supabase";
+import { buildSinteticoHtml, type ExtraPedido, type ParcelaRel } from "../../lib/relatorios/pedidos-sintetico";
 
 type RelPedido = {
   id: string;
@@ -161,7 +162,7 @@ export default function PedidosCompraRelatorioTab() {
   // agrupa pedidos_compra_itens por insumo_id em vez de por pedido_id, pra
   // responder "em quais pedidos esse produto está" de forma consolidada.
   const [fVisao,      setFVisao]      = useState<"pedido" | "insumo">("pedido");
-  const [fTipo,       setFTipo]       = useState<"sintetico" | "analitico">("analitico");
+  const [fTipo,       setFTipo]       = useState<"sintetico" | "analitico">("sintetico");
   const [fFormato,    setFFormato]    = useState<"pdf" | "xlsx">("pdf");
 
   // Item filtrado pelo grupo escolhido (se houver) — cascata igual ao resto do sistema.
@@ -350,6 +351,59 @@ export default function PedidosCompraRelatorioTab() {
 </div>`;
   }
 
+  // ── Visão Por Pedido · Sintético (layout "Detalhamento por Pedido") ──
+  // Pedido do dono 23/10/2026, inspirado em outro sistema: um bloco leve por pedido, em sequência (não uma página
+  // por pedido), com cabeçalho em células rotuladas, produtos (pedido × atendido × saldo) e parcelas (títulos reais
+  // do pedido e das NFs dele, com pago e saldo). Mantém o nosso cabeçalho no topo; logo Arato pequena no rodapé
+  // de cada página impressa.
+
+  async function carregarExtrasSintetico(pedidos: RelPedido[]): Promise<Map<string, ExtraPedido>> {
+    const ids = pedidos.map(p => p.id);
+    const fazIds = [...new Set(pedidos.map(p => p.fazenda_id))];
+    const [{ data: peds }, { data: faz }, { data: nfsPed }] = await Promise.all([
+      supabase.from("pedidos_compra").select("id, ie_produtor, data_vencimento").in("id", ids),
+      supabase.from("fazendas").select("id, nome").in("id", fazIds),
+      supabase.from("nf_entradas").select("id, numero, pedido_compra_id").in("pedido_compra_id", ids).neq("status", "cancelada"),
+    ]);
+    const nfDoPedido = new Map((nfsPed ?? []).map(n => [n.id as string, { numero: n.numero as string, pedido: n.pedido_compra_id as string }]));
+    const nfIds = [...nfDoPedido.keys()];
+    const sel = "id, valor, valor_pago, status, data_vencimento, pedido_compra_id, nf_entrada_id";
+    const blocos = <T,>(arr: T[]) => Array.from({ length: Math.ceil(arr.length / 150) }, (_, i) => arr.slice(i * 150, i * 150 + 150));
+    const titulos: { id: string; valor: number; valor_pago: number | null; status: string; data_vencimento: string | null; pedido_compra_id: string | null; nf_entrada_id: string | null; emp: boolean }[] = [];
+    for (const b of blocos(ids)) {
+      const { data } = await supabase.from("lancamentos").select(sel).in("pedido_compra_id", b).neq("status", "cancelado");
+      titulos.push(...(data ?? []).map(t => ({ ...t, emp: false })));
+    }
+    for (const b of blocos(nfIds)) {
+      const [{ data: l }, { data: e }] = await Promise.all([
+        supabase.from("lancamentos").select(sel).in("nf_entrada_id", b).neq("status", "cancelado"),
+        supabase.from("empresa_lancamentos").select("id, valor, valor_pago, status, data_vencimento, nf_entrada_id").in("nf_entrada_id", b).neq("status", "cancelado"),
+      ]);
+      titulos.push(...(l ?? []).map(t => ({ ...t, emp: false })), ...(e ?? []).map(t => ({ ...t, pedido_compra_id: null, emp: true })));
+    }
+    const vistos = new Set<string>();
+    const porPedido = new Map<string, ParcelaRel[]>();
+    for (const t of titulos) {
+      if (vistos.has(t.id)) continue; vistos.add(t.id);
+      const nf = t.nf_entrada_id ? nfDoPedido.get(t.nf_entrada_id) : undefined;
+      const pedido = nf?.pedido ?? t.pedido_compra_id;
+      if (!pedido) continue;
+      const pago = ["baixado", "pago"].includes(t.status) ? Number(t.valor_pago ?? t.valor) : Number(t.valor_pago ?? 0);
+      const lista = porPedido.get(pedido) ?? [];
+      lista.push({ origem: nf ? `NF ${nf.numero}` : "Pedido", vencimento: t.data_vencimento, valor: Number(t.valor), pago, status: t.status });
+      porPedido.set(pedido, lista);
+    }
+    const nomeFaz = new Map((faz ?? []).map(f => [f.id as string, f.nome as string]));
+    const pedInfo = new Map((peds ?? []).map(p => [p.id as string, p]));
+    const out = new Map<string, ExtraPedido>();
+    for (const p of pedidos) {
+      const parcelas = (porPedido.get(p.id) ?? []).sort((a, b) => String(a.vencimento ?? "").localeCompare(String(b.vencimento ?? "")));
+      out.set(p.id, { ie: (pedInfo.get(p.id)?.ie_produtor as string | null) ?? null, fazenda: nomeFaz.get(p.fazenda_id) ?? "—",
+        vencimento: parcelas.at(-1)?.vencimento ?? (pedInfo.get(p.id)?.data_vencimento as string | null) ?? null, parcelas });
+    }
+    return out;
+  }
+
   // ── Construção do HTML da visão "Consolidado por Insumo" (1 página só) ──
   function buildPaginaConsolidadoHtml(linhas: LinhaConsolidada[], titulo: string, tipo: "sintetico" | "analitico"): string {
     const td = (v: string, right = false, bold = false) =>
@@ -497,7 +551,23 @@ export default function PedidosCompraRelatorioTab() {
         return;
       }
 
-      if (fFormato === "pdf") {
+      if (fFormato === "pdf" && fTipo === "sintetico") {
+        const extras = await carregarExtrasSintetico(pedidos);
+        const statusTxt = fStatus.size ? Array.from(fStatus).map(st => STATUS_MAP[st]?.label ?? st).join(", ") : "Todas";
+        const filtrosTexto = [
+          `<span><b>Modelo do relatório:</b> Detalhamento por Pedido</span>`,
+          `<span><b>Emissão:</b> ${fDataDe || fDataAte ? `${fDataDe ? fmtData(fDataDe) : "início"} — ${fDataAte ? fmtData(fDataAte) : "hoje"}` : "todo o período"}</span>`,
+          fAnoSafra ? `<span><b>Safra:</b> ${opcoesAnoSafra.find(a => a.id === fAnoSafra)?.descricao ?? ""}</span>` : "",
+          `<span><b>Situação:</b> ${statusTxt}</span>`,
+          partes.length && partes[0] !== "Todos os fornecedores" ? `<span><b>Filtros:</b> ${partes.join(" · ")}</span>` : "",
+        ].filter(Boolean).join("");
+        const win = window.open("", "_blank");
+        if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
+        win.document.write(buildSinteticoHtml(dados, extras, filtrosTexto, { contaNome, nomeUsuario, logoCliente, origem: window.location.origin,
+          nomeArquivo: nomeRelatorio("PEDIDOS DE COMPRA", clienteRelatorio, fDataDe || null, fDataAte || null), statusLabel: st => STATUS_MAP[st]?.label ?? st }));
+        win.document.close();
+        win.focus();
+      } else if (fFormato === "pdf") {
         const paginas = dados.map(d => buildPaginaPedidoHtml(d.ped, d.itens, d.nfs, d.nfItens));
         const win = window.open("", "_blank");
         if (!win) throw new Error("O navegador bloqueou a abertura da nova aba — permita pop-ups pra este site.");
@@ -636,7 +706,7 @@ export default function PedidosCompraRelatorioTab() {
             <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
               <label data-arato-label="true" style={lbl}>Visão</label>
               <div data-arato-dialog-body="true" data-arato-panel="true" style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
-                {([["pedido", "Por Pedido (1 página por pedido)"], ["insumo", "Consolidado por Insumo (todos os pedidos somados)"]] as const).map(([v, label]) => (
+                {([["pedido", "Por Pedido"], ["insumo", "Consolidado por Insumo (todos os pedidos somados)"]] as const).map(([v, label]) => (
                   <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
                     <input type="checkbox" checked={fVisao === v} onChange={() => setFVisao(v)} />
                     {label}
@@ -650,7 +720,7 @@ export default function PedidosCompraRelatorioTab() {
                 <label data-arato-label="true" style={lbl}>Tipo</label>
                 <div data-arato-panel="true" style={{ display: "flex", gap: 14, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
                   {fVisao === "pedido"
-                    ? ([["sintetico", "Sintético (só as NFs)"], ["analitico", "Analítico (NFs abertas)"]] as const).map(([v, label]) => (
+                    ? ([["sintetico", "Sintético (pedidos, produtos e parcelas)"], ["analitico", "Analítico (uma página por pedido, com as NFs)"]] as const).map(([v, label]) => (
                         <label data-arato-label="true" key={v} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
                           <input type="checkbox" checked={fTipo === v} onChange={() => setFTipo(v)} />
                           {label}
