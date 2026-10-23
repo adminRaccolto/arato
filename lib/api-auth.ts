@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "./supabase-servidor";
 import { cookies } from "next/headers";
 import { isRaccotloAdmin } from "./raccotlo-auth";
+import { createHash } from "crypto";
 
 function adminClient() {
   return createClient(
@@ -149,4 +150,83 @@ export async function exigirAcessoRegistro(req: Request, tabela: string, id: str
 export async function exigirLogin(req: Request): Promise<NextResponse | null> {
   const u = await getRequestUser(auth(req));
   return u ? null : NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+}
+
+/** Exige login de administrador Raccolto (role raccotlo/raccotlo_gestor). Telas e rotas em /admin. */
+export async function exigirRaccoltoAdmin(req: Request): Promise<NextResponse | null> {
+  const u = await getRequestUser(auth(req));
+  if (!u) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  const { data: perfil } = await adminClient().from("perfis").select("role").eq("user_id", u.id).maybeSingle();
+  return isRaccotloAdmin(perfil?.role, u.email) ? null : NextResponse.json({ ok: false, error: "Acesso restrito à equipe Raccolto" }, { status: 403 });
+}
+
+/** Exige login e que a conta informada seja a do usuário (Raccolto passa). */
+export async function exigirAcessoConta(req: Request, contaId: string | null | undefined): Promise<NextResponse | null> {
+  if (!contaId) return NextResponse.json({ ok: false, error: "conta_id obrigatório" }, { status: 400 });
+  const u = await getRequestUser(auth(req));
+  if (!u) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  const { data: perfil } = await adminClient().from("perfis").select("conta_id, role").eq("user_id", u.id).maybeSingle();
+  if (perfil?.role?.startsWith("raccotlo") || isRaccotloAdmin(perfil?.role, u.email)) return null;
+  return perfil?.conta_id === contaId ? null : NextResponse.json({ ok: false, error: "Acesso negado a esta conta" }, { status: 403 });
+}
+
+/** Exige login e acesso a TODAS as fazendas da lista. */
+export async function exigirAcessoFazendas(req: Request, fazendaIds: (string | null | undefined)[]): Promise<NextResponse | null> {
+  const ids = Array.from(new Set(fazendaIds.filter((x): x is string => !!x)));
+  if (!ids.length) return exigirLogin(req);
+  for (const id of ids) { const r = await exigirAcessoFazenda(req, id); if (r) return r; }
+  return null;
+}
+
+// Chamada de uma rota do próprio servidor para outra (robô do SIEG, webhook do WhatsApp): sem cookie de usuário,
+// identifica-se com esta chave, derivada da service role — nunca sai do servidor nem expõe a chave em si.
+export const CABECALHO_INTERNO = "x-arato-interno";
+export function chaveInterna(): string {
+  return createHash("sha256").update(`arato-interno:${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`).digest("hex");
+}
+export function ehChamadaInterna(req: Request): boolean {
+  const k = req.headers.get(CABECALHO_INTERNO);
+  return !!process.env.SUPABASE_SERVICE_ROLE_KEY && !!k && k === chaveInterna();
+}
+
+/** Exige login e acesso às fazendas donas de todos os registros (tabela.id → fazenda_id). */
+export async function exigirAcessoRegistros(req: Request, tabela: string | string[], ids: (string | null | undefined)[], campo = "id"): Promise<NextResponse | null> {
+  const lista = Array.from(new Set(ids.filter((x): x is string => !!x)));
+  if (!lista.length) return exigirLogin(req);
+  // Várias tabelas: o id pode ser de qualquer uma (ex.: título do produtor ou da empresa).
+  const tabelas = Array.isArray(tabela) ? tabela : [tabela];
+  const data = (await Promise.all(tabelas.map(t => adminClient().from(t).select("fazenda_id").in(campo, lista))))
+    .flatMap(r => (r.data ?? []) as { fazenda_id: string | null }[]);
+  if (!data.length) {
+    const u = await getRequestUser(auth(req));
+    return u ? NextResponse.json({ ok: false, error: "Registro não encontrado" }, { status: 404 }) : NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  }
+  return exigirAcessoFazendas(req, data.map(d => d.fazenda_id));
+}
+
+/** Exige acesso à fazenda de origem da transferência de estoque (e às fazendas informadas no corpo). */
+export async function exigirAcessoTransferencia(req: Request, transferenciaId: string | null | undefined, fazendasDoCorpo: (string | null | undefined)[] = []): Promise<NextResponse | null> {
+  const fazendas = [...fazendasDoCorpo];
+  if (transferenciaId) {
+    const { data } = await adminClient().from("transferencias_estoque").select("fazenda_origem_id, fazenda_destino_id").eq("id", transferenciaId).maybeSingle();
+    if (!data) {
+      const u = await getRequestUser(auth(req));
+      return u ? NextResponse.json({ ok: false, error: "Transferência não encontrada" }, { status: 404 }) : NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+    fazendas.push((data as { fazenda_origem_id: string }).fazenda_origem_id);
+  }
+  return exigirAcessoFazendas(req, fazendas);
+}
+
+/** Token do webhook do WhatsApp (vai no endereço cadastrado na Evolution API por /api/whatsapp/fix-webhook). */
+export function tokenWebhookWhatsapp(): string {
+  return createHash("sha256").update(`whatsapp-webhook:${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""}`).digest("hex").slice(0, 40);
+}
+/** Webhook do WhatsApp legítimo: token no endereço, chamada interna, ou a apikey da Evolution no corpo do evento. */
+export function webhookWhatsappAutorizado(req: Request, body: Record<string, unknown>): boolean {
+  if (ehChamadaInterna(req)) return true;
+  const token = new URL(req.url).searchParams.get("token");
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && token === tokenWebhookWhatsapp()) return true;
+  const chaves = [process.env.EVOLUTION_API_KEY, process.env.EVOLUTION_INSTANCE_TOKEN].filter(Boolean);
+  return typeof body.apikey === "string" && chaves.includes(body.apikey);
 }

@@ -1,6 +1,7 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoFazendas } from "../../../../lib/api-auth";
 
 const sb = () =>
   createClient(
@@ -64,6 +65,8 @@ export async function POST(req: NextRequest) {
     const fazenda_id  = body.fazenda_id  || itens?.[0]?.fazenda_id;
     const data        = body.data_operacao || itens?.[0]?.data;
     if (!fazenda_id || !data) return NextResponse.json({ erro: "fazenda_id e data são obrigatórios" }, { status: 400 });
+    const negado = await exigirAcessoFazendas(req, [fazenda_id, ...(itens ?? []).map(i => i.fazenda_id)]);
+    if (negado) return negado;
 
     const supabase = sb();
 

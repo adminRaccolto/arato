@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
+import { exigirAcessoFazenda, exigirAcessoRegistro, exigirLogin } from "../../../lib/api-auth";
 
 function admin() {
   return createClient(
@@ -18,6 +19,8 @@ export async function GET(req: NextRequest) {
   const talhao_id   = params.get("talhao_id");
   const fazenda_id  = params.get("fazenda_id");
   const exclude_id  = params.get("exclude_talhao");
+  const negado = fazenda_id ? await exigirAcessoFazenda(req, fazenda_id) : talhao_id ? await exigirAcessoRegistro(req, "talhoes", talhao_id) : await exigirLogin(req);
+  if (negado) return negado;
 
   const db = admin();
 
@@ -48,6 +51,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { talhao_id, arrendamento_ids } = await req.json() as { talhao_id: string; arrendamento_ids: string[] };
   if (!talhao_id) return NextResponse.json({ error: "talhao_id obrigatório" }, { status: 400 });
+  const negado = await exigirAcessoRegistro(req, "talhoes", talhao_id);
+  if (negado) return negado;
 
   const db = admin();
   await db.from("talhao_arrendamentos").delete().eq("talhao_id", talhao_id);

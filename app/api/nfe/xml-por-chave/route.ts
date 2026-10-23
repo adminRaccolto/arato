@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { consultarNfePorChave } from "../../../../lib/sefaz-consulta";
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 export async function POST(req: NextRequest) {
   const supabaseAdmin = createClient(
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest) {
   const { fazendaId, chaveAcesso, ambiente = "producao" } = body;
 
   if (!fazendaId) return NextResponse.json({ ok: false, erro: "fazendaId obrigatório" }, { status: 400 });
+  const negado = await exigirAcessoFazenda(req, fazendaId);
+  if (negado) return negado;
   if (!chaveAcesso) return NextResponse.json({ ok: false, erro: "chaveAcesso obrigatória" }, { status: 400 });
 
   const chave = chaveAcesso.replace(/\D/g, "");

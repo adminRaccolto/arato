@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse }  from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { normalizarApiKeySieg }       from "../../../../lib/sieg";
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
     if (!fazenda_id || !cnpj) {
       return NextResponse.json({ erro: "fazenda_id e cnpj são obrigatórios" }, { status: 400 });
     }
+    const negado = await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
 
     const db = sb();
 

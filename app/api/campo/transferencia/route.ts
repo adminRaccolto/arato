@@ -1,6 +1,7 @@
 import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { exigirAcessoFazendas } from "../../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export async function POST(request: NextRequest) {
     if (!transferencia.fazenda_origem_id || !transferencia.fazenda_destino_id) {
       return NextResponse.json({ ok: false, error: "Fazendas obrigatórias" }, { status: 400 });
     }
+    const negado = await exigirAcessoFazendas(request, [transferencia.fazenda_origem_id as string, transferencia.fazenda_destino_id as string]);
+    if (negado) return negado;
     if (!itens || itens.length === 0) {
       return NextResponse.json({ ok: false, error: "Itens obrigatórios" }, { status: 400 });
     }

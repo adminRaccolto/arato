@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirLogin } from "../../../../lib/api-auth";
 
 export const maxDuration = 60; // segundos — necessário para BCB séries lentas
 
@@ -66,7 +67,9 @@ async function buscarIndexador(
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const negado = await exigirLogin(req);
+  if (negado) return negado;
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

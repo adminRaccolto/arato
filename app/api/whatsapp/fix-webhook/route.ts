@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRaccotloAdmin } from "../../../../lib/api-auth";
+import { requireRaccotloAdmin, tokenWebhookWhatsapp } from "../../../../lib/api-auth";
 
 export async function POST() {
   const auth = await requireRaccotloAdmin();
@@ -9,7 +9,8 @@ export async function POST() {
   const EVO_KEY      = process.env.EVOLUTION_API_KEY ?? "";
   const EVO_INSTANCE = process.env.EVOLUTION_INSTANCE ?? "";
 
-  const novaUrl = "https://web.arato.agr.br/api/whatsapp/webhook";
+  // Token no endereço: o webhook recusa eventos sem ele (proteção contra mensagem forjada, 23/10/2026).
+  const novaUrl = `https://web.arato.agr.br/api/whatsapp/webhook?token=${tokenWebhookWhatsapp()}`;
   const hdrs = { "Content-Type": "application/json", apikey: EVO_KEY };
 
   // Descobre versão da API

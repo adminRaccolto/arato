@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +19,8 @@ export async function POST(req: NextRequest) {
     if (!body.mdfe_id || !body.ciot) {
       return NextResponse.json({ ok: false, error: "mdfe_id e ciot são obrigatórios" }, { status: 400 });
     }
+    const negado = await exigirAcessoRegistro(req, "mdfes", body.mdfe_id);
+    if (negado) return negado;
     const { error } = await admin().from("mdfes").update({
       ciot:                     body.ciot,
       ciot_codigo_verificador:  body.ciot_codigo_verificador ?? null,

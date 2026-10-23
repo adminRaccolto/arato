@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend } from "resend";
+import { exigirAcessoFazenda, exigirAcessoConta, exigirRaccoltoAdmin } from "../../../../lib/api-auth";
 
 function adminClient() {
   return createClient(
@@ -29,6 +30,13 @@ export async function POST(req: Request) {
     if (!fazenda_id || !user_nome || !user_email || !user_senha) {
       return NextResponse.json({ ok: false, error: "Campos obrigatórios faltando" }, { status: 400 });
     }
+
+    // Segurança (23/10/2026): a rota aceitava pedido sem login — dava para criar usuário com acesso interno
+    // Raccolto ou trocar a senha de qualquer usuário só sabendo o e-mail. Agora: acesso à fazenda (e à conta, se
+    // informada), acesso interno só a pedido da equipe Raccolto, e senha só é redefinida para usuário do mesmo cliente.
+    const negado = await exigirAcessoFazenda(req, fazenda_id) ?? (conta_id ? await exigirAcessoConta(req, conta_id) : null)
+      ?? (hub_acesso && hub_acesso !== "client" ? await exigirRaccoltoAdmin(req) : null);
+    if (negado) return negado;
 
     const supabase = adminClient();
 
@@ -70,6 +78,13 @@ export async function POST(req: Request) {
       const existente = lista.users.find(u => u.email?.toLowerCase() === user_email.toLowerCase());
       if (!existente) throw new Error("Usuário não encontrado após conflito de e-mail.");
       authUserId = existente.id;
+      // Usuário Raccolto tem conta_id vazio — nunca conta como "mesmo cliente".
+      const { data: perfilDoExistente } = await supabase.from("perfis").select("conta_id, role").eq("user_id", authUserId).maybeSingle();
+      const doMesmoCliente = !perfilDoExistente
+        || (!perfilDoExistente.role?.startsWith("raccotlo") && !!perfilDoExistente.conta_id && perfilDoExistente.conta_id === contaIdFinal);
+      if (!doMesmoCliente && await exigirRaccoltoAdmin(req)) {
+        return NextResponse.json({ ok: false, error: "Este e-mail já é usado por um usuário de outro cliente." }, { status: 409 });
+      }
       // Atualiza a senha para a nova senha informada
       await supabase.auth.admin.updateUserById(authUserId, {
         password:      user_senha,

@@ -1,6 +1,7 @@
 import { createClient } from "../../../../lib/supabase-servidor";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { exigirAcessoFazendas } from "../../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ export async function POST(request: NextRequest) {
     if (!fazenda_ids || fazenda_ids.length === 0) {
       return NextResponse.json({ ok: true, data: [] });
     }
+    const negado = await exigirAcessoFazendas(request, fazenda_ids);
+    if (negado) return negado;
 
     const orFilter = fazenda_ids
       .map(id => `fazenda_origem_id.eq.${id},fazenda_destino_id.eq.${id}`)

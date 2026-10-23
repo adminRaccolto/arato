@@ -1,6 +1,7 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoConta, exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
         _status: string; // "ok" | "duplicado" | "aviso"
       }>;
     };
+    const negado = await exigirAcessoConta(req, body.conta_id) ?? await exigirAcessoFazenda(req, body.fazenda_id_ativo);
+    if (negado) return negado;
 
     const sb = admin();
 

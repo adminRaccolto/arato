@@ -20,9 +20,6 @@ export async function DELETE(req: NextRequest) {
 
   const db = sb();
 
-  const { data: perfil } = await db.from("perfis").select("conta_id")
-    .eq("user_id", user.id).maybeSingle();
-
   const { data: doc, error: fetchErr } = await db
     .from("documentos_anexos")
     .select("id, storage_path, tamanho_bytes, conta_id")
@@ -33,10 +30,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ erro: "Documento não encontrado" }, { status: 404 });
   }
 
-  // Garante que o documento pertence à conta do usuário
-  if (perfil?.conta_id && doc.conta_id !== perfil.conta_id) {
-    return NextResponse.json({ erro: "Acesso negado" }, { status: 403 });
-  }
+  // Garante que o documento pertence à conta do usuário (perfil sem conta só passa se for da equipe Raccolto).
+  const { exigirAcessoConta } = await import("../../../../lib/api-auth");
+  const negado = await exigirAcessoConta(req, doc.conta_id as string | null);
+  if (negado) return negado;
 
   // Remove do Storage
   const { error: rmErr } = await db.storage.from("arquivos").remove([doc.storage_path]);
@@ -48,12 +45,13 @@ export async function DELETE(req: NextRequest) {
   await db.from("documentos_anexos").delete().eq("id", id);
 
   // Decrementa contador (não deixa negativo)
-  if (perfil?.conta_id) {
+  // Desconta do cliente dono do arquivo (não de quem excluiu — a equipe Raccolto não tem conta).
+  if (doc.conta_id) {
     const { data: conta } = await db.from("contas")
-      .select("storage_usado_bytes").eq("id", perfil.conta_id).single();
+      .select("storage_usado_bytes").eq("id", doc.conta_id).single();
     const atual = Number(conta?.storage_usado_bytes ?? 0);
     const novo  = Math.max(0, atual - Number(doc.tamanho_bytes));
-    await db.from("contas").update({ storage_usado_bytes: novo }).eq("id", perfil.conta_id);
+    await db.from("contas").update({ storage_usado_bytes: novo }).eq("id", doc.conta_id);
   }
 
   return NextResponse.json({ ok: true });

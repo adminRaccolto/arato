@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
+import { exigirAcessoFazendas } from "../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest) {
     if (!body.rows || body.rows.length === 0) {
       return NextResponse.json({ ok: false, error: "rows vazio" }, { status: 400 });
     }
+    const negado = await exigirAcessoFazendas(req, body.rows.map(r => r.fazenda_id as string | undefined));
+    if (negado) return negado;
     const sb = admin();
     const { data, error } = await sb
       .from("lancamentos")

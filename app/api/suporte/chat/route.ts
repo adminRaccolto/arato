@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { CONHECIMENTO_OLIVIA } from "../../../../lib/conhecimento-olivia";
+import { exigirAcessoFazenda, exigirLogin } from "../../../../lib/api-auth";
 
 const SYSTEM_PROMPT = `Você é a Olívia — assistente virtual do Arato, sistema de gestão agrícola.
 Quando alguém perguntar seu nome, responda "Me chamo Olívia, a assistente virtual do Arato."
@@ -385,6 +386,8 @@ export async function POST(req: NextRequest) {
     };
 
     const { fazenda_id, mensagens } = body;
+    const negado = fazenda_id ? await exigirAcessoFazenda(req, fazenda_id) : await exigirLogin(req);
+    if (negado) return negado;
 
     if (!mensagens || mensagens.length === 0) {
       return NextResponse.json({ error: "Nenhuma mensagem fornecida" }, { status: 400 });

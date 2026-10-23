@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirRaccoltoAdmin } from "../../../../lib/api-auth";
 
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -7,10 +8,12 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 export async function POST(req: NextRequest) {
-  // Apenas raccotlo pode executar
-  const body = await req.json().catch(() => ({}));
-  if (body.secret !== process.env.ADMIN_SECRET && body.role !== "raccotlo") {
-    return NextResponse.json({ erro: "Não autorizado" }, { status: 403 });
+  // Apenas a equipe Raccolto. Antes bastava mandar role: "raccotlo" no corpo do pedido — quem chamava se declarava admin.
+  const body = await req.json().catch(() => ({})) as { secret?: string };
+  const porSegredo = !!process.env.ADMIN_SECRET && body.secret === process.env.ADMIN_SECRET;
+  if (!porSegredo) {
+    const negado = await exigirRaccoltoAdmin(req);
+    if (negado) return negado;
   }
 
   const db = createClient(SUPABASE_URL, SERVICE_KEY);

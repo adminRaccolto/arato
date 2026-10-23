@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.23-r",
+    data: "23/10/2026",
+    titulo: "Segurança reforçada no financeiro, contratos, estoque e integrações",
+    modulos: ["Financeiro", "Comercial", "Estoque", "Fiscal", "Configurações"],
+    itens: [
+      { tipo: "melhoria", texto: "Baixa e reabertura de títulos, borderô, lançamentos de CP/CR, confirmação de contratos, compra de terra, consórcios, seguros, transferências de estoque, sincronização do SIEG, consulta de XML, romaneios, talhões, cadastro de usuários e anexos passam a exigir login e acesso ao cliente dono do registro. Nada muda para quem usa o sistema normalmente." },
+      { tipo: "melhoria", texto: "Na NF de entrada com combustível, aparece o seletor Fazenda da descarga acima da bomba: começa na fazenda da IE e pode ser trocado quando o combustível é entregue em outra fazenda." },
+    ],
+    onde: "Todo o sistema",
+  },
+  {
     versao: "2026.10.23-q",
     data: "23/10/2026",
     titulo: "NF de saída: CST do ICMS escolhido na grade e Dados Adicionais completos",

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirRaccoltoAdmin } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -47,6 +48,8 @@ async function chunkUpsert(
 }
 
 export async function POST(req: NextRequest) {
+  const negado = await exigirRaccoltoAdmin(req);
+  if (negado) return negado;
   try {
     const body = await req.json() as { fazenda_ids?: string[]; modulo?: string };
     const { fazenda_ids = [], modulo = "operacoes_gerenciais" } = body;

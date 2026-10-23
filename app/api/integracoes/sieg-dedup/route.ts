@@ -16,6 +16,7 @@ import { planejarLimpeza } from "../../../../lib/fiscal/dedup-nf";
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
   try {
     const { fazenda_id, dry_run = false } = await req.json() as { fazenda_id: string; dry_run?: boolean };
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
+    const negado = await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
     const db = sb();
 
     const { data: fazRow } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();

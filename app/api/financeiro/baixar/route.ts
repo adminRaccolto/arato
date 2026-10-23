@@ -10,6 +10,7 @@ import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { excedeLimiteBaixa, mensagemExcesso } from "../../../../lib/financeiro/baixa";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoRegistros, exigirAcessoRegistro } from "../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -63,6 +64,10 @@ export async function POST(req: NextRequest) {
 
     const sb = admin();
     const id  = body.lancamento_id;
+    // Título do produtor ou da empresa (desvincular recebe ids dos dois); adiantamento também tem de ser do cliente.
+    const negado = await exigirAcessoRegistros(req, ["lancamentos", "empresa_lancamentos"], body.acao === "desvincular_extrato" ? (body.ids ?? []) : [id, ...(body.ids ?? [])])
+      ?? (body.adiantamento_id ? await exigirAcessoRegistro(req, "adiantamentos_fornecedor", body.adiantamento_id) : null);
+    if (negado) return negado;
 
     if (body.acao === "desvincular_extrato") {
       await desvincularExtrato(sb, body.ids ?? []);

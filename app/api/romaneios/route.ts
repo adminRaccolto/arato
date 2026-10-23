@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
+import { exigirAcessoRegistro } from "../../../lib/api-auth";
 
 // DELETE /api/romaneios?id=<romaneio_id>
 // Exclui o romaneio e recalcula entregue_sc + status do contrato
@@ -12,6 +13,8 @@ export async function DELETE(req: NextRequest) {
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
+  const negado = await exigirAcessoRegistro(req, "romaneios", id);
+  if (negado) return negado;
 
   // Busca contrato_id antes de deletar
   const { data: rom, error: errGet } = await admin

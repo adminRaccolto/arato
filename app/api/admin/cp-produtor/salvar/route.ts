@@ -1,7 +1,7 @@
 // API route: salva produtor_id nos lançamentos CP confirmados pelo usuário
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../lib/supabase-servidor";
-import { getSessionUser } from "../../../../../lib/api-auth";
+import { getSessionUser, exigirRaccoltoAdmin } from "../../../../../lib/api-auth";
 
 const sb = () =>
   createClient(
@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    const negado = await exigirRaccoltoAdmin(req);
+    if (negado) return negado;
 
     const { atualizacoes } = await req.json() as {
       atualizacoes: { lancamento_id: string; produtor_id: string }[];

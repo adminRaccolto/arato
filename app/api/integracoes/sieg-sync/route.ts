@@ -12,6 +12,7 @@ import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 // "Forçar re-importação" reprocessa TODAS as notas do período (não só as novas) — com muitas
@@ -44,6 +45,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as { fazenda_id: string; data_inicio?: string; data_fim?: string; force_reimport?: boolean; chaves_acesso?: string[] };
     const { fazenda_id, data_inicio: dataInicioParam, data_fim: dataFimParam, force_reimport: forceReimport, chaves_acesso: chavesAcesso } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
+    // Tela do cliente (login) ou o robô diário do SIEG (cron/sieg-auto, chave interna).
+    const negado = ehChamadaInterna(req) ? null : await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
 
     const db = sb();
 

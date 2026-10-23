@@ -7,6 +7,7 @@ import { buscarSessao, salvarSessao, limparSessao } from "../../../../lib/whatsa
 import { processarMensagemIA, type Mensagem, type IAResult } from "../../../../lib/whatsapp-claude";
 import { executarInsercao } from "../../../../lib/whatsapp-inserir";
 import { extrairCedula, formatarConfirmacaoWhatsApp } from "../../../../lib/extrair-cedula";
+import { webhookWhatsappAutorizado, CABECALHO_INTERNO, chaveInterna } from "../../../../lib/api-auth";
 
 function sb() {
   return createClient(
@@ -107,6 +108,8 @@ function ehNumeroValido(telefone: string): boolean {
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: true }); }
+  // Sem isto qualquer um forjava uma mensagem "de um número cadastrado" e o sistema lançava dados em nome dele.
+  if (!webhookWhatsappAutorizado(req, body)) return NextResponse.json({ ok: false, error: "Webhook não autorizado" }, { status: 401 });
 
   const event = String(body.event ?? "");
   const eventNorm = event.toLowerCase().replace(/_/g, ".");
@@ -151,7 +154,7 @@ export async function POST(req: NextRequest) {
   if (implantacao?.conta_id && !implantacao.concluido) {
     try {
       await fetch(new URL("/api/agente/implantar", req.nextUrl.origin), {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        method: "POST", headers: { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() }, body: JSON.stringify(body),
       });
     } catch (e) { console.error("[WH] falha ao encaminhar para implantação:", e); }
     return NextResponse.json({ ok: true, encaminhado: "implantacao" });

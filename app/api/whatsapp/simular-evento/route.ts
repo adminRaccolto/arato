@@ -2,7 +2,7 @@
 // Evita auto-chamada HTTP (causa MIDDLEWARE_INVOCATION_FAILED no Vercel)
 import { NextRequest, NextResponse } from "next/server";
 import { POST as webhookHandler } from "../webhook/route";
-import { requireRaccotloAdmin } from "../../../../lib/api-auth";
+import { requireRaccotloAdmin, CABECALHO_INTERNO, chaveInterna } from "../../../../lib/api-auth";
 
 export async function POST(req: NextRequest) {
   const auth = await requireRaccotloAdmin();
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const fakeUrl = new URL("/api/whatsapp/webhook", appUrl);
   const fakeReq = new NextRequest(fakeUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() },
     body: JSON.stringify(payload),
   });
 

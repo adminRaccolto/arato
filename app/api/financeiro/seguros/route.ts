@@ -7,6 +7,7 @@ import { falharSeErro } from "../../../../lib/db-util";
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoRegistro, exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -130,6 +131,11 @@ export async function POST(req: NextRequest) {
 
     const sb = admin();
     const today = hojeLocal();
+    // Apólice existente: tem de ser do cliente; fazenda do payload (nova ou trocada) também.
+    const fazPayload = body.payload?.fazenda_id as string | undefined;
+    const negado = (body.apolice_id ? await exigirAcessoRegistro(req, "apolices_seguro", body.apolice_id) : null)
+      ?? (fazPayload || !body.apolice_id ? await exigirAcessoFazenda(req, fazPayload) : null);
+    if (negado) return negado;
 
     let apoliceId: string;
 

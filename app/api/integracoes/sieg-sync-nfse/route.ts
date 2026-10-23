@@ -8,6 +8,7 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { mesmaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
 import { detectarCancelamentoNfse } from "../../../../lib/fiscal/nfse-cancelamento";
 import { baixarXmlsSieg, baixarXmlsSiegChunked, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
@@ -131,6 +132,9 @@ export async function POST(req: NextRequest) {
     };
     const { fazenda_id, data_inicio: dtIni, data_fim: dtFim, force_reimport: force } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
+    // Tela do cliente (login) ou o robô diário do SIEG (cron/sieg-auto, chave interna).
+    const negado = ehChamadaInterna(req) ? null : await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
 
     const db = sb();
 

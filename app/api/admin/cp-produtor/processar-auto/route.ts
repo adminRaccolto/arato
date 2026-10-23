@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../lib/supabase-servidor";
 import Anthropic from "@anthropic-ai/sdk";
+import { exigirRaccoltoAdmin } from "../../../../../lib/api-auth";
 
 export const maxDuration = 300; // Vercel — até 5 min
 
@@ -105,6 +106,8 @@ FORMATO:
 }
 
 export async function POST(req: NextRequest) {
+  const negado = await exigirRaccoltoAdmin(req);
+  if (negado) return negado;
   try {
     const { conta_id } = await req.json() as { conta_id: string };
     if (!conta_id) return NextResponse.json({ erro: "conta_id obrigatório" }, { status: 400 });

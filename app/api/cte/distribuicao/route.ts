@@ -13,6 +13,7 @@ import {
   extrairMetaCTe,
   type AmbienteDist,
 } from "../../../../lib/cte/distribuicao";
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 export const runtime        = "nodejs";
 export const preferredRegion = ["gru1"];
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
     const { fazenda_id, forcar_zero } = body;
 
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
+    const negado = await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
 
     // ── Resolve configuração e certificado ────────────────────────────────────
     const cfg = await resolverConfigCTe(fazenda_id);

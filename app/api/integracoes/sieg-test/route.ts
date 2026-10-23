@@ -5,11 +5,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { exigirAcessoFazenda, exigirLogin } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const fazendaId = req.nextUrl.searchParams.get("fazenda_id") ?? "";
+  const negado = fazendaId ? await exigirAcessoFazenda(req, fazendaId) : await exigirLogin(req);
+  if (negado) return negado;
 
   const creds = credenciaisEnv();
 

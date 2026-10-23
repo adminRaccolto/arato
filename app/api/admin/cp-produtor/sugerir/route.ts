@@ -1,7 +1,7 @@
 // API route: usa Claude Haiku para sugerir produtor_id para lançamentos CP sem produtor
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getSessionUser } from "../../../../../lib/api-auth";
+import { getSessionUser, exigirRaccoltoAdmin } from "../../../../../lib/api-auth";
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    const negado = await exigirRaccoltoAdmin(req);
+    if (negado) return negado;
 
     const body = await req.json() as {
       fazenda_nome: string;

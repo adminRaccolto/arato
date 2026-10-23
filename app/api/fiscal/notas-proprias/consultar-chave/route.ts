@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consultarNfePorChave, baixarXmlNfePorChaveDFe } from "../../../../../lib/sefaz-consulta";
 import { parseNFeXml } from "../../../../../lib/sieg";
+import { exigirAcessoFazenda } from "../../../../../lib/api-auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
     if (!chave || !fazenda_id) {
       return NextResponse.json({ ok: false, erro: "Informe a chave de acesso e a fazenda." }, { status: 400 });
     }
+    const negado = await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
 
     const res = await consultarNfePorChave(chave, fazenda_id, ambiente ?? "producao");
     if (!res.ok) {

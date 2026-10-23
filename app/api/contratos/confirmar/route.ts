@@ -1,6 +1,7 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoRegistro, exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -59,6 +60,8 @@ export async function POST(req: NextRequest) {
       data_entrega?: string;
       lancamento_cr_id?: string;
     };
+    const negado = await exigirAcessoRegistro(req, "contratos", body.contrato_id) ?? await exigirAcessoFazenda(req, body.fazenda_id);
+    if (negado) return negado;
 
     const sb = admin();
 

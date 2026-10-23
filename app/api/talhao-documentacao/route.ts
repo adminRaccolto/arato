@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
+import { exigirAcessoFazenda, exigirAcessoRegistro, exigirLogin } from "../../../lib/api-auth";
 
 const svc = () =>
   createClient(
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest) {
   const sb = svc();
   const talhao_id  = req.nextUrl.searchParams.get("talhao_id");
   const fazenda_id = req.nextUrl.searchParams.get("fazenda_id");
+  if (!talhao_id && !fazenda_id) return NextResponse.json({ error: "talhao_id or fazenda_id required" }, { status: 400 });
+  const negado = fazenda_id ? await exigirAcessoFazenda(req, fazenda_id) : talhao_id ? await exigirAcessoRegistro(req, "talhoes", talhao_id) : await exigirLogin(req);
+  if (negado) return negado;
 
   if (talhao_id) {
     const [matsRes, carsRes] = await Promise.all([
@@ -48,6 +52,8 @@ export async function POST(req: NextRequest) {
     car_ids: string[];
   };
   if (!talhao_id) return NextResponse.json({ error: "talhao_id required" }, { status: 400 });
+  const negado = await exigirAcessoRegistro(req, "talhoes", talhao_id);
+  if (negado) return negado;
   const sb = svc();
 
   await Promise.all([

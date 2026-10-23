@@ -14,6 +14,7 @@
  */
 import { createClient } from "../../../../lib/supabase-servidor";
 import { NextRequest, NextResponse } from "next/server";
+import { CABECALHO_INTERNO, chaveInterna } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -52,12 +53,12 @@ export async function GET(req: NextRequest) {
     const linha: (typeof resumo)[number] = { fazenda_id: item.fazenda_id };
     try {
       const r1 = await fetch(`${origem}/api/integracoes/sieg-sync`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: item.fazenda_id }),
+        method: "POST", headers: { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() }, body: JSON.stringify({ fazenda_id: item.fazenda_id }),
       });
       linha.nfe = await r1.json().catch(() => ({ erro: `HTTP ${r1.status}` }));
       if (Date.now() - inicio <= ORCAMENTO_MS) {
         const r2 = await fetch(`${origem}/api/integracoes/sieg-sync-nfse`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: item.fazenda_id }),
+          method: "POST", headers: { "Content-Type": "application/json", [CABECALHO_INTERNO]: chaveInterna() }, body: JSON.stringify({ fazenda_id: item.fazenda_id }),
         });
         linha.nfse = await r2.json().catch(() => ({ erro: `HTTP ${r2.status}` }));
       }

@@ -4,6 +4,7 @@ import { createClient } from "../../../../lib/supabase-servidor";
 import { Resend } from "resend";
 import { enviarTexto } from "../../../../lib/whatsapp-evolution";
 import { seedOperacoesGerenciais } from "../../../../lib/seedOperacoesGerenciais";
+import { ehChamadaInterna, exigirRaccoltoAdmin } from "../../../../lib/api-auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -711,6 +712,9 @@ function montarSystem(onboarding: OnboardingRecord): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as Record<string, unknown>;
+    // Chamado pelo webhook do WhatsApp (chave interna) ou pelo painel de implantação da equipe Raccolto.
+    const negado = ehChamadaInterna(req) ? null : await exigirRaccoltoAdmin(req);
+    if (negado) return negado;
 
     // Detecta se é webhook Evolution API ou chamada direta do painel admin
     let telefone: string;

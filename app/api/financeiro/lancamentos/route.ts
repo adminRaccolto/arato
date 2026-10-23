@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoFazendas, exigirAcessoRegistro, exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
     if (!body.fazenda_ids?.length) {
       return NextResponse.json({ ok: true, lancamentos: [] });
     }
+    const negado = await exigirAcessoFazendas(req, body.fazenda_ids);
+    if (negado) return negado;
 
     const PAGE = 1000;
     const sb = admin();
@@ -76,6 +79,10 @@ export async function PATCH(req: NextRequest) {
     if (!body.id || !body.patch) {
       return NextResponse.json({ ok: false, error: "id e patch são obrigatórios" }, { status: 400 });
     }
+    // Mover o título para outra fazenda só para uma fazenda do mesmo cliente.
+    const negado = await exigirAcessoRegistro(req, "lancamentos", body.id)
+      ?? (typeof body.patch.fazenda_id === "string" ? await exigirAcessoFazenda(req, body.patch.fazenda_id) : null);
+    if (negado) return negado;
     const sb = admin();
     const { error, count } = await sb.from("lancamentos").update(body.patch, { count: "exact" }).eq("id", body.id);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

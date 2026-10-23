@@ -11,6 +11,7 @@
 import { falharSeErro } from "../../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../lib/supabase-servidor";
+import { exigirAcessoFazenda, exigirAcessoRegistro } from "../../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest) {
   try {
     const b = await req.json() as { consorcio_id: string; fazenda_id: string; lances: LanceIn[]; efeito: "reduz_parcela" | "reduz_prazo" | "nenhum" };
     if (!b.consorcio_id || !b.fazenda_id) return NextResponse.json({ error: "consorcio_id e fazenda_id obrigatórios" }, { status: 400 });
+    const negado = await exigirAcessoRegistro(req, "consorcios", b.consorcio_id) ?? await exigirAcessoFazenda(req, b.fazenda_id);
+    if (negado) return negado;
     const lances = (b.lances ?? []).filter(l => Number(l.valor) > 0);
     if (lances.length === 0) return NextResponse.json({ ok: true, lance_total: 0 });
     for (const l of lances) {

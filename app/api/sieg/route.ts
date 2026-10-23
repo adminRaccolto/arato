@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
 import { baixarXmlsSieg, credenciaisEnv, credenciaisValidas, parseNFeXml } from "../../../lib/sieg";
+import { exigirAcessoFazenda } from "../../../lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,8 @@ export async function GET(req: NextRequest) {
   if (!fazendaId) {
     return new NextResponse("fazenda_id obrigatório.", { status: 400 });
   }
+  const negado = await exigirAcessoFazenda(req, fazendaId);
+  if (negado) return negado;
 
   const sb = adminClient();
 

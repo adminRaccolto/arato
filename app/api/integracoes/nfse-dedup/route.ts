@@ -8,6 +8,7 @@ import { falharSeErro } from "../../../../lib/db-util";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { planejarLimpezaNfse, type NfseDup } from "../../../../lib/fiscal/dedup-nfse";
+import { exigirAcessoFazenda } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
   try {
     const { fazenda_id, dry_run = false } = await req.json() as { fazenda_id: string; dry_run?: boolean };
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
+    const negado = await exigirAcessoFazenda(req, fazenda_id);
+    if (negado) return negado;
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const { data: fazRow } = await db.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
     if (!fazRow?.conta_id) return NextResponse.json({ erro: "Conta não encontrada para esta fazenda" }, { status: 400 });

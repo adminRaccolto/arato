@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
+import { exigirAcessoFazenda, exigirLogin } from "../../../../lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
       role: "user" | "assistant";
       content: string;
     };
+    const negado = msg.fazenda_id ? await exigirAcessoFazenda(req, msg.fazenda_id) : await exigirLogin(req);
+    if (negado) return negado;
 
     const db = admin();
 

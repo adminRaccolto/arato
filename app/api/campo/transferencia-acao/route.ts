@@ -7,6 +7,7 @@ import { emitirNFe, buscarConfEmitente, cancelarNFeEmitida } from "../../../../l
 import { resolverModuloKeyPorCpfCnpj, resolverModuloKeyFiscal } from "../../../../lib/nfe/resolver-emitente";
 
 import { montarDestinatarioTransferencia, type ProdutorDestino, type IeDestino } from "../../../../lib/nfe/destinatario-transferencia";
+import { exigirAcessoTransferencia } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs"; // lib/nfe usa node-forge que precisa de Node
 export const dynamic = "force-dynamic";
@@ -29,6 +30,9 @@ export async function POST(request: NextRequest) {
     };
 
     acao = body.acao;
+    const tr = body.transferencia as { fazenda_origem_id?: string; fazenda_destino_id?: string } | undefined;
+    const negado = await exigirAcessoTransferencia(request, body.transferencia_id, [tr?.fazenda_origem_id, tr?.fazenda_destino_id]);
+    if (negado) return negado;
 
     // ── CANCELAR ─────────────────────────────────────────────────────────────
     if (body.acao === "cancelar") {

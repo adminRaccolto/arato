@@ -11,6 +11,7 @@ import { falharSeErro } from "../../../../../lib/db-util";
 import { hojeLocal } from "../../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../lib/supabase-servidor";
+import { exigirAcessoFazenda, exigirAcessoRegistro } from "../../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
     if (!body.contrato_id || !body.fazenda_id || !body.parcelas?.length) {
       return NextResponse.json({ ok: false, error: "Campos obrigatórios ausentes" }, { status: 400 });
     }
+    const negado = await exigirAcessoFazenda(req, body.fazenda_id) ?? await exigirAcessoRegistro(req, "contratos_compra_terra", body.contrato_id);
+    if (negado) return negado;
 
     const sb = admin();
     const TODAY = hojeLocal();
@@ -207,6 +210,8 @@ export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json() as { contrato_id: string };
     if (!body.contrato_id) return NextResponse.json({ ok: false, error: "contrato_id obrigatório" }, { status: 400 });
+    const negado = await exigirAcessoRegistro(req, "contratos_compra_terra", body.contrato_id);
+    if (negado) return negado;
 
     const sb = admin();
 

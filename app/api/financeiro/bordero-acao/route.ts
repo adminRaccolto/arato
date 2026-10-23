@@ -26,6 +26,7 @@ import { estornarBorderoComSaldo } from "../../../../lib/financeiro/estornar-bor
 import { confirmarBorderoComSaldo } from "../../../../lib/financeiro/confirmar-bordero";
 import { resumoBordero } from "../../../../lib/financeiro/saldo-bordero";
 import type { PagamentoLote } from "../../../../lib/supabase";
+import { exigirAcessoRegistro } from "../../../../lib/api-auth";
 
 const admin = () =>
   createClient(
@@ -56,6 +57,8 @@ export async function POST(req: NextRequest) {
     };
     const { acao, lote_id } = body;
     if (!lote_id) return NextResponse.json({ ok: false, error: "lote_id obrigatório" }, { status: 400 });
+    const negado = await exigirAcessoRegistro(req, "pagamento_lotes", lote_id);
+    if (negado) return negado;
 
     const sb = admin();
 
