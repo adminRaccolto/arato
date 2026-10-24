@@ -94,8 +94,6 @@ export default function AbastecimentoPage() {
   const [fValUnit,      setFValUnit]      = useState("");
   const [fData,         setFData]         = useState(() => hojeLocal());
   const [fObs,          setFObs]          = useState("");
-  const [fGerarCP,      setFGerarCP]      = useState(false);
-  const [fVencimento,   setFVencimento]   = useState(() => hojeLocal());
   const [fHorimetro,    setFHorimetro]    = useState("");
   const [fAnoSafra,     setFAnoSafra]     = useState("");
   // Ano Safra é obrigatório (DRE por ano safra): abastecimento novo abre com o vigente
@@ -179,12 +177,6 @@ export default function AbastecimentoPage() {
     if (!bomba) return;
     const insumo = insumoDaBomba(bomba);
     if (insumo?.custo_medio) setFValUnit(String(insumo.custo_medio.toFixed(4)));
-    // Auto-set fGerarCP based on bomb type
-    if (bomba.consume_estoque === false) {
-      setFGerarCP(true);
-    } else {
-      setFGerarCP(false);
-    }
   }, [fBomba, bombas, insumos]);
 
   const valorTotal = (parseFloat(fQuantidade) || 0) * (parseFloat(fValUnit) || 0);
@@ -283,7 +275,7 @@ export default function AbastecimentoPage() {
         destino_nome: nomeDestino(),
         quantidade_l: qtd, valor_unitario: vUnit, data: fData, horimetro: horimetroVal,
         ano_safra_id: fAnoSafra, ciclo_id: fCiclo, observacao: fObs,
-        gerar_cp: fGerarCP, vencimento: fVencimento, comb_label: COMB_LABEL[bomba.combustivel] ?? bomba.combustivel,
+        comb_label: COMB_LABEL[bomba.combustivel] ?? bomba.combustivel,
       }),
     });
     const d = await res.json();
@@ -335,10 +327,9 @@ export default function AbastecimentoPage() {
   function abrirModal() {
     setEditando(null);
     setFBomba(""); setFDestTipo("maquina"); setFMaquina(""); setFFuncionario(""); setFDestLivre("");
-    setFQuantidade(""); setFValUnit(""); setFObs(""); setFHorimetro(""); setFGerarCP(false);
+    setFQuantidade(""); setFValUnit(""); setFObs(""); setFHorimetro("");
     setFAnoSafra(""); setFCiclo("");
     setFData(hojeLocal());
-    setFVencimento(hojeLocal());
     setErroModal(""); setModal(true);
   }
 
@@ -355,8 +346,6 @@ export default function AbastecimentoPage() {
     setFAnoSafra(ab.ano_safra_id ?? "");
     setFCiclo(ab.ciclo_id ?? "");
     setFObs(ab.observacao ?? "");
-    setFGerarCP(!!ab.lancamento_id);
-    setFVencimento(ab.data);
     setErroModal(""); setModal(true);
   }
 
@@ -722,27 +711,7 @@ export default function AbastecimentoPage() {
                 </div>
               )}
 
-              {/* Gerar CP — só para posto externo (bomba que não baixa estoque); bomba própria é consumo, sem CP */}
-              {bombas.find(b => b.id === fBomba)?.consume_estoque === false && (
-              <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={fGerarCP}
-                    onChange={e => setFGerarCP(e.target.checked)}
-                    style={{ width: 16, height: 16, cursor: "pointer" }}
-                  />
-                  <span style={{ fontWeight: 600, color: "var(--text-1)" }}>Gerar Conta a Pagar</span>
-                  <span style={{ color: "var(--text-3)", fontWeight: 400 }}>(lança no financeiro)</span>
-                </label>
-                {fGerarCP && (
-                  <div>
-                    <label data-arato-label="true" style={lbl}>Vencimento do CP</label>
-                    <InputData type="date" value={fVencimento} onChange={e => setFVencimento(e.target.value)} style={{ ...inp, maxWidth: 200 }} />
-                  </div>
-                )}
-              </div>
-              )}
+              {/* Abastecimento é consumo: não gera Conta a Pagar (o CP vem da NF do posto/da compra do combustível). */}
 
               {/* Observação */}
               <div data-arato-dialog-body="true">

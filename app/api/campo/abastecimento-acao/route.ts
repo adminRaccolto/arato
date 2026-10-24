@@ -26,22 +26,6 @@ type BombaRow = {
   consume_estoque: boolean; estoque_atual_l: number;
 };
 
-async function resolverOgCombustivel(adm: ReturnType<typeof sb>, fazendaId: string): Promise<string | undefined> {
-  const { data: faz } = await adm.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle();
-  const contaId = (faz?.conta_id as string | null) ?? null;
-  const orParts = ["and(fazenda_id.is.null,conta_id.is.null)"];
-  if (contaId) orParts.push(`conta_id.eq.${contaId}`);
-  orParts.push(`fazenda_id.eq.${fazendaId}`);
-  const { data } = await adm.from("operacoes_gerenciais")
-    .select("id")
-    .or(orParts.join(","))
-    .eq("classificacao", "2.01.01.02.099")
-    .eq("inativo", false)
-    .limit(1)
-    .maybeSingle();
-  return (data?.id as string | undefined) ?? undefined;
-}
-
 function insumoDaBomba(insumos: Array<{ id: string; nome: string; fazenda_id?: string; estoque: number }>, bomba: BombaRow) {
   const combTxt = bomba.combustivel.replace("_", " ").toLowerCase();
   return insumos.find(i => {
@@ -172,29 +156,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Conta a Pagar opcional
-    // CP só para posto externo (bomba que não baixa estoque) — é compra de combustível. Bomba própria é consumo do
-    // estoque: o custo vem do custo médio e o CP já existe na NF de compra do combustível.
-    if (body.gerar_cp && !bomba.consume_estoque) {
-      const ogCombustivel = await resolverOgCombustivel(adm, fazBomba);
-      const { data: lanc, error: lancErr } = await adm.from("lancamentos").insert({
-        fazenda_id:            fazBomba,
-        tipo:                  "pagar",
-        descricao:             `Abastecimento ${body.comb_label ?? bomba.combustivel} — ${body.destino_nome ?? "—"}`,
-        categoria:             "combustivel",
-        operacao_gerencial_id: ogCombustivel ?? null,
-        origem_lancamento:     "manual",
-        data_lancamento:       body.data,
-        data_vencimento:       body.vencimento || body.data,
-        valor:                 total,
-        moeda:                 "BRL",
-        status:                "em_aberto",
-        auto:                  false,
-      }).select("id").single();
-      if (!lancErr && lanc) {
-        await adm.from("abastecimentos").update({ lancamento_id: lanc.id }).eq("id", novo.id);
-      }
-    }
+    // Abastecimento é consumo: nunca gera Conta a Pagar. O CP nasce só da entrada de NF/NFS (a do posto, quando for
+    // lançada, ou a da compra do combustível da bomba) — decisão do dono 24/10/2026.
 
     return NextResponse.json({ ok: true, id: novo.id });
   } catch (e) {

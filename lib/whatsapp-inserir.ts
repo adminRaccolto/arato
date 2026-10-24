@@ -1072,14 +1072,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     return { ok: false, mensagem: "❓ Quantos litros foram abastecidos?" };
   }
 
-  const vencimento = parseData(String(dados.vencimento ?? "hoje"));
-  const jaVStr = String(dados.ja_pago ?? "").toLowerCase();
-  const formaPag = String(dados.forma_pagamento ?? "").toLowerCase();
-  const jaPago = jaVStr === "true" || jaVStr === "sim" || jaVStr === "yes" ||
-    String(dados.vencimento ?? "").toLowerCase().includes("vista") ||
-    formaPag.includes("dinheiro") || formaPag.includes("débito") || formaPag.includes("debito") || formaPag.includes("pix");
-
-  const conta   = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
+  // Ciclo vigente: o custo do abastecimento vai para o ciclo (pago/vencimento ficam na NF do posto, que gera o CP).
   const cicloAb = await buscarCicloVigente(fazendaId, hoje);
 
   const maqExtIdDedup = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
@@ -1089,43 +1082,9 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     return { ok: true, mensagem: `ℹ️ Esse abastecimento já foi registrado (${qtdUsuario} L — *${bomba?.nome ?? bombaStr}*). Nada duplicado.` };
   }
 
-  const cpPayload: Record<string, unknown> = {
-    fazenda_id:      fazendaId,
-    tipo:            "pagar",
-    descricao:       `Abastecimento ${dados.produto ?? "combustível"} — ${dados.veiculo ?? bombaStr ?? "direto"}`,
-    categoria:       "combustivel",
-    data_lancamento: hoje,
-    data_vencimento: vencimento,
-    valor, moeda:    "BRL",
-    status:          jaPago ? "baixado" : "em_aberto",
-    conta_bancaria:  conta?.id ?? null,
-    safra_id:        cicloAb?.id ?? null,
-    ano_safra_id:    cicloAb?.ano_safra_id ?? null,
-    observacao:      "Inserido via Arato-IA",
-    auto:            false,
-  };
-  if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
-
-  const cpPayloadBase: Record<string, unknown> = {
-    fazenda_id:      fazendaId, tipo: "pagar",
-    descricao:       cpPayload.descricao,
-    categoria:       "combustivel",
-    data_lancamento: hoje, data_vencimento: vencimento,
-    valor, moeda:    "BRL",
-    status:          jaPago ? "baixado" : "em_aberto",
-    ano_safra_id:    cicloAb?.ano_safra_id ?? null,
-    observacao:      "Inserido via Arato-IA",
-  };
-
-  let { data: lancRow, error: errCp } = await sb().from("lancamentos").insert(cpPayload).select("id").maybeSingle();
-  if (errCp?.code === "42703") {
-    console.warn("[BOT] Colunas ausentes em lancamentos (abastecimento) — usando payload base.");
-    ({ data: lancRow, error: errCp } = await sb().from("lancamentos").insert(cpPayloadBase).select("id").maybeSingle() as { data: typeof lancRow; error: typeof errCp });
-  }
-  if (errCp) {
-    console.error("[BOT] Erro insert lancamentos abastecimento:", JSON.stringify(errCp));
-    return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
-  }
+  // Abastecimento é consumo: não gera Conta a Pagar. O CP nasce da NF do posto quando ela for lançada (fica a pendência
+  // fiscal abaixo para isso) — decisão do dono 24/10/2026.
+  const descricaoAbast = `Abastecimento ${dados.produto ?? "combustível"} — ${dados.veiculo ?? bombaStr ?? "direto"}`;
 
   // Histórico de abastecimentos — lookup por patrimônio ou nome
   const maqExtId = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
@@ -1140,7 +1099,8 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     valor_total:    valor,
     data:           hoje,
     observacao:     String(dados.veiculo ?? "") || null,
-    lancamento_id:  lancRow?.id ?? null,
+    ciclo_id:       cicloAb?.id ?? null,
+    lancamento_id:  null,
   };
   let { data: absRow, error: absErr } = await sb().from("abastecimentos").insert(absPayload).select("id").maybeSingle();
   if (absErr?.code === "23502" && absPayload.bomba_id === null) {
@@ -1156,11 +1116,11 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   try {
     const pfPayload: Record<string, unknown> = {
       fazenda_id:      fazendaId,
-      lancamento_id:   lancRow?.id ?? null,
+      lancamento_id:   null,
       abastecimento_id: absRow?.id ?? null,
       tipo:            "abastecimento",
       status:          "aguardando",
-      descricao:       String(cpPayload.descricao),
+      descricao:       descricaoAbast,
       valor,
       data_operacao:   hoje,
       fornecedor_nome: bombaStr || String(dados.veiculo ?? ""),
@@ -1177,13 +1137,10 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     console.error("[BOT] Exceção pendencias_fiscais:", pfEx);
   }
 
-  const statusLabel = jaPago
-    ? `Pago ✓${conta ? ` — debitado de *${conta.nome}*` : ""}`
-    : `A vencer: ${vencimento}`;
 
   return {
     ok: true,
-    mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${dados.produto ?? "combustível"} — *${bombaStr}*${dados.veiculo ? `\n• Máquina: ${dados.veiculo}` : ""}\n• Valor: R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• CP: ${statusLabel}`,
+    mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${dados.produto ?? "combustível"} — *${bombaStr}*${dados.veiculo ? `\n• Máquina: ${dados.veiculo}` : ""}\n• Valor: R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• Conta a Pagar: entra quando a NF do posto for lançada`,
   };
 }
 

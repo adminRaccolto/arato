@@ -13,7 +13,7 @@ const RELEASES = [
     modulos: ["Lavoura", "Estoque", "App Campo", "WhatsApp"],
     itens: [
       { tipo: "correcao", texto: "Recomendação agronômica executada (adubação, correção, plantio), consumo pelo App Campo e operações lançadas pelo WhatsApp criavam uma Conta a Pagar pelo insumo consumido — dívida em dobro com a NF de compra. Agora só baixam o estoque, com o custo pelo custo médio do produto." },
-      { tipo: "melhoria", texto: "Abastecimento: a opção Gerar Conta a Pagar aparece só para posto externo (compra de combustível). Abastecimento em bomba própria é consumo do estoque." },
+      { tipo: "melhoria", texto: "Abastecimento não gera mais Conta a Pagar, nem em posto externo: o CP vem da entrada da NF do posto (pelo WhatsApp, o abastecimento fica como pendência fiscal aguardando essa NF). A opção Gerar Conta a Pagar saiu da tela." },
     ],
     onde: "Lavoura → Recomendações; Estoque → Abastecimento; App Campo; WhatsApp",
   },
