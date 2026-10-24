@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-e",
+    data: "24/10/2026",
+    titulo: "Compra pelo WhatsApp aguarda a NF; folha e pendências visíveis em todas as fazendas",
+    modulos: ["WhatsApp", "Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Compra informada pelo WhatsApp não dá mais entrada no estoque nem gera Conta a Pagar: fica em Pendências Fiscais aguardando a NF. Antes, quando a NF chegava, estoque e CP entravam de novo, em dobro." },
+      { tipo: "correcao", texto: "Folha de pagamento, férias, premiações, CFOP fiscal por operação, pendências fiscais e pendências da conciliação apareciam só para a fazenda do perfil do usuário. Agora aparecem as de todas as fazendas do cliente." },
+    ],
+    onde: "WhatsApp; Financeiro → Folha; Conciliação; Fiscal → Pendências",
+  },
+  {
     versao: "2026.10.24-d",
     data: "24/10/2026",
     titulo: "Operações não geram Conta a Pagar",

@@ -1532,57 +1532,33 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
 // ── Entrada em estoque ──────────────────────────────────────────────────────
 async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
-  const valor     = parseValor(String(dados.valor ?? 0));
-  const vencimento = parseData(String(dados.vencimento ?? "hoje"));
+  // Compra sem NF não dá entrada no estoque nem gera Conta a Pagar: os dois nascem da entrada da NF (pelo SIEG ou
+  // lançada). Antes esta rotina lançava estoque + CP e, quando a NF chegava, tudo entrava de novo (em dobro). Fica
+  // uma pendência fiscal aguardando a NF — decisão do dono 24/10/2026 ("as CPs são geradas a partir da entrada de NF").
+  const valor      = parseValor(String(dados.valor ?? 0));
   const qtdUsuario = Number(dados.quantidade ?? 0);
-  const unidadeUsuario = String(dados.unidade ?? "");
+  const unidade    = String(dados.unidade ?? "");
+  const insumo     = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
+  const produto    = insumo?.nome ?? String(dados.produto ?? "produto");
+  const fornecedor = String(dados.fornecedor ?? "").trim();
 
-  const insumo = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
-
-  let qtdFinal = qtdUsuario;
-  let unidadeFinal = unidadeUsuario;
-  let notaConversao = "";
-
-  if (insumo) {
-    const unidadeInsumo = String(insumo.unidade ?? "");
-    if (unidadeUsuario && unidadeInsumo && normUnit(unidadeUsuario) !== normUnit(unidadeInsumo)) {
-      qtdFinal = converterUnidade(qtdUsuario, unidadeUsuario, unidadeInsumo);
-      notaConversao = ` _(${qtdUsuario} ${unidadeUsuario} → ${qtdFinal.toFixed(4).replace(/\.?0+$/, "")} ${unidadeInsumo})_`;
-    }
-    unidadeFinal = String(insumo.unidade ?? unidadeUsuario);
-
-    const hojeEntrada = hojeLocal();
-    if (await existeDuplicataRecente("movimentacoes_estoque", {
-      fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada", motivo: "compra", quantidade: qtdFinal, data: hojeEntrada,
-    })) {
-      return { ok: true, mensagem: `ℹ️ Essa entrada já foi registrada (${insumo.nome} — ${qtdFinal.toFixed(2)} ${unidadeInsumo}). Nada duplicado.` };
-    }
-
-    const novoEstoque = Number(insumo.estoque ?? 0) + qtdFinal;
-    const custoMedioAtual = Number(insumo.custo_medio ?? 0);
-    const novoMedio = qtdFinal > 0
-      ? (custoMedioAtual * Number(insumo.estoque ?? 0) + valor) / novoEstoque
-      : custoMedioAtual;
-
-    await sb().from("insumos").update({ estoque: novoEstoque, custo_medio: novoMedio }).eq("id", insumo.id);
-    await sb().from("movimentacoes_estoque").insert({
-      fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada",
-      quantidade: qtdFinal, valor_unitario: qtdFinal > 0 ? valor / qtdFinal : 0,
-      motivo: "compra", observacao: `Compra via WhatsApp — ${dados.fornecedor ?? ""}`,
-      data: hojeEntrada, auto: false,
-    });
-  }
-
-  await sb().from("lancamentos").insert({
-    fazenda_id: fazendaId, tipo: "pagar",
-    descricao: `Compra ${insumo?.nome ?? dados.produto} — ${dados.fornecedor ?? ""}`,
-    categoria: "insumo", data_lancamento: hojeLocal(),
-    data_vencimento: vencimento, valor, moeda: "BRL", status: "em_aberto",
-  });
+  const pf: Record<string, unknown> = {
+    fazenda_id:      fazendaId,
+    tipo:            "entrada_estoque",
+    status:          "aguardando",
+    descricao:       `Compra ${produto}${fornecedor ? ` — ${fornecedor}` : ""}: ${qtdUsuario} ${unidade}`.trim(),
+    valor:           valor || null,
+    data_operacao:   hojeLocal(),
+    fornecedor_nome: fornecedor || null,
+    origem:          "whatsapp",
+    observacoes:     "Informado pelo WhatsApp. Estoque e Conta a Pagar entram quando a NF for lançada.",
+  };
+  const { error } = await sb().from("pendencias_fiscais").insert(pf);
+  if (error) return { ok: false, mensagem: `❌ Não consegui registrar: ${error.message}` };
 
   return {
     ok: true,
-    mensagem: `✅ Entrada registrada!\n• ${insumo?.nome ?? dados.produto}: +${qtdFinal.toFixed(2)} ${unidadeFinal}${notaConversao}\n• CP: R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} — vence ${vencimento}`,
+    mensagem: `📝 Compra anotada: *${produto}* — ${qtdUsuario} ${unidade}${valor ? ` · R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : ""}${fornecedor ? ` · ${fornecedor}` : ""}\n• O estoque e a Conta a Pagar entram quando a NF for lançada (ou chegar pelo SIEG) — assim nada fica em dobro.\n• Ficou em Pendências Fiscais aguardando a NF.`,
   };
 }
 

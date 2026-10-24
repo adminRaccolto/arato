@@ -17697,3 +17697,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_insumos_cliente_nome
   ON insumos (conta_id, coalesce(tipo, 'insumo'), fn_nome_item_normalizado(nome))
   WHERE mesclado_em IS NULL AND coalesce(ativo, true);
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 369 — Acesso pelo CLIENTE, não pela fazenda do perfil (sem "fazenda ativa")
+-- =============================================================================
+-- Estas tabelas liberavam só as linhas da fazenda gravada no perfil do usuário (perfis.fazenda_id) — com cliente de
+-- várias fazendas, o resto sumia (teste 24/10/2026, usuária de cliente com 7 fazendas: folha 0 de 12, férias 0 de 206,
+-- premiações 0 de 33, CFOP fiscal 0 de 272, pendências fiscais 0 de 1, pendências de conciliação 1.553 de 1.925).
+-- Passa a valer: qualquer fazenda do cliente do usuário (ou a equipe Raccolto). Troca TODAS as políticas da tabela.
+DO $$
+DECLARE t text; p record;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['folha_pagamento','funcionario_ferias','funcionario_premiacoes','operacao_cfop_fiscal',
+                           'pendencias_fiscais','conciliacao_pendencias','adiantamentos_cliente','aplicacoes_adiantamento','logs_sistema']
+  LOOP
+    IF to_regclass('public.' || t) IS NULL THEN CONTINUE; END IF;
+    FOR p IN SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = t LOOP
+      EXECUTE format('DROP POLICY %I ON public.%I', p.policyname, t);
+    END LOOP;
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format($f$CREATE POLICY %I ON public.%I FOR ALL
+      USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis pf ON pf.conta_id = f.conta_id WHERE pf.user_id = auth.uid()) OR public.rls_sou_raccotlo())
+      WITH CHECK (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis pf ON pf.conta_id = f.conta_id WHERE pf.user_id = auth.uid()) OR public.rls_sou_raccotlo())$f$,
+      t || '_cliente', t);
+  END LOOP;
+END $$;
+NOTIFY pgrst, 'reload schema';
