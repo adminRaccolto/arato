@@ -4428,7 +4428,7 @@ export async function desvincularOrigemRefinanciamento(id: string, contrato_orig
 // MÓDULO LAVOURA — Plantio
 // ————————————————————————————————————————
 
-import type { Plantio, PulverizacaoOp, PulverizacaoItem, ColheitaRegistro, ColheitaRomaneio, CorrecaoSolo, CorrecaoSoloItem, AdubacaoBase, AdubacaoBaseItem } from "./supabase";
+import type { Plantio, PulverizacaoOp, PulverizacaoItem, PulverizacaoTalhao, ColheitaRegistro, ColheitaRomaneio, CorrecaoSolo, CorrecaoSoloItem, AdubacaoBase, AdubacaoBaseItem } from "./supabase";
 
 // ————————————————————————————————————————
 // CORREÇÃO DE SOLO
@@ -4710,6 +4710,27 @@ export async function criarPulverizacaoItem(i: Omit<PulverizacaoItem, "id" | "cr
   const { data, error } = await supabase.from("pulverizacao_itens").insert(i).select().single();
   if (error) throw error;
   return data;
+}
+
+// Registra quais talhões (um ou vários) uma pulverização cobriu — ver
+// Seção 366. Chamar depois de criarPulverizacao, com a lista de talhões
+// selecionados na tela.
+export async function criarPulverizacaoTalhoes(
+  pulverizacao_id: string,
+  talhoes: { talhao_id: string; talhao_nome: string; area_ha: number }[],
+): Promise<void> {
+  if (talhoes.length === 0) return;
+  const { error } = await supabase.from("pulverizacao_talhoes").insert(
+    talhoes.map(t => ({ pulverizacao_id, talhao_id: t.talhao_id, talhao_nome: t.talhao_nome, area_ha: t.area_ha }))
+  );
+  if (error) throw error;
+}
+
+export async function listarPulverizacaoTalhoesPorIds(pulverizacao_ids: string[]): Promise<PulverizacaoTalhao[]> {
+  if (pulverizacao_ids.length === 0) return [];
+  const { data, error } = await supabase.from("pulverizacao_talhoes").select("*").in("pulverizacao_id", pulverizacao_ids);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function excluirPulverizacao(id: string): Promise<void> {

@@ -210,21 +210,35 @@ export default function TratamentoSementesPage() {
   // ── Carregamento ─────────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazAtiva) return;
-    const [ts, rec, ins, anos, ciclosAll, deps] = await Promise.all([
-      listarTratamentos(fazAtiva),
-      listarReceitas(fazAtiva),
-      listarInsumos(fazAtiva),
-      listarAnosSafra(fazAtiva),
-      listarTodosCiclos(fazAtiva),
-      listarDepositos(fazAtiva),
-    ]);
-    setTratamentos(ts);
-    setReceitas(rec);
-    setInsumosSemente(ins.filter(i => i.categoria === "semente" && insumoAtivo(i)));
-    setInsumosProduto(ins.filter(i => ["defensivo", "biologico", "inoculante"].includes(i.categoria ?? "")));
-    setAnosSafra(anos);
-    setCiclos(ciclosAll);
-    setDepositos(deps);
+    try {
+      setErro(null);
+      const [ts, rec, ins, anos, ciclosAll, deps] = await Promise.all([
+        listarTratamentos(fazAtiva),
+        listarReceitas(fazAtiva),
+        listarInsumos(fazAtiva),
+        listarAnosSafra(fazAtiva),
+        listarTodosCiclos(fazAtiva),
+        listarDepositos(fazAtiva),
+      ]);
+      setTratamentos(ts);
+      setReceitas(rec);
+      setInsumosSemente(ins.filter(i => i.categoria === "semente" && insumoAtivo(i)));
+      // "inoculante" nunca é gravado por nenhuma tela de cadastro de insumo —
+      // o cadastro real (app/estoque) oferece "biologico" com o rótulo
+      // "Biológico / Inoculante" pra esse mesmo produto (mesmo bug encontrado
+      // em app/lavoura/recomendacoes/page.tsx). Filtrar por um valor que
+      // nenhum insumo tem deixava esse dropdown sempre vazio.
+      setInsumosProduto(ins.filter(i => ["defensivo", "biologico"].includes(i.categoria ?? "") && insumoAtivo(i)));
+      setAnosSafra(anos);
+      setCiclos(ciclosAll);
+      setDepositos(deps);
+    } catch (e) {
+      // Sem isso, uma falha em qualquer uma das 6 chamadas (RLS, coluna
+      // renomeada, etc.) rejeitava a Promise.all inteira sem nenhum
+      // setState — os selects do modal ficavam só com o placeholder, dando
+      // a impressão de "nenhum campo disponível" sem erro visível na tela.
+      setErro((e as { message?: string })?.message || "Não foi possível carregar os dados de tratamento de sementes.");
+    }
   }, [fazAtiva]);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -701,6 +715,12 @@ export default function TratamentoSementesPage() {
             )}
           </div>
         </OperationalHeading>
+
+        {erro && !modalOrdem && !modalConcluir && !modalReceita && (
+          <div style={{ background: "#FEECEC", border: "0.5px solid #F4B3B3", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#B91C1C" }}>
+            Erro ao carregar dados: {erro}
+          </div>
+        )}
 
         {/* Abas */}
         <div data-arato-tabs="true" style={{ display: "flex", gap: 4, marginBottom: 20 }}>

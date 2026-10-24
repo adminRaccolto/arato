@@ -9,11 +9,12 @@ import {
   listarTalhoes, listarInsumosParaConta,
   listarAnosSafra, listarTodosCiclos,
   criarPulverizacao, criarPulverizacaoItem, processarPulverizacao,
+  criarPulverizacaoTalhoes, listarPulverizacaoTalhoesPorIds,
   listarPulverizacoesDaConta, listarPulverizacaoItens, excluirPulverizacao, listarFazendas, insumoAtivo } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import InputNumerico from "../../../components/InputNumerico";
-import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
+import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, PulverizacaoTalhao, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -59,15 +60,29 @@ export default function PulverizacaoPage() {
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
   const [detalhe, setDetalhe]     = useState<{ pulv: PulverizacaoOp; itens: PulverizacaoItem[] } | null>(null);
+  const [talhoesPorPulv, setTalhoesPorPulv] = useState<Record<string, PulverizacaoTalhao[]>>({});
 
   const [f, setF] = useState({
-    ano_safra_sel: "", ciclo_id: "", talhao_id: "", tipo: "herbicida" as PulverizacaoOp["tipo"],
+    ano_safra_sel: "", ciclo_id: "", tipo: "herbicida" as PulverizacaoOp["tipo"],
     pre_pos: "" as "" | "pre" | "pos" | "dessecacao", estadio_fenologico: "",
     data_inicio: "", data_fim: "", area_ha: "",
     cap_tanque_l: "", vazao_l_ha: "", num_tanques: "",
     fiscal: false, observacao: "",
   });
   const [itens, setItens] = useState<ItemForm[]>([{ insumo_id: "", dose_ha: "", unidade: "L" }]);
+  // Vários talhões podem compartilhar a mesma recomendação/calda num único
+  // lançamento (pedido 24/out/2026) — custo não é rateado entre eles (fica
+  // um só, igual sempre foi), mas cada talhão fica registrado individualmente
+  // em pulverizacao_talhoes pra rastreabilidade (ver Seção 366).
+  const [talhaoIdsSelecionados, setTalhaoIdsSelecionados] = useState<Set<string>>(new Set());
+
+  function alternarTalhao(id: string) {
+    setTalhaoIdsSelecionados(atual => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id); else novo.add(id);
+      return novo;
+    });
+  }
 
   useEffect(() => {
     if (!fazendaId) return;
@@ -77,7 +92,16 @@ export default function PulverizacaoPage() {
     // qualquer outra fazenda do cliente, mesmo já existindo. fazendaFiltro é
     // opcional e explícito (seletor "Todas as fazendas" por padrão).
     listarPulverizacoesDaConta(fazendaId)
-      .then(data => setPulverizacoes(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
+      .then(data => {
+        const lista = fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data;
+        setPulverizacoes(lista);
+        return listarPulverizacaoTalhoesPorIds(lista.map(p => p.id));
+      })
+      .then(vinculos => {
+        const porPulv: Record<string, PulverizacaoTalhao[]> = {};
+        vinculos.forEach(v => { (porPulv[v.pulverizacao_id] ??= []).push(v); });
+        setTalhoesPorPulv(porPulv);
+      })
       .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
     // Conta-wide: a lista de pulverizações agora mostra lançamentos de qualquer
     // fazenda da conta — o catálogo de insumos usado pra resolver nome do
@@ -92,6 +116,7 @@ export default function PulverizacaoPage() {
     if (!fid) return;
     listarTalhoes(fid).then(setTalhoes).catch(() => {});
     listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
+    setTalhaoIdsSelecionados(new Set());
   }, [fid]);
 
   const ciclosDisponiveis = cascade.anoSafraId
@@ -114,11 +139,15 @@ export default function PulverizacaoPage() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar)", perigo: false }))) return;
     if (!f.ciclo_id || !f.area_ha || !f.data_inicio) return;
     if (calcItens.length === 0) { alert("Adicione ao menos um produto."); return; }
+    const talhoesSelecionados = talhoes.filter(t => talhaoIdsSelecionados.has(t.id));
     try {
       setSalvando(true);
       const pulv = await criarPulverizacao({
         fazenda_id: fid!, ciclo_id: f.ciclo_id,
-        talhao_id: f.talhao_id || undefined,
+        // Mantido como o primeiro talhão selecionado só por retrocompatibilidade
+        // com leituras antigas que esperam 1 talhão — a lista completa vai pra
+        // pulverizacao_talhoes abaixo.
+        talhao_id: talhoesSelecionados[0]?.id || undefined,
         tipo: f.tipo,
         pre_pos: f.pre_pos || null,
         estadio_fenologico: f.estadio_fenologico || undefined,
@@ -145,11 +174,16 @@ export default function PulverizacaoPage() {
       const nomes: Record<string, string> = {};
       calcItens.forEach(it => { nomes[it.insumo_id] = it.nome; });
       await processarPulverizacao(pulv, itensSalvos, nomes);
+      if (talhoesSelecionados.length > 0) {
+        await criarPulverizacaoTalhoes(pulv.id, talhoesSelecionados.map(t => ({ talhao_id: t.id, talhao_nome: t.nome, area_ha: t.area_ha })));
+        setTalhoesPorPulv(p => ({ ...p, [pulv.id]: talhoesSelecionados.map(t => ({ id: t.id, pulverizacao_id: pulv.id, talhao_id: t.id, talhao_nome: t.nome, area_ha: t.area_ha })) }));
+      }
       setPulverizacoes(p => [{ ...pulv, custo_total: custoTotal }, ...p]);
       setModal(false);
       setCascade({});
+      setTalhaoIdsSelecionados(new Set());
       setItens([{ insumo_id: "", dose_ha: "", unidade: "L" }]);
-      setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", tipo: "herbicida", pre_pos: "", estadio_fenologico: "", data_inicio: "", data_fim: "", area_ha: "", cap_tanque_l: "", vazao_l_ha: "", num_tanques: "", fiscal: false, observacao: "" });
+      setF({ ano_safra_sel: "", ciclo_id: "", tipo: "herbicida", pre_pos: "", estadio_fenologico: "", data_inicio: "", data_fim: "", area_ha: "", cap_tanque_l: "", vazao_l_ha: "", num_tanques: "", fiscal: false, observacao: "" });
     } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
   }
 
@@ -225,7 +259,16 @@ export default function PulverizacaoPage() {
                       <tr key={p.id} style={{ borderBottom: i < pulverizacoes.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{cicloLabel(p.ciclo_id ?? "")}</div>
-                          {p.talhao_id && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>}
+                          {(() => {
+                            const vinculos = talhoesPorPulv[p.id];
+                            if (vinculos && vinculos.length > 0) {
+                              return <div style={{ fontSize: 11, color: "var(--text-2)" }}>{vinculos.map(v => v.talhao_nome).join(", ")}</div>;
+                            }
+                            if (p.talhao_id) {
+                              return <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>;
+                            }
+                            return null;
+                          })()}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <span style={{ fontSize: 10, background: tm.bg, color: tm.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
@@ -333,13 +376,43 @@ export default function PulverizacaoPage() {
               <CascadeSelector
                 contaId={contaId}
                 values={cascade}
-                levels={["fazenda", "anoSafra", "ciclo", "talhao"]}
+                levels={["fazenda", "anoSafra", "ciclo"]}
                 anoSafraRequired
                 onChange={next => {
                   setCascade(next);
-                  setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                  setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "" }));
                 }}
               />
+            </div>
+
+            {/* Talhões — vários podem compartilhar a mesma calda/recomendação
+                num único lançamento; custo fica único (não rateado), só a
+                referência de quais talhões ele cobriu é N:1. */}
+            <div data-arato-dialog-body="true" style={{ marginBottom: 14 }}>
+              <label data-arato-label="true" style={lbl}>Talhões</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 10, maxHeight: 160, overflowY: "auto" as const }}>
+                {talhoes.length === 0 && <span style={{ fontSize: 12, color: "var(--text-2)" }}>Selecione a fazenda para listar os talhões.</span>}
+                {talhoes.map(t => {
+                  const sel = talhaoIdsSelecionados.has(t.id);
+                  return (
+                    <label key={t.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: sel ? "#EAF0F6" : "transparent", fontSize: 12, cursor: "pointer" }}>
+                      <input type="checkbox" checked={sel} onChange={() => alternarTalhao(t.id)} />
+                      {t.nome} ({fmtN(t.area_ha, 1)} ha)
+                    </label>
+                  );
+                })}
+              </div>
+              {talhaoIdsSelecionados.size > 0 && (
+                <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                    {talhaoIdsSelecionados.size} talhão(ões) selecionado(s) — soma: {fmtN(talhoes.filter(t => talhaoIdsSelecionados.has(t.id)).reduce((s, t) => s + t.area_ha, 0), 1)} ha
+                  </span>
+                  <OperationalButton data-arato-button="secondary" style={{ ...btnR, padding: "4px 10px", fontSize: 11 }}
+                    onClick={() => setF(p => ({ ...p, area_ha: String(talhoes.filter(t => talhaoIdsSelecionados.has(t.id)).reduce((s, t) => s + t.area_ha, 0)) }))}>
+                    Usar soma na Área (ha)
+                  </OperationalButton>
+                </div>
+              )}
             </div>
 
             <div data-arato-dialog-body="true" style={{ background: "#E8E8E8", border: "0.5px solid #11111140", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0D0D0D" }}>

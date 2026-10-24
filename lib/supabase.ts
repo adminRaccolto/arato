@@ -1877,6 +1877,18 @@ export type PulverizacaoItem = {
   created_at?: string;
 };
 
+// Talhões cobertos por uma pulverização que atende vários de uma vez (mesma
+// calda/recomendação pra todos) — `pulverizacoes.talhao_id` guarda só o
+// primeiro, por retrocompatibilidade com código que ainda lê um talhão só;
+// esta tabela é a fonte real de quais talhões entraram no lançamento.
+export type PulverizacaoTalhao = {
+  id: string;
+  pulverizacao_id: string;
+  talhao_id: string;
+  talhao_nome: string;
+  area_ha: number;
+};
+
 export type ColheitaRegistro = {
   id: string;
   fazenda_id: string;

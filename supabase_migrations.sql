@@ -17510,3 +17510,28 @@ END $$;
 INSERT INTO estoque_migracao_controle (etapa, obs) VALUES ('saldo_por_movimentacoes', 'Seção 365 aplicada')
   ON CONFLICT (etapa) DO NOTHING;
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 366 — Pulverização: múltiplos talhões por lançamento
+-- Pedido 24/out/2026: a mesma calda/recomendação muitas vezes vale pra vários
+-- talhões — exigir um lançamento por talhão era redundante. `pulverizacoes`
+-- continua sendo 1 linha (1 custo total, não rateado — CLAUDE.md já documenta
+-- esse racional), mas agora pode cobrir N talhões via esta tabela de junção,
+-- no mesmo padrão de `recomendacao_talhoes`. `pulverizacoes.talhao_id` é
+-- mantido como está (passa a guardar só o primeiro talhão selecionado) por
+-- retrocompatibilidade com qualquer leitura existente que espera 1 talhão só.
+CREATE TABLE IF NOT EXISTS pulverizacao_talhoes (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pulverizacao_id  uuid REFERENCES pulverizacoes(id) ON DELETE CASCADE,
+  talhao_id        uuid REFERENCES talhoes(id),
+  talhao_nome      text NOT NULL,
+  area_ha          numeric NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pulv_talhoes_pulv ON pulverizacao_talhoes(pulverizacao_id);
+
+ALTER TABLE pulverizacao_talhoes ENABLE ROW LEVEL SECURITY;
+-- Mesmo nível de proteção que a tabela pai (pulverizacoes) tem hoje — ver
+-- débito técnico de isolamento conhecido no CLAUDE.md, não é regressão nova.
+DROP POLICY IF EXISTS "emergencial_autenticado" ON pulverizacao_talhoes;
+CREATE POLICY "emergencial_autenticado" ON pulverizacao_talhoes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';
