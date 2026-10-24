@@ -722,7 +722,8 @@ export default function AbastecimentoPage() {
                 </div>
               )}
 
-              {/* Gerar CP */}
+              {/* Gerar CP — só para posto externo (bomba que não baixa estoque); bomba própria é consumo, sem CP */}
+              {bombas.find(b => b.id === fBomba)?.consume_estoque === false && (
               <div data-arato-dialog-body="true" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <label data-arato-label="true" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
                   <input
@@ -741,6 +742,7 @@ export default function AbastecimentoPage() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* Observação */}
               <div data-arato-dialog-body="true">

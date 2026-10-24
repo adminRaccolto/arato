@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-d",
+    data: "24/10/2026",
+    titulo: "Operações não geram Conta a Pagar",
+    modulos: ["Lavoura", "Estoque", "App Campo", "WhatsApp"],
+    itens: [
+      { tipo: "correcao", texto: "Recomendação agronômica executada (adubação, correção, plantio), consumo pelo App Campo e operações lançadas pelo WhatsApp criavam uma Conta a Pagar pelo insumo consumido — dívida em dobro com a NF de compra. Agora só baixam o estoque, com o custo pelo custo médio do produto." },
+      { tipo: "melhoria", texto: "Abastecimento: a opção Gerar Conta a Pagar aparece só para posto externo (compra de combustível). Abastecimento em bomba própria é consumo do estoque." },
+    ],
+    onde: "Lavoura → Recomendações; Estoque → Abastecimento; App Campo; WhatsApp",
+  },
+  {
     versao: "2026.10.24-c",
     data: "24/10/2026",
     titulo: "Sem fazenda ativa: cada lançamento físico vai para a fazenda certa",

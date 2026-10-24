@@ -1,4 +1,3 @@
-import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { exigirAcessoFazendas } from "../../../../lib/api-auth";
@@ -10,26 +9,7 @@ const sb = () =>
     { auth: { persistSession: false } }
   );
 
-const CLASSIFICACAO_POR_CATEGORIA: Record<string, string> = {
-  "Insumos — Defensivos":    "2.01.01.01.001",
-  "Insumos — Corretivos":    "2.01.01.01.002",
-  "Insumos — Sementes":      "2.01.01.01.003",
-  "Insumos — Fertilizantes": "2.01.01.01.004",
-};
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolverOgPorCategoria(supabase: any, fazenda_id: string, categoria: string): Promise<string | null> {
-  const classificacao = CLASSIFICACAO_POR_CATEGORIA[categoria];
-  if (!classificacao) return null;
-  const { data: fazendaRow } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
-  const parts = ["and(fazenda_id.is.null,conta_id.is.null)"];
-  if ((fazendaRow as { conta_id?: string } | null)?.conta_id) parts.push(`conta_id.eq.${(fazendaRow as { conta_id?: string }).conta_id}`);
-  parts.push(`fazenda_id.eq.${fazenda_id}`);
-  const { data } = await supabase.from("operacoes_gerenciais")
-    .select("id").or(parts.join(",")).eq("classificacao", classificacao).eq("inativo", false)
-    .limit(1).maybeSingle();
-  return (data as { id?: string } | null)?.id ?? null;
-}
 
 interface ConsumoItem {
   insumo_id: string;
@@ -124,26 +104,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Lançamento CP obrigatório — criado independente do custo calculado
-    // (mesmo sem custo_medio/valor_unitario, registra o lançamento com valor 0
-    //  para que o operador preencha o valor correto no financeiro)
-    const ogId = await resolverOgPorCategoria(supabase, fazenda_id, categoria_lancamento);
-    const { error: lancErr } = await supabase.from("lancamentos").insert({
-      fazenda_id,
-      tipo:            "pagar",
-      moeda:           "BRL",
-      descricao:       descricao_lancamento,
-      categoria:       categoria_lancamento,
-      operacao_gerencial_id: ogId,
-      data_lancamento: hojeLocal(),
-      data_vencimento: data,
-      valor:           custoTotal,
-      ciclo_id:        ciclo_id ?? null,
-      status:          "em_aberto",
-      auto:            true,
-    });
-
-    if (lancErr) erros.push(`lançamento: ${lancErr.message}`);
+    // Consumo não gera Conta a Pagar: o custo é o custo médio gravado em cada movimentação (custo_unitario_na_baixa);
+    // o CP é da NF de compra. Antes criava um CP do consumo — dívida em dobro.
+    void descricao_lancamento; void categoria_lancamento;
 
     return NextResponse.json({ ok: true, baixados, custo_total: custoTotal, erros });
   } catch (e) {

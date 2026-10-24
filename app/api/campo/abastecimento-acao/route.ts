@@ -173,7 +173,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Conta a Pagar opcional
-    if (body.gerar_cp) {
+    // CP só para posto externo (bomba que não baixa estoque) — é compra de combustível. Bomba própria é consumo do
+    // estoque: o custo vem do custo médio e o CP já existe na NF de compra do combustível.
+    if (body.gerar_cp && !bomba.consume_estoque) {
       const ogCombustivel = await resolverOgCombustivel(adm, fazBomba);
       const { data: lanc, error: lancErr } = await adm.from("lancamentos").insert({
         fazenda_id:            fazBomba,

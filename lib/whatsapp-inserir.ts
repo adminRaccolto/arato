@@ -247,6 +247,8 @@ async function deduzirEstoqueInsumo(
     await sb().from("movimentacoes_estoque").insert({
       fazenda_id: fazendaId, insumo_id: insumo.id,
       tipo: "saida", quantidade, data, observacao: obs, auto: true,
+      // Custo da operação = custo médio do produto no momento da baixa (é o que o DRE lê)
+      custo_unitario_na_baixa: insumo.custo_medio ?? insumo.valor_unitario ?? null,
     });
   }
 }
@@ -1347,22 +1349,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "pulverizacao", String(dados.produto ?? ""), dataOp, `Pulverização ${tipoProduto} — ${insumo.nome} via WhatsApp`);
       await sb().from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
-      if (custoTotal > 0) {
-        const cpPulv: Record<string, unknown> = {
-          fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
-          descricao: `Pulverização ${tipoProduto} — ${insumo.nome}`,
-          categoria: "Insumos — Defensivos",
-          data_lancamento: hojeLocal(),
-          data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
-          ciclo_id: ciclo?.id ?? null,
-        };
-        let { error: cpErrP } = await sb().from("lancamentos").insert(cpPulv).select("id").maybeSingle();
-        if (cpErrP?.code === "42703") {
-          delete cpPulv.ciclo_id;
-          ({ error: cpErrP } = await sb().from("lancamentos").insert(cpPulv).select("id").maybeSingle() as { error: typeof cpErrP });
-        }
-        if (cpErrP) console.warn("[BOT-PULV] CP não criado:", cpErrP.message);
-      }
+      // Operação não gera Conta a Pagar: só baixa o estoque, com o custo pelo custo médio (o CP é da NF de compra).
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
@@ -1370,7 +1357,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNeg}` : "";
     const infoCusto = custoTotal > 0
-      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
+      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} pelo custo médio`
       : (insumo && custoMedio === 0 ? `\n⚠️ _Insumo sem preço cadastrado — atualize o custo médio em Estoque para registrar custos futuros._` : "");
 
     return {
@@ -1429,22 +1416,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         valor_unitario: custoMedio, custo_total: custoTotal,
       });
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "adubacao", String(dados.produto ?? ""), dataOp, `Adubação de Base — ${insumo.nome} via WhatsApp`);
-      if (custoTotal > 0) {
-        const cpAdub: Record<string, unknown> = {
-          fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
-          descricao: `Adubação de Base — ${insumo.nome}`,
-          categoria: "Insumos — Fertilizantes",
-          data_lancamento: hojeLocal(),
-          data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
-          ciclo_id: ciclo?.id ?? null,
-        };
-        let { error: cpErrA } = await sb().from("lancamentos").insert(cpAdub).select("id").maybeSingle();
-        if (cpErrA?.code === "42703") {
-          delete cpAdub.ciclo_id;
-          ({ error: cpErrA } = await sb().from("lancamentos").insert(cpAdub).select("id").maybeSingle() as { error: typeof cpErrA });
-        }
-        if (cpErrA) console.warn("[BOT-ADUB] CP não criado:", cpErrA.message);
-      }
+      // Operação não gera Conta a Pagar: só baixa o estoque, com o custo pelo custo médio (o CP é da NF de compra).
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
@@ -1452,7 +1424,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNeg}` : "";
     const infoCusto = custoTotal > 0
-      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
+      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} pelo custo médio`
       : (insumo && custoMedio === 0 ? `\n⚠️ _Insumo sem preço cadastrado — atualize o custo médio em Estoque._` : "");
 
     return {
@@ -1508,25 +1480,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
     if (insumo && totalNativo > 0) {
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "manual", String(dados.produto ?? ""), dataOp, `Plantio — ${insumo.nome} via WhatsApp`);
-      if (custoSementes > 0) {
-        const cpPlant: Record<string, unknown> = {
-          fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
-          descricao: `Plantio — ${insumo.nome}`,
-          categoria: "Insumos — Sementes",
-          data_lancamento: hojeLocal(),
-          data_vencimento: dataOp, valor: custoSementes, status: "em_aberto",
-          ciclo_id: ciclo?.id ?? null,
-        };
-        let { data: lanc, error: cpErrPl } = await sb().from("lancamentos").insert(cpPlant).select("id").maybeSingle();
-        if (cpErrPl?.code === "42703") {
-          delete cpPlant.ciclo_id;
-          ({ data: lanc, error: cpErrPl } = await sb().from("lancamentos").insert(cpPlant).select("id").maybeSingle() as { data: typeof lanc; error: typeof cpErrPl });
-        }
-        if (cpErrPl) console.warn("[BOT-PLANT] CP não criado:", cpErrPl.message);
-        if (lanc?.id) {
-          await sb().from("plantios").update({ lancamento_id: lanc.id }).eq("id", plantioRow.id);
-        }
-      }
+      // Operação não gera Conta a Pagar: só baixa o estoque, com o custo pelo custo médio (o CP é da NF de compra).
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
@@ -1534,7 +1488,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Semente: ${totalNativo.toFixed(2)} ${unidadeInsumo} (${quantidadeKg.toFixed(1)} kg) — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNegP}` : "";
     const infoCusto = custoSementes > 0
-      ? `\n• Custo sementes: R$ ${custoSementes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
+      ? `\n• Custo sementes: R$ ${custoSementes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} pelo custo médio`
       : (insumo && custoMedio === 0 ? `\n⚠️ _Semente sem preço cadastrado — atualize o custo médio em Estoque._` : "");
 
     return {
@@ -1600,23 +1554,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "correcao_solo", String(dados.produto ?? ""), dataOp, `Correção de Solo — ${insumo.nome} via WhatsApp`);
 
-      // CP
-      if (custoTotal > 0) {
-        const cpCorr: Record<string, unknown> = {
-          fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
-          descricao: `Correção de Solo — ${insumo.nome}`,
-          categoria: "Insumos — Corretivos",
-          data_lancamento: hojeLocal(),
-          data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
-          ciclo_id: ciclo?.id ?? null,
-        };
-        let { error: cpErrC } = await sb().from("lancamentos").insert(cpCorr).select("id").maybeSingle();
-        if (cpErrC?.code === "42703") {
-          delete cpCorr.ciclo_id;
-          ({ error: cpErrC } = await sb().from("lancamentos").insert(cpCorr).select("id").maybeSingle() as { error: typeof cpErrC });
-        }
-        if (cpErrC) console.warn("[BOT-CORR] CP não criado:", cpErrC.message);
-      }
+      // Operação não gera Conta a Pagar: só baixa o estoque, com o custo pelo custo médio (o CP é da NF de compra).
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
@@ -1624,7 +1562,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Consumido: ${totalTon.toFixed(3)} t (${totalNativo.toFixed(2)} ${unidadeInsumo}) — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNegC}` : "";
     const infoCusto = custoTotal > 0
-      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)` : "";
+      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} pelo custo médio` : "";
 
     return {
       ok: true,
