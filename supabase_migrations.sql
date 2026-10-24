@@ -17535,3 +17535,131 @@ DROP POLICY IF EXISTS "emergencial_autenticado" ON pulverizacao_talhoes;
 CREATE POLICY "emergencial_autenticado" ON pulverizacao_talhoes FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 366 — Item por cliente, fase 2: mesclar cadastros repetidos (tudo ou nada, com desfazer)
+-- =============================================================================
+-- fn_mesclar_insumos(destino, origens[], quem) troca as origens pelo destino em TODA coluna com FK para insumos (lista
+-- lida do próprio banco), nas colunas sem FK que guardam item (rel_movimentacoes_estoque, notas_proprias_externas_itens)
+-- e nos lotes de semente (nf_entrada_itens.lotes_semente[].insumo_id). As origens NÃO são apagadas: ficam inativas e
+-- marcadas mesclado_em = destino. Uma única chamada = uma transação: qualquer erro desfaz o grupo inteiro.
+-- Cada linha alterada fica em insumos_mesclagens.alteracoes (valor anterior) → fn_desfazer_mesclagem(id) volta tudo.
+-- Recusa: sem a Seção 365 ativa, unidade ou tipo diferente, cliente diferente, item já mesclado.
+ALTER TABLE insumos ADD COLUMN IF NOT EXISTS mesclado_em uuid REFERENCES insumos(id) ON DELETE SET NULL;
+ALTER TABLE insumos ADD COLUMN IF NOT EXISTS mesclado_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS insumos_mesclagens (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id     uuid,
+  destino_id   uuid NOT NULL,
+  origem_ids   uuid[] NOT NULL,
+  alteracoes   jsonb NOT NULL DEFAULT '[]',
+  custo_antes  numeric,
+  feito_por    text,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  desfeita_em  timestamptz
+);
+ALTER TABLE insumos_mesclagens ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION fn_mesclar_insumos(p_destino uuid, p_origens uuid[], p_feito_por text DEFAULT NULL) RETURNS jsonb AS $$
+DECLARE
+  v_conta uuid; v_dest record; v_o record; r record; v_n int; v_alt jsonb := '[]'; v_lote jsonb;
+  v_custo numeric; v_log uuid;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM estoque_migracao_controle WHERE etapa = 'saldo_por_movimentacoes') THEN
+    RAISE EXCEPTION 'Mesclagem exige a Seção 365 (saldo pelas movimentações) ativa.';
+  END IF;
+  IF p_origens IS NULL OR array_length(p_origens, 1) IS NULL OR p_destino = ANY(p_origens) THEN
+    RAISE EXCEPTION 'Informe o item que fica e ao menos um item diferente dele para mesclar.';
+  END IF;
+  SELECT i.*, f.conta_id INTO v_dest FROM insumos i JOIN fazendas f ON f.id = i.fazenda_id WHERE i.id = p_destino;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Item que fica não encontrado.'; END IF;
+  IF v_dest.mesclado_em IS NOT NULL THEN RAISE EXCEPTION 'O item que fica (%) já foi mesclado em outro.', v_dest.nome; END IF;
+  v_conta := v_dest.conta_id;
+  FOR v_o IN SELECT i.*, f.conta_id FROM insumos i JOIN fazendas f ON f.id = i.fazenda_id WHERE i.id = ANY(p_origens) LOOP
+    IF v_o.conta_id IS DISTINCT FROM v_conta THEN RAISE EXCEPTION '% é de outro cliente.', v_o.nome; END IF;
+    IF v_o.mesclado_em IS NOT NULL THEN RAISE EXCEPTION '% já foi mesclado.', v_o.nome; END IF;
+    IF lower(trim(coalesce(v_o.unidade, ''))) IS DISTINCT FROM lower(trim(coalesce(v_dest.unidade, ''))) THEN
+      RAISE EXCEPTION 'Unidades diferentes: % (%) × % (%). Ajuste o cadastro antes de mesclar.', v_dest.nome, v_dest.unidade, v_o.nome, v_o.unidade;
+    END IF;
+    IF coalesce(v_o.tipo, 'insumo') IS DISTINCT FROM coalesce(v_dest.tipo, 'insumo') THEN
+      RAISE EXCEPTION 'Tipos diferentes (insumo × produto): % × %.', v_dest.nome, v_o.nome;
+    END IF;
+  END LOOP;
+  IF (SELECT count(*) FROM insumos WHERE id = ANY(p_origens)) <> array_length(p_origens, 1) THEN
+    RAISE EXCEPTION 'Algum item a mesclar não foi encontrado.';
+  END IF;
+
+  -- Custo médio do item que fica: média ponderada pelos saldos positivos do grupo (antes de mover as movimentações)
+  SELECT CASE WHEN sum(estoque) FILTER (WHERE estoque > 0 AND coalesce(custo_medio, 0) > 0) > 0
+              THEN sum(estoque * custo_medio) FILTER (WHERE estoque > 0 AND coalesce(custo_medio, 0) > 0)
+                   / sum(estoque) FILTER (WHERE estoque > 0 AND coalesce(custo_medio, 0) > 0) END
+    INTO v_custo FROM insumos WHERE id = p_destino OR id = ANY(p_origens);
+
+  -- Todas as colunas com FK para insumos (fora a própria tabela insumos)
+  FOR r IN
+    SELECT c.conrelid::regclass::text AS tabela, a.attname AS coluna
+      FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+     WHERE c.contype = 'f' AND c.confrelid = 'public.insumos'::regclass AND c.conrelid <> 'public.insumos'::regclass
+    UNION
+    SELECT t.table_name, t.column_name FROM information_schema.columns t
+     WHERE t.table_schema = 'public' AND (t.table_name, t.column_name) IN (('rel_movimentacoes_estoque', 'insumo_id'), ('notas_proprias_externas_itens', 'insumo_id'))
+  LOOP
+    EXECUTE format('SELECT coalesce(jsonb_agg(jsonb_build_object(''t'', %L, ''c'', %L, ''id'', id, ''de'', %I)), ''[]'') FROM %s WHERE %I = ANY($1)',
+                   r.tabela, r.coluna, r.coluna, r.tabela, r.coluna)
+      INTO v_lote USING p_origens;
+    IF jsonb_array_length(v_lote) > 0 THEN
+      EXECUTE format('UPDATE %s SET %I = $1 WHERE %I = ANY($2)', r.tabela, r.coluna, r.coluna) USING p_destino, p_origens;
+      v_alt := v_alt || v_lote;
+    END IF;
+  END LOOP;
+
+  -- Lotes de semente (JSON dentro do item de NF)
+  SELECT coalesce(jsonb_agg(jsonb_build_object('t', 'nf_entrada_itens', 'c', 'lotes_semente', 'id', id, 'de', lotes_semente)), '[]') INTO v_lote
+    FROM nf_entrada_itens
+   WHERE jsonb_typeof(lotes_semente) = 'array'
+     AND EXISTS (SELECT 1 FROM jsonb_array_elements(lotes_semente) e WHERE e->>'insumo_id' = ANY(p_origens::text[]));
+  IF jsonb_array_length(v_lote) > 0 THEN
+    UPDATE nf_entrada_itens SET lotes_semente = (
+      SELECT jsonb_agg(CASE WHEN e->>'insumo_id' = ANY(p_origens::text[]) THEN jsonb_set(e, '{insumo_id}', to_jsonb(p_destino::text)) ELSE e END)
+        FROM jsonb_array_elements(lotes_semente) e)
+     WHERE id IN (SELECT (x->>'id')::uuid FROM jsonb_array_elements(v_lote) x);
+    v_alt := v_alt || v_lote;
+  END IF;
+
+  INSERT INTO insumos_mesclagens (conta_id, destino_id, origem_ids, alteracoes, custo_antes, feito_por)
+  VALUES (v_conta, p_destino, p_origens, v_alt, v_dest.custo_medio, p_feito_por) RETURNING id INTO v_log;
+
+  UPDATE insumos SET ativo = false, mesclado_em = p_destino, mesclado_at = now() WHERE id = ANY(p_origens);
+  IF v_custo IS NOT NULL THEN UPDATE insumos SET custo_medio = round(v_custo, 6) WHERE id = p_destino; END IF;
+  PERFORM fn_estoque_recalcular(p_destino);
+  FOR v_o IN SELECT id FROM insumos WHERE id = ANY(p_origens) LOOP PERFORM fn_estoque_recalcular(v_o.id); END LOOP;
+
+  RETURN jsonb_build_object('mesclagem_id', v_log, 'linhas_alteradas', jsonb_array_length(v_alt));
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION fn_desfazer_mesclagem(p_mesclagem uuid) RETURNS jsonb AS $$
+DECLARE v_m record; x jsonb; v_n int := 0;
+BEGIN
+  SELECT * INTO v_m FROM insumos_mesclagens WHERE id = p_mesclagem;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Mesclagem não encontrada.'; END IF;
+  IF v_m.desfeita_em IS NOT NULL THEN RAISE EXCEPTION 'Mesclagem já desfeita em %.', v_m.desfeita_em; END IF;
+  FOR x IN SELECT * FROM jsonb_array_elements(v_m.alteracoes) LOOP
+    IF x->>'c' = 'lotes_semente' THEN
+      UPDATE nf_entrada_itens SET lotes_semente = x->'de' WHERE id = (x->>'id')::uuid;
+    ELSE
+      EXECUTE format('UPDATE %s SET %I = $1 WHERE id = $2', x->>'t', x->>'c') USING (x->>'de')::uuid, (x->>'id')::uuid;
+    END IF;
+    v_n := v_n + 1;
+  END LOOP;
+  UPDATE insumos SET ativo = true, mesclado_em = NULL, mesclado_at = NULL WHERE id = ANY(v_m.origem_ids);
+  UPDATE insumos SET custo_medio = v_m.custo_antes WHERE id = v_m.destino_id AND v_m.custo_antes IS NOT NULL;
+  PERFORM fn_estoque_recalcular(v_m.destino_id);
+  FOR x IN SELECT to_jsonb(u) FROM unnest(v_m.origem_ids) u LOOP PERFORM fn_estoque_recalcular((x #>> '{}')::uuid); END LOOP;
+  UPDATE insumos_mesclagens SET desfeita_em = now() WHERE id = p_mesclagem;
+  RETURN jsonb_build_object('linhas_restauradas', v_n);
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION fn_mesclar_insumos(uuid, uuid[], text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_desfazer_mesclagem(uuid) FROM PUBLIC, anon, authenticated;
+NOTIFY pgrst, 'reload schema';

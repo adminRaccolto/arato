@@ -375,7 +375,7 @@ export async function listarInsumos(fazenda_id: string | string[]): Promise<Insu
       const { data, error } = await supabase.from("insumos").select("*").in("fazenda_id", ids).order("nome").order("id").range(de, de + 999);
       if (error) throw error;
       todos.push(...((data ?? []) as Insumo[]));
-      if ((data ?? []).length < 1000) return todos;
+      if ((data ?? []).length < 1000) return semMesclados(todos);
     }
   }
 
@@ -384,6 +384,10 @@ export async function listarInsumos(fazenda_id: string | string[]): Promise<Insu
   if (error) throw error;
   return data ?? [];
 }
+
+// Cadastro mesclado em outro (fase 2 do item por cliente) fica inativo, com saldo zero e todo o histórico no item que
+// ficou — não aparece mais em lista nenhuma. Filtro aqui (não na consulta) para funcionar antes e depois da Seção 366.
+const semMesclados = (lista: Insumo[]) => lista.filter(i => !(i as { mesclado_em?: string | null }).mesclado_em);
 
 // Busca insumos de TODAS as fazendas da conta — catálogo compartilhado
 // fazendaIdFallback: obrigatório para admins raccotlo (conta_id = NULL no perfil deles)
@@ -411,9 +415,14 @@ export async function listarInsumosParaConta(contaIdDireto?: string | null, faze
   const ids = (fzs ?? []).map((f: { id: string }) => f.id);
   if (ids.length === 0) return [];
 
-  const { data, error } = await supabase.from("insumos").select("*").in("fazenda_id", ids).order("nome");
-  if (error) throw error;
-  return data ?? [];
+  // Paginado (catálogo pode passar de 1.000 itens) e sem os cadastros já mesclados em outro (Seção 366).
+  const todos: Insumo[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase.from("insumos").select("*").in("fazenda_id", ids).order("nome").order("id").range(de, de + 999);
+    if (error) throw error;
+    todos.push(...((data ?? []) as Insumo[]));
+    if ((data ?? []).length < 1000) return semMesclados(todos);
+  }
 }
 
 // Insumo desativado (ativo=false) some dos seletores de uso (NF, pedido, lavoura),
