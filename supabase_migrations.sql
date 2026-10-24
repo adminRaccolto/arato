@@ -17417,3 +17417,96 @@ ALTER TABLE mdfes ADD COLUMN IF NOT EXISTS implemento_ids uuid[];
 ALTER TABLE ctes  ADD COLUMN IF NOT EXISTS conjunto_id    uuid REFERENCES conjuntos_veiculos(id) ON DELETE SET NULL;
 ALTER TABLE ctes  ADD COLUMN IF NOT EXISTS implemento_ids uuid[];
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 364 — Item por cliente, fase 1: controle da migração do saldo de estoque (pode rodar a qualquer momento)
+-- =============================================================================
+-- Registra as etapas da troca "saldo no cadastro" → "saldo = soma das movimentações". A Seção 365 só roda depois que a
+-- etapa 'acertos_a_c' (saldo inicial dos itens sem movimentação e decisão dos itens com outra diferença) estiver aqui.
+CREATE TABLE IF NOT EXISTS estoque_migracao_controle (
+  etapa      text PRIMARY KEY,
+  feito_em   timestamptz NOT NULL DEFAULT now(),
+  feito_por  text,
+  obs        text
+);
+ALTER TABLE estoque_migracao_controle ENABLE ROW LEVEL SECURITY;
+-- Leitura liberada a quem está logado: as telas consultam se a troca do saldo já foi feita (só etapa/data, nada de cliente).
+DROP POLICY IF EXISTS "estoque_migracao_controle_leitura" ON estoque_migracao_controle;
+CREATE POLICY "estoque_migracao_controle_leitura" ON estoque_migracao_controle FOR SELECT TO authenticated USING (true);
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 365 — Item por cliente, fase 1: saldo do item = soma das movimentações (NÃO rodar antes dos acertos A/C)
+-- =============================================================================
+-- Hoje ~25 rotinas gravam insumos.estoque lendo o valor, somando e gravando de volta — duas ao mesmo tempo somam em
+-- dobro (148 itens com o cadastro exatamente 2×/3× as movimentações, out/2026). A partir daqui:
+--   • toda inclusão/alteração/exclusão de movimentação recalcula insumos.estoque = Σ movimentações (consolidado);
+--   • gravação direta de insumos.estoque é ignorada (só o recálculo altera) — as rotinas antigas viram inofensivas;
+--   • item cadastrado já com saldo gera a movimentação de "estoque_inicial" (antes importador/WhatsApp/Cadastros não
+--     geravam — origem dos itens com saldo sem nenhuma movimentação);
+--   • saldo por fazenda e depósito: view saldo_insumo_deposito (Seção 251) e saldo_insumo_fazenda (abaixo).
+-- Trava: recusa rodar se a etapa 'acertos_a_c' não estiver em estoque_migracao_controle (Seção 364).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM estoque_migracao_controle WHERE etapa = 'acertos_a_c') THEN
+    RAISE EXCEPTION 'Seção 365 bloqueada: faça antes os acertos dos itens sem movimentação (A) e com outra diferença (C) e registre a etapa acertos_a_c.';
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION fn_estoque_recalcular(p_insumo uuid) RETURNS void AS $$
+BEGIN
+  IF p_insumo IS NULL THEN RETURN; END IF;
+  PERFORM set_config('arato.estoque_recalc', '1', true);
+  UPDATE insumos SET estoque = coalesce((
+    SELECT sum(CASE WHEN m.tipo = 'saida' THEN -m.quantidade ELSE m.quantidade END)
+      FROM movimentacoes_estoque m WHERE m.insumo_id = p_insumo), 0)
+   WHERE id = p_insumo;
+  PERFORM set_config('arato.estoque_recalc', '0', true);
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION fn_mov_estoque_recalcula() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN PERFORM fn_estoque_recalcular(NEW.insumo_id); END IF;
+  IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.insumo_id IS DISTINCT FROM NEW.insumo_id) THEN PERFORM fn_estoque_recalcular(OLD.insumo_id); END IF;
+  RETURN NULL;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+DROP TRIGGER IF EXISTS trg_mov_estoque_recalcula ON movimentacoes_estoque;
+CREATE TRIGGER trg_mov_estoque_recalcula AFTER INSERT OR UPDATE OF insumo_id, quantidade, tipo OR DELETE ON movimentacoes_estoque
+  FOR EACH ROW EXECUTE FUNCTION fn_mov_estoque_recalcula();
+
+CREATE OR REPLACE FUNCTION fn_insumos_estoque_protegido() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('arato.estoque_recalc', true) IS DISTINCT FROM '1' THEN
+    NEW.estoque := OLD.estoque;
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_insumos_estoque_protegido ON insumos;
+CREATE TRIGGER trg_insumos_estoque_protegido BEFORE UPDATE OF estoque ON insumos
+  FOR EACH ROW EXECUTE FUNCTION fn_insumos_estoque_protegido();
+
+CREATE OR REPLACE FUNCTION fn_insumos_saldo_inicial() RETURNS trigger AS $$
+BEGIN
+  IF coalesce(NEW.estoque, 0) <> 0 THEN
+    INSERT INTO movimentacoes_estoque (insumo_id, fazenda_id, deposito_id, tipo, quantidade, data, motivo, origem, observacao, auto, valor_unitario)
+    VALUES (NEW.id, NEW.fazenda_id, NEW.deposito_id, CASE WHEN NEW.estoque > 0 THEN 'entrada' ELSE 'saida' END, abs(NEW.estoque),
+            current_date, 'estoque_inicial', 'cadastro', 'Saldo inicial informado no cadastro do item', true, coalesce(NEW.custo_medio, NEW.valor_unitario));
+  END IF;
+  RETURN NULL;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+DROP TRIGGER IF EXISTS trg_insumos_saldo_inicial ON insumos;
+CREATE TRIGGER trg_insumos_saldo_inicial AFTER INSERT ON insumos FOR EACH ROW EXECUTE FUNCTION fn_insumos_saldo_inicial();
+
+-- Saldo por fazenda (o consolidado do cliente é insumos.estoque)
+CREATE OR REPLACE VIEW saldo_insumo_fazenda AS
+SELECT insumo_id, fazenda_id, sum(saldo) AS saldo FROM saldo_insumo_deposito GROUP BY insumo_id, fazenda_id;
+
+-- Recálculo geral: todo item passa a mostrar a soma das suas movimentações.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT id FROM insumos LOOP PERFORM fn_estoque_recalcular(r.id); END LOOP;
+END $$;
+INSERT INTO estoque_migracao_controle (etapa, obs) VALUES ('saldo_por_movimentacoes', 'Seção 365 aplicada')
+  ON CONFLICT (etapa) DO NOTHING;
+NOTIFY pgrst, 'reload schema';

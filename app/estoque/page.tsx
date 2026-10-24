@@ -355,6 +355,10 @@ export default function Estoque() {
   // Seção 251 — "Saldo por Depósito" era o único lugar do sistema que nunca
   // refletia uma transferência entre depósitos nem um insumo dividido entre dois.
   const [saldoPorDeposito, setSaldoPorDeposito] = useState<{ insumo_id: string; deposito_id: string | null; saldo: number }[]>([]);
+  // Item por cliente (Seção 365): depois da troca, o saldo do item é a soma das movimentações — consolidado em
+  // insumos.estoque e por fazenda pela view. Antes da troca a Posição segue mostrando o saldo do cadastro, como sempre.
+  const [saldoMigrado, setSaldoMigrado] = useState(false);
+  const [saldoDaFazenda, setSaldoDaFazenda] = useState<Map<string, number>>(new Map());
   // kardex
   const [kardexInicio, setKardexInicio] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
   const [kardexFim, setKardexFim]       = useState(() => hojeLocal());
@@ -566,6 +570,20 @@ export default function Estoque() {
   } | null>(null);
 
   const xmlRef = useRef<HTMLInputElement>(null);
+
+  // Troca do saldo já feita? (Seção 365 registra a etapa). Sem a tabela/etapa, segue o comportamento antigo.
+  useEffect(() => {
+    supabase.from("estoque_migracao_controle").select("etapa").eq("etapa", "saldo_por_movimentacoes").maybeSingle()
+      .then(({ data }) => setSaldoMigrado(!!data));
+  }, []);
+  useEffect(() => {
+    if (!saldoMigrado || modoTodas || !fazTrabalho) { setSaldoDaFazenda(new Map()); return; }
+    listarSaldoPorDeposito(fazTrabalho).then(rows => {
+      const m = new Map<string, number>();
+      for (const r of rows) m.set(r.insumo_id, (m.get(r.insumo_id) ?? 0) + Number(r.saldo));
+      setSaldoDaFazenda(m);
+    }).catch(() => setSaldoDaFazenda(new Map()));
+  }, [saldoMigrado, modoTodas, fazTrabalho, insumos]);
 
   // ── Carregar dados ──
   useEffect(() => {
@@ -960,7 +978,11 @@ export default function Estoque() {
   };
 
   // ── Dados filtrados ──
-  const insumosFiltrados = insumos.filter(i => {
+  // Fazenda escolhida (depois da Seção 365): saldo daquela fazenda; aparecem os itens com saldo nela ou cadastrados nela.
+  const insumosPosicao = saldoMigrado && !modoTodas
+    ? insumos.map(i => ({ ...i, estoque: saldoDaFazenda.get(i.id) ?? 0 })).filter(i => Math.abs(i.estoque) > 0.0001 || i.fazenda_id === fazTrabalho)
+    : insumos;
+  const insumosFiltrados = insumosPosicao.filter(i => {
     if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false;
     if (filtroDeposito && i.deposito_id !== filtroDeposito) return false;
     if (filtroCat === "alertas")  return i.estoque <= i.estoque_minimo;
@@ -970,9 +992,9 @@ export default function Estoque() {
     return true;
   });
 
-  const totalValorEstoque = insumos.reduce((s, i) => s + i.estoque * i.valor_unitario, 0);
-  const alertas   = insumos.filter(i => i.estoque <= i.estoque_minimo);
-  const negativos = insumos.filter(i => i.estoque < 0);
+  const totalValorEstoque = insumosPosicao.reduce((s, i) => s + i.estoque * i.valor_unitario, 0);
+  const alertas   = insumosPosicao.filter(i => i.estoque <= i.estoque_minimo);
+  const negativos = insumosPosicao.filter(i => i.estoque < 0);
 
   // ── Possíveis duplicados no catálogo do cliente ──────────────────────────
   // Duas regras (lib/estoque/duplicados.ts): nome igual depois de normalizado, e nome parecido com OS MESMOS números

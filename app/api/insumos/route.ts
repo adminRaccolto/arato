@@ -57,7 +57,12 @@ export async function POST(req: NextRequest) {
     // Erro nunca era checado antes — falha silenciosa deixava o campo "estoque"
     // preenchido sem NENHUMA movimentação batendo com ele. Achado real 23/09/2026.
     const estoqueInicial = Number(body.estoque ?? 0);
-    if (estoqueInicial > 0) {
+    // Com a Seção 365 o próprio banco lança o saldo inicial ao cadastrar o item — só lança aqui se ainda não existir
+    // movimentação dele (antes da 365), para nunca entrar em dobro.
+    const { count: movsJaCriadas } = estoqueInicial > 0
+      ? await supabase.from("movimentacoes_estoque").select("id", { count: "exact", head: true }).eq("insumo_id", data.id)
+      : { count: 0 };
+    if (estoqueInicial > 0 && !movsJaCriadas) {
       const { error: movErr } = await supabase.from("movimentacoes_estoque").insert({
         insumo_id:  data.id,
         fazenda_id: body.fazenda_id,

@@ -461,7 +461,12 @@ export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise
   // batendo com ele — o registro parecia certo na Posição, mas a Auditoria de
   // Saldo (e o Kardex) nunca bateriam com aquele valor. Achado real 23/09/2026.
   const estoqueInicial = Number(i.estoque ?? 0);
-  if (estoqueInicial > 0) {
+  // Com a Seção 365 o próprio banco lança o saldo inicial ao cadastrar o item — só lança aqui se ainda não existir
+  // movimentação dele (antes da 365), para nunca entrar em dobro.
+  const { count: movsJaCriadas } = estoqueInicial > 0
+    ? await supabase.from("movimentacoes_estoque").select("id", { count: "exact", head: true }).eq("insumo_id", data.id)
+    : { count: 0 };
+  if (estoqueInicial > 0 && !movsJaCriadas) {
     const { error: movErr } = await supabase.from("movimentacoes_estoque").insert({
       insumo_id:  data.id,
       fazenda_id: i.fazenda_id,
