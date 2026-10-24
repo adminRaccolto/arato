@@ -147,6 +147,8 @@ export default function AlgodaoPage() {
   // ── Seletores globais ──
   const [ciclos,      setCiclos]      = useState<Ciclo[]>([]);
   const [cicloSel,    setCicloSel]    = useState("");
+  // Operações, armadilhas, módulos e beneficiamentos são da fazenda do ciclo escolhido — nunca da fazenda do perfil.
+  const fazendaDoCiclo = ciclos.find(c => c.id === cicloSel)?.fazenda_id || fazendaId;
   const [talhoes,     setTalhoes]     = useState<Talhao[]>([]);
   const [pessoas,     setPessoas]     = useState<Pessoa[]>([]);     // algodoeiras / compradores
 
@@ -299,7 +301,7 @@ export default function AlgodaoPage() {
     if (!modalOp || !fazendaId || !cicloSel) return;
     if (!modalOp.tipo || !modalOp.data_aplicacao) { setMsg("Tipo e data são obrigatórios."); return; }
     setSalvando(true); setMsg(null);
-    const payload = { ...modalOp, fazenda_id: fazendaId, ciclo_id: cicloSel };
+    const payload = { ...modalOp, fazenda_id: fazendaDoCiclo, ciclo_id: cicloSel };
     const { error } = modalOp.id
       ? await supabase.from("algodao_operacoes_especiais").update(payload).eq("id", modalOp.id)
       : await supabase.from("algodao_operacoes_especiais").insert(payload);
@@ -315,7 +317,7 @@ export default function AlgodaoPage() {
     if (!modalArm || !fazendaId || !cicloSel) return;
     if (!modalArm.nome) { setMsg("Nome é obrigatório."); return; }
     setSalvando(true); setMsg(null);
-    const payload = { ...modalArm, fazenda_id: fazendaId, ciclo_id: cicloSel, ativa: true };
+    const payload = { ...modalArm, fazenda_id: fazendaDoCiclo, ciclo_id: cicloSel, ativa: true };
     const { error } = modalArm.id
       ? await supabase.from("bicudo_armadilhas").update(payload).eq("id", modalArm.id)
       : await supabase.from("bicudo_armadilhas").insert(payload);
@@ -343,7 +345,7 @@ export default function AlgodaoPage() {
     if (!modalMod || !fazendaId || !cicloSel) return;
     if (!modalMod.numero) { setMsg("Número do módulo é obrigatório."); return; }
     setSalvando(true); setMsg(null);
-    const payload = { ...modalMod, fazenda_id: fazendaId, ciclo_id: cicloSel, status: modalMod.status ?? "campo" };
+    const payload = { ...modalMod, fazenda_id: fazendaDoCiclo, ciclo_id: cicloSel, status: modalMod.status ?? "campo" };
     const { error } = modalMod.id
       ? await supabase.from("algodao_modulos").update(payload).eq("id", modalMod.id)
       : await supabase.from("algodao_modulos").insert(payload);
@@ -358,7 +360,7 @@ export default function AlgodaoPage() {
     if (!(await confirmarAcao({ titulo: "Confirmar ação", mensagem: "Confira os dados antes de confirmar. Os registros serão gravados ao confirmar. (Salvar beneficiamento)", perigo: false }))) return;
     if (!modalBenef || !fazendaId || !cicloSel) return;
     setSalvando(true); setMsg(null);
-    const payload = { ...modalBenef, fazenda_id: fazendaId, ciclo_id: cicloSel, status: modalBenef.status ?? "em_processamento" };
+    const payload = { ...modalBenef, fazenda_id: fazendaDoCiclo, ciclo_id: cicloSel, status: modalBenef.status ?? "em_processamento" };
     const { error } = modalBenef.id
       ? await supabase.from("algodao_beneficiamentos").update(payload).eq("id", modalBenef.id)
       : await supabase.from("algodao_beneficiamentos").insert(payload);

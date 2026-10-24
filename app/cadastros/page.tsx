@@ -2404,7 +2404,7 @@ function CadastrosInner() {
     const pf = adm ? new Date(adm.slice(0, 10) + "T12:00:00") : ini;
     const periodoFim = new Date(pf); periodoFim.setFullYear(periodoFim.getFullYear() + 1); periodoFim.setDate(periodoFim.getDate() - 1);
     const { data, error } = await supabase.from("funcionario_ferias").insert({
-      funcionario_id: editFunc.id, fazenda_id: fazIdEff, periodo_inicio: periodoInicio,
+      funcionario_id: editFunc.id, fazenda_id: (editFunc as { fazenda_id?: string | null }).fazenda_id || fazIdEff, periodo_inicio: periodoInicio,
       periodo_fim: periodoFim.toISOString().slice(0, 10), status: "disponivel",
     }).select().single();
     if (error || !data) { alert("Não foi possível criar o período de férias: " + (error?.message ?? "erro desconhecido")); return; }

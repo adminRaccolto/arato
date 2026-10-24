@@ -283,11 +283,24 @@ function PesoInput({ label, corFundo, corBorda, corLabel, value, onChange }: Pes
 
 // ── Página principal ─────────────────────────────────────────────────────────
 export default function PesagemAvulsa() {
-  const { fazendaId, nomeFazendaSelecionada, nomeUsuario } = useAuth();
+  const { fazendaId: fazendaPadrao, fazendaIds, nomeUsuario } = useAuth();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
+  // A balança fica numa fazenda: escolhida aqui (antes era a fazenda do perfil de quem pesava).
+  const [fazendasConta, setFazendasConta] = useState<{ id: string; nome: string }[]>([]);
+  const [fazBalanca, setFazBalanca] = useState("");
+  useEffect(() => {
+    if (!fazendaIds?.length) return;
+    supabase.from("fazendas").select("id, nome").in("id", fazendaIds).order("nome").then(({ data }) => {
+      const fzs = (data ?? []) as { id: string; nome: string }[];
+      setFazendasConta(fzs);
+      setFazBalanca(prev => prev || (fzs.some(f => f.id === fazendaPadrao) ? fazendaPadrao! : fzs[0]?.id ?? ""));
+    });
+  }, [fazendaIds?.join(","), fazendaPadrao]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fazendaId = fazBalanca || null;
+  const nomeFazendaSelecionada = fazendasConta.find(f => f.id === fazBalanca)?.nome ?? null;
 
   const [pesagens,      setPesagens]      = useState<Pesagem[]>([]);
   const [carregando,    setCarregando]    = useState(true);
@@ -618,7 +631,12 @@ export default function PesagemAvulsa() {
         <OperationalHeading data-arato-page-heading="true" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 data-arato-h1="true" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pesagem Avulsa</h1>
-            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>{nomeFazendaSelecionada}</div>
+            {fazendasConta.length > 1 ? (
+              <select value={fazBalanca} onChange={e => setFazBalanca(e.target.value)} aria-label="Fazenda da balança"
+                style={{ marginTop: 4, padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", color: "var(--text-1)" }}>
+                {fazendasConta.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            ) : <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>{nomeFazendaSelecionada}</div>}
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>

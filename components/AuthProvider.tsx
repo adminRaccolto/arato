@@ -318,23 +318,25 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Usuário cliente normal
-      const fid: string | null = (perfil as { fazenda_id?: string } | null)?.fazenda_id ?? null;
+      // Usuário cliente normal. Não existe "fazenda ativa": o ativo é o cliente (conta). `fazendaId` é só a fazenda de
+      // REFERÊNCIA do cliente (a primeira cadastrada — a mesma para todos os usuários dele), usada como carimbo técnico
+      // em dado que é do cliente. Dado físico de uma fazenda escolhe a fazenda na própria tela/operação. A fazenda
+      // gravada no perfil (perfis.fazenda_id) só vale para usuário legado sem conta.
+      const fidPerfil: string | null = (perfil as { fazenda_id?: string } | null)?.fazenda_id ?? null;
       const cid: string | null = (perfil as { conta_id?: string } | null)?.conta_id ?? null;
-      setFazendaId(fid);
       setContaId(cid);
-      // Carrega todas as fazendas da conta para queries multi-fazenda
       if (cid) {
-        (async () => {
-          try {
-            const { data: fazs } = await supabase.from("fazendas").select("id").eq("conta_id", cid);
-            const ids = (fazs ?? []).map((f: { id: string }) => f.id).filter(Boolean);
-            setFazendaIds(ids.length > 0 ? ids : (fid ? [fid] : []));
-          } catch { if (fid) setFazendaIds([fid]); }
-        })();
-      } else if (fid) {
-        setFazendaIds([fid]);
+        try {
+          const { data: fazs } = await supabase.from("fazendas").select("id").eq("conta_id", cid).order("created_at").order("id");
+          const ids = (fazs ?? []).map((f: { id: string }) => f.id).filter(Boolean);
+          setFazendaIds(ids.length > 0 ? ids : (fidPerfil ? [fidPerfil] : []));
+          setFazendaId(ids[0] ?? fidPerfil);
+        } catch { setFazendaId(fidPerfil); if (fidPerfil) setFazendaIds([fidPerfil]); }
+      } else {
+        setFazendaId(fidPerfil);
+        if (fidPerfil) setFazendaIds([fidPerfil]);
       }
+      const fid: string | null = fidPerfil;
 
       // Carrega conta + usuário + add-ons em paralelo (evita round-trips sequenciais)
       const [contaRes, usuarioRes, modulosRes] = await Promise.allSettled([

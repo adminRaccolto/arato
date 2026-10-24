@@ -240,8 +240,10 @@ function ModalNova({
         await supabase.from("recomendacao_talhoes").delete().eq("recomendacao_id", recId);
         await supabase.from("recomendacao_produtos").delete().eq("recomendacao_id", recId);
       } else {
+        // A recomendação é da fazenda do ciclo escolhido — nunca da fazenda do perfil de quem lança.
+        const fazendaDoCiclo = todosCiclos.find(c => c.id === f.ciclo_id)?.fazenda_id;
         const { data: rec, error } = await supabase.from("recomendacoes").insert({
-          fazenda_id: fazendaId, status: "pendente", ...campos,
+          fazenda_id: fazendaDoCiclo || fazendaId, status: "pendente", ...campos,
         }).select("id").single();
         if (error) throw error;
         recId = rec.id;
@@ -866,10 +868,12 @@ export default function RecomendacoesPage() {
       const produtos = modalExec.produtos;
       const hoje = hojeLocal();
 
+      // Pulverização, baixa de estoque e custo vão para a fazenda da recomendação (a do ciclo), não a do perfil.
+      const fazRec = rec.fazenda_id || fazendaId || "";
       if (rec.tipo === "pulverizacao") {
         // 1. Criar registro de pulverização
         const { data: pulvRecord } = await supabase.from("pulverizacoes").insert({
-          fazenda_id: fazendaId,
+          fazenda_id: fazRec,
           ciclo_id: rec.ciclo_id || null,
           tipo: "outros",
           data_inicio: hoje,
@@ -920,7 +924,7 @@ export default function RecomendacoesPage() {
           // 3. Baixar estoque + gerar CP via função existente
           if (itensPulv.length > 0) {
             await processarPulverizacao(
-              { id: pulvRecord.id, fazenda_id: fazendaId ?? "", ciclo_id: rec.ciclo_id, tipo: "outros",
+              { id: pulvRecord.id, fazenda_id: fazRec, ciclo_id: rec.ciclo_id, tipo: "outros",
                 data_inicio: hoje, data_fim: hoje, area_ha: areaExec, fiscal: false } as Parameters<typeof processarPulverizacao>[0],
               itensPulv as Parameters<typeof processarPulverizacao>[1],
               nomesMap,
@@ -942,7 +946,7 @@ export default function RecomendacoesPage() {
             .update({ estoque: Math.max(0, ((ins as {estoque?:number}).estoque ?? 0) - totalConsumido) })
             .eq("id", p.insumo_id);
           await supabase.from("movimentacoes_estoque").insert({
-            insumo_id: p.insumo_id, fazenda_id: fazendaId,
+            insumo_id: p.insumo_id, fazenda_id: fazRec,
             tipo: "saida", quantidade: totalConsumido,
             data: hoje, ciclo_id: rec.ciclo_id,
             operacao: rec.tipo,
@@ -954,9 +958,9 @@ export default function RecomendacoesPage() {
           const custoTotal = valorUnit * totalConsumido;
           if (custoTotal > 0) {
             const classificacaoRec = rec.tipo === "adubacao" ? "2.01.01.01.004" : rec.tipo === "correcao_solo" ? "2.01.01.01.002" : rec.tipo === "plantio" || rec.tipo === "tratamento_sementes" ? "2.01.01.01.003" : "2.01.01.01.001";
-            const ogRec = await resolverOperacaoGerencialPorClassificacao(fazendaId ?? "", classificacaoRec);
+            const ogRec = await resolverOperacaoGerencialPorClassificacao(fazRec, classificacaoRec);
             await supabase.from("lancamentos").insert({
-              fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
+              fazenda_id: fazRec, tipo: "pagar", moeda: "BRL",
               descricao: `${TIPOS_OP[rec.tipo].label} — ${p.produto_nome}`,
               categoria: rec.tipo === "adubacao" ? "Insumos — Fertilizantes" : rec.tipo === "correcao_solo" ? "Insumos — Corretivos" : rec.tipo === "plantio" || rec.tipo === "tratamento_sementes" ? "Insumos — Sementes" : "Insumos — Defensivos",
               operacao_gerencial_id: ogRec ?? null,

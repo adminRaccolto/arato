@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-c",
+    data: "24/10/2026",
+    titulo: "Sem fazenda ativa: cada lançamento físico vai para a fazenda certa",
+    modulos: ["Estoque", "Lavoura", "Fiscal", "Balança"],
+    itens: [
+      { tipo: "correcao", texto: "NF de entrada: o estoque entra na fazenda do depósito escolhido para cada item. Antes entrava sempre na fazenda da NF, mesmo com o depósito em outra fazenda." },
+      { tipo: "correcao", texto: "Recomendação agronômica e Algodão usam a fazenda do ciclo; transferência de máquina usa a fazenda da máquina; férias usam a fazenda do funcionário. Antes usavam a fazenda do perfil de quem lançava." },
+      { tipo: "melhoria", texto: "Pesagem avulsa: seletor Fazenda da balança, para quem tem mais de uma fazenda." },
+      { tipo: "melhoria", texto: "O sistema não guarda mais uma fazenda por usuário: o ativo é o cliente, e cada tela escolhe a fazenda quando o lançamento é de uma fazenda específica." },
+    ],
+    onde: "Documentos Fiscais; Lavoura; Algodão; Balança; Cadastros",
+  },
+  {
     versao: "2026.10.24-b",
     data: "24/10/2026",
     titulo: "Estoque: um cadastro de item por cliente",

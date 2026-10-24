@@ -2953,7 +2953,18 @@ export async function processarNfEntrada(
   const somaItensValorTotal = itens.reduce((s, i) => s + (i.valor_total || 0), 0);
   const fatorAjuste = somaItensValorTotal > 0 && valorTotal > 0 ? valorTotal / somaItensValorTotal : 1;
 
+  // Estoque físico × fiscal: a entrada vai para a fazenda do DEPÓSITO do item (onde a mercadoria fica), não para a
+  // fazenda da NF (que segue a IE do produtor). Sem depósito, vale a fazenda da NF. Achado 24/10/2026: NF de uma
+  // fazenda com depósito de outra creditava o saldo na fazenda errada.
+  const depIds = Array.from(new Set(itens.map(i => i.deposito_id).filter((x): x is string => !!x)));
+  const fazendaDoDeposito = new Map<string, string>();
+  if (depIds.length) {
+    const { data: deps } = await supabase.from("depositos").select("id, fazenda_id").in("id", depIds);
+    for (const d of (deps ?? []) as { id: string; fazenda_id: string | null }[]) if (d.fazenda_id) fazendaDoDeposito.set(d.id, d.fazenda_id);
+  }
+
   for (const item of itens) {
+    const fazendaFisica = (item.deposito_id && fazendaDoDeposito.get(item.deposito_id)) || fazenda_id;
     if (!item.id) {
       throw new Error(`Item "${item.descricao_produto}" sem id — não é seguro gravar movimentação de estoque sem vínculo com a NF. Recarregue a NF e tente novamente.`);
     }
@@ -3012,7 +3023,7 @@ export async function processarNfEntrada(
           const insumoDoLote = lote.insumo_id || item.insumo_id;
           await supabase.from("movimentacoes_estoque").insert({
             insumo_id:          insumoDoLote,
-            fazenda_id,
+            fazenda_id:         fazendaFisica,
             tipo:               "entrada",
             quantidade:         lote.quantidade_kg,
             valor_unitario:     custoAjustado,
@@ -3024,7 +3035,7 @@ export async function processarNfEntrada(
             nf_entrada_item_id: item.id,
             lote_semente:       lote.numero,
           });
-          await creditarInsumo(insumoDoLote, lote.quantidade_kg!, custoAjustado, fazenda_id, item.deposito_id ?? null);
+          await creditarInsumo(insumoDoLote, lote.quantidade_kg!, custoAjustado, fazendaFisica, item.deposito_id ?? null);
         }
       } else {
         // Um lote ou sem lotes → movimento único com quantidade total do item
@@ -3034,7 +3045,7 @@ export async function processarNfEntrada(
         const insumoDoLote = lotes[0]?.insumo_id || item.insumo_id;
         await supabase.from("movimentacoes_estoque").insert({
           insumo_id:          insumoDoLote,
-          fazenda_id,
+          fazenda_id:         fazendaFisica,
           tipo:               "entrada",
           quantidade:         item.quantidade,
           valor_unitario:     custoUnitarioCatalogo,
@@ -3046,7 +3057,7 @@ export async function processarNfEntrada(
           nf_entrada_item_id: item.id,
           lote_semente:       loteMovStr,
         });
-        await creditarInsumo(insumoDoLote, item.quantidade, custoUnitarioCatalogo, fazenda_id, item.deposito_id ?? null);
+        await creditarInsumo(insumoDoLote, item.quantidade, custoUnitarioCatalogo, fazendaFisica, item.deposito_id ?? null);
       }
     }
 
@@ -3183,7 +3194,7 @@ export async function processarNfEntrada(
       // Insere movimento ANTES de calcular custo_medio (inclui esta entrada no cálculo)
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id:          item.insumo_id,
-        fazenda_id,
+        fazenda_id:         fazendaFisica,
         tipo:               "entrada",
         quantidade:         item.quantidade,
         valor_unitario:     item.valor_unitario,
@@ -3194,7 +3205,7 @@ export async function processarNfEntrada(
         nf_entrada_id:      nfId,
         nf_entrada_item_id: item.id,
       });
-      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id, item.deposito_id ?? null);
+      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazendaFisica, item.deposito_id ?? null);
     }
 
     // ── Compra de Combustível → credita bomba/tanque ─────────────

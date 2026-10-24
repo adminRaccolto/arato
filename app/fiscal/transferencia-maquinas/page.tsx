@@ -181,8 +181,10 @@ export default function TransferenciaMaquinasPage() {
       setSalvando(true);
       setErro("");
       try {
+        // Bem de terceiro entra na fazenda do titular escolhido como emitente (sem emitente: única opção, senão a do perfil).
+        const emEntrada = resolverEmitente();
         const novo = await criarTransferenciaMaquina({
-          fazenda_id: fazendaId,
+          fazenda_id: ("fazenda_id" in emEntrada ? emEntrada.fazenda_id : null) || fazendaId,
           maquina_nome: nomeBem,
           motivo: f.motivo,
           direcao: "entrada",
@@ -258,8 +260,9 @@ export default function TransferenciaMaquinasPage() {
       if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
       if (!maquina) throw new Error("Máquina não selecionada."); // guarda pro TS — já validado acima
 
+      // A transferência é da fazenda onde a máquina está cadastrada — nunca da fazenda do perfil de quem lança.
       const novo = await criarTransferenciaMaquina({
-        fazenda_id: fazendaId,
+        fazenda_id: maquina.fazenda_id || fazendaId,
         maquina_id: maquina.id,
         maquina_nome: maquina.nome,
         motivo: f.motivo,
