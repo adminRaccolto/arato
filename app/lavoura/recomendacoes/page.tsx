@@ -454,12 +454,16 @@ function ModalNova({
                       style={{ ...inp, borderColor: p.insumo_id ? "#16A34A" : "var(--border)" }}
                     >
                       <option value="__outro__">— Selecione um insumo —</option>
-                      {(["defensivo","fertilizante","inoculante","semente","produto_agricola","outros"] as const).map(cat => {
+                      {/* "corretivo" e "biologico" faltavam aqui (achado 24/out) — os 18 insumos
+                          reais de corretivo (calcário/gesso) ficavam invisíveis nesta tela desde
+                          sempre, e mais ainda depois da recategorização de fertilizante→corretivo. */}
+                      {(["defensivo","fertilizante","corretivo","inoculante","biologico","semente","produto_agricola","outros"] as const).map(cat => {
                         const grupo = insumos.filter(x => x.tipo === "insumo" && x.categoria === cat);
                         if (!grupo.length) return null;
                         const label: Record<string, string> = {
-                          defensivo: "Defensivos", fertilizante: "Fertilizantes", inoculante: "Inoculantes",
-                          semente: "Sementes", produto_agricola: "Produtos Agrícolas", outros: "Outros",
+                          defensivo: "Defensivos", fertilizante: "Fertilizantes", corretivo: "Corretivos de Solo",
+                          inoculante: "Inoculantes", biologico: "Biológicos", semente: "Sementes",
+                          produto_agricola: "Produtos Agrícolas", outros: "Outros",
                         };
                         return (
                           <optgroup key={cat} label={label[cat]}>

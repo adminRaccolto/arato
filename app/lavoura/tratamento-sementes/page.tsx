@@ -223,12 +223,14 @@ export default function TratamentoSementesPage() {
       setTratamentos(ts);
       setReceitas(rec);
       setInsumosSemente(ins.filter(i => i.categoria === "semente" && insumoAtivo(i)));
-      // "inoculante" nunca é gravado por nenhuma tela de cadastro de insumo —
-      // o cadastro real (app/estoque) oferece "biologico" com o rótulo
-      // "Biológico / Inoculante" pra esse mesmo produto (mesmo bug encontrado
-      // em app/lavoura/recomendacoes/page.tsx). Filtrar por um valor que
-      // nenhum insumo tem deixava esse dropdown sempre vazio.
-      setInsumosProduto(ins.filter(i => ["defensivo", "biologico"].includes(i.categoria ?? "") && insumoAtivo(i)));
+      // Correção 24/out: a sessão anterior tinha tirado "inoculante" daqui achando
+      // que era valor morto — checado direto no banco, é o contrário: existem 4
+      // insumos reais com categoria='inoculante' (cadastrados via app/compras/nf,
+      // que oferece essa opção) e ZERO com categoria='biologico' (opção oferecida
+      // em app/estoque, mas nunca usada na prática). Mantém os dois — "inoculante"
+      // porque tem dado real hoje, "biologico" porque é o rótulo oficial do
+      // cadastro principal e pode passar a ser usado.
+      setInsumosProduto(ins.filter(i => ["defensivo", "biologico", "inoculante"].includes(i.categoria ?? "") && insumoAtivo(i)));
       setAnosSafra(anos);
       setCiclos(ciclosAll);
       setDepositos(deps);
