@@ -1903,6 +1903,19 @@ export async function listarCiclos(ano_safra_id: string, fazenda_id?: string | n
   if (error) throw error;
   return data ?? [];
 }
+/** Ciclos e talhões de várias fazendas (o cliente todo) — para mostrar nomes em listas que juntam as fazendas. */
+export async function listarCiclosDasFazendas(fazenda_ids: string[]): Promise<Ciclo[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase.from("ciclos").select("*").in("fazenda_id", fazenda_ids).order("data_inicio");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function listarTalhoesDasFazendas(fazenda_ids: string[]): Promise<Talhao[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase.from("talhoes").select("*").in("fazenda_id", fazenda_ids).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
 export async function listarTodosCiclos(fazenda_id: string): Promise<Ciclo[]> {
   const { data, error } = await supabase.from("ciclos").select("*").eq("fazenda_id", fazenda_id).order("data_inicio");
   if (error) throw error;
@@ -4751,9 +4764,15 @@ export async function criarPulverizacaoTalhoes(
 
 export async function listarPulverizacaoTalhoesPorIds(pulverizacao_ids: string[]): Promise<PulverizacaoTalhao[]> {
   if (pulverizacao_ids.length === 0) return [];
-  const { data, error } = await supabase.from("pulverizacao_talhoes").select("*").in("pulverizacao_id", pulverizacao_ids);
-  if (error) throw error;
-  return data ?? [];
+  // Em blocos: com centenas de pulverizações (lista do cliente todo) a consulta única passava do tamanho de endereço
+  // aceito e falhava — a coluna Talhão ficava "—" em tudo.
+  const out: PulverizacaoTalhao[] = [];
+  for (let k = 0; k < pulverizacao_ids.length; k += 150) {
+    const { data, error } = await supabase.from("pulverizacao_talhoes").select("*").in("pulverizacao_id", pulverizacao_ids.slice(k, k + 150));
+    if (error) throw error;
+    out.push(...((data ?? []) as PulverizacaoTalhao[]));
+  }
+  return out;
 }
 
 export async function excluirPulverizacao(id: string): Promise<void> {

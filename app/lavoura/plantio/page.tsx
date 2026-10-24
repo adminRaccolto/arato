@@ -11,6 +11,7 @@ import { listarTalhoes, listarInsumosParaConta, listarAnosSafra, listarTodosCicl
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
+import { listarCiclosDasFazendas, listarTalhoesDasFazendas } from "../../../lib/db";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -27,7 +28,16 @@ const CULTURA_SEMENTE: Record<string, string> = {
 };
 
 export default function PlantioPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Nomes de ciclo e talhão da LISTA vêm do cliente todo: a lista junta as fazendas, e um lançamento de outra fazenda
+  // aparecia com Safra/Ciclo e Talhão "—" (os do formulário são só da fazenda escolhida).
+  const [ciclosCliente, setCiclosCliente] = useState<Ciclo[]>([]);
+  const [talhoesCliente, setTalhoesCliente] = useState<Talhao[]>([]);
+  useEffect(() => {
+    const ids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+    listarCiclosDasFazendas(ids).then(setCiclosCliente).catch(() => {});
+    listarTalhoesDasFazendas(ids).then(setTalhoesCliente).catch(() => {});
+  }, [fazendaIds?.join(","), fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -132,12 +142,12 @@ export default function PlantioPage() {
   }
 
   const cicloLabel = (id: string) => {
-    const c = todosCiclos.find(x => x.id === id);
+    const c = ciclosCliente.find(x => x.id === id) ?? todosCiclos.find(x => x.id === id);
     if (!c) return "—";
     const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
     return `${CULTURA_SEMENTE[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
   };
-  const talhaoLabel = (id: string) => talhoes.find(t => t.id === id)?.nome ?? "—";
+  const talhaoLabel = (id: string) => (talhoesCliente.find(t => t.id === id) ?? talhoes.find(t => t.id === id))?.nome ?? "—";
   const sementeLabel = (id?: string) => sementes.find(s => s.id === id)?.nome ?? "—";
 
   const totalArea = plantios.reduce((a, p) => a + p.area_ha, 0);

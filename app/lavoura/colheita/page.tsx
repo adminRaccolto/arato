@@ -28,6 +28,7 @@ import {
   listarFazendas,
 } from "../../../lib/db";
 import type { ColheitaRegistro, RomaneioEntrada, Ciclo, AnoSafra, Talhao, Deposito, Insumo, Fazenda } from "../../../lib/supabase";
+import { listarCiclosDasFazendas, listarTalhoesDasFazendas } from "../../../lib/db";
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -160,7 +161,16 @@ const ROMANEIO_VAZIO = {
 // ────────────────────────────────────────────────────────────
 
 export default function ColheitaPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Nomes de ciclo e talhão da LISTA vêm do cliente todo: a lista junta as fazendas, e um lançamento de outra fazenda
+  // aparecia com Safra/Ciclo e Talhão "—" (os do formulário são só da fazenda escolhida).
+  const [ciclosCliente, setCiclosCliente] = useState<Ciclo[]>([]);
+  const [talhoesCliente, setTalhoesCliente] = useState<Talhao[]>([]);
+  useEffect(() => {
+    const ids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+    listarCiclosDasFazendas(ids).then(setCiclosCliente).catch(() => {});
+    listarTalhoesDasFazendas(ids).then(setTalhoesCliente).catch(() => {});
+  }, [fazendaIds?.join(","), fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -465,7 +475,7 @@ export default function ColheitaPage() {
 
   const CULTURAS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", milho2: "Milho 2ª", algodao: "Algodão", trigo: "Trigo", sorgo: "Sorgo" };
   const cicloLabel = (id: string) => {
-    const c = todosCiclos.find(x => x.id === id);
+    const c = ciclosCliente.find(x => x.id === id) ?? todosCiclos.find(x => x.id === id);
     if (!c) return "—";
     const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
     return `${CULTURAS[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
@@ -473,7 +483,7 @@ export default function ColheitaPage() {
   const ciclosDisponiveis = anoSafraSel
     ? todosCiclos.filter(c => c.ano_safra_id === anoSafraSel)
     : todosCiclos;
-  const nomeTalhao  = (id?: string) => id ? (talhoes.find(t => t.id === id)?.nome ?? id) : "—";
+  const nomeTalhao  = (id?: string) => id ? ((talhoesCliente.find(t => t.id === id) ?? talhoes.find(t => t.id === id))?.nome ?? id) : "—";
   const nomeDeposito = (id?: string) => id ? (depositos.find(d => d.id === id)?.nome ?? id) : "—";
 
   // ────────────────────────────────────────────────────────────

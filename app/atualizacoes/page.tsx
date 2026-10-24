@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-f",
+    data: "24/10/2026",
+    titulo: "Lavoura: Safra/Ciclo e Talhão aparecem em todos os lançamentos",
+    modulos: ["Lavoura"],
+    itens: [
+      { tipo: "correcao", texto: "Nas listas de Pulverização, Plantio, Correção de Solo e Colheita, lançamentos de outra fazenda do cliente apareciam com Safra/Ciclo e Talhão em branco (—). Os dados estavam gravados certo; a tela só procurava os nomes numa fazenda. Agora procura no cliente todo." },
+      { tipo: "correcao", texto: "Pulverização: com muitos lançamentos, os talhões de cada aplicação não carregavam. Agora carregam em partes." },
+    ],
+    onde: "Lavoura → Pulverização, Plantio, Correção de Solo, Colheita",
+  },
+  {
     versao: "2026.10.24-e",
     data: "24/10/2026",
     titulo: "Compra pelo WhatsApp aguarda a NF; folha e pendências visíveis em todas as fazendas",

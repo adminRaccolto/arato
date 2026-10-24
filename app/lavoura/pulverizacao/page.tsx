@@ -15,6 +15,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import InputNumerico from "../../../components/InputNumerico";
 import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, PulverizacaoTalhao, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
+import { listarCiclosDasFazendas, listarTalhoesDasFazendas } from "../../../lib/db";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -45,7 +46,16 @@ const ESTADIOS = ["VE","V1","V2","V3","V4","V5","V6","R1","R2","R3","R4","R5","R
 type ItemForm = { insumo_id: string; dose_ha: string; unidade: string };
 
 export default function PulverizacaoPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
+  // Nomes de ciclo e talhão da LISTA vêm do cliente todo: a lista junta as fazendas, e um lançamento de outra fazenda
+  // aparecia com Safra/Ciclo e Talhão "—" (os do formulário são só da fazenda escolhida).
+  const [ciclosCliente, setCiclosCliente] = useState<Ciclo[]>([]);
+  const [talhoesCliente, setTalhoesCliente] = useState<Talhao[]>([]);
+  useEffect(() => {
+    const ids = fazendaIds?.length ? fazendaIds : (fazendaId ? [fazendaId] : []);
+    listarCiclosDasFazendas(ids).then(setCiclosCliente).catch(() => {});
+    listarTalhoesDasFazendas(ids).then(setTalhoesCliente).catch(() => {});
+  }, [fazendaIds?.join(","), fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
@@ -189,7 +199,7 @@ export default function PulverizacaoPage() {
 
   const CULT_LABEL: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", milho2: "Milho 2ª", algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo" };
   const cicloLabel = (id: string) => {
-    const c = todosCiclos.find(x => x.id === id);
+    const c = ciclosCliente.find(x => x.id === id) ?? todosCiclos.find(x => x.id === id);
     if (!c) return "—";
     const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
     return `${CULT_LABEL[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
@@ -262,10 +272,10 @@ export default function PulverizacaoPage() {
                           {(() => {
                             const vinculos = talhoesPorPulv[p.id];
                             if (vinculos && vinculos.length > 0) {
-                              return <div style={{ fontSize: 11, color: "var(--text-2)" }}>{vinculos.map(v => v.talhao_nome).join(", ")}</div>;
+                              return <div style={{ fontSize: 11, color: "var(--text-2)" }}>{vinculos.map(v => v.talhao_nome || talhoesCliente.find(t => t.id === v.talhao_id)?.nome || "—").join(", ")}</div>;
                             }
                             if (p.talhao_id) {
-                              return <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>;
+                              return <div style={{ fontSize: 11, color: "var(--text-2)" }}>{(talhoesCliente.find(t => t.id === p.talhao_id) ?? talhoes.find(t => t.id === p.talhao_id))?.nome ?? "—"}</div>;
                             }
                             return null;
                           })()}
