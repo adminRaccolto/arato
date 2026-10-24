@@ -181,7 +181,9 @@ export default function CorrecaoSoloPage() {
     const c = ciclosCliente.find(x => x.id === id) ?? todosCiclos.find(x => x.id === id);
     if (!c) return "—";
     const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
-    return `${CULTURAS[c.cultura] ?? c.cultura}${ano ? ` · ${ano}` : ""}`;
+    // A descrição do ciclo já traz a safra ("Soja 2026/2027") — não depende da lista de anos safra carregada.
+    const base = (c as { descricao?: string | null }).descricao || (CULTURAS[c.cultura] ?? c.cultura);
+    return ano && !base.includes(ano) ? `${base} · ${ano}` : base;
   };
   const talhaoLabel = (id?: string) => (talhoesCliente.find(t => t.id === id) ?? talhoes.find(t => t.id === id))?.nome ?? "—";
 
