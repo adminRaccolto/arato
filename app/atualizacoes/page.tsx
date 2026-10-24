@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-a",
+    data: "24/10/2026",
+    titulo: "Estoque: saldo sempre igual às movimentações, por fazenda e consolidado",
+    modulos: ["Estoque"],
+    itens: [
+      { tipo: "correcao", texto: "O saldo de cada item passa a ser sempre a soma das suas movimentações. Antes, várias rotinas gravavam o saldo por conta própria e, quando duas rodavam juntas, o estoque aparecia em dobro (148 itens estavam assim)." },
+      { tipo: "melhoria", texto: "Posição de Estoque: com uma fazenda escolhida mostra o saldo daquela fazenda; em Todas as fazendas, o consolidado do cliente." },
+      { tipo: "melhoria", texto: "Itens que tinham saldo no cadastro sem nenhuma movimentação ganharam uma movimentação \"Saldo inicial (migração)\", e o saldo foi preservado. Item novo cadastrado com estoque já gera sozinho a movimentação de estoque inicial." },
+    ],
+    onde: "Estoque → Posição; Kardex",
+  },
+  {
     versao: "2026.10.23-t",
     data: "23/10/2026",
     titulo: "Auditoria do BI corrigida e duplicados por semelhança no Estoque",
