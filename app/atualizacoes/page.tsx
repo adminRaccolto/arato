@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-b",
+    data: "24/10/2026",
+    titulo: "Estoque: um cadastro de item por cliente",
+    modulos: ["Estoque", "Cadastros"],
+    itens: [
+      { tipo: "melhoria", texto: "Cada insumo ou produto passa a ter um único cadastro no cliente, usado em todas as fazendas. O estoque de cada fazenda continua separado, pelas movimentações dela, com a visão consolidada." },
+      { tipo: "correcao", texto: "Cadastros repetidos foram unificados (mesmo nome em várias fazendas, na mesma fazenda, e nomes escritos de forma diferente para o mesmo produto). Todo o histórico foi para o item que ficou, sem alterar o saldo de nenhuma fazenda." },
+      { tipo: "melhoria", texto: "O sistema não deixa mais cadastrar um item que o cliente já tem com o mesmo nome. A importação de insumos lança o saldo no item existente em vez de criar outro." },
+    ],
+    onde: "Estoque; Cadastros → Insumos",
+  },
+  {
     versao: "2026.10.24-a",
     data: "24/10/2026",
     titulo: "Estoque: saldo sempre igual às movimentações, por fazenda e consolidado",
