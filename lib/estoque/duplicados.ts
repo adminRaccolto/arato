@@ -28,6 +28,12 @@ export function semelhanca(a: string, b: string): number {
   return total ? (2 * comum) / total : 0;
 }
 
+/** Item do cliente com o mesmo nome normalizado e tipo — usado para reaproveitar em vez de cadastrar de novo. */
+export function itemDoCliente<T extends { nome: string; tipo?: string | null; ativo?: boolean | null; mesclado_em?: string | null }>(lista: T[], nome: string, tipo = "insumo"): T | undefined {
+  const alvo = normalizarNome(nome);
+  return lista.find(i => i.ativo !== false && !i.mesclado_em && (i.tipo ?? "insumo") === tipo && normalizarNome(i.nome) === alvo);
+}
+
 export const LIMITE_SEMELHANCA = 0.85;
 
 /** Todas as palavras do nome menor (pelo menos 2, uma com 3+ letras) aparecem no maior: "soja 7681" ⊂ "soja cg 7681". */

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase-servidor";
 import { validateFazendaAccess } from "../../../lib/api-auth";
+import { itemDoCliente } from "../../../lib/estoque/duplicados";
 
 const DEFAULTS = [
   { nome: "Soja",                categoria: "graos", unidade: "sc", ncm: "1201.90.00", ordem: 1 },
@@ -40,15 +41,15 @@ export async function POST(req: NextRequest) {
     { onConflict: "fazenda_id,nome", ignoreDuplicates: true }
   );
 
-  // Insere produtos agrícolas padrão em insumos (ignora se já existe)
-  const { data: existPA } = await sb.from("insumos").select("id").eq("fazenda_id", fazenda_id).eq("categoria", "produto_agricola");
-  if (!existPA || existPA.length === 0) {
-    await sb.from("insumos").insert(
-      DEFAULTS_PA.map(p => ({
-        fazenda_id, tipo: "produto", nome: p.nome, categoria: "produto_agricola",
-        unidade: p.unidade, estoque: 0, estoque_minimo: 0, valor_unitario: 0,
-      }))
-    );
+  // Produtos agrícolas padrão: o cadastro é do CLIENTE — só cria os que não existem em nenhuma fazenda dele, um a um.
+  // Antes conferia só a fazenda e só "se está vazio": chamadas simultâneas criaram cada produto até 8× (out/2026).
+  const { data: faz } = await sb.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  const { data: fzs } = faz?.conta_id ? await sb.from("fazendas").select("id").eq("conta_id", faz.conta_id) : { data: [{ id: fazenda_id }] };
+  const { data: existPA } = await sb.from("insumos").select("id, nome, tipo, ativo, mesclado_em").in("fazenda_id", (fzs ?? []).map(f => f.id)).eq("tipo", "produto");
+  const faltando = DEFAULTS_PA.filter(p => !itemDoCliente(existPA ?? [], p.nome, "produto"));
+  for (const p of faltando) {
+    // Um por vez: se outra chamada criou ao mesmo tempo, o índice único (Seção 368) recusa e seguimos.
+    await sb.from("insumos").insert({ fazenda_id, tipo: "produto", nome: p.nome, categoria: "produto_agricola", unidade: p.unidade, estoque: 0, estoque_minimo: 0, valor_unitario: 0 });
   }
 
   // Retorna as culturas inseridas/existentes

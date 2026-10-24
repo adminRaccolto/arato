@@ -5,6 +5,7 @@
  */
 
 import { motivoBloqueioExclusao, notaDoTitulo } from "./financeiro/bloqueio-exclusao";
+import { itemDoCliente } from "./estoque/duplicados";
 import { falharSeErro } from "./db-util";
 import { ajustarSaldoPedidoNoFC } from "./financeiro/saldo-pedido";
 import { ptaxDoDiaQualquerLado } from "./financeiro/ptax";
@@ -461,6 +462,8 @@ export async function criarInsumo(i: Omit<Insumo, "id" | "created_at">): Promise
     throw new Error("Cadastro cancelado.");
   }
   const { data, error } = await supabase.from("insumos").insert(i).select().single();
+  // Índice único por cliente (Seção 368): o mesmo nome já cadastrado em qualquer fazenda do cliente.
+  if (error?.code === "23505" && /uq_insumos_cliente_nome/.test(error.message)) throw new Error(`"${i.nome}" já existe no cadastro do cliente (em alguma fazenda). Use o item existente — o estoque de cada fazenda fica nas movimentações dela.`);
   if (error) throw error;
   // Sem esta movimentação, a aba de movimentações mostra saldo negativo (só saídas,
   // sem a entrada correspondente) e a reconciliação de estoque destrói o saldo real.
@@ -7033,17 +7036,17 @@ const PRODUTOS_AGRICOLAS_PADRAO: {
 ];
 
 export async function seederProdutosAgricolas(fazenda_id: string): Promise<number> {
-  // Busca nomes já existentes para evitar duplicatas
+  // O cadastro é do CLIENTE: confere os produtos de todas as fazendas dele (antes só a fazenda → repetia por fazenda).
+  const { data: faz } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+  const { data: fzs } = faz?.conta_id ? await supabase.from("fazendas").select("id").eq("conta_id", faz.conta_id) : { data: [{ id: fazenda_id }] };
   const { data: existentes } = await supabase
     .from("insumos")
-    .select("nome")
-    .eq("fazenda_id", fazenda_id)
-    .eq("categoria", "produto_agricola");
-
-  const nomesExistentes = new Set((existentes ?? []).map((r: { nome: string }) => r.nome.toLowerCase()));
+    .select("nome, tipo, ativo, mesclado_em")
+    .in("fazenda_id", (fzs ?? []).map((f: { id: string }) => f.id))
+    .eq("tipo", "produto");
 
   const novos = PRODUTOS_AGRICOLAS_PADRAO.filter(
-    p => !nomesExistentes.has(p.nome.toLowerCase())
+    p => !itemDoCliente((existentes ?? []) as { nome: string; tipo?: string | null }[], p.nome, "produto")
   );
 
   if (novos.length === 0) return 0;

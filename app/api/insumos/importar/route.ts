@@ -2,6 +2,7 @@ import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
 import { exigirAcessoConta, exigirAcessoFazenda } from "../../../../lib/api-auth";
+import { itemDoCliente } from "../../../../lib/estoque/duplicados";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -63,6 +64,20 @@ export async function POST(req: NextRequest) {
       : { data: [] };
     const depositos: { id: string; nome: string; fazenda_id: string }[] = depositosDB ?? [];
 
+    // Catálogo do CLIENTE: item que já existe em qualquer fazenda dele é reaproveitado (o saldo da planilha entra como
+    // estoque inicial na fazenda da linha) — nunca vira outro cadastro.
+    const catalogo: { id: string; nome: string; tipo: string | null; ativo: boolean | null; mesclado_em?: string | null }[] = [];
+    for (let de = 0; fazIds.length; de += 1000) {
+      const { data } = await sb.from("insumos").select("id, nome, tipo, ativo, mesclado_em").in("fazenda_id", fazIds).order("id").range(de, de + 999);
+      catalogo.push(...(data ?? []));
+      if ((data ?? []).length < 1000) break;
+    }
+    const lancarSaldo = (insumoId: string, fazendaId: string, depositoId: string | null, qtd: number, valor: number, obs: string) =>
+      sb.from("movimentacoes_estoque").insert({
+        insumo_id: insumoId, fazenda_id: fazendaId, tipo: qtd >= 0 ? "entrada" : "saida", motivo: "inventario",
+        quantidade: Math.abs(qtd), valor_unitario: valor > 0 ? valor : null, data: hojeLocal(), deposito_id: depositoId, observacao: obs, auto: true,
+      });
+
     console.log(`[insumos/importar] conta=${body.conta_id} rows=${body.rows.length}`);
     let ok = 0, erros = 0, duplicados = 0, atualizados = 0;
     const resultRows: Array<{ nome: string; _status: string; _msg: string }> = [];
@@ -70,7 +85,6 @@ export async function POST(req: NextRequest) {
     for (const r of body.rows) {
       // Pula erros vindos da validação client-side
       if (r._status === "erro") { erros++; resultRows.push({ nome: r.nome, _status: "erro", _msg: "erro de validação" }); continue; }
-      if (r._status === "duplicado" && !body.modo_atualizacao) { duplicados++; resultRows.push({ nome: r.nome, _status: "duplicado", _msg: "já existe" }); continue; }
 
       // Resolve fazenda pelo nome (case-insensitive, sem acento)
       const fazNormTarget = norm(r.fazenda_nome);
@@ -98,7 +112,8 @@ export async function POST(req: NextRequest) {
         nome:           r.nome.trim(),
         categoria:      r.categoria.trim().toLowerCase(),
         unidade:        r.unidade.trim(),
-        estoque:        estoqueQtd,
+        // Saldo nunca vai no cadastro (Seção 365: saldo = movimentações) — entra pela movimentação de inventário abaixo.
+        estoque:        0,
         estoque_minimo: r.estoque_minimo ?? 0,
         valor_unitario: valorUnit,
         fabricante:     r.fabricante?.trim() || null,
@@ -106,16 +121,29 @@ export async function POST(req: NextRequest) {
         deposito_id:    depId,
       };
 
-      if (r._status === "duplicado" && body.modo_atualizacao) {
-        // Modo atualização: UPDATE
-        const { error } = await sb.from("insumos")
-          .update(payload)
-          .eq("fazenda_id", fazLinha.id)
-          .eq("tipo", "insumo")
-          .eq("nome", r.nome.trim());
-        if (error) { erros++; resultRows.push({ nome: r.nome, _status: "erro", _msg: error.message }); }
-        else { atualizados++; resultRows.push({ nome: r.nome, _status: "ok", _msg: "atualizado" }); }
-      } else {
+      const existente = itemDoCliente(catalogo, r.nome, "insumo");
+      if (existente) {
+        // Já existe no cliente. Atualização: dados do cadastro (sem saldo) + saldo da fazenda ajustado ao da planilha.
+        // Sem atualização: só lança o saldo da planilha como estoque inicial nesta fazenda.
+        if (body.modo_atualizacao) {
+          const { estoque: _semSaldo, fazenda_id: _semFazenda, ...dados } = payload; void _semSaldo; void _semFazenda;
+          const { error } = await sb.from("insumos").update(dados).eq("id", existente.id);
+          if (error) { erros++; resultRows.push({ nome: r.nome, _status: "erro", _msg: error.message }); continue; }
+          if (r.estoque != null) {
+            const { data: sf } = await sb.from("saldo_insumo_fazenda").select("saldo").eq("insumo_id", existente.id).eq("fazenda_id", fazLinha.id).maybeSingle();
+            const delta = estoqueQtd - Number(sf?.saldo ?? 0);
+            if (Math.abs(delta) > 0.0001) await lancarSaldo(existente.id, fazLinha.id, depId, delta, valorUnit, "Ajuste de saldo — importação (atualização)");
+          }
+          atualizados++; resultRows.push({ nome: r.nome, _status: "ok", _msg: "atualizado" });
+        } else if (estoqueQtd > 0) {
+          await lancarSaldo(existente.id, fazLinha.id, depId, estoqueQtd, valorUnit, "Saldo inicial — importação (item já cadastrado no cliente)");
+          ok++; resultRows.push({ nome: r.nome, _status: "ok", _msg: `já existia (${existente.nome}) — saldo lançado em ${fazLinha.nome}` });
+        } else {
+          duplicados++; resultRows.push({ nome: r.nome, _status: "duplicado", _msg: `já existe (${existente.nome})` });
+        }
+        continue;
+      }
+      {
         // INSERT novo
         const { data: ins, error } = await sb.from("insumos").insert(payload).select("id").single();
         if (error) {
@@ -127,20 +155,8 @@ export async function POST(req: NextRequest) {
         resultRows.push({ nome: r.nome, _status: "ok", _msg: "" });
 
         // Movimentação de entrada (inventário) se há estoque inicial
-        if (estoqueQtd > 0 && ins?.id) {
-          await sb.from("movimentacoes_estoque").insert({
-            insumo_id:      ins.id,
-            fazenda_id:     fazLinha.id,
-            tipo:           "entrada",
-            motivo:         "inventario",
-            quantidade:     estoqueQtd,
-            valor_unitario: valorUnit > 0 ? valorUnit : null,
-            data:           hojeLocal(),
-            deposito_id:    depId,
-            observacao:     "Saldo inicial — importação",
-            auto:           true,
-          });
-        }
+        if (ins?.id) catalogo.push({ id: ins.id, nome: r.nome.trim(), tipo: "insumo", ativo: true });
+        if (estoqueQtd > 0 && ins?.id) await lancarSaldo(ins.id, fazLinha.id, depId, estoqueQtd, valorUnit, "Saldo inicial — importação");
       }
     }
 

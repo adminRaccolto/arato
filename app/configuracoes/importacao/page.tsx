@@ -1919,7 +1919,7 @@ function ImportacaoInner() {
         nome:           r.nome.trim(),
         categoria:      r.categoria,
         unidade:        r.unidade,
-        estoque:        estoqueQtd,
+        estoque:        0, // saldo = movimentações (Seção 365): entra pela movimentação de inventário abaixo
         estoque_minimo: parseFloat(r.estoque_minimo || "0"),
         valor_unitario: valorUnit,
         lote:           r.codigo_interno?.trim() || null,

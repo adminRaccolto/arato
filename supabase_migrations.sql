@@ -17663,3 +17663,37 @@ END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 REVOKE ALL ON FUNCTION fn_mesclar_insumos(uuid, uuid[], text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION fn_desfazer_mesclagem(uuid) FROM PUBLIC, anon, authenticated;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 367 — Item por cliente, fase 3: item sempre com o cliente preenchido (pode rodar a qualquer momento)
+-- =============================================================================
+-- insumos.conta_id passa a ser sempre o cliente da fazenda (66 itens estavam sem). E a função de nome normalizado usada
+-- pelo índice da Seção 368 — mesma regra da tela Possíveis Duplicados (lib/estoque/duplicados.ts normalizarNome).
+CREATE OR REPLACE FUNCTION fn_insumos_conta() RETURNS trigger AS $$
+BEGIN
+  SELECT conta_id INTO NEW.conta_id FROM fazendas WHERE id = NEW.fazenda_id;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_insumos_conta ON insumos;
+CREATE TRIGGER trg_insumos_conta BEFORE INSERT OR UPDATE OF fazenda_id, conta_id ON insumos FOR EACH ROW EXECUTE FUNCTION fn_insumos_conta();
+UPDATE insumos i SET conta_id = f.conta_id FROM fazendas f WHERE f.id = i.fazenda_id AND i.conta_id IS NULL;
+
+CREATE OR REPLACE FUNCTION fn_nome_item_normalizado(p text) RETURNS text AS $$
+  SELECT trim(regexp_replace(regexp_replace(regexp_replace(
+           translate(lower(coalesce(p, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'),
+           '[^a-z0-9]+', ' ', 'g'),
+         '\m(de|do|da|dos|das)\M', '', 'g'),
+         '\s+', ' ', 'g'))
+$$ LANGUAGE sql IMMUTABLE;
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 368 — Item por cliente, fase 3: o banco não aceita mais item repetido no cliente (RODAR DEPOIS DAS MESCLAGENS)
+-- =============================================================================
+-- Um nome (normalizado) por cliente e tipo (insumo/produto), entre os itens ativos e não mesclados. Vale para qualquer
+-- caminho (tela, importação, WhatsApp, rotinas). Se ainda houver repetidos, a criação do índice falha e diz qual —
+-- termine as mesclagens (scripts/estoque-mesclar-itens.mjs) ou inative o cadastro que sobra e rode de novo.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_insumos_cliente_nome
+  ON insumos (conta_id, coalesce(tipo, 'insumo'), fn_nome_item_normalizado(nome))
+  WHERE mesclado_em IS NULL AND coalesce(ativo, true);
+NOTIFY pgrst, 'reload schema';
