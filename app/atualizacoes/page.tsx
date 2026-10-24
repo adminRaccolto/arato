@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.24-g",
+    data: "24/10/2026",
+    titulo: "Contas a Pagar e Receber mais rápidos",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "A abertura do Contas a Pagar buscava o número da NF de cada título em partes, uma após a outra (cerca de 8 segundos num cliente com 3.500 títulos). Agora as partes são buscadas ao mesmo tempo (cerca de 1 segundo). Vale também para a Conciliação e o Relatório Financeiro." },
+      { tipo: "melhoria", texto: "Baixa, gravação e demais ações de CP/CR conferem o acesso às fazendas do cliente numa única consulta — antes conferiam uma fazenda por vez." },
+    ],
+    onde: "Financeiro → Contas a Pagar, Contas a Receber, Conciliação",
+  },
+  {
     versao: "2026.10.24-f",
     data: "24/10/2026",
     titulo: "Lavoura: Safra/Ciclo e Talhão aparecem em todos os lançamentos",

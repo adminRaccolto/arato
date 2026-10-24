@@ -174,8 +174,19 @@ export async function exigirAcessoConta(req: Request, contaId: string | null | u
 export async function exigirAcessoFazendas(req: Request, fazendaIds: (string | null | undefined)[]): Promise<NextResponse | null> {
   const ids = Array.from(new Set(fazendaIds.filter((x): x is string => !!x)));
   if (!ids.length) return exigirLogin(req);
-  for (const id of ids) { const r = await exigirAcessoFazenda(req, id); if (r) return r; }
-  return null;
+  // Uma verificação só para todas as fazendas: usuário 1×, perfil 1×, fazendas numa consulta. Antes conferia fazenda por
+  // fazenda (3 consultas cada) — cliente com 7 fazendas fazia ~21 idas ao banco antes de cada grid/baixa (CP/CR lento).
+  const u = await getRequestUser(auth(req));
+  if (!u) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  const db = adminClient();
+  const [{ data: perfil }, { data: fazendas }] = await Promise.all([
+    db.from("perfis").select("conta_id, role").eq("user_id", u.id).maybeSingle(),
+    db.from("fazendas").select("id, conta_id").in("id", ids),
+  ]);
+  if (perfil?.role?.startsWith("raccotlo") || isRaccotloAdmin(perfil?.role, u.email)) return null;
+  if (!perfil?.conta_id) return NextResponse.json({ ok: false, error: "Perfil sem conta vinculada" }, { status: 403 });
+  const daConta = new Set((fazendas ?? []).filter(f => f.conta_id === perfil.conta_id).map(f => f.id as string));
+  return ids.every(id => daConta.has(id)) ? null : NextResponse.json({ ok: false, error: "Acesso negado a esta fazenda" }, { status: 403 });
 }
 
 // Chamada de uma rota do próprio servidor para outra (robô do SIEG, webhook do WhatsApp): sem cookie de usuário,
