@@ -3002,7 +3002,8 @@ export default function ContasAPagarPage() {
                       <div>
                         <label data-arato-label="true" style={lbl}>Forma de Pagamento</label>
                         <SelectField style={{ ...inp, width: "100%", boxSizing: "border-box" }} value={novoForm.forma_pagamento} onChange={e => setNovoForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
-                          {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
+                          {/* Empresa ainda não tem cartão de crédito (empresa_lancamentos sem cartão/fatura) — opção fora para não enganar */}
+                          {FORMAS_PAGAMENTO.filter(f => f !== "Cartão de Crédito").map(f => <option key={f} value={f}>{f}</option>)}
                         </SelectField>
                       </div>
                       <div>

@@ -17723,3 +17723,53 @@ BEGIN
   END LOOP;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 370 — Cartão de Crédito: NF de entrada paga no cartão + total da fatura sempre certo
+-- =============================================================================
+-- (1) A NF guarda o cartão escolhido (forma de pagamento Cartão de Crédito): ao processar, os títulos nascem no cartão
+--     (status 'cartao', na fatura do mês) em vez de CP em aberto.
+-- (2) Total da fatura = soma dos títulos dela, recalculado pelo banco a cada inclusão/alteração/exclusão — antes só
+--     era somado na entrada e nunca descontado (estorno de NF ou exclusão deixavam a fatura errada).
+-- (3) Fatura já paga não aceita mudança nos títulos dela (o pagamento já saiu do caixa por aquele total).
+ALTER TABLE nf_entradas ADD COLUMN IF NOT EXISTS cartao_id uuid REFERENCES cartoes_credito(id) ON DELETE SET NULL;
+
+CREATE OR REPLACE FUNCTION fn_fatura_cartao_recalcular(p_fatura uuid) RETURNS void AS $$
+BEGIN
+  IF p_fatura IS NULL THEN RETURN; END IF;
+  UPDATE faturas_cartao SET valor_total = coalesce((
+    SELECT sum(l.valor) FROM lancamentos l WHERE l.fatura_cartao_id = p_fatura AND l.status = 'cartao'), 0)
+   WHERE id = p_fatura AND status <> 'paga';
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION fn_lanc_fatura_protegida() RETURNS trigger AS $$
+DECLARE v_status text;
+BEGIN
+  IF OLD.fatura_cartao_id IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;
+  SELECT status INTO v_status FROM faturas_cartao WHERE id = OLD.fatura_cartao_id;
+  IF v_status = 'paga' AND (TG_OP = 'DELETE'
+       OR NEW.valor IS DISTINCT FROM OLD.valor OR NEW.status IS DISTINCT FROM OLD.status
+       OR NEW.fatura_cartao_id IS DISTINCT FROM OLD.fatura_cartao_id) THEN
+    RAISE EXCEPTION 'Este título está numa fatura de cartão já paga — não pode ser alterado nem excluído. Ajuste com um lançamento novo na próxima fatura.' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_lanc_fatura_protegida ON lancamentos;
+CREATE TRIGGER trg_lanc_fatura_protegida BEFORE UPDATE OR DELETE ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_lanc_fatura_protegida();
+
+CREATE OR REPLACE FUNCTION fn_lanc_fatura_recalcula() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN PERFORM fn_fatura_cartao_recalcular(NEW.fatura_cartao_id); END IF;
+  IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.fatura_cartao_id IS DISTINCT FROM NEW.fatura_cartao_id) THEN
+    PERFORM fn_fatura_cartao_recalcular(OLD.fatura_cartao_id);
+  END IF;
+  RETURN NULL;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+DROP TRIGGER IF EXISTS trg_lanc_fatura_recalcula ON lancamentos;
+CREATE TRIGGER trg_lanc_fatura_recalcula AFTER INSERT OR UPDATE OF valor, status, fatura_cartao_id OR DELETE ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_lanc_fatura_recalcula();
+
+-- Acerta o total de faturas existentes (abertas/fechadas)
+DO $$ DECLARE r record; BEGIN FOR r IN SELECT id FROM faturas_cartao WHERE status <> 'paga' LOOP PERFORM fn_fatura_cartao_recalcular(r.id); END LOOP; END $$;
+NOTIFY pgrst, 'reload schema';

@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       fazenda_id: string;
       data_vencimento_cp?: string | null;
       forma_pagamento?: string | null;
+      cartao_id?: string | null;
       tipo_entrada?: string;
       produtor_id?: string | null;
       ie_produtor?: string | null;
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
     const update: Record<string, unknown> = {};
     if (body.data_vencimento_cp !== undefined) update.data_vencimento_cp = body.data_vencimento_cp || null;
     if (body.forma_pagamento    !== undefined) update.forma_pagamento    = body.forma_pagamento    || null;
+    // Cartão da NF paga no cartão (Seção 370). Só vai quando informado — antes da migration a coluna não existe.
+    if (body.cartao_id          !== undefined) update.cartao_id          = body.cartao_id          || null;
     if (body.tipo_entrada !== undefined) update.tipo_entrada = body.tipo_entrada;
     if (body.produtor_id !== undefined) update.produtor_id = body.produtor_id || null;
     if (body.ie_produtor !== undefined) update.ie_produtor = body.ie_produtor || null;

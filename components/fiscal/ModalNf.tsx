@@ -15,6 +15,8 @@
 // {id, onClose, onSaved} em vez de ser a página inteira).
 // ═══════════════════════════════════════════════════════════════════════════
 import { hojeLocal } from "../../lib/data-local";
+import { listarCartoesDaConta } from "../../lib/db";
+import type { CartaoCredito } from "../../lib/supabase";
 import SelectField from "../SelectField";
 import InputData from "../../components/InputData";
 import { confirmarAcao } from "../../components/ConfirmarAcao";
@@ -382,6 +384,9 @@ export default function ModalNf({
   acaoInicial?: "devolver" | "estornar";
 }) {
   const { fazendaId, fazendaIds, contaId, nomeUsuario, anoSafraVigenteId } = useAuth();
+  // Cartões do cliente — forma de pagamento Cartão de Crédito na NF (Financeiro → Cartões de Crédito)
+  const [cartoesConta, setCartoesConta] = useState<CartaoCredito[]>([]);
+  useEffect(() => { if (contaId) listarCartoesDaConta(contaId).then(setCartoesConta).catch(() => setCartoesConta([])); }, [contaId]);
   const router = useRouter();
   const [nfExistente, setNfExistente] = useState<{ id: string; numero: string } | null>(null);
 
@@ -466,6 +471,7 @@ export default function ModalNf({
     centro_custo_id: "",
     data_vencimento_cp: "",
     forma_pagamento: "",
+    cartao_id: "",
     deposito_destino_id: "",
     bomba_destino_id: "",
     e_combustivel: false,
@@ -633,6 +639,7 @@ export default function ModalNf({
       centro_custo_id: "",
       data_vencimento_cp: "",
       forma_pagamento: "",
+      cartao_id: "",
       deposito_destino_id: "",
       bomba_destino_id: "",
       e_combustivel: false,
@@ -699,6 +706,7 @@ export default function ModalNf({
       centro_custo_id: nf.centro_custo_id ?? "",
       data_vencimento_cp: nf.data_vencimento_cp ?? "",
       forma_pagamento: (nf as Record<string,unknown>).forma_pagamento as string ?? "",
+      cartao_id: ((nf as Record<string,unknown>).cartao_id as string | null) ?? "",
       deposito_destino_id: nf.deposito_destino_id ?? "",
       bomba_destino_id: "",
       e_combustivel: nf.tipo_entrada === "combustivel",
@@ -1208,6 +1216,7 @@ export default function ModalNf({
       centro_custo_id:       cab.centro_custo_id     || undefined,
       data_vencimento_cp:    cab.data_vencimento_cp  || undefined,
       forma_pagamento:       cab.forma_pagamento      || undefined,
+      ...(cab.forma_pagamento === "cartao_credito" ? { cartao_id: cab.cartao_id || undefined } : {}),
       deposito_destino_id:   cab.deposito_destino_id || undefined,
       observacao:            cab.observacao           || undefined,
       ano_safra_id:          cab.ano_safra_id         || undefined,
@@ -1453,6 +1462,7 @@ export default function ModalNf({
           fazenda_id:            fazendaId,
           data_vencimento_cp:    cab.data_vencimento_cp    || null,
           forma_pagamento:       cab.forma_pagamento       || null,
+          ...(cab.forma_pagamento === "cartao_credito" || (nfEdit as Record<string,unknown>).cartao_id ? { cartao_id: cab.forma_pagamento === "cartao_credito" ? (cab.cartao_id || null) : null } : {}),
           tipo_entrada:          cab.e_combustivel ? "combustivel" : tipo,
           produtor_id:           cab.produtor_id           || null,
           ie_produtor:           cab.ie_produtor            || null,
@@ -1579,6 +1589,11 @@ export default function ModalNf({
         if (!ok) { setSaving(false); return; }
         registrarAutorizacaoMovimentoEmpresa(fazendaId, nfEdit.id, String(nfEdit.numero ?? ""), movEmp.empresa, movEmp.cps_produtor.map(c => c.id));
       }
+      if ((cab.forma_pagamento || (nfEdit as Record<string,unknown>).forma_pagamento) === "cartao_credito"
+          && !(cab.cartao_id || (nfEdit as Record<string,unknown>).cartao_id)) {
+        setErr("Forma de pagamento Cartão de Crédito: escolha o cartão (aba Cabeçalho → Pagamento e Classificação).");
+        setSaving(false); return;
+      }
       await processarNfEntrada(
         nfEdit.id,
         fazendaId,
@@ -1593,7 +1608,10 @@ export default function ModalNf({
         {
           nfeNumero:           nfEdit.numero,
           dataVencimentoCp:    cab.data_vencimento_cp || nfEdit.data_vencimento_cp,
-          formaPagamento:      (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
+          formaPagamento:      cab.forma_pagamento || (nfEdit as Record<string,unknown>).forma_pagamento as string | undefined,
+          // Cartão de Crédito: os títulos nascem no cartão escolhido (na fatura do mês), não como CP em aberto.
+          cartaoId:            (cab.forma_pagamento || (nfEdit as Record<string,unknown>).forma_pagamento) === "cartao_credito"
+                                 ? (cab.cartao_id || ((nfEdit as Record<string,unknown>).cartao_id as string | undefined) || undefined) : undefined,
           tipoEntrada:         nfEdit.tipo_entrada,
           anoSafraId:          nfEdit.ano_safra_id,
           cicloId:             nfEdit.ciclo_id,
@@ -2899,8 +2917,20 @@ export default function ModalNf({
                           <option value="prazo_cheque">A Prazo — Cheque</option>
                           <option value="barter">Barter (troca por grãos)</option>
                           <option value="financiamento">Financiamento</option>
+                          <option value="cartao_credito">Cartão de Crédito</option>
                           <option value="outros">Outros</option>
                         </SelectField>
+                        {cab.forma_pagamento === "cartao_credito" && (
+                          <div style={{ marginTop: 6 }}>
+                            <SelectField value={cab.cartao_id} onChange={e => setCab(p => ({ ...p, cartao_id: e.target.value }))} style={{ ...inp, borderColor: cab.cartao_id ? undefined : "#E24B4A" }}>
+                              <option value="">— escolher o cartão —</option>
+                              {cartoesConta.map(c => <option key={c.id} value={c.id}>{c.titular}{c.bandeira ? ` · ${c.bandeira}` : ""}{c.numero_final ? ` final ${c.numero_final}` : ""}</option>)}
+                            </SelectField>
+                            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>
+                              {cartoesConta.length === 0 ? "Nenhum cartão cadastrado — Financeiro → Cartões de Crédito." : "Os títulos entram na fatura do cartão (somem do Contas a Pagar até o Pagar Fatura)."}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label data-arato-label="true" style={lbl}>Vencimento da CP {nfCondicao === "prazo" && <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(1º vencimento)</span>}</label>
@@ -3848,7 +3878,7 @@ export default function ModalNf({
                       {[
                         { label: "Tipo",              value: TIPO_LABELS[tipo]?.label },
                         { label: "Emitente",          value: cab.emitente_nome || "—" },
-                        { label: "Forma de pagamento",value: cab.forma_pagamento ? { a_vista: "À Vista", prazo_boleto: "A Prazo — Boleto", prazo_pix: "A Prazo — PIX", prazo_debito: "A Prazo — Débito", prazo_cheque: "A Prazo — Cheque", barter: "Barter", financiamento: "Financiamento", outros: "Outros" }[cab.forma_pagamento] ?? cab.forma_pagamento : "Não informado" },
+                        { label: "Forma de pagamento",value: cab.forma_pagamento ? { a_vista: "À Vista", cartao_credito: "Cartão de Crédito", prazo_boleto: "A Prazo — Boleto", prazo_pix: "A Prazo — PIX", prazo_debito: "A Prazo — Débito", prazo_cheque: "A Prazo — Cheque", barter: "Barter", financiamento: "Financiamento", outros: "Outros" }[cab.forma_pagamento] ?? cab.forma_pagamento : "Não informado" },
                         { label: "Vencimento CP",     value: cab.data_vencimento_cp ? fmtData(cab.data_vencimento_cp) : "Não informado" },
                         { label: "Pedido vinculado",  value: cab.pedido_compra_id ? (pedidos.find(p=>p.id===cab.pedido_compra_id)?.nr_pedido ?? "Sim") : "Não" },
                         { label: "Itens",             value: `${itens.filter(i=>i.descricao_nf.trim()).length} item(s)` },

@@ -7,6 +7,18 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.25-b",
+    data: "25/10/2026",
+    titulo: "NF de entrada paga no Cartão de Crédito",
+    modulos: ["Fiscal", "Financeiro"],
+    itens: [
+      { tipo: "novo", texto: "Na NF de entrada, a Forma de Pagamento ganhou Cartão de Crédito, com a escolha do cartão. Ao processar, os títulos vão para a fatura do cartão (um por parcela, cada um no mês da sua data) em vez de virarem CP em aberto; o dinheiro sai no Pagar Fatura." },
+      { tipo: "correcao", texto: "O total da fatura do cartão passa a ser sempre a soma dos títulos dela — antes, estorno de NF ou exclusão de título não descontavam o valor. Títulos de fatura já paga não podem mais ser alterados nem excluídos." },
+      { tipo: "correcao", texto: "Contas a Pagar da Empresa: a opção Cartão de Crédito saiu da lista, porque ainda não é ligada ao cartão (ficava gravada só como texto)." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro; Financeiro → Cartões de Crédito",
+  },
+  {
     versao: "2026.10.25-a",
     data: "25/10/2026",
     titulo: "CP e CR abrem com os próximos 60 dias",

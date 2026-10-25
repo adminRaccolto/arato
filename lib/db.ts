@@ -2909,6 +2909,8 @@ export async function processarNfEntrada(
     produtorId?: string;
     maquinaId?: string;
     parcelas?: { data: string; valor: number }[];
+    /** Forma de pagamento Cartão de Crédito: os títulos nascem no cartão (status 'cartao', na fatura do mês). */
+    cartaoId?: string;
   },
 ): Promise<void> {
   // Normaliza CNPJ do emitente para dígitos puros — o XML entrega sem máscara,
@@ -3405,6 +3407,8 @@ export async function processarNfEntrada(
     } else if (jaTemCpAtivo && !empresaDestinoId) {
       // título já existe para esta NF — não duplica
       if (cpsAtivosProd?.[0]?.id) nfUpdates.lancamento_id = cpsAtivosProd[0].id;
+    } else if (empresaDestinoId && opts?.cartaoId) {
+      throw new Error("Cartão de Crédito ainda não está disponível para NF de Empresa — escolha outra forma de pagamento ou lance pelo Contas a Pagar do produtor.");
     } else if (empresaDestinoId) {
       // ── CP para Empresa (módulo Empresas) ───────────────────────────────────
       // cnpj_destino da NF bate com CNPJ de empresa cadastrada → empresa_lancamentos
@@ -3515,14 +3519,32 @@ export async function processarNfEntrada(
             data_vencimento: opts?.dataVencimentoCp ?? dataEntrada,
             valor:           valorTotal,
           }];
-      const agRes = await fetch("/api/lancamentos-cp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: agRows }),
-      });
-      const agJson = await agRes.json() as { ok: boolean; ids?: string[]; error?: string };
-      if (!agJson.ok) throw new Error(`Erro ao criar CP da NF: ${agJson.error}`);
-      if (agJson.ids?.[0]) nfUpdates.lancamento_id = agJson.ids[0];
+      if (opts?.cartaoId) {
+        // Paga no Cartão de Crédito: cada parcela vira um título no cartão (some do grid de CP, não mexe no caixa) e
+        // entra na fatura do mês da sua data; o dinheiro só sai no "Pagar Fatura" (Financeiro → Cartões).
+        const { data: cartao } = await supabase.from("cartoes_credito").select("*").eq("id", opts.cartaoId).maybeSingle();
+        if (!cartao) throw new Error("Cartão de Crédito da NF não encontrado. Escolha o cartão de novo na NF.");
+        const { data: fazRow } = await supabase.from("fazendas").select("conta_id").eq("id", fazenda_id).maybeSingle();
+        const contaDaNf = (fazRow?.conta_id as string | null) ?? (cartao as CartaoCredito).conta_id;
+        const ids: string[] = [];
+        for (const row of agRows) {
+          const { status: _st, ...semStatus } = row as typeof row & { status?: string }; void _st;
+          const lanc = await criarLancamentoNoCartao(
+            { ...semStatus, data_lancamento: row.data_vencimento, forma_pagamento: "Cartão de Crédito" } as unknown as Parameters<typeof criarLancamentoNoCartao>[0],
+            cartao as CartaoCredito, contaDaNf);
+          ids.push(lanc.id);
+        }
+        if (ids[0]) nfUpdates.lancamento_id = ids[0];
+      } else {
+        const agRes = await fetch("/api/lancamentos-cp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rows: agRows }),
+        });
+        const agJson = await agRes.json() as { ok: boolean; ids?: string[]; error?: string };
+        if (!agJson.ok) throw new Error(`Erro ao criar CP da NF: ${agJson.error}`);
+        if (agJson.ids?.[0]) nfUpdates.lancamento_id = agJson.ids[0];
+      }
     }
   }
 
@@ -7914,18 +7936,21 @@ export async function vincularLancamentoFatura(
   // chamada supabase.rpc("incrementar_fatura_cartao", ...) sempre falhava
   // silenciosamente e caía neste mesmo update manual) — aceitável pro volume
   // de uso (lançamento manual, não há concorrência real).
-  await supabase
-    .from("faturas_cartao")
-    .update({ valor_total: (fatura.valor_total ?? 0) + valor })
-    .eq("id", fatura.id);
-
+  void valor;
   // Vincula o lançamento à fatura
   await supabase
     .from("lancamentos")
     .update({ cartao_id: cartao.id, fatura_cartao_id: fatura.id })
     .eq("id", lancamentoId);
 
-  return fatura as FaturaCartao;
+  // Total da fatura = soma dos títulos dela (no cartão). Antes só somava este valor ao total gravado — e nada
+  // descontava quando um título era alterado/apagado (estorno de NF), deixando a fatura errada. Com a Seção 370 o
+  // banco também recalcula sozinho a cada mudança.
+  const { data: itens } = await supabase.from("lancamentos").select("valor").eq("fatura_cartao_id", fatura.id).eq("status", "cartao");
+  const total = Math.round((itens ?? []).reduce((s2, i) => s2 + Number(i.valor ?? 0), 0) * 100) / 100;
+  await supabase.from("faturas_cartao").update({ valor_total: total }).eq("id", fatura.id);
+
+  return { ...(fatura as FaturaCartao), valor_total: total };
 }
 
 // Cria um lançamento de CP já "no cartão" — status 'cartao' (não é saldo em
