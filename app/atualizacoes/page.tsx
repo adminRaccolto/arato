@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.25-a",
+    data: "25/10/2026",
+    titulo: "CP e CR abrem com os próximos 60 dias",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "melhoria", texto: "Contas a Pagar e Contas a Receber abrem com o vencimento de hoje até hoje + 60 dias (antes: até hoje + 3 meses, sem data inicial). Os atalhos Vencidos, Parciais, Baixados, Barter, Contratos financeiros e Compra de terra continuam mostrando tudo, sem esse período; datas mudadas à mão valem sempre." },
+    ],
+    onde: "Financeiro → Contas a Pagar, Contas a Receber",
+  },
+  {
     versao: "2026.10.24-g",
     data: "24/10/2026",
     titulo: "Contas a Pagar e Receber mais rápidos",

@@ -131,7 +131,12 @@ const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: 
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 const numBR = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
 const hojeISO = () => hojeLocal();
-const maisMeses = (n: number) => { const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
+// Data local (não UTC) daqui a N dias — o filtro padrão do grid é de hoje até hoje + 60 dias.
+const maisDiasLocal = (n: number) => {
+  const [y, m, d] = hojeLocal().split("-").map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+};
 // Dias até o vencimento (negativo = dias em atraso) — só faz sentido pra quem
 // ainda não foi baixado/cancelado.
 const diasVencimento = (venc: string | null, status: string | null): number | null => {
@@ -255,8 +260,9 @@ export default function ContasAPagarPage() {
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
-  const [fDataDe,  setFDataDe]  = useState("");
-  const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
+  // Padrão: vencimentos de hoje até hoje + 60 dias (pedido do dono 25/10/2026). Vencidos ficam na aba Vencidos.
+  const [fDataDe,  setFDataDe]  = useState(() => hojeLocal());
+  const [fDataAte, setFDataAte] = useState(() => maisDiasLocal(60));
   // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
   // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
   const [periodoManual, setPeriodoManual] = useState(false);
@@ -363,9 +369,12 @@ export default function ContasAPagarPage() {
 
   const todosBorderos = [...borderosPendentes, ...borderosPagos];
   const vinculos = vinculosBorderos(todosBorderos);
-  // Buscando fornecedor ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas, inclusive as
-  // que vencem depois do "Até" (que abre em hoje + 3 meses).
-  const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim());
+  // O período padrão (hoje até hoje + 60 dias) é ignorado quando não foi escolhido à mão e: busca por fornecedor/nº NF,
+  // ou atalho/status que olha o passado (Vencidos, Parciais, Baixados, Barter, Contratos, Compra de terra) — senão
+  // "Vencidos" ficaria sempre vazio, já que o padrão começa hoje.
+  const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra"]);
+  const filtroOlhaPassado = [...fStatus].some(st => st === "vencido" || st === "parcial" || st === "baixado") || ATALHOS_SEM_DATA.has(fAtalho);
+  const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || filtroOlhaPassado);
   const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: buscaSemData ? "" : fDataDe, ate: buscaSemData ? "" : fDataAte, hoje: hojeISO() };
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
@@ -1227,6 +1236,7 @@ export default function ContasAPagarPage() {
   }
 
   const totalPagar = linhas.reduce((s, l) => s + (emReais(l, l.valor) ?? 0), 0) + borderosVisiveis.reduce((s, b) => s + b.valor_total, 0);
+  const totalPago = linhas.reduce((s, l) => s + (l.valor_pago ?? (l.status_normalizado === "baixado" ? emReais(l, l.valor) ?? 0 : 0)), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).liquidado, 0);
   const totalAberto = linhas.filter(l => l.status_normalizado !== "baixado" && l.status_normalizado !== "cancelado").reduce((s, l) => s + saldoBRL(l), 0) + borderosVisiveis.reduce((s, b) => s + resumoBordero(b).saldo, 0);
 
   // ── Baixar em Lote ─────────────────────────────────────────
@@ -1705,6 +1715,8 @@ export default function ContasAPagarPage() {
           <span>·</span>
           <span>Total: <strong>{fmtBRL(totalPagar)}</strong></span>
           <span>·</span>
+          <span>Pago: <strong style={{ color: "#166534" }}>{fmtBRL(totalPago)}</strong></span>
+          <span>·</span>
           <span>Saldo em aberto: <strong style={{ color: "#E24B4A" }}>{fmtBRL(totalAberto)}</strong></span>
         </div>
 
@@ -1856,7 +1868,7 @@ export default function ContasAPagarPage() {
                     </td>
                   ),
                   pago: (
-                    <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(l.valor_pago)}</td>
+                    <td style={{ padding: "7px 10px", textAlign: "right", color: (l.valor_pago ?? 0) > 0 ? "#166534" : undefined }}>{fmtBRL(l.valor_pago)}</td>
                   ),
                   saldo: (
                     <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(saldo)}</td>
@@ -1905,7 +1917,7 @@ export default function ContasAPagarPage() {
           </OperationalGrid>
         </div>
         {!carregando && <GridPagination pagination={gridPagination} />}
-        <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span></div></div>
+        <div className="arato-new-only"><div className="arato-filter-total"><span>{linhasComBordero.length} título(s) no filtro</span><span>Total CP do filtro: <strong>{fmtBRL(totalPagar)}</strong></span><span>Pago: <strong>{fmtBRL(totalPago)}</strong></span><span>Saldo em aberto: <strong>{fmtBRL(totalAberto)}</strong></span></div></div>
       </div>
 
       {/* ── Popover de lançamento — detalhe + ações rápidas ── */}

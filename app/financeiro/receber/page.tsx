@@ -129,7 +129,12 @@ const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: 
 const fmtData = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 const numBR = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
 const hojeISO = () => hojeLocal();
-const maisMeses = (n: number) => { const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
+// Data local (não UTC) daqui a N dias — o filtro padrão do grid é de hoje até hoje + 60 dias.
+const maisDiasLocal = (n: number) => {
+  const [y, m, d] = hojeLocal().split("-").map(Number);
+  const dt = new Date(y, m - 1, d + n);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+};
 // Dias até o vencimento (negativo = dias em atraso) — só faz sentido pra quem
 // ainda não foi baixado/cancelado.
 const diasVencimento = (venc: string | null, status: string | null): number | null => {
@@ -233,8 +238,9 @@ export default function ContasAReceberPage() {
   const [fMoeda, setFMoeda] = useState<Set<string>>(new Set());
   const [fProdutor, setFProdutor] = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
-  const [fDataDe,  setFDataDe]  = useState("");
-  const [fDataAte, setFDataAte] = useState(() => maisMeses(3));
+  // Padrão: vencimentos de hoje até hoje + 60 dias (pedido do dono 25/10/2026). Vencidos ficam na aba Vencidos.
+  const [fDataDe,  setFDataDe]  = useState(() => hojeLocal());
+  const [fDataAte, setFDataAte] = useState(() => maisDiasLocal(60));
   // Período escolhido pelo usuário (mexeu em De/Até) vale sempre; o período automático da abertura (até hoje + 3 meses)
   // é ignorado quando se busca fornecedor/cliente ou nº de NF, para aparecerem todas as parcelas.
   const [periodoManual, setPeriodoManual] = useState(false);
@@ -294,7 +300,10 @@ export default function ContasAReceberPage() {
       if (fStatus.size > 0) q = q.in("status_normalizado", Array.from(fStatus));
       // Buscando cliente ou nº de NF, o período de vencimento é ignorado: aparecem todas as parcelas
       const nfBusca = (filtrosCol.nf ?? "").trim();
-      if (periodoManual || (!fBusca.trim() && !nfBusca)) {
+      // Período padrão (hoje até hoje + 60 dias) também é ignorado em atalho/status que olha o passado (Vencidos,
+      // Parciais, Baixados, Barter…), senão "Vencidos" ficaria sempre vazio.
+      const olhaPassado = [...fStatus].some(st => st === "vencido" || st === "parcial" || st === "baixado") || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho);
+      if (periodoManual || (!fBusca.trim() && !nfBusca && !olhaPassado)) {
         if (fDataDe) q = q.gte("data_vencimento", fDataDe);
         if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       }
@@ -321,7 +330,7 @@ export default function ContasAReceberPage() {
   // nenhum ao clicar Atualizar). O efeito abaixo NÃO depende de carregar —
   // só de fazenda/conta — pra não disparar uma consulta nova a cada tecla.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca, filtrosCol.nf, periodoManual]);
+  }, [fazendaId, fazendaIds?.join(","), contaId, fOrigem, fStatus, fDataDe, fDataAte, fBusca, filtrosCol.nf, periodoManual, fAtalho]);
 
   // Carrega automaticamente ao abrir a tela (período padrão) — nunca espera
   // o usuário escolher filtro primeiro. Refiltrar é sempre sobre o que já
