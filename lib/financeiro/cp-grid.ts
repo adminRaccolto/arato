@@ -37,7 +37,12 @@ function corresponde(status: string, vencimento: string | null, nomes: unknown[]
 // Nome do fornecedor/cliente para o Buscar. Título sem cadastro vinculado tem o nome só na descrição
 // (ex.: "NFS-e 286 — RETITURBO..." ou lançamento manual sem fornecedor), então ela vale como nome.
 // empresa_nome não entra: em título PJ é a própria empresa do cliente (tomadora), não o fornecedor.
-const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome ? [t.pessoa_nome] : [t.descricao];
+// Título de NF com cadastro vinculado também é achado pelo emitente da nota ("NF 23791 — BATERIAS VENSON"):
+// cadastro repetido com outro nome para o mesmo CNPJ escondia o título na busca.
+const emitenteDaNF = (descricao?: string | null) => descricao?.match(/^NF[S]?(?:-e)?\s+\S+\s+[—-]\s+(.+)$/i)?.[1];
+const nomesDoTitulo = (t: TituloGrid) => t.pessoa_nome
+  ? [t.pessoa_nome, ...[emitenteDaNF(t.descricao)].filter((v): v is string => !!v)]
+  : [t.descricao];
 export function filtrarTitulo(t: TituloGrid, f: FiltrosCP) {
   // 'cartao': comprometido no cartão de crédito — nunca é saldo em aberto do
   // fornecedor/produtor, não entra no grid de CP de jeito nenhum (nem sem

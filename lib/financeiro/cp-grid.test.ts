@@ -70,3 +70,7 @@ test("NF vem da nota fiscal vinculada, do lançamento ou do documento PJ; nunca 
   assert.equal(numeroNF({ numero_documento: "CONTRATO123" }, null, "lancamentos"), null);
   assert.equal(numeroNF({ nfe_numero: " " }, null, "lancamentos", "777"), "777");
 });
+  // cadastro repetido com outro nome: o emitente da NF na descrição também acha o título
+  const nfOutroNome = { ...pj, pessoa_nome: "ROSICLER S. B. VENSON", descricao: "NF 23791 — BATERIAS VENSON LTDA" };
+  assert.equal(filtrarTitulo(nfOutroNome, filtros({ busca: "baterias venson" })), true);
+  assert.equal(filtrarTitulo(nfOutroNome, filtros({ busca: "rosicler" })), true);

@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.26-a",
+    data: "26/10/2026",
+    titulo: "Buscar do CP/CR acha a NF pelo nome do emitente",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O Buscar de Contas a Pagar e a Receber também acha o título de NF pelo nome do emitente gravado na nota, além do nome do fornecedor cadastrado. Quando o mesmo CNPJ tinha dois cadastros com nomes diferentes (ex.: \"ROSICLER S. B. VENSON\" e \"BATERIAS VENSON LTDA\"), a conta parecia não existir." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.25-b",
     data: "25/10/2026",
     titulo: "NF de entrada paga no Cartão de Crédito",
