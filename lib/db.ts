@@ -3270,8 +3270,13 @@ export async function processarNfEntrada(
         cliente: false,
         fornecedor: true,
         cpf_cnpj: cnpjRaw,  // armazena sempre sem máscara para consistência
-      }).select("id").single();
+      }).select("id").maybeSingle();
       pessoaId = novaPes?.id ?? null;
+      // Gravação recusada por já existir o CPF/CNPJ no cliente (Seção 371) — usa o cadastro existente
+      if (!pessoaId && contaId) {
+        const { data: jaExiste } = await supabase.rpc("fn_pessoa_por_documento", { p_conta: contaId, p_doc: cnpjRaw });
+        pessoaId = (jaExiste as string | null) ?? null;
+      }
     }
   }
 

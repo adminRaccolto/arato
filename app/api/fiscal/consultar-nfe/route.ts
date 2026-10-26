@@ -92,9 +92,13 @@ async function upsertFornecedor(
     estado:         dados.uf,
     cep:            dados.cep,
     telefone:       dados.telefone,
-  }).select("id").single();
-
-  return nova?.id ?? null;
+  }).select("id").maybeSingle();
+  if (nova) return nova.id;
+  // Gravação recusada por já existir o CPF/CNPJ no cliente (Seção 371) — usa o cadastro existente
+  const { data: jaExiste } = contaId
+    ? await supabase.rpc("fn_pessoa_por_documento", { p_conta: contaId, p_doc: cnpjLimpo })
+    : { data: null };
+  return (jaExiste as string | null) ?? null;
 }
 
 // Vincula pessoa ao lançamento e à pendência

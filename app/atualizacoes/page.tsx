@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.26-b",
+    data: "26/10/2026",
+    titulo: "Um cadastro de fornecedor/cliente por CPF/CNPJ",
+    modulos: ["Cadastros", "Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "O sistema não deixa mais criar um segundo cadastro de pessoa com um CPF/CNPJ que o cliente já tem (com ou sem pontuação, em qualquer fazenda) e mostra qual é o cadastro existente. Importação de pessoas, SIEG e NF de entrada usam o cadastro que já existe." },
+      { tipo: "correcao", texto: "Cadastros repetidos do mesmo CPF/CNPJ foram juntados num só: títulos, NFs, contratos e pedidos passam todos para o mesmo fornecedor, com o nome da razão social da NF mais recente." },
+    ],
+    onde: "Cadastros → Pessoas e Entidades",
+  },
+  {
     versao: "2026.10.26-a",
     data: "26/10/2026",
     titulo: "Buscar do CP/CR acha a NF pelo nome do emitente",

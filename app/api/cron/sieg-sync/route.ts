@@ -195,6 +195,11 @@ async function syncFazenda(
             importado_sieg: true,
           }).select("id").maybeSingle();
           pessoaId = nova?.id ?? null;
+          // Gravação recusada por já existir o CPF/CNPJ no cliente (Seção 371) — usa o cadastro existente
+          if (!pessoaId && contaId) {
+            const { data: jaExiste } = await db.rpc("fn_pessoa_por_documento", { p_conta: contaId, p_doc: cnpjEmit });
+            pessoaId = (jaExiste as string | null) ?? null;
+          }
         }
       }
 

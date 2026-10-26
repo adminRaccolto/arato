@@ -17773,3 +17773,201 @@ CREATE TRIGGER trg_lanc_fatura_recalcula AFTER INSERT OR UPDATE OF valor, status
 -- Acerta o total de faturas existentes (abertas/fechadas)
 DO $$ DECLARE r record; BEGIN FOR r IN SELECT id FROM faturas_cartao WHERE status <> 'paga' LOOP PERFORM fn_fatura_cartao_recalcular(r.id); END LOOP; END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 371 — Pessoas: um cadastro por CPF/CNPJ dentro do cliente (mesclar repetidos + trava)
+-- =============================================================================
+-- Mesmo CPF/CNPJ cadastrado 2-3x no mesmo cliente (um por fazenda, ou com/sem máscara) espalhava os títulos do
+-- fornecedor por cadastros diferentes (ex.: "ROSICLER S. B. VENSON" × "BATERIAS VENSON LTDA").
+--
+-- 1) fn_pessoas_doc(text): só os dígitos do CPF/CNPJ (compara com e sem máscara).
+-- 2) trg_pessoas_conta_doc: preenche conta_id pela fazenda e RECUSA (23505) gravar um CPF/CNPJ que já existe
+--    em outro cadastro do mesmo cliente. Só olha INSERT e mudança de documento/cliente — editar outro campo de
+--    um repetido antigo continua funcionando. duplicado_autorizado = true libera um caso legítimo (uso do suporte).
+-- 3) fn_mesclar_pessoas(destino, origens[], quem, nome): troca as origens pelo destino em TODA coluna com FK para
+--    pessoas (lista lida do próprio banco) e nas colunas sem FK que guardam pessoa; completa no destino os campos
+--    vazios com os das origens e APAGA as origens (cópia integral fica em pessoas_mesclagens). Uma chamada = uma
+--    transação. fn_desfazer_mesclagem_pessoas(id) recria as origens e devolve cada vínculo.
+-- 4) A Seção 372 (rodar depois da mesclagem) cria o índice único que torna a regra impossível de furar.
+ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS duplicado_autorizado boolean NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION fn_pessoas_doc(p text) RETURNS text AS $$
+  SELECT nullif(regexp_replace(coalesce(p, ''), '\D', '', 'g'), '')
+$$ LANGUAGE sql IMMUTABLE;
+
+CREATE INDEX IF NOT EXISTS idx_pessoas_conta_doc ON pessoas (conta_id, fn_pessoas_doc(cpf_cnpj));
+
+-- Cadastros de fazenda já excluída sem cliente: recebem o cliente quando a fazenda ainda existe
+UPDATE pessoas p SET conta_id = f.conta_id FROM fazendas f
+ WHERE p.conta_id IS NULL AND f.id = p.fazenda_id AND f.conta_id IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION fn_pessoas_conta_doc() RETURNS trigger AS $$
+DECLARE v_doc text; v_nome text;
+BEGIN
+  IF NEW.conta_id IS NULL AND NEW.fazenda_id IS NOT NULL THEN
+    SELECT conta_id INTO NEW.conta_id FROM fazendas WHERE id = NEW.fazenda_id;
+  END IF;
+  IF current_setting('arato.pessoas_mesclagem', true) = '1' OR NEW.duplicado_autorizado THEN RETURN NEW; END IF;
+  v_doc := fn_pessoas_doc(NEW.cpf_cnpj);
+  IF NEW.conta_id IS NULL OR v_doc IS NULL OR length(v_doc) < 11 THEN RETURN NEW; END IF;
+  IF TG_OP = 'UPDATE' AND fn_pessoas_doc(OLD.cpf_cnpj) IS NOT DISTINCT FROM v_doc
+     AND OLD.conta_id IS NOT DISTINCT FROM NEW.conta_id THEN RETURN NEW; END IF;
+  SELECT nome INTO v_nome FROM pessoas
+   WHERE conta_id = NEW.conta_id AND fn_pessoas_doc(cpf_cnpj) = v_doc AND id <> NEW.id
+   ORDER BY created_at LIMIT 1;
+  IF FOUND THEN
+    RAISE EXCEPTION 'Já existe um cadastro com este CPF/CNPJ neste cliente: "%". Use o cadastro existente.', v_nome
+      USING ERRCODE = '23505';
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+DROP TRIGGER IF EXISTS trg_pessoas_conta_doc ON pessoas;
+CREATE TRIGGER trg_pessoas_conta_doc BEFORE INSERT OR UPDATE ON pessoas
+  FOR EACH ROW EXECUTE FUNCTION fn_pessoas_conta_doc();
+
+CREATE TABLE IF NOT EXISTS pessoas_mesclagens (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id      uuid,
+  destino_id    uuid NOT NULL,
+  origem_ids    uuid[] NOT NULL,
+  origens       jsonb NOT NULL,              -- linhas completas apagadas (para desfazer)
+  destino_antes jsonb NOT NULL,              -- destino antes de completar os campos vazios
+  alteracoes    jsonb NOT NULL DEFAULT '[]', -- [{t, c, id, de}] cada vínculo trocado
+  feito_por     text,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  desfeita_em   timestamptz
+);
+ALTER TABLE pessoas_mesclagens ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION fn_mesclar_pessoas(p_destino uuid, p_origens uuid[], p_feito_por text DEFAULT NULL, p_nome text DEFAULT NULL) RETURNS jsonb AS $$
+DECLARE
+  v_dest pessoas; v_o pessoas; r record; v_alt jsonb := '[]'; v_lote jsonb; v_origens jsonb; v_log uuid;
+  v_doc text;
+BEGIN
+  IF p_origens IS NULL OR array_length(p_origens, 1) IS NULL OR p_destino = ANY(p_origens) THEN
+    RAISE EXCEPTION 'Informe o cadastro que fica e ao menos um cadastro diferente dele para mesclar.';
+  END IF;
+  SELECT * INTO v_dest FROM pessoas WHERE id = p_destino;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Cadastro que fica não encontrado.'; END IF;
+  IF v_dest.conta_id IS NULL THEN RAISE EXCEPTION 'Cadastro que fica (%) não tem cliente.', v_dest.nome; END IF;
+  v_doc := fn_pessoas_doc(v_dest.cpf_cnpj);
+  IF (SELECT count(*) FROM pessoas WHERE id = ANY(p_origens)) <> array_length(p_origens, 1) THEN
+    RAISE EXCEPTION 'Algum cadastro a mesclar não foi encontrado.';
+  END IF;
+  FOR v_o IN SELECT * FROM pessoas WHERE id = ANY(p_origens) LOOP
+    IF v_o.conta_id IS DISTINCT FROM v_dest.conta_id THEN RAISE EXCEPTION '% é de outro cliente.', v_o.nome; END IF;
+    IF fn_pessoas_doc(v_o.cpf_cnpj) IS NOT NULL AND v_doc IS NOT NULL AND fn_pessoas_doc(v_o.cpf_cnpj) <> v_doc THEN
+      RAISE EXCEPTION 'CPF/CNPJ diferentes: % (%) × % (%).', v_dest.nome, v_dest.cpf_cnpj, v_o.nome, v_o.cpf_cnpj;
+    END IF;
+  END LOOP;
+
+  PERFORM set_config('arato.pessoas_mesclagem', '1', true);
+  -- Nome que fica (ex.: razão social da NF mais recente) — antes de mover os vínculos, para os espelhos já saírem com ele
+  IF nullif(trim(p_nome), '') IS NOT NULL THEN UPDATE pessoas SET nome = trim(p_nome) WHERE id = p_destino; END IF;
+
+  -- Todas as colunas com FK para pessoas + colunas sem FK que guardam uma pessoa
+  FOR r IN
+    SELECT c.conrelid::regclass::text AS tabela, a.attname::text AS coluna
+      FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+     WHERE c.contype = 'f' AND c.confrelid = 'public.pessoas'::regclass AND c.conrelid <> 'public.pessoas'::regclass
+    UNION
+    SELECT t.table_name::text, t.column_name::text FROM information_schema.columns t
+     WHERE t.table_schema = 'public' AND (t.table_name, t.column_name) IN (
+       ('contrato_cessao_debitos', 'fornecedor_id'), ('nf_servicos', 'tomador_id'), ('mdfes', 'emitente_id'),
+       ('rel_lancamentos', 'pessoa_id'), ('rel_contratos', 'pessoa_id'), ('rel_pedidos_compra', 'fornecedor_id'))
+  LOOP
+    EXECUTE format('SELECT coalesce(jsonb_agg(jsonb_build_object(''t'', %L, ''c'', %L, ''id'', id, ''de'', %I)), ''[]'') FROM %s WHERE %I = ANY($1)',
+                   r.tabela, r.coluna, r.coluna, r.tabela, r.coluna)
+      INTO v_lote USING p_origens;
+    IF jsonb_array_length(v_lote) > 0 THEN
+      EXECUTE format('UPDATE %s SET %I = $1 WHERE %I = ANY($2)', r.tabela, r.coluna, r.coluna) USING p_destino, p_origens;
+      v_alt := v_alt || v_lote;
+    END IF;
+  END LOOP;
+
+  SELECT jsonb_agg(to_jsonb(p) ORDER BY p.created_at) INTO v_origens FROM pessoas p WHERE id = ANY(p_origens);
+  INSERT INTO pessoas_mesclagens (conta_id, destino_id, origem_ids, origens, destino_antes, alteracoes, feito_por)
+  VALUES (v_dest.conta_id, p_destino, p_origens, v_origens, to_jsonb(v_dest), v_alt, p_feito_por) RETURNING id INTO v_log;
+
+  -- Completa no destino o que estiver vazio (o mais antigo das origens primeiro); papéis e subcategorias somam
+  FOR v_o IN SELECT * FROM pessoas WHERE id = ANY(p_origens) ORDER BY created_at LOOP
+    UPDATE pessoas d SET
+      cpf_cnpj       = coalesce(nullif(d.cpf_cnpj, ''), v_o.cpf_cnpj),
+      inscricao_est  = coalesce(nullif(d.inscricao_est, ''), v_o.inscricao_est),
+      inscricao_mun  = coalesce(nullif(d.inscricao_mun, ''), v_o.inscricao_mun),
+      email          = coalesce(nullif(d.email, ''), v_o.email),
+      telefone       = coalesce(nullif(d.telefone, ''), v_o.telefone),
+      cep            = coalesce(nullif(d.cep, ''), v_o.cep),
+      logradouro     = coalesce(nullif(d.logradouro, ''), v_o.logradouro),
+      numero         = coalesce(nullif(d.numero, ''), v_o.numero),
+      complemento    = coalesce(nullif(d.complemento, ''), v_o.complemento),
+      bairro         = coalesce(nullif(d.bairro, ''), v_o.bairro),
+      municipio      = coalesce(nullif(d.municipio, ''), v_o.municipio),
+      municipio_ibge = coalesce(nullif(d.municipio_ibge, ''), v_o.municipio_ibge),
+      estado         = coalesce(nullif(d.estado, ''), v_o.estado),
+      nome_contato   = coalesce(nullif(d.nome_contato, ''), v_o.nome_contato),
+      telefone_contato = coalesce(nullif(d.telefone_contato, ''), v_o.telefone_contato),
+      banco_nome     = coalesce(nullif(d.banco_nome, ''), v_o.banco_nome),
+      banco_agencia  = coalesce(nullif(d.banco_agencia, ''), v_o.banco_agencia),
+      banco_conta    = coalesce(nullif(d.banco_conta, ''), v_o.banco_conta),
+      banco_tipo     = coalesce(nullif(d.banco_tipo, ''), v_o.banco_tipo),
+      pix_chave      = coalesce(nullif(d.pix_chave, ''), v_o.pix_chave),
+      pix_tipo       = coalesce(nullif(d.pix_tipo, ''), v_o.pix_tipo),
+      regime_tributario = coalesce(nullif(d.regime_tributario, ''), v_o.regime_tributario),
+      cnae           = coalesce(nullif(d.cnae, ''), v_o.cnae),
+      og_padrao_id   = coalesce(d.og_padrao_id, v_o.og_padrao_id),
+      cliente        = coalesce(d.cliente, false) OR coalesce(v_o.cliente, false),
+      fornecedor     = coalesce(d.fornecedor, false) OR coalesce(v_o.fornecedor, false),
+      mao_obra       = coalesce(d.mao_obra, false) OR coalesce(v_o.mao_obra, false),
+      subcategorias  = (SELECT coalesce(array_agg(DISTINCT s), '{}') FROM unnest(coalesce(d.subcategorias, '{}') || coalesce(v_o.subcategorias, '{}')) s)
+    WHERE d.id = p_destino;
+  END LOOP;
+
+  DELETE FROM pessoas WHERE id = ANY(p_origens);
+  RETURN jsonb_build_object('mesclagem_id', v_log, 'linhas_alteradas', jsonb_array_length(v_alt));
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION fn_desfazer_mesclagem_pessoas(p_mesclagem uuid) RETURNS jsonb AS $$
+DECLARE v_m pessoas_mesclagens; x jsonb; v_n int := 0;
+BEGIN
+  SELECT * INTO v_m FROM pessoas_mesclagens WHERE id = p_mesclagem FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Mesclagem não encontrada.'; END IF;
+  IF v_m.desfeita_em IS NOT NULL THEN RAISE EXCEPTION 'Esta mesclagem já foi desfeita.'; END IF;
+  PERFORM set_config('arato.pessoas_mesclagem', '1', true);
+  -- Origens voltam marcadas como repetição autorizada (o índice único da Seção 372 aceitaria só assim)
+  INSERT INTO pessoas SELECT * FROM jsonb_populate_recordset(NULL::pessoas,
+    (SELECT jsonb_agg(o || '{"duplicado_autorizado": true}'::jsonb) FROM jsonb_array_elements(v_m.origens) o));
+  FOR x IN SELECT * FROM jsonb_array_elements(v_m.alteracoes) LOOP
+    EXECUTE format('UPDATE %s SET %I = $1 WHERE id = $2', x->>'t', x->>'c') USING (x->>'de')::uuid, (x->>'id')::uuid;
+    v_n := v_n + 1;
+  END LOOP;
+  UPDATE pessoas d SET (nome, inscricao_est, inscricao_mun, email, telefone, cep, logradouro, numero, complemento, bairro,
+         municipio, municipio_ibge, estado, nome_contato, telefone_contato, banco_nome, banco_agencia, banco_conta,
+         banco_tipo, pix_chave, pix_tipo, regime_tributario, cnae, og_padrao_id, cliente, fornecedor, mao_obra, subcategorias, cpf_cnpj)
+    = (SELECT a.nome, a.inscricao_est, a.inscricao_mun, a.email, a.telefone, a.cep, a.logradouro, a.numero, a.complemento, a.bairro,
+         a.municipio, a.municipio_ibge, a.estado, a.nome_contato, a.telefone_contato, a.banco_nome, a.banco_agencia, a.banco_conta,
+         a.banco_tipo, a.pix_chave, a.pix_tipo, a.regime_tributario, a.cnae, a.og_padrao_id, a.cliente, a.fornecedor, a.mao_obra, a.subcategorias, a.cpf_cnpj
+       FROM jsonb_populate_record(NULL::pessoas, v_m.destino_antes) a)
+   WHERE d.id = v_m.destino_id;
+  UPDATE pessoas_mesclagens SET desfeita_em = now() WHERE id = p_mesclagem;
+  RETURN jsonb_build_object('vinculos_devolvidos', v_n, 'cadastros_recriados', jsonb_array_length(v_m.origens));
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- Cadastro do cliente para um CPF/CNPJ (com ou sem máscara) — quem cria fornecedor sozinho (SIEG, NF) usa quando a
+-- trava acima recusa a gravação por já existir o documento.
+CREATE OR REPLACE FUNCTION fn_pessoa_por_documento(p_conta uuid, p_doc text) RETURNS uuid AS $$
+  SELECT id FROM pessoas WHERE conta_id = p_conta AND fn_pessoas_doc(cpf_cnpj) = fn_pessoas_doc(p_doc)
+   ORDER BY duplicado_autorizado, created_at LIMIT 1
+$$ LANGUAGE sql STABLE;
+
+REVOKE ALL ON FUNCTION fn_mesclar_pessoas(uuid, uuid[], text, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION fn_desfazer_mesclagem_pessoas(uuid) FROM PUBLIC, anon, authenticated;
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 372 — Pessoas: índice único CPF/CNPJ por cliente (rodar DEPOIS de mesclar os repetidos da Seção 371)
+-- =============================================================================
+-- Se ainda houver repetido, a criação falha listando o par — mescle e rode de novo.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_pessoas_conta_doc ON pessoas (conta_id, fn_pessoas_doc(cpf_cnpj))
+  WHERE conta_id IS NOT NULL AND length(fn_pessoas_doc(cpf_cnpj)) >= 11 AND NOT duplicado_autorizado;
+NOTIFY pgrst, 'reload schema';

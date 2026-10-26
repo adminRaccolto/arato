@@ -1722,7 +1722,9 @@ function ImportacaoInner() {
         pix_chave:  r.pix_chave?.trim() || null,
         pix_tipo:   r.pix_tipo?.trim() || null,
       });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+      // 23505: o CPF/CNPJ já tem cadastro neste cliente (trava da Seção 371)
+      if (error?.code === "23505") { r._status = "duplicado"; r._msg = error.message; duplicados++; }
+      else if (error) { r._status = "erro"; r._msg = error.message; erros++; }
       else ok++;
     }
     setPessoasRows([...pessoasRows]);
