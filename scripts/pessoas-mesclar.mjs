@@ -50,7 +50,7 @@ if (args.aplicar) {
   for (const g of alvo) {
     const { data, error } = await sb.rpc("fn_mesclar_pessoas", { p_destino: g.destino.id, p_origens: g.origens.map(o => o.id), p_feito_por: "script pessoas-mesclar", p_nome: g.nome_final ?? null });
     feitos.push({ n: g.n, cliente: g.cliente, documento: g.documento, fica: g.nome_final ?? g.destino.nome, saem: g.origens.map(o => o.nome), ...(error ? { erro: error.message } : data) });
-    console.log(error ? `✗ #${g.n} ${g.destino.nome}: ${error.message}` : `✓ #${g.n} ${g.destino.nome} ← ${g.origens.length} cadastro(s), ${data.linhas_alteradas} vínculo(s)`);
+    console.log(error ? `✗ #${g.n} ${g.nome_final ?? g.destino.nome}: ${error.message}` : `✓ #${g.n} ${g.nome_final ?? g.destino.nome} ← ${g.origens.length} cadastro(s), ${data.linhas_alteradas} vínculo(s)`);
   }
   const arq = new URL(`pessoas_mesclagem_feita_${hoje}_${Date.now()}.json`, dirBackup);
   fs.writeFileSync(arq, JSON.stringify({ plano: args.plano, feitos }, null, 1));

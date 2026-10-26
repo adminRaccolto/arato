@@ -17981,3 +17981,31 @@ DO $$ DECLARE v_n int; BEGIN
   END IF;
 END $$;
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 373 — Pessoas: renomear o cadastro atualiza o nome nas listas (CP/CR, contratos, pedidos)
+-- =============================================================================
+-- rel_lancamentos / rel_contratos / rel_pedidos_compra guardam uma cópia do nome da pessoa e só eram refeitos quando o
+-- título/contrato/pedido mudava — renomear o fornecedor (ou mesclar cadastros) deixava o nome antigo no grid.
+CREATE OR REPLACE FUNCTION fn_pessoas_nome_espelhos() RETURNS trigger AS $$
+BEGIN
+  IF NEW.nome IS DISTINCT FROM OLD.nome OR NEW.cpf_cnpj IS DISTINCT FROM OLD.cpf_cnpj THEN
+    UPDATE rel_lancamentos    SET pessoa_nome = NEW.nome    WHERE pessoa_id = NEW.id AND pessoa_nome IS DISTINCT FROM NEW.nome;
+    UPDATE rel_contratos      SET comprador_nome = NEW.nome WHERE pessoa_id = NEW.id AND comprador_nome IS DISTINCT FROM NEW.nome;
+    UPDATE rel_pedidos_compra SET fornecedor_nome = NEW.nome, fornecedor_cpf_cnpj = NEW.cpf_cnpj
+     WHERE fornecedor_id = NEW.id AND (fornecedor_nome IS DISTINCT FROM NEW.nome OR fornecedor_cpf_cnpj IS DISTINCT FROM NEW.cpf_cnpj);
+  END IF;
+  RETURN NULL;
+END $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+DROP TRIGGER IF EXISTS trg_pessoas_nome_espelhos ON pessoas;
+CREATE TRIGGER trg_pessoas_nome_espelhos AFTER UPDATE OF nome, cpf_cnpj ON pessoas
+  FOR EACH ROW EXECUTE FUNCTION fn_pessoas_nome_espelhos();
+
+-- Acerta os nomes que já estão desatualizados
+UPDATE rel_lancamentos r SET pessoa_nome = p.nome FROM pessoas p
+ WHERE p.id = r.pessoa_id AND r.pessoa_nome IS DISTINCT FROM p.nome;
+UPDATE rel_contratos r SET comprador_nome = p.nome FROM pessoas p
+ WHERE p.id = r.pessoa_id AND r.comprador_nome IS DISTINCT FROM p.nome;
+UPDATE rel_pedidos_compra r SET fornecedor_nome = p.nome, fornecedor_cpf_cnpj = p.cpf_cnpj FROM pessoas p
+ WHERE p.id = r.fornecedor_id AND (r.fornecedor_nome IS DISTINCT FROM p.nome OR r.fornecedor_cpf_cnpj IS DISTINCT FROM p.cpf_cnpj);
+NOTIFY pgrst, 'reload schema';
