@@ -17839,6 +17839,7 @@ CREATE TABLE IF NOT EXISTS pessoas_mesclagens (
 );
 ALTER TABLE pessoas_mesclagens ENABLE ROW LEVEL SECURITY;
 
+DROP FUNCTION IF EXISTS fn_mesclar_pessoas(uuid, uuid[], text);  -- versão sem p_nome (primeira execução)
 CREATE OR REPLACE FUNCTION fn_mesclar_pessoas(p_destino uuid, p_origens uuid[], p_feito_por text DEFAULT NULL, p_nome text DEFAULT NULL) RETURNS jsonb AS $$
 DECLARE
   v_dest pessoas; v_o pessoas; r record; v_alt jsonb := '[]'; v_lote jsonb; v_origens jsonb; v_log uuid;
