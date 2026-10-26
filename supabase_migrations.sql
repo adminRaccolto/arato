@@ -17968,7 +17968,16 @@ NOTIFY pgrst, 'reload schema';
 -- =============================================================================
 -- Seção 372 — Pessoas: índice único CPF/CNPJ por cliente (rodar DEPOIS de mesclar os repetidos da Seção 371)
 -- =============================================================================
--- Se ainda houver repetido, a criação falha listando o par — mescle e rode de novo.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_pessoas_conta_doc ON pessoas (conta_id, fn_pessoas_doc(cpf_cnpj))
-  WHERE conta_id IS NOT NULL AND length(fn_pessoas_doc(cpf_cnpj)) >= 11 AND NOT duplicado_autorizado;
+-- Enquanto houver repetido, só avisa (NOTICE) quantos faltam e não cria o índice — a Seção 371 continua valendo.
+DO $$ DECLARE v_n int; BEGIN
+  SELECT count(*) INTO v_n FROM (
+    SELECT 1 FROM pessoas WHERE conta_id IS NOT NULL AND length(fn_pessoas_doc(cpf_cnpj)) >= 11 AND NOT duplicado_autorizado
+     GROUP BY conta_id, fn_pessoas_doc(cpf_cnpj) HAVING count(*) > 1) x;
+  IF v_n > 0 THEN
+    RAISE NOTICE 'Índice único NÃO criado: ainda há % CPF/CNPJ repetido(s). Mescle (scripts/pessoas-mesclar.mjs) e rode a Seção 372 de novo.', v_n;
+  ELSE
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_pessoas_conta_doc ON pessoas (conta_id, fn_pessoas_doc(cpf_cnpj))
+      WHERE conta_id IS NOT NULL AND length(fn_pessoas_doc(cpf_cnpj)) >= 11 AND NOT duplicado_autorizado;
+  END IF;
+END $$;
 NOTIFY pgrst, 'reload schema';
