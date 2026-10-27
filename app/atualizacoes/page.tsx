@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-g",
+    data: "27/10/2026",
+    titulo: "NFS-e: tomador lido certo no padrão nacional",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "NFS-e do padrão nacional importadas pelo SIEG gravavam como tomador o CNPJ do prestador. Agora o tomador vem do bloco certo do XML. Quando o XML não traz o tomador, vale o CPF/CNPJ buscado no SIEG." },
+      { tipo: "correcao", texto: "A busca reserva de NFS-e (sem filtro de CPF/CNPJ) descartava as notas do padrão nacional pelo mesmo motivo. Agora elas entram." },
+    ],
+    onde: "Documentos Fiscais → NF de Serviços (sincronização SIEG)",
+  },
+  {
     versao: "2026.10.27-f",
     data: "27/10/2026",
     titulo: "Transferência sem saldo e filtro por número de documento",

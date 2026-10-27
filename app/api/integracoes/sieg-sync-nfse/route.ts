@@ -75,7 +75,9 @@ function parseNfse(xml: string): Nfse | null {
       "CodigoVerificacao", "ChaveNfse", "chave_nfse", "Codigo",
       "CodVerificacao", "codigoVerificacao") || `${numero}-${data_emissao}`;
 
-    const pBlk = blk(xml, "PrestadorServico", "Prestador", "DadosPrestador", "prestador");
+    // Padrão Nacional (DPS): prestador em <emit>/<prest>, tomador em <toma>. Sem essas tags o tomador caía no primeiro
+    // CNPJ do arquivo — o do prestador (2.004 NFS-e gravadas com tomador = prestador até 27/10/2026).
+    const pBlk = blk(xml, "PrestadorServico", "Prestador", "DadosPrestador", "prestador", "emit", "prest");
     const pId  = blk(pBlk || xml, "IdentificacaoPrestador", "CpfCnpjPrestador", "identificacaoPrestador");
     const prestador_cnpj = tv(pId || pBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
     const prestador_nome = tv(pBlk || xml, "RazaoSocial", "xNome", "NomeEmpresarial", "razaoSocial", "Nome");
@@ -83,9 +85,11 @@ function parseNfse(xml: string): Nfse | null {
     // (ou nenhuma). Cobre as variantes mais comuns encontradas em campo.
     const cnae = tv(pBlk || xml, "Cnae", "CodigoCnae", "CNAE", "codigoCnae");
 
-    const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador", "tomador");
+    const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador", "tomador", "toma");
     const tId  = blk(tBlk || xml, "IdentificacaoTomador", "CpfCnpjTomador", "identificacaoTomador");
-    const tomador_cnpj = tv(tId || tBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
+    // Sem bloco do tomador não há de onde ler: vazio (quem chama usa o CPF/CNPJ buscado no SIEG), nunca o 1º do arquivo.
+    const tomLido = tId || tBlk ? tv(tId || tBlk, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "") : "";
+    const tomador_cnpj = tomLido && tomLido !== prestador_cnpj ? tomLido : "";
 
     const municipio = tv(xml, "MunicipioIncidencia", "CodigoMunicipio", "Municipio", "cMunFG", "municipio");
 
@@ -281,11 +285,9 @@ export async function POST(req: NextRequest) {
             tentativas.push(`Fallback: ERRO (${String(e).replace(/^Error: /, "").slice(0, 600)})`);
           }
           // filtra client-side pelo CNPJ do tomador no XML
+          // (mesma leitura do parser: no Padrão Nacional o tomador está em <toma> — antes lia o CNPJ do prestador e descartava a nota)
           for (const xml of allXmls) {
-            const tBlk = blk(xml, "TomadorServico", "Tomador", "DadosTomador");
-            const tId  = blk(tBlk || xml, "IdentificacaoTomador", "CpfCnpjTomador");
-            const cTom = tv(tId || tBlk || xml, "Cnpj", "Cpf", "CpfCnpj", "cnpj", "cpf").replace(/\D/g, "");
-            if (cTom === cnpj) docs.push(xml);
+            if (parseNfse(xml)?.tomador_cnpj === cnpj) docs.push(xml);
           }
           tentativas.push(`Fallback(${allXmls.length} total → ${docs.length} com CNPJ ${cnpj})`);
           console.log(`[nfse] Fallback: ${allXmls.length} total → ${docs.length} para CNPJ ${cnpj}`);
@@ -385,7 +387,7 @@ export async function POST(req: NextRequest) {
           // chegavam a ser gravados — só sobravam como texto solto na
           // observação, então o auto-match de Tomador por CNPJ nunca tinha
           // dado para funcionar (o campo real ficava null no banco).
-          tomador_cnpj:        nfse.tomador_cnpj || null,
+          tomador_cnpj:        nfse.tomador_cnpj || cnpj,
           cnae:                nfse.cnae || null,
           municipio_prestacao: nfse.municipio || null,
           discriminacao:       nfse.discriminacao || null,
@@ -413,7 +415,7 @@ export async function POST(req: NextRequest) {
         chave_nfse:          nfse.chave.includes("-") ? null : nfse.chave,
         prestador_nome:      nfse.prestador_nome || "Prestador SIEG",
         prestador_cnpj:      nfse.prestador_cnpj || null,
-        tomador_cnpj:        nfse.tomador_cnpj || null,
+        tomador_cnpj:        nfse.tomador_cnpj || cnpj,
         cnae:                nfse.cnae || null,
         municipio_prestacao: nfse.municipio || null,
         data_prestacao:      nfse.data_emissao,
