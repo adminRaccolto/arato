@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zm",
+    data: "27/10/2026",
+    titulo: "Menu Fiscal sem atalhos repetidos",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Remessas, Retornos e Entrada de Nota Própria saíram do menu Fiscal: ficam só em Documentos Fiscais (Remessas e Retornos; Notas de Entrada → Notas Próprias)." },
+    ],
+    onde: "Menu Fiscal · Documentos Fiscais",
+  },
+  {
     versao: "2026.10.27-zl",
     data: "27/10/2026",
     titulo: "Descontos na folha fechada para salários em aberto",
