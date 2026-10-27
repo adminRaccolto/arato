@@ -6895,12 +6895,18 @@ export async function aplicarAdiantamentoEmCP(
 export type AdiantamentoFuncionarioDisp = { id: string; funcionario_nome: string; data: string; valor: number; saldo: number; descricao: string | null; tipo: string | null };
 export async function listarAdiantamentosFuncionarioDisponiveis(fazenda_ids: string[]): Promise<AdiantamentoFuncionarioDisp[]> {
   if (!fazenda_ids.length) return [];
-  const { data, error } = await supabase.from("adiantamentos_salario")
-    .select("id, data, valor, valor_aplicado_cp, descricao, tipo, status, funcionarios(nome)")
-    .in("fazenda_id", fazenda_ids).neq("status", "cancelado").order("data", { ascending: false }).limit(500);
-  if (error) return [];   // Seção 374 ainda não rodada: sem a opção
-  return ((data ?? []) as unknown as { id: string; data: string; valor: number; valor_aplicado_cp: number | null; descricao: string | null; tipo: string | null; funcionarios: { nome: string } | null }[])
-    .filter(a => a.tipo !== "devolucao")
+  // Pelo servidor (mesma leitura da tela de Folha): a regra de acesso da tabela só libera quem tem o perfil ligado à
+  // conta, e a equipe Raccolto/BPO recebia a lista vazia — a opção nem aparecia na baixa do CP.
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch("/api/folha/salvar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+    body: JSON.stringify({ operacao: "listar_adi_prem", fazenda_ids }),
+  });
+  const json = await res.json().catch(() => null) as { adis?: unknown[] } | null;
+  if (!res.ok || !json?.adis) return [];
+  return ((json.adis ?? []) as { id: string; data: string; valor: number; valor_aplicado_cp?: number | null; descricao: string | null; tipo: string | null; status: string; funcionarios: { nome: string } | null }[])
+    .filter(a => a.status !== "cancelado" && a.tipo !== "devolucao" && a.valor_aplicado_cp !== undefined)
     .map(a => ({ id: a.id, funcionario_nome: a.funcionarios?.nome ?? "—", data: a.data, valor: Number(a.valor), saldo: Math.round((Number(a.valor) - Number(a.valor_aplicado_cp ?? 0)) * 100) / 100, descricao: a.descricao, tipo: a.tipo }))
     .filter(a => a.saldo > 0.01);
 }

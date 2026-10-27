@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-v",
+    data: "27/10/2026",
+    titulo: "Pagar com adiantamento de funcionário aparece para toda a equipe",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Na baixa do Contas a Pagar, a opção Pagar com adiantamento de funcionário não aparecia para usuários da equipe de atendimento (BPO/Raccolto): a lista de adiantamentos vinha vazia. Agora é carregada do mesmo jeito que na Folha de Pagamento." },
+    ],
+    onde: "Financeiro → Contas a Pagar → Baixar",
+  },
+  {
     versao: "2026.10.27-u",
     data: "27/10/2026",
     titulo: "Transferência de máquinas acompanha o cancelamento da NF-e",
