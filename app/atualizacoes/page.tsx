@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-b",
+    data: "27/10/2026",
+    titulo: "Pedido de Compra: NFs vinculadas certas",
+    modulos: ["Compras", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Ao vincular uma NF a um pedido de outra empresa, o sistema pede confirmação (só faz sentido na compra por conta e ordem, com o pedido na revenda e a NF da fábrica) e não troca mais o emitente da NF pelo fornecedor do pedido." },
+      { tipo: "correcao", texto: "No pedido, a lista de NFs vinculadas mostra só as processadas, que são as que contam como entregue. NF ainda pendente aparece numa linha de aviso, e NF de outro emitente ganha a etiqueta \"outro emitente\"." },
+    ],
+    onde: "Compras → Pedidos de Compra; Documentos Fiscais → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.27-a",
     data: "27/10/2026",
     titulo: "CP e CR: vencidos em aberto sempre aparecem",

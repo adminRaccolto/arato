@@ -2502,6 +2502,13 @@ export default function ComprasPage() {
 
         const totalNFs    = nfsFiscais.filter(n => n.status === "processada").reduce((s, n) => s + (n.valor_total ?? 0), 0);
         const totalPedido = modalEntrega.pedido.total_financeiro ?? 0;
+        // Lista mostra só as NFs processadas (as que contam como entregue); NF ainda pendente que aponta para o pedido
+        // fica numa linha de aviso, para achar vínculo feito por engano antes de processar.
+        const nfsLista     = nfsFiscais.filter(n => n.status === "processada");
+        const nfsPendentes = nfsFiscais.filter(n => n.status !== "processada" && n.status !== "cancelada");
+        const raizDoc = (v?: string | null) => { const d = (v ?? "").replace(/\D/g, ""); return d.length === 14 ? d.slice(0, 8) : d; };
+        const raizForn = raizDoc(pessoas.find(p => p.id === modalEntrega.pedido.fornecedor_id)?.cpf_cnpj);
+        const deOutroEmitente = (nf: NfEntrada) => !!raizForn && !!nf.emitente_cnpj && raizDoc(nf.emitente_cnpj) !== raizForn;
 
         return (
           <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
@@ -2568,7 +2575,7 @@ export default function ComprasPage() {
                 {ehFiscal && (<>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                     <div style={secTit}>Notas Fiscais de Entrada Vinculadas</div>
-                    {nfsFiscais.length > 0 && (
+                    {nfsLista.length > 0 && (
                       <span style={{ fontSize: 11, color: "var(--text-2)" }}>
                         Total recebido:{" "}
                         <strong style={{ color: "#111111" }}>{fmtBRL(totalNFs)}</strong>
@@ -2581,7 +2588,7 @@ export default function ComprasPage() {
                     )}
                   </div>
 
-                  {nfsFiscais.length === 0 ? (
+                  {nfsLista.length === 0 ? (
                     <div style={{ background: "#F2F2F2", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "16px 20px", marginBottom: 14 }}>
                       <div style={{ fontWeight: 600, fontSize: 13, color: "#111111", marginBottom: 6 }}>Nenhuma NF vinculada ainda</div>
                       <div style={{ fontSize: 12, color: "#0D0D0D", lineHeight: 1.6 }}>
@@ -2599,13 +2606,18 @@ export default function ComprasPage() {
                         ))}
                       </tr></thead>
                       <tbody>
-                        {nfsFiscais.map((nf, i) => {
+                        {nfsLista.map((nf, i) => {
                           const st = NF_STATUS[nf.status] ?? NF_STATUS.pendente;
                           return (
-                            <tr key={nf.id} style={{ borderBottom: i < nfsFiscais.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                            <tr key={nf.id} style={{ borderBottom: i < nfsLista.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "8px 10px", fontWeight: 600, color: "#111111" }}>{nf.numero}/{nf.serie}</td>
                               <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{fmtData(nf.data_emissao)}</td>
-                              <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{nf.emitente_nome}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>
+                                {nf.emitente_nome}
+                                {deOutroEmitente(nf) && (
+                                  <span title="NF emitida por outra empresa (compra por conta e ordem). O título a pagar é do fornecedor do pedido." style={{ marginLeft: 6, fontSize: 10, background: "#FBF3E0", color: "#7A5200", padding: "1px 6px", borderRadius: 6, fontWeight: 600 }}>outro emitente</span>
+                                )}
+                              </td>
                               <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: nf.status === "cancelada" ? "#bbb" : "#111111", textDecoration: nf.status === "cancelada" ? "line-through" : "none" }}>{fmtBRL(nf.valor_total)}</td>
                               <td style={{ padding: "8px 10px", textAlign: "right" }}>
                                 <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
@@ -2619,7 +2631,7 @@ export default function ComprasPage() {
                       </tbody>
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
-                          <td colSpan={3} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL RECEBIDO (NFs processadas/pendentes)</td>
+                          <td colSpan={3} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL RECEBIDO (NFs processadas)</td>
                           <td style={{ padding: "6px 10px", textAlign: "right", color: "#111111" }}>{fmtBRL(totalNFs)}</td>
                           <td colSpan={2} />
                         </tr>
@@ -2627,6 +2639,12 @@ export default function ComprasPage() {
                     </OperationalGrid>
                   )}
 
+                  {nfsPendentes.length > 0 && (
+                    <div style={{ padding: "8px 14px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #E8D3A0", fontSize: 11, color: "#7A5200", marginBottom: 10 }}>
+                      {nfsPendentes.length === 1 ? "1 NF ainda não processada aponta" : `${nfsPendentes.length} NFs ainda não processadas apontam`} para este pedido e não conta{nfsPendentes.length === 1 ? "" : "m"} como entregue:{" "}
+                      {nfsPendentes.map(n => `${n.numero} (${n.emitente_nome ?? "—"})`).join(", ")}. Se o vínculo estiver errado, abra a NF e use Desvincular.
+                    </div>
+                  )}
                   <div style={{ padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 11, color: "var(--text-2)" }}>
                     As quantidades entregues são calculadas a partir das NFs de entrada processadas. Para ajustes, edite a NF correspondente em <strong>NF de Produtos</strong>.
                   </div>

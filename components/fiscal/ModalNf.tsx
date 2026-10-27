@@ -2246,13 +2246,26 @@ export default function ModalNf({
     const ped = pedidos.find(p => p.id === pedidoId);
     if (!ped) { setCab(prev => ({ ...prev, pedido_compra_id: pedidoId })); return; }
     const forn = pessoas.find(x => x.id === ped.fornecedor_id);
+    // Pedido de outra empresa (raiz do CNPJ diferente da do emitente da NF): só com confirmação — é legítimo na
+    // compra por conta e ordem (pedido com a revenda, NF da fábrica), mas foi também como NF de outro fornecedor
+    // entrava em pedido errado. O emitente da NF (XML) nunca é trocado; só o fornecedor do título (pessoa_id).
+    const raiz = (v?: string | null) => { const d = (v ?? "").replace(/\D/g, ""); return d.length === 14 ? d.slice(0, 8) : d; };
+    const emitenteXml = (cab.emitente_cnpj ?? "").replace(/\D/g, "");
+    if (emitenteXml && forn?.cpf_cnpj && raiz(emitenteXml) !== raiz(forn.cpf_cnpj)) {
+      const ok = confirm(
+        `O pedido ${ped.nr_pedido ?? ped.numero ?? ""} é de "${forn.nome}" (${forn.cpf_cnpj}), mas esta NF foi emitida por "${cab.emitente_nome}" (${cab.emitente_cnpj}).\n\n` +
+        `Vincule só se for compra por conta e ordem (pedido com a revenda e NF emitida por outra empresa). O título a pagar fica com "${forn.nome}".\n\n` +
+        `Vincular mesmo assim?`
+      );
+      if (!ok) return;
+    }
     setCab(prev => ({
       ...prev,
       pedido_compra_id:   pedidoId,
-      // Fornecedor
+      // Fornecedor do título = o do pedido; emitente continua o da NF
       pessoa_id:          ped.fornecedor_id    ?? prev.pessoa_id,
-      emitente_nome:      forn?.nome           ?? prev.emitente_nome,
-      emitente_cnpj:      forn?.cpf_cnpj       ?? prev.emitente_cnpj,
+      emitente_nome:      prev.emitente_nome || forn?.nome || "",
+      emitente_cnpj:      prev.emitente_cnpj || forn?.cpf_cnpj || "",
       // Classificação
       ano_safra_id:       ped.ano_safra_id     ?? prev.ano_safra_id,
       ciclo_id:           ped.ciclo_id         ?? prev.ciclo_id,
@@ -2640,7 +2653,7 @@ export default function ModalNf({
                           const nr = p.nr_pedido ?? p.numero ?? p.id.substring(0, 8);
                           const cnpjNf = cab.emitente_cnpj?.replace(/\D/g, "") ?? "";
                           const fornCnpj = pessoas.find(x => x.id === p.fornecedor_id)?.cpf_cnpj?.replace(/\D/g, "") ?? "";
-                          const match = cnpjNf && fornCnpj && fornCnpj === cnpjNf;
+                          const match = cnpjNf && fornCnpj && (fornCnpj === cnpjNf || (fornCnpj.length === 14 && cnpjNf.length === 14 && fornCnpj.slice(0, 8) === cnpjNf.slice(0, 8)));
                           return { value: p.id, label: `${match ? "★ " : ""}${forn} — PC ${nr} (${p.status})` };
                         })}
                       />
