@@ -18011,15 +18011,17 @@ UPDATE rel_pedidos_compra r SET fornecedor_nome = p.nome, fornecedor_cpf_cnpj = 
 NOTIFY pgrst, 'reload schema';
 
 -- =============================================================================
--- Seção 374 — Adiantamento a funcionário pago por um título do Contas a Pagar
+-- Seção 374 — Adiantamento de funcionário usado para pagar CP do produtor
 -- =============================================================================
--- Conta do funcionário paga pelo produtor (ex.: farmácia, NF emitida em nome do produtor): o dinheiro sai no CP da NF
--- (é ele que concilia com o banco) e o adiantamento só aponta para esse título, sem gerar outro CP nem outra saída de
--- caixa. Exceção deliberada: o título pode ser de outro titular (produtor/empresa) e a NF em nome de outra pessoa.
--- titulo_og_anterior guarda a Operação Gerencial do título antes de virar "Adiantamento para funcionário", para voltar
--- se o adiantamento for cancelado.
-ALTER TABLE adiantamentos_salario
-  ADD COLUMN IF NOT EXISTS titulo_pago_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS titulo_og_anterior uuid;
-CREATE INDEX IF NOT EXISTS idx_adiantamentos_titulo_pago ON adiantamentos_salario(titulo_pago_id) WHERE titulo_pago_id IS NOT NULL;
+-- Regra: adiantamento a fornecedor só quita CP do mesmo fornecedor (conferido no servidor). Exceção: o adiantamento de
+-- funcionário (dinheiro que já saiu do caixa) pode quitar CP em nome de qualquer produtor do mesmo cliente (ex.: conta
+-- da farmácia do funcionário com NF em nome do produtor), sem nova saída de caixa. O adiantamento continua pendente
+-- para o desconto na folha/gratificação. A aplicação fica em adiantamentos_aplicacoes (adiantamento_salario_id) com a
+-- Operação Gerencial anterior do título.
+ALTER TABLE adiantamentos_aplicacoes ALTER COLUMN adiantamento_id DROP NOT NULL;
+ALTER TABLE adiantamentos_aplicacoes
+  ADD COLUMN IF NOT EXISTS adiantamento_salario_id uuid REFERENCES adiantamentos_salario(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS og_anterior uuid;
+ALTER TABLE adiantamentos_salario ADD COLUMN IF NOT EXISTS valor_aplicado_cp numeric(14,2) NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_adiant_aplic_salario ON adiantamentos_aplicacoes(adiantamento_salario_id) WHERE adiantamento_salario_id IS NOT NULL;
 NOTIFY pgrst, 'reload schema';

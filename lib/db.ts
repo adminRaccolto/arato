@@ -6890,6 +6890,33 @@ export async function aplicarAdiantamentoEmCP(
   };
 }
 
+// Adiantamentos de FUNCIONÁRIO com saldo para quitar CP do produtor (exceção à regra do mesmo fornecedor — Seção 374):
+// dinheiro que já saiu do caixa; o desconto na folha/gratificação continua na rotina da folha.
+export type AdiantamentoFuncionarioDisp = { id: string; funcionario_nome: string; data: string; valor: number; saldo: number; descricao: string | null; tipo: string | null };
+export async function listarAdiantamentosFuncionarioDisponiveis(fazenda_ids: string[]): Promise<AdiantamentoFuncionarioDisp[]> {
+  if (!fazenda_ids.length) return [];
+  const { data, error } = await supabase.from("adiantamentos_salario")
+    .select("id, data, valor, valor_aplicado_cp, descricao, tipo, status, funcionarios(nome)")
+    .in("fazenda_id", fazenda_ids).neq("status", "cancelado").order("data", { ascending: false }).limit(500);
+  if (error) return [];   // Seção 374 ainda não rodada: sem a opção
+  return ((data ?? []) as unknown as { id: string; data: string; valor: number; valor_aplicado_cp: number | null; descricao: string | null; tipo: string | null; funcionarios: { nome: string } | null }[])
+    .filter(a => a.tipo !== "devolucao")
+    .map(a => ({ id: a.id, funcionario_nome: a.funcionarios?.nome ?? "—", data: a.data, valor: Number(a.valor), saldo: Math.round((Number(a.valor) - Number(a.valor_aplicado_cp ?? 0)) * 100) / 100, descricao: a.descricao, tipo: a.tipo }))
+    .filter(a => a.saldo > 0.01);
+}
+
+export async function aplicarAdiantamentoFuncionarioEmCP(
+  adiantamento_salario_id: string, lancamento_cp_id: string, valor_aplicado: number, data_aplicacao: string, descricao?: string,
+): Promise<{ novoStatusCp: string; novoTotalCp: number; novoSaldoAdiantamento: number }> {
+  const res = await fetch("/api/financeiro/baixar", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ acao: "aplicar_adiantamento_funcionario", adiantamento_salario_id, lancamento_id: lancamento_cp_id, valor_aplicado, data_aplicacao, descricao }),
+  });
+  const json = await res.json() as { ok: boolean; error?: string; novo_status_cp?: string; novo_total_cp?: number; novo_saldo_adiantamento?: number };
+  if (!json.ok) throw new Error(json.error ?? "Erro ao aplicar adiantamento de funcionário");
+  return { novoStatusCp: json.novo_status_cp!, novoTotalCp: json.novo_total_cp!, novoSaldoAdiantamento: json.novo_saldo_adiantamento! };
+}
+
 export async function listarAdiantamentos(fazenda_id: string): Promise<AdiantamentoFornecedor[]> {
   const { data, error } = await supabase
     .from("adiantamentos_fornecedor")

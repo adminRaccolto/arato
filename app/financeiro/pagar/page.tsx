@@ -59,7 +59,8 @@ import {
   criarPagamentoLote, confirmarPagamentoBordero, cancelarBordero, estornarBordero, listarBorderosPendentes, listarBorderosPagos,
   listarOperacoesGerenciaisAtivasDaConta, criarParcelamento, buscarLancamentoDuplicado, listarAnosSafra, listarCiclos,
   excluirLancamento, excluirEmpresaLancamento, listarCartoesDaConta, criarLancamentoNoCartao,
-  listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados } from "../../../lib/db";
+  listarAdiantamentosDisponiveis, aplicarAdiantamentoEmCP, listarFuncionarios, listarVeiculosUnificados,
+  listarAdiantamentosFuncionarioDisponiveis, aplicarAdiantamentoFuncionarioEmCP, type AdiantamentoFuncionarioDisp } from "../../../lib/db";
 import type { ContaBancaria, Pessoa, Empresa, CentroCusto, PagamentoLote, Lancamento, OperacaoGerencial, AnoSafra, Ciclo, CartaoCredito, AdiantamentoFornecedor } from "../../../lib/supabase";
 import TopNav from "../../../components/TopNav";
 import { statusExibido } from "../../../lib/financeiro/titulos";
@@ -509,6 +510,11 @@ export default function ContasAPagarPage() {
     setModalBaixa(l);
     // Adiantamento ao fornecedor disponível para usar nesta baixa (a tela unificada de 01/10 perdeu esta função)
     setAdiantamentosDisp([]); setValorAdiantAplicar({});
+    setAdiFuncDisp([]); setAdiFuncSel(""); setAdiFuncValor(0);
+    if (l.origem_tabela === "lancamentos" && (l.moeda ?? "BRL") === "BRL") {
+      listarAdiantamentosFuncionarioDisponiveis(fazendaIds?.length ? fazendaIds : fazendaId ? [fazendaId] : [])
+        .then(setAdiFuncDisp).catch(() => setAdiFuncDisp([]));
+    }
     if (l.origem_tabela === "lancamentos" && l.moeda !== "barter" && l.pessoa_id && (l.fazenda_id ?? fazendaId)) {
       listarAdiantamentosDisponiveis((l.fazenda_id ?? fazendaId)!, l.pessoa_id, l.moeda ?? "BRL")
         .then(list => setAdiantamentosDisp(list))
@@ -556,6 +562,31 @@ export default function ContasAPagarPage() {
       if (r.novoStatusCp === "baixado") { alert("Título totalmente coberto pelo adiantamento — nada a pagar pelo banco."); setModalBaixa(null); }
     } catch (e: unknown) {
       setErroAcao("Erro ao aplicar adiantamento: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAplicandoAdiant(null);
+    }
+  }
+
+  async function aplicarAdiantFuncNoModal() {
+    if (!modalBaixa) return;
+    const a = adiFuncDisp.find(x => x.id === adiFuncSel);
+    const saldoCp = Math.max(0, saldoBase(modalBaixa));
+    if (!a || adiFuncValor <= 0) { setErroAcao("Escolha o adiantamento e o valor."); return; }
+    if (adiFuncValor > a.saldo + 0.01) { setErroAcao(`Valor maior que o saldo do adiantamento (${fmtBRL(a.saldo)}).`); return; }
+    if (adiFuncValor > saldoCp + 0.01) { setErroAcao(`Valor maior que o saldo devedor do título (${fmtBRL(saldoCp)}).`); return; }
+    if (!(await confirmarAcao({ titulo: "Pagar com adiantamento de funcionário?", mensagem: `${fmtBRL(adiFuncValor)} do adiantamento de ${a.funcionario_nome} quitam este título, sem nova saída de caixa. O título passa para a OG Adiantamento para funcionário e o adiantamento continua a ser descontado na folha.`, perigo: false }))) return;
+    setAplicandoAdiant(a.id); setErroAcao("");
+    try {
+      const r = await aplicarAdiantamentoFuncionarioEmCP(a.id, modalBaixa.id, adiFuncValor, bData || hojeISO(), `Adiantamento de ${a.funcionario_nome} aplicado — ${modalBaixa.descricao}`);
+      setAdiFuncDisp(prev => prev.map(x => x.id === a.id ? { ...x, saldo: r.novoSaldoAdiantamento } : x).filter(x => x.saldo > 0.01));
+      setAdiFuncSel(""); setAdiFuncValor(0);
+      const novoSaldo = Math.max(0, (modalBaixa.valor ?? 0) - r.novoTotalCp);
+      setBValor(novoSaldo.toFixed(2).replace(".", ","));
+      setModalBaixa(prev => prev ? { ...prev, valor_pago: r.novoTotalCp } : prev);
+      await carregar();
+      if (r.novoStatusCp === "baixado") { alert("Título totalmente pago com o adiantamento do funcionário — nada a pagar pelo banco."); setModalBaixa(null); }
+    } catch (e: unknown) {
+      setErroAcao("Erro ao aplicar adiantamento de funcionário: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setAplicandoAdiant(null);
     }
@@ -743,6 +774,10 @@ export default function ContasAPagarPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   // Adiantamentos do fornecedor com saldo, oferecidos na baixa do título (usar o adiantamento como pagamento)
   const [adiantamentosDisp, setAdiantamentosDisp] = useState<AdiantamentoFornecedor[]>([]);
+  // Adiantamento de funcionário: quita título do produtor de qualquer fornecedor (exceção à regra do mesmo fornecedor)
+  const [adiFuncDisp, setAdiFuncDisp] = useState<AdiantamentoFuncionarioDisp[]>([]);
+  const [adiFuncSel, setAdiFuncSel] = useState("");
+  const [adiFuncValor, setAdiFuncValor] = useState(0);
   const [valorAdiantAplicar, setValorAdiantAplicar] = useState<Record<string, number>>({});
   const [aplicandoAdiant, setAplicandoAdiant] = useState<string | null>(null);
   const [parcelaInfo, setParcelaInfo] = useState("");   // "Parcela 2/5" quando o título faz parte de um parcelamento
@@ -2506,6 +2541,24 @@ export default function ContasAPagarPage() {
                   );
                 })}
               </div>
+            )}
+            {adiFuncDisp.length > 0 && (
+              <details style={{ background: "#FBF3E0", border: "0.5px solid #E8CF8E", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                <summary style={{ fontSize: 12, fontWeight: 700, color: "#7A5200", cursor: "pointer" }}>👤 Pagar com adiantamento de funcionário</summary>
+                <div style={{ fontSize: 10, color: "var(--text-3)", margin: "8px 0" }}>Conta do funcionário paga pelo produtor (ex.: farmácia com NF em nome do produtor). Usa o dinheiro já adiantado ao funcionário — sem nova saída de caixa. O título passa para a OG Adiantamento para funcionário; o adiantamento continua a ser descontado na folha ou na gratificação.</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <select value={adiFuncSel} onChange={e => { setAdiFuncSel(e.target.value); const a = adiFuncDisp.find(x => x.id === e.target.value); setAdiFuncValor(a ? Math.min(a.saldo, Math.max(0, saldoBase(modalBaixa))) : 0); }}
+                    style={{ ...inp, flex: 1, minWidth: 220, fontSize: 12, padding: "5px 8px" }}>
+                    <option value="">Escolha o adiantamento…</option>
+                    {adiFuncDisp.map(a => <option key={a.id} value={a.id}>{a.funcionario_nome} · {fmtData(a.data)} · saldo {fmtBRL(a.saldo)}{a.descricao ? ` · ${a.descricao}` : ""}</option>)}
+                  </select>
+                  <InputMonetario value={adiFuncValor} onChange={v => setAdiFuncValor(v)} style={{ ...inp, width: 120, fontSize: 12, padding: "5px 8px" }} />
+                  <button disabled={!adiFuncSel || aplicandoAdiant === adiFuncSel} onClick={aplicarAdiantFuncNoModal}
+                    style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #C9921B", background: "#C9921B", color: "#fff", fontSize: 11, fontWeight: 600, cursor: !adiFuncSel ? "default" : "pointer" }}>
+                    {aplicandoAdiant === adiFuncSel && adiFuncSel ? "Aplicando…" : "Aplicar"}
+                  </button>
+                </div>
+              </details>
             )}
             <div data-arato-dialog-body="true" data-arato-fields="true" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
               <div data-arato-dialog-body="true">

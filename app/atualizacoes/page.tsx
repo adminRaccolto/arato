@@ -9,13 +9,13 @@ const RELEASES = [
   {
     versao: "2026.10.27-q",
     data: "27/10/2026",
-    titulo: "Adiantamento pago por título de NF",
+    titulo: "Adiantamento: mesmo fornecedor, e funcionário pagando conta do produtor",
     modulos: ["Financeiro"],
     itens: [
-      { tipo: "novo", texto: "Conta pessoal do funcionário paga pelo produtor (NF em nome do produtor): o adiantamento pode ser ligado ao título da NF no Contas a Pagar, sem gerar outro CP nem outra saída de caixa. O título passa para a OG Adiantamento para funcionário e o valor é descontado na folha." },
-      { tipo: "aviso", texto: "Exceção controlada: só para quem tem a ação Aprovar da Folha, só em adiantamento novo, só título de NF a pagar do mesmo cliente, um adiantamento por título, valor igual ao do título e motivo obrigatório. Requer a Seção 374." },
+      { tipo: "correcao", texto: "Adiantamento a fornecedor só quita título do mesmo fornecedor. Antes só a tela filtrava; agora o sistema recusa qualquer outra combinação." },
+      { tipo: "novo", texto: "Adiantamento de funcionário pode quitar título do produtor de qualquer fornecedor, de qualquer produtor do cliente (ex.: conta da farmácia do funcionário com NF em nome do produtor), sem nova saída de caixa. O título vai para a OG Adiantamento para funcionário e o adiantamento continua a ser descontado na folha ou na gratificação. Requer a Seção 374." },
     ],
-    onde: "Financeiro → Folha de Pagamento → Adiantamentos",
+    onde: "Financeiro → Contas a Pagar → Baixar",
   },
   {
     versao: "2026.10.27-p",
