@@ -223,6 +223,9 @@ export default function FolhaPagamentoPage() {
   const [modalAdi,   setModalAdi]   = useState(false);
   const [adiEdit,    setAdiEdit]    = useState<Partial<Adiantamento>>({});
   const [vencCp,     setVencCp]     = useState<Record<string, string>>({});
+  // Situação do salário no Contas a Pagar (folha fechada): soma o título e as partes de pagamento parcial (Seção 375)
+  const [situacaoCp, setSituacaoCp] = useState<Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null }>>({});
+  const [fGratFunc, setFGratFunc] = useState("");
   // Data de pagamento da folha (vencimento do CP de salário): cada cliente escolhe conforme a sua operação.
   // Padrão: o mesmo dia do mês usado na última folha (ou dia 5), no mês seguinte à competência.
   const [dataPgto, setDataPgto] = useState("");
@@ -418,9 +421,21 @@ export default function FolhaPagamentoPage() {
       if (cpIds.length) {
         const { data: lancs } = await supabase.from("lancamentos").select("id, data_vencimento").in("id", cpIds);
         setVencCp(Object.fromEntries((lancs ?? []).map(l => [l.id as string, l.data_vencimento as string])));
-      } else setVencCp({});
+        const { data: partes } = await supabase.from("lancamentos").select("id, titulo_origem_id, valor, valor_pago, status, natureza, data_baixa")
+          .or(`id.in.(${cpIds.join(",")}),titulo_origem_id.in.(${cpIds.join(",")})`).neq("status", "cancelado");
+        const sit: Record<string, { valor: number; pago: number; previsao: boolean; ultimaBaixa: string | null }> = {};
+        for (const t of (partes ?? []) as { id: string; titulo_origem_id: string | null; valor: number; valor_pago: number | null; status: string; natureza: string | null; data_baixa: string | null }[]) {
+          const chave = cpIds.includes(t.id) ? t.id : t.titulo_origem_id;
+          if (!chave) continue;
+          const atual = sit[chave] ?? { valor: 0, pago: 0, previsao: false, ultimaBaixa: null };
+          const pago = t.status === "baixado" ? Number(t.valor_pago ?? t.valor) : Number(t.valor_pago ?? 0);
+          sit[chave] = { valor: atual.valor + Number(t.valor), pago: atual.pago + pago, previsao: atual.previsao || t.natureza === "previsao",
+            ultimaBaixa: t.data_baixa && (!atual.ultimaBaixa || t.data_baixa > atual.ultimaBaixa) ? t.data_baixa : atual.ultimaBaixa };
+        }
+        setSituacaoCp(sit);
+      } else { setVencCp({}); setSituacaoCp({}); }
     } else {
-      setVencCp({});
+      setVencCp({}); setSituacaoCp({});
       dataPgtoManual.current = false;
       // Nova folha — pré-preenche com funcionários ativos
       // Inclui adiantamentos sem competência_ref (null) — debitam na próxima folha
@@ -1134,6 +1149,86 @@ export default function FolhaPagamentoPage() {
         {/* ══════════════════ ABA GRATIFICAÇÕES ══════════════════ */}
         {aba === "gratificacoes" && (
           <>
+            {/* Extrato: gratificação lançada × adiantado sobre ela × saldo a pagar, por funcionário e competência */}
+            {(() => {
+              const comp7 = (v?: string | null) => String(v ?? "").slice(0, 7);
+              const adisGrat = adiantamentos.filter(a => a.tipo === "gratificacao" && a.status !== "cancelado");
+              const chaves = new Map<string, { funcionario_id: string; nome: string; comp: string }>();
+              for (const p of premiacoes) chaves.set(`${p.funcionario_id}|${comp7(p.mes_referencia)}`, { funcionario_id: p.funcionario_id, nome: p.funcionario_nome ?? "—", comp: comp7(p.mes_referencia) });
+              for (const a of adisGrat) if (a.competencia_ref) chaves.set(`${a.funcionario_id}|${comp7(a.competencia_ref)}`, { funcionario_id: a.funcionario_id, nome: a.funcionario_nome ?? chaves.get(`${a.funcionario_id}|${comp7(a.competencia_ref)}`)?.nome ?? "—", comp: comp7(a.competencia_ref) });
+              const linhasExt = [...chaves.values()]
+                .filter(k => !fGratFunc || k.funcionario_id === fGratFunc)
+                .map(k => {
+                  const lancada = premiacoes.filter(p => p.funcionario_id === k.funcionario_id && comp7(p.mes_referencia) === k.comp).reduce((t, p) => t + p.valor, 0);
+                  const adis = adisGrat.filter(a => a.funcionario_id === k.funcionario_id && comp7(a.competencia_ref) === k.comp).sort((x, y) => x.data.localeCompare(y.data));
+                  const adiantado = adis.reduce((t, a) => t + a.valor, 0);
+                  return { ...k, lancada, adis, adiantado, saldo: Math.round((lancada - adiantado) * 100) / 100 };
+                })
+                .sort((x, y) => x.nome.localeCompare(y.nome) || y.comp.localeCompare(x.comp));
+              const funcsComGrat = [...new Map([...chaves.values()].map(k => [k.funcionario_id, k.nome])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+              const tot = linhasExt.reduce((t, l) => ({ lancada: t.lancada + l.lancada, adiantado: t.adiantado + l.adiantado, saldo: t.saldo + l.saldo }), { lancada: 0, adiantado: 0, saldo: 0 });
+              return (
+                <div style={{ ...S.card, marginBottom: 14 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", flexWrap:"wrap", borderBottom:"0.5px solid #DDE2EE" }}>
+                    <span style={{ fontSize:14, fontWeight:700, color:"#0B2D50" }}>Extrato de adiantamentos de gratificação</span>
+                    <select value={fGratFunc} onChange={e => setFGratFunc(e.target.value)} style={{ ...S.inp, width: 260, marginLeft: "auto" }}>
+                      <option value="">Todos os funcionários</option>
+                      {funcsComGrat.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+                    </select>
+                  </div>
+                  {linhasExt.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhuma gratificação ou adiantamento de gratificação.</div>
+                  ) : (
+                    <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse" }}>
+                      <thead><tr>{["Funcionário", "Competência", "Data", "Movimento", "Gratificação", "Adiantado", "Saldo a pagar"].map(h => <th key={h} style={{ ...S.th, textAlign: ["Gratificação","Adiantado","Saldo a pagar"].includes(h) ? "right" : "left" }}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {linhasExt.map(l => {
+                          let corrente = l.lancada;
+                          return [
+                            <tr key={`${l.funcionario_id}|${l.comp}`} style={{ background:"#F8FAFD" }}>
+                              <td style={{ ...S.td, fontWeight:700 }}>{l.nome}</td>
+                              <td style={S.td}>{nomeMes(l.comp)}</td>
+                              <td style={S.td}></td>
+                              <td style={{ ...S.td, color:"#555" }}>Gratificação lançada</td>
+                              <td style={{ ...S.td, textAlign:"right", fontWeight:700, color:"#C9921B", fontVariantNumeric:"tabular-nums" }}>{moeda(l.lancada)}</td>
+                              <td style={S.td}></td>
+                              <td style={{ ...S.td, textAlign:"right", fontVariantNumeric:"tabular-nums" }}>{moeda(l.lancada)}</td>
+                            </tr>,
+                            ...l.adis.map(a => {
+                              corrente = Math.round((corrente - a.valor) * 100) / 100;
+                              return (
+                                <tr key={a.id}>
+                                  <td style={S.td}></td>
+                                  <td style={S.td}></td>
+                                  <td style={S.td}>{dataFmt(a.data)}</td>
+                                  <td style={{ ...S.td, color:"#555" }}>Adiantamento{a.descricao ? ` · ${a.descricao}` : ""}{a.status === "descontado" ? " · descontado na folha" : ""}</td>
+                                  <td style={S.td}></td>
+                                  <td style={{ ...S.td, textAlign:"right", color:"#B91C1C", fontVariantNumeric:"tabular-nums" }}>−{moeda(a.valor)}</td>
+                                  <td style={{ ...S.td, textAlign:"right", fontVariantNumeric:"tabular-nums" }}>{moeda(corrente)}</td>
+                                </tr>
+                              );
+                            }),
+                            <tr key={`${l.funcionario_id}|${l.comp}|s`}>
+                              <td style={S.td}></td><td style={S.td}></td><td style={S.td}></td>
+                              <td style={{ ...S.td, fontWeight:700 }}>Saldo da competência</td>
+                              <td style={S.td}></td>
+                              <td style={{ ...S.td, textAlign:"right", fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{l.adiantado ? `−${moeda(l.adiantado)}` : "—"}</td>
+                              <td style={{ ...S.td, textAlign:"right", fontWeight:700, color: l.saldo < 0 ? "#B91C1C" : "#166534", fontVariantNumeric:"tabular-nums" }}>{moeda(l.saldo)}</td>
+                            </tr>,
+                          ];
+                        })}
+                        <tr>
+                          <td style={{ ...S.td, fontWeight:700 }} colSpan={4}>Total</td>
+                          <td style={{ ...S.td, textAlign:"right", fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(tot.lancada)}</td>
+                          <td style={{ ...S.td, textAlign:"right", fontWeight:700, fontVariantNumeric:"tabular-nums" }}>−{moeda(tot.adiantado)}</td>
+                          <td style={{ ...S.td, textAlign:"right", fontWeight:700, fontVariantNumeric:"tabular-nums" }}>{moeda(tot.saldo)}</td>
+                        </tr>
+                      </tbody>
+                    </OperationalGrid>
+                  )}
+                </div>
+              );
+            })()}
             <div style={{ ...S.card, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize:13, color:"#555" }}>{premiacoes.length} gratificação(ões) registradas</span>
               <div style={{ marginLeft:"auto" }}>
@@ -1271,6 +1366,20 @@ export default function FolhaPagamentoPage() {
             {/* Sub-aba: Funcionários */}
             {abaModal === "funcionarios" && (
               <div>
+                {/* Salários desta folha no Contas a Pagar: pago × em aberto */}
+                {Object.keys(situacaoCp).length > 0 && (() => {
+                  const vals = Object.values(situacaoCp).filter(v => !v.previsao);
+                  const pago = vals.reduce((t, v) => t + v.pago, 0);
+                  const aberto = vals.reduce((t, v) => t + Math.max(0, v.valor - v.pago), 0);
+                  const qPagos = vals.filter(v => v.valor - v.pago <= 0.005).length;
+                  return (
+                    <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginBottom:10, padding:"8px 12px", background:"#F4F6FA", borderRadius:8, fontSize:12, color:"#555" }}>
+                      <span><strong>Salários no Contas a Pagar:</strong> {qPagos} de {vals.length} pagos</span>
+                      <span>Pago <strong style={{ color:"#166534" }}>{moeda(pago)}</strong></span>
+                      <span>Em aberto <strong style={{ color: aberto > 0.005 ? "#B91C1C" : "#555" }}>{moeda(aberto)}</strong></span>
+                    </div>
+                  );
+                })()}
                 {/* Contador de seleção */}
                 {(folhaEdit.funcionarios ?? []).length > 0 && (
                   <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10, fontSize:12, color:"#555" }}>
@@ -1297,7 +1406,7 @@ export default function FolhaPagamentoPage() {
                     <OperationalGrid data-arato-grid="true" style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr>
-                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. previsto"].map(h=>(
+                          {["☑","","Empregador","Funcionário","Salário Base","Gratificação","Bruto","INSS","IRRF","Complemento","Outros Desc.","Benefícios","Sal. Líquido","Pgto. / CP"].map(h=>(
                             <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -1366,6 +1475,16 @@ export default function FolhaPagamentoPage() {
                                 {/* Data prevista do pagamento: folha fechada = vencimento real do CP; rascunho = dia 05 da competência (padrão do fechamento) */}
                                 <td style={{ ...S.td, padding:"4px 8px", whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums", color:"var(--text-2)" }}>
                                   {dataFmt((f.cp_lancamento_id && vencCp[f.cp_lancamento_id]) || (folhaEdit.competencia ? (dataPgto || vencimentoSalario(folhaEdit.competencia)) : undefined))}
+                                  {(() => {
+                                    const sc = f.cp_lancamento_id ? situacaoCp[f.cp_lancamento_id] : undefined;
+                                    if (!sc) return null;
+                                    const aberto = Math.max(0, Math.round((sc.valor - sc.pago) * 100) / 100);
+                                    const [txt, cor, bg] = sc.previsao ? ["Previsão", "#555", "#EEF0F4"]
+                                      : aberto <= 0.005 ? [`Pago${sc.ultimaBaixa ? ` ${dataFmt(sc.ultimaBaixa)}` : ""}`, "#166534", "#DCFCE7"]
+                                      : sc.pago > 0 ? [`Parcial · falta ${moeda(aberto)}`, "#7A5200", "#FBF3E0"]
+                                      : ["Em aberto no CP", "#B91C1C", "#FEF2F2"];
+                                    return <div style={{ marginTop: 2 }}><span style={{ fontSize: 10, fontWeight: 700, color: cor, background: bg, padding: "1px 6px", borderRadius: 6 }}>{txt}</span></div>;
+                                  })()}
                                 </td>
                               </tr>
                               {expanded && (

@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zj",
+    data: "27/10/2026",
+    titulo: "Exclusão em lote no CP, busca em Retornos, folha × CP e extrato de gratificação",
+    modulos: ["Financeiro", "Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Contas a Pagar: voltou o 🗑 Excluir na barra de seleção (vários títulos de uma vez). Exclusão só de lançamento manual em aberto, sem documento fiscal; os demais são pulados." },
+      { tipo: "melhoria", texto: "Retornos ganhou campo de busca (número, chave, armazém, produto, máquina). A busca de Remessas também acha por produto e pela NF de retorno." },
+      { tipo: "melhoria", texto: "Folha de pagamento: cada salário mostra se já foi pago no Contas a Pagar (Pago, Parcial, Em aberto), com resumo de pago e em aberto da folha." },
+      { tipo: "novo", texto: "Aba Gratificações: extrato de adiantamentos de gratificação por funcionário e competência — gratificação lançada, cada adiantamento e o saldo a pagar." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Folha de Pagamento · Documentos Fiscais → Retornos",
+  },
+  {
     versao: "2026.10.27-zi",
     data: "27/10/2026",
     titulo: "Lista completa de serviços na NFS-e",

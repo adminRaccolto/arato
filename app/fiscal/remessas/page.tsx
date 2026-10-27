@@ -246,8 +246,14 @@ function RemessasConteudo() {
 
   const filtradas = remessas.filter(r => {
     if (filtroSt && r.status !== filtroSt) return false;
-    const q = busca.toLowerCase();
-    return !q || r.destinatario_nome.toLowerCase().includes(q) || (r.nf_remessa_numero ?? "").includes(q) || (r.nf_remessa_chave ?? "").includes(q);
+    // Busca: armazém, nº/chave da remessa, nº das NFs de retorno, produto e CFOP
+    const norm = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = norm(busca.trim());
+    if (!q) return true;
+    const retornos = (r.retornos ?? []) as { numero?: string; chave?: string }[];
+    const itensR = (r.itens_json ?? []) as { descricao?: string; nome?: string }[];
+    return [r.destinatario_nome, r.nf_remessa_numero, r.nf_remessa_chave, r.nf_retorno_numero, r.cfop_remessa, r.natureza_remessa,
+      ...retornos.flatMap(x => [x.numero, x.chave]), ...itensR.map(i => i.descricao ?? i.nome)].some(c => norm(c).includes(q));
   });
   const depsProprios = depositos.filter(d => !ehDepTerceiro(d));
   const depsTerceiros = depositos.filter(ehDepTerceiro);
@@ -275,7 +281,7 @@ function RemessasConteudo() {
         {msg && <div style={{ marginBottom: 12, padding: 10, background: "#E8F5E9", color: "#1A6B3C", borderRadius: 8, fontSize: 13 }}>{msg}</div>}
 
         <OperationalFilters data-arato-filters="true" style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por armazém, nº ou chave…" style={{ ...inp, maxWidth: 320 }} />
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por armazém, nº, chave, produto ou NF de retorno…" style={{ ...inp, maxWidth: 320 }} />
           <SelectField value={filtroSt} onChange={e => setFiltroSt(e.target.value)} style={{ ...inp, maxWidth: 200 }}>
             <option value="">Todos os status</option>
             <option value="emitida">Aguardando retorno</option>

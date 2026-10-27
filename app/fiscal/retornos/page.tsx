@@ -107,6 +107,15 @@ function RetornosConteudo() {
   useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [ids.join(","), contaId]);
 
   const abertas = remessas.filter(r => r.status === "emitida");
+  // Busca da tela: número, chave, emitente/destinatário, item ou máquina — vale para todas as listas
+  const [busca, setBusca] = useState("");
+  const norm = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const casa = (...campos: unknown[]) => { const q = norm(busca.trim()); return !q || campos.some(c => norm(c).includes(q)); };
+  const nfsF = nfs.filter(n => casa(n.numero, n.chave_acesso, n.emitente_nome, n.emitente_cnpj, n.cfop));
+  const abertasF = abertas.filter(r => casa(r.nf_remessa_numero, r.nf_remessa_chave, r.destinatario_nome, r.cfop_remessa,
+    ...((r.itens_json ?? []) as { descricao?: string; nome?: string }[]).map(i => i.descricao ?? i.nome)));
+  const nfsMaqF = nfsMaq.filter(n => casa(n.numero, n.chave_acesso, n.emitente_nome, n.emitente_cnpj, n.cfop));
+  const maquinasF = maquinas.filter(t => casa(t.maquina_nome, t.destinatario_nome, t.nf_saida_numero));
   const insumoPorId = useMemo(() => new Map(insumos.map(i => [i.id, i])), [insumos]);
 
   async function abrir(nf: NfEntrada) {
@@ -308,6 +317,10 @@ function RetornosConteudo() {
 
         {msg && <div style={{ marginTop: 12, padding: 10, background: "#E8F5E9", color: "#1A6B3C", borderRadius: 8, fontSize: 13 }}>{msg}</div>}
 
+        <div style={{ marginTop: 14 }}>
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nº, chave, armazém/emitente, produto ou máquina…" style={{ ...inp, maxWidth: 420 }} />
+        </div>
+
         <section style={{ marginTop: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: "0 0 8px" }}>NF de retorno recebidas, a processar <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-3)" }}>· CFOP 5906/6906/5907/6907/1906/2906… chegadas pelo SIEG, XML ou digitadas</span></h2>
           <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "auto" }}>
@@ -315,8 +328,8 @@ function RetornosConteudo() {
               <thead><tr>{["Nº", "Emissão", "Emitente", "CFOP", "Natureza", "Valor", ""].map(h => <th key={h} style={{ ...th, textAlign: h === "Valor" ? "right" : "left" }}>{h}</th>)}</tr></thead>
               <tbody>
                 {loading && <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 20 }}>Carregando…</td></tr>}
-                {!loading && nfs.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 20 }}>Nenhuma NF de retorno pendente.</td></tr>}
-                {nfs.map(n => (
+                {!loading && nfsF.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 20 }}>{busca ? "Nenhuma NF encontrada." : "Nenhuma NF de retorno pendente."}</td></tr>}
+                {nfsF.map(n => (
                   <tr key={n.id} style={{ background: nfSel?.id === n.id ? "#D5E8F5" : undefined }}>
                     <td style={{ ...td, fontWeight: 600 }}>{n.numero}{n.serie ? `/${n.serie}` : ""}</td>
                     <td style={td}>{fmtData(n.data_emissao)}</td>
@@ -400,8 +413,8 @@ function RetornosConteudo() {
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead><tr>{["NF remessa", "Data", "Destinatário", "CFOP", "Remetido", "Já voltou", "Falta voltar", ""].map(h => <th key={h} style={{ ...th, textAlign: ["Remetido", "Já voltou", "Falta voltar"].includes(h) ? "right" : "left" }}>{h}</th>)}</tr></thead>
               <tbody>
-                {abertas.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>Nenhuma remessa aguardando retorno.</td></tr>}
-                {abertas.map(r => (
+                {abertasF.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>{busca ? "Nenhuma remessa encontrada." : "Nenhuma remessa aguardando retorno."}</td></tr>}
+                {abertasF.map(r => (
                   <tr key={r.id}>
                     <td style={{ ...td, fontWeight: 600 }}>{r.nf_remessa_numero ?? "—"}</td>
                     <td style={td}>{fmtData(r.nf_remessa_data)}</td>
@@ -427,8 +440,8 @@ function RetornosConteudo() {
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
               <thead><tr>{["NF recebida", "Emissão", "Emitente", "CFOP", "Remessa da máquina", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
               <tbody>
-                {nfsMaq.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>Nenhuma NF de retorno de máquina pendente.</td></tr>}
-                {nfsMaq.map(n => (
+                {nfsMaqF.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>{busca ? "Nenhuma NF encontrada." : "Nenhuma NF de retorno de máquina pendente."}</td></tr>}
+                {nfsMaqF.map(n => (
                   <tr key={n.id}>
                     <td style={{ ...td, fontWeight: 600 }}>{n.numero}{n.serie ? `/${n.serie}` : ""}</td>
                     <td style={td}>{fmtData(n.data_emissao)}</td>
@@ -452,8 +465,8 @@ function RetornosConteudo() {
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
               <thead><tr>{["Máquina / equipamento", "Direção", "Contraparte", "NF de saída", "Retorno previsto", ""].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
               <tbody>
-                {maquinas.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>Nenhuma máquina aguardando retorno.</td></tr>}
-                {maquinas.map(t => (
+                {maquinasF.length === 0 && <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-3)", padding: 16 }}>{busca ? "Nenhuma máquina encontrada." : "Nenhuma máquina aguardando retorno."}</td></tr>}
+                {maquinasF.map(t => (
                   <tr key={t.id}>
                     <td style={{ ...td, fontWeight: 600 }}>{t.maquina_nome}</td>
                     <td style={td}>{t.direcao === "entrada" ? "↘ Entrou (de terceiro)" : "↗ Saiu"}</td>

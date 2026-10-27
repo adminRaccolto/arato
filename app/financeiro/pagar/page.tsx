@@ -708,10 +708,33 @@ export default function ContasAPagarPage() {
   // (vencido), de qualquer origem. Baixado/parcial/cancelado continuam de fora — baixado e
   // parcial já têm pagamento real registrado (excluir perderia o histórico sem reverter nada
   // no banco), cancelado não precisa de exclusão (já está fora do fluxo).
+  // Regra do dono (27/10/2026): excluir CP só vale para lançamento manual, sem vínculo com documento fiscal. Título
+  // gerado por NF, folha, contrato, arrendamento etc. se desfaz pela tela de origem.
   function podeExcluir(l: RelLancamento): boolean {
-    // CP de consórcio é espelho do plano: exclui-se pela tela de Consórcios
-    if (l.origem_lancamento === "consorcio") return false;
+    if (l.origem_lancamento && l.origem_lancamento !== "manual") return false;
     return l.status_normalizado === "em_aberto" || l.status_normalizado === "vencido";
+  }
+
+  // Exclusão em lote (barra de seleção): só os lançamentos manuais em aberto, sem NF/NFS-e; os demais são pulados
+  async function excluirSelecionados() {
+    const candidatos = itensLote.filter(podeExcluir);
+    const fora = itensLote.length - candidatos.length;
+    if (!candidatos.length) { alert("Nenhum dos títulos selecionados pode ser excluído. Só lançamento manual em aberto, sem documento fiscal, pode ser excluído; os demais se desfazem pela tela de origem (NF, folha, contrato…)."); return; }
+    const total = candidatos.reduce((s, l) => s + saldoLote(l), 0);
+    if (!confirm(`Excluir ${candidatos.length} lançamento${candidatos.length !== 1 ? "s" : ""} manua${candidatos.length !== 1 ? "is" : "l"} (${fmtBRL(total)}) definitivamente? Essa ação não pode ser desfeita.${fora ? `\n\n${fora} título${fora !== 1 ? "s" : ""} selecionado${fora !== 1 ? "s" : ""} não ${fora !== 1 ? "são manuais" : "é manual"} e fica${fora !== 1 ? "m" : ""} como está${fora !== 1 ? "o" : ""}.` : ""}`)) return;
+    const falhas: string[] = [];
+    let ok = 0;
+    for (const l of candidatos) {
+      try {
+        if (l.origem_tabela === "lancamentos") await excluirLancamento(l.id); else await excluirEmpresaLancamento(l.id);
+        ok++;
+      } catch (e: unknown) {
+        falhas.push(`${l.descricao ?? l.id}: ${e instanceof Error ? e.message : "erro"}`);
+      }
+    }
+    setSelecionados(new Set());
+    await carregar();
+    if (falhas.length) alert(`${ok} excluído${ok !== 1 ? "s" : ""}. Não excluídos (${falhas.length}):\n${falhas.slice(0, 8).join("\n")}${falhas.length > 8 ? "\n…" : ""}`);
   }
 
   async function excluirLanc(l: RelLancamento) {
@@ -2246,6 +2269,11 @@ export default function ContasAPagarPage() {
           </OperationalButton>
           <OperationalButton data-arato-button="primary" onClick={abrirModalCriarBordero} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
             📋 Criar Borderô
+          </OperationalButton>
+          <OperationalButton data-arato-button="danger" onClick={excluirSelecionados}
+            title="Exclui só os lançamentos manuais em aberto, sem documento fiscal"
+            style={{ background: "#B91C1C", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            🗑 Excluir{itensLote.filter(podeExcluir).length !== itensLote.length ? ` (${itensLote.filter(podeExcluir).length})` : ""}
           </OperationalButton>
           <OperationalButton data-arato-button="secondary" onClick={() => setSelecionados(new Set())} style={{ background: "none", border: "0.5px solid #555", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
             Cancelar
