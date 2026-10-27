@@ -30,7 +30,6 @@ import {
   excluirNfEntrada,
   listarMaquinas,
   listarBombas,
-  resolverNomeComercial,
   listarAnosSafra,
   listarCiclos,
   listarPedidoCompraItens, insumoAtivo } from "../../../lib/db";
@@ -2622,29 +2621,9 @@ export default function NfCompraPage() {
     }));
   };
 
-  // ── Resolução automática via princípio ativo (BOT mapping) ──
-  // Chamado com debounce quando o usuário termina de digitar a descrição do item
-  const resolverItemPA = useCallback(async (key: string, descricao: string) => {
-    if (!fazendaId || !descricao.trim() || tipo !== "insumos") return;
-    const item = itens.find(it => it.key === key);
-    if (item?.principio_ativo_id || item?.insumo_id) return; // não sobrescreve escolha manual
-
-    const res = await resolverNomeComercial(descricao, fazendaId);
-    if (!res) return;
-
-    // Defensivos/fertilizantes/inoculantes → estoque por PA direto (sem criar insumo)
-    setItens(prev => prev.map(it => {
-      if (it.key !== key) return it;
-      if (it.principio_ativo_id || it.insumo_id) return it;
-      return {
-        ...it,
-        principio_ativo_id: res.principioAtivo.id,
-        nome_comercial_ref: descricao.trim(),
-        pa_nome:  res.principioAtivo.nome,
-        pa_auto:  true,
-      };
-    }));
-  }, [fazendaId, tipo, itens]);
+  // Associação automática por princípio ativo desligada (27/10/2026): casava a descrição da NF palavra por palavra com
+  // nomes comerciais ("SOJA" → inoculante Bradyrhizobium) e mandava sementes e outros produtos para o estoque por
+  // princípio ativo em vez do item do cadastro. Todo item de NF vai para um item do cadastro.
 
   // ── Retorno de bem: carrega remessas abertas e sugere a correta (refNFe do XML, senão CNPJ do emitente) ──
   useEffect(() => {
@@ -4263,7 +4242,6 @@ export default function NfCompraPage() {
                               <input
                                 value={it.descricao_nf}
                                 onChange={e => setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false, principio_ativo_id: "", nome_comercial_ref: "" })}
-                                onBlur={e => resolverItemPA(it.key, e.target.value)}
                                 placeholder="Descrição na NF"
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
                               />
