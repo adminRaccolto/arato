@@ -153,7 +153,7 @@ const diasVencimento = (venc: string | null, status: string | null): number | nu
 // Título de folha/pessoal não tem fornecedor cadastrado: o "fornecedor" é o funcionário, que está na descrição
 // ("Salário Set/2026 — NOME"). Sem isso a coluna Fornecedor ficava vazia.
 const nomeDoFuncionario = (l: { categoria?: string | null; descricao?: string | null; origem_lancamento?: string | null }): string | null => {
-  if (!(l.origem_lancamento === "folha" || /pessoal/i.test(l.categoria ?? ""))) return null;
+  if (!(l.origem_lancamento === "folha" || /pessoal|f[ée]rias|rescis|13/i.test(l.categoria ?? ""))) return null;
   const partes = (l.descricao ?? "").split("—").map(x => x.trim());
   return partes.length >= 2 && partes[1] ? partes[1] : null;
 };
@@ -1436,8 +1436,11 @@ export default function ContasAPagarPage() {
   const [erroBordero, setErroBordero] = useState("");
 
   // Borderô é de UM fornecedor (o boleto que agrupa as NFs dele). Vários fornecedores juntos = Baixar em Lote.
-  const chaveFornecedor = (l: RelLancamento) => l.pessoa_id ?? (l.pessoa_nome ? `nome:${l.pessoa_nome.trim().toUpperCase()}` : "sem");
-  const fornecedoresLote = [...new Map(itensLote.map(l => [chaveFornecedor(l), l.pessoa_nome ?? "sem fornecedor"])).values()];
+  // Título de pessoal sem cadastro de fornecedor: o fornecedor é o funcionário (salário e férias do mesmo funcionário
+  // vão juntos)
+  const nomeFornecedor = (l: RelLancamento) => l.pessoa_nome ?? nomeDoFuncionario(l);
+  const chaveFornecedor = (l: RelLancamento) => l.pessoa_id ?? (nomeFornecedor(l) ? `nome:${nomeFornecedor(l)!.trim().toUpperCase()}` : "sem");
+  const fornecedoresLote = [...new Map(itensLote.map(l => [chaveFornecedor(l), nomeFornecedor(l) ?? "sem fornecedor"])).values()];
   const fornecedorBordero = fornecedoresLote.length === 1 ? fornecedoresLote[0] : null;
 
   function abrirModalCriarBordero() {

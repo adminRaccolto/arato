@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zh",
+    data: "27/10/2026",
+    titulo: "Funcionário como fornecedor no Contas a Pagar",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "Títulos de férias, rescisão e demais títulos de pessoal lançados fora da folha mostravam Fornecedor \"—\" e o borderô recusava juntá-los ao salário do mesmo funcionário. Agora o fornecedor é o funcionário e os dois vão no mesmo borderô." },
+    ],
+    onde: "Financeiro → Contas a Pagar",
+  },
+  {
     versao: "2026.10.27-zg",
     data: "27/10/2026",
     titulo: "Volume da NF no relatório de pedidos",
