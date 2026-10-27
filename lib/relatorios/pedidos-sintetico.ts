@@ -4,9 +4,10 @@
 // pago e saldo). Mantém o nosso cabeçalho no topo; logo Arato pequena no rodapé de cada página impressa.
 // Função pura (sem React) para poder ser testada e renderizada fora da tela.
 import { alocarEntregaPorLinha } from "../db";
+import { volumeDaNf } from "../compras/entrega-pedido";
 import type { PedidoCompraItem, NfEntrada, NfEntradaItem } from "../supabase";
 
-export type ParcelaRel = { origem: string; vencimento: string | null; valor: number; pago: number; status: string };
+export type ParcelaRel = { origem: string; nf_entrada_id?: string | null; vencimento: string | null; valor: number; pago: number; status: string };
 export type ExtraPedido = { ie: string | null; fazenda: string; vencimento: string | null; parcelas: ParcelaRel[] };
 export type PedidoSintetico = { id: string; numero: number | null; nr_pedido: string | null; fornecedor_nome: string | null; fornecedor_cpf_cnpj: string | null;
   produtor_nome: string | null; ano_safra_descricao: string | null; data_registro: string; moeda: string | null; status: string; fiscal: boolean | null; total_financeiro: number | null };
@@ -36,7 +37,13 @@ export function buildSinteticoHtml(dados: { ped: PedidoSintetico; itens: PedidoC
     const pago = parcelas.reduce((s, p) => s + p.pago, 0);
     const aPagar = parcelas.reduce((s, p) => s + Math.max(0, p.valor - p.pago), 0);
     const sitParc = (p: ParcelaRel) => p.pago >= p.valor - 0.01 ? `<span class="ok">Pago</span>` : p.pago > 0 ? `<span class="pend">Parcial</span>` : `<span class="pend">Pendente</span>`;
-    const linhasParc = parcelas.map((p, i) => `<tr><td>${i + 1}</td><td>${p.origem}</td><td>${fmtData(p.vencimento)}</td><td class="r">${fmtN(p.valor)}</td><td class="r">${fmtN(p.pago)}</td><td class="r">${fmtN(Math.max(0, p.valor - p.pago))}</td><td>${sitParc(p)}</td></tr>`).join("");
+    // Volume de cada NF na unidade do pedido (mesma conversão da Quant. Atendida)
+    const volume = (nfId?: string | null) => {
+      if (!nfId) return "—";
+      const v = volumeDaNf(itens, nfItens.filter(it => it.nf_entrada_id === nfId));
+      return v.length ? v.map(x => `${fmtN(x.quantidade, 3)} ${x.unidade}`.trim()).join(" + ") : "—";
+    };
+    const linhasParc = parcelas.map((p, i) => `<tr><td>${i + 1}</td><td>${p.origem}</td><td class="r">${volume(p.nf_entrada_id)}</td><td>${fmtData(p.vencimento)}</td><td class="r">${fmtN(p.valor)}</td><td class="r">${fmtN(p.pago)}</td><td class="r">${fmtN(Math.max(0, p.valor - p.pago))}</td><td>${sitParc(p)}</td></tr>`).join("");
     return `<div class="sx-ped">
 <div class="sx-grid" style="grid-template-columns:1fr 2fr 1fr">
   ${cel("Pedido nº", ped.nr_pedido || String(ped.numero ?? "—"))}
@@ -55,7 +62,7 @@ export function buildSinteticoHtml(dados: { ped: PedidoSintetico; itens: PedidoC
 <div class="sx-sec">PRODUTOS <span>(${itens.length})</span></div>
 <table class="sx-tab"><thead><tr><th>ID</th><th>Descrição</th><th class="r">Vlr. Un.</th><th>Unid.</th><th class="r">Quant. Total</th><th class="r">Quant. Atendida</th><th class="r">Quant. Cancelada</th><th class="r">Quant. Saldo</th><th class="r">Valor Atendido</th></tr></thead><tbody>${linhas || `<tr><td colspan="9" class="vazio">Sem itens</td></tr>`}</tbody></table>
 <div class="sx-sec">PARCELAS <span>(${parcelas.length})</span></div>
-<table class="sx-tab"><thead><tr><th>Nº</th><th>Origem</th><th>Vencimento</th><th class="r">Valor da Parcela</th><th class="r">Valor Pago</th><th class="r">Saldo</th><th>Situação</th></tr></thead><tbody>${linhasParc || `<tr><td colspan="7" class="vazio">Sem títulos no financeiro</td></tr>`}</tbody></table>
+<table class="sx-tab"><thead><tr><th>Nº</th><th>Origem</th><th class="r">Volume</th><th>Vencimento</th><th class="r">Valor da Parcela</th><th class="r">Valor Pago</th><th class="r">Saldo</th><th>Situação</th></tr></thead><tbody>${linhasParc || `<tr><td colspan="8" class="vazio">Sem títulos no financeiro</td></tr>`}</tbody></table>
 </div>`;
   }).join("");
   const arato = `${ctx.origem}/logo_Arato_Nova.png`;

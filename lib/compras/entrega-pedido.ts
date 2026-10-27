@@ -94,3 +94,20 @@ export function statusPorEntrega(
   const algum = temNfProcessada || linhas.some(l => (entregue.get(l.id) ?? 0) > 0);
   return todo ? "entregue" : algum ? "parcialmente_entregue" : "aprovado";
 }
+
+/**
+ * Volume de uma NF na unidade do pedido (relatório de pedidos: coluna Volume das parcelas). Soma por unidade: itens
+ * sem conversão segura para a unidade da linha ficam na unidade da própria NF.
+ */
+export function volumeDaNf(linhas: Linha[], nfItens: ItemNf[]): { quantidade: number; unidade: string }[] {
+  const { porId, porInsumo } = indexar(linhas);
+  const soma = new Map<string, number>();
+  for (const nf of nfItens) {
+    // Item da NF sem vínculo com o cadastro: num pedido de um produto só, é desse produto
+    const linha = (nf.insumo_id ? destinoDoItem(nf, porId, porInsumo) : undefined) ?? (linhas.length === 1 ? linhas[0] : undefined);
+    const fator = linha ? fatorParaLinha(nf, linha) : null;
+    const unidade = (fator !== null && linha ? (linha.unidade || nf.unidade) : nf.unidade) ?? "";
+    soma.set(unidade, (soma.get(unidade) ?? 0) + nf.quantidade * (fator ?? 1));
+  }
+  return Array.from(soma, ([unidade, quantidade]) => ({ quantidade, unidade }));
+}

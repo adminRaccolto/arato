@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-zg",
+    data: "27/10/2026",
+    titulo: "Volume da NF no relatório de pedidos",
+    modulos: ["Compras"],
+    itens: [
+      { tipo: "melhoria", texto: "Relatório de Pedidos de Compra Sintético: as parcelas ganharam a coluna Volume, com a quantidade de cada NF na unidade do pedido (ex.: 48,000 t)." },
+    ],
+    onde: "Comercial & Logística → Relatórios → Pedidos de Compra → Sintético",
+  },
+  {
     versao: "2026.10.27-zf",
     data: "27/10/2026",
     titulo: "Observação nos outros descontos da folha",

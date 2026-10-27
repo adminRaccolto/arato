@@ -388,7 +388,7 @@ export default function PedidosCompraRelatorioTab() {
       if (!pedido) continue;
       const pago = ["baixado", "pago"].includes(t.status) ? Number(t.valor_pago ?? t.valor) : Number(t.valor_pago ?? 0);
       const lista = porPedido.get(pedido) ?? [];
-      lista.push({ origem: nf ? `NF ${nf.numero}` : "Pedido", vencimento: t.data_vencimento, valor: Number(t.valor), pago, status: t.status });
+      lista.push({ origem: nf ? `NF ${nf.numero}` : "Pedido", nf_entrada_id: nf ? t.nf_entrada_id : null, vencimento: t.data_vencimento, valor: Number(t.valor), pago, status: t.status });
       porPedido.set(pedido, lista);
     }
     const nomeFaz = new Map((faz ?? []).map(f => [f.id as string, f.nome as string]));
