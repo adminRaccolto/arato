@@ -304,7 +304,9 @@ export default function ContasAReceberPage() {
       // Parciais, Baixados, Barter…), senão "Vencidos" ficaria sempre vazio.
       const olhaPassado = [...fStatus].some(st => st === "vencido" || st === "parcial" || st === "baixado") || ["barter", "contrato_financeiro", "compra_terra"].includes(fAtalho);
       if (periodoManual || (!fBusca.trim() && !nfBusca && !olhaPassado)) {
-        if (fDataDe) q = q.gte("data_vencimento", fDataDe);
+        // No período padrão, título vencido e ainda em aberto aparece sempre (o padrão começa hoje e o escondia).
+        if (fDataDe && !periodoManual) q = q.or(`data_vencimento.gte.${fDataDe},status_normalizado.in.(em_aberto,vencido,parcial)`);
+        else if (fDataDe) q = q.gte("data_vencimento", fDataDe);
         if (fDataAte) q = q.lte("data_vencimento", fDataAte);
       }
       if (nfBusca) q = q.ilike("nfe_numero", `%${nfBusca}%`);

@@ -375,7 +375,11 @@ export default function ContasAPagarPage() {
   const ATALHOS_SEM_DATA = new Set(["barter", "contrato_financeiro", "compra_terra"]);
   const filtroOlhaPassado = [...fStatus].some(st => st === "vencido" || st === "parcial" || st === "baixado") || ATALHOS_SEM_DATA.has(fAtalho);
   const buscaSemData = !periodoManual && (!!fBusca.trim() || !!filtrosCol.nf?.trim() || filtroOlhaPassado);
-  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: buscaSemData ? "" : fDataDe, ate: buscaSemData ? "" : fDataAte, hoje: hojeISO() };
+  // No período padrão, título vencido e ainda em aberto aparece sempre (o padrão começa hoje e o escondia).
+  const periodoPadrao = !periodoManual && !buscaSemData;
+  const filtrosCP = { origens: fOrigem, status: fStatus, busca: fBusca, nf: filtrosCol.nf ?? "", de: buscaSemData || periodoPadrao ? "" : fDataDe, ate: buscaSemData ? "" : fDataAte, hoje: hojeISO() };
+  const passaPeriodoPadrao = (l: RelLancamento) => !periodoPadrao || !fDataDe || (!!l.data_vencimento && l.data_vencimento >= fDataDe)
+    || ["em_aberto", "vencido", "parcial"].includes(l.status_normalizado ?? "");
   // O vínculo de itens é a referência mesmo quando rel_lancamentos ainda
   // não espelhou lote_id. Nenhum item agrupado fica disponível para seleção.
   const textoColuna = (l: RelLancamento, k: string): string => ({
@@ -405,7 +409,7 @@ export default function ContasAPagarPage() {
     if (fAtalho === "barter") return l.moeda === "barter";
     return l.origem_lancamento === fAtalho;
   };
-  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")));
+  const linhas = (resultado ?? []).filter(l => !tituloVinculado(l, vinculos) && filtrarTitulo(l, filtrosCP) && passaPeriodoPadrao(l) && passaColunas(l) && passaAtalho(l) && (fMoeda.size === 0 || fMoeda.has(l.moeda ?? "BRL")) && (fProdutor.size === 0 || fProdutor.has(l.produtor_nome ?? l.empresa_nome ?? "")));
   const borderosVisiveis = todosBorderos.filter(b => filtrarBordero(b, resultado ?? [], filtrosCP));
   type LinhaOuBordero = { kind: "lanc"; l: RelLancamento } | { kind: "bordero"; b: PagamentoLote; data: string; pago?: boolean };
   const linhasComBordero: LinhaOuBordero[] = [

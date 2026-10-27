@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-a",
+    data: "27/10/2026",
+    titulo: "CP e CR: vencidos em aberto sempre aparecem",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O período padrão (hoje até hoje + 60 dias) escondia os títulos já vencidos e ainda não pagos. Agora eles aparecem sempre na abertura do Contas a Pagar e do Contas a Receber, junto com o que vence nos próximos 60 dias." },
+    ],
+    onde: "Financeiro → Contas a Pagar / Contas a Receber",
+  },
+  {
     versao: "2026.10.26-b",
     data: "26/10/2026",
     titulo: "Um cadastro de fornecedor/cliente por CPF/CNPJ",
