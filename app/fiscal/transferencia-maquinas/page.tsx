@@ -11,9 +11,16 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import {
   listarTransferenciasMaquinas, criarTransferenciaMaquina, atualizarTransferenciaMaquina,
-  listarMaquinas, listarPessoasDaConta,
+  listarMaquinas, listarPessoasDaConta, criarNotaFiscal,
 } from "../../../lib/db";
 import type { TransferenciaMaquina, MotivoTransferenciaMaquina, Maquina, Pessoa } from "../../../lib/supabase";
+
+// Resposta de /api/fiscal/emitir-nfe (NFeResult): dados da NF e do emitente, gravados no Monitor para o DANFE
+type ResultadoEmissao = {
+  sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string;
+  emit_razao?: string; emit_cnpj?: string; emit_ie?: string; emit_endereco?: string; emit_numero?: string; emit_bairro?: string;
+  emit_municipio?: string; emit_uf?: string; emit_cep?: string; emit_fone?: string;
+};
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -91,7 +98,7 @@ export default function TransferenciaMaquinasPage() {
   const [erro,      setErro]      = useState("");
   const [f, setF] = useState({
     maquina_id: "", maquina_nome_livre: "", motivo: "conserto" as MotivoTransferenciaMaquina,
-    destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000",
+    destinatario_pessoa_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
     data_retorno_prevista: "", observacao: "",
     motorista_id: "", motorista_nome: "", motorista_cpf: "",
     // Etapa 1 quando NÃO emitimos NF-e nossa (comodato recebido) — dados opcionais
@@ -152,12 +159,49 @@ export default function TransferenciaMaquinasPage() {
 
   function abrirNova() {
     setF({
-      maquina_id: "", maquina_nome_livre: "", motivo: "conserto", destinatario_pessoa_id: "", valor_bem: "", ncm: "84329000",
+      maquina_id: "", maquina_nome_livre: "", motivo: "conserto", destinatario_pessoa_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
       data_retorno_prevista: "", observacao: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
       nf_terceiro_numero: "", nf_terceiro_chave: "", nf_terceiro_data: "",
     });
     setErro("");
     setModalNova(true);
+  }
+
+  // NF-e emitida aqui entra no Monitor de NF-e Emitidas (notas_fiscais) — sem isso não havia DANFE para imprimir nem
+  // como cancelar/corrigir pelo Monitor (mesmo caso já corrigido na devolução de compra). Falha aqui não desfaz a NF.
+  async function registrarNoMonitor(res: ResultadoEmissao, fazId: string | null | undefined, moduloKey: string | undefined, d: {
+    natureza: string; tipo: "saida" | "entrada"; cfop: string; descricao: string; ncm: string; valor: number; destinatario: string;
+    cnpj?: string | null; ie?: string | null; uf?: string | null; cidade?: string | null; endereco?: string | null; numero?: string | null; observacao?: string | null;
+  }) {
+    if (!fazId || !res.chave) return;
+    const cfop = d.cfop.replace(/\D/g, "");
+    try {
+      await criarNotaFiscal({
+        fazenda_id: fazId, numero: res.numero ?? "", serie: res.serie ?? "1", tipo: d.tipo,
+        cfop: cfop.length === 4 ? `${cfop.slice(0, 1)}.${cfop.slice(1)}` : cfop, natureza: d.natureza,
+        destinatario: d.destinatario, cnpj_destinatario: (d.cnpj ?? "").replace(/\D/g, "") || undefined,
+        valor_total: d.valor, data_emissao: hojeLocal(), status: "autorizada", chave_acesso: res.chave, xml_url: res.xmlUrl,
+        auto: false, tipo_emissao: 1, observacao: d.observacao || undefined,
+        itens_json: [{ item: d.descricao, ncm: d.ncm, cfop, unidade: "UN", quantidade: 1, valor_unitario: d.valor, valor_total: d.valor }],
+        dados_nf_json: {
+          modulo_key: moduloKey, protocolo_autorizacao: res.protocolo || undefined,
+          emit_razao: res.emit_razao, emit_cnpj: res.emit_cnpj, emit_ie: res.emit_ie, emit_endereco: res.emit_endereco, emit_numero: res.emit_numero,
+          emit_bairro: res.emit_bairro, emit_municipio: res.emit_municipio, emit_uf: res.emit_uf, emit_cep: res.emit_cep, emit_fone: res.emit_fone,
+          dest_ie: (d.ie ?? "").replace(/\D/g, "") || undefined, dest_uf: d.uf || undefined, dest_cidade: d.cidade || undefined,
+          dest_endereco: d.endereco || undefined, dest_numero: d.numero || undefined,
+        },
+      } as never);
+    } catch (e) {
+      console.error("[transferencia-maquinas] não registrou no Monitor de NF-e:", e);
+    }
+  }
+
+  // DANFE da NF-e da movimentação (abre a mesma tela de impressão do Monitor)
+  async function abrirDanfe(chave: string | null | undefined) {
+    if (!chave) return;
+    const { data } = await supabase.from("notas_fiscais").select("id").eq("chave_acesso", chave).limit(1).maybeSingle();
+    if (data?.id) window.open(`/comercial/faturamento/danfe/${data.id}`, "_blank");
+    else alert("Esta NF-e ainda não está no Monitor de NF-e Emitidas. Fale com o suporte para registrá-la.");
   }
 
   async function emitirRemessa() {
@@ -237,7 +281,7 @@ export default function TransferenciaMaquinasPage() {
           destinatario: {
             nome: dest.nome,
             cpf_cnpj: (dest.cpf_cnpj ?? "").replace(/\D/g, "") || undefined,
-            ie: dest.inscricao_est || undefined,
+            ie: f.dest_ie.replace(/\D/g, "") || undefined,
             logradouro: dest.logradouro || undefined,
             numero: dest.numero || undefined,
             bairro: dest.bairro || undefined,
@@ -256,9 +300,14 @@ export default function TransferenciaMaquinasPage() {
           tipo: "1",
         }),
       });
-      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
+      const res = await resp.json() as ResultadoEmissao;
       if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
       if (!maquina) throw new Error("Máquina não selecionada."); // guarda pro TS — já validado acima
+      await registrarNoMonitor(res, em.fazenda_id ?? fazendaId, moduloKey, {
+        natureza: motivoCfg.naturezaEtapa1, tipo: "saida", cfop: motivoCfg.cfopEtapa1 ?? "", descricao: nomeBem, ncm: f.ncm, valor,
+        destinatario: dest.nome, cnpj: dest.cpf_cnpj, ie: f.dest_ie, uf: dest.estado, cidade: dest.municipio, endereco: dest.logradouro, numero: dest.numero,
+        observacao: f.observacao,
+      });
 
       // A transferência é da fazenda onde a máquina está cadastrada — nunca da fazenda do perfil de quem lança.
       const novo = await criarTransferenciaMaquina({
@@ -272,7 +321,7 @@ export default function TransferenciaMaquinasPage() {
         destinatario_pessoa_id: dest.id,
         destinatario_nome: dest.nome,
         destinatario_cnpj: dest.cpf_cnpj ?? undefined,
-        destinatario_ie: dest.inscricao_est ?? undefined,
+        destinatario_ie: f.dest_ie.replace(/\D/g, "") || undefined,
         destinatario_municipio: dest.municipio ?? undefined,
         destinatario_uf: dest.estado ?? undefined,
         ncm: f.ncm,
@@ -361,8 +410,14 @@ export default function TransferenciaMaquinasPage() {
           tipo: tipoNfRetorno,
         }),
       });
-      const res = await resp.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat?: string; xMotivo?: string };
+      const res = await resp.json() as ResultadoEmissao;
       if (!res.sucesso || !res.chave) throw new Error(`SEFAZ [${res.cStat}]: ${res.xMotivo}`);
+      await registrarNoMonitor(res, emR.fazenda_id ?? fazendaId, moduloKey, {
+        natureza: motivoCfg.naturezaEtapa2, tipo: tipoNfRetorno === "1" ? "saida" : "entrada", cfop: modalRet.cfop_retorno ?? "", descricao: modalRet.maquina_nome,
+        ncm: modalRet.ncm, valor: modalRet.valor_bem, destinatario: modalRet.destinatario_nome, cnpj: modalRet.destinatario_cnpj, ie: modalRet.destinatario_ie,
+        uf: modalRet.destinatario_uf, cidade: modalRet.destinatario_municipio,
+        observacao: modalRet.nf_saida_numero ? `Retorno da remessa NF ${modalRet.nf_saida_numero}` : undefined,
+      });
 
       await atualizarTransferenciaMaquina(modalRet.id, {
         status: "retornada",
@@ -456,7 +511,13 @@ export default function TransferenciaMaquinasPage() {
                     <td style={{ padding: "10px 12px" }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, background: sm.bg, color: sm.cl }}>{sm.label}</span>
                     </td>
-                    <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                    <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
+                      {motivoCfgLinha.emiteNfEtapa1 && i.direcao === "saida" && i.nf_saida_chave && (
+                        <OperationalButton data-arato-button="secondary" onClick={() => abrirDanfe(i.nf_saida_chave)} style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, marginRight: 6 }}>🖨 DANFE</OperationalButton>
+                      )}
+                      {i.nf_retorno_chave && (
+                        <OperationalButton data-arato-button="secondary" onClick={() => abrirDanfe(i.nf_retorno_chave)} style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, marginRight: 6 }}>🖨 DANFE retorno</OperationalButton>
+                      )}
                       {i.status === "emitida" && motivoCfgLinha.temEtapa2 && (
                         <OperationalButton data-arato-button="primary" onClick={() => { setModalRet(i); setRetErro(""); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                           {labelBotaoRetorno}
@@ -538,10 +599,19 @@ export default function TransferenciaMaquinasPage() {
                   {MOTIVOS[f.motivo].direcao === "entrada" ? "Proprietário / Prestador de serviço" : "Destinatário"}
                   {f.motivo === "transferencia_fazenda" ? " (empresa/produtor da fazenda de destino)" : ""}
                 </label>
-                <SelectBusca value={f.destinatario_pessoa_id} onChange={v => setF(p => ({ ...p, destinatario_pessoa_id: v }))}
+                <SelectBusca value={f.destinatario_pessoa_id} onChange={v => setF(p => ({ ...p, destinatario_pessoa_id: v, dest_ie: pessoas.find(ps => ps.id === v)?.inscricao_est ?? "" }))}
                   placeholder="— Selecionar —" style={inp}
                   options={pessoas.map(ps => ({ value: ps.id, label: `${ps.nome}${ps.cpf_cnpj ? " · " + ps.cpf_cnpj : ""}` }))} />
               </div>
+              {MOTIVOS[f.motivo].emiteNfEtapa1 && (
+                <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1" }}>
+                  <label data-arato-label="true" style={lbl}>Inscrição Estadual do destinatário{f.motivo === "transferencia_fazenda" ? " (IE da fazenda de destino)" : ""}</label>
+                  <input value={f.dest_ie} onChange={e => setF(p => ({ ...p, dest_ie: e.target.value }))} style={inp} placeholder="Somente números — vazio = destinatário não contribuinte" />
+                  {f.destinatario_pessoa_id && !f.dest_ie.replace(/\D/g, "") && (
+                    <span style={{ fontSize: 11, color: "#B45309" }}>Sem IE a NF-e sai com o destinatário como não contribuinte. Produtor rural e empresa com IE: informe a IE.</span>
+                  )}
+                </div>
+              )}
 
               <div data-arato-dialog-body="true">
                 <label data-arato-label="true" style={lbl}>Valor do Bem (R$)</label>

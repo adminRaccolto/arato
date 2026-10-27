@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-r",
+    data: "27/10/2026",
+    titulo: "Transferência de máquinas: IE do destinatário, Monitor e DANFE",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A NF-e de transferência de máquinas e equipamentos (remessa e retorno) não entrava no Monitor de NF-e Emitidas, então não havia onde imprimir o DANFE nem como cancelar. Agora entra ao ser emitida, e a lista da transferência tem o botão 🖨 DANFE." },
+      { tipo: "melhoria", texto: "O formulário pede a Inscrição Estadual do destinatário (vem do cadastro e pode ser alterada). Na transferência entre fazendas, informe a IE da fazenda de destino; sem IE a NF-e sai com o destinatário como não contribuinte." },
+    ],
+    onde: "Documentos Fiscais → Transferência de Máquinas e Equipamentos; Fiscal → Monitor de NF-e Emitidas",
+  },
+  {
     versao: "2026.10.27-q",
     data: "27/10/2026",
     titulo: "Adiantamento: mesmo fornecedor, e funcionário pagando conta do produtor",
