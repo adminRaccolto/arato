@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ajustarVinculosParaFk, linhaMudou } from "./conciliacao.ts";
+import { ajustarVinculosParaFk, caixaDoBordero, linhaMudou, pagoSemExtrato } from "./conciliacao.ts";
 
 test("título de Empresa (fora de lancamentos) vai só para lancamento_ids e lancamento_id fica nulo", () => {
   const rows = [{ lancamento_id: "emp-1", lancamento_ids: null as string[] | null }];
@@ -54,4 +54,25 @@ test("sugestão de título de Empresa (fora de lancamentos) é anulada para não
   ajustarVinculosParaFk(rows, new Set(["prod-1"]));
   assert.equal(rows[0].sugestao_lancamento_id, null);
   assert.equal(rows[1].sugestao_lancamento_id, "prod-1");
+});
+
+test("borderô pago: caixa = principal + juros + multa − desconto", () => {
+  assert.equal(caixaDoBordero({ status: "pago", valor_total: 8277.2, valor_pago: 8277.2, valor_juros: 833.23 }), 9110.43);
+  assert.equal(caixaDoBordero({ status: "pago", valor_total: 10114.46, valor_pago: 10114.46, valor_desconto: 241.26 }), 9873.2);
+  assert.equal(caixaDoBordero({ status: "pago", valor_total: 9182.71 }), 9182.71);
+});
+
+test("borderô pendente: o saldo em aberto", () => {
+  assert.equal(caixaDoBordero({ status: "pendente", valor_total: 1000 }), 1000);
+  assert.equal(caixaDoBordero({ status: "pendente", valor_total: 1000, valor_pago: 400 }), 600);
+});
+
+test("dois pagamentos parciais registrados no CP: cada linha cobre um pedaço", () => {
+  assert.equal(pagoSemExtrato(10000, []), 10000);
+  assert.equal(pagoSemExtrato(10000, [{ valor: -4000, titulos: 1 }]), 6000);
+  assert.equal(pagoSemExtrato(10000, [{ valor: -4000, titulos: 1 }, { valor: -6000, titulos: 1 }]), 0);
+});
+
+test("linha ligada a vários títulos cobre o título inteiro", () => {
+  assert.equal(pagoSemExtrato(500, [{ valor: -1500, titulos: 3 }]), 0);
 });

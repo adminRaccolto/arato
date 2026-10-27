@@ -7,6 +7,19 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-j",
+    data: "27/10/2026",
+    titulo: "Conciliação: borderô inteiro e pagamentos parciais",
+    modulos: ["Financeiro"],
+    itens: [
+      { tipo: "correcao", texto: "O borderô vale o que saiu do banco (principal + juros + multa − desconto), não a soma das NFs. Borderô com juros ou desconto não batia com a linha do extrato." },
+      { tipo: "melhoria", texto: "Borderô já pago no Contas a Pagar e ainda não conciliado aparece também na aba CP/CR em aberto, como uma linha só, pela data do pagamento." },
+      { tipo: "correcao", texto: "Borderô com títulos da Empresa aparece agrupado (antes vinha desmembrado, título a título)." },
+      { tipo: "correcao", texto: "Título pago em mais de uma vez no Contas a Pagar aceita uma linha do extrato para cada pagamento. A linha é comparada com o valor pago que ainda não tem linha, sem pedir motivo de diferença e sem somar o pagamento de novo." },
+    ],
+    onde: "Financeiro → Conciliação Bancária",
+  },
+  {
     versao: "2026.10.27-i",
     data: "27/10/2026",
     titulo: "Relatório de NFs canceladas pelo emitente",

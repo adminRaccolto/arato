@@ -195,10 +195,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3b. Borderô (lote de pagamento) conciliado = todos os títulos dele ligados a uma linha
+    // 3b. Borderô (lote de pagamento) conciliado = todos os títulos dele ligados a uma linha (produtor e empresa)
     if (idsConciliar.length) {
-      const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", idsConciliar).not("lote_id", "is", null);
-      const loteIds = Array.from(new Set((ls ?? []).map(l => l.lote_id as string)));
+      const [{ data: ls }, { data: le }] = await Promise.all([
+        sb.from("lancamentos").select("lote_id").in("id", idsConciliar).not("lote_id", "is", null),
+        sb.from("empresa_lancamentos").select("lote_id").in("id", idsConciliar).not("lote_id", "is", null),
+      ]);
+      const loteIds = Array.from(new Set([...(ls ?? []), ...(le ?? [])].map(l => l.lote_id as string)));
       if (loteIds.length) {
         const r = await sb.from("pagamento_lotes").update({ conciliado: true }).in("id", loteIds);
         if (r.error) falhas.push(`borderô conciliado: ${r.error.message}`);
@@ -216,8 +219,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.lancamento_ids_desconciliados?.length) {
-      const { data: ls } = await sb.from("lancamentos").select("lote_id").in("id", body.lancamento_ids_desconciliados).not("lote_id", "is", null);
-      const loteIds = Array.from(new Set((ls ?? []).map(l => l.lote_id as string)));
+      const [{ data: ls }, { data: le }] = await Promise.all([
+        sb.from("lancamentos").select("lote_id").in("id", body.lancamento_ids_desconciliados).not("lote_id", "is", null),
+        sb.from("empresa_lancamentos").select("lote_id").in("id", body.lancamento_ids_desconciliados).not("lote_id", "is", null),
+      ]);
+      const loteIds = Array.from(new Set([...(ls ?? []), ...(le ?? [])].map(l => l.lote_id as string)));
       if (loteIds.length) await sb.from("pagamento_lotes").update({ conciliado: false }).in("id", loteIds);
     }
 

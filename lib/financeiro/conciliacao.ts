@@ -52,3 +52,30 @@ export function linhaMudou(ex: Existente | undefined, r: Nova, colunasNovas: boo
     || Math.abs(ex.valor - r.valor) >= 0.01
     || (colunasNovas && ((ex.origem_vinculo ?? null) !== (r.origem_vinculo ?? null) || (ex.confianca ?? null) !== (r.confianca ?? null)));
 }
+
+const centavos = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
+
+/**
+ * Quanto saiu (ou sai) do banco num borderô — o valor que a linha do extrato tem que ter. Pago: principal liquidado +
+ * juros + multa − desconto (a soma dos títulos não serve: com juros/desconto nunca batia com o extrato). Pendente: o
+ * saldo em aberto, que a confirmação pela conciliação paga inteiro. Legado sem valor_pago foi quitado integralmente.
+ */
+export function caixaDoBordero(b: { status?: string | null; valor_total: number; valor_pago?: number | null; valor_juros?: number | null; valor_multa?: number | null; valor_desconto?: number | null }): number {
+  const liquidado = Number(b.valor_pago ?? (b.status === "pago" ? b.valor_total : 0));
+  if (b.status !== "pago") return centavos(Math.max(0, Number(b.valor_total) - liquidado));
+  return centavos(liquidado + Number(b.valor_juros ?? 0) + Number(b.valor_multa ?? 0) - Number(b.valor_desconto ?? 0));
+}
+
+/**
+ * Parte do valor já pago de um título que ainda não tem linha do extrato. O CP guarda só o total pago (dois parciais de
+ * 4.000 e 6.000 viram "pago 10.000"), então cada linha do banco cobre um pedaço: o título aceita linhas até cobrir o que
+ * foi pago, sem somar pagamento de novo. Linha ligada a vários títulos (borderô, boleto agrupado) cobre o título inteiro.
+ */
+export function pagoSemExtrato(valorPago: number, linhasVinculadas: { valor: number; titulos: number }[]): number {
+  let coberto = 0;
+  for (const l of linhasVinculadas) {
+    if (l.titulos > 1) return 0;
+    coberto += Math.abs(l.valor);
+  }
+  return centavos(Math.max(0, valorPago - coberto));
+}

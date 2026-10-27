@@ -13,6 +13,7 @@ import TopNav from "../../../components/TopNav";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarCentrosCustoGeralDaConta, listarPessoasDaConta, listarProdutoresDaConta } from "../../../lib/db";
 import { carregarNumerosNF } from "../../../lib/financeiro/numeros-nf";
+import { caixaDoBordero, pagoSemExtrato } from "../../../lib/financeiro/conciliacao";
 import { avaliarLinhas, escolherRegra, sugerirTextoRegra, diferencaSoma, normalizarTexto, type LancMatch } from "../../../lib/conciliacao-match";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -85,6 +86,10 @@ interface LoteInfo {
   status: string;                       // "pendente" (ainda não baixou) | "pago"
   tipo: "pagar" | "receber";
   valor_total: number;
+  valor_pago?: number | null;           // principal liquidado; caixa = principal + juros + multa − desconto (caixaDoBordero)
+  valor_juros?: number | null;
+  valor_multa?: number | null;
+  valor_desconto?: number | null;
   data_pagamento: string | null;
   conta_bancaria: string | null;
   descricao: string | null;
@@ -488,7 +493,7 @@ function ConciliacaoInner() {
     const emp: Lancamento[] = [];
     for (let f = 0; ; f += PAGE) {
       let q = supabase.from("empresa_lancamentos")
-        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_pagamento,status,categoria,conciliado,moeda,pessoa_id")
+        .select("id,tipo,descricao,valor,valor_pago,data_vencimento,data_pagamento,status,categoria,conciliado,moeda,pessoa_id,lote_id")
         .in("fazenda_id", fazIds)
         .not("status", "eq", "cancelado")
         .order("data_vencimento", { ascending: false })
@@ -505,7 +510,7 @@ function ConciliacaoInner() {
           status: e.status === "pago" ? "baixado" : "em_aberto",
           categoria: (e.categoria as string) ?? undefined, conciliado: !!e.conciliado,
           moeda: (e.moeda as string) ?? "BRL", pessoa_id: (e.pessoa_id as string) ?? null,
-          origem_tabela: "empresa_lancamentos",
+          origem_tabela: "empresa_lancamentos", lote_id: (e.lote_id as string) ?? null,
         } as Lancamento);
       }
       if (!data || data.length < PAGE) break;
@@ -565,7 +570,7 @@ function ConciliacaoInner() {
     // Borderôs (lotes de pagamento) e seus títulos
     try {
       const lt = await paginar<Omit<LoteInfo, "itens">>((de, ate) => supabase.from("pagamento_lotes")
-        .select("id,status,tipo,valor_total,data_pagamento,conta_bancaria,descricao,conciliado")
+        .select("id,status,tipo,valor_total,valor_pago,valor_juros,valor_multa,valor_desconto,data_pagamento,conta_bancaria,descricao,conciliado")
         .in("fazenda_id", fazendaIds).order("id").range(de, ate) as unknown as PromiseLike<{ data: Omit<LoteInfo, "itens">[] | null; error: { message: string } | null }>);
       const mapa = new Map<string, LoteInfo>(lt.map(l => [l.id, { ...l, valor_total: Number(l.valor_total), itens: [] }]));
       const ids = Array.from(mapa.keys());
@@ -1170,16 +1175,31 @@ function ConciliacaoInner() {
     for (const l of selecionados) { const lt = loteDe(l); if (lt) lotesSel.set(lt.id, lt); }
     for (const lt of lotesSel.values()) {
       if (lt.itens.some(i => !ids.includes(i.lancamento_id))) {
-        alert(`Este lançamento faz parte de um borderô de ${lt.itens.length} título(s) (${fmtBRL(lt.itens.reduce((sm, i) => sm + i.valor_pago, 0))}). A linha do extrato é o total do borderô — selecione o borderô inteiro.`);
+        alert(`Este lançamento faz parte de um borderô de ${lt.itens.length} título(s) (${fmtBRL(caixaDoBordero(lt))}). A linha do extrato é o total do borderô — selecione o borderô inteiro.`);
         return;
       }
     }
     const unico = selecionados.length === 1 && lotesSel.size === 0;
 
+    // Pagamentos parciais registrados no CP: o título guarda só o TOTAL pago (4.000 + 6.000 = "pago 10.000"), e cada
+    // linha do banco é um pedaço. `livre` = quanto do pago ainda não tem linha do extrato — o título aceita linhas até
+    // cobrir isso, sem somar pagamento de novo (antes a linha de 4.000 era comparada com os 10.000 e virava "diferença"
+    // ou pagamento novo, e a 2ª linha era recusada como "já conciliado").
+    const livre = new Map<string, number>();
+    for (const l of selecionados) {
+      if (loteDe(l) || !(l.status === "baixado" || ehParcial(l))) continue;
+      const { data: vinc } = await supabase.from("extrato_transacoes").select("valor, lancamento_id, lancamento_ids")
+        .eq("conciliado", true).or(`lancamento_id.eq.${l.id},lancamento_ids.cs.{${l.id}}`);
+      livre.set(l.id, pagoSemExtrato(Number(l.valor_pago ?? l.valor), (vinc ?? []).map(v => ({
+        valor: Number(v.valor), titulos: (v.lancamento_ids as string[] | null)?.length || (v.lancamento_id ? 1 : 0),
+      }))));
+    }
+    const cabeNoPago = (l: Lancamento) => unico && (livre.get(l.id) ?? 0) > 0.02 && linha.valor <= (livre.get(l.id) ?? 0) + 0.02;
+
     // 1 lançamento ↔ 1 linha: lançamento já conciliado com outra linha não pode ser reaproveitado
     // (era como o mesmo CP acabava ligado a várias linhas do extrato). Parcial que já tem a marca
-    // pode receber outro pagamento.
-    let jaConc = selecionados.filter(l => l.conciliado && !ehParcial(l) && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
+    // pode receber outro pagamento; baixado com parte do pago ainda sem linha recebe a próxima linha.
+    let jaConc = selecionados.filter(l => l.conciliado && !ehParcial(l) && !cabeNoPago(l) && !extrato.linhas.some(x => x.id === linha.id && (x.lancamento_ids?.includes(l.id) || x.lancamento_id === l.id)));
     // A marca `conciliado` do lançamento pode ficar ÓRFÃ (extrato desconciliado/reimportado sem
     // limpar o lançamento) — "conciliação fantasma": bloqueava o vínculo pra sempre, com a
     // mensagem abaixo, sem existir nenhuma outra linha. Confere no banco se ALGUMA linha ativa
@@ -1231,10 +1251,18 @@ function ConciliacaoInner() {
         }
         return { l, baixa: false, esp, pago: Number(l.valor_pago ?? l.valor), status: (l.status === "baixado" ? "baixado" : "parcial") as "baixado" | "parcial" };
       }
-      if (l.status === "baixado") return { l, baixa: false, pago: Number(l.valor_pago ?? l.valor), status: "baixado" as const };
+      const solto = livre.get(l.id) ?? 0;
+      if (l.status === "baixado") {
+        // esperado = o pedaço do pago que ainda não tem linha (sem nada solto, o pago inteiro, como antes)
+        const esp = solto > 0.02 ? (unico ? Math.min(solto, linha.valor) : solto) : undefined;
+        return { l, baixa: false, esp, pago: Number(l.valor_pago ?? l.valor), status: "baixado" as const };
+      }
       const pagoAntes = Number(l.valor_pago ?? 0);
-      if (ehParcial(l) && unico && Math.abs(linha.valor - pagoAntes) <= 0.02) {
-        return { l, baixa: false, pago: pagoAntes, status: "parcial" as const };   // pagamento já registrado
+      if (ehParcial(l) && cabeNoPago(l)) {
+        // a linha cabe no que já foi pago no CP: é parte desse pagamento (só vincula) — quando não bate exato, pergunta
+        const exato = Math.abs(linha.valor - solto) <= 0.02 || Math.abs(linha.valor - pagoAntes) <= 0.02;
+        const jaLancado = exato || window.confirm(`"${l.descricao}" tem ${fmtBRL(solto)} pago no Contas a Pagar ainda sem linha do extrato.\n\nA linha de ${fmtBRL(linha.valor)} é parte desse pagamento já lançado?\n\nOK = sim, só vincular (o valor pago não muda)\nCancelar = não, é um pagamento novo (soma ao valor pago)`);
+        if (jaLancado) return { l, baixa: false, esp: linha.valor, pago: pagoAntes, status: "parcial" as const };
       }
       const pagaAgora = unico ? linha.valor : valorRestante(l);
       const total = pagoAntes + pagaAgora;
@@ -1245,7 +1273,13 @@ function ConciliacaoInner() {
     // (parcial ou total), não diferença; linha MAIOR que o saldo (juros/multa) exige motivo.
     // Vários lançamentos (borderô): a soma precisa bater com a linha, senão exige motivo.
     let justificativa = "";
-    const esperado = unico && planos[0].baixa ? valorRestante(planos[0].l) : planos.reduce((sm, p) => sm + (p.esp ?? (p.baixa ? valorRestante(p.l) : p.pago)), 0);
+    // Borderô entra pelo que saiu do banco (principal + juros + multa − desconto), uma vez; os demais título a título
+    const esperado = unico && planos[0].baixa ? valorRestante(planos[0].l)
+      : Math.round((Array.from(lotesSel.values()).reduce((sm, lt) => sm + caixaDoBordero(lt), 0)
+        + planos.filter(p => !loteDe(p.l)).reduce((sm, p) => sm + (p.esp ?? (p.baixa ? valorRestante(p.l) : p.pago)), 0)) * 100) / 100;
+    // Baixado que ainda fica com parte do pago sem linha do extrato não ganha a marca de conciliado (continua
+    // selecionável para a próxima linha)
+    const aindaSolto = new Set(planos.filter(p => p.l.status === "baixado" && !p.baixa && (livre.get(p.l.id) ?? 0) - linha.valor > 0.02 && unico).map(p => p.l.id));
     const dif = Math.round((linha.valor - esperado) * 100) / 100;
     const excesso = unico && planos[0].baixa ? dif > 0.02 : Math.abs(dif) > 0.02;
     if (excesso) {
@@ -1284,7 +1318,7 @@ function ConciliacaoInner() {
     setLancamentos(prev => prev.map(l => {
       const pl = planos.find(p => p.l.id === l.id);
       if (!pl) return l;
-      return { ...l, ...(pl.baixa || pl.porLote ? { status: pl.status, data_baixa: linha.data, valor_pago: pl.pago } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: true };
+      return { ...l, ...(pl.baixa || pl.porLote ? { status: pl.status, data_baixa: linha.data, valor_pago: pl.pago } : {}), conta_bancaria: extrato.conta_id || l.conta_bancaria, conciliado: !aindaSolto.has(l.id) };
     }));
 
     // Vincular à linha OFX
@@ -1304,7 +1338,7 @@ function ConciliacaoInner() {
     const ok = await persistExtrato(
       { ...extrato, linhas: novasLinhas, conciliados: conciliadoN, pendentes: novasLinhas.length - conciliadoN },
       {
-        conciliarIds: ids,
+        conciliarIds: ids.filter(id => !aindaSolto.has(id)),
         baixar: baixas.map(p => ({ id: p.l.id, data_baixa: linha.data, valor_pago: p.pago, status: p.status, conta_bancaria: extrato.conta_id || undefined })),
         moverConta,
         // já baixado sem conta bancária → grava a conta deste extrato (senão a Posição
@@ -1897,6 +1931,17 @@ function ConciliacaoInner() {
   const itemDoLote = (l: Lancamento) => loteDe(l)?.itens.find(i => i.lancamento_id === l.id);
   // Quanto a linha do banco deve cobrir por este lançamento: no borderô é o valor do item; fora dele, o que falta pagar
   const valorParaLinha = (l: Lancamento) => { const it = itemDoLote(l); return it ? Number(it.valor_pago) : valorRestante(l); };
+  // Soma do que os lançamentos selecionados cobrem: cada borderô entra uma vez, pelo que saiu do banco
+  const valorDaSelecao = (sel: Lancamento[]) => {
+    const vistos = new Set<string>();
+    let total = 0;
+    for (const l of sel) {
+      const lt = loteDe(l);
+      if (!lt) total += valorParaLinha(l);
+      else if (!vistos.has(lt.id)) { vistos.add(lt.id); total += caixaDoBordero(lt); }
+    }
+    return Math.round(total * 100) / 100;
+  };
   const compsDoLote = (lt: LoteInfo) => lt.itens.map(i => lancamentos.find(x => x.id === i.lancamento_id)).filter((x): x is Lancamento => !!x);
   type LinhaSis = { key: string; lote?: LoteInfo; comps: Lancamento[]; l: Lancamento };
   // Só borderô com 2+ títulos vira linha agrupada; com 1 título continua uma linha normal (a confirmação
@@ -1915,7 +1960,8 @@ function ConciliacaoInner() {
     }
     return out;
   };
-  const valorLinhaSis = (r: LinhaSis) => (r.lote ? r.comps.reduce((sm, c) => sm + valorParaLinha(c), 0) : valorRestante(r.l));
+  // Borderô vale o que saiu do banco (principal + juros + multa − desconto), não a soma das NFs dentro dele
+  const valorLinhaSis = (r: LinhaSis) => (r.lote ? caixaDoBordero(r.lote) : valorRestante(r.l));
   const receberLinhaSis = (r: LinhaSis) => (r.lote ? r.lote.tipo === "receber" : r.l.tipo === "receber");
   const selecionadaLinhaSis = (r: LinhaSis) => r.comps.length > 0 && r.comps.every(c => lancsSel.has(c.id));
   const alternarLinhaSis = (r: LinhaSis) => setLancsSel(prev => {
@@ -1949,11 +1995,13 @@ function ConciliacaoInner() {
   const igualAoValorSis = (r: LinhaSis) => !!linhaAtiva && Math.abs(valorLinhaSis(r) - linhaAtiva.valor) <= 0.02;
 
   // Aba 2 — CP/CR abertos e parciais (filtro: data de vencimento; a busca ignora o intervalo).
-  // "Incluir baixados": também os já baixados que ainda não foram conciliados (ex.: borderô pago no CP).
+  // Borderô já pago no CP e ainda não conciliado também entra (uma linha só, pelo valor que saiu do banco): é o que
+  // falta casar com o extrato, e na aba Baixados ele ficava escondido entre os já conciliados.
   const baseAbertos = lancamentos.filter(l => {
     if (l.status === "cancelado" || !passaTipo(l)) return false;
-    if (l.status === "baixado") return false;
-    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(l.data_vencimento);
+    const lt = l.status === "baixado" ? loteDe(l) : undefined;
+    if (l.status === "baixado" && (!lt || lt.conciliado || l.conciliado)) return false;
+    return buscaTxt ? passaBuscaLanc(l) : emIntervalo(lt ? (lt.data_pagamento ?? l.data_baixa ?? l.data_vencimento) : l.data_vencimento);
   });
   const linhasAbertos = (() => {
     let rows = agruparLotes(baseAbertos);
@@ -1992,7 +2040,7 @@ function ConciliacaoInner() {
     if (lancsSel.size === 0) return null;
     const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
     if (sel.length === 0) return null;
-    return { valor: sel.reduce((sm, l) => sm + valorParaLinha(l), 0), receber: sel[0].tipo === "receber" };
+    return { valor: valorDaSelecao(sel), receber: sel[0].tipo === "receber" };
   })();
   const linhaBateComSelecao = (x: LinhaOFX) =>
     !!alvoSelecionado && !x.conciliado && (x.tipo === "credito") === alvoSelecionado.receber && Math.abs(x.valor - alvoSelecionado.valor) <= 0.02;
@@ -2024,7 +2072,7 @@ function ConciliacaoInner() {
       const cid = `lote:${lt.id}`;
       cands.push({
         id: cid, tipo: lt.tipo, descricao: lt.descricao ?? "Borderô",
-        valor: comps.reduce((sm, c) => sm + valorParaLinha(c), 0),
+        valor: caixaDoBordero(lt),
         data_vencimento: comps.map(c => c.data_vencimento).sort()[0], data_baixa: pago ? lt.data_pagamento : null,
         status: pago ? "baixado" : "em_aberto", conta_bancaria: lt.conta_bancaria,
         produtor_id: comps[0]?.produtor_id ?? null, conciliado: lt.conciliado || comps.every(c => c.conciliado), moeda: "BRL",
@@ -2075,7 +2123,7 @@ function ConciliacaoInner() {
     const contaEx = extrato.conta_id;
     const contaDe = (r: LinhaSis) => r.lote?.conta_bancaria ?? r.l.conta_bancaria;
     const baixaDe = (r: LinhaSis) => r.lote?.data_pagamento ?? r.l.data_baixa ?? r.l.data_vencimento;
-    const valorDe = (r: LinhaSis) => (r.lote ? r.comps.reduce((sm, c) => sm + valorParaLinha(c), 0) : Number(r.l.valor_pago ?? r.l.valor));
+    const valorDe = (r: LinhaSis) => (r.lote ? caixaDoBordero(r.lote) : Number(r.l.valor_pago ?? r.l.valor));
     const base = lancamentos.filter(l => l.status === "baixado" && !l.conciliado && !origemPorLanc.has(l.id) && (!l.moeda || l.moeda === "BRL"));
     const rows = agruparLotes(base).filter(r => {
       const c = contaDe(r);
@@ -3249,8 +3297,8 @@ function ConciliacaoInner() {
                     ? <>Marque o(s) lançamento(s) já baixado(s) e ainda <strong>pendentes</strong> que correspondem à linha de <strong>{fmtBRL(linhaAtiva.valor)}</strong> — pode marcar mais de um (pagamento agrupado).</>
                     : "Todos os lançamentos baixados no período (data de baixa). O sinaleiro mostra se já foram conciliados com o extrato; pra vincular um baixado pendente, clique em Vincular numa linha do OFX e marque-o aqui.")}
                   {abaSistema === "abertos" && (linhaAtiva
-                    ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento; a busca ignora o período.</>
-                    : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#1A4870", fontWeight: 700 }}>destaque azul</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento; a busca ignora o período.</>)}
+                    ? <>Passo 2: marque o(s) lançamento(s) da linha de <strong style={{ color: linhaAtiva.tipo === "debito" ? COR_NEG : "var(--text-1)" }}>{linhaAtiva.tipo === "debito" ? "−" : "+"}{fmtBRL(linhaAtiva.valor)}</strong>. Período por data de vencimento (borderô pago: data do pagamento); a busca ignora o período.</>
+                    : <>Passo 1: clique em <strong>Vincular</strong> numa linha do OFX. Em <span style={{ color: "#1A4870", fontWeight: 700 }}>destaque azul</span>, lançamentos de valor igual a uma linha pendente. Período por data de vencimento (borderô pago: data do pagamento); a busca ignora o período.</>)}
                   {abaSistema === "conferencia" && "Cada linha conciliada do OFX com o(s) lançamento(s) ligado(s). Período por data do pagamento no OFX."}
                 </div>
 
@@ -3470,7 +3518,7 @@ function ConciliacaoInner() {
                 {/* Soma dos selecionados × linha ativa e confirmação (aba de abertos) */}
                 {(abaSistema === "abertos" || abaSistema === "conciliados") && linhaAtiva && lancsSel.size > 0 && (() => {
                   const sel = Array.from(lancsSel).map(id => lancamentos.find(x => x.id === id)).filter((l): l is Lancamento => !!l);
-                  const esperado = sel.reduce((sm, l) => sm + valorParaLinha(l), 0);
+                  const esperado = valorDaSelecao(sel);
                   const dif = Math.round((linhaAtiva.valor - esperado) * 100) / 100;
                   const parcial = sel.length === 1 && dif < -0.02;
                   const ok = Math.abs(dif) <= 0.02;
