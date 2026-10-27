@@ -122,6 +122,7 @@ export const NAV: NavItem[] = [
       { id: "docfis-mdfe",       label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe",               moduleId: "transporte" },
       { type: "divider", label: "Relatórios" },
       { id: "docfis-rel-processamento", label: "Processamento de NF e NFS-e", path: "/fiscal/relatorio-processamento", moduleId: "nf_entrada" },
+      { id: "docfis-rel-canceladas", label: "NFs Canceladas pelo Emitente", path: "/fiscal/relatorio-canceladas", moduleId: "nf_entrada" },
     ],
   },
 

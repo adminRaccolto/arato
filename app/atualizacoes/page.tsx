@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-i",
+    data: "27/10/2026",
+    titulo: "Relatório de NFs canceladas pelo emitente",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "novo", texto: "Novo relatório com as notas canceladas pelo emitente que no Arato ainda não estão como Canceladas, em dois grupos: já processadas (com estoque ou título no CP, precisam de estorno) e ainda pendentes. Para NF-e, consulta os cancelamentos registrados no SIEG no período escolhido. Também lista as NFS-e processadas que o prestador cancelou. Só consulta: nenhuma nota é alterada. Exporta PDF e Excel." },
+    ],
+    onde: "Documentos Fiscais → Relatórios → NFs Canceladas pelo Emitente",
+  },
+  {
     versao: "2026.10.27-h",
     data: "27/10/2026",
     titulo: "NF-e cancelada pelo emitente marcada na sincronização",

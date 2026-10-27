@@ -359,7 +359,8 @@ export async function baixarEventosCancelamentoSieg(
   creds:  SiegCredentials,
   params: Omit<SiegBaixarParams, "Take" | "Skip" | "BaixarEventos" | "TipoEvento">
 ): Promise<string[]> {
-  return baixarXmlsSieg(creds, { ...params, BaixarEventos: true, TipoEvento: 110111 });
+  // em partes, como as notas: período longo (relatório de canceladas) passa do limite de dias por consulta do SIEG
+  return baixarXmlsSiegChunked(creds, { ...params, BaixarEventos: true, TipoEvento: 110111 });
 }
 
 // ─── Manifestar por chave de acesso ──────────────────────────────────────────
