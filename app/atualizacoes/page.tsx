@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-f",
+    data: "27/10/2026",
+    titulo: "Transferência sem saldo e filtro por número de documento",
+    modulos: ["Estoque", "Fiscal"],
+    itens: [
+      { tipo: "melhoria", texto: "Na transferência de estoque, itens sem saldo também aparecem para escolher, marcados \"sem saldo\", depois dos que têm saldo. A saída fica na fazenda de origem." },
+      { tipo: "novo", texto: "Notas de Terceiro ganhou o filtro Nº documento, que vale para NF, NFS-e e CT-e e filtra na hora. Zeros à esquerda são ignorados." },
+    ],
+    onde: "Estoque → Transferências; Documentos Fiscais → Notas de Terceiro",
+  },
+  {
     versao: "2026.10.27-e",
     data: "27/10/2026",
     titulo: "Pedido de Compra na unidade do cadastro do item",

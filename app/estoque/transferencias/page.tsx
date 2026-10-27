@@ -1215,20 +1215,17 @@ export default function TransferenciasEstoquePage() {
                               onChange={v => updateItem(i, "insumo_id", v)}
                               placeholder="— Selecione —"
                               style={{ ...inp, width: 190 }}
-                              options={[
-                                // Insumo já selecionado neste item some da lista quando o estoque atual
-                                // está zerado (comum ao replicar uma transferência já emitida, que já
-                                // consumiu o estoque daquele insumo) — sem isso, o seletor ficava em
-                                // branco mesmo com o item corretamente preenchido no estado, parecendo
-                                // que o item tinha sumido/quebrado.
-                                ...(insumoSel && (insumoSel.estoque ?? 0) <= 0
-                                  ? [{ value: insumoSel.id, label: `${insumoSel.nome} (Est: ${(insumoSel.estoque ?? 0).toFixed(2)} ${insumoSel.unidade}) — sem saldo` }]
-                                  : []),
-                                ...todosInsumos.filter(ins => (ins.estoque ?? 0) > 0).map(ins => ({
+                              // Itens sem saldo também podem ser transferidos (decisão do dono 27/10/2026): aparecem depois
+                              // dos que têm saldo, marcados "sem saldo"; a saída fica na fazenda de origem.
+                              options={todosInsumos
+                                .filter(ins => (insumoAtivo(ins) && !(ins as { mesclado_em?: string | null }).mesclado_em) || ins.id === it.insumo_id)
+                                .sort((a, b) => Number((b.estoque ?? 0) > 0) - Number((a.estoque ?? 0) > 0) || a.nome.localeCompare(b.nome))
+                                .map(ins => ({
                                   value: ins.id,
-                                  label: `${ins.nome} (Est: ${(ins.estoque ?? 0).toFixed(2)} ${ins.unidade})`,
-                                })),
-                              ]}
+                                  label: (ins.estoque ?? 0) > 0
+                                    ? `${ins.nome} (Est: ${(ins.estoque ?? 0).toFixed(2)} ${ins.unidade})`
+                                    : `${ins.nome} (${ins.unidade}) — sem saldo`,
+                                }))}
                             />
                             {it.insumo_id && (() => {
                               const { dono, comSaldo } = donoDoItem(it);

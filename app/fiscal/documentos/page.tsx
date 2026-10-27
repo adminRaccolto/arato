@@ -222,6 +222,7 @@ export default function DocumentosFiscaisPage() {
   const [fTipoEntrada, setFTipoEntrada] = useState<Set<string>>(new Set());
   const [fOrigem,      setFOrigem]      = useState<Set<string>>(new Set());
   const [fBusca,   setFBusca]   = useState("");
+  const [fNumero,  setFNumero]  = useState("");
   const [fDataDe,  setFDataDe]  = useState("");
   const [fDataAte, setFDataAte] = useState("");
   const [dropdownAberto, setDropdownAberto] = useState<"status" | "tipoEntrada" | "origem" | null>(null);
@@ -479,6 +480,9 @@ export default function DocumentosFiscaisPage() {
     if (fStatus.size > 0 && !fStatus.has(d.status_normalizado ?? "")) return false;
     if (fTipoEntrada.size > 0 && !fTipoEntrada.has(d.tipo_entrada ?? "")) return false;
     if (fOrigem.size > 0 && !fOrigem.has(d.origem_doc ?? "")) return false;
+    // Nº do documento (NF, NFS-e ou CT-e): só os dígitos, sem zeros à esquerda ("001215" acha "1215")
+    const numBusca = fNumero.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    if (numBusca && !String(d.numero ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "").includes(numBusca)) return false;
     return true;
   });
 
@@ -515,6 +519,11 @@ export default function DocumentosFiscaisPage() {
           <div style={{ flex: "1 1 180px", minWidth: 160 }}>
             <label data-arato-label="true" style={lblMini}>Buscar (número, participante, chave)</label>
             <input value={fBusca} onChange={e => setFBusca(e.target.value)} onKeyDown={e => e.key === "Enter" && carregar()} style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
+          </div>
+          <div style={{ width: 130 }}>
+            <label data-arato-label="true" style={lblMini}>Nº documento</label>
+            <input value={fNumero} onChange={e => setFNumero(e.target.value)} inputMode="numeric" placeholder="NF, NFS-e, CT-e"
+              title="Filtra pelo número da NF, NFS-e ou CT-e (sem precisar atualizar)" style={{ ...inp, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div>
             <label data-arato-label="true" style={lblMini}>Tipo</label>
