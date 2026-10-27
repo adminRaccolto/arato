@@ -54,6 +54,12 @@ export async function POST(req: NextRequest) {
       nfe_ref?: string;
       tipo?: "0" | "1";
       fin_nfe?: "1" | "2" | "3" | "4";  // 1=normal, 2=complementar, 3=ajuste, 4=devolução
+      // Transportadora e veículo (<transporta>/<veicTransp>). Antes este bloco era ignorado aqui: a tela mandava
+      // transportadora e placa, mas nenhuma NF-e emitida por esta rota levava transporte no XML nem no DANFE.
+      transporte?: {
+        nome?: string; cpf_cnpj?: string; ie?: string; endereco?: string; municipio?: string; uf?: string;
+        placa?: string; uf_veiculo?: string; rntrc?: string;
+      };
     };
 
     if (!body.fazenda_id || !body.itens?.length) {
@@ -85,6 +91,17 @@ export async function POST(req: NextRequest) {
       nfe_ref:  body.nfe_ref,
       tipo:     body.tipo ?? "1",
       finNFe:   body.fin_nfe ?? "1",
+      transportadora: body.transporte && (body.transporte.nome || body.transporte.cpf_cnpj || body.transporte.placa) ? {
+        cnpj_cpf:   body.transporte.cpf_cnpj?.replace(/\D/g, "") || undefined,
+        nome:       body.transporte.nome?.trim() || undefined,
+        ie:         body.transporte.ie?.replace(/\D/g, "") || undefined,
+        logradouro: body.transporte.endereco?.trim() || undefined,
+        municipio:  body.transporte.municipio?.trim() || undefined,
+        uf:         body.transporte.uf?.trim().toUpperCase() || undefined,
+        placa:      body.transporte.placa?.trim() || undefined,
+        uf_placa:   body.transporte.uf_veiculo?.trim().toUpperCase() || undefined,
+        rntrc:      body.transporte.rntrc?.trim() || undefined,
+      } : undefined,
     };
 
     // cpf_cnpj_hint (quando informado) tem prioridade sobre modulo_key — é o titular fiscal real

@@ -7,6 +7,17 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-t",
+    data: "27/10/2026",
+    titulo: "NF-e com transportadora, placa e motorista",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "Transportadora e placa informadas na emissão não chegavam ao XML da NF-e nem ao DANFE (Notas de Venda e Faturamento de grãos): ficavam só no registro interno. Agora saem no quadro Transportador / Volumes Transportados." },
+      { tipo: "novo", texto: "Transferência de Máquinas e Equipamentos ganhou o bloco Transporte na emissão da NF-e (remessa e retorno): frete por conta, transportadora, veículo do cadastro ou placa digitada e motorista com CPF (nas informações complementares)." },
+    ],
+    onde: "Documentos Fiscais → Transferência de Máquinas; Notas de Venda; Faturamento",
+  },
+  {
     versao: "2026.10.27-s",
     data: "27/10/2026",
     titulo: "DANFE: baixar em PDF, IE e CPF do emitente",

@@ -711,6 +711,16 @@ function FaturamentoInner() {
               frete:     (fVenda.frete_conta as "0" | "1" | "2" | "9") ?? "9",
               nfe_ref:   fVenda.nf_ref_chave || undefined,
               tipo:      "1" as const,
+              // Transportadora e placa no XML (antes ficavam só no registro interno da nota, fora do XML e do DANFE)
+              transporte: fVenda.transportadora || fVenda.placa ? {
+                nome:       fVenda.transportadora || undefined,
+                cpf_cnpj:   fVenda.transp_cpf_cnpj || undefined,
+                ie:         fVenda.transp_ie || undefined,
+                endereco:   [fVenda.transp_endereco, fVenda.transp_numero].filter(Boolean).join(", ") || undefined,
+                municipio:  fVenda.transp_cidade || undefined,
+                placa:      fVenda.placa || undefined,
+                uf_veiculo: fVenda.uf_placa || undefined,
+              } : undefined,
             }),
           });
           if (resp.ok || resp.status === 422) {

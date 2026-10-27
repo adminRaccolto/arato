@@ -15,6 +15,12 @@ import {
 } from "../../../lib/db";
 import type { TransferenciaMaquina, MotivoTransferenciaMaquina, Maquina, Pessoa } from "../../../lib/supabase";
 
+// Transporte da NF-e (modalidade do frete, transportadora, veículo e motorista) — mesmos dados da NF-e de produto
+type Transp = { frete: "0" | "1" | "2" | "9"; transportadora_id: string; veiculo_id: string; placa: string; uf_placa: string; motorista_nome: string; motorista_cpf: string };
+const TRANSP_VAZIO: Transp = { frete: "0", transportadora_id: "", veiculo_id: "", placa: "", uf_placa: "", motorista_nome: "", motorista_cpf: "" };
+type TransportadoraOp = { id: string; razao_social: string | null; nome_fantasia: string | null; cnpj: string | null; cpf: string | null; ie: string | null; rntrc: string | null; logradouro: string | null; numero: string | null; municipio: string | null; uf: string | null };
+type VeiculoOp = { id: string; placa: string; uf_placa: string | null; uf: string | null; rntrc: string | null; transportadora_id: string | null; motorista_habitual_id: string | null; modelo: string | null };
+
 // Resposta de /api/fiscal/emitir-nfe (NFeResult): dados da NF e do emitente, gravados no Monitor para o DANFE
 type ResultadoEmissao = {
   sucesso: boolean; chave?: string; numero?: string; serie?: string; protocolo?: string; xmlUrl?: string; cStat?: string; xMotivo?: string;
@@ -88,6 +94,10 @@ export default function TransferenciaMaquinasPage() {
   const [maquinas,  setMaquinas]  = useState<Maquina[]>([]);
   const [pessoas,   setPessoas]   = useState<Pessoa[]>([]);
   const [motoristas, setMotoristas] = useState<{ id: string; nome: string; cpf?: string }[]>([]);
+  const [transportadoras, setTransportadoras] = useState<TransportadoraOp[]>([]);
+  const [veiculos, setVeiculos] = useState<VeiculoOp[]>([]);
+  const [trNova, setTrNova] = useState<Transp>(TRANSP_VAZIO);
+  const [trRet, setTrRet] = useState<Transp>(TRANSP_VAZIO);
   const [loading,   setLoading]   = useState(true);
   const [busca,     setBusca]     = useState("");
   const [filtroSt,  setFiltroSt]  = useState("");
@@ -143,12 +153,17 @@ export default function TransferenciaMaquinasPage() {
     if (!contaId || !fazendaId) return;
     (async () => {
       setLoading(true);
-      const [t, m, p, { data: mot }] = await Promise.all([
+      const doCliente = [`conta_id.eq.${contaId}`, ...(fazendaIds?.length ? [`fazenda_id.in.(${fazendaIds.join(",")})`] : [])].join(",");
+      const [t, m, p, { data: mot }, { data: trs }, { data: vcs }] = await Promise.all([
         listarTransferenciasMaquinas(contaId),
         listarMaquinas(fazendaId),
         listarPessoasDaConta(fazendaId),
         supabase.from("motoristas").select("id, nome, cpf").eq("ativo", true),
+        supabase.from("transportadoras").select("id, razao_social, nome_fantasia, cnpj, cpf, ie, rntrc, logradouro, numero, municipio, uf").or(doCliente).neq("ativa", false).order("razao_social"),
+        supabase.from("veiculos").select("id, placa, uf_placa, uf, rntrc, transportadora_id, motorista_habitual_id, modelo").or(doCliente).neq("ativo", false).order("placa"),
       ]);
+      setTransportadoras((trs ?? []) as TransportadoraOp[]);
+      setVeiculos((vcs ?? []) as VeiculoOp[]);
       setItens(t);
       setMaquinas(m);
       setPessoas(p);
@@ -158,6 +173,7 @@ export default function TransferenciaMaquinasPage() {
   }, [contaId, fazendaId]);
 
   function abrirNova() {
+    setTrNova(TRANSP_VAZIO);
     setF({
       maquina_id: "", maquina_nome_livre: "", motivo: "conserto", destinatario_pessoa_id: "", dest_ie: "", valor_bem: "", ncm: "84329000",
       data_retorno_prevista: "", observacao: "", motorista_id: "", motorista_nome: "", motorista_cpf: "",
@@ -165,6 +181,90 @@ export default function TransferenciaMaquinasPage() {
     });
     setErro("");
     setModalNova(true);
+  }
+
+  // Bloco <transp> da NF-e e o texto do motorista (a NF-e não tem campo próprio de motorista: vai nas informações complementares)
+  function montarTransporte(t: Transp, motoristaNome: string, motoristaCpf: string) {
+    const tr = transportadoras.find(x => x.id === t.transportadora_id);
+    const veic = veiculos.find(x => x.id === t.veiculo_id);
+    const placa = (veic?.placa ?? t.placa).trim();
+    const transporte = tr || placa ? {
+      nome: tr ? (tr.razao_social || tr.nome_fantasia || undefined) : undefined,
+      cpf_cnpj: tr ? (tr.cnpj || tr.cpf || undefined) : undefined,
+      ie: tr?.ie || undefined,
+      endereco: tr ? [tr.logradouro, tr.numero].filter(Boolean).join(", ") || undefined : undefined,
+      municipio: tr?.municipio || undefined, uf: tr?.uf || undefined,
+      placa: placa || undefined, uf_veiculo: (veic?.uf_placa || veic?.uf || t.uf_placa) || undefined,
+      rntrc: tr?.rntrc || veic?.rntrc || undefined,
+    } : undefined;
+    const motorista = motoristaNome.trim() ? `Motorista: ${motoristaNome.trim()}${motoristaCpf.trim() ? ` — CPF ${motoristaCpf.trim()}` : ""}` : "";
+    return { transporte, motorista };
+  }
+
+  function blocoTransporte(t: Transp, set: (fn: (p: Transp) => Transp) => void, comMotorista: boolean) {
+    const escolherVeiculo = (id: string) => {
+      const v = veiculos.find(x => x.id === id);
+      const mot = v?.motorista_habitual_id ? motoristas.find(m => m.id === v.motorista_habitual_id) : undefined;
+      set(p => ({
+        ...p, veiculo_id: id, placa: v?.placa ?? p.placa, uf_placa: v?.uf_placa ?? v?.uf ?? p.uf_placa,
+        transportadora_id: v?.transportadora_id || p.transportadora_id,
+        ...(comMotorista && mot && !p.motorista_nome ? { motorista_nome: mot.nome, motorista_cpf: mot.cpf ?? "" } : {}),
+      }));
+      if (!comMotorista && mot && !f.motorista_nome) setF(p => ({ ...p, motorista_nome: mot.nome, motorista_id: mot.id, motorista_cpf: mot.cpf ?? "" }));
+    };
+    return (
+      <div data-arato-dialog-body="true" style={{ gridColumn: "1 / -1", border: "0.5px solid var(--border)", borderRadius: 10, padding: "10px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ gridColumn: "1 / -1", fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Transporte</div>
+        <div>
+          <label data-arato-label="true" style={lbl}>Frete por conta</label>
+          <select value={t.frete} onChange={e => set(p => ({ ...p, frete: e.target.value as Transp["frete"] }))} style={inp}>
+            <option value="0">0 — Remetente (emitente)</option>
+            <option value="1">1 — Destinatário</option>
+            <option value="2">2 — Terceiros</option>
+            <option value="9">9 — Sem transporte</option>
+          </select>
+        </div>
+        <div>
+          <label data-arato-label="true" style={lbl}>Transportadora (opcional)</label>
+          <select value={t.transportadora_id} onChange={e => set(p => ({ ...p, transportadora_id: e.target.value }))} style={inp}>
+            <option value="">— Própria / sem transportadora —</option>
+            {transportadoras.map(x => <option key={x.id} value={x.id}>{x.razao_social || x.nome_fantasia}{x.cnpj || x.cpf ? ` · ${x.cnpj || x.cpf}` : ""}</option>)}
+          </select>
+        </div>
+        <div>
+          <label data-arato-label="true" style={lbl}>Veículo</label>
+          <select value={t.veiculo_id} onChange={e => escolherVeiculo(e.target.value)} style={inp}>
+            <option value="">— Digitar a placa —</option>
+            {veiculos.map(v => <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` · ${v.modelo}` : ""}</option>)}
+          </select>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 70px", gap: 8 }}>
+          <div>
+            <label data-arato-label="true" style={lbl}>Placa</label>
+            <input value={t.placa} disabled={!!t.veiculo_id} onChange={e => set(p => ({ ...p, placa: e.target.value.toUpperCase() }))} style={inp} placeholder="ABC1D23" maxLength={8} />
+          </div>
+          <div>
+            <label data-arato-label="true" style={lbl}>UF</label>
+            <input value={t.uf_placa} disabled={!!t.veiculo_id} onChange={e => set(p => ({ ...p, uf_placa: e.target.value.toUpperCase() }))} style={inp} placeholder="MT" maxLength={2} />
+          </div>
+        </div>
+        {comMotorista && (
+          <>
+            <div>
+              <label data-arato-label="true" style={lbl}>Motorista</label>
+              <input list="transf-maq-motoristas" value={t.motorista_nome}
+                onChange={e => { const nome = e.target.value; const m = motoristas.find(x => x.nome === nome); set(p => ({ ...p, motorista_nome: nome, motorista_cpf: m?.cpf ?? p.motorista_cpf })); }}
+                style={inp} placeholder="Nome do motorista" />
+            </div>
+            <div>
+              <label data-arato-label="true" style={lbl}>CPF do motorista</label>
+              <input value={t.motorista_cpf} onChange={e => set(p => ({ ...p, motorista_cpf: e.target.value }))} style={inp} />
+            </div>
+          </>
+        )}
+        <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--text-3)" }}>Transportadora e veículo saem no XML e no DANFE; o motorista vai nas informações complementares da NF-e.</div>
+      </div>
+    );
   }
 
   // NF-e emitida aqui entra no Monitor de NF-e Emitidas (notas_fiscais) — sem isso não havia DANFE para imprimir nem
@@ -271,6 +371,7 @@ export default function TransferenciaMaquinasPage() {
       if ("erro" in em) { setErro(em.erro); setSalvando(false); return; }
       const moduloKey = em.modulo;
       const cpfCnpjHint = em.cpf;
+      const { transporte, motorista } = montarTransporte(trNova, f.motorista_nome, f.motorista_cpf);
 
       const resp = await fetch("/api/fiscal/emitir-nfe", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -295,8 +396,9 @@ export default function TransferenciaMaquinasPage() {
             unidade: "UN", quantidade: 1, valor_unitario: valor,
           }],
           natureza: motivoCfg.naturezaEtapa1,
-          inf_cpl: f.observacao || undefined,
-          frete: "9",
+          inf_cpl: [f.observacao, motorista].filter(Boolean).join(" | ") || undefined,
+          frete: trNova.frete,
+          transporte,
           tipo: "1",
         }),
       });
@@ -381,6 +483,7 @@ export default function TransferenciaMaquinasPage() {
       const emR = resolverEmitente(modalRet.emitente_cpf_cnpj);
       if ("erro" in emR) { setRetErro(emR.erro); setRetSalvando(false); return; }
       const moduloKey = emR.modulo;
+      const { transporte, motorista } = montarTransporte(trRet, trRet.motorista_nome, trRet.motorista_cpf);
 
       const resp = await fetch("/api/fiscal/emitir-nfe", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -402,10 +505,11 @@ export default function TransferenciaMaquinasPage() {
             unidade: "UN", quantidade: 1, valor_unitario: modalRet.valor_bem,
           }],
           natureza: motivoCfg.naturezaEtapa2,
-          inf_cpl: modalRet.nf_saida_numero
+          inf_cpl: [modalRet.nf_saida_numero
             ? `Retorno da remessa NF ${modalRet.nf_saida_numero} — chave ${modalRet.nf_saida_chave ?? ""}`
-            : `Devolução — bem recebido de ${modalRet.destinatario_nome}`,
-          frete: "9",
+            : `Devolução — bem recebido de ${modalRet.destinatario_nome}`, motorista].filter(Boolean).join(" | "),
+          frete: trRet.frete,
+          transporte,
           nfe_ref: modalRet.nf_saida_chave || undefined,
           tipo: tipoNfRetorno,
         }),
@@ -519,7 +623,7 @@ export default function TransferenciaMaquinasPage() {
                         <OperationalButton data-arato-button="secondary" onClick={() => abrirDanfe(i.nf_retorno_chave)} style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, marginRight: 6 }}>🖨 DANFE retorno</OperationalButton>
                       )}
                       {i.status === "emitida" && motivoCfgLinha.temEtapa2 && (
-                        <OperationalButton data-arato-button="primary" onClick={() => { setModalRet(i); setRetErro(""); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
+                        <OperationalButton data-arato-button="primary" onClick={() => { setModalRet(i); setRetErro(""); setTrRet(TRANSP_VAZIO); }} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
                           {labelBotaoRetorno}
                         </OperationalButton>
                       )}
@@ -636,6 +740,13 @@ export default function TransferenciaMaquinasPage() {
                   {motoristas.map(m => <option key={m.id} value={m.nome} />)}
                 </datalist>
               </div>
+              {MOTIVOS[f.motivo].emiteNfEtapa1 && (
+                <div data-arato-dialog-body="true">
+                  <label data-arato-label="true" style={lbl}>CPF do motorista</label>
+                  <input value={f.motorista_cpf} onChange={e => setF(p => ({ ...p, motorista_cpf: e.target.value }))} style={inp} />
+                </div>
+              )}
+              {MOTIVOS[f.motivo].emiteNfEtapa1 && blocoTransporte(trNova, setTrNova, false)}
 
               {MOTIVOS[f.motivo].temEtapa2 && (
                 <div>
@@ -685,7 +796,7 @@ export default function TransferenciaMaquinasPage() {
         const titulo = !motivoCfgRet.emiteNfEtapa2 ? "Registrar Saída" : (modalRet.direcao === "entrada" ? "Registrar Devolução" : "Registrar Retorno");
         return (
         <div data-arato-overlay="true" style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
-          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, width: 460 }}>
+          <div data-arato-dialog="confirmation" style={{ background: "var(--bg-card)", borderRadius: 14, width: motivoCfgRet.emiteNfEtapa2 ? 620 : 460, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div data-arato-dialog-body="true" data-arato-dialog-heading="true" style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div data-arato-dialog-body="true" style={{ fontSize: 15, fontWeight: 700 }}>{titulo}</div>
               <OperationalButton data-arato-button="icon" onClick={() => setModalRet(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</OperationalButton>
@@ -698,6 +809,7 @@ export default function TransferenciaMaquinasPage() {
               {motivoCfgRet.emiteNfEtapa2
                 ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>CFOP {modalRet.direcao === "entrada" ? "de devolução (nossa NF de saída)" : "de retorno"}: <strong>{modalRet.cfop_retorno}</strong></div>
                 : <div style={{ fontSize: 12, color: "var(--text-3)" }}>Sem NF nesta etapa — só fecha o registro de controle.</div>}
+              {motivoCfgRet.emiteNfEtapa2 && <div style={{ marginTop: 12, display: "grid" }}>{blocoTransporte(trRet, setTrRet, true)}</div>}
             </div>
             <div data-arato-dialog-body="true" data-arato-dialog-actions="true" style={{ padding: "14px 24px 20px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <OperationalButton data-arato-button="secondary" style={btnR} onClick={() => setModalRet(null)}>Cancelar</OperationalButton>
