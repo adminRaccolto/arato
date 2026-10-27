@@ -298,7 +298,9 @@ export default function DocumentosFiscaisPage() {
       else {
         const imp = Number(d.importados_nfe ?? 0);
         const dup = Number(d.duplicados_nfe ?? 0);
-        setSiegMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : ""}`);
+        const canc = Number(d.canceladas_nfe ?? 0);
+        const avisos = Array.isArray(d.avisos) ? (d.avisos as string[]) : [];
+        setSiegMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : ""}${canc > 0 ? ` · ${canc} cancelada${canc !== 1 ? "s" : ""} pelo emitente` : ""}${avisos.length ? ` · ${avisos.join(" · ")}` : ""}`);
         await carregar();
       }
     } catch (e) { setSiegMsg(`✗ Erro de rede: ${e}`); }

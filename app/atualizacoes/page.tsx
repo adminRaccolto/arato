@@ -7,6 +7,16 @@ import TopNav from "../../components/TopNav";
 // Adicione novos releases no INÍCIO da lista (mais recente primeiro)
 const RELEASES = [
   {
+    versao: "2026.10.27-h",
+    data: "27/10/2026",
+    titulo: "NF-e cancelada pelo emitente marcada na sincronização",
+    modulos: ["Fiscal"],
+    itens: [
+      { tipo: "correcao", texto: "A sincronização do SIEG (automática e pelo botão) agora busca os cancelamentos feitos pelo emitente na SEFAZ. NF-e pendente vira Cancelada. NF-e já processada continua processada e recebe o aviso \"CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar\"." },
+    ],
+    onde: "Documentos Fiscais → Notas de Terceiro (Sincronizar SIEG)",
+  },
+  {
     versao: "2026.10.27-g",
     data: "27/10/2026",
     titulo: "NFS-e: tomador lido certo no padrão nacional",

@@ -11,7 +11,7 @@
 import { hojeLocal } from "../../../../lib/data-local";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-servidor";
-import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSiegChunked, baixarEventosCancelamentoSieg, parseEventoCancelamentoXml, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 import { exigirAcessoFazenda, ehChamadaInterna } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs";
@@ -305,6 +305,36 @@ export async function POST(req: NextRequest) {
       importados_nfe++;
     }
 
+    // ── 3b. Cancelamentos do emitente (evento 110111) na mesma janela ────────
+    // NF pendente vira Cancelada; NF processada (já tem CP/estoque) não muda de status — recebe aviso para alguém
+    // estornar. Falha ao buscar eventos não trava a sincronização nem a marca: a próxima rodada tenta de novo.
+    let canceladas_nfe = 0;
+    const avisos: string[] = [];
+    const AVISO_CANCELADA = "⚠ CANCELADA PELO EMITENTE NA SEFAZ — verifique se precisa estornar.";
+    for (const cnpj of cnpjs) {
+      let eventos: string[] = [];
+      try {
+        eventos = await baixarEventosCancelamentoSieg(siegCreds, { TipoXml: 1, DataUploadInicio: uploadInicio, DataUploadFim: uploadFim, CnpjDest: cnpj });
+      } catch (e) {
+        avisos.push(`Cancelamentos (${cnpj}) não consultados: ${String(e).slice(0, 200)}`);
+        continue;
+      }
+      const chaves = [...new Set(eventos.map(parseEventoCancelamentoXml).filter((c): c is string => !!c))];
+      for (const chave of chaves) {
+        const { data: nfs } = await db.from("nf_entradas").select("id, status, observacao")
+          .in("fazenda_id", fazendaIdsDaConta).eq("chave_acesso", chave);
+        for (const nf of nfs ?? []) {
+          if (nf.status === "pendente" || nf.status === "digitando") {
+            await db.from("nf_entradas").update({ status: "cancelada" }).eq("id", nf.id);
+            canceladas_nfe++;
+          } else if (nf.status === "processada" && !nf.observacao?.includes(AVISO_CANCELADA)) {
+            await db.from("nf_entradas").update({ observacao: [nf.observacao, AVISO_CANCELADA].filter(Boolean).join(" | ") }).eq("id", nf.id);
+            avisos.push(`NF ${chave.slice(25, 34).replace(/^0+/, "")} cancelada pelo emitente, mas já processada — estorne.`);
+          }
+        }
+      }
+    }
+
     // ── 4. Persistir última sync ─────────────────────────────────────────────
     // A marca da última sincronização é o FIM DA JANELA CONSULTADA (menos 1 dia de folga), nunca "agora":
     // antes ela era gravada ao terminar o processamento (minutos depois da consulta), e as NFs que o SIEG
@@ -334,6 +364,8 @@ export async function POST(req: NextRequest) {
       sucesso:       true,
       importados_nfe,
       duplicados_nfe,
+      canceladas_nfe,
+      avisos,
       total_xmls:    xmlsNFe.length,
       erros:         erros.slice(0, 20),
       marca_avancou: avancaMarca,
